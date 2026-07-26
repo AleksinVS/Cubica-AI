@@ -86,6 +86,7 @@ export function InteractiveBoardSurface({
   const [pendingActionId, setPendingActionId] = useState<string | null>(null);
   const [pendingPreviewActionId, setPendingPreviewActionId] = useState<string | null>(null);
   const [sceneReady, setSceneReady] = useState(false);
+  const [actionPanelOpen, setActionPanelOpen] = useState(false);
 
   sessionRef.current = session;
   dispatchRef.current = dispatchAction;
@@ -480,44 +481,59 @@ export function InteractiveBoardSurface({
       />
 
       {layoutMode === "map-first" ? (
-        <div className={styles.cameraControls} aria-label="Управление обзором карты">
+        <>
           <button
             type="button"
-            className={styles.cameraButton}
-            disabled={!sceneReady}
-            aria-label="Увеличить карту"
-            onClick={() => runCameraCommand((handle) => handle.zoomBy?.(1.2))}
+            className={styles.actionPanelToggle}
+            aria-controls={`${manifestProps.sceneId}-board-actions`}
+            aria-expanded={actionPanelOpen}
+            onClick={() => setActionPanelOpen((open) => !open)}
           >
-            +
+            {actionPanelOpen ? "Закрыть действия" : "Действия"}
           </button>
-          <button
-            type="button"
-            className={styles.cameraButton}
-            disabled={!sceneReady}
-            aria-label="Уменьшить карту"
-            onClick={() => runCameraCommand((handle) => handle.zoomBy?.(1 / 1.2))}
-          >
-            −
-          </button>
-          <button
-            type="button"
-            className={styles.cameraButtonWide}
-            disabled={!sceneReady}
-            onClick={() => runCameraCommand((handle) => handle.fitToView?.())}
-          >
-            Показать всю карту
-          </button>
-          <button
-            type="button"
-            className={styles.cameraButtonWide}
-            onClick={() => void toggleFullscreen()}
-          >
-            На весь экран
-          </button>
-        </div>
+          <div className={styles.cameraControls} aria-label="Управление обзором карты">
+            <button
+              type="button"
+              className={styles.cameraButton}
+              disabled={!sceneReady}
+              aria-label="Увеличить карту"
+              onClick={() => runCameraCommand((handle) => handle.zoomBy?.(1.2))}
+            >
+              +
+            </button>
+            <button
+              type="button"
+              className={styles.cameraButton}
+              disabled={!sceneReady}
+              aria-label="Уменьшить карту"
+              onClick={() => runCameraCommand((handle) => handle.zoomBy?.(1 / 1.2))}
+            >
+              −
+            </button>
+            <button
+              type="button"
+              className={styles.cameraButtonWide}
+              disabled={!sceneReady}
+              onClick={() => runCameraCommand((handle) => handle.fitToView?.())}
+            >
+              Показать всю карту
+            </button>
+            <button
+              type="button"
+              className={styles.cameraButtonWide}
+              onClick={() => void toggleFullscreen()}
+            >
+              На весь экран
+            </button>
+          </div>
+        </>
       ) : null}
 
-      <div className={styles.accessibleControls}>
+      <div
+        id={`${manifestProps.sceneId}-board-actions`}
+        className={styles.accessibleControls}
+        data-panel-open={actionPanelOpen}
+      >
         <h2 className={styles.controlsTitle}>Действия на поле</h2>
         {accessibleActions.length > 0 ? (
           <ul className={styles.actionList}>

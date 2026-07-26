@@ -1657,6 +1657,10 @@
         "networkId": { "$ref": "#/$defs/identifier" },
         "fromNode": { "$ref": "#/$defs/valueExpression" },
         "toNode": { "$ref": "#/$defs/valueExpression" },
+        "onUnavailable": {
+          "description": "Choose whether a valid but disconnected endpoint pair aborts the transaction or returns an explicit unreachable result.",
+          "enum": ["fail", "return-unreachable"]
+        },
         "when": { "$ref": "#/$defs/predicate" }
       },
       "additionalProperties": false
@@ -1743,7 +1747,7 @@
     },
     "rankingGroup": {
       "type": "object",
-      "required": ["id", "entityIds"],
+      "required": ["id"],
       "properties": {
         "id": { "$ref": "#/$defs/identifier" },
         "entityIds": {
@@ -1752,9 +1756,20 @@
           "maxItems": 128,
           "uniqueItems": true,
           "items": { "$ref": "#/$defs/valueExpression" }
-        }
+        },
+        "selection": { "$ref": "#/$defs/entitySelectionResultRef" }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "required": ["entityIds"],
+          "not": { "required": ["selection"] }
+        },
+        {
+          "required": ["selection"],
+          "not": { "required": ["entityIds"] }
+        }
+      ]
     },
     "scoreRelatedSource": {
       "type": "object",
@@ -1768,7 +1783,7 @@
     },
     "entityScoreStep": {
       "type": "object",
-      "required": ["id", "kind", "op", "entities", "entityIds", "baseField", "relatedSources"],
+      "required": ["id", "kind", "op", "baseField", "relatedSources"],
       "properties": {
         "id": { "$ref": "#/$defs/stepId" },
         "kind": { "const": "query" },
@@ -1781,6 +1796,7 @@
           "uniqueItems": true,
           "items": { "$ref": "#/$defs/valueExpression" }
         },
+        "selection": { "$ref": "#/$defs/entitySelectionResultRef" },
         "baseField": { "$ref": "#/$defs/identifier" },
         "relatedSources": {
           "type": "array",
@@ -1789,7 +1805,22 @@
         },
         "when": { "$ref": "#/$defs/predicate" }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "required": ["entities", "entityIds"],
+          "not": { "required": ["selection"] }
+        },
+        {
+          "required": ["selection"],
+          "not": {
+            "anyOf": [
+              { "required": ["entities"] },
+              { "required": ["entityIds"] }
+            ]
+          }
+        }
+      ]
     },
     "stableRankingStep": {
       "type": "object",

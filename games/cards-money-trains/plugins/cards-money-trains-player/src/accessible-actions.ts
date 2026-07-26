@@ -15,6 +15,8 @@ import type {
 import { projectBoardSession } from "./board-state.ts";
 import { MOVEMENT_TRAVERSE_ACTION_ID } from "./movement-selection.ts";
 import {
+  TRAIN_MANUAL_ATTACH_ACTION_ID,
+  TRAIN_MANUAL_DETACH_ACTION_ID,
   TRAIN_WAGON_SELECT_ACTION_ID,
   TRAIN_WAGON_UNSELECT_ACTION_ID
 } from "./train-formation-selection.ts";
@@ -58,6 +60,26 @@ const SETUP_LOCOMOTIVE_PLACE_ACTION_ID = "session.setup.place.locomotive";
 const MAINTENANCE_LOCOMOTIVE_ACTION_ID = "maintenance.pay.locomotive";
 const MAINTENANCE_WAGON_ACTION_ID = "maintenance.pay.wagon";
 const MAINTENANCE_CARGO_ACTION_ID = "maintenance.pay.held-cargo";
+const ECONOMY_ADJUST_CREDIT_ACTION_ID =
+  "facilitator.economy.adjust.credit";
+const ECONOMY_ADJUST_DEBIT_ACTION_ID =
+  "facilitator.economy.adjust.debit";
+const ECONOMY_LOAN_ISSUE_ACTION_ID =
+  "facilitator.economy.loan.issue";
+const ECONOMY_LOAN_REPAY_ACTION_ID =
+  "facilitator.economy.loan.repay";
+const ECONOMY_TEAM_EXCLUDE_ACTION_ID =
+  "facilitator.economy.team.exclude";
+const ECONOMY_MONEY_ACTION_IDS: ReadonlySet<string> = new Set([
+  ECONOMY_ADJUST_CREDIT_ACTION_ID,
+  ECONOMY_ADJUST_DEBIT_ACTION_ID,
+  ECONOMY_LOAN_ISSUE_ACTION_ID,
+  ECONOMY_LOAN_REPAY_ACTION_ID
+]);
+const ECONOMY_ACTION_IDS: ReadonlySet<string> = new Set([
+  ...ECONOMY_MONEY_ACTION_IDS,
+  ECONOMY_TEAM_EXCLUDE_ACTION_ID
+]);
 const EXPLICIT_FORM_ACTION_IDS: ReadonlySet<string> = new Set([
   ...ADD_TEAM_ACTION_IDS,
   SETUP_WAGON_PLACE_ACTION_ID,
@@ -117,6 +139,24 @@ const locomotiveSelectOptions = (projection: BoardProjection) =>
     projection.vehicles
       .filter((vehicle) => vehicle.kind === "locomotive")
       .map((vehicle) => ({ id: vehicle.id, label: vehicle.id }))
+  );
+
+/**
+ * Economy forms list only current participants.
+ *
+ * This is a read-only usability filter over Runtime-published status. Runtime
+ * still validates the selected identifier and current phase at submission.
+ */
+const placedTeamSelectOptions = (projection: BoardProjection) =>
+  selectOptions(
+    projection.teams
+      .filter((team) => team.placementStatus === "placed")
+      .map((team) => ({
+        id: team.id,
+        label:
+          `${team.label} · ${team.coins ?? "—"} монет`
+          + ` · долг ${team.outstandingDebt ?? "—"}`
+      }))
   );
 
 /**
@@ -285,6 +325,34 @@ const actionFields = (
     }];
   }
 
+  if (ECONOMY_ACTION_IDS.has(action.actionId)) {
+    const teamField: AccessibleBoardActionField = {
+      name: "teamId",
+      label: "Действующая команда",
+      kind: "select",
+      required: true,
+      options: placedTeamSelectOptions(projection)
+    };
+    if (action.actionId === ECONOMY_TEAM_EXCLUDE_ACTION_ID) {
+      return [teamField];
+    }
+    return [teamField, {
+      name: "amount",
+      label: ECONOMY_LOAN_REPAY_ACTION_ID === action.actionId
+        ? "Сумма погашения"
+        : ECONOMY_LOAN_ISSUE_ACTION_ID === action.actionId
+          ? "Сумма займа"
+          : ECONOMY_ADJUST_DEBIT_ACTION_ID === action.actionId
+            ? "Сумма списания"
+            : "Сумма начисления",
+      kind: "number",
+      required: true,
+      min: 0,
+      max: 1_000_000,
+      step: 1
+    }];
+  }
+
   if (
     action.actionId === CARGO_OFFER_DRAW_ACTION_ID
     || action.actionId === CARGO_OFFER_SKIP_ACTION_ID
@@ -376,12 +444,19 @@ const actionFields = (
   if (
     action.actionId === TRAIN_WAGON_SELECT_ACTION_ID
     || action.actionId === TRAIN_WAGON_UNSELECT_ACTION_ID
+    || action.actionId === TRAIN_MANUAL_ATTACH_ACTION_ID
+    || action.actionId === TRAIN_MANUAL_DETACH_ACTION_ID
   ) {
+    const wagonLabel = action.actionId === TRAIN_WAGON_SELECT_ACTION_ID
+      ? "Вагон для отметки"
+      : action.actionId === TRAIN_WAGON_UNSELECT_ACTION_ID
+        ? "Вагон для снятия отметки"
+        : action.actionId === TRAIN_MANUAL_ATTACH_ACTION_ID
+          ? "Вагон для ручного прицепления"
+          : "Вагон для ручного отцепления";
     return [{
       name: "wagonId",
-      label: action.actionId === TRAIN_WAGON_SELECT_ACTION_ID
-        ? "Вагон для отметки"
-        : "Вагон для снятия отметки",
+      label: wagonLabel,
       kind: "select",
       required: true,
       // Every public wagon remains visible. This is an accessible input list,
@@ -424,6 +499,7 @@ const actionFields = (
 const omitsFixedParams = (actionId: string): boolean =>
   EXPLICIT_FORM_ACTION_IDS.has(actionId)
   || PARAMETERLESS_LIFECYCLE_ACTION_IDS.has(actionId)
+  || ECONOMY_ACTION_IDS.has(actionId)
   || actionId.startsWith("news.effect.apply.")
   || actionId.startsWith("news.cargo-addition.apply.")
   || actionId.startsWith("news.apply.")

@@ -199,6 +199,7 @@ Before planning anything, use these entry points:
 - [docs/tasks/AGENTS.md](/home/abc/projects/Cubica-AI/docs/tasks/AGENTS.md) - mandatory local rules for execution planning, subagent-ready decomposition, model/effort selection, and final simplification review.
 - [docs/tasks/STRATEGY.md](/home/abc/projects/Cubica-AI/docs/tasks/STRATEGY.md) - product-led development mode, strategic priorities, and rules for selecting platform work.
 - [NEXT_STEPS.md](/home/abc/projects/Cubica-AI/NEXT_STEPS.md) - current execution priorities and the next bounded slices.
+- [docs/processes/local-browser-diagnostics.md](/home/abc/projects/Cubica-AI/docs/processes/local-browser-diagnostics.md) - optional local Chrome DevTools MCP setup, its boundary with Playwright, and security restrictions.
 
 ---
 

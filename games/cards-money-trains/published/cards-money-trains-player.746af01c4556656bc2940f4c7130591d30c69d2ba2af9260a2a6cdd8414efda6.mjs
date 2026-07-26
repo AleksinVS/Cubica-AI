@@ -59,7 +59,9 @@ const board_state_ts_1 = __pluginRequire("src/board-state.ts");
 const board_transition_ts_1 = __pluginRequire("src/board-transition.ts");
 const construction_selection_ts_1 = __pluginRequire("src/construction-selection.ts");
 const country_presentation_ts_1 = __pluginRequire("src/country-presentation.ts");
+const economy_corrector_ts_1 = __pluginRequire("src/economy-corrector.ts");
 const facilitator_hud_ts_1 = __pluginRequire("src/facilitator-hud.ts");
+const final_results_presentation_ts_1 = __pluginRequire("src/final-results-presentation.ts");
 const motion_path_ts_1 = __pluginRequire("src/motion-path.ts");
 const movement_selection_ts_1 = __pluginRequire("src/movement-selection.ts");
 const news_presentation_ts_1 = __pluginRequire("src/news-presentation.ts");
@@ -80,14 +82,70 @@ const WHEEL_ZOOM_STEP = 1.15;
 const LOCOMOTIVE_ORDER_BADGE_OFFSET = { x: 12, y: -13 };
 const TRAIN_SELECTION_BADGE_OFFSET = { x: -13, y: -13 };
 const NUMBERED_TERMINAL_ID_PATTERN = /^terminal-(?:[1-9]|1\d|2[0-3])$/;
+const AUTHOR_BASE_NODE_IDS = new Set([
+    ...Array.from({ length: 23 }, (_, index) => `terminal-${index + 1}`),
+    "terminal-3-14",
+    "waypoint-9-3-4"
+]);
+const AUTHOR_INITIAL_EDGE_IDS = new Set([
+    "road-1-2",
+    "road-1-9",
+    "road-2-3-14",
+    "road-3-3-14",
+    "road-4-7",
+    "road-5-6",
+    "road-6-7",
+    "road-6-waypoint-9-3-4",
+    "road-8-waypoint-9-3-4",
+    "road-9-waypoint-9-3-4"
+]);
+const AUTHOR_INITIAL_CONNECTED_NODE_IDS = new Set([
+    "terminal-1",
+    "terminal-2",
+    "terminal-3",
+    "terminal-4",
+    "terminal-5",
+    "terminal-6",
+    "terminal-7",
+    "terminal-8",
+    "terminal-9",
+    "terminal-3-14",
+    "waypoint-9-3-4"
+]);
+// The author board uses a restrained printed palette. Network state must stay
+// legible without turning the warm map into a generic technical graph.
+const TRACK_OPEN_COLOR = 0x4f3026;
+const TRACK_BLOCKED_COLOR = 0xb6403b;
+const TRACK_BUILDING_COLOR = 0xb77a22;
+const TRACK_SELECTED_COLOR = 0x16865a;
+const TERMINAL_CONNECTED_COLOR = 0x3f6e40;
+const TERMINAL_BLOCKED_COLOR = 0xb6403b;
+const TERMINAL_BUILDING_COLOR = 0xb77a22;
+const TERMINAL_INNER_COLOR = 0xf1ead7;
+const TERMINAL_OUTLINE_COLOR = 0x6b533f;
 const edgeColor = (edge) => {
     if (edge.visualState === "blocked")
-        return 0xc94c4c;
+        return TRACK_BLOCKED_COLOR;
     if (edge.visualState === "building")
-        return 0xe0a33a;
-    return 0x374b59;
+        return TRACK_BUILDING_COLOR;
+    return TRACK_OPEN_COLOR;
 };
-const nodeColor = (node) => node.objectType === "transport.waypoint" ? 0xe5a338 : 0xf4ead5;
+/** Reduce long manifest labels to the short marks printed on the board. */
+const nodePresentationLabel = (node) => {
+    if (node.id === "terminal-3-14")
+        return "π";
+    if (node.id === "waypoint-9-3-4")
+        return "9¾";
+    return node.label;
+};
+/** Choose a state colour without inferring whether the move itself is legal. */
+const nodeMarkerColor = (node) => {
+    if (node.visualState === "blocked")
+        return TERMINAL_BLOCKED_COLOR;
+    if (node.visualState === "building")
+        return TERMINAL_BUILDING_COLOR;
+    return TERMINAL_CONNECTED_COLOR;
+};
 const errorText = (error) => error instanceof Error ? error.message : "Действие отклонено runtime";
 /** Identify the immutable runtime revision that may change the board projection. */
 const sessionRevisionKey = (session) => `${session.sessionId}:${session.version.stateVersion}`;
@@ -166,6 +224,8 @@ const createCardsMoneyTrainsScene = (context) => {
         facilitatorHudToggle = null;
         facilitatorHudTeams = null;
         facilitatorMethodologyButton = null;
+        facilitatorFinalResultsButton = null;
+        facilitatorEconomyButton = null;
         facilitatorHudExpanded = true;
         /** Full reflection text is a local read-only overlay opened from the HUD. */
         reflectionGuideLayer = null;
@@ -175,6 +235,36 @@ const createCardsMoneyTrainsScene = (context) => {
         reflectionGuideTitle = null;
         reflectionGuideBody = null;
         reflectionGuideClose = null;
+        /** Server-calculated results stay in a local, viewport-fixed modal. */
+        finalResultsLayer = null;
+        finalResultsBackdrop = null;
+        finalResultsSurface = null;
+        finalResultsInput = null;
+        finalResultsTitle = null;
+        finalResultsFormula = null;
+        finalResultsLogisticsTitle = null;
+        finalResultsLogisticsBody = null;
+        finalResultsGuildTitle = null;
+        finalResultsGuildBody = null;
+        finalResultsClose = null;
+        /**
+         * A completed result opens once. Closing it is a local user preference, so
+         * unrelated snapshot revisions must not force the modal open again.
+         */
+        autoOpenedFinalResultsKey = null;
+        /** Local table drafts are not game state and never change balances directly. */
+        economyCorrectorLayer = null;
+        economyCorrectorBackdrop = null;
+        economyCorrectorSurface = null;
+        economyCorrectorInput = null;
+        economyCorrectorTitle = null;
+        economyCorrectorHint = null;
+        economyCorrectorHeaders = null;
+        economyCorrectorRowsLayer = null;
+        economyCorrectorClose = null;
+        economyDrafts = new Map();
+        economyRowStatuses = new Map();
+        economyDispatchInFlight = false;
         facilitatorTeamCount = 0;
         currentProjection = null;
         lastSemanticRenderKey = null;
@@ -424,6 +514,28 @@ const createCardsMoneyTrainsScene = (context) => {
                 .setOrigin(1, 0)
                 .setVisible(finalReflectionGuide !== null)
                 .setInteractive({ useHandCursor: true });
+            const finalResults = this.add.text(0, 0, "Итоги", {
+                color: "#14262f",
+                backgroundColor: "#f1dfb8",
+                padding: { x: 12, y: 7 },
+                fontFamily: "sans-serif",
+                fontStyle: "bold",
+                fontSize: "14px"
+            })
+                .setOrigin(1, 0)
+                .setVisible(false)
+                .setInteractive({ useHandCursor: true });
+            const economy = this.add.text(0, 0, "Деньги", {
+                color: "#14262f",
+                backgroundColor: "#f1dfb8",
+                padding: { x: 12, y: 7 },
+                fontFamily: "sans-serif",
+                fontStyle: "bold",
+                fontSize: "14px"
+            })
+                .setOrigin(1, 0)
+                .setVisible(false)
+                .setInteractive({ useHandCursor: true });
             input.on("pointerdown", (_pointer, _localX, _localY, event) => {
                 event?.stopPropagation?.();
             });
@@ -437,14 +549,34 @@ const createCardsMoneyTrainsScene = (context) => {
                 event?.stopPropagation?.();
                 this.showReflectionGuide();
             });
-            layer.add([surface, input, toggle, teams, methodology]);
+            finalResults.on("pointerdown", (_pointer, _localX, _localY, event) => {
+                event?.stopPropagation?.();
+                this.showFinalResults();
+            });
+            economy.on("pointerdown", (_pointer, _localX, _localY, event) => {
+                event?.stopPropagation?.();
+                this.showEconomyCorrector();
+            });
+            layer.add([
+                surface,
+                input,
+                toggle,
+                teams,
+                methodology,
+                finalResults,
+                economy
+            ]);
             this.facilitatorHudLayer = layer;
             this.facilitatorHudSurface = surface;
             this.facilitatorHudInput = input;
             this.facilitatorHudToggle = toggle;
             this.facilitatorHudTeams = teams;
             this.facilitatorMethodologyButton = methodology;
+            this.facilitatorFinalResultsButton = finalResults;
+            this.facilitatorEconomyButton = economy;
             this.createReflectionGuidePanel();
+            this.createFinalResultsPanel();
+            this.createEconomyCorrectorPanel();
             this.layoutFacilitatorHud();
             this.syncHudTransform();
         }
@@ -508,14 +640,188 @@ const createCardsMoneyTrainsScene = (context) => {
             }
             this.layoutReflectionGuidePanel();
         }
+        /**
+         * Create one reusable final-results surface.
+         *
+         * The panel never recalculates scores. Its rows are rendered only from the
+         * bounded, internally consistent projection prepared in board-state.
+         */
+        createFinalResultsPanel() {
+            const layer = this.add.container(0, 0)
+                .setDepth(2_200)
+                .setScrollFactor(0)
+                .setVisible(false);
+            const backdrop = this.add.zone(0, 0, 1, 1).setInteractive();
+            const surface = this.add.graphics();
+            const input = this.add.zone(0, 0, 1, 1).setInteractive();
+            const title = this.add.text(0, 0, "Итоги партии", {
+                color: "#fff4dc",
+                fontFamily: "sans-serif",
+                fontStyle: "bold",
+                fontSize: "28px"
+            });
+            const formula = this.add.text(0, 0, "", {
+                color: "#d9e7df",
+                fontFamily: "sans-serif",
+                fontSize: "16px",
+                lineSpacing: 4
+            });
+            const rankingTitleStyle = {
+                color: "#f1dfb8",
+                fontFamily: "sans-serif",
+                fontStyle: "bold",
+                fontSize: "19px"
+            };
+            const rankingBodyStyle = {
+                color: "#f8f2e7",
+                fontFamily: "sans-serif",
+                fontSize: "17px",
+                lineSpacing: 6
+            };
+            const logisticsTitle = this.add.text(0, 0, "Перевозчики", rankingTitleStyle);
+            const logisticsBody = this.add.text(0, 0, "", rankingBodyStyle);
+            const guildTitle = this.add.text(0, 0, "Паровозные гильдии", rankingTitleStyle);
+            const guildBody = this.add.text(0, 0, "", rankingBodyStyle);
+            const close = this.add.text(0, 0, "×", {
+                color: "#fff4dc",
+                backgroundColor: "#793d35",
+                padding: { x: 13, y: 5 },
+                fontFamily: "sans-serif",
+                fontStyle: "bold",
+                fontSize: "28px"
+            }).setOrigin(1, 0).setInteractive({ useHandCursor: true });
+            backdrop.on("pointerdown", (_pointer, _localX, _localY, event) => {
+                event?.stopPropagation?.();
+                this.hideFinalResults();
+            });
+            input.on("pointerdown", (_pointer, _localX, _localY, event) => {
+                event?.stopPropagation?.();
+            });
+            close.on("pointerdown", (_pointer, _localX, _localY, event) => {
+                event?.stopPropagation?.();
+                this.hideFinalResults();
+            });
+            layer.add([
+                backdrop,
+                surface,
+                input,
+                title,
+                formula,
+                logisticsTitle,
+                logisticsBody,
+                guildTitle,
+                guildBody,
+                close
+            ]);
+            this.finalResultsLayer = layer;
+            this.finalResultsBackdrop = backdrop;
+            this.finalResultsSurface = surface;
+            this.finalResultsInput = input;
+            this.finalResultsTitle = title;
+            this.finalResultsFormula = formula;
+            this.finalResultsLogisticsTitle = logisticsTitle;
+            this.finalResultsLogisticsBody = logisticsBody;
+            this.finalResultsGuildTitle = guildTitle;
+            this.finalResultsGuildBody = guildBody;
+            this.finalResultsClose = close;
+            this.layoutFinalResultsPanel();
+        }
+        /**
+         * Create the game-owned table requested by the author.
+         *
+         * Native numeric prompts edit local cells because Phaser canvas text is not
+         * an HTML form control. The existing host DOM forms remain the keyboard and
+         * assistive-technology fallback, while every change from this panel still
+         * travels through `context.dispatchAction`.
+         */
+        createEconomyCorrectorPanel() {
+            const layer = this.add.container(0, 0)
+                .setDepth(2_200)
+                .setScrollFactor(0)
+                .setVisible(false);
+            const backdrop = this.add.zone(0, 0, 1, 1).setInteractive();
+            const surface = this.add.graphics();
+            const input = this.add.zone(0, 0, 1, 1).setInteractive();
+            const title = this.add.text(0, 0, "Начисления и списания", {
+                color: "#fff4dc",
+                fontFamily: "sans-serif",
+                fontStyle: "bold",
+                fontSize: "28px"
+            });
+            const hint = this.add.text(0, 0, "Нажмите ячейку, введите сумму и примените строку. "
+                + "Начисление и списание выполняются последовательно, не атомарно.", {
+                color: "#d9e7df",
+                fontFamily: "sans-serif",
+                fontSize: "15px",
+                lineSpacing: 3
+            });
+            const headers = this.add.text(0, 0, "Команда / баланс", {
+                color: "#f1dfb8",
+                fontFamily: "sans-serif",
+                fontStyle: "bold",
+                fontSize: "14px"
+            });
+            const rowsLayer = this.add.container(0, 0);
+            const close = this.add.text(0, 0, "×", {
+                color: "#fff4dc",
+                backgroundColor: "#793d35",
+                padding: { x: 13, y: 5 },
+                fontFamily: "sans-serif",
+                fontStyle: "bold",
+                fontSize: "28px"
+            }).setOrigin(1, 0).setInteractive({ useHandCursor: true });
+            backdrop.on("pointerdown", (_pointer, _localX, _localY, event) => {
+                event?.stopPropagation?.();
+                this.hideEconomyCorrector();
+            });
+            input.on("pointerdown", (_pointer, _localX, _localY, event) => {
+                event?.stopPropagation?.();
+            });
+            close.on("pointerdown", (_pointer, _localX, _localY, event) => {
+                event?.stopPropagation?.();
+                this.hideEconomyCorrector();
+            });
+            layer.add([
+                backdrop,
+                surface,
+                input,
+                title,
+                hint,
+                headers,
+                rowsLayer,
+                close
+            ]);
+            this.economyCorrectorLayer = layer;
+            this.economyCorrectorBackdrop = backdrop;
+            this.economyCorrectorSurface = surface;
+            this.economyCorrectorInput = input;
+            this.economyCorrectorTitle = title;
+            this.economyCorrectorHint = hint;
+            this.economyCorrectorHeaders = headers;
+            this.economyCorrectorRowsLayer = rowsLayer;
+            this.economyCorrectorClose = close;
+            this.layoutEconomyCorrectorPanel();
+        }
         /** Refresh resources from the current public snapshot without rule inference. */
         reconcileFacilitatorHud(projection) {
-            const visible = (0, facilitator_hud_ts_1.isFacilitatorHudPhase)(projection.phase);
+            const finalResults = projection.finalResults ?? null;
+            const economyCorrector = (0, economy_corrector_ts_1.projectEconomyCorrector)(projection);
+            const visible = (0, facilitator_hud_ts_1.isFacilitatorHudPhase)(projection.phase)
+                || finalResults !== null
+                || economyCorrector !== null;
             this.facilitatorHudLayer?.setVisible(visible);
+            this.facilitatorFinalResultsButton?.setVisible(finalResults !== null);
+            this.facilitatorEconomyButton?.setVisible(economyCorrector !== null);
             if (!visible) {
                 this.hideReflectionGuide();
+                this.hideFinalResults();
+                this.hideEconomyCorrector();
                 return;
             }
+            if (!finalResults)
+                this.hideFinalResults();
+            if (!economyCorrector)
+                this.hideEconomyCorrector();
             const summaries = (0, facilitator_hud_ts_1.buildFacilitatorTeamSummaries)(projection);
             const teamText = summaries.length === 0
                 ? "Команды пока не созданы"
@@ -525,6 +831,34 @@ const createCardsMoneyTrainsScene = (context) => {
             }
             this.facilitatorTeamCount = summaries.length;
             this.layoutFacilitatorHud();
+            if (economyCorrector) {
+                const activeTeamIds = new Set(economyCorrector.rows.map((row) => row.teamId));
+                for (const teamId of this.economyDrafts.keys()) {
+                    if (!activeTeamIds.has(teamId))
+                        this.economyDrafts.delete(teamId);
+                }
+                for (const teamId of this.economyRowStatuses.keys()) {
+                    if (!activeTeamIds.has(teamId)) {
+                        this.economyRowStatuses.delete(teamId);
+                    }
+                }
+                if (this.economyCorrectorLayer?.visible) {
+                    this.layoutEconomyCorrectorPanel();
+                }
+            }
+            if (finalResults) {
+                const resultKey = `${currentSession.sessionId}:${finalResults.completedTurn}`;
+                if (this.autoOpenedFinalResultsKey !== resultKey) {
+                    this.autoOpenedFinalResultsKey = resultKey;
+                    this.showFinalResults();
+                }
+                else if (this.finalResultsLayer?.visible) {
+                    // A durable finished snapshot may be refreshed after reconnection.
+                    // Update visible copy without overriding a user's closed modal.
+                    this.populateFinalResults();
+                    this.layoutFinalResultsPanel();
+                }
+            }
         }
         /** Keep the team list compact while preserving one visible row per team. */
         layoutFacilitatorHud() {
@@ -534,14 +868,27 @@ const createCardsMoneyTrainsScene = (context) => {
             const toggle = this.facilitatorHudToggle;
             const teams = this.facilitatorHudTeams;
             const methodology = this.facilitatorMethodologyButton;
-            if (!layer || !surface || !input || !toggle || !teams || !methodology)
+            const finalResults = this.facilitatorFinalResultsButton;
+            const economy = this.facilitatorEconomyButton;
+            if (!layer
+                || !surface
+                || !input
+                || !toggle
+                || !teams
+                || !methodology
+                || !finalResults
+                || !economy)
                 return;
             const viewport = this.currentViewport();
             const panelX = 16;
             const panelY = 16;
             const panelWidth = Math.min(520, Math.max(280, viewport.width - 32));
             const listHeight = Math.max(31, this.facilitatorTeamCount * 24 + 10);
-            const panelHeight = 46 + (this.facilitatorHudExpanded ? listHeight : 0);
+            const visibleButtons = [methodology, economy, finalResults].filter((button) => button.visible);
+            const controlsWidth = visibleButtons.reduce((total, button) => total + button.width + 8, 0);
+            const controlsNeedSecondRow = controlsWidth > panelWidth - 130;
+            const headerHeight = controlsNeedSecondRow ? 82 : 46;
+            const panelHeight = headerHeight + (this.facilitatorHudExpanded ? listHeight : 0);
             surface.clear();
             surface.fillStyle(0x172b36, 0.95);
             surface.fillRoundedRect(panelX, panelY, panelWidth, panelHeight, 12);
@@ -551,9 +898,16 @@ const createCardsMoneyTrainsScene = (context) => {
                 .setPosition(panelX + panelWidth / 2, panelY + panelHeight / 2)
                 .setSize(panelWidth, panelHeight, true);
             toggle.setPosition(panelX + 14, panelY + 13);
-            methodology.setPosition(panelX + panelWidth - 10, panelY + 8);
+            let nextButtonX = panelX + panelWidth - 10;
+            const buttonY = panelY + (controlsNeedSecondRow ? 44 : 8);
+            for (const button of [finalResults, economy, methodology]) {
+                if (!button.visible)
+                    continue;
+                button.setPosition(nextButtonX, buttonY);
+                nextButtonX -= button.width + 8;
+            }
             teams
-                .setPosition(panelX + 14, panelY + 50)
+                .setPosition(panelX + 14, panelY + headerHeight + 4)
                 .setFixedSize(panelWidth - 28, listHeight)
                 .setVisible(this.facilitatorHudExpanded);
             this.syncHudTransform();
@@ -563,6 +917,8 @@ const createCardsMoneyTrainsScene = (context) => {
             if (!finalReflectionGuide || !this.reflectionGuideLayer)
                 return;
             this.hideCountryInformation();
+            this.hideFinalResults();
+            this.hideEconomyCorrector();
             this.layoutReflectionGuidePanel();
             this.reflectionGuideLayer.setVisible(true);
         }
@@ -612,6 +968,430 @@ const createCardsMoneyTrainsScene = (context) => {
                 .setFontSize(viewport.width < 520 || viewport.height < 500 ? 14 : 18);
             this.syncHudTransform();
         }
+        /** Convert already projected standings into compact, non-authoritative copy. */
+        rankingText(ranking) {
+            if (ranking.standings.length === 0)
+                return "Нет участников";
+            return ranking.standings.map(final_results_presentation_ts_1.finalStandingLabel).join("\n");
+        }
+        /** Update labels only when a complete final projection is available. */
+        populateFinalResults() {
+            const results = this.currentProjection?.finalResults;
+            if (!results)
+                return;
+            this.finalResultsTitle?.setText(`Итоги партии · ход ${results.completedTurn}`);
+            this.finalResultsFormula?.setText("Итог = монеты − непогашенные займы + стоимость техники.\n"
+                + `Зафиксированные цены: вагон — ${results.purchasePrice.wagon}, `
+                + `локомотив — ${results.purchasePrice.locomotive}.`);
+            this.finalResultsLogisticsBody?.setText(this.rankingText(results.rankings["logistics-companies"]));
+            this.finalResultsGuildBody?.setText(this.rankingText(results.rankings["locomotive-guilds"]));
+        }
+        /** Open the read-only final result without dispatching any game action. */
+        showFinalResults() {
+            if (!this.currentProjection?.finalResults || !this.finalResultsLayer)
+                return;
+            this.hideCountryInformation();
+            this.hideReflectionGuide();
+            this.hideEconomyCorrector();
+            this.populateFinalResults();
+            this.layoutFinalResultsPanel();
+            this.finalResultsLayer.setVisible(true);
+        }
+        /** Close only the local overlay; the durable server result remains intact. */
+        hideFinalResults() {
+            this.finalResultsLayer?.setVisible(false);
+        }
+        /**
+         * Fit two bounded ranking groups into the current viewport.
+         *
+         * Wide viewports use two columns. Narrow viewports stack both groups and
+         * reduce row text only as far as 10 px, which keeps all twelve supported
+         * teams visible without changing the server order.
+         */
+        layoutFinalResultsPanel() {
+            const layer = this.finalResultsLayer;
+            const backdrop = this.finalResultsBackdrop;
+            const surface = this.finalResultsSurface;
+            const input = this.finalResultsInput;
+            const title = this.finalResultsTitle;
+            const formula = this.finalResultsFormula;
+            const logisticsTitle = this.finalResultsLogisticsTitle;
+            const logisticsBody = this.finalResultsLogisticsBody;
+            const guildTitle = this.finalResultsGuildTitle;
+            const guildBody = this.finalResultsGuildBody;
+            const close = this.finalResultsClose;
+            if (!layer
+                || !backdrop
+                || !surface
+                || !input
+                || !title
+                || !formula
+                || !logisticsTitle
+                || !logisticsBody
+                || !guildTitle
+                || !guildBody
+                || !close)
+                return;
+            const viewport = this.currentViewport();
+            const panelWidth = Math.min(940, Math.max(160, viewport.width - 24));
+            const panelHeight = Math.min(680, Math.max(220, viewport.height - 24));
+            const panelX = (viewport.width - panelWidth) / 2;
+            const panelY = (viewport.height - panelHeight) / 2;
+            const contentX = panelX + 24;
+            const contentWidth = Math.max(80, panelWidth - 48);
+            const contentTop = panelY + 134;
+            const compact = panelWidth < 700;
+            backdrop
+                .setPosition(viewport.width / 2, viewport.height / 2)
+                .setSize(viewport.width, viewport.height, true);
+            surface.clear();
+            surface.fillStyle(0x071319, 0.74);
+            surface.fillRect(0, 0, viewport.width, viewport.height);
+            surface.fillStyle(0x172b36, 0.985);
+            surface.fillRoundedRect(panelX, panelY, panelWidth, panelHeight, 16);
+            surface.lineStyle(2, 0xf1dfb8, 0.9);
+            surface.strokeRoundedRect(panelX, panelY, panelWidth, panelHeight, 16);
+            input
+                .setPosition(panelX + panelWidth / 2, panelY + panelHeight / 2)
+                .setSize(panelWidth, panelHeight, true);
+            title
+                .setPosition(contentX, panelY + 20)
+                .setFontSize(panelWidth < 420 ? 22 : 28)
+                .setWordWrapWidth(Math.max(150, contentWidth - 56), true);
+            close.setPosition(panelX + panelWidth - 14, panelY + 12);
+            formula
+                .setPosition(contentX, panelY + 62)
+                .setFontSize(panelWidth < 420 ? 12 : 16)
+                .setWordWrapWidth(contentWidth, true)
+                .setFixedSize(contentWidth, 66);
+            const finalResults = this.currentProjection?.finalResults;
+            const logisticsRows = finalResults?.rankings["logistics-companies"].standings.length ?? 0;
+            const guildRows = finalResults?.rankings["locomotive-guilds"].standings.length ?? 0;
+            if (!compact) {
+                const gap = 24;
+                const columnWidth = (contentWidth - gap) / 2;
+                const bodyHeight = Math.max(80, panelHeight - 184);
+                logisticsTitle.setPosition(contentX, contentTop);
+                logisticsBody
+                    .setPosition(contentX, contentTop + 32)
+                    .setFontSize(17)
+                    .setFixedSize(columnWidth, bodyHeight);
+                guildTitle.setPosition(contentX + columnWidth + gap, contentTop);
+                guildBody
+                    .setPosition(contentX + columnWidth + gap, contentTop + 32)
+                    .setFontSize(17)
+                    .setFixedSize(columnWidth, bodyHeight);
+            }
+            else {
+                const totalRows = Math.max(2, logisticsRows + guildRows);
+                const availableRowsHeight = Math.max(100, panelHeight - 206);
+                const fontSize = Math.max(10, Math.min(16, Math.floor((availableRowsHeight - 54) / totalRows) - 4));
+                const rowHeight = fontSize + 10;
+                const logisticsHeight = Math.max(rowHeight, logisticsRows * rowHeight);
+                const guildY = contentTop + 26 + logisticsHeight + 12;
+                logisticsTitle.setPosition(contentX, contentTop).setFontSize(17);
+                logisticsBody
+                    .setPosition(contentX, contentTop + 26)
+                    .setFontSize(fontSize)
+                    .setFixedSize(contentWidth, logisticsHeight);
+                guildTitle.setPosition(contentX, guildY).setFontSize(17);
+                guildBody
+                    .setPosition(contentX, guildY + 26)
+                    .setFontSize(fontSize)
+                    .setFixedSize(contentWidth, Math.max(rowHeight, panelY + panelHeight - guildY - 42));
+            }
+            this.syncHudTransform();
+        }
+        /** Return or initialize the two local cells for one public team row. */
+        economyDraft(teamId) {
+            const existing = this.economyDrafts.get(teamId);
+            if (existing)
+                return existing;
+            const draft = { credit: null, debit: null };
+            this.economyDrafts.set(teamId, draft);
+            return draft;
+        }
+        /** Re-check current published actions immediately before every dispatch. */
+        economyActionAvailable(actionId) {
+            return this.currentProjection?.availableActions.some((action) => action.actionId === actionId && action.disabled !== true) ?? false;
+        }
+        /**
+         * Edit a single local amount through the browser's bounded numeric prompt.
+         *
+         * Cancel leaves the previous value untouched; an empty response clears it.
+         * Invalid input never reaches Runtime and remains visible as a row message.
+         */
+        editEconomyDraft(teamId, field, teamLabel) {
+            const actionId = field === "credit"
+                ? economy_corrector_ts_1.ECONOMY_CREDIT_ACTION_ID
+                : economy_corrector_ts_1.ECONOMY_DEBIT_ACTION_ID;
+            if (!this.economyActionAvailable(actionId) || this.economyDispatchInFlight) {
+                return;
+            }
+            const draft = this.economyDraft(teamId);
+            const operation = field === "credit" ? "Начисление" : "Списание";
+            const input = typeof window === "undefined"
+                ? null
+                : window.prompt(`${operation} для команды «${teamLabel}»\n`
+                    + "Введите целое число от 0 до 1 000 000. "
+                    + "Пустое поле очистит черновик.", draft[field] === null ? "" : String(draft[field]));
+            const parsed = (0, economy_corrector_ts_1.parseEconomyDraftInput)(input);
+            if (parsed.kind === "cancel")
+                return;
+            if (parsed.kind === "invalid") {
+                this.economyRowStatuses.set(teamId, parsed.message);
+                this.layoutEconomyCorrectorPanel();
+                return;
+            }
+            draft[field] = parsed.kind === "clear" ? null : parsed.amount;
+            this.economyRowStatuses.delete(teamId);
+            this.layoutEconomyCorrectorPanel();
+        }
+        /**
+         * Apply the currently available cells in a deterministic sequence.
+         *
+         * Each successful command clears only its own cell. If the second command
+         * is refused after the first succeeds, the second draft remains for retry;
+         * this makes the deliberately non-atomic behavior explicit to the user.
+         */
+        async applyEconomyRow(teamId) {
+            if (this.economyDispatchInFlight)
+                return;
+            const view = this.currentProjection
+                ? (0, economy_corrector_ts_1.projectEconomyCorrector)(this.currentProjection)
+                : null;
+            const row = view?.rows.find((candidate) => candidate.teamId === teamId);
+            const draft = this.economyDrafts.get(teamId);
+            if (!view || !row || !draft)
+                return;
+            const operations = [
+                {
+                    field: "credit",
+                    actionId: economy_corrector_ts_1.ECONOMY_CREDIT_ACTION_ID,
+                    available: view.creditAvailable,
+                    progress: "Начисление…",
+                    success: "Начисление применено."
+                },
+                {
+                    field: "debit",
+                    actionId: economy_corrector_ts_1.ECONOMY_DEBIT_ACTION_ID,
+                    available: view.debitAvailable,
+                    progress: "Списание…",
+                    success: "Списание применено."
+                }
+            ].filter((operation) => operation.available && draft[operation.field] !== null);
+            if (operations.length === 0) {
+                this.economyRowStatuses.set(teamId, "Введите доступную сумму.");
+                this.layoutEconomyCorrectorPanel();
+                return;
+            }
+            if (context.isInteractionPending()) {
+                this.economyRowStatuses.set(teamId, "Дождитесь завершения предыдущего действия.");
+                this.layoutEconomyCorrectorPanel();
+                return;
+            }
+            this.economyDispatchInFlight = true;
+            try {
+                for (const operation of operations) {
+                    const amount = draft[operation.field];
+                    if (amount === null)
+                        continue;
+                    if (!this.economyActionAvailable(operation.actionId)) {
+                        this.economyRowStatuses.set(teamId, `${operation.field === "credit" ? "Начисление" : "Списание"} `
+                            + "больше недоступно.");
+                        return;
+                    }
+                    this.economyRowStatuses.set(teamId, operation.progress);
+                    this.layoutEconomyCorrectorPanel();
+                    try {
+                        await context.dispatchAction(operation.actionId, { teamId, amount });
+                    }
+                    catch (error) {
+                        const boundedMessage = errorText(error)
+                            .replace(/\s+/gu, " ")
+                            .slice(0, 160);
+                        this.economyRowStatuses.set(teamId, `Отклонено: ${boundedMessage}`);
+                        return;
+                    }
+                    draft[operation.field] = null;
+                    this.economyRowStatuses.set(teamId, operation.success);
+                    this.layoutEconomyCorrectorPanel();
+                }
+            }
+            finally {
+                this.economyDispatchInFlight = false;
+                this.layoutEconomyCorrectorPanel();
+            }
+        }
+        /** Open the local drafts table without changing the authoritative session. */
+        showEconomyCorrector() {
+            if (!this.currentProjection
+                || !(0, economy_corrector_ts_1.projectEconomyCorrector)(this.currentProjection)
+                || !this.economyCorrectorLayer)
+                return;
+            this.hideCountryInformation();
+            this.hideReflectionGuide();
+            this.hideFinalResults();
+            this.layoutEconomyCorrectorPanel();
+            this.economyCorrectorLayer.setVisible(true);
+        }
+        /** Closing keeps bounded drafts so an accidental click loses no input. */
+        hideEconomyCorrector() {
+            this.economyCorrectorLayer?.setVisible(false);
+        }
+        /**
+         * Draw the current bounded table over the viewport.
+         *
+         * All row objects are inexpensive local text controls and are rebuilt only
+         * while this small overlay changes. The map's persistent layers stay intact.
+         */
+        layoutEconomyCorrectorPanel() {
+            const layer = this.economyCorrectorLayer;
+            const backdrop = this.economyCorrectorBackdrop;
+            const surface = this.economyCorrectorSurface;
+            const input = this.economyCorrectorInput;
+            const title = this.economyCorrectorTitle;
+            const hint = this.economyCorrectorHint;
+            const headers = this.economyCorrectorHeaders;
+            const rowsLayer = this.economyCorrectorRowsLayer;
+            const close = this.economyCorrectorClose;
+            if (!layer
+                || !backdrop
+                || !surface
+                || !input
+                || !title
+                || !hint
+                || !headers
+                || !rowsLayer
+                || !close)
+                return;
+            const view = this.currentProjection
+                ? (0, economy_corrector_ts_1.projectEconomyCorrector)(this.currentProjection)
+                : null;
+            const viewport = this.currentViewport();
+            const panelWidth = Math.min(960, Math.max(200, viewport.width - 24));
+            const panelHeight = Math.min(700, Math.max(260, viewport.height - 24));
+            const panelX = (viewport.width - panelWidth) / 2;
+            const panelY = (viewport.height - panelHeight) / 2;
+            const contentX = panelX + 20;
+            const contentWidth = Math.max(120, panelWidth - 40);
+            const contentTop = panelY + 126;
+            const rowCount = Math.max(1, view?.rows.length ?? 0);
+            const availableRowsHeight = Math.max(80, panelHeight - 154);
+            const rowHeight = Math.max(24, Math.min(43, Math.floor(availableRowsHeight / rowCount)));
+            const compact = panelWidth < 620;
+            const teamWidth = contentWidth * (compact ? 0.38 : 0.42);
+            const cellWidth = contentWidth * (compact ? 0.18 : 0.17);
+            const actionWidth = Math.max(54, contentWidth - teamWidth - cellWidth * 2 - 18);
+            const creditX = contentX + teamWidth + 6;
+            const debitX = creditX + cellWidth + 6;
+            const actionX = debitX + cellWidth + 6;
+            backdrop
+                .setPosition(viewport.width / 2, viewport.height / 2)
+                .setSize(viewport.width, viewport.height, true);
+            surface.clear();
+            surface.fillStyle(0x071319, 0.74);
+            surface.fillRect(0, 0, viewport.width, viewport.height);
+            surface.fillStyle(0x172b36, 0.985);
+            surface.fillRoundedRect(panelX, panelY, panelWidth, panelHeight, 16);
+            surface.lineStyle(2, 0xf1dfb8, 0.9);
+            surface.strokeRoundedRect(panelX, panelY, panelWidth, panelHeight, 16);
+            input
+                .setPosition(panelX + panelWidth / 2, panelY + panelHeight / 2)
+                .setSize(panelWidth, panelHeight, true);
+            title
+                .setPosition(contentX, panelY + 18)
+                .setFontSize(compact ? 21 : 28)
+                .setWordWrapWidth(Math.max(100, contentWidth - 52), true);
+            close.setPosition(panelX + panelWidth - 14, panelY + 10);
+            hint
+                .setPosition(contentX, panelY + 58)
+                .setFontSize(compact ? 11 : 15)
+                .setWordWrapWidth(contentWidth, true)
+                .setFixedSize(contentWidth, 50);
+            headers
+                .setPosition(contentX, panelY + 108)
+                .setFontSize(compact ? 10 : 14)
+                .setText("Команда / баланс");
+            rowsLayer.removeAll(true);
+            const headerStyle = {
+                color: "#f1dfb8",
+                fontFamily: "sans-serif",
+                fontStyle: "bold",
+                fontSize: compact ? "10px" : "14px"
+            };
+            const creditHeader = this.add.text(creditX + cellWidth / 2, panelY + 108, "Начислить", headerStyle).setOrigin(0.5, 0);
+            const debitHeader = this.add.text(debitX + cellWidth / 2, panelY + 108, "Списать", headerStyle).setOrigin(0.5, 0);
+            const actionHeader = this.add.text(actionX + actionWidth / 2, panelY + 108, "Действие", headerStyle).setOrigin(0.5, 0);
+            rowsLayer.add([creditHeader, debitHeader, actionHeader]);
+            for (const [index, row] of (view?.rows ?? []).entries()) {
+                const y = contentTop + index * rowHeight;
+                const draft = this.economyDraft(row.teamId);
+                const status = this.economyRowStatuses.get(row.teamId) ?? "";
+                const balance = row.coins === null ? "—" : String(row.coins);
+                const label = this.add.text(contentX, y, `${(0, economy_corrector_ts_1.economyTeamLabel)(row.label, compact ? 18 : 32)} · ${balance} мон.`
+                    + (status ? `\n${status}` : ""), {
+                    color: "#f8f2e7",
+                    fontFamily: "sans-serif",
+                    fontSize: compact || rowHeight < 34 ? "10px" : "13px",
+                    lineSpacing: 0
+                }).setFixedSize(Math.max(40, teamWidth - 4), rowHeight);
+                const creditEnabled = view?.creditAvailable === true && !this.economyDispatchInFlight;
+                const debitEnabled = view?.debitAvailable === true && !this.economyDispatchInFlight;
+                const credit = this.add.text(creditX + cellWidth / 2, y, creditEnabled
+                    ? (0, economy_corrector_ts_1.economyDraftLabel)(draft.credit)
+                    : `${(0, economy_corrector_ts_1.economyDraftLabel)(draft.credit)} · н/д`, {
+                    color: "#fffdf4",
+                    backgroundColor: creditEnabled ? "#25704d" : "#5d6464",
+                    padding: { x: 5, y: 5 },
+                    fontFamily: "sans-serif",
+                    fontSize: compact ? "10px" : "13px"
+                }).setOrigin(0.5, 0);
+                if (creditEnabled) {
+                    credit.setInteractive({ useHandCursor: true });
+                    credit.on("pointerdown", (_pointer, _localX, _localY, event) => {
+                        event?.stopPropagation?.();
+                        this.editEconomyDraft(row.teamId, "credit", row.label);
+                    });
+                }
+                const debit = this.add.text(debitX + cellWidth / 2, y, debitEnabled
+                    ? (0, economy_corrector_ts_1.economyDraftLabel)(draft.debit)
+                    : `${(0, economy_corrector_ts_1.economyDraftLabel)(draft.debit)} · н/д`, {
+                    color: "#fffdf4",
+                    backgroundColor: debitEnabled ? "#8a4137" : "#5d6464",
+                    padding: { x: 5, y: 5 },
+                    fontFamily: "sans-serif",
+                    fontSize: compact ? "10px" : "13px"
+                }).setOrigin(0.5, 0);
+                if (debitEnabled) {
+                    debit.setInteractive({ useHandCursor: true });
+                    debit.on("pointerdown", (_pointer, _localX, _localY, event) => {
+                        event?.stopPropagation?.();
+                        this.editEconomyDraft(row.teamId, "debit", row.label);
+                    });
+                }
+                const mayApply = !this.economyDispatchInFlight
+                    && ((view?.creditAvailable === true && draft.credit !== null)
+                        || (view?.debitAvailable === true && draft.debit !== null));
+                const apply = this.add.text(actionX + actionWidth / 2, y, "Применить", {
+                    color: "#14262f",
+                    backgroundColor: "#f1dfb8",
+                    padding: { x: compact ? 5 : 9, y: 5 },
+                    fontFamily: "sans-serif",
+                    fontStyle: "bold",
+                    fontSize: compact ? "9px" : "12px"
+                }).setOrigin(0.5, 0).setAlpha(mayApply ? 1 : 0.42);
+                if (mayApply) {
+                    apply.setInteractive({ useHandCursor: true });
+                    apply.on("pointerdown", (_pointer, _localX, _localY, event) => {
+                        event?.stopPropagation?.();
+                        void this.applyEconomyRow(row.teamId);
+                    });
+                }
+                rowsLayer.add([label, credit, debit, apply]);
+            }
+            this.syncHudTransform();
+        }
         /**
          * Release scene-owned listeners before Phaser tears down its managers.
          * Ordinary DOM actions are registered separately and do not depend on this
@@ -651,6 +1431,8 @@ const createCardsMoneyTrainsScene = (context) => {
             this.facilitatorHudToggle = null;
             this.facilitatorHudTeams = null;
             this.facilitatorMethodologyButton = null;
+            this.facilitatorFinalResultsButton = null;
+            this.facilitatorEconomyButton = null;
             this.reflectionGuideLayer = null;
             this.reflectionGuideBackdrop = null;
             this.reflectionGuideSurface = null;
@@ -658,6 +1440,30 @@ const createCardsMoneyTrainsScene = (context) => {
             this.reflectionGuideTitle = null;
             this.reflectionGuideBody = null;
             this.reflectionGuideClose = null;
+            this.finalResultsLayer = null;
+            this.finalResultsBackdrop = null;
+            this.finalResultsSurface = null;
+            this.finalResultsInput = null;
+            this.finalResultsTitle = null;
+            this.finalResultsFormula = null;
+            this.finalResultsLogisticsTitle = null;
+            this.finalResultsLogisticsBody = null;
+            this.finalResultsGuildTitle = null;
+            this.finalResultsGuildBody = null;
+            this.finalResultsClose = null;
+            this.autoOpenedFinalResultsKey = null;
+            this.economyCorrectorLayer = null;
+            this.economyCorrectorBackdrop = null;
+            this.economyCorrectorSurface = null;
+            this.economyCorrectorInput = null;
+            this.economyCorrectorTitle = null;
+            this.economyCorrectorHint = null;
+            this.economyCorrectorHeaders = null;
+            this.economyCorrectorRowsLayer = null;
+            this.economyCorrectorClose = null;
+            this.economyDrafts.clear();
+            this.economyRowStatuses.clear();
+            this.economyDispatchInFlight = false;
             this.facilitatorTeamCount = 0;
             this.nodeLabels.clear();
             this.edgeHitZones.clear();
@@ -727,10 +1533,21 @@ const createCardsMoneyTrainsScene = (context) => {
         /** Keep viewport-fixed content at one physical scale under camera zoom. */
         syncHudTransform() {
             const zoom = Math.max(0.01, this.cameras.main.zoom);
+            const viewport = this.currentViewport();
+            const desiredCatalogueX = viewport.width - 140;
+            const desiredCatalogueY = 18;
             this.countryPanelLayer?.setScale(1 / zoom);
-            this.countryCatalogueButton?.setScale(1 / zoom);
+            this.countryCatalogueButton
+                ?.setScale(1 / zoom)
+                // A standalone object has no zero-position container to absorb camera
+                // zoom. Phaser scales its anchor around the camera centre, so convert
+                // the desired screen point back into that centred coordinate system.
+                // The 140 px reserve keeps it beside Player Web's “Контекст” button.
+                .setPosition(viewport.width / 2 + (desiredCatalogueX - viewport.width / 2) / zoom, viewport.height / 2 + (desiredCatalogueY - viewport.height / 2) / zoom);
             this.facilitatorHudLayer?.setScale(1 / zoom);
             this.reflectionGuideLayer?.setScale(1 / zoom);
+            this.finalResultsLayer?.setScale(1 / zoom);
+            this.economyCorrectorLayer?.setScale(1 / zoom);
         }
         applyZoomAt(point, factor) {
             const viewport = this.currentViewport();
@@ -780,6 +1597,8 @@ const createCardsMoneyTrainsScene = (context) => {
             this.layoutCountryInformationPanel();
             this.layoutFacilitatorHud();
             this.layoutReflectionGuidePanel();
+            this.layoutFinalResultsPanel();
+            this.layoutEconomyCorrectorPanel();
             if (this.overviewActive) {
                 this.applyCameraView((0, camera_math_ts_1.overviewCameraView)(nextViewport, CAMERA_WORLD));
                 return;
@@ -897,7 +1716,34 @@ const createCardsMoneyTrainsScene = (context) => {
                 const points = edge.points.map(toScreen);
                 const highlight = edgeHighlights.get(edge.id);
                 const selected = selectedEdgeId === edge.id;
-                graphics.lineStyle(selected ? 12 : highlight ? 10 : 6, selected ? 0x1f8f6a : edgeColor(edge), 0.95);
+                const trackColor = selected || highlight ? TRACK_SELECTED_COLOR : edgeColor(edge);
+                const isBakedOpenAuthorEdge = AUTHOR_INITIAL_EDGE_IDS.has(edge.id)
+                    && edge.visualState === "open";
+                if (selected || highlight) {
+                    // A translucent halo preserves the railway texture while making the
+                    // complete selectable route visible against country boundaries.
+                    graphics.lineStyle(selected ? 42 : 36, trackColor, 0.24);
+                    for (let index = 1; index < points.length; index += 1) {
+                        const from = points[index - 1];
+                        const to = points[index];
+                        if (from && to)
+                            graphics.lineBetween(from.x, from.y, to.x, to.y);
+                    }
+                }
+                if (!isBakedOpenAuthorEdge || selected || highlight) {
+                    if (AUTHOR_INITIAL_EDGE_IDS.has(edge.id) && edge.visualState === "blocked") {
+                        // Fully cover the immutable brown author track before painting its
+                        // blocked state; otherwise a few antialiased pixels remain visible.
+                        graphics.lineStyle(38, TRACK_BLOCKED_COLOR, 0.86);
+                        for (let index = 1; index < points.length; index += 1) {
+                            const from = points[index - 1];
+                            const to = points[index];
+                            if (from && to)
+                                graphics.lineBetween(from.x, from.y, to.x, to.y);
+                        }
+                    }
+                    this.drawRailwayPolyline(graphics, points, trackColor);
+                }
                 for (let index = 1; index < points.length; index += 1) {
                     const from = points[index - 1];
                     const to = points[index];
@@ -965,6 +1811,65 @@ const createCardsMoneyTrainsScene = (context) => {
                 this.edgeHitBindings.delete(zoneKey);
             }
         }
+        /**
+         * Draw a dynamic road with the same rails-and-sleepers language as the
+         * author artwork.
+         *
+         * Only the immutable author network is baked into the source texture.
+         * Roads created, closed or split during a session must still be rendered
+         * from runtime-owned polylines so the picture never becomes the source of
+         * gameplay truth.
+         */
+        drawRailwayPolyline(graphics, points, color) {
+            const railOffset = 9.5;
+            const sleeperHalfLength = 17;
+            const sleeperSpacing = 18;
+            // Sleepers sit below both rails, matching the printed track motif.
+            graphics.lineStyle(7, color, 0.92);
+            let traversedLength = 0;
+            let nextSleeperDistance = sleeperSpacing / 2;
+            for (let index = 1; index < points.length; index += 1) {
+                const from = points[index - 1];
+                const to = points[index];
+                if (!from || !to)
+                    continue;
+                const dx = to.x - from.x;
+                const dy = to.y - from.y;
+                const length = Math.hypot(dx, dy);
+                if (length === 0)
+                    continue;
+                const normalX = -dy / length;
+                const normalY = dx / length;
+                // One accumulated distance keeps the printed rhythm continuous across
+                // technical route-plan vertices instead of restarting it per segment.
+                while (nextSleeperDistance < traversedLength + length) {
+                    const distance = nextSleeperDistance - traversedLength;
+                    const centreX = from.x + (dx * distance) / length;
+                    const centreY = from.y + (dy * distance) / length;
+                    graphics.lineBetween(centreX - normalX * sleeperHalfLength, centreY - normalY * sleeperHalfLength, centreX + normalX * sleeperHalfLength, centreY + normalY * sleeperHalfLength);
+                    nextSleeperDistance += sleeperSpacing;
+                }
+                traversedLength += length;
+            }
+            // Two continuous rails make bends and multi-region polylines readable.
+            graphics.lineStyle(7, color, 0.98);
+            for (const offset of [-railOffset, railOffset]) {
+                for (let index = 1; index < points.length; index += 1) {
+                    const from = points[index - 1];
+                    const to = points[index];
+                    if (!from || !to)
+                        continue;
+                    const dx = to.x - from.x;
+                    const dy = to.y - from.y;
+                    const length = Math.hypot(dx, dy);
+                    if (length === 0)
+                        continue;
+                    const normalX = -dy / length;
+                    const normalY = dx / length;
+                    graphics.lineBetween(from.x + normalX * offset, from.y + normalY * offset, to.x + normalX * offset, to.y + normalY * offset);
+                }
+            }
+        }
         drawNodes(graphics, projection, toScreen) {
             const semanticLayer = this.semanticLayer;
             if (!semanticLayer)
@@ -982,6 +1887,7 @@ const createCardsMoneyTrainsScene = (context) => {
                 if (typeof toNodeId === "string")
                     selectedNodeIds.add(toNodeId);
             }
+            const connectedNodeIds = new Set(projection.edges.flatMap((edge) => [edge.fromNodeId, edge.toNodeId]));
             const retainedNodeIds = new Set();
             const retainedZoneIds = new Set();
             for (const node of projection.nodes) {
@@ -993,25 +1899,46 @@ const createCardsMoneyTrainsScene = (context) => {
                     && node.objectType === "transport.terminal"
                     && NUMBERED_TERMINAL_ID_PATTERN.test(node.id));
                 const selected = selectedNodeIds.has(node.id);
-                graphics.fillStyle(nodeColor(node), 1);
-                graphics.lineStyle(selected ? 9 : highlight ? 7 : 4, selected || highlight ? 0x2d8f6f : 0x263b46, 1);
-                graphics.fillCircle(position.x, position.y, node.objectType === "transport.waypoint" ? 15 : 23);
-                graphics.strokeCircle(position.x, position.y, node.objectType === "transport.waypoint" ? 15 : 23);
+                const isConnected = connectedNodeIds.has(node.id);
+                const isAuthorBaseNode = AUTHOR_BASE_NODE_IDS.has(node.id);
+                const isBakedInitialConnectedNode = AUTHOR_INITIAL_CONNECTED_NODE_IDS.has(node.id)
+                    && node.visualState === "open";
+                const shouldPaintMarker = (isConnected && !isBakedInitialConnectedNode)
+                    || node.visualState !== "open"
+                    || selected
+                    || Boolean(highlight)
+                    || !isAuthorBaseNode;
+                if (shouldPaintMarker) {
+                    this.drawNodeMarker(graphics, node, position, {
+                        selected,
+                        highlighted: Boolean(highlight)
+                    });
+                }
                 let label = this.nodeLabels.get(node.id);
                 if (!label) {
                     label = this.add.text(0, 0, "", {
-                        color: "#17252d",
-                        backgroundColor: "#fffaf0cc",
-                        padding: { x: 5, y: 3 },
-                        fontFamily: "sans-serif",
-                        fontSize: "18px"
-                    }).setOrigin(0.5, 1);
+                        color: "#594335",
+                        fontFamily: "Georgia, serif",
+                        fontStyle: "bold",
+                        fontSize: "42px",
+                        align: "center"
+                    }).setOrigin(0.5);
                     semanticLayer.add(label);
                     this.nodeLabels.set(node.id, label);
                 }
-                label.setPosition(position.x, position.y - 34);
-                if (label.text !== node.label)
-                    label.setText(node.label);
+                const presentationLabel = nodePresentationLabel(node);
+                label
+                    .setPosition(position.x, position.y + 1)
+                    .setVisible(shouldPaintMarker)
+                    .setFontSize(node.objectType === "transport.waypoint"
+                    ? 25
+                    : presentationLabel.length > 2
+                        ? 27
+                        : presentationLabel.length === 2
+                            ? 35
+                            : 42);
+                if (label.text !== presentationLabel)
+                    label.setText(presentationLabel);
                 if (canSelectRoad || highlight?.actionId || hasCountryInformation) {
                     retainedZoneIds.add(node.id);
                     this.nodeHitBindings.set(node.id, {
@@ -1069,12 +1996,67 @@ const createCardsMoneyTrainsScene = (context) => {
                 this.nodeHitBindings.delete(nodeId);
             }
         }
+        /**
+         * Paint a station above its incident tracks.
+         *
+         * Numbered terminals use the gear silhouette printed on the source map.
+         * Special points use a compact round marker. Open but disconnected author
+         * terminals are intentionally not repainted: their neutral grey symbols
+         * already belong to the immutable map texture.
+         */
+        drawNodeMarker(graphics, node, position, state) {
+            const color = nodeMarkerColor(node);
+            if (state.selected || state.highlighted) {
+                graphics.lineStyle(state.selected ? 10 : 8, TRACK_SELECTED_COLOR, 0.62);
+                graphics.strokeCircle(position.x, position.y, 61);
+            }
+            if (node.objectType === "transport.waypoint" || node.id === "terminal-3-14") {
+                graphics.fillStyle(color, 1);
+                graphics.lineStyle(3, TERMINAL_OUTLINE_COLOR, 0.9);
+                graphics.fillCircle(position.x, position.y, 30);
+                graphics.strokeCircle(position.x, position.y, 30);
+                return;
+            }
+            const teeth = 12;
+            const rootRadius = 48;
+            const outerRadius = 57;
+            const step = (Math.PI * 2) / teeth;
+            graphics.beginPath();
+            for (let tooth = 0; tooth < teeth; tooth += 1) {
+                const base = tooth * step - Math.PI / 2;
+                const vertices = [
+                    { angle: base, radius: rootRadius },
+                    { angle: base + step * 0.18, radius: outerRadius },
+                    { angle: base + step * 0.58, radius: outerRadius },
+                    { angle: base + step * 0.78, radius: rootRadius }
+                ];
+                for (const vertex of vertices) {
+                    const x = position.x + Math.cos(vertex.angle) * vertex.radius;
+                    const y = position.y + Math.sin(vertex.angle) * vertex.radius;
+                    if (tooth === 0 && vertex === vertices[0])
+                        graphics.moveTo(x, y);
+                    else
+                        graphics.lineTo(x, y);
+                }
+            }
+            graphics.closePath();
+            graphics.fillStyle(color, 1);
+            graphics.fillPath();
+            graphics.lineStyle(3, TERMINAL_OUTLINE_COLOR, 0.82);
+            graphics.strokePath();
+            graphics.fillStyle(TERMINAL_INNER_COLOR, 1);
+            graphics.lineStyle(3, TERMINAL_OUTLINE_COLOR, 0.72);
+            graphics.fillCircle(position.x, position.y, 31);
+            graphics.strokeCircle(position.x, position.y, 31);
+        }
         /** Open immutable country content without dispatching a runtime command. */
         showCountryInformation(countryId) {
             const country = countriesById.get(countryId);
             if (!country || !this.countryPanelLayer)
                 return;
             this.hideReflectionGuide();
+            this.hideFinalResults();
+            this.hideEconomyCorrector();
             this.activeCountry = country;
             if (this.countryPanelTitle?.text !== country.title) {
                 this.countryPanelTitle?.setText(country.title);
@@ -1168,8 +2150,6 @@ const createCardsMoneyTrainsScene = (context) => {
                 fontSize -= 1;
             }
             description.setFontSize(fontSize);
-            this.countryCatalogueButton
-                ?.setPosition(viewport.width - 18, 18);
             this.syncHudTransform();
         }
         /**
@@ -1987,6 +2967,21 @@ const SETUP_LOCOMOTIVE_PLACE_ACTION_ID = "session.setup.place.locomotive";
 const MAINTENANCE_LOCOMOTIVE_ACTION_ID = "maintenance.pay.locomotive";
 const MAINTENANCE_WAGON_ACTION_ID = "maintenance.pay.wagon";
 const MAINTENANCE_CARGO_ACTION_ID = "maintenance.pay.held-cargo";
+const ECONOMY_ADJUST_CREDIT_ACTION_ID = "facilitator.economy.adjust.credit";
+const ECONOMY_ADJUST_DEBIT_ACTION_ID = "facilitator.economy.adjust.debit";
+const ECONOMY_LOAN_ISSUE_ACTION_ID = "facilitator.economy.loan.issue";
+const ECONOMY_LOAN_REPAY_ACTION_ID = "facilitator.economy.loan.repay";
+const ECONOMY_TEAM_EXCLUDE_ACTION_ID = "facilitator.economy.team.exclude";
+const ECONOMY_MONEY_ACTION_IDS = new Set([
+    ECONOMY_ADJUST_CREDIT_ACTION_ID,
+    ECONOMY_ADJUST_DEBIT_ACTION_ID,
+    ECONOMY_LOAN_ISSUE_ACTION_ID,
+    ECONOMY_LOAN_REPAY_ACTION_ID
+]);
+const ECONOMY_ACTION_IDS = new Set([
+    ...ECONOMY_MONEY_ACTION_IDS,
+    ECONOMY_TEAM_EXCLUDE_ACTION_ID
+]);
 const EXPLICIT_FORM_ACTION_IDS = new Set([
     ...ADD_TEAM_ACTION_IDS,
     SETUP_WAGON_PLACE_ACTION_ID,
@@ -2030,6 +3025,19 @@ const wagonSelectOptions = (projection) => selectOptions(projection.vehicles
 const locomotiveSelectOptions = (projection) => selectOptions(projection.vehicles
     .filter((vehicle) => vehicle.kind === "locomotive")
     .map((vehicle) => ({ id: vehicle.id, label: vehicle.id })));
+/**
+ * Economy forms list only current participants.
+ *
+ * This is a read-only usability filter over Runtime-published status. Runtime
+ * still validates the selected identifier and current phase at submission.
+ */
+const placedTeamSelectOptions = (projection) => selectOptions(projection.teams
+    .filter((team) => team.placementStatus === "placed")
+    .map((team) => ({
+    id: team.id,
+    label: `${team.label} · ${team.coins ?? "—"} монет`
+        + ` · долг ${team.outstandingDebt ?? "—"}`
+})));
 /**
  * Every public network node is a safe placement input aid.
  *
@@ -2172,6 +3180,33 @@ const actionFields = (action, projection) => {
                 options: visibleCargoSelectOptions(projection)
             }];
     }
+    if (ECONOMY_ACTION_IDS.has(action.actionId)) {
+        const teamField = {
+            name: "teamId",
+            label: "Действующая команда",
+            kind: "select",
+            required: true,
+            options: placedTeamSelectOptions(projection)
+        };
+        if (action.actionId === ECONOMY_TEAM_EXCLUDE_ACTION_ID) {
+            return [teamField];
+        }
+        return [teamField, {
+                name: "amount",
+                label: ECONOMY_LOAN_REPAY_ACTION_ID === action.actionId
+                    ? "Сумма погашения"
+                    : ECONOMY_LOAN_ISSUE_ACTION_ID === action.actionId
+                        ? "Сумма займа"
+                        : ECONOMY_ADJUST_DEBIT_ACTION_ID === action.actionId
+                            ? "Сумма списания"
+                            : "Сумма начисления",
+                kind: "number",
+                required: true,
+                min: 0,
+                max: 1_000_000,
+                step: 1
+            }];
+    }
     if (action.actionId === CARGO_OFFER_DRAW_ACTION_ID
         || action.actionId === CARGO_OFFER_SKIP_ACTION_ID) {
         return [{
@@ -2256,12 +3291,19 @@ const actionFields = (action, projection) => {
             }];
     }
     if (action.actionId === train_formation_selection_ts_1.TRAIN_WAGON_SELECT_ACTION_ID
-        || action.actionId === train_formation_selection_ts_1.TRAIN_WAGON_UNSELECT_ACTION_ID) {
+        || action.actionId === train_formation_selection_ts_1.TRAIN_WAGON_UNSELECT_ACTION_ID
+        || action.actionId === train_formation_selection_ts_1.TRAIN_MANUAL_ATTACH_ACTION_ID
+        || action.actionId === train_formation_selection_ts_1.TRAIN_MANUAL_DETACH_ACTION_ID) {
+        const wagonLabel = action.actionId === train_formation_selection_ts_1.TRAIN_WAGON_SELECT_ACTION_ID
+            ? "Вагон для отметки"
+            : action.actionId === train_formation_selection_ts_1.TRAIN_WAGON_UNSELECT_ACTION_ID
+                ? "Вагон для снятия отметки"
+                : action.actionId === train_formation_selection_ts_1.TRAIN_MANUAL_ATTACH_ACTION_ID
+                    ? "Вагон для ручного прицепления"
+                    : "Вагон для ручного отцепления";
         return [{
                 name: "wagonId",
-                label: action.actionId === train_formation_selection_ts_1.TRAIN_WAGON_SELECT_ACTION_ID
-                    ? "Вагон для отметки"
-                    : "Вагон для снятия отметки",
+                label: wagonLabel,
                 kind: "select",
                 required: true,
                 // Every public wagon remains visible. This is an accessible input list,
@@ -2302,6 +3344,7 @@ const actionFields = (action, projection) => {
 /** Cargo workflows accept only their explicit form fields, never hidden defaults. */
 const omitsFixedParams = (actionId) => EXPLICIT_FORM_ACTION_IDS.has(actionId)
     || PARAMETERLESS_LIFECYCLE_ACTION_IDS.has(actionId)
+    || ECONOMY_ACTION_IDS.has(actionId)
     || actionId.startsWith("news.effect.apply.")
     || actionId.startsWith("news.cargo-addition.apply.")
     || actionId.startsWith("news.apply.")
@@ -2363,6 +3406,7 @@ __pluginDefine("src/board-state.ts", (exports, module) => {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.projectBoardSession = projectBoardSession;
 const country_presentation_ts_1 = __pluginRequire("src/country-presentation.ts");
+const final_results_presentation_ts_1 = __pluginRequire("src/final-results-presentation.ts");
 const isRecord = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
 const finiteNumber = (value) => typeof value === "number" && Number.isFinite(value) ? value : null;
 const text = (value) => typeof value === "string" && value.trim().length > 0 ? value : null;
@@ -2521,12 +3565,15 @@ const readTeams = (publicState) => {
         if (!isRecord(raw))
             return [];
         const attributes = isRecord(raw.attributes) ? raw.attributes : {};
+        const facets = isRecord(raw.facets) ? raw.facets : {};
         const colorId = text(attributes.colorId);
         return [{
                 id,
                 label: text(attributes.label) ?? id,
                 type: text(attributes.type) ?? "team",
                 coins: finiteNumber(attributes.coins),
+                placementStatus: text(facets.placementStatus),
+                outstandingDebt: finiteNumber(attributes.outstandingDebt),
                 ...(colorId ? { colorId } : {})
             }];
     });
@@ -2648,20 +3695,23 @@ function projectBoardSession(session) {
     const currentNewsId = text(newsState.currentCardId);
     const nodes = readNodes(publicState);
     const movement = readMovement(publicState);
+    const teams = readTeams(publicState);
+    const phase = text(sessionState.phase) ?? "unknown";
     return {
         nodes,
         edges: readEdges(publicState, nodes),
         vehicles: readVehicles(publicState),
         cargos: readCargo(publicState),
-        teams: readTeams(publicState),
+        teams,
         highlights: readHighlights(board),
         availableActions: readActions(board, readActionAvailability(session.actionAvailability)),
         bounds: readBounds(board, nodes),
-        phase: text(sessionState.phase) ?? "unknown",
+        phase,
         turnNumber: finiteNumber(sessionState.turnNumber) ?? 0,
         ...movement,
         currentNewsId,
-        currentNews: readCurrentNews(publicState, currentNewsId)
+        currentNews: readCurrentNews(publicState, currentNewsId),
+        finalResults: (0, final_results_presentation_ts_1.readFinalResults)(publicState.finalResults, teams, phase)
     };
 }
 
@@ -2762,6 +3812,242 @@ function resolveNodePointerIntent(input) {
 }
 
 });
+__pluginDefine("src/final-results-presentation.ts", (exports, module) => {
+"use strict";
+/**
+ * Fail-closed presentation of server-calculated final game results.
+ *
+ * Runtime is the only authority that calculates capital, places and winners.
+ * This module merely validates a small public snapshot, joins standings with
+ * public team names and keeps the explainable score components available for a
+ * future educational breakdown. Any malformed, contradictory or oversized
+ * result is rejected as a whole instead of being repaired in the browser.
+ */
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.readFinalResults = readFinalResults;
+exports.finalStandingLabel = finalStandingLabel;
+const RANKING_DEFINITIONS = Object.freeze([
+    Object.freeze({
+        id: "logistics-companies",
+        title: "Перевозчики",
+        teamType: "logistics_company"
+    }),
+    Object.freeze({
+        id: "locomotive-guilds",
+        title: "Паровозные гильдии",
+        teamType: "locomotive_guild"
+    })
+]);
+// These limits mirror the game's supported 4–12 team session and 64-item
+// equipment collections. They prevent a stale or hostile snapshot from asking
+// Phaser to allocate unbounded text or explanation data.
+const MAX_TEAMS = 12;
+const MAX_RELATED_ITEMS_PER_TEAM = 64;
+const MAX_IDENTIFIER_LENGTH = 128;
+const MAX_TEAM_LABEL_LENGTH = 96;
+const MAX_ABSOLUTE_SCORE_COMPONENT = 1_000_000_000;
+const MAX_COMPLETED_TURN = 1_000_000;
+const MAX_PURCHASE_PRICE = 1_000_000;
+const isRecord = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
+const boundedText = (value, maximumLength) => {
+    if (typeof value !== "string")
+        return null;
+    const normalized = value.trim();
+    return normalized.length > 0 && normalized.length <= maximumLength
+        ? normalized
+        : null;
+};
+/** Team names are rendered as one ranking row and may not inject extra lines. */
+const boundedSingleLineText = (value, maximumLength) => {
+    if (typeof value !== "string")
+        return null;
+    return boundedText(value.replace(/\s+/gu, " "), maximumLength);
+};
+const boundedSafeInteger = (value, minimum, maximum) => Number.isSafeInteger(value)
+    && value >= minimum
+    && value <= maximum
+    ? value
+    : null;
+const readRelatedItems = (value) => {
+    if (!Array.isArray(value)
+        || value.length > MAX_RELATED_ITEMS_PER_TEAM) {
+        return null;
+    }
+    const seen = new Set();
+    const items = [];
+    for (const raw of value) {
+        if (!isRecord(raw))
+            return null;
+        const entityId = boundedText(raw.entityId, MAX_IDENTIFIER_LENGTH);
+        const itemValue = boundedSafeInteger(raw.value, 0, MAX_ABSOLUTE_SCORE_COMPONENT);
+        if (!entityId || itemValue === null || seen.has(entityId))
+            return null;
+        seen.add(entityId);
+        items.push(Object.freeze({ entityId, value: itemValue }));
+    }
+    return Object.freeze(items);
+};
+const readRanking = (raw, definition, teamsById) => {
+    if (!isRecord(raw)
+        || !Array.isArray(raw.standings)
+        || raw.standings.length > MAX_TEAMS
+        || !Array.isArray(raw.winners)
+        || raw.winners.length > MAX_TEAMS
+        || typeof raw.tiedForFirst !== "boolean") {
+        return null;
+    }
+    const winnerIds = [];
+    const uniqueWinners = new Set();
+    for (const rawWinner of raw.winners) {
+        const winnerId = boundedText(rawWinner, MAX_IDENTIFIER_LENGTH);
+        if (!winnerId || uniqueWinners.has(winnerId))
+            return null;
+        uniqueWinners.add(winnerId);
+        winnerIds.push(winnerId);
+    }
+    const standings = [];
+    const uniqueTeams = new Set();
+    let previousRank = 0;
+    let previousScore = null;
+    for (const rawStanding of raw.standings) {
+        if (!isRecord(rawStanding))
+            return null;
+        const entityId = boundedText(rawStanding.entityId, MAX_IDENTIFIER_LENGTH);
+        const team = entityId ? teamsById.get(entityId) : undefined;
+        const label = boundedSingleLineText(team?.label, MAX_TEAM_LABEL_LENGTH);
+        const baseValue = boundedSafeInteger(rawStanding.baseValue, -MAX_ABSOLUTE_SCORE_COMPONENT, MAX_ABSOLUTE_SCORE_COMPONENT);
+        const relatedValue = boundedSafeInteger(rawStanding.relatedValue, 0, MAX_ABSOLUTE_SCORE_COMPONENT);
+        const score = boundedSafeInteger(rawStanding.score, -MAX_ABSOLUTE_SCORE_COMPONENT, MAX_ABSOLUTE_SCORE_COMPONENT);
+        const rank = boundedSafeInteger(rawStanding.rank, 1, MAX_TEAMS);
+        const relatedItems = readRelatedItems(rawStanding.relatedItems);
+        if (!entityId
+            || !team
+            || !label
+            || team.type !== definition.teamType
+            || team.placementStatus !== "placed"
+            || baseValue === null
+            || relatedValue === null
+            || score === null
+            || rank === null
+            || relatedItems === null
+            || uniqueTeams.has(entityId)
+            || score !== baseValue + relatedValue
+            || rank < previousRank
+            || (previousScore !== null && score > previousScore)) {
+            return null;
+        }
+        // Equal scores share a place; a lower score receives its one-based list
+        // position. This is validation of Runtime output, never a client ranking.
+        const expectedRank = previousScore === score
+            ? previousRank
+            : standings.length + 1;
+        if (rank !== expectedRank)
+            return null;
+        uniqueTeams.add(entityId);
+        previousRank = rank;
+        previousScore = score;
+        standings.push(Object.freeze({
+            entityId,
+            label,
+            ...(team.colorId ? { colorId: team.colorId } : {}),
+            baseValue,
+            relatedValue,
+            score,
+            relatedItems,
+            rank,
+            winner: uniqueWinners.has(entityId)
+        }));
+    }
+    if (winnerIds.some((winnerId) => !uniqueTeams.has(winnerId))
+        || standings.some((standing) => (standing.rank === 1) !== uniqueWinners.has(standing.entityId))
+        || raw.tiedForFirst !== (winnerIds.length > 1)
+        || (standings.length === 0 && winnerIds.length !== 0)) {
+        return null;
+    }
+    return Object.freeze({
+        id: definition.id,
+        title: definition.title,
+        standings: Object.freeze(standings),
+        winners: Object.freeze(winnerIds),
+        tiedForFirst: raw.tiedForFirst
+    });
+};
+/**
+ * Project final results only for the authoritative terminal phase.
+ *
+ * Requiring both `phase = finished` and `status = calculated` prevents stale
+ * pre-finish state from displaying provisional standings.
+ */
+function readFinalResults(rawFinalResults, teams, phase) {
+    if (phase !== "finished"
+        || !isRecord(rawFinalResults)
+        || rawFinalResults.status !== "calculated"
+        || !isRecord(rawFinalResults.purchasePrice)
+        || !isRecord(rawFinalResults.rankings)
+        || Object.keys(rawFinalResults.rankings).length !== RANKING_DEFINITIONS.length
+        || teams.length > MAX_TEAMS) {
+        return null;
+    }
+    // Keep the validated nested record in a local constant. TypeScript cannot
+    // preserve narrowing of a mutable record property across the callback below,
+    // while this stable reference accurately reflects the snapshot we validate.
+    const rankings = rawFinalResults.rankings;
+    const completedTurn = boundedSafeInteger(rawFinalResults.completedTurn, 0, MAX_COMPLETED_TURN);
+    const wagonPrice = boundedSafeInteger(rawFinalResults.purchasePrice.wagon, 0, MAX_PURCHASE_PRICE);
+    const locomotivePrice = boundedSafeInteger(rawFinalResults.purchasePrice.locomotive, 0, MAX_PURCHASE_PRICE);
+    if (completedTurn === null
+        || wagonPrice === null
+        || locomotivePrice === null) {
+        return null;
+    }
+    const teamsById = new Map();
+    for (const team of teams) {
+        const id = boundedText(team.id, MAX_IDENTIFIER_LENGTH);
+        if (!id || teamsById.has(id))
+            return null;
+        teamsById.set(id, team);
+    }
+    const projected = RANKING_DEFINITIONS.map((definition) => readRanking(rankings[definition.id], definition, teamsById));
+    if (projected.some((ranking) => ranking === null))
+        return null;
+    const [logistics, guilds] = projected;
+    if (logistics.standings.length + guilds.standings.length > MAX_TEAMS) {
+        return null;
+    }
+    const expectedTeamIds = new Set(teams
+        .filter((team) => team.placementStatus === "placed"
+        && (team.type === "logistics_company"
+            || team.type === "locomotive_guild"))
+        .map((team) => team.id));
+    const publishedTeamIds = [
+        ...logistics.standings,
+        ...guilds.standings
+    ].map((standing) => standing.entityId);
+    if (new Set(publishedTeamIds).size !== publishedTeamIds.length
+        || expectedTeamIds.size !== publishedTeamIds.length
+        || publishedTeamIds.some((teamId) => !expectedTeamIds.has(teamId))) {
+        return null;
+    }
+    return Object.freeze({
+        status: "calculated",
+        completedTurn,
+        purchasePrice: Object.freeze({
+            wagon: wagonPrice,
+            locomotive: locomotivePrice
+        }),
+        rankings: Object.freeze({
+            "logistics-companies": logistics,
+            "locomotive-guilds": guilds
+        })
+    });
+}
+/** Compact panel copy; the winner flag is supplied by Runtime and only styled here. */
+function finalStandingLabel(standing) {
+    const winner = standing.winner ? "★ " : "";
+    return `${winner}${standing.rank}. ${standing.label} — ${standing.score}`;
+}
+
+});
 __pluginDefine("src/movement-selection.ts", (exports, module) => {
 "use strict";
 /**
@@ -2791,13 +4077,15 @@ __pluginDefine("src/train-formation-selection.ts", (exports, module) => {
  * final atomic group attachment.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.TRAIN_ATTACH_SELECTED_ACTION_ID = exports.TRAIN_WAGON_UNSELECT_ACTION_ID = exports.TRAIN_WAGON_SELECT_ACTION_ID = void 0;
+exports.TRAIN_MANUAL_DETACH_ACTION_ID = exports.TRAIN_MANUAL_ATTACH_ACTION_ID = exports.TRAIN_ATTACH_SELECTED_ACTION_ID = exports.TRAIN_WAGON_UNSELECT_ACTION_ID = exports.TRAIN_WAGON_SELECT_ACTION_ID = void 0;
 exports.trainWagonSelectionParams = trainWagonSelectionParams;
 exports.trainWagonSelectionActionId = trainWagonSelectionActionId;
 exports.isTrainWagonSelectedForCurrent = isTrainWagonSelectedForCurrent;
 exports.TRAIN_WAGON_SELECT_ACTION_ID = "movement.train.wagon.select";
 exports.TRAIN_WAGON_UNSELECT_ACTION_ID = "movement.train.wagon.unselect";
 exports.TRAIN_ATTACH_SELECTED_ACTION_ID = "movement.train.attach.selected";
+exports.TRAIN_MANUAL_ATTACH_ACTION_ID = "movement.train.attach.manual";
+exports.TRAIN_MANUAL_DETACH_ACTION_ID = "movement.train.detach.manual";
 /** Copy one public wagon reference into the exact scalar Game Intent payload. */
 function trainWagonSelectionParams(wagonId) {
     return { wagonId };
@@ -3178,6 +4466,117 @@ function selectWaypointDraftPosition(current, edgeId, positionT) {
     params.edgeId = edgeId;
     params.positionT = positionT;
     return { actionId: exports.WAYPOINT_BUILD_ACTION_ID, params };
+}
+
+});
+__pluginDefine("src/economy-corrector.ts", (exports, module) => {
+"use strict";
+/**
+ * Pure, game-local presentation helpers for the facilitator money corrector.
+ *
+ * The helper does not decide whether money may be changed and never applies a
+ * balance locally. It exposes only placed teams and actions already published
+ * as available by Runtime, while keeping typed draft parsing bounded.
+ */
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ECONOMY_DEBIT_ACTION_ID = exports.ECONOMY_CREDIT_ACTION_ID = void 0;
+exports.projectEconomyCorrector = projectEconomyCorrector;
+exports.parseEconomyDraftInput = parseEconomyDraftInput;
+exports.economyTeamLabel = economyTeamLabel;
+exports.economyDraftLabel = economyDraftLabel;
+exports.ECONOMY_CREDIT_ACTION_ID = "facilitator.economy.adjust.credit";
+exports.ECONOMY_DEBIT_ACTION_ID = "facilitator.economy.adjust.debit";
+const MAX_TEAMS = 12;
+const MAX_AMOUNT = 1_000_000;
+const MAX_IDENTIFIER_LENGTH = 128;
+const MAX_TEAM_LABEL_LENGTH = 96;
+const boundedText = (value, maximumLength) => {
+    if (typeof value !== "string")
+        return null;
+    const normalized = value.trim();
+    return normalized.length > 0 && normalized.length <= maximumLength
+        ? normalized
+        : null;
+};
+const boundedSingleLineText = (value, maximumLength) => {
+    if (typeof value !== "string")
+        return null;
+    return boundedText(value.replace(/\s+/gu, " "), maximumLength);
+};
+const actionIsAvailable = (actions, actionId) => actions.some((action) => action.actionId === actionId && action.disabled !== true);
+/**
+ * Build table rows only when at least one authoritative adjustment action is
+ * available. More than twelve placed teams invalidates the complete surface.
+ */
+function projectEconomyCorrector(projection) {
+    const creditAvailable = actionIsAvailable(projection.availableActions, exports.ECONOMY_CREDIT_ACTION_ID);
+    const debitAvailable = actionIsAvailable(projection.availableActions, exports.ECONOMY_DEBIT_ACTION_ID);
+    if (!creditAvailable && !debitAvailable)
+        return null;
+    const placedTeams = projection.teams.filter((team) => team.placementStatus === "placed");
+    if (placedTeams.length === 0 || placedTeams.length > MAX_TEAMS)
+        return null;
+    const ids = new Set();
+    const rows = [];
+    for (const team of placedTeams) {
+        const teamId = boundedText(team.id, MAX_IDENTIFIER_LENGTH);
+        const label = boundedSingleLineText(team.label, MAX_TEAM_LABEL_LENGTH);
+        if (!teamId || !label || ids.has(teamId))
+            return null;
+        ids.add(teamId);
+        rows.push(Object.freeze({
+            teamId,
+            label,
+            coins: typeof team.coins === "number" && Number.isSafeInteger(team.coins)
+                ? team.coins
+                : null,
+            outstandingDebt: typeof team.outstandingDebt === "number"
+                && Number.isSafeInteger(team.outstandingDebt)
+                ? team.outstandingDebt
+                : null
+        }));
+    }
+    return Object.freeze({
+        rows: Object.freeze(rows),
+        creditAvailable,
+        debitAvailable
+    });
+}
+/**
+ * Parse one native input prompt without accepting signs, fractions or
+ * exponential notation. Empty input clears the local cell; Cancel changes
+ * nothing.
+ */
+function parseEconomyDraftInput(input) {
+    if (input === null)
+        return Object.freeze({ kind: "cancel" });
+    const normalized = input.trim();
+    if (normalized.length === 0)
+        return Object.freeze({ kind: "clear" });
+    if (!/^\d{1,7}$/u.test(normalized)) {
+        return Object.freeze({
+            kind: "invalid",
+            message: "Введите целое число от 0 до 1 000 000."
+        });
+    }
+    const amount = Number(normalized);
+    if (!Number.isSafeInteger(amount) || amount < 0 || amount > MAX_AMOUNT) {
+        return Object.freeze({
+            kind: "invalid",
+            message: "Сумма должна быть от 0 до 1 000 000."
+        });
+    }
+    return Object.freeze({ kind: "valid", amount });
+}
+/** Keep long authored names on one compact table row. */
+function economyTeamLabel(label, maximumLength = 28) {
+    if (label.length <= maximumLength)
+        return label;
+    return `${label.slice(0, Math.max(1, maximumLength - 1))}…`;
+}
+/** Empty cells are visually distinct from an intentional zero adjustment. */
+function economyDraftLabel(amount) {
+    return amount === null ? "—" : String(amount);
 }
 
 });

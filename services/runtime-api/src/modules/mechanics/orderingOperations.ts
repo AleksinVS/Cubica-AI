@@ -166,7 +166,12 @@ export function executeOrderingOperation(step: OrderStep, context: MechanicsExec
           ids.push(...canonicalIds);
           continue;
         }
-        const shuffled = shuffleSessionValues(stream, canonicalIds);
+        const shuffled = shuffleSessionValues(stream, canonicalIds, {
+          // Each complete-tie group rebuilds the same named stream at its
+          // updated counter. Charge that bounded historical work before the
+          // sampler applies its first transition power.
+          charge: (units) => charge(context, "algorithmWork", units)
+        });
         stream = shuffled.random;
         ids.push(...shuffled.values);
       }

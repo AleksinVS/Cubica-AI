@@ -224,6 +224,16 @@ test("six game-local generators preserve the complete cargo-settlement authoring
     actual.root.content.data.cargoSettlement.tariffPerShortestOpenEdge,
     2
   );
+  assert.deepEqual(
+    actual.root.content.data.cargoSettlement.cargoAvailability,
+    {
+      reservedCard: "only-current-holder-logistics-company",
+      releasedCard: "any-logistics-company-at-availableAtNodeId",
+      printedSourceField: "fromNodeId",
+      currentPickupField: "availableAtNodeId",
+      activeSettlementLegField: "activeLegFromNodeId"
+    }
+  );
   assert.equal(
     actual.root.config.runtimeBlockers.includes(
       "remaining reporting workflows"
@@ -257,6 +267,11 @@ test("normal load derives ownership and journals the confirmed cargo relation", 
     "cargo-source-row-005"
   );
   assert.equal(
+    after.state.public.objects.wagons["technical-wagon-white-1"]
+      .attributes.manualTariffDestinationNodeId,
+    "terminal-9"
+  );
+  assert.equal(
     after.state.public.objects.cargoOrders["cargo-source-row-005"]
       .facets.status,
     "in_transit"
@@ -270,7 +285,67 @@ test("normal load derives ownership and journals the confirmed cargo relation", 
       cargoId: "cargo-source-row-005",
       wagonId: "technical-wagon-white-1",
       logisticsTeamId: "white-logistics",
-      originNodeId: "terminal-1",
+      sourceNodeId: "terminal-1",
+      pickupNodeId: "terminal-1",
+      turnNumber: 2
+    }
+  });
+});
+
+test("a cargo released by news №19 is claimed at its current terminal", async () => {
+  const manifest = await loadManifest();
+  const state = await stateAtPhase(manifest, "cargo");
+  const cargo =
+    state.public.objects.cargoOrders["cargo-source-row-005"];
+  const wagon =
+    state.public.objects.wagons["technical-wagon-white-1"];
+
+  // The physical card keeps its printed source and protected-deck identity,
+  // but news №19 has left it free at terminal 9 for any logistics company.
+  cargo.facets.status = "available";
+  cargo.attributes.holderTeamId = null;
+  cargo.attributes.carrierWagonId = null;
+  cargo.attributes.availableAtNodeId = "terminal-9";
+  cargo.attributes.originDeparted = true;
+  cargo.attributes.originDepartureTurn = 1;
+  wagon.attributes.nodeId = "terminal-9";
+  wagon.attributes.cargoId = null;
+
+  const session = await createSession(manifest, state);
+  const outcome = await dispatch({
+    ...session,
+    actionId: "cargo.load",
+    params: {
+      wagonId: "technical-wagon-white-1",
+      cargoId: "cargo-source-row-005"
+    }
+  });
+  assert.equal(outcome.result.ok, true);
+
+  const after = await session.store.getSession(session.sessionId);
+  const loadedCargo =
+    after.state.public.objects.cargoOrders["cargo-source-row-005"];
+  assert.equal(loadedCargo.attributes.holderTeamId, "white-logistics");
+  assert.equal(
+    loadedCargo.attributes.carrierWagonId,
+    "technical-wagon-white-1"
+  );
+  assert.equal(loadedCargo.attributes.fromNodeId, "terminal-1");
+  assert.equal(loadedCargo.attributes.availableAtNodeId, "terminal-9");
+  assert.equal(loadedCargo.attributes.activeLegFromNodeId, "terminal-9");
+  assert.equal(loadedCargo.attributes.originDeparted, true);
+  assert.equal(loadedCargo.attributes.originDepartureTurn, 1);
+  assert.deepEqual(after.state.public.log.at(-1), {
+    eventType: "cargo.loaded",
+    summary: "Груз загружен в вагон логистической компании",
+    audience: "public",
+    data: {
+      kind: "cargo-load",
+      cargoId: "cargo-source-row-005",
+      wagonId: "technical-wagon-white-1",
+      logisticsTeamId: "white-logistics",
+      sourceNodeId: "terminal-1",
+      pickupNodeId: "terminal-9",
       turnNumber: 2
     }
   });
@@ -397,6 +472,28 @@ test("delivery pays bank then tariff, explains the route and releases ownership"
     objects.wagons["technical-wagon-white-1"].attributes.attachedVehicleId,
     null
   );
+  assert.deepEqual(
+    {
+      origin:
+        objects.wagons["technical-wagon-white-1"]
+          .attributes.manualTariffOriginNodeId,
+      destination:
+        objects.wagons["technical-wagon-white-1"]
+          .attributes.manualTariffDestinationNodeId,
+      billableEdges:
+        objects.wagons["technical-wagon-white-1"]
+          .attributes.manualTariffBillableEdgeCount,
+      tracking:
+        objects.wagons["technical-wagon-white-1"]
+          .attributes.manualTariffTrackingActive
+    },
+    {
+      origin: null,
+      destination: null,
+      billableEdges: 0,
+      tracking: false
+    }
+  );
   assert.equal(
     objects.cargoOrders["cargo-source-row-005"].facets.status,
     "delivered"
@@ -421,6 +518,7 @@ test("delivery pays bank then tariff, explains the route and releases ownership"
       logisticsTeamId: "white-logistics",
       guildTeamId: "purple-guild",
       originNodeId: "terminal-1",
+      activeLegFromNodeId: "terminal-1",
       destinationNodeId: "terminal-9",
       basePayout: 13,
       payoutBonus: 3,
@@ -485,6 +583,7 @@ test("news 23 reduces the same turn delivery payout through the normal action pa
     logisticsTeamId: "white-logistics",
     guildTeamId: "purple-guild",
     originNodeId: "terminal-1",
+    activeLegFromNodeId: "terminal-1",
     destinationNodeId: "terminal-9",
     basePayout: 13,
     payoutBonus: -2,

@@ -28,6 +28,7 @@ test("projects only provided topology, geometry, actions, and team balances", ()
                 type: "logistics_company",
                 colorId: "cobalt",
                 coins: 7,
+                outstandingDebt: 3,
                 placementOrderKey: 0
               }
             }
@@ -147,6 +148,8 @@ test("projects only provided topology, geometry, actions, and team balances", ()
     payout: 12
   }]);
   assert.equal(projection.teams[0]?.coins, 7);
+  assert.equal(projection.teams[0]?.placementStatus, "placed");
+  assert.equal(projection.teams[0]?.outstandingDebt, 3);
   assert.equal(projection.teams[0]?.colorId, "cobalt");
   assert.equal(projection.highlights[0]?.actionId, "select.b");
   assert.equal(projection.availableActions[0]?.params?.nodeId, "b");
@@ -996,7 +999,9 @@ test("projects explicit wagon selection forms and parameterless confirmation", (
     actionAvailability: [
       { actionId: "movement.train.wagon.select", status: "available" },
       { actionId: "movement.train.wagon.unselect", status: "available" },
-      { actionId: "movement.train.attach.selected", status: "available" }
+      { actionId: "movement.train.attach.selected", status: "available" },
+      { actionId: "movement.train.attach.manual", status: "available" },
+      { actionId: "movement.train.detach.manual", status: "available" }
     ],
     state: {
       public: {
@@ -1042,6 +1047,16 @@ test("projects explicit wagon selection forms and parameterless confirmation", (
               id: "attach-wagons",
               label: "Сцепить отмеченные",
               actionId: "movement.train.attach.selected"
+            },
+            {
+              id: "attach-wagon-manually",
+              label: "Прицепить вручную",
+              actionId: "movement.train.attach.manual"
+            },
+            {
+              id: "detach-wagon-manually",
+              label: "Отцепить вручную",
+              actionId: "movement.train.detach.manual"
             }
           ]
         }
@@ -1074,6 +1089,34 @@ test("projects explicit wagon selection forms and parameterless confirmation", (
     actions.find((action) =>
       action.actionId === "movement.train.attach.selected")?.fields,
     undefined
+  );
+  assert.deepEqual(
+    actions.find((action) =>
+      action.actionId === "movement.train.attach.manual")?.fields,
+    [{
+      name: "wagonId",
+      label: "Вагон для ручного прицепления",
+      kind: "select",
+      required: true,
+      options: [
+        { value: "wagon2", label: "wagon2" },
+        { value: "wagon1", label: "wagon1" }
+      ]
+    }]
+  );
+  assert.deepEqual(
+    actions.find((action) =>
+      action.actionId === "movement.train.detach.manual")?.fields,
+    [{
+      name: "wagonId",
+      label: "Вагон для ручного отцепления",
+      kind: "select",
+      required: true,
+      options: [
+        { value: "wagon2", label: "wagon2" },
+        { value: "wagon1", label: "wagon1" }
+      ]
+    }]
   );
 });
 

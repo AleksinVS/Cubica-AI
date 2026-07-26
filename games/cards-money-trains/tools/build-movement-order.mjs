@@ -44,7 +44,9 @@ const movementBoardActionIds = new Set([
 const movementExtensionActionIds = new Set([
   "movement.train.wagon.select",
   "movement.train.wagon.unselect",
-  "movement.train.attach.selected"
+  "movement.train.attach.selected",
+  "movement.train.attach.manual",
+  "movement.train.detach.manual"
 ]);
 
 /** Preserve the first occurrence of each game-local extension in authored order. */
@@ -86,6 +88,73 @@ const compare = (operator, left, right) => ({
 });
 const all = (...items) => ({ op: "predicate.all", items });
 const any = (...items) => ({ op: "predicate.any", items });
+const exists = (value, expected = true) => ({
+  op: "predicate.exists",
+  value,
+  exists: expected
+});
+const add = (...items) => ({ op: "number.add", items });
+const coalesceString = (value) => ({
+  op: "value.coalesce",
+  items: [value, literal("")]
+});
+
+/**
+ * Derive every actual cargo destination from the checked-in game content.
+ *
+ * The movement plan needs one fixed shortest-path pair per destination so its
+ * publication cost stays bounded without iterating graph algorithms for every
+ * possible wagon. The list is content-derived, validated against the declared
+ * transport graph and sorted by JavaScript code-unit order for reproducible
+ * generation; no terminal list is duplicated in this generator.
+ *
+ * The per-destination count is also a sound upper bound for concurrently
+ * tracked loaded wagons: one physical cargo card can belong to only one wagon.
+ * If corrupted state violates that invariant, the selector fails closed rather
+ * than silently skipping a tariff update.
+ */
+const deriveCargoDestinations = (root) => {
+  const cargoOrders = root.state.public.objects.cargoOrders;
+  const networkNodes = root.state.public.objects.networkNodes;
+  assert.ok(
+    cargoOrders && typeof cargoOrders === "object" && !Array.isArray(cargoOrders),
+    "public cargoOrders object collection is required"
+  );
+  assert.ok(
+    networkNodes && typeof networkNodes === "object" && !Array.isArray(networkNodes),
+    "public networkNodes object collection is required"
+  );
+
+  const destinationCounts = new Map();
+  for (const [cargoId, cargo] of Object.entries(cargoOrders)) {
+    const destinationNodeId = cargo?.attributes?.toNodeId;
+    assert.equal(
+      typeof destinationNodeId,
+      "string",
+      `${cargoId} must declare a string toNodeId`
+    );
+    assert.ok(
+      Object.hasOwn(networkNodes, destinationNodeId),
+      `${cargoId} references unknown destination node ${destinationNodeId}`
+    );
+    destinationCounts.set(
+      destinationNodeId,
+      (destinationCounts.get(destinationNodeId) ?? 0) + 1
+    );
+  }
+
+  return [...destinationCounts]
+    .sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0)
+    .map(([nodeId, maxTrackedWagons]) => {
+      assert.ok(
+        Number.isSafeInteger(maxTrackedWagons)
+          && maxTrackedWagons >= 1
+          && maxTrackedWagons <= 64,
+        `${nodeId} cargo-card count must fit the wagon collection bound`
+      );
+      return { nodeId, maxTrackedWagons };
+    });
+};
 
 /**
  * Publish the three game-local controls that can be rendered by any Player.
@@ -336,7 +405,7 @@ const buildPrepareOrder = () => {
  * describes the committed movement rather than repeating assumptions from
  * mutable state or untrusted client parameters.
  */
-const buildTraverseCurrentLocomotive = () => {
+const buildTraverseCurrentLocomotive = (cargoDestinations) => {
   const id = "movement.locomotive.traverse";
   const currentLocomotiveId = state("public.movement.currentLocomotiveId");
   const turnNumber = state("public.session.turnNumber");
@@ -401,6 +470,117 @@ const buildTraverseCurrentLocomotive = () => {
         )
       )
     )
+  );
+  const trackedTariffWagons = result("manual-tariff-tracked-wagons");
+  const hasSelectedEntities = (stepId) => compare(
+    "ne",
+    result(stepId, ["ids"]),
+    literal([])
+  );
+  const destinationTariffSteps = cargoDestinations.flatMap(
+    ({ nodeId, maxTrackedWagons }) => {
+      const suffix = nodeId.replaceAll(/[^A-Za-z0-9_-]/g, "-");
+      const selectionStepId = `manual-tariff-${suffix}-wagons`;
+      const routeBeforeStepId = `manual-tariff-${suffix}-route-before`;
+      const routeAfterStepId = `manual-tariff-${suffix}-route-after`;
+      const destinationOpen = compare(
+        "eq",
+        entityValue("networkNodes", literal(nodeId), "availability"),
+        literal("open")
+      );
+      const destinationClosed = compare(
+        "ne",
+        entityValue("networkNodes", literal(nodeId), "availability"),
+        literal("open")
+      );
+      const hasDestinationWagons = hasSelectedEntities(selectionStepId);
+      const routeBeforeReachable = compare(
+        "eq",
+        result(routeBeforeStepId, ["reachable"]),
+        literal(true)
+      );
+      const routeAfterReachable = compare(
+        "eq",
+        result(routeAfterStepId, ["reachable"]),
+        literal(true)
+      );
+      const routeUnavailable = any(
+        compare(
+          "eq",
+          result(routeBeforeStepId, ["reachable"]),
+          literal(false)
+        ),
+        compare(
+          "eq",
+          result(routeAfterStepId, ["reachable"]),
+          literal(false)
+        )
+      );
+
+      return [
+        {
+          id: selectionStepId,
+          kind: "query",
+          op: "core.entities.select",
+          selector: {
+            collection: "wagons",
+            within: trackedTariffWagons,
+            attributes: {
+              manualTariffDestinationNodeId: literal(nodeId)
+            },
+            cardinality: { min: 0, max: maxTrackedWagons }
+          }
+        },
+        {
+          id: routeBeforeStepId,
+          kind: "algorithm",
+          op: "graph.shortestPath",
+          networkId: "main",
+          fromNode: result("traverse", ["fromNodeId"]),
+          toNode: literal(nodeId),
+          onUnavailable: "return-unreachable",
+          when: all(hasDestinationWagons, destinationOpen)
+        },
+        {
+          id: routeAfterStepId,
+          kind: "algorithm",
+          op: "graph.shortestPath",
+          networkId: "main",
+          fromNode: result("traverse", ["toNodeId"]),
+          toNode: literal(nodeId),
+          onUnavailable: "return-unreachable",
+          when: all(hasDestinationWagons, destinationOpen)
+        },
+        {
+          id: `manual-tariff-${suffix}-freeze`,
+          kind: "command",
+          op: "core.entities.update",
+          selection: result(selectionStepId),
+          attributeValues: {
+            manualTariffTrackingActive: literal(false)
+          },
+          when: any(
+            destinationClosed,
+            all(
+              hasDestinationWagons,
+              destinationOpen,
+              any(
+                routeUnavailable,
+                all(
+                  routeBeforeReachable,
+                  routeAfterReachable,
+                  compare(
+                    "ne",
+                    result(routeBeforeStepId, ["length"]),
+                    add(literal(1), result(routeAfterStepId, ["length"]))
+                  )
+                )
+              )
+            )
+          )
+        }
+      ];
+    }
   );
 
   return {
@@ -515,9 +695,10 @@ const buildTraverseCurrentLocomotive = () => {
             when: firstLevyMovement
           },
           {
-            // Select the current train's wagons rather than trusting a cargo
-            // relation supplied by the client. The bounded body uses each
-            // wagon's declared cargoId to prove an undeparted cargo relation.
+            // Select the complete current train rather than trusting a
+            // relation supplied by the client. Empty wagons are required for
+            // manual-detach tariff tracking; the later nested cargo selector
+            // simply returns zero items for them.
             id: "current-train-wagons",
             kind: "query",
             op: "core.entities.select",
@@ -527,11 +708,7 @@ const buildTraverseCurrentLocomotive = () => {
               facets: { availability: literal("active") },
               attributes: {
                 networkId: literal("main"),
-                attachedVehicleId: currentLocomotiveId,
-                cargoId: {
-                  operator: "ne",
-                  value: literal(null)
-                }
+                attachedVehicleId: currentLocomotiveId
               },
               cardinality: { min: 0, max: 64 }
             }
@@ -544,6 +721,48 @@ const buildTraverseCurrentLocomotive = () => {
             entity: currentLocomotiveId,
             edge: param("edgeId")
           },
+          {
+            // Select once and update once so the tariff counter does not pay
+            // an iteration-body cost for every possible wagon. Loaded and
+            // empty wagons both count the just-traversed edge while tracking
+            // is active; destination-specific steps below may then freeze the
+            // loaded wagon at the first deviation.
+            id: "manual-tariff-tracked-wagons",
+            kind: "query",
+            op: "core.entities.select",
+            selector: {
+              collection: "wagons",
+              within: result("current-train-wagons"),
+              attributes: {
+                manualTariffTrackingActive: literal(true)
+              },
+              cardinality: { min: 0, max: 64 }
+            }
+          },
+          {
+            id: "manual-tariff-count-edge",
+            kind: "command",
+            op: "core.entities.update",
+            selection: trackedTariffWagons,
+            attributeValues: {
+              manualTariffBillableEdgeCount: add(
+                itemAttribute("manualTariffBillableEdgeCount"),
+                literal(1)
+              )
+            }
+          },
+          /**
+           * A loaded wagon stays on a shortest route exactly while
+           *   distance(before) = 1 + distance(after).
+           * Fixed destination groups accept every equally short route without
+           * multiplying graph algorithms by the wagon collection capacity.
+           *
+           * A closed destination freezes tracking without a route query. If
+           * another closure disconnects an otherwise open destination, the
+           * soft shortest-path result freezes tracking after the just-crossed
+           * edge has already been counted; the legal movement itself commits.
+           */
+          ...destinationTariffSteps,
           {
             id: "resolve-cargo-origin-departures",
             kind: "command",
@@ -649,22 +868,22 @@ const buildTraverseCurrentLocomotive = () => {
                   turnNumber
                 },
                 when: departureBonusApplies
-              },
-              {
-                id: "clear-departure-wagon",
-                kind: "command",
-                op: "core.state.patch",
-                patches: [
-                  {
-                    operation: "set",
-                    target: {
-                      endpoint: "public.movement.departureWagonId"
-                    },
-                    value: literal(null)
-                  }
-                ]
               }
             ]
+          },
+          {
+            // One outer cleanup preserves the public-state invariant without
+            // paying the same write once for every possible wagon iteration.
+            id: "clear-departure-wagon",
+            kind: "command",
+            op: "core.state.patch",
+            patches: [{
+              operation: "set",
+              target: {
+                endpoint: "public.movement.departureWagonId"
+              },
+              value: literal(null)
+            }]
           },
           {
             id: "spend-action-point",
@@ -922,9 +1141,8 @@ const declareMovementState = (root) => {
   root.state.public.movement = {
     locomotiveOrder: [],
     currentLocomotiveId: null,
-    // Transaction-local bridge for one bounded wagon iteration. Every
-    // successful iteration clears it before commit, so saved sessions expose
-    // null outside the movement command.
+    // Transaction-local bridge for the bounded wagon iteration. One cleanup
+    // after the complete loop restores null before the transaction commits.
     departureWagonId: null
   };
 
@@ -1146,6 +1364,7 @@ const buildMovementOrderAuthoring = (sourceAuthoring) => {
     root.content.data.cargoSettlement !== undefined;
   const cargoPriorityReady =
     root.content.data.cardLifecycle?.cargoSelectionPriority !== undefined;
+  const cargoDestinations = deriveCargoDestinations(root);
 
   declareMovementState(root);
   declareMovementEvents(stateModel);
@@ -1209,7 +1428,7 @@ const buildMovementOrderAuthoring = (sourceAuthoring) => {
 
   const generated = [
     buildPrepareOrder(),
-    buildTraverseCurrentLocomotive(),
+    buildTraverseCurrentLocomotive(cargoDestinations),
     buildSkipCurrentLocomotive(
       cargoSettlementReady ? "settlement" : "construction"
     )

@@ -505,7 +505,22 @@ function shortestPath(
   const fromNodeId = identifier(evaluateExpression(step.fromNode, context), "path start", step.id);
   const toNodeId = identifier(evaluateExpression(step.toNode, context), "path end", step.id);
   const route = shortestOpenRoute(model, step.networkId, fromNodeId, toNodeId, context, step.id);
-  return { ...route, length: route.edgeIds.length };
+  if (route === undefined) {
+    // A disconnected pair of valid, open endpoints is ordinary graph state,
+    // not damaged input. Authors must opt in explicitly before a transaction
+    // can observe that state; every absent or unrecognized policy remains
+    // fail-closed for compatibility with already published plans.
+    const onUnavailable = "onUnavailable" in step ? step.onUnavailable : undefined;
+    if (onUnavailable === "return-unreachable") {
+      return { reachable: false, edgeIds: [], nodeIds: [], length: 0 };
+    }
+    fail(
+      "MECHANICS_GRAPH_ROUTE_UNAVAILABLE",
+      "No traversable route connects inventory endpoints",
+      step.id
+    );
+  }
+  return { reachable: true, ...route, length: route.edgeIds.length };
 }
 
 function shortestOpenRoute(
@@ -515,7 +530,7 @@ function shortestOpenRoute(
   destination: string,
   context: MechanicsExecutionContext,
   stepId: string
-): { edgeIds: Array<string>; nodeIds: Array<string> } {
+): { edgeIds: Array<string>; nodeIds: Array<string> } | undefined {
   const movement = model.movement;
   if (!movement) fail("MECHANICS_GRAPH_MOVEMENT_UNDECLARED", "Route settlement requires movement rules", stepId);
   const nodes = requireMapCollection(context, model.nodeCollection);
@@ -552,7 +567,10 @@ function shortestOpenRoute(
       queue.push(next.nodeId);
     }
   }
-  if (!seen.has(destination)) fail("MECHANICS_GRAPH_ROUTE_UNAVAILABLE", "No traversable route connects inventory endpoints", stepId);
+  // Only a completed bounded search may report ordinary non-reachability.
+  // All graph/model/endpoint validation above and reconstruction validation
+  // below remain errors so the soft policy cannot hide malformed data.
+  if (!seen.has(destination)) return undefined;
   const edgeIds: Array<string> = [];
   const nodeIds = [destination];
   let cursor = destination;
@@ -666,7 +684,12 @@ function selectRoadCandidate(
   const streams = requireRandomStreams(context, stepId);
   const streamId = regionRoadRandomStreamId(networkId);
   const random = readSessionRandomStream(streams, streamId);
-  const selected = chooseSessionValue(random, candidates);
+  const selected = chooseSessionValue(random, candidates, {
+    // `chooseSessionValue` deliberately skips both sampling and this charge
+    // for a singleton. A real tie restores the stream only after the budget
+    // accepts its bounded historical work.
+    charge: (units) => charge(context, "algorithmWork", units)
+  });
   context.random = writeSessionRandomStream(streams, streamId, selected.random);
   persistRandom(context);
   return { ...selected, randomBefore: random, randomAfter: selected.random };

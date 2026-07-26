@@ -138,6 +138,24 @@ test("compiled manifest exposes safe setup and server-owned movement controls", 
         section: "movement"
       },
       {
+        id: "movement-train-attach-manual",
+        label: "Прицепить вагон вручную",
+        description:
+          "После движения выберите свободный вагон на текущем терминале; действие не расходует запас хода.",
+        actionId: "movement.train.attach.manual",
+        phase: "operations",
+        section: "movement"
+      },
+      {
+        id: "movement-train-detach-manual",
+        label: "Отцепить вагон вручную",
+        description:
+          "После движения выберите прицепленный вагон; сервер рассчитает и атомарно спишет тариф.",
+        actionId: "movement.train.detach.manual",
+        phase: "operations",
+        section: "movement"
+      },
+      {
         id: "movement-locomotive-skip",
         label: "Пропустить движение текущего локомотива",
         actionId: "movement.locomotive.skip",
@@ -162,6 +180,16 @@ test("compiled manifest exposes safe setup and server-owned movement controls", 
     properties: {},
     required: []
   });
+  assert.deepEqual(
+    (actions["movement.train.attach.manual"]?.paramsSchema as Record<string, unknown>)
+      ?.required,
+    ["wagonId"]
+  );
+  assert.deepEqual(
+    (actions["movement.train.detach.manual"]?.paramsSchema as Record<string, unknown>)
+      ?.required,
+    ["wagonId"]
+  );
   assert.equal(actions["session.setup.team.add.logistics-company"]?.paramsSchema !== undefined, true);
   assert.equal(
     (actions["session.setup.finalize"]?.binding as Record<string, unknown> | undefined)

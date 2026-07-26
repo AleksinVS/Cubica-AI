@@ -921,6 +921,7 @@ const marketStationMatches = () => ({
 const purchasedVehicleAttributes = ({
   assetKind,
   includeFormationTarget,
+  includeManualTariff,
   includeNews19Marker
 }) => {
   const common = {
@@ -951,6 +952,14 @@ const purchasedVehicleAttributes = ({
     ...(includeFormationTarget
       ? { formationTargetLocomotiveId: literal(null) }
       : {}),
+    ...(includeManualTariff
+      ? {
+          manualTariffOriginNodeId: literal(null),
+          manualTariffDestinationNodeId: literal(null),
+          manualTariffBillableEdgeCount: literal(0),
+          manualTariffTrackingActive: literal(false)
+        }
+      : {}),
     ...(includeNews19Marker
       ? { news19ConfiscatedTurn: literal(0) }
       : {})
@@ -972,6 +981,7 @@ const buildMarketPurchase = ({
   teamType,
   label,
   includeFormationTarget,
+  includeManualTariff,
   includeNews19Marker
 }) => {
   const id = `market.purchase.${assetKind}`;
@@ -1063,6 +1073,7 @@ const buildMarketPurchase = ({
             attributes: purchasedVehicleAttributes({
               assetKind,
               includeFormationTarget,
+              includeManualTariff,
               includeNews19Marker
             })
           },
@@ -1732,6 +1743,9 @@ const buildOperatingTurnAuthoring = (sourceAuthoring) => {
       includeFormationTarget:
         stateModel.collections.wagons.fields.formationTargetLocomotiveId !==
         undefined,
+      includeManualTariff:
+        stateModel.collections.wagons.fields.manualTariffTrackingActive !==
+        undefined,
       includeNews19Marker:
         stateModel.collections.wagons.fields.news19ConfiscatedTurn !== undefined
     }),
@@ -1742,6 +1756,7 @@ const buildOperatingTurnAuthoring = (sourceAuthoring) => {
       teamType: "locomotive_guild",
       label: "Купить локомотив",
       includeFormationTarget: false,
+      includeManualTariff: false,
       includeNews19Marker:
         stateModel.collections.locomotives.fields.news19ConfiscatedTurn !==
         undefined

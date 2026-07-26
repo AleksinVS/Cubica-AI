@@ -30,7 +30,7 @@
       "inputType": "Prior bounded entity selection and typed lexicographic keys", "outputType": "Ordered entity selection and canonical full-equality groups",
       "confidentiality": { "input": "declared-flow", "output": "joined-input" }, "integrity": "module-checked",
       "reads": ["prior entity selection", "declared current fields", "declared related collections", "optional named random stream"], "writes": ["named random stream counter when seeded tie-breaking is selected"], "determinism": "pinned-random-stream", "orderPolicy": "Compare keys in authored order; place missing values absolutely; resolve only complete ties canonically or through one named-stream shuffle per group.", "errorPolicy": "Abort atomically on invalid selection, missing required values, incompatible joins, unsafe numeric aggregation, or unavailable random state.",
-      "cost": { "class": "bounded-n-log-n", "formula": "Selection maximum times key count and bounded stable-sort depth, plus declared related collection capacities." }, "errors": ["MECHANICS_ORDER_SELECTION_INVALID", "MECHANICS_ORDER_SOURCE_CONDITIONAL", "MECHANICS_ORDER_FIELD_TYPE_UNSUPPORTED", "MECHANICS_ORDER_REFERENCE_INVALID", "MECHANICS_ORDER_VALUE_MISSING", "MECHANICS_ORDER_DECIMAL_OVERFLOW", "MECHANICS_RANDOM_STATE_MISSING"],
+      "cost": { "class": "bounded-n-log-n", "formula": "Selection maximum times key count and bounded stable-sort depth, plus declared related collection capacities; seeded ties additionally reserve at most floor(selection maximum / 2) random-stream restorations of 53 × 128 work units." }, "errors": ["MECHANICS_ORDER_SELECTION_INVALID", "MECHANICS_ORDER_SOURCE_CONDITIONAL", "MECHANICS_ORDER_FIELD_TYPE_UNSUPPORTED", "MECHANICS_ORDER_REFERENCE_INVALID", "MECHANICS_ORDER_VALUE_MISSING", "MECHANICS_ORDER_DECIMAL_OVERFLOW", "MECHANICS_RANDOM_STATE_MISSING"],
       "examples": [{ "op": "core.entities.order", "kind": "command", "tieBreak": { "kind": "canonical-id" } }], "counterexamples": [{ "reason": "Client-provided identifier arrays are not trusted selections.", "value": { "op": "core.entities.order", "selection": ["a", "b"] } }], "conformanceTests": ["mechanics.registry.core.entities.order"]
     },
     "core.collection.id.allocate": {
@@ -123,18 +123,18 @@
     },
     "core.entities.score": {
       "moduleId": "cubica.core", "kind": "query", "schemaRef": "https://cubica.platform/schemas/mechanics-plan.v1alpha1.json#/$defs/entityScoreStep",
-      "inputType": "Record-map entities and bounded related entity sources", "outputType": "Neutral score entries",
+      "inputType": "Static record-map entities or a preceding bounded typed selection, plus bounded related entity sources", "outputType": "Neutral score entries with dynamic collection provenance when selection-driven",
       "confidentiality": { "input": "declared-flow", "output": "joined-input" }, "integrity": "module-checked",
-      "reads": ["record-map StateRef", "related collections", "declared numeric fields"], "writes": [], "determinism": "state-deterministic", "orderPolicy": "Scan related entities by canonical identifier and retain authored entity order.", "errorPolicy": "Abort on unknown entities, invalid ownership, or unsafe integer aggregation.",
-      "cost": { "class": "bounded-linear", "formula": "Scored entity count multiplied by related collection capacities." }, "errors": ["MECHANICS_SCORE_ENTITIES_INVALID", "MECHANICS_ARITHMETIC_INVALID"],
-      "examples": [{ "op": "core.entities.score", "kind": "query" }], "counterexamples": [{ "reason": "The operation cannot name economic concepts such as coins.", "value": { "op": "ranking.groups.compute", "balanceAttribute": "coins" } }], "conformanceTests": ["mechanics.registry.core.entities.score"]
+      "reads": ["record-map StateRef or bounded typed selection", "related collections", "declared numeric fields"], "writes": [], "determinism": "state-deterministic", "orderPolicy": "Scan related entities by canonical identifier; retain authored static order or canonicalize a dynamic selection.", "errorPolicy": "Abort on unknown entities, invalid or conditional selections, invalid ownership, or unsafe integer aggregation.",
+      "cost": { "class": "bounded-linear", "formula": "Scored entity count multiplied by related collection capacities, plus bounded derived-field projection work." }, "errors": ["MECHANICS_SCORE_ENTITIES_INVALID", "MECHANICS_SCORE_SELECTION_INVALID", "MECHANICS_SCORE_SOURCE_CONDITIONAL", "MECHANICS_FIELD_TYPE_MISMATCH", "MECHANICS_ARITHMETIC_INVALID"],
+      "examples": [{ "op": "core.entities.score", "kind": "query" }, { "op": "core.entities.score", "selection": { "op": "value.result", "stepId": "active-entities" } }], "counterexamples": [{ "reason": "The operation cannot name economic concepts such as coins.", "value": { "op": "ranking.groups.compute", "balanceAttribute": "coins" } }], "conformanceTests": ["mechanics.registry.core.entities.score"]
     },
     "core.ranking.stable": {
       "moduleId": "cubica.core", "kind": "algorithm", "schemaRef": "https://cubica.platform/schemas/mechanics-plan.v1alpha1.json#/$defs/stableRankingStep",
-      "inputType": "Neutral score result and bounded groups", "outputType": "Stable rankings with ties",
+      "inputType": "Neutral score result and bounded static or selection-driven groups", "outputType": "Stable rankings with ties",
       "confidentiality": { "input": "declared-flow", "output": "joined-input" }, "integrity": "module-checked",
-      "reads": ["score result", "group expressions"], "writes": [], "determinism": "pure", "orderPolicy": "Sort by descending score then canonical identifier; equal scores share rank.", "errorPolicy": "Abort on unknown, duplicate, or malformed score entries.",
-      "cost": { "class": "bounded-linear", "formula": "Bounded group membership plus stable sort cost." }, "errors": ["MECHANICS_SCORE_RESULT_INVALID", "MECHANICS_RANKING_ENTITY_UNKNOWN"],
+      "reads": ["score result", "static group expressions or bounded typed selections"], "writes": [], "determinism": "pure", "orderPolicy": "Sort by descending score then canonical identifier; equal scores share rank.", "errorPolicy": "Abort on unknown, duplicate, malformed, conditional, or collection-mismatched members.",
+      "cost": { "class": "bounded-linear", "formula": "Bounded group membership plus stable sort cost." }, "errors": ["MECHANICS_SCORE_RESULT_INVALID", "MECHANICS_RANKING_SELECTION_INVALID", "MECHANICS_RANKING_SOURCE_CONDITIONAL", "MECHANICS_RANKING_SELECTION_COLLECTION_MISMATCH", "MECHANICS_RANKING_ENTITY_UNKNOWN"],
       "examples": [{ "op": "core.ranking.stable", "kind": "algorithm" }], "counterexamples": [{ "reason": "Ranking does not write game state implicitly.", "value": { "op": "core.ranking.stable", "target": { "endpoint": "ranking" } } }], "conformanceTests": ["mechanics.registry.core.ranking.stable"]
     },
     "turn.phase.select": {
@@ -150,7 +150,7 @@
       "inputType": "Bounded dice notation, named stream, and numeric StateRef", "outputType": "Deterministic stream result",
       "confidentiality": { "input": "declared-flow", "output": "joined-input" }, "integrity": "module-checked",
       "reads": ["named random stream counter"], "writes": ["named random stream counter", "target endpoint"], "determinism": "pinned-random-stream", "orderPolicy": "Advance only the named persisted stream.", "errorPolicy": "Abort on invalid dice, stream, or target type.",
-      "cost": { "class": "constant", "formula": "At most 99 bounded dice samples and one target write." }, "errors": ["MECHANICS_RANDOM_STATE_INVALID"],
+      "cost": { "class": "constant", "formula": "One random-stream restoration bounded by 53 × 128 work units, at most 99 bounded dice samples, and one target write." }, "errors": ["MECHANICS_RANDOM_STATE_INVALID"],
       "examples": [{ "op": "random.dice.roll", "dice": "2d6" }], "counterexamples": [{ "reason": "An unnamed global random source is forbidden.", "value": { "op": "random.dice.roll", "dice": "1d6" } }], "conformanceTests": ["mechanics.registry.random.dice.roll"]
     },
     "deck.shuffle": {
@@ -158,7 +158,7 @@
       "inputType": "Source collection, deck id, and named stream", "outputType": "Protected deck state",
       "confidentiality": { "input": "declared-flow", "output": "server" }, "integrity": "module-checked",
       "reads": ["source collection", "named random stream counter"], "writes": ["protected deck state", "named random stream counter"], "determinism": "pinned-random-stream", "orderPolicy": "Canonicalize source ids before Fisher-Yates shuffling.", "errorPolicy": "Abort on unknown collection, deck, or stream state.",
-      "cost": { "class": "bounded-linear", "formula": "Source collection capacity plus one shuffle pass, or two passes over at most 4096 existing protected members." }, "errors": ["MECHANICS_DECK_EMPTY", "MECHANICS_DECK_CAPACITY_EXCEEDED", "MECHANICS_DECK_STATE_INVALID", "MECHANICS_RANDOM_STATE_INVALID"],
+      "cost": { "class": "bounded-linear", "formula": "Source collection capacity plus one shuffle pass, or two passes over at most 4096 existing protected members, and one random-stream restoration bounded by 53 × 128 work units." }, "errors": ["MECHANICS_DECK_EMPTY", "MECHANICS_DECK_CAPACITY_EXCEEDED", "MECHANICS_DECK_STATE_INVALID", "MECHANICS_RANDOM_STATE_INVALID"],
       "examples": [{ "op": "deck.shuffle", "kind": "command" }], "counterexamples": [{ "reason": "A deck cannot expose its future order publicly.", "value": { "op": "deck.shuffle", "audience": "public" } }], "conformanceTests": ["mechanics.registry.deck.shuffle"]
     },
     "deck.draw": {
@@ -166,7 +166,7 @@
       "inputType": "Literal or finite action-parameter deck reference, typed target, and empty policy", "outputType": "One disclosed item identifier",
       "confidentiality": { "input": "server", "output": "joined-input" }, "integrity": "module-checked",
       "reads": ["protected deck state"], "writes": ["protected deck state", "target endpoint"], "determinism": "state-deterministic", "orderPolicy": "Draw from the persisted top; reshuffle through the pinned stream only when declared.", "errorPolicy": "Abort or deterministically reshuffle according to onEmpty.",
-      "cost": { "class": "bounded-linear", "formula": "One bounded parameter read plus at most three passes over 4096 protected members when discard reshuffling is selected." }, "errors": ["MECHANICS_DECK_ID_INVALID", "MECHANICS_DECK_UNKNOWN", "MECHANICS_DECK_EMPTY", "MECHANICS_DECK_CAPACITY_EXCEEDED", "MECHANICS_DECK_STATE_INVALID"],
+      "cost": { "class": "bounded-linear", "formula": "One bounded parameter read plus at most three passes over 4096 protected members and one random-stream restoration bounded by 53 × 128 work units when discard reshuffling is selected." }, "errors": ["MECHANICS_DECK_ID_INVALID", "MECHANICS_DECK_UNKNOWN", "MECHANICS_DECK_EMPTY", "MECHANICS_DECK_CAPACITY_EXCEEDED", "MECHANICS_DECK_STATE_INVALID"],
       "examples": [{ "op": "deck.draw", "deckId": { "op": "value.param", "name": "deckId" }, "onEmpty": "fail" }], "counterexamples": [{ "reason": "Only a literal id or value.param may select a deck.", "value": { "op": "deck.draw", "deckId": { "op": "value.state", "ref": { "endpoint": "selectedDeck" } }, "onEmpty": "fail" } }], "conformanceTests": ["mechanics.registry.deck.draw"]
     },
     "deck.extract": {
@@ -198,7 +198,7 @@
       "inputType": "Network id and endpoint node expressions", "outputType": "Pinned route geometry and segment count",
       "confidentiality": { "input": "declared-flow", "output": "joined-input" }, "integrity": "module-checked",
       "reads": ["network geometry", "existing edges", "named graph random stream"], "writes": ["named graph random stream counter"], "determinism": "pinned-random-stream", "orderPolicy": "Use the pinned region planner and deterministic tie stream.", "errorPolicy": "Abort on unknown nodes, blocked route, or planner bounds.",
-      "cost": { "class": "bounded-graph", "formula": "Pinned region planner bounds plus edge collection capacity." }, "errors": ["MECHANICS_GRAPH_ROUTE_UNAVAILABLE", "MECHANICS_GRAPH_UNKNOWN"],
+      "cost": { "class": "bounded-graph", "formula": "Pinned region planner bounds plus edge collection capacity and at most one random-stream restoration bounded by 53 × 128 work units for an equal minimum-route tie." }, "errors": ["MECHANICS_GRAPH_ROUTE_UNAVAILABLE", "MECHANICS_GRAPH_UNKNOWN"],
       "examples": [{ "op": "graph.regions.route.plan", "kind": "command" }], "counterexamples": [{ "reason": "Payment and lifecycle fields are game composition, not route input.", "value": { "op": "graph.regions.route.plan", "payments": [] } }], "conformanceTests": ["mechanics.registry.graph.regions.route.plan"]
     },
     "graph.edge.position.inspect": {
@@ -227,11 +227,11 @@
     },
     "graph.shortestPath": {
       "moduleId": "cubica.graph", "kind": "algorithm", "schemaRef": "https://cubica.platform/schemas/mechanics-plan.v1alpha1.json#/$defs/graphShortestPathStep",
-      "inputType": "Network id and endpoint node expressions", "outputType": "Shortest path and edge distance",
+      "inputType": "Network id, endpoint node expressions, and an optional unavailable-path policy", "outputType": "Reachability flag, shortest path, and edge distance",
       "confidentiality": { "input": "declared-flow", "output": "joined-input" }, "integrity": "module-checked",
-      "reads": ["node collection", "edge collection"], "writes": [], "determinism": "pure", "orderPolicy": "Resolve equal paths by canonical node and edge identifier order.", "errorPolicy": "Abort when no bounded path exists.",
+      "reads": ["node collection", "edge collection"], "writes": [], "determinism": "pure", "orderPolicy": "Resolve equal paths by canonical node and edge identifier order.", "errorPolicy": "Abort when no bounded path exists unless the author explicitly requests a typed unreachable result; malformed or closed endpoints always abort.",
       "cost": { "class": "bounded-graph", "formula": "Declared node and edge collection capacities." }, "errors": ["MECHANICS_GRAPH_PATH_UNAVAILABLE", "MECHANICS_GRAPH_UNKNOWN"],
-      "examples": [{ "op": "graph.shortestPath", "kind": "algorithm" }], "counterexamples": [{ "reason": "Delivery payout is not a shortest-path responsibility.", "value": { "op": "graph.shortestPath", "payoutAttribute": "tariff" } }], "conformanceTests": ["mechanics.registry.graph.shortestPath"]
+      "examples": [{ "op": "graph.shortestPath", "kind": "algorithm" }, { "op": "graph.shortestPath", "onUnavailable": "return-unreachable" }], "counterexamples": [{ "reason": "Delivery payout is not a shortest-path responsibility.", "value": { "op": "graph.shortestPath", "payoutAttribute": "tariff" } }], "conformanceTests": ["mechanics.registry.graph.shortestPath"]
     },
     "relation.attach": {
       "moduleId": "cubica.relations", "kind": "command", "schemaRef": "https://cubica.platform/schemas/mechanics-plan.v1alpha1.json#/$defs/relationAttachStep",

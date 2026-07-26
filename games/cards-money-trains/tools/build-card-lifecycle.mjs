@@ -1613,6 +1613,7 @@ const buildBudgetFeeNews = (news) => {
             selector: {
               collection: "teams",
               objectTypes: ["game.team"],
+              facets: { placementStatus: literal("placed") },
               attributes: {
                 coins: {
                   operator: "gt",
@@ -2058,9 +2059,11 @@ const buildNews19RemoveLocomotive = (news) => {
 /**
  * Permanently confiscate one wagon selected by the facilitator.
  *
- * A carried card belongs to the logistics team rather than to the physical
- * wagon. If that wagon is chosen, the card returns to the team's available
- * orders at its declared origin, while the wagon itself leaves the game.
+ * The author-confirmed rule leaves a carried physical card at the wagon's
+ * current terminal for any later logistics company. The immutable `fromNodeId`
+ * still proves the card's printed origin; `availableAtNodeId` records only
+ * where the released card can now be loaded. The protected deck keeps the same
+ * held card, so confiscation neither duplicates it nor returns it to rotation.
  */
 const buildNews19RemoveWagon = (news) => {
   const id = "news.effect.19.remove-wagon";
@@ -2068,6 +2071,11 @@ const buildNews19RemoveWagon = (news) => {
   const wagonId = paramValue("wagonId");
   const cargoId = entityValue("wagons", wagonId, "cargoId");
   const locomotiveId = entityValue("wagons", wagonId, "attachedVehicleId");
+  const rawCurrentNodeId = entityValue("wagons", wagonId, "nodeId");
+  // Placement guarantees an active news-phase wagon is on the board. The
+  // coalesce makes that already-guarded optional attribute a typed string for
+  // the generic patch operation.
+  const currentNodeId = coalesce(rawCurrentNodeId, literal(""));
   const turnNumber = stateValue("public.session.turnNumber");
   const hasCargo = {
     op: "predicate.exists",
@@ -2084,7 +2092,7 @@ const buildNews19RemoveWagon = (news) => {
       id,
       label: "Новость № 19: изъять вагон",
       semantics:
-        "По решению команды ведущий выбирает один её активный вагон; сервер отсоединяет его, сохраняет удерживаемую грузовую карту и навсегда исключает вагон из партии.",
+        "По решению команды ведущий выбирает один её активный вагон; сервер отсоединяет его, оставляет груз свободным на текущем терминале и навсегда исключает вагон из партии.",
       paramsSchema: news19RemovalParamsSchema(
         "wagons",
         "transport.wagon",
@@ -2109,6 +2117,11 @@ const buildNews19RemoveWagon = (news) => {
                   networkId: literal("main"),
                   ownerTeamId: teamId
                 }
+              },
+              {
+                op: "predicate.exists",
+                value: rawCurrentNodeId,
+                exists: true
               }
             ),
             errorCode: "NEWS_19_WAGON_REMOVAL_INVALID"
@@ -2143,13 +2156,13 @@ const buildNews19RemoveWagon = (news) => {
               },
               {
                 operation: "set",
-                path: ["originDeparted"],
-                value: literal(false)
+                path: ["holderTeamId"],
+                value: literal(null)
               },
               {
                 operation: "set",
-                path: ["originDepartureTurn"],
-                value: literal(0)
+                path: ["availableAtNodeId"],
+                value: currentNodeId
               }
             ],
             when: hasCargo
@@ -2276,6 +2289,7 @@ const buildNews19Finish = (news) => {
             selector: {
               collection: "teams",
               objectTypes: ["game.team"],
+              facets: { placementStatus: literal("placed") },
               attributes: {
                 news19PreparedTurn: {
                   operator: "ne",
@@ -2292,6 +2306,7 @@ const buildNews19Finish = (news) => {
             selector: {
               collection: "teams",
               objectTypes: ["game.team"],
+              facets: { placementStatus: literal("placed") },
               attributes: {
                 news19RemovalRemaining: {
                   operator: "gt",
@@ -2782,6 +2797,12 @@ const buildCargoObject = (record) => ({
     payout: record.bankPayout,
     holderTeamId: null,
     carrierWagonId: null,
+    // The printed source never changes. This separate location moves only
+    // when a released physical card becomes available at another terminal.
+    availableAtNodeId: record.originNodeId,
+    // Settlement prices the currently carried leg from its actual pickup
+    // point while `fromNodeId` remains the immutable card provenance.
+    activeLegFromNodeId: record.originNodeId,
     originDeparted: false,
     originDepartureTurn: 0,
     settledRouteLength: null,
@@ -3096,6 +3117,16 @@ const buildLifecycleAuthoring = (sourceAuthoring, intake) => {
   cargoFields.carrierWagonId = {
     storage: { kind: "attribute", name: "carrierWagonId" },
     valueType: "core.optional-string",
+    access: "read-write"
+  };
+  cargoFields.availableAtNodeId = {
+    storage: { kind: "attribute", name: "availableAtNodeId" },
+    valueType: "core.string",
+    access: "read-write"
+  };
+  cargoFields.activeLegFromNodeId = {
+    storage: { kind: "attribute", name: "activeLegFromNodeId" },
+    valueType: "core.string",
     access: "read-write"
   };
   cargoFields.originDeparted = {
@@ -3742,6 +3773,7 @@ const buildLifecycleAuthoring = (sourceAuthoring, intake) => {
       "news-19-removes-floor-total-equipment-divided-by-five",
       "news-19-facilitator-selects-each-unit-from-the-team-decision",
       "news-19-confiscated-equipment-never-reenters-play",
+      "news-19-cargo-stays-at-confiscated-wagon-terminal-without-owner-or-deck-return",
       "news-28-and-29-departure-bonus-lasts-one-turn",
       "news-34-base-purchase-prices-persist-until-game-end"
     ],

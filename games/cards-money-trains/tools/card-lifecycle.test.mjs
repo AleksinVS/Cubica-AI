@@ -161,6 +161,13 @@ test("generator materializes every physical source row and exact remaining gap",
   ]);
 
   assert.deepEqual(actualAuthoring, expectedAuthoring);
+  const initialCargo =
+    expectedAuthoring.root.state.public.objects.cargoOrders[
+      "cargo-source-row-005"
+    ];
+  assert.equal(initialCargo.attributes.fromNodeId, "terminal-1");
+  assert.equal(initialCargo.attributes.availableAtNodeId, "terminal-1");
+  assert.equal(initialCargo.attributes.activeLegFromNodeId, "terminal-1");
   const cargoActionIds = expectedAuthoring.root.logic.actions
     .map((action) => action.id)
     .filter(
@@ -623,13 +630,14 @@ test("cargo queue enforces wagon slots, owner priority, protected offers and ato
   assert.deepEqual(current.state.public.cards.cargo.selectionOrder, []);
 
   // A held card is not tied to the queue wagon. After the queue closes it can
-  // be loaded into any suitable empty wagon of the same company at its origin.
+  // be loaded into any suitable empty wagon of the same company at its current
+  // availability node (the printed origin until news №19 relocates it).
   const suitableWagonId = wagonsByTeam.get(holderTeamId)[0];
   await updateScenario(session, (state) => {
     const cargo = state.public.objects.cargoOrders[firstCardId];
     const wagon = state.public.objects.wagons[suitableWagonId];
     wagon.facets.availability = "active";
-    wagon.attributes.nodeId = cargo.attributes.fromNodeId;
+    wagon.attributes.nodeId = cargo.attributes.availableAtNodeId;
     wagon.attributes.cargoId = null;
   });
   const loaded = await dispatch({

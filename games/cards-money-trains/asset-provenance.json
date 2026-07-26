@@ -6,18 +6,19 @@
     "mimeType": "image/webp",
     "width": 2560,
     "height": 1828,
-    "byteSize": 306808,
-    "sha256": "c6c52f27b348e4f2d56fb936227518921da98542ce3bf69794abf6fdf58480be"
+    "byteSize": 314026,
+    "sha256": "04bdd854c0980dc637497accffa62af77f781b76fb8943b12fcdc736fc9ae471"
   },
   "source": {
-    "path": "draft/trains/Игровая Карта.png",
+    "path": "draft/trains/Начальная транспортная сеть.png",
     "mimeType": "image/png",
     "width": 5079,
     "height": 3627,
-    "sha256": "2059ed6f429667da7d51f96a9f447c5f5a286980abc70ebb0ea979f451376e1b"
+    "sha256": "e6460c1fccbf2f3b520c81b1fdc3bd26fb7d78a881889d56fb5712c5b19e2b1b"
   },
   "transform": {
     "tool": "sharp",
+    "toolVersion": "0.33.5",
     "format": "webp",
     "maxWidth": 2560,
     "maxHeight": 1829,

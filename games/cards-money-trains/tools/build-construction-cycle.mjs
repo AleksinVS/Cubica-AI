@@ -193,6 +193,9 @@ const selectAllTeams = (id, attributes) => ({
   selector: {
     collection: "teams",
     objectTypes: ["game.team"],
+    // An excluded team remains in the public audit collection, but it is no
+    // longer a participant and must never contribute to a later build.
+    facets: { placementStatus: literal("placed") },
     ...(attributes ? { attributes } : {}),
     cardinality: { min: 0, max: 12 }
   }
@@ -257,7 +260,8 @@ const buildContributionSet = () => {
               {
                 op: "predicate.entity.matches",
                 entity: { collection: "teams", entityId: teamId },
-                objectType: "game.team"
+                objectType: "game.team",
+                facets: { placementStatus: literal("placed") }
               }
             ),
             errorCode: "CONSTRUCTION_CONTRIBUTION_UNAVAILABLE"

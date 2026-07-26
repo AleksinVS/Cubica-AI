@@ -431,6 +431,24 @@ test("generator owns an exact bounded order contract and composes in either orde
       section: "movement"
     },
     {
+      id: "movement-train-attach-manual",
+      label: "Прицепить вагон вручную",
+      description:
+        "После движения выберите свободный вагон на текущем терминале; действие не расходует запас хода.",
+      actionId: "movement.train.attach.manual",
+      phase: "operations",
+      section: "movement"
+    },
+    {
+      id: "movement-train-detach-manual",
+      label: "Отцепить вагон вручную",
+      description:
+        "После движения выберите прицепленный вагон; сервер рассчитает и атомарно спишет тариф.",
+      actionId: "movement.train.detach.manual",
+      phase: "operations",
+      section: "movement"
+    },
+    {
       id: "movement-locomotive-skip",
       label: "Пропустить движение текущего локомотива",
       actionId: "movement.locomotive.skip",
@@ -443,7 +461,7 @@ test("generator owns an exact bounded order contract and composes in either orde
   assert.deepEqual(movementBoardActions, expectedMovementBoardActions);
   assert.equal(
     new Set(movementBoardActions.map((candidate) => candidate.actionId)).size,
-    6
+    8
   );
   assert.ok(movementBoardActions.every((candidate) => candidate.params === undefined));
 
@@ -559,6 +577,53 @@ test("generator owns an exact bounded order contract and composes in either orde
       ["news-22-first-movement-journal", "core.event.emit"]
     ]
   );
+  const trackedTariffWagons = traverseSteps.find(
+    (step) => step.id === "manual-tariff-tracked-wagons"
+  );
+  assert.equal(trackedTariffWagons.op, "core.entities.select");
+  assert.equal(
+    traverseSteps.find((step) => step.id === "manual-tariff-count-edge").op,
+    "core.entities.update"
+  );
+  const destinationTariffSteps = traverseSteps.filter(
+    (step) => step.id.startsWith("manual-tariff-terminal-")
+  );
+  const destinationIds = [
+    ...new Set(
+      Object.values(actual.root.state.public.objects.cargoOrders)
+        .map((cargo) => cargo.attributes.toNodeId)
+    )
+  ].sort();
+  assert.deepEqual(
+    destinationTariffSteps.map((step) => step.op),
+    destinationIds.flatMap(() => [
+      "core.entities.select",
+      "graph.shortestPath",
+      "graph.shortestPath",
+      "core.entities.update"
+    ])
+  );
+  const softRouteSteps = destinationTariffSteps.filter(
+    (step) => step.op === "graph.shortestPath"
+  );
+  assert.equal(softRouteSteps.length, destinationIds.length * 2);
+  assert.ok(
+    softRouteSteps.every(
+      (step) => step.onUnavailable === "return-unreachable"
+    )
+  );
+  for (const destinationId of destinationIds) {
+    const suffix = destinationId.replaceAll(/[^A-Za-z0-9_-]/g, "-");
+    const freezeStep = destinationTariffSteps.find(
+      (step) => step.id === `manual-tariff-${suffix}-freeze`
+    );
+    const softRoutePredicate = freezeStep.when.items[1].items[2];
+    assert.equal(softRoutePredicate.op, "predicate.any");
+    assert.equal(
+      JSON.stringify(softRoutePredicate).match(/"reachable"/g)?.length,
+      4
+    );
+  }
   assert.equal(
     traverseSteps.find((step) => step.id === "mark-last-movement-turn").op,
     "core.entity.attributes.patch"
@@ -583,13 +648,15 @@ test("generator owns an exact bounded order contract and composes in either orde
     actual.root.logic.flows
       .find((flow) => flow.id === "facilitator")
       .steps.find((step) => step.id === "facilitator.movement-order-and-skip")
-      .actionIds.slice(0, 6),
+      .actionIds.slice(0, 8),
     [
       "movement.order.prepare",
       "movement.locomotive.traverse",
       "movement.train.wagon.select",
       "movement.train.wagon.unselect",
       "movement.train.attach.selected",
+      "movement.train.attach.manual",
+      "movement.train.detach.manual",
       "movement.locomotive.skip"
     ]
   );

@@ -15,7 +15,9 @@ const {
 const {
   HISTORICAL_BLOCKED_LOCKS,
   MECHANICS_ARTIFACT_REGISTRY,
+  PRE_DYNAMIC_SCORE_BLOCKED_ARTIFACTS,
   PRE_FINITE_NUMBER_BLOCKED_ARTIFACTS,
+  PRE_LOGARITHMIC_RANDOM_ADVANCE_BLOCKED_ARTIFACTS,
   PRE_PARAMETERIZED_DECK_BLOCKED_ARTIFACTS,
   SHARED_VALIDATION_DEPENDENCIES,
   hashMechanicsCorpus,
@@ -225,6 +227,33 @@ test("the exact pre-finite-number module set is recognised only as archive histo
     const resolved = MECHANICS_ARTIFACT_REGISTRY.resolve(identity);
     assert.equal(resolved.state, "blocked");
     assert.match(resolved.reason, /pre-finite-number executable corpus is unavailable/u);
+  }
+});
+
+test("the exact pre-logarithmic-random module set remains archive-only", () => {
+  for (const identity of PRE_LOGARITHMIC_RANDOM_ADVANCE_BLOCKED_ARTIFACTS) {
+    const resolved = MECHANICS_ARTIFACT_REGISTRY.resolve(identity);
+    assert.equal(resolved.state, "blocked");
+    assert.match(
+      resolved.reason,
+      /pre-logarithmic-random-advance executable corpus is unavailable/u
+    );
+  }
+});
+
+test("the exact pre-dynamic-score module set remains archive-only", () => {
+  assert.equal(
+    PRE_DYNAMIC_SCORE_BLOCKED_ARTIFACTS.length,
+    7,
+    "the archived corpus must retain every module affected by the shared kernel"
+  );
+  for (const identity of PRE_DYNAMIC_SCORE_BLOCKED_ARTIFACTS) {
+    const resolved = MECHANICS_ARTIFACT_REGISTRY.resolve(identity);
+    assert.equal(resolved.state, "blocked");
+    assert.match(
+      resolved.reason,
+      /pre-dynamic-score executable corpus is unavailable/u
+    );
   }
 });
 

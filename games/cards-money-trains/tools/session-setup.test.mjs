@@ -194,6 +194,7 @@ test("setup and card generators are idempotent and keep teams as entities", asyn
       .sort(),
     [
       "public.teams.bound.coins",
+      "public.teams.bound.outstandingDebt",
       "public.teams.bound.progressiveTaxLocomotiveCount",
       "public.teams.bound.progressiveTaxWagonCount"
     ]
@@ -287,6 +288,7 @@ test("team creation is atomic, bounded, and rejects a reused contrast color", as
   const wagons = publicObjects(afterCarrier).wagons;
   const [teamId] = Object.keys(teams);
   assert.equal(teams[teamId].attributes.coins, 10);
+  assert.equal(teams[teamId].attributes.outstandingDebt, 0);
   assert.equal(teams[teamId].attributes.type, "logistics_company");
   assert.equal(teams[teamId].facets.placementStatus, "configured");
   assert.deepEqual(

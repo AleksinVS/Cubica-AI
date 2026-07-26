@@ -347,6 +347,10 @@ test("news №19 derives floor(total/5), validates ownership and removes the exa
     selectedCargo.attributes.originDeparted = true;
     selectedCargo.attributes.originDepartureTurn = 1;
     wagons[selectedWagonId].attributes.cargoId = selectedCargoId;
+    // Put the confiscated wagon away from the printed cargo origin. This
+    // distinguishes the author-confirmed current-terminal release from the
+    // obsolete behavior that returned cargo logically to its source.
+    wagons[selectedWagonId].attributes.nodeId = "terminal-9";
     const selectedCargoDeck = state.secret.decks[selectedCargoOriginId];
     selectedCargoDeck.order = selectedCargoDeck.order.filter(
       (cargoId) => cargoId !== selectedCargoId
@@ -433,7 +437,7 @@ test("news №19 derives floor(total/5), validates ownership and removes the exa
   assert.equal(
     current.state.public.objects.cargoOrders[selectedCargoId]
       .attributes.holderTeamId,
-    firstTeamId
+    null
   );
   assert.equal(
     current.state.public.objects.cargoOrders[selectedCargoId]
@@ -442,19 +446,34 @@ test("news №19 derives floor(total/5), validates ownership and removes the exa
   );
   assert.equal(
     current.state.public.objects.cargoOrders[selectedCargoId]
+      .attributes.availableAtNodeId,
+    "terminal-9"
+  );
+  assert.equal(
+    current.state.public.objects.cargoOrders[selectedCargoId]
+      .attributes.fromNodeId,
+    selectedCargoOriginId
+  );
+  assert.equal(
+    current.state.public.objects.cargoOrders[selectedCargoId]
+      .attributes.activeLegFromNodeId,
+    selectedCargoOriginId
+  );
+  assert.equal(
+    current.state.public.objects.cargoOrders[selectedCargoId]
       .attributes.originDeparted,
-    false
+    true
   );
   assert.equal(
     current.state.public.objects.cargoOrders[selectedCargoId]
       .attributes.originDepartureTurn,
-    0
+    1
   );
   assert.ok(
     current.state.secret.decks[selectedCargoOriginId].held.includes(
       selectedCargoId
     ),
-    "the confiscated wagon must not return the team's held cargo card to deck rotation"
+    "confiscation must not return the released physical card to deck rotation"
   );
   assert.equal(
     current.state.public.objects.teams[firstTeamId]

@@ -28,6 +28,7 @@ const lifecyclePrefixes = [
   // these prefixes as the next generated block keeps all independent
   // generators idempotent regardless of which one is checked last.
   "session.play.",
+  "facilitator.economy.",
   "maintenance.",
   "movement.",
   "cards.lifecycle.",
@@ -239,6 +240,10 @@ const createTeamStep = (teamType) => ({
     // object. Money remains on the team until the construction transaction
     // validates the exact total and can create the object atomically.
     constructionPledge: literal(0),
+    // Loans are explicit facilitator decisions, never an implicit negative
+    // balance. Every later economy action therefore starts from a durable zero
+    // principal instead of interpreting a missing field as "no debt".
+    outstandingDebt: literal(0),
     // A constant key intentionally creates one complete tie group. The named
     // seeded stream below then supplies the reproducible random order.
     placementOrderKey: literal(0),
@@ -1012,7 +1017,11 @@ const buildSessionSetupAuthoring = (sourceAuthoring, network) => {
         initial: "configured",
         values: {
           configured: { visible: true, interactive: true },
-          placed: { visible: true, interactive: false }
+          placed: { visible: true, interactive: false },
+          // Exclusion reuses the established participation facet so every
+          // existing `placed` guard fails closed without a parallel status
+          // source that older game-local plans would ignore.
+          excluded: { visible: true, interactive: false }
         }
       }
     }
@@ -1050,7 +1059,7 @@ const buildSessionSetupAuthoring = (sourceAuthoring, network) => {
     },
     "game.team-placement-status": {
       kind: "enum",
-      values: ["configured", "placed"]
+      values: ["configured", "placed", "excluded"]
     },
     "game.session-setup-status": {
       kind: "enum",
@@ -1116,6 +1125,11 @@ const buildSessionSetupAuthoring = (sourceAuthoring, network) => {
       },
       constructionPledge: {
         storage: { kind: "attribute", name: "constructionPledge" },
+        valueType: "core.integer",
+        access: "read-write"
+      },
+      outstandingDebt: {
+        storage: { kind: "attribute", name: "outstandingDebt" },
         valueType: "core.integer",
         access: "read-write"
       },
@@ -1241,6 +1255,21 @@ const buildSessionSetupAuthoring = (sourceAuthoring, network) => {
     valueType: "core.integer",
     access: "read-write"
   };
+  endpoints["public.teams.bound.outstandingDebt"] = {
+    audienceRef: "public",
+    storage: {
+      root: "public",
+      segments: [
+        "objects",
+        "teams",
+        { binding: "teamId" },
+        "attributes",
+        "outstandingDebt"
+      ]
+    },
+    valueType: "core.integer",
+    access: "read-write"
+  };
   addEndpoint(endpoints, "public.setup.status", ["setup", "status"], "game.session-setup-status");
   addEndpoint(endpoints, "public.setup.teamSequence", ["setup", "teamSequence"], "core.integer");
   addEndpoint(endpoints, "public.setup.assetSequence", ["setup", "assetSequence"], "core.integer");
@@ -1289,6 +1318,17 @@ const buildSessionSetupAuthoring = (sourceAuthoring, network) => {
       for (const step of generatedPlan.transaction.steps) {
         if (step.op === "core.entity.create" && step.collection === "wagons") {
           step.attributes.formationTargetLocomotiveId = literal(null);
+          if (
+            root.mechanics.stateModel.collections.wagons.fields
+              .manualTariffTrackingActive !== undefined
+          ) {
+            // The later manual-coupling slice owns these fields. Preserve its
+            // complete default shape when setup is regenerated after it.
+            step.attributes.manualTariffOriginNodeId = literal(null);
+            step.attributes.manualTariffDestinationNodeId = literal(null);
+            step.attributes.manualTariffBillableEdgeCount = literal(0);
+            step.attributes.manualTariffTrackingActive = literal(false);
+          }
         }
       }
     }

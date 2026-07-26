@@ -564,6 +564,47 @@ export type AttributePatch =
 export type DeckReference = Identifier | ParamExpression;
 /**
  * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
+ * via the `definition` "entityScoreStep".
+ */
+export type EntityScoreStep = {
+  id: StepId;
+  kind: "query";
+  op: "core.entities.score";
+  entities?: StateRef;
+  /**
+   * @minItems 1
+   * @maxItems 512
+   */
+  entityIds?: [ValueExpression, ...ValueExpression[]];
+  selection?: EntitySelectionResultRef;
+  baseField: Identifier;
+  /**
+   * @maxItems 64
+   */
+  relatedSources: ScoreRelatedSource[];
+  when?: Predicate;
+} & EntityScoreStep1;
+export type EntityScoreStep1 = {
+  [k: string]: unknown;
+};
+/**
+ * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
+ * via the `definition` "rankingGroup".
+ */
+export type RankingGroup = {
+  id: Identifier;
+  /**
+   * @minItems 1
+   * @maxItems 128
+   */
+  entityIds?: [ValueExpression, ...ValueExpression[]];
+  selection?: EntitySelectionResultRef;
+} & RankingGroup1;
+export type RankingGroup1 = {
+  [k: string]: unknown;
+};
+/**
+ * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
  * via the `definition` "randomStreamId".
  */
 export type RandomStreamId = string;
@@ -2189,6 +2230,10 @@ export interface GraphShortestPathStep {
   networkId: Identifier;
   fromNode: ValueExpression;
   toNode: ValueExpression;
+  /**
+   * Choose whether a valid but disconnected endpoint pair aborts the transaction or returns an explicit unreachable result.
+   */
+  onUnavailable?: "fail" | "return-unreachable";
   when?: Predicate;
 }
 /**
@@ -2255,27 +2300,6 @@ export interface SystemScheduleCancelStep {
 }
 /**
  * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
- * via the `definition` "entityScoreStep".
- */
-export interface EntityScoreStep {
-  id: StepId;
-  kind: "query";
-  op: "core.entities.score";
-  entities: StateRef;
-  /**
-   * @minItems 1
-   * @maxItems 512
-   */
-  entityIds: [ValueExpression, ...ValueExpression[]];
-  baseField: Identifier;
-  /**
-   * @maxItems 64
-   */
-  relatedSources: ScoreRelatedSource[];
-  when?: Predicate;
-}
-/**
- * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
  * via the `definition` "scoreRelatedSource".
  */
 export interface ScoreRelatedSource {
@@ -2298,18 +2322,6 @@ export interface StableRankingStep {
    */
   groups: [RankingGroup, ...RankingGroup[]];
   when?: Predicate;
-}
-/**
- * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
- * via the `definition` "rankingGroup".
- */
-export interface RankingGroup {
-  id: Identifier;
-  /**
-   * @minItems 1
-   * @maxItems 128
-   */
-  entityIds: [ValueExpression, ...ValueExpression[]];
 }
 /**
  * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema

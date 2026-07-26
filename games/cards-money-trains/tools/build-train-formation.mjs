@@ -8,7 +8,10 @@
  * confirmation selects the marked group on the server, validates every member,
  * attaches each wagon through the neutral bounded `core.entities.each`
  * operation, spends exactly one locomotive action point and clears the markers
- * in one atomic transaction.
+ * in one atomic transaction. The same game-owned slice also exposes the
+ * author-confirmed free manual attach/detach controls after movement. Durable
+ * per-wagon counters carry only tariff facts; graph and payment rules remain
+ * assembled from neutral Mechanics operations.
  *
  * This generator owns only `movement.train.*` actions, plans, state fields,
  * board controls and the formation journal event. It composes after the four
@@ -29,7 +32,9 @@ const normalFixtureId = "normal-start-policy";
 const formationActionIds = new Set([
   "movement.train.wagon.select",
   "movement.train.wagon.unselect",
-  "movement.train.attach.selected"
+  "movement.train.attach.selected",
+  "movement.train.attach.manual",
+  "movement.train.detach.manual"
 ]);
 // The first draft exposed one conditional toggle intent.  It is intentionally
 // owned here only for migration cleanup: it must never be reinserted because
@@ -65,6 +70,17 @@ const compare = (operator, left, right) => ({
   right
 });
 const all = (...items) => ({ op: "predicate.all", items });
+const any = (...items) => ({ op: "predicate.any", items });
+const exists = (value, expected = true) => ({
+  op: "predicate.exists",
+  value,
+  exists: expected
+});
+const multiply = (...items) => ({ op: "number.multiply", items });
+const coalesceString = (value) => ({
+  op: "value.coalesce",
+  items: [value, literal("")]
+});
 
 /** Create one facilitator-only action backed by a game-local Mechanics plan. */
 const action = ({ id, label, semantics, paramsSchema }) => ({
@@ -106,6 +122,11 @@ const wagonParams = {
 const currentLocomotiveId = () =>
   state("public.movement.currentLocomotiveId");
 const turnNumber = () => state("public.session.turnNumber");
+const currentTerminalId = () => coalesceString(entityValue(
+  "locomotives",
+  currentLocomotiveId(),
+  "nodeId"
+));
 
 /** Common fail-closed predicate for every current-locomotive formation action. */
 const currentLocomotiveGuard = () => all(
@@ -162,6 +183,29 @@ const actionPointGuardStep = () => ({
   ),
   errorCode: "ACTION_POINTS_EXHAUSTED"
 });
+
+/**
+ * Prove that the current locomotive has completed at least one move this turn
+ * and is now standing at an open terminal. This is the exact author-confirmed
+ * boundary for free manual coupling; it does not consume an action point.
+ */
+const completedMovementAtTerminalGuard = () => all(
+  compare(
+    "eq",
+    entityValue("locomotives", currentLocomotiveId(), "lastMovedTurn"),
+    turnNumber()
+  ),
+  {
+    op: "predicate.entity.matches",
+    entity: {
+      collection: "networkNodes",
+      entityId: currentTerminalId()
+    },
+    objectType: "transport.terminal",
+    facets: { availability: literal("open") },
+    attributes: { networkId: literal("main") }
+  }
+);
 
 /** Select one eligible wagon without accepting a locomotive id. */
 const buildSelectWagon = () => {
@@ -380,14 +424,49 @@ const buildAttachSelected = (networkCapacity) => {
             kind: "command",
             op: "core.entities.each",
             selection: result("formation-selected-wagons-valid"),
-            body: [{
-              id: "formation-attach-selected-item",
-              kind: "command",
-              op: "relation.attach",
-              networkId: "main",
-              primary: currentLocomotiveId(),
-              related: [itemId()]
-            }]
+            body: [
+              {
+                // A paid formation starts the same durable tariff leg as a
+                // later free manual attachment. Cargo loading owns the
+                // optional destination copied onto the wagon.
+                id: "formation-start-manual-tariff",
+                kind: "command",
+                op: "core.entity.attributes.patch",
+                entity: {
+                  collection: "wagons",
+                  entityId: itemId()
+                },
+                patches: [
+                  {
+                    operation: "set",
+                    path: ["manualTariffOriginNodeId"],
+                    value: entityValue(
+                      "locomotives",
+                      currentLocomotiveId(),
+                      "nodeId"
+                    )
+                  },
+                  {
+                    operation: "set",
+                    path: ["manualTariffBillableEdgeCount"],
+                    value: literal(0)
+                  },
+                  {
+                    operation: "set",
+                    path: ["manualTariffTrackingActive"],
+                    value: literal(true)
+                  }
+                ]
+              },
+              {
+                id: "formation-attach-selected-item",
+                kind: "command",
+                op: "relation.attach",
+                networkId: "main",
+                primary: currentLocomotiveId(),
+                related: [itemId()]
+              }
+            ]
           },
           {
             id: "formation-spend-group-action",
@@ -439,7 +518,350 @@ const buildAttachSelected = (networkCapacity) => {
   };
 };
 
-/** Declare the persisted marker and exact public journal payload. */
+/**
+ * Attach one wagon for free after the current locomotive has moved to a
+ * terminal. The locomotive id and both owners remain server-derived.
+ */
+const buildManualAttach = () => {
+  const id = "movement.train.attach.manual";
+  const wagonId = param("wagonId");
+  return {
+    action: action({
+      id,
+      label: "Прицепить вагон вручную",
+      semantics:
+        "После движения бесплатно прицепляет один вагон на текущем терминале и начинает новый тарифный участок.",
+      paramsSchema: wagonParams
+    }),
+    plan: {
+      transaction: {
+        steps: [
+          {
+            id: "manual-attach-current-guard",
+            kind: "assert",
+            op: "core.assert",
+            predicate: all(
+              currentLocomotiveGuard(),
+              completedMovementAtTerminalGuard()
+            ),
+            errorCode: "MANUAL_ATTACH_CURRENT_INVALID"
+          },
+          validateCurrentOrderStep(),
+          {
+            id: "manual-attach-wagon-guard",
+            kind: "assert",
+            op: "core.assert",
+            predicate: {
+              op: "predicate.entity.matches",
+              entity: { collection: "wagons", entityId: wagonId },
+              objectType: "transport.wagon",
+              facets: { availability: literal("active") },
+              attributes: {
+                networkId: literal("main"),
+                nodeId: currentTerminalId(),
+                attachedVehicleId: literal(null),
+                formationTargetLocomotiveId: literal(null)
+              }
+            },
+            errorCode: "MANUAL_ATTACH_WAGON_INVALID"
+          },
+          {
+            id: "manual-attach-relation",
+            kind: "command",
+            op: "relation.attach",
+            networkId: "main",
+            primary: currentLocomotiveId(),
+            related: [wagonId]
+          },
+          {
+            id: "manual-attach-start-tariff",
+            kind: "command",
+            op: "core.entity.attributes.patch",
+            entity: { collection: "wagons", entityId: wagonId },
+            patches: [
+              {
+                operation: "set",
+                path: ["manualTariffOriginNodeId"],
+                value: currentTerminalId()
+              },
+              {
+                operation: "set",
+                path: ["manualTariffBillableEdgeCount"],
+                value: literal(0)
+              },
+              {
+                operation: "set",
+                path: ["manualTariffTrackingActive"],
+                value: literal(true)
+              }
+            ]
+          },
+          {
+            id: "manual-attach-journal",
+            kind: "command",
+            op: "core.event.emit",
+            eventType: "movement.train.manually-attached",
+            summary: literal(
+              "Ведущий бесплатно прицепил вагон на терминале"
+            ),
+            audience: "public",
+            data: {
+              locomotiveId: currentLocomotiveId(),
+              wagonId,
+              terminalId: currentTerminalId(),
+              logisticsTeamId: entityValue("wagons", wagonId, "ownerTeamId"),
+              guildTeamId: entityValue(
+                "locomotives",
+                currentLocomotiveId(),
+                "ownerTeamId"
+              ),
+              actionPointCost: literal(0),
+              turnNumber: turnNumber()
+            }
+          }
+        ]
+      }
+    }
+  };
+};
+
+/**
+ * Detach one wagon and atomically pay the already accumulated tariff.
+ *
+ * A loaded wagon advances its active carriage leg to the detach terminal so a
+ * later guild is paid only for the remaining leg. An empty wagon has no
+ * destination; its counter therefore includes every edge since attachment.
+ */
+const buildManualDetach = () => {
+  const id = "movement.train.detach.manual";
+  const wagonId = param("wagonId");
+  const cargoId = entityValue("wagons", wagonId, "cargoId");
+  const concreteCargoId = coalesceString(cargoId);
+  const logisticsTeamId = entityValue("wagons", wagonId, "ownerTeamId");
+  const guildTeamId = entityValue(
+    "locomotives",
+    currentLocomotiveId(),
+    "ownerTeamId"
+  );
+  const billableEdgeCount = entityValue(
+    "wagons",
+    wagonId,
+    "manualTariffBillableEdgeCount"
+  );
+  const tariffTotal = multiply(billableEdgeCount, literal(2));
+  return {
+    action: action({
+      id,
+      label: "Отцепить вагон вручную",
+      semantics:
+        "После движения атомарно оплачивает тариф пройденного участка и бесплатно отцепляет один вагон на текущем терминале.",
+      paramsSchema: wagonParams
+    }),
+    plan: {
+      transaction: {
+        steps: [
+          {
+            id: "manual-detach-current-guard",
+            kind: "assert",
+            op: "core.assert",
+            predicate: all(
+              currentLocomotiveGuard(),
+              completedMovementAtTerminalGuard()
+            ),
+            errorCode: "MANUAL_DETACH_CURRENT_INVALID"
+          },
+          validateCurrentOrderStep(),
+          {
+            id: "manual-detach-wagon-guard",
+            kind: "assert",
+            op: "core.assert",
+            predicate: all(
+              {
+                op: "predicate.entity.matches",
+                entity: { collection: "wagons", entityId: wagonId },
+                objectType: "transport.wagon",
+                facets: { availability: literal("active") },
+                attributes: {
+                  networkId: literal("main"),
+                  nodeId: currentTerminalId(),
+                  attachedVehicleId: currentLocomotiveId()
+                }
+              },
+              // `manualTariffTrackingActive=false` means the counter froze at
+              // the first deviation, not that the payable leg disappeared.
+              // A non-null origin is the durable proof of an open tariff leg.
+              exists(
+                entityValue(
+                  "wagons",
+                  wagonId,
+                  "manualTariffOriginNodeId"
+                )
+              ),
+              compare(
+                "eq",
+                entityValue("teams", logisticsTeamId, "type"),
+                literal("logistics_company")
+              ),
+              compare(
+                "eq",
+                entityValue("teams", guildTeamId, "type"),
+                literal("locomotive_guild")
+              )
+            ),
+            errorCode: "MANUAL_DETACH_WAGON_INVALID"
+          },
+          {
+            id: "manual-detach-loaded-cargo",
+            kind: "query",
+            op: "core.entities.select",
+            selector: {
+              collection: "cargoOrders",
+              objectTypes: ["transport.cargo"],
+              facets: { status: literal("in_transit") },
+              attributes: {
+                networkId: literal("main"),
+                carrierWagonId: wagonId
+              },
+              cardinality: { min: 0, max: 1 }
+            }
+          },
+          {
+            // A nullable wagon slot and the selected cargo relation must agree
+            // before money or relations change.
+            id: "manual-detach-cargo-consistent",
+            kind: "assert",
+            op: "core.assert",
+            predicate: any(
+              all(
+                exists(cargoId, false),
+                compare(
+                  "eq",
+                  result("manual-detach-loaded-cargo", ["ids"]),
+                  literal([])
+                )
+              ),
+              all(
+                exists(cargoId),
+                exists(
+                  entityValue(
+                    "wagons",
+                    wagonId,
+                    "manualTariffDestinationNodeId"
+                  )
+                ),
+                {
+                  op: "predicate.entity.matches",
+                  entity: {
+                    collection: "cargoOrders",
+                    entityId: concreteCargoId
+                  },
+                  objectType: "transport.cargo",
+                  facets: { status: literal("in_transit") },
+                  attributes: {
+                    carrierWagonId: wagonId,
+                    toNodeId: coalesceString(
+                      entityValue(
+                        "wagons",
+                        wagonId,
+                        "manualTariffDestinationNodeId"
+                      )
+                    )
+                  }
+                }
+              )
+            ),
+            errorCode: "MANUAL_DETACH_CARGO_INVALID"
+          },
+          {
+            id: "manual-detach-pay-tariff",
+            kind: "command",
+            op: "core.resource.transfer",
+            from: {
+              kind: "state",
+              target: {
+                endpoint: "public.teams.bound.coins",
+                bindings: { teamId: logisticsTeamId }
+              }
+            },
+            to: {
+              kind: "state",
+              target: {
+                endpoint: "public.teams.bound.coins",
+                bindings: { teamId: guildTeamId }
+              }
+            },
+            amount: tariffTotal,
+            onInsufficient: "fail"
+          },
+          {
+            id: "manual-detach-relation",
+            kind: "command",
+            op: "relation.detach",
+            networkId: "main",
+            primary: currentLocomotiveId(),
+            related: [wagonId]
+          },
+          {
+            id: "manual-detach-advance-cargo-leg",
+            kind: "command",
+            op: "core.entities.update",
+            selection: result("manual-detach-loaded-cargo"),
+            attributeValues: {
+              activeLegFromNodeId: currentTerminalId()
+            }
+          },
+          {
+            id: "manual-detach-journal",
+            kind: "command",
+            op: "core.event.emit",
+            eventType: "movement.train.manually-detached",
+            summary: literal(
+              "Перевозчик оплатил путь, и ведущий отцепил вагон"
+            ),
+            audience: "public",
+            data: {
+              locomotiveId: currentLocomotiveId(),
+              wagonId,
+              terminalId: currentTerminalId(),
+              logisticsTeamId,
+              guildTeamId,
+              billableEdgeCount,
+              tariffPerEdge: literal(2),
+              tariffTotal,
+              actionPointCost: literal(0),
+              turnNumber: turnNumber()
+            }
+          },
+          {
+            id: "manual-detach-reset-tracking",
+            kind: "command",
+            op: "core.entity.attributes.patch",
+            entity: { collection: "wagons", entityId: wagonId },
+            patches: [
+              {
+                operation: "set",
+                path: ["manualTariffOriginNodeId"],
+                value: literal(null)
+              },
+              {
+                operation: "set",
+                path: ["manualTariffBillableEdgeCount"],
+                value: literal(0)
+              },
+              {
+                operation: "set",
+                path: ["manualTariffTrackingActive"],
+                value: literal(false)
+              }
+            ]
+          }
+        ]
+      }
+    }
+  };
+};
+
+/** Declare persisted formation/tariff fields and exact public journal payloads. */
 const declareFormationState = (root) => {
   const stateModel = root.mechanics.stateModel;
   const wagonFields = stateModel.collections.wagons?.fields;
@@ -452,8 +874,47 @@ const declareFormationState = (root) => {
     valueType: "core.optional-string",
     access: "read-write"
   };
+  wagonFields.manualTariffOriginNodeId = {
+    storage: {
+      kind: "attribute",
+      name: "manualTariffOriginNodeId"
+    },
+    valueType: "core.optional-string",
+    access: "read-write"
+  };
+  wagonFields.manualTariffDestinationNodeId = {
+    storage: {
+      kind: "attribute",
+      name: "manualTariffDestinationNodeId"
+    },
+    valueType: "core.optional-string",
+    access: "read-write"
+  };
+  wagonFields.manualTariffBillableEdgeCount = {
+    storage: {
+      kind: "attribute",
+      name: "manualTariffBillableEdgeCount"
+    },
+    valueType: "game.manual-tariff-edge-count",
+    access: "read-write"
+  };
+  wagonFields.manualTariffTrackingActive = {
+    storage: {
+      kind: "attribute",
+      name: "manualTariffTrackingActive"
+    },
+    valueType: "core.boolean",
+    access: "read-write"
+  };
 
   Object.assign(stateModel.types, {
+    "game.manual-tariff-edge-count": {
+      kind: "integer",
+      minimum: 0,
+      // The limit is an execution guard, not a game rule. At five movements
+      // per locomotive per round it remains far above any practical session.
+      maximum: 1_000_000
+    },
     "game.train-formation-wagon-ids": {
       kind: "list",
       itemType: "core.string",
@@ -472,6 +933,33 @@ const declareFormationState = (root) => {
         ownerTeamId: { typeRef: "core.string", optional: false },
         turnNumber: { typeRef: "core.integer", optional: false }
       }
+    },
+    "game.train-manually-attached-event": {
+      kind: "record",
+      fields: {
+        locomotiveId: { typeRef: "core.optional-string", optional: false },
+        wagonId: { typeRef: "core.string", optional: false },
+        terminalId: { typeRef: "core.string", optional: false },
+        logisticsTeamId: { typeRef: "core.string", optional: false },
+        guildTeamId: { typeRef: "core.string", optional: false },
+        actionPointCost: { typeRef: "core.integer", optional: false },
+        turnNumber: { typeRef: "core.integer", optional: false }
+      }
+    },
+    "game.train-manually-detached-event": {
+      kind: "record",
+      fields: {
+        locomotiveId: { typeRef: "core.optional-string", optional: false },
+        wagonId: { typeRef: "core.string", optional: false },
+        terminalId: { typeRef: "core.string", optional: false },
+        logisticsTeamId: { typeRef: "core.string", optional: false },
+        guildTeamId: { typeRef: "core.string", optional: false },
+        billableEdgeCount: { typeRef: "game.manual-tariff-edge-count", optional: false },
+        tariffPerEdge: { typeRef: "core.integer", optional: false },
+        tariffTotal: { typeRef: "core.integer", optional: false },
+        actionPointCost: { typeRef: "core.integer", optional: false },
+        turnNumber: { typeRef: "core.integer", optional: false }
+      }
     }
   });
   stateModel.events["movement.train.formed"] = {
@@ -479,9 +967,24 @@ const declareFormationState = (root) => {
     payloadType: "game.train-formed-event",
     journalEndpoint: { endpoint: "public.log" }
   };
+  stateModel.events["movement.train.manually-attached"] = {
+    audienceRef: "public",
+    payloadType: "game.train-manually-attached-event",
+    journalEndpoint: { endpoint: "public.log" }
+  };
+  stateModel.events["movement.train.manually-detached"] = {
+    audienceRef: "public",
+    payloadType: "game.train-manually-detached-event",
+    journalEndpoint: { endpoint: "public.log" }
+  };
 
   for (const wagon of Object.values(root.state.public.objects.wagons)) {
     wagon.attributes.formationTargetLocomotiveId = null;
+    wagon.attributes.manualTariffOriginNodeId = null;
+    wagon.attributes.manualTariffDestinationNodeId =
+      wagon.attributes.manualTariffDestinationNodeId ?? null;
+    wagon.attributes.manualTariffBillableEdgeCount = 0;
+    wagon.attributes.manualTariffTrackingActive = false;
   }
 
   // Setup owns dynamic wagon creation. Injecting the field into every matching
@@ -490,6 +993,10 @@ const declareFormationState = (root) => {
     for (const step of plan.transaction.steps) {
       if (step.op === "core.entity.create" && step.collection === "wagons") {
         step.attributes.formationTargetLocomotiveId = literal(null);
+        step.attributes.manualTariffOriginNodeId = literal(null);
+        step.attributes.manualTariffDestinationNodeId = literal(null);
+        step.attributes.manualTariffBillableEdgeCount = literal(0);
+        step.attributes.manualTariffTrackingActive = literal(false);
       }
     }
   }
@@ -567,7 +1074,9 @@ const buildTrainFormationAuthoring = (sourceAuthoring) => {
   const generated = [
     buildSelectWagon(),
     buildUnselectWagon(),
-    buildAttachSelected(networkCapacity)
+    buildAttachSelected(networkCapacity),
+    buildManualAttach(),
+    buildManualDetach()
   ];
   root.logic.actions = insertBeforeSkip(
     root.logic.actions,
@@ -609,6 +1118,22 @@ const buildTrainFormationAuthoring = (sourceAuthoring) => {
       actionId: "movement.train.attach.selected",
       phase: "operations",
       section: "movement"
+    }, {
+      id: "movement-train-attach-manual",
+      label: "Прицепить вагон вручную",
+      description:
+        "После движения выберите свободный вагон на текущем терминале; действие не расходует запас хода.",
+      actionId: "movement.train.attach.manual",
+      phase: "operations",
+      section: "movement"
+    }, {
+      id: "movement-train-detach-manual",
+      label: "Отцепить вагон вручную",
+      description:
+        "После движения выберите прицепленный вагон; сервер рассчитает и атомарно спишет тариф.",
+      actionId: "movement.train.detach.manual",
+      phase: "operations",
+      section: "movement"
     }]
   );
 
@@ -628,10 +1153,21 @@ const buildTrainFormationAuthoring = (sourceAuthoring) => {
     currentLocomotive: "server-owned-public.movement.currentLocomotiveId",
     selection: "persisted-per-wagon-target-marker",
     scalarSelectionParam: "wagonId",
-    selectionIntents: ["select", "unselect"],
+    selectionIntents: ["select", "unselect", "manual-attach", "manual-detach"],
     finalParams: "none",
     groupActionPointCost: 1,
     groupIteration: "core.entities.each-canonical-order",
+    manualCoupling: {
+      terminalOnly: true,
+      requiresCurrentTurnMovement: true,
+      actionPointCost: 0,
+      tariffPerBillableEdge: 2,
+      loadedWagonBilling:
+        "count-through-first-deviation-from-any-current-shortest-route",
+      emptyWagonBilling: "all-edges-since-attachment",
+      insufficientFunds: "reject-whole-detach",
+      cargoLegAfterDetach: "restart-at-detach-terminal"
+    },
     boundary: "current-locomotive-remains-active-and-unresolved"
   };
   const movementTurn = root.content.data.movementTurn;

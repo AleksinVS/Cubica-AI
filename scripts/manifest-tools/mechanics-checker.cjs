@@ -9,6 +9,7 @@
 
 const {
   MAX_DECK_ITEMS,
+  MAX_SESSION_RANDOM_ADVANCE_WORK,
   MAX_SESSION_RANDOM_STREAMS,
   MODULE_REGISTRY,
   OPERATION_MODULES,
@@ -2150,6 +2151,11 @@ function checkStep(step, context) {
       cost.scannedEntities += collection.capacity + relatedCapacity;
       cost.resultEntities += max * 2;
       cost.algorithmWork += orderingWorkUpperBound(max, step.keys.length, relatedCapacity) + derivedReadWork;
+      if (step.tieBreak.kind === "seeded-random") {
+        // Every complete-tie group has at least two members and runtime
+        // restores the persisted stream once per shuffled group.
+        cost.algorithmWork += Math.floor(max / 2) * MAX_SESSION_RANDOM_ADVANCE_WORK;
+      }
       const tieGroupsShape = {
         kind: "list",
         item: {
@@ -2441,6 +2447,7 @@ function checkStep(step, context) {
         // hidden. A secret `when` still may not leak through whether it ran.
         assertFlowToAudience(joinFlows(context.controlFlow, endpoint.bindingFlow), endpoint.audienceRef, pointer);
       cost.writes += 2;
+      cost.algorithmWork += MAX_SESSION_RANDOM_ADVANCE_WORK;
       return {
         kind: "random",
         max: 1,
@@ -2469,6 +2476,7 @@ function checkStep(step, context) {
         2 * MAX_DECK_ITEMS,
         collection.capacity + MAX_DECK_ITEMS
       );
+      cost.algorithmWork += MAX_SESSION_RANDOM_ADVANCE_WORK;
       cost.writes += 1;
       return { kind: "deck", max: 1 };
     }
@@ -2486,6 +2494,7 @@ function checkStep(step, context) {
       // Worst case: validate all zones, reshuffle the discard, then remove
       // the first order item. The runtime charges those same passes.
       cost.scannedEntities += 3 * MAX_DECK_ITEMS;
+      cost.algorithmWork += MAX_SESSION_RANDOM_ADVANCE_WORK;
       cost.writes += 2;
       return {
         kind: "deck",
@@ -2713,34 +2722,93 @@ function checkStep(step, context) {
           );
         }
         cost.scannedEntities += domainCollectionScanUpperBound(step, context);
+        if (step.op === "graph.regions.route.plan") {
+          // The route planner may have several equally minimal candidates.
+          // Runtime charges only a real tie; publication reserves one rebuild.
+          cost.algorithmWork += MAX_SESSION_RANDOM_ADVANCE_WORK;
+        }
         cost.writes += domainOperationWriteUpperBound(step);
         return domainOperationResult(step, context, expressionFlows);
       }
     case "core.entities.score": {
-      const entities = requireStateReferenceKind(step.entities, context, `${pointer}/entities`, ["record"]);
-      const entityType = model.types[entities.valueType];
-      const flows = [entities.bindingFlow, { audience: entities.audienceRef, integrity: "server" }];
-      for (const [index, entityId] of step.entityIds.entries()) {
-        const checked = checkExpression(entityId, context, `${pointer}/entityIds/${index}`);
-        assertExpressionFitsKinds(model, checked.type, ["string", "enum"], `${pointer}/entityIds/${index}`);
-        if (entityId.op !== "value.literal" || typeof entityId.value !== "string") {
+      const flows = [];
+      let scoredEntityCount;
+      let scoredCollection;
+      if (step.selection) {
+        const selection = requireResult(
+          results,
+          step.selection.stepId,
+          `${pointer}/selection/stepId`
+        );
+        if (
+          selection.kind !== "entities" ||
+          !["core.entities.select", "core.entities.order"].includes(selection.producerOp)
+        ) {
           fail(
-            "MECHANICS_SCORE_ENTITY_TYPE_UNPROVEN",
-            `${pointer}/entityIds/${index}`,
-            "score entity id must be a static string so its child record type can be proven"
+            "MECHANICS_SCORE_SELECTION_INVALID",
+            `${pointer}/selection`,
+            "dynamic scoring requires a preceding bounded entity selection or its checked ordering"
           );
         }
-        const child = entityType.fields[entityId.value];
-        const childType = child && model.types[child.typeRef];
-        const base = childType?.kind === "record" ? childType.fields[step.baseField] : undefined;
-        if (!base || model.types[base.typeRef]?.kind !== "integer") {
+        if (selection.conditional) {
+          fail(
+            "MECHANICS_SCORE_SOURCE_CONDITIONAL",
+            `${pointer}/selection`,
+            "dynamic scoring cannot consume a selection that may have been skipped"
+          );
+        }
+        const collection = requireCollection(model, selection.collection, `${pointer}/selection`);
+        const base = requireCollectionField(collection, step.baseField, `${pointer}/baseField`);
+        if (model.types[base.valueType]?.kind !== "integer") {
           fail(
             "MECHANICS_FIELD_TYPE_MISMATCH",
             `${pointer}/baseField`,
-            `score entity "${entityId.value}" must expose base field "${step.baseField}" as a non-optional integer`
+            "dynamically scored entities must expose the base field as a non-optional integer"
           );
         }
-        flows.push(checked.flow);
+        scoredEntityCount = selection.max;
+        scoredCollection = selection.collection;
+        cost.algorithmWork +=
+          selection.max * derivedCollectionFieldReadWork(base);
+        flows.push(
+          selection.flow,
+          { audience: collection.audienceRef, integrity: "server" }
+        );
+      } else {
+        const entities = requireStateReferenceKind(
+          step.entities,
+          context,
+          `${pointer}/entities`,
+          ["record"]
+        );
+        const entityType = model.types[entities.valueType];
+        scoredEntityCount = step.entityIds.length;
+        flows.push(
+          entities.bindingFlow,
+          { audience: entities.audienceRef, integrity: "server" }
+        );
+        for (const [index, entityId] of step.entityIds.entries()) {
+          const checked = checkExpression(entityId, context, `${pointer}/entityIds/${index}`);
+          assertExpressionFitsKinds(model, checked.type, ["string", "enum"], `${pointer}/entityIds/${index}`);
+          if (entityId.op !== "value.literal" || typeof entityId.value !== "string") {
+            fail(
+              "MECHANICS_SCORE_ENTITY_TYPE_UNPROVEN",
+              `${pointer}/entityIds/${index}`,
+              "score entity id must be a static string so its child record type can be proven"
+            );
+          }
+          const child = entityType.fields[entityId.value];
+          const childType = child && model.types[child.typeRef];
+          const base = childType?.kind === "record" ? childType.fields[step.baseField] : undefined;
+          if (!base || model.types[base.typeRef]?.kind !== "integer") {
+            fail(
+              "MECHANICS_FIELD_TYPE_MISMATCH",
+              `${pointer}/baseField`,
+              `score entity "${entityId.value}" must expose base field "${step.baseField}" as a non-optional integer`
+            );
+          }
+          flows.push(checked.flow);
+        }
       }
       for (const [index, source] of step.relatedSources.entries()) {
         const sourcePointer = `${pointer}/relatedSources/${index}`;
@@ -2756,14 +2824,15 @@ function checkStep(step, context) {
         flows.push({ audience: collection.audienceRef, integrity: "server" });
         cost.scannedEntities += collection.capacity;
       }
-      cost.resultEntities += step.entityIds.length;
+      cost.resultEntities += scoredEntityCount;
       return {
         kind: "scores",
-        max: step.entityIds.length,
+        max: scoredEntityCount,
+        ...(scoredCollection === undefined ? {} : { collection: scoredCollection }),
         type: {
           kind: "result",
           value: "scores",
-          maxEntries: step.entityIds.length,
+          maxEntries: scoredEntityCount,
           maxRelatedItems: step.relatedSources.reduce(
             (total, source) => total + requireCollection(model, source.collection, `${pointer}/relatedSources`).capacity,
             0
@@ -2780,16 +2849,56 @@ function checkStep(step, context) {
       }
       const flows = [scores.flow];
       let members = 0;
+      let maxStandings = 0;
+      const scoreResult = step.scores.op === "value.result"
+        ? results.get(step.scores.stepId)
+        : undefined;
       for (const [groupIndex, group] of step.groups.entries()) {
-        for (const [entityIndex, entityId] of group.entityIds.entries()) {
-          const checked = checkExpression(entityId, context, `${pointer}/groups/${groupIndex}/entityIds/${entityIndex}`);
-          assertExpressionFitsKinds(model, checked.type, ["string", "enum"], `${pointer}/groups/${groupIndex}/entityIds/${entityIndex}`);
-          flows.push(checked.flow);
-          members += 1;
+        const groupPointer = `${pointer}/groups/${groupIndex}`;
+        if (group.selection) {
+          const selection = requireResult(
+            results,
+            group.selection.stepId,
+            `${groupPointer}/selection/stepId`
+          );
+          if (
+            selection.kind !== "entities" ||
+            !["core.entities.select", "core.entities.order"].includes(selection.producerOp)
+          ) {
+            fail(
+              "MECHANICS_RANKING_SELECTION_INVALID",
+              `${groupPointer}/selection`,
+              "dynamic ranking requires a preceding bounded entity selection or its checked ordering"
+            );
+          }
+          if (selection.conditional) {
+            fail(
+              "MECHANICS_RANKING_SOURCE_CONDITIONAL",
+              `${groupPointer}/selection`,
+              "dynamic ranking cannot consume a selection that may have been skipped"
+            );
+          }
+          if (!scoreResult?.collection || scoreResult.collection !== selection.collection) {
+            fail(
+              "MECHANICS_RANKING_SELECTION_COLLECTION_MISMATCH",
+              `${groupPointer}/selection`,
+              "a dynamic ranking group must use the same collection as its dynamic score result"
+            );
+          }
+          flows.push(selection.flow);
+          members += selection.max;
+          maxStandings = Math.max(maxStandings, selection.max);
+        } else {
+          for (const [entityIndex, entityId] of group.entityIds.entries()) {
+            const checked = checkExpression(entityId, context, `${groupPointer}/entityIds/${entityIndex}`);
+            assertExpressionFitsKinds(model, checked.type, ["string", "enum"], `${groupPointer}/entityIds/${entityIndex}`);
+            flows.push(checked.flow);
+            members += 1;
+          }
+          maxStandings = Math.max(maxStandings, group.entityIds.length);
         }
       }
       cost.resultEntities += members;
-      const maxStandings = Math.max(...step.groups.map((group) => group.entityIds.length));
       const relatedItemsMax = scores.type.maxRelatedItems || 0;
       const relatedItemShape = {
         kind: "record",
@@ -3107,6 +3216,7 @@ function domainOperationResult(step, context, expressionFlows = []) {
       kind: "graph-shortest-path",
       max: 1,
       paths: new Map([
+        ["reachable", { kind: "primitive", value: "boolean" }],
         ["edgeIds", { kind: "list-of", itemKind: "string" }],
         ["nodeIds", { kind: "list-of", itemKind: "string" }],
         ["length", { kind: "primitive", value: "integer" }]

@@ -496,22 +496,100 @@ type ScoreEntry = {
   relatedItems: Array<{ entityId: string; value: number }>;
 };
 
+/**
+ * Runtime-only provenance key for a selection-backed score result.
+ *
+ * A local symbol cannot be authored through Mechanics JSON, is retained on the
+ * exact in-transaction object, and is omitted from JSON measurement and audit
+ * serialization. It therefore proves the collection without widening the
+ * public result shape or its publication-time byte budget.
+ */
+const scoreSelectionCollection = Symbol("score-selection-collection");
+
+type ScoreResult = {
+  kind: "scores";
+  entries: Array<ScoreEntry>;
+  [scoreSelectionCollection]?: string;
+};
+
+type EntityScoreStep = Extract<Step, { op: "core.entities.score" }>;
+type EntitySelectionResultRef = NonNullable<EntityScoreStep["selection"]>;
+
 /** Aggregate one declared numeric base and bounded related entity values. */
 function scoreEntities(
-  step: Extract<Step, { op: "core.entities.score" }>,
+  step: EntityScoreStep,
   context: MechanicsExecutionContext
-): { kind: "scores"; entries: Array<ScoreEntry> } {
-  const entityBindings = evaluateStateReferenceBindings(step.entities, context);
-  const entities = readEndpoint(context, step.entities, "current", entityBindings);
-  if (!isRecord(entities)) {
-    throw new MechanicsExecutionError("MECHANICS_SCORE_ENTITIES_INVALID", "Scored entities must be a declared record", step.id);
+): ScoreResult {
+  // JSON Schema owns the XOR. Runtime repeats it because an executor must not
+  // assume every caller passed through the publication boundary.
+  const hasSelection = step.selection !== undefined;
+  const hasEntities = step.entities !== undefined;
+  const hasEntityIds = Array.isArray(step.entityIds);
+  if (hasSelection === (hasEntities || hasEntityIds) || hasEntities !== hasEntityIds) {
+    throw new MechanicsExecutionError(
+      "MECHANICS_SCORE_SOURCE_INVALID",
+      "Score requires exactly one static entity source or one trusted selection",
+      step.id
+    );
   }
-  const entityIds = step.entityIds.map((value) =>
-    requireMechanicsIdentifier(evaluateExpression(value, context), "Scored entity id")
-  );
-  if (new Set(entityIds).size !== entityIds.length) {
-    throw new MechanicsExecutionError("MECHANICS_SCORE_ENTITY_DUPLICATE", "Scored entity ids must be unique", step.id);
+
+  let entityIds: Array<string>;
+  let dynamicCollection: ReturnType<typeof collectionEntries> | undefined;
+  let dynamicCollectionId: string | undefined;
+  let dynamicEntitiesById: Map<string, JsonRecord> | undefined;
+  let staticEntities: JsonRecord | undefined;
+  if (hasSelection) {
+    const selectionReference = step.selection;
+    if (!selectionReference) {
+      throw new MechanicsExecutionError(
+        "MECHANICS_SCORE_SOURCE_INVALID",
+        "Dynamic score selection is unavailable",
+        step.id
+      );
+    }
+    const selection = requireTrustedSelectionReference(
+      selectionReference,
+      context,
+      step.id,
+      "MECHANICS_SCORE_SELECTION_INVALID"
+    );
+    dynamicCollectionId = selection.collectionId;
+    dynamicCollection = collectionEntries(context, selection.collectionId);
+    dynamicEntitiesById = new Map(dynamicCollection.entries);
+    entityIds = [...selection.ids].sort(compareCanonicalIds);
+    for (const entityId of entityIds) {
+      if (!dynamicEntitiesById.has(entityId)) {
+        throw new MechanicsExecutionError(
+          "MECHANICS_SCORE_ENTITY_UNKNOWN",
+          `Selected entity "${entityId}" is unavailable`,
+          step.id
+        );
+      }
+    }
+  } else {
+    const entitiesReference = step.entities;
+    const authoredEntityIds = step.entityIds;
+    if (!entitiesReference || !authoredEntityIds) {
+      throw new MechanicsExecutionError(
+        "MECHANICS_SCORE_SOURCE_INVALID",
+        "Static score entities and entity ids are unavailable",
+        step.id
+      );
+    }
+    const entityBindings = evaluateStateReferenceBindings(entitiesReference, context);
+    const entities = readEndpoint(context, entitiesReference, "current", entityBindings);
+    if (!isRecord(entities)) {
+      throw new MechanicsExecutionError("MECHANICS_SCORE_ENTITIES_INVALID", "Scored entities must be a declared record", step.id);
+    }
+    staticEntities = entities;
+    entityIds = authoredEntityIds.map((value) =>
+      requireMechanicsIdentifier(evaluateExpression(value, context), "Scored entity id")
+    );
+    if (new Set(entityIds).size !== entityIds.length) {
+      throw new MechanicsExecutionError("MECHANICS_SCORE_ENTITY_DUPLICATE", "Scored entity ids must be unique", step.id);
+    }
   }
+  const selectedIds = new Set(entityIds);
 
   const relatedByOwner = new Map<string, Array<{ entityId: string; value: number }>>();
   for (const source of step.relatedSources) {
@@ -523,18 +601,40 @@ function scoreEntities(
         readCollectionField(collection.model, entity, source.ownerField),
         "Related entity owner"
       );
-      if (!entityIds.includes(ownerId)) continue;
+      if (!selectedIds.has(ownerId)) continue;
       const value = finiteSafeInteger(readCollectionField(collection.model, entity, source.valueField));
       relatedByOwner.set(ownerId, [...(relatedByOwner.get(ownerId) ?? []), { entityId, value }]);
     }
   }
 
   const entries = entityIds.map((entityId): ScoreEntry => {
-    const entity = isRecord(entities[entityId]) ? entities[entityId] as JsonRecord : undefined;
-    if (!entity) {
-      throw new MechanicsExecutionError("MECHANICS_SCORE_ENTITY_UNKNOWN", "A scored entity is unavailable", step.id);
+    let baseValue: number;
+    if (dynamicCollection && dynamicEntitiesById) {
+      const entity = dynamicEntitiesById.get(entityId);
+      if (!entity) {
+        throw new MechanicsExecutionError(
+          "MECHANICS_SCORE_ENTITY_UNKNOWN",
+          `Selected entity "${entityId}" is unavailable`,
+          step.id
+        );
+      }
+      charge(
+        context,
+        "algorithmWork",
+        derivedCollectionFieldReadWork(dynamicCollection.model, step.baseField)
+      );
+      baseValue = finiteSafeInteger(
+        readCollectionField(dynamicCollection.model, entity, step.baseField)
+      );
+    } else {
+      const entity = staticEntities && isRecord(staticEntities[entityId])
+        ? staticEntities[entityId] as JsonRecord
+        : undefined;
+      if (!entity) {
+        throw new MechanicsExecutionError("MECHANICS_SCORE_ENTITY_UNKNOWN", "A scored entity is unavailable", step.id);
+      }
+      baseValue = finiteSafeInteger(entity[step.baseField]);
     }
-    const baseValue = finiteSafeInteger(entity[step.baseField]);
     const relatedItems = relatedByOwner.get(entityId) ?? [];
     const relatedValue = relatedItems.reduce((sum, item) => safeIntegerSum(sum, item.value, step.id), 0);
     return {
@@ -546,7 +646,16 @@ function scoreEntities(
     };
   });
   charge(context, "resultEntities", entries.length);
-  return { kind: "scores", entries };
+  const result: ScoreResult = { kind: "scores", entries };
+  if (dynamicCollectionId) {
+    Object.defineProperty(result, scoreSelectionCollection, {
+      value: dynamicCollectionId,
+      enumerable: false,
+      writable: false,
+      configurable: false
+    });
+  }
+  return result;
 }
 
 /** Stable descending rank over an already-computed neutral score table. */
@@ -554,10 +663,14 @@ function rankScores(
   step: Extract<Step, { op: "core.ranking.stable" }>,
   context: MechanicsExecutionContext
 ): { groups: JsonRecord } {
+  // Keep the legacy expression surface for static ranking. Dynamic groups
+  // additionally require the protected object identity recorded by the score
+  // operation below, so an expression cannot forge collection provenance.
   const raw = evaluateExpression(step.scores, context);
   if (!isRecord(raw) || raw.kind !== "scores" || !Array.isArray(raw.entries)) {
     throw new MechanicsExecutionError("MECHANICS_SCORE_RESULT_INVALID", "Stable ranking requires a score result", step.id);
   }
+  const scoredCollectionId = (raw as ScoreResult)[scoreSelectionCollection];
   const byId = new Map<string, ScoreEntry>();
   for (const candidate of raw.entries) {
     if (!isScoreEntry(candidate) || byId.has(candidate.entityId)) {
@@ -570,11 +683,66 @@ function rankScores(
     if (groups[group.id] !== undefined) {
       throw new MechanicsExecutionError("MECHANICS_RANKING_GROUP_DUPLICATE", "Ranking group ids must be unique", step.id);
     }
-    const ids = group.entityIds.map((value) =>
-      requireMechanicsIdentifier(evaluateExpression(value, context), "Ranked entity id")
-    );
-    if (new Set(ids).size !== ids.length) {
-      throw new MechanicsExecutionError("MECHANICS_RANKING_ENTITY_DUPLICATE", "Ranking group entity ids must be unique", step.id);
+    const hasSelection = "selection" in group && group.selection !== undefined;
+    const hasEntityIds = "entityIds" in group && Array.isArray(group.entityIds);
+    if (hasSelection === hasEntityIds) {
+      throw new MechanicsExecutionError(
+        "MECHANICS_RANKING_GROUP_SOURCE_INVALID",
+        "Ranking group requires exactly one static id list or one trusted selection",
+        step.id
+      );
+    }
+    let ids: Array<string>;
+    if (hasSelection) {
+      const selectionReference = group.selection;
+      if (!selectionReference) {
+        throw new MechanicsExecutionError(
+          "MECHANICS_RANKING_GROUP_SOURCE_INVALID",
+          "Dynamic ranking selection is unavailable",
+          step.id
+        );
+      }
+      const selection = requireTrustedSelectionReference(
+        selectionReference,
+        context,
+        step.id,
+        "MECHANICS_RANKING_SELECTION_INVALID"
+      );
+      if (
+        scoredCollectionId === undefined ||
+        selection.collectionId !== scoredCollectionId
+      ) {
+        throw new MechanicsExecutionError(
+          "MECHANICS_RANKING_SELECTION_COLLECTION_MISMATCH",
+          "Dynamic ranking selection must use the dynamically scored collection",
+          step.id
+        );
+      }
+      const collection = collectionEntries(context, selection.collectionId);
+      const knownIds = new Set(collection.entries.map(([id]) => id));
+      ids = [...selection.ids].sort(compareCanonicalIds);
+      if (ids.some((id) => !knownIds.has(id))) {
+        throw new MechanicsExecutionError(
+          "MECHANICS_RANKING_ENTITY_UNKNOWN",
+          "A ranked entity is unavailable",
+          step.id
+        );
+      }
+    } else {
+      const authoredEntityIds = group.entityIds;
+      if (!authoredEntityIds) {
+        throw new MechanicsExecutionError(
+          "MECHANICS_RANKING_GROUP_SOURCE_INVALID",
+          "Static ranking entity ids are unavailable",
+          step.id
+        );
+      }
+      ids = authoredEntityIds.map((value) =>
+        requireMechanicsIdentifier(evaluateExpression(value, context), "Ranked entity id")
+      );
+      if (new Set(ids).size !== ids.length) {
+        throw new MechanicsExecutionError("MECHANICS_RANKING_ENTITY_DUPLICATE", "Ranking group entity ids must be unique", step.id);
+      }
     }
     const sorted = ids.map((id) => {
       const entry = byId.get(id);
@@ -594,6 +762,42 @@ function rankScores(
     groups[group.id] = { standings, winners, tiedForFirst: winners.length > 1 };
   }
   return { groups };
+}
+
+/**
+ * Resolve a direct, protected selection result rather than evaluating
+ * arbitrary game-authored JSON with the same shape.
+ */
+function requireTrustedSelectionReference(
+  reference: EntitySelectionResultRef,
+  context: MechanicsExecutionContext,
+  stepId: string,
+  errorCode: string
+): EntitySelection {
+  if (
+    !isRecord(reference) ||
+    reference.op !== "value.result" ||
+    typeof reference.stepId !== "string" ||
+    ("path" in reference && reference.path !== undefined)
+  ) {
+    throw new MechanicsExecutionError(
+      errorCode,
+      "Entity selection must be a direct preceding result reference",
+      stepId
+    );
+  }
+  try {
+    return requireSelection(context.results.get(reference.stepId), stepId);
+  } catch (error) {
+    if (error instanceof MechanicsExecutionError) {
+      throw new MechanicsExecutionError(
+        errorCode,
+        "Entity selection result is invalid or unavailable",
+        stepId
+      );
+    }
+    throw error;
+  }
 }
 
 function isScoreEntry(value: unknown): value is ScoreEntry {

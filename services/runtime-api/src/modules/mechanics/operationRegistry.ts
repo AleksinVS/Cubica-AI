@@ -161,7 +161,7 @@ const OPERATION_HANDLERS = new Map<string, OperationHandler>([
 function executeDice(step: Extract<Step, { op: "random.dice.roll" }>, context: MechanicsExecutionContext): unknown {
   const streams = requireRandomStreams(context);
   const random = readSessionRandomStream(streams, step.stream);
-  const rolled = rollSessionDice(random, step.dice);
+  const rolled = rollSessionDice(random, step.dice, randomWorkMeter(context));
   context.random = writeSessionRandomStream(streams, step.stream, rolled.random);
   // Preserve the established, game-facing dice result contract. `stream` and
   // the dice notation identify how the result was produced; the persisted
@@ -203,7 +203,11 @@ function executeDeckShuffle(step: Extract<Step, { op: "deck.shuffle" }>, context
   }
   const streams = requireRandomStreams(context);
   charge(context, "scannedEntities", sourceIds.length);
-  const shuffled = shuffleSessionValues(readSessionRandomStream(streams, step.stream), sourceIds);
+  const shuffled = shuffleSessionValues(
+    readSessionRandomStream(streams, step.stream),
+    sourceIds,
+    randomWorkMeter(context)
+  );
   context.random = writeSessionRandomStream(streams, step.stream, shuffled.random);
   // The stream becomes part of deck state so an automatic reshuffle during a
   // later draw cannot accidentally switch to whichever random consumer ran
@@ -227,7 +231,11 @@ function executeDeckDraw(step: Extract<Step, { op: "deck.draw" }>, context: Mech
     }
     const streams = requireRandomStreams(context);
     charge(context, "scannedEntities", deck.discard.length);
-    const shuffled = shuffleSessionValues(readSessionRandomStream(streams, deck.stream), deck.discard);
+    const shuffled = shuffleSessionValues(
+      readSessionRandomStream(streams, deck.stream),
+      deck.discard,
+      randomWorkMeter(context)
+    );
     context.random = writeSessionRandomStream(streams, deck.stream, shuffled.random);
     deck.order = shuffled.values;
     deck.discard = [];
@@ -415,6 +423,16 @@ function persistRandom(context: MechanicsExecutionContext): void {
   if (!context.random) return;
   if (!isRecord(context.state.secret)) context.state.secret = {};
   (context.state.secret as JsonRecord).random = context.random;
+}
+
+/**
+ * Route random-stream restoration through the same deterministic work budget
+ * as every other bounded Mechanics algorithm.
+ */
+function randomWorkMeter(context: MechanicsExecutionContext) {
+  return {
+    charge: (units: number): void => charge(context, "algorithmWork", units)
+  };
 }
 
 function requireDecks(context: MechanicsExecutionContext): JsonRecord {
