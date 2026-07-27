@@ -266,6 +266,51 @@ class RegionPartitionDraftFacts(unittest.TestCase):
         for index, doubt_id in enumerate(doubt_ids, start=1):
             self.assertEqual(doubt_id, f"doubt-{index:04d}")
 
+    def test_every_region_belongs_to_a_country_from_the_catalog(self) -> None:
+        """Принадлежность стране проставлена и согласована с каталогом стран.
+
+        Связь «заливка карты -> страна игры» устанавливается при извлечении
+        стран и проверяется там же по преобладанию голосов. Здесь проверяется
+        её видимый снаружи результат: у каждой области стоит страна из каталога
+        вместе с её названием, пара «идентификатор — название» всюду одна и та
+        же, а область без страны допускается только одна — непроходимый массив
+        в центре карты, который не принадлежит ни одной стране.
+        """
+
+        countries = json.loads(
+            (ANNOTATIONS_DIR / "vector-map.countries-stations.draft.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        catalog = {
+            country["gameCountryId"]: country["name"]
+            for country in countries["countries"]
+        }
+        self.assertEqual(len(catalog), 10, "ожидается ровно десять стран")
+
+        without_country = []
+        for region in self.draft["regions"]:
+            country_id = region["countryId"]
+            if country_id is None:
+                # Название обязано отсутствовать вместе с идентификатором:
+                # область не может быть безымянной и одновременно названной.
+                self.assertIsNone(region["countryName"], region["id"])
+                without_country.append(region["id"])
+                continue
+            self.assertIn(country_id, catalog, region["id"])
+            self.assertEqual(region["countryName"], catalog[country_id], region["id"])
+
+        self.assertEqual(
+            len(without_country),
+            1,
+            f"без страны должна остаться ровно одна область, получено {without_country}",
+        )
+
+        # Каждая страна каталога получила хотя бы одну область: страна без
+        # территории означала бы, что связь установлена неверно.
+        used = {region["countryId"] for region in self.draft["regions"]} - {None}
+        self.assertEqual(used, set(catalog), "не у всех стран каталога есть области")
+
     def test_provenance_digests_match_files_on_disk(self) -> None:
         """Происхождение: отпечатки в provenance совпадают с файлами на диске.
 

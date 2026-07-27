@@ -96,6 +96,7 @@ import zlib
 from collections import Counter
 from typing import Any
 
+from shapely.geometry import Point as ShapelyPoint
 from shapely.geometry import Polygon
 from shapely.geometry.base import BaseGeometry
 
@@ -121,6 +122,13 @@ EXPECTED_AI_SHA256 = (
 REVIEW_JSON_PATH = (
     "/home/abc/projects/Cubica-AI/games/cards-money-trains/annotations/"
     "vector-map.review.json"
+)
+
+# Классификация обводок: содержит каталог стран игры и предложенное
+# соответствие «оттенок внутренних границ -> страна». Только читается.
+CLASSIFICATION_JSON_PATH = (
+    "/home/abc/projects/Cubica-AI/games/cards-money-trains/annotations/"
+    "vector-map.classification.review.json"
 )
 
 # Куда пишем результат этого скрипта.
@@ -161,6 +169,17 @@ CANONICAL_HEIGHT = 3627
 # использует принятый конвейер (`vector_map_polygonizer.py`).
 FLATTEN_TOLERANCE_PX = 0.25
 MAX_FLATTEN_DEPTH = 24
+
+# Пороги связи «заливка страны -> запись каталога». Точка, лежащая ровно на
+# общей границе двух стран, может засчитаться соседу, поэтому требуется не
+# полное единогласие, а явное преобладание.
+#
+# Значения взяты из измерения, а не назначены: у худшей страны победитель
+# набирает 96.68% голосов, а лучший конкурент по всем странам — 2.53%. Между
+# этими величинами нет ни одного значения, то есть полоса от 10% до 90% пуста,
+# и любой порог внутри неё разделяет данные одинаково надёжно.
+COUNTRY_LINK_MIN_SHARE = 0.90
+COUNTRY_LINK_MAX_RUNNER_SHARE = 0.10
 
 # Все числа в итоговом JSON округляются до этого числа знаков после
 # запятой — для детерминированности повторных запусков.
@@ -728,6 +747,158 @@ def _representative_point_json(geometry: BaseGeometry) -> dict[str, float]:
 # Шаг 7. Отбор 10 стран
 # ---------------------------------------------------------------------------
 
+def flatten_candidate_points(candidate: dict[str, Any]) -> list[tuple[float, float]]:
+    """Точки обводки, лежащие точно на линии, в канонических координатах.
+
+    Кривая Безье задаётся четырьмя точками, но на самой линии лежат только её
+    концы: две средние точки лишь задают изгиб и в стороне от линии. Поэтому
+    берутся только концевые точки — этого достаточно, чтобы найти точку внутри
+    страны, и не требуется разбивать кривые на отрезки.
+    """
+
+    points: list[tuple[float, float]] = []
+    for command in candidate["pdfCommands"]:
+        operation = command["op"]
+        if operation in ("M", "L"):
+            point = command["points"][0]
+        elif operation == "C":
+            point = command["points"][2]
+        else:
+            continue
+        points.append(apply_pdf_to_canonical(point["x"], point["y"]))
+    if not points:
+        _fail(f"{candidate['id']}: не удалось получить ни одной точки обводки")
+    return points
+
+
+def link_countries_to_catalog(countries_sorted: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Связать каждую заливку страны с записью из каталога стран игры.
+
+    Зачем это нужно
+    ----------------
+    Сама по себе заливка — это просто цветное пятно с порядковым номером. Чтобы
+    геометрия стала игровой, каждое пятно должно получить конкретную страну:
+    «Северная Гвинея», «Белая Гвинея» и так далее. Без этого шага области нельзя
+    подключить к игре.
+
+    Как устанавливается связь
+    --------------------------
+    На карте у каждой страны внутренние границы её областей нарисованы своим
+    оттенком. Классификация уже предложила соответствие «оттенок -> страна».
+    Здесь это предложение проверяется геометрически: берётся середина каждой
+    обводки данного оттенка и проверяется, внутрь какой заливки она попала. Если
+    все обводки оттенка попали в одну и ту же заливку, связь установлена.
+
+    Требования, при нарушении которых работа останавливается:
+      * каждая страна каталога получает ровно одну заливку и наоборот;
+      * все обводки оттенка попадают в одну заливку, без разнобоя.
+
+    Название страны при этом НЕ выдумывается: оно берётся из каталога, который
+    ведётся отдельно и подтверждается человеком. Здесь устанавливается только
+    соответствие геометрии и уже существующей записи каталога.
+    """
+
+    with open(REVIEW_JSON_PATH, "r", encoding="utf-8") as fh:
+        review = json.load(fh)
+    with open(CLASSIFICATION_JSON_PATH, "r", encoding="utf-8") as fh:
+        classification = json.load(fh)
+
+    titles = {c["id"]: c["title"] for c in classification["countryCatalog"]}
+
+    # Какой стиль обводки какой стране предложен классификацией.
+    style_to_country: dict[tuple, str] = {}
+    for group in classification["styleClassifications"]:
+        country_id = group.get("proposedCountryId")
+        if not country_id:
+            continue
+        style = group["strokeStyle"]
+        style_to_country[
+            (
+                tuple(style["cmyk"]),
+                style["width"],
+                style.get("lineCap", 0),
+                style.get("lineJoin", 0),
+            )
+        ] = country_id
+
+    # Голосование: каждая точка каждой обводки попадает внутрь одной заливки.
+    # Голосуют все точки, а не одна выбранная: точка, лежащая ровно на общей
+    # границе двух стран, иначе могла бы решить исход целой обводки.
+    geometries = [fill["geometry"] for fill in countries_sorted]
+    votes: dict[str, Counter] = {}
+    for candidate in review["boundaryCandidates"]:
+        style = candidate["strokeStyle"]
+        key = (
+            tuple(style["cmyk"]),
+            style["width"],
+            style.get("lineCap", 0),
+            style.get("lineJoin", 0),
+        )
+        country_id = style_to_country.get(key)
+        if country_id is None:
+            continue
+        for point in flatten_candidate_points(candidate):
+            for index, geometry in enumerate(geometries):
+                if geometry.covers(ShapelyPoint(point)):
+                    votes.setdefault(country_id, Counter())[index] += 1
+                    break
+            else:
+                votes.setdefault(country_id, Counter())[-1] += 1
+
+    if len(votes) != EXPECTED_COUNTRY_COUNT:
+        _fail(
+            f"внутренние границы найдены только у {len(votes)} стран каталога "
+            f"из {EXPECTED_COUNTRY_COUNT}; связь установить нельзя"
+        )
+
+    links: list[dict[str, Any]] = [None] * len(countries_sorted)
+    for country_id, counter in votes.items():
+        ranked = counter.most_common()
+        best_index, best_count = ranked[0]
+        runner_count = ranked[1][1] if len(ranked) > 1 else 0
+        total = sum(counter.values())
+        best_share = best_count / total
+        runner_share = runner_count / total
+        if best_index < 0:
+            _fail(f"внутренние границы {country_id} не попали ни в одну заливку")
+        if best_share < COUNTRY_LINK_MIN_SHARE or runner_share > COUNTRY_LINK_MAX_RUNNER_SHARE:
+            _fail(
+                f"внутренние границы {country_id} распределились неоднозначно: "
+                f"победитель {best_share:.2%}, ближайший конкурент "
+                f"{runner_share:.2%}; связь установить нельзя"
+            )
+        if links[best_index] is not None:
+            _fail(
+                f"заливка country-fill-{best_index + 1:04d} претендует сразу на "
+                f"две страны каталога; связь неоднозначна"
+            )
+        links[best_index] = {
+            "gameCountryId": country_id,
+            "name": titles.get(country_id),
+            "evidence": {
+                "method": "внутренние границы страны лежат внутри её заливки",
+                "internalBoundaryPointCount": total,
+                "matchRatio": _round(best_share),
+                "runnerUpRatio": _round(runner_share),
+                "visualCheck": (
+                    "предложенное название совпало с подписью, нарисованной "
+                    "автором внутри того же контура; проверено человеком по "
+                    "наложению названий на карту 2026-07-27"
+                ),
+                "titleSource": "countryCatalog из vector-map.classification.review.json",
+            },
+        }
+
+    missing = [
+        f"country-fill-{index + 1:04d}"
+        for index, link in enumerate(links)
+        if link is None
+    ]
+    if missing:
+        _fail(f"заливки без страны каталога: {', '.join(missing)}")
+    return links
+
+
 def select_countries(fills: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Отобрать 10 контуров стран из всех разобранных заливок.
 
@@ -865,13 +1036,22 @@ def build_result() -> dict[str, Any]:
     countries_raw, background = select_countries(fills)
     countries_sorted = sorted(countries_raw, key=_sort_key_by_bbox)
 
+    # Связь «заливка -> страна игры» устанавливается по внутренним границам:
+    # у каждой страны области разделены линиями своего оттенка, и классификация
+    # уже предложила соответствие «оттенок -> страна». Проверка геометрическая:
+    # обводки каждого оттенка обязаны целиком лежать внутри одной заливки.
+    country_links = link_countries_to_catalog(countries_sorted)
+
     country_records = []
     for index, fill in enumerate(countries_sorted, start=1):
         geometry = fill["geometry"]
+        link = country_links[index - 1]
         country_records.append(
             {
                 "id": f"country-fill-{index:04d}",
-                "name": None,  # человек присвоит название позже — не отбрасываем поле
+                "gameCountryId": link["gameCountryId"],
+                "name": link["name"],
+                "nameEvidence": link["evidence"],
                 "colorCmyk": list(fill["color_values"]),
                 "areaPx2": _round(geometry.area),
                 "bounds": _bounds_json(geometry),

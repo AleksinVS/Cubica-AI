@@ -250,8 +250,8 @@
     },
     "countryId": {
       "type": "string",
-      "description": "Черновой идентификатор заливки страны из vector-map.countries-stations.draft.json.",
-      "pattern": "^country-fill-[0-9]{4}$"
+      "description": "Идентификатор страны игры из каталога стран; связь заливки карты с этой записью установлена и проверена при извлечении стран.",
+      "pattern": "^cmt-country-[a-z-]+$"
     },
     "stationId": {
       "type": "string",
@@ -406,7 +406,7 @@
     "region": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Одна игровая область черновика: устойчивый номер, геометрический отпечаток и черновая привязка к стране/станциям, которую ещё должен подтвердить человек.",
+      "description": "Одна игровая область черновика: устойчивый номер, геометрический отпечаток и принадлежность стране и списки станций и полустанков внутри неё.",
       "required": [
         "id",
         "geometryFingerprint",
@@ -414,7 +414,8 @@
         "effectiveWidthPx",
         "bounds",
         "representativePoint",
-        "draftCountryId",
+        "countryId",
+        "countryName",
         "stationIds",
         "waypointIds",
         "exteriorRing",
@@ -431,9 +432,13 @@
         },
         "bounds": { "$ref": "#/definitions/bounds" },
         "representativePoint": { "$ref": "#/definitions/point" },
-        "draftCountryId": {
-          "description": "null означает, что внутренняя точка области не попала ни в одну авторскую заливку страны; это черновая привязка, а не окончательное решение.",
+        "countryId": {
+          "description": "Страна игры, которой принадлежит область. null означает, что внутренняя точка области не попала ни в одну авторскую заливку страны.",
           "anyOf": [{ "$ref": "#/definitions/countryId" }, { "type": "null" }]
+        },
+        "countryName": {
+          "description": "Название страны из каталога, соответствующее countryId. null там же, где null сам countryId.",
+          "anyOf": [{ "type": "string", "minLength": 1 }, { "type": "null" }]
         },
         "stationIds": {
           "type": "array",

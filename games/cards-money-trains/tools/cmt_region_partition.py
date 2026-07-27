@@ -745,18 +745,23 @@ def stable_region_order(regions: list[Polygon]) -> list[Polygon]:
     return sorted(regions, key=key)
 
 
-def assign_country(region: Polygon, countries: list[tuple[str, Polygon]]) -> str | None:
-    """Черновая привязка области к стране по её внутренней точке.
+def assign_country(
+    region: Polygon,
+    countries: list[tuple[str, str, Polygon]],
+) -> tuple[str | None, str | None]:
+    """Привязать область к стране по её внутренней точке.
 
-    Привязка именно черновая: она говорит лишь о том, внутрь какой авторской
-    заливки попала точка. Смысловое подтверждение выполняет человек.
+    Возвращает идентификатор страны игры и её название. Привязка выполняется
+    геометрически: внутрь какой авторской заливки попала точка области, той
+    стране область и принадлежит. Сама связь «заливка -> страна игры» уже
+    установлена и проверена при извлечении стран.
     """
 
     point = region.representative_point()
-    for country_id, polygon in countries:
+    for country_id, name, polygon in countries:
         if polygon.covers(point):
-            return country_id
-    return None
+            return country_id, name
+    return None, None
 
 
 def build_regions(
@@ -794,6 +799,7 @@ def build_regions(
     for index, region in enumerate(ordered, start=1):
         min_x, min_y, max_x, max_y = region.bounds
         point = region.representative_point()
+        country_id, country_name = assign_country(region, countries)
         records.append(
             {
                 "id": f"map-region-{index:04d}",
@@ -807,7 +813,8 @@ def build_regions(
                     "maxY": _round(max_y),
                 },
                 "representativePoint": {"x": _round(point.x), "y": _round(point.y)},
-                "draftCountryId": assign_country(region, countries),
+                "countryId": country_id,
+                "countryName": country_name,
                 "stationIds": sorted(station_of_region.get(index - 1, [])),
                 "waypointIds": sorted(waypoint_of_region.get(index - 1, [])),
                 "exteriorRing": [
@@ -1068,7 +1075,7 @@ def main() -> None:
         else {"countries": [], "stations": []}
     )
     named_countries = [
-        (country["id"], polygon)
+        (country.get("gameCountryId") or country["id"], country.get("name"), polygon)
         for country in countries_data.get("countries", [])
         for polygon in rings_to_polygons(country.get("contour") or [])
     ]
@@ -1088,7 +1095,7 @@ def main() -> None:
         centerline["dangleLines"],
         micro_holes,
     )
-    without_country = [r["id"] for r in region_records if r["draftCountryId"] is None]
+    without_country = [r["id"] for r in region_records if r["countryId"] is None]
 
     draft = {
         "$schema": "./vector-map-region-partition.schema.json",

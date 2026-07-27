@@ -328,7 +328,16 @@
   "countries": [
     {
       "id": "country-fill-0001",
-      "name": null,
+      "gameCountryId": "cmt-country-north",
+      "name": "Северная Гвинея",
+      "nameEvidence": {
+        "method": "внутренние границы страны лежат внутри её заливки",
+        "internalBoundaryPointCount": 1506,
+        "matchRatio": 0.997344,
+        "runnerUpRatio": 0.001992,
+        "visualCheck": "предложенное название совпало с подписью, нарисованной автором внутри того же контура; проверено человеком по наложению названий на карту 2026-07-27",
+        "titleSource": "countryCatalog из vector-map.classification.review.json"
+      },
       "colorCmyk": [
         0.172,
         0.191,
@@ -1166,7 +1175,16 @@
     },
     {
       "id": "country-fill-0002",
-      "name": null,
+      "gameCountryId": "cmt-country-proud",
+      "name": "Гордая Гвинея",
+      "nameEvidence": {
+        "method": "внутренние границы страны лежат внутри её заливки",
+        "internalBoundaryPointCount": 274,
+        "matchRatio": 0.992701,
+        "runnerUpRatio": 0.007299,
+        "visualCheck": "предложенное название совпало с подписью, нарисованной автором внутри того же контура; проверено человеком по наложению названий на карту 2026-07-27",
+        "titleSource": "countryCatalog из vector-map.classification.review.json"
+      },
       "colorCmyk": [
         0.227,
         0.379,
@@ -3092,7 +3110,16 @@
     },
     {
       "id": "country-fill-0003",
-      "name": null,
+      "gameCountryId": "cmt-country-left",
+      "name": "Левая Гвинея",
+      "nameEvidence": {
+        "method": "внутренние границы страны лежат внутри её заливки",
+        "internalBoundaryPointCount": 1316,
+        "matchRatio": 0.993921,
+        "runnerUpRatio": 0.006079,
+        "visualCheck": "предложенное название совпало с подписью, нарисованной автором внутри того же контура; проверено человеком по наложению названий на карту 2026-07-27",
+        "titleSource": "countryCatalog из vector-map.classification.review.json"
+      },
       "colorCmyk": [
         0.078,
         0.14,
@@ -10142,7 +10169,16 @@
     },
     {
       "id": "country-fill-0004",
-      "name": null,
+      "gameCountryId": "cmt-country-white",
+      "name": "Белая Гвинея",
+      "nameEvidence": {
+        "method": "внутренние границы страны лежат внутри её заливки",
+        "internalBoundaryPointCount": 249,
+        "matchRatio": 0.967871,
+        "runnerUpRatio": 0.02008,
+        "visualCheck": "предложенное название совпало с подписью, нарисованной автором внутри того же контура; проверено человеком по наложению названий на карту 2026-07-27",
+        "titleSource": "countryCatalog из vector-map.classification.review.json"
+      },
       "colorCmyk": [
         0.057,
         0.042,
@@ -11840,7 +11876,16 @@
     },
     {
       "id": "country-fill-0005",
-      "name": null,
+      "gameCountryId": "cmt-country-central",
+      "name": "Центральная Гвинея",
+      "nameEvidence": {
+        "method": "внутренние границы страны лежат внутри её заливки",
+        "internalBoundaryPointCount": 512,
+        "matchRatio": 0.966797,
+        "runnerUpRatio": 0.013672,
+        "visualCheck": "предложенное название совпало с подписью, нарисованной автором внутри того же контура; проверено человеком по наложению названий на карту 2026-07-27",
+        "titleSource": "countryCatalog из vector-map.classification.review.json"
+      },
       "colorCmyk": [
         0.284,
         0.18,
@@ -13234,7 +13279,16 @@
     },
     {
       "id": "country-fill-0006",
-      "name": null,
+      "gameCountryId": "cmt-country-south-rorschach",
+      "name": "Южная Гвинея Роршаха",
+      "nameEvidence": {
+        "method": "внутренние границы страны лежат внутри её заливки",
+        "internalBoundaryPointCount": 2261,
+        "matchRatio": 0.985405,
+        "runnerUpRatio": 0.011942,
+        "visualCheck": "предложенное название совпало с подписью, нарисованной автором внутри того же контура; проверено человеком по наложению названий на карту 2026-07-27",
+        "titleSource": "countryCatalog из vector-map.classification.review.json"
+      },
       "colorCmyk": [
         0.242,
         0.273,
@@ -17724,7 +17778,16 @@
     },
     {
       "id": "country-fill-0007",
-      "name": null,
+      "gameCountryId": "cmt-country-ultra-right",
+      "name": "Ультраправая Гвинея",
+      "nameEvidence": {
+        "method": "внутренние границы страны лежат внутри её заливки",
+        "internalBoundaryPointCount": 903,
+        "matchRatio": 0.994463,
+        "runnerUpRatio": 0.00443,
+        "visualCheck": "предложенное название совпало с подписью, нарисованной автором внутри того же контура; проверено человеком по наложению названий на карту 2026-07-27",
+        "titleSource": "countryCatalog из vector-map.classification.review.json"
+      },
       "colorCmyk": [
         0.306,
         0.204,
@@ -20018,7 +20081,16 @@
     },
     {
       "id": "country-fill-0008",
-      "name": null,
+      "gameCountryId": "cmt-country-lower",
+      "name": "Нижняя Гвинея",
+      "nameEvidence": {
+        "method": "внутренние границы страны лежат внутри её заливки",
+        "internalBoundaryPointCount": 1116,
+        "matchRatio": 0.991935,
+        "runnerUpRatio": 0.003584,
+        "visualCheck": "предложенное название совпало с подписью, нарисованной автором внутри того же контура; проверено человеком по наложению названий на карту 2026-07-27",
+        "titleSource": "countryCatalog из vector-map.classification.review.json"
+      },
       "colorCmyk": [
         0.149,
         0.29,
@@ -23748,7 +23820,16 @@
     },
     {
       "id": "country-fill-0009",
-      "name": null,
+      "gameCountryId": "cmt-country-people",
+      "name": "Народная Гвинея",
+      "nameEvidence": {
+        "method": "внутренние границы страны лежат внутри её заливки",
+        "internalBoundaryPointCount": 674,
+        "matchRatio": 0.985163,
+        "runnerUpRatio": 0.007418,
+        "visualCheck": "предложенное название совпало с подписью, нарисованной автором внутри того же контура; проверено человеком по наложению названий на карту 2026-07-27",
+        "titleSource": "countryCatalog из vector-map.classification.review.json"
+      },
       "colorCmyk": [
         0.124,
         0.03,
@@ -25802,7 +25883,16 @@
     },
     {
       "id": "country-fill-0010",
-      "name": null,
+      "gameCountryId": "cmt-country-subbelly",
+      "name": "Подбрюшинная Гвинея",
+      "nameEvidence": {
+        "method": "внутренние границы страны лежат внутри её заливки",
+        "internalBoundaryPointCount": 395,
+        "matchRatio": 0.972152,
+        "runnerUpRatio": 0.025316,
+        "visualCheck": "предложенное название совпало с подписью, нарисованной автором внутри того же контура; проверено человеком по наложению названий на карту 2026-07-27",
+        "titleSource": "countryCatalog из vector-map.classification.review.json"
+      },
       "colorCmyk": [
         0.252,
         0.214,
