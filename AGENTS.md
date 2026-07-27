@@ -89,6 +89,14 @@ Agents must always:
    - ADRs must contain only project architecture decisions, constraints, rejected alternatives, and consequences.
    - ADRs must not be used as execution plans, slice trackers, next-step lists, or card-by-card migration specs.
    - Delivery-specific bounded gameplay details must go in Gameplay Slice Records under `docs/architecture/gameplay-slices/`; task execution plans and handoffs go in `docs/tasks/active/`.
+   - **Before creating an ADR, answer four questions. Any negative answer means the work is execution, not architecture:**
+     1. Whom does this bind besides the current task — another game, subsystem, or agent?
+     2. What breaks elsewhere if the decision is later changed?
+     3. If this document is deleted, what stops working?
+     4. What open choice does it leave to the PM?
+   - Write at the narrowest level that fully contains the decision: game package documentation, tool comments, or the task itself. Promoting a record to an ADR later is cheap; retracting a published ADR is expensive because it spreads through references, artifacts, and history.
+   - Never write an ADR for finished work that leaves no open choice — that is a report, not a decision.
+   - If the classification is unclear, ask the PM in one sentence before writing, not after.
 
 7. **Manage subagent lifecycle**
    - A subagent is a delegated worker process, thread, or external agent session started to perform a bounded part of the current task.
