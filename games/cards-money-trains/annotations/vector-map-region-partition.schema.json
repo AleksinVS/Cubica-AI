@@ -15,6 +15,7 @@
     "policy",
     "summary",
     "regions",
+        "emptySpaces",
     "joins",
     "collapsedSlivers",
     "removedMicroHoles",
@@ -65,6 +66,7 @@
         "runtimeIntegrationAllowed",
         "flattenTolerancePx",
         "dominantStrokeWidthPx",
+        "emptySpaceRule",
         "sliverRule",
         "joinClasses"
       ],
@@ -89,6 +91,7 @@
           "maximum": 50,
           "description": "Измеренная (не назначенная) толщина основной линии карты в точках канонической карты; служит порогом схлопывания щелей."
         },
+        "emptySpaceRule": { "type": "string", "minLength": 1 },
         "sliverRule": {
           "const": "Участок с действующей шириной меньше толщины основной линии карты присоединяется к соседу по самой длинной общей границе. Порог измерен по авторскому файлу, а не назначен."
         },
@@ -129,6 +132,7 @@
         "countryCount",
         "stationCount",
         "waypointCount",
+        "emptySpaceCount",
         "regionsWithoutCountryCount",
         "totalAreaPx2"
       ],
@@ -189,6 +193,7 @@
           "maximum": 256,
           "description": "Число полустанков — промежуточных остановок на дороге, которые, в отличие от терминала (станции), не принимают грузы. Взято из vector-map.countries-stations.draft.json."
         },
+        "emptySpaceCount": { "type": "integer", "minimum": 0 },
         "regionsWithoutCountryCount": {
           "type": "integer",
           "minimum": 0,
@@ -197,7 +202,12 @@
         "totalAreaPx2": { "type": "number", "exclusiveMinimum": 0 }
       }
     },
-    "regions": {
+    "emptySpaces": {
+          "type": "array",
+          "description": "Пустые пространства карты: вода или иная незанятая площадь вне всех страновых заливок. Игровой территорией не являются и в regions не входят, но перечисляются явно, чтобы ничего не исчезало из разбиения молча.",
+          "items": { "$ref": "#/definitions/emptySpace" }
+        },
+        "regions": {
       "type": "array",
       "minItems": 1,
       "maxItems": 5000,
@@ -401,6 +411,34 @@
         "units": { "const": "design-pixel" },
         "width": { "const": 5079 },
         "height": { "const": 3627 }
+      }
+    },
+    "emptySpace": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Один участок карты вне всех страновых заливок: не игровая территория.",
+      "required": [
+        "id",
+        "geometryFingerprint",
+        "areaPx2",
+        "bounds",
+        "representativePoint",
+        "interpretation",
+        "foundByBothMethods",
+        "exteriorRing"
+      ],
+      "properties": {
+        "id": { "type": "string", "pattern": "^empty-space-[0-9]{4}$" },
+        "geometryFingerprint": { "$ref": "#/definitions/geometryFingerprint" },
+        "areaPx2": { "type": "number", "exclusiveMinimum": 0 },
+        "bounds": { "$ref": "#/definitions/bounds" },
+        "representativePoint": { "$ref": "#/definitions/point" },
+        "interpretation": { "type": "string", "minLength": 1 },
+        "foundByBothMethods": {
+          "type": "boolean",
+          "description": "Увидел ли этот участок и проверочный способ «осевые»: он замыкает в грань не всякое пустое пространство."
+        },
+        "exteriorRing": { "$ref": "#/definitions/linearRing" }
       }
     },
     "region": {

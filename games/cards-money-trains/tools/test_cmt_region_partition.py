@@ -28,7 +28,8 @@ import random
 import unittest
 from pathlib import Path
 
-from shapely.geometry import Polygon, box
+from shapely import unary_union
+from shapely.geometry import Point, Polygon, box
 
 # Чистые функции модуля, о повторяемости которых просит задание. Модуль лежит
 # рядом с этим файлом, поэтому обычный импорт по имени пакета работает при
@@ -301,15 +302,66 @@ class RegionPartitionDraftFacts(unittest.TestCase):
             self.assertEqual(region["countryName"], catalog[country_id], region["id"])
 
         self.assertEqual(
-            len(without_country),
-            1,
-            f"без страны должна остаться ровно одна область, получено {without_country}",
+            without_country,
+            [],
+            "у каждой игровой области обязана быть страна: участки вне стран — "
+            "это пустые пространства, и они вынесены в emptySpaces",
         )
 
         # Каждая страна каталога получила хотя бы одну область: страна без
         # территории означала бы, что связь установлена неверно.
         used = {region["countryId"] for region in self.draft["regions"]} - {None}
         self.assertEqual(used, set(catalog), "не у всех стран каталога есть области")
+
+    def test_empty_spaces_are_listed_and_lie_outside_every_country(self) -> None:
+        """Пустые пространства перечислены отдельно и не попали в области.
+
+        Пустое пространство — вода или иная незанятая площадь вне страновых
+        заливок. Игровой территорией оно не является, поэтому не должно быть
+        среди областей; но и исчезать молча не должно, поэтому перечисляется
+        явно. Здесь проверяется и то и другое.
+        """
+
+        spaces = self.draft["emptySpaces"]
+        self.assertEqual(len(spaces), self.draft["summary"]["emptySpaceCount"])
+        self.assertGreater(len(spaces), 0, "пустые пространства на карте есть")
+
+        countries = json.loads(
+            (ANNOTATIONS_DIR / "vector-map.countries-stations.draft.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        land = unary_union(
+            [
+                Polygon(ring)
+                for country in countries["countries"]
+                for ring in country["contour"]
+            ]
+        )
+
+        region_points = [
+            Point(
+                region["representativePoint"]["x"],
+                region["representativePoint"]["y"],
+            )
+            for region in self.draft["regions"]
+        ]
+
+        for space in spaces:
+            polygon = Polygon(space["exteriorRing"])
+            inside_share = polygon.intersection(land).area / polygon.area
+            self.assertLessEqual(
+                inside_share,
+                0.5,
+                f"{space['id']} обязано лежать вне страновых заливок",
+            )
+            # Ни одна область не должна оказаться внутри пустого пространства:
+            # это означало бы, что вода попала в игровую территорию.
+            for point in region_points:
+                self.assertFalse(
+                    polygon.covers(point),
+                    f"область внутри {space['id']}: пустое пространство стало областью",
+                )
 
     def test_provenance_digests_match_files_on_disk(self) -> None:
         """Происхождение: отпечатки в provenance совпадают с файлами на диске.

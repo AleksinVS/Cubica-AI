@@ -567,6 +567,24 @@ const renderRegions = (regions) => regions.map((region, index) => {
     `<title>${xmlEscape(region.id)} · площадь ${round(region.areaPx2, 0)} px²</title></path>`;
 }).join("\n");
 
+/**
+ * Пустые пространства — вода или иная незанятая площадь вне страновых заливок.
+ * Игровыми областями они не являются, поэтому рисуются отдельным слоем и
+ * заметно иначе: тёмная косая штриховка вместо цветной заливки. Показывать их
+ * обязательно: исключённое из разбиения не должно исчезать с обзора молча.
+ */
+const renderEmptySpaces = (spaces) => spaces.map((space) => {
+  const { x, y } = space.representativePoint;
+  return `    <path class="empty-space" id="${xmlEscape(space.id)}" ` +
+    `data-empty-space-id="${xmlEscape(space.id)}" ` +
+    `d="${ringToPath(space.exteriorRing)}" fill="url(#empty-space-hatch)" ` +
+    `stroke="#1f2937" stroke-width="2.5" stroke-dasharray="10 6">` +
+    `<title>${xmlEscape(space.id)} · пустое пространство, не игровая территория · ` +
+    `площадь ${round(space.areaPx2, 0)} px²</title></path>\n` +
+    `    <text class="empty-space-label" x="${round(x)}" y="${round(y)}" ` +
+    `text-anchor="middle" dominant-baseline="middle">пусто</text>`;
+}).join("\n");
+
 const renderRegionLabels = (regions, threshold) => {
   const labelled = regions.filter((region) => region.areaPx2 >= threshold);
   const rows = labelled.map((region) => {
@@ -646,6 +664,7 @@ const renderDoubts = (doubts, positions) => doubts.map((doubt) => {
 }).join("\n");
 
 const renderLegend = ({
+  emptySpaceCount,
   doubtKindCounts,
   labelledRegionCount,
   totalRegionCount,
@@ -706,6 +725,8 @@ const renderLegend = ({
       <circle cx="3683" cy="387" r="10" />
     </g>
     <text x="3730" y="393" fill="#ffffff" font-size="21">Полустанок (метка "w" + номер) — грузы НЕ принимает</text>
+    <rect x="3672" y="408" width="26" height="16" fill="url(#empty-space-hatch)" stroke="#1f2937" stroke-width="1.5"/>
+    <text x="3730" y="421" fill="#ffffff" font-size="21">Пустое пространство (${emptySpaceCount}) — не игровая территория</text>
 
     <text x="3665" y="${doubtsHeadingY}" fill="#fbbf24" font-size="22" font-weight="700">Сомнения — ${DOUBT_KIND_ORDER.length} видов, ${doubtKindShapeCount} форм (см. ниже)</text>
     <text x="3665" y="${doubtsHeadingY + 25}" fill="#94a3b8" font-size="18">метка "d" + номер, разгадка — в doubts.md</text>
@@ -735,7 +756,7 @@ const buildOverviewSvgDocument = ({
   doubtKindCounts,
   opaqueBackground
 }) => {
-  const { regions, doubts, summary } = regionPartition;
+  const { regions, doubts, summary, emptySpaces } = regionPartition;
   const { countries, stations, waypoints } = countriesStations;
   const positions = computeDoubtRenderPositions(doubts);
   const { count: labelledRegionCount, markup: regionLabelsMarkup } =
@@ -762,15 +783,25 @@ const buildOverviewSvgDocument = ({
     .waypoint circle { fill: #eab308; fill-opacity: 0.92; stroke: #78350f; stroke-width: 2.4; }
     .waypoint text { font-family: sans-serif; font-size: 14px; fill: #78350f; stroke: #ffffff; stroke-width: 3px; paint-order: stroke; font-weight: 700; }
     .doubt text { font-family: sans-serif; font-size: 13px; fill: #111827; stroke: #ffffff; stroke-width: 3px; paint-order: stroke; font-weight: 700; }
+    .empty-space-label { fill: #f8fafc; font-family: sans-serif; font-size: 30px; font-weight: 700; paint-order: stroke; stroke: #111827; stroke-width: 5; }
     .doubt-leader { stroke: #475569; stroke-width: 1.4; stroke-dasharray: 2 3; }
     .doubt-true-point { fill: #111827; stroke: #ffffff; stroke-width: 1; }
     #legend text { fill: #e2e8f0; }
   </style>
+  <defs>
+    <pattern id="empty-space-hatch" width="14" height="14" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="14" height="14" fill="#0f172a" fill-opacity="0.45"/>
+      <line x1="0" y1="0" x2="0" y2="14" stroke="#e2e8f0" stroke-width="3" stroke-opacity="0.5"/>
+    </pattern>
+  </defs>
 ${backgroundRect}  <g id="regions" aria-label="${regions.length} областей разбиения карты">
 ${renderRegions(regions)}
   </g>
   <g id="region-labels" aria-label="Номера областей крупнее порога">
 ${regionLabelsMarkup}
+  </g>
+  <g id="empty-spaces" aria-label="Пустые пространства: не игровая территория">
+${renderEmptySpaces(emptySpaces)}
   </g>
   <g id="country-contours" aria-label="Контуры стран">
 ${renderCountryContours(countries)}
@@ -785,6 +816,7 @@ ${renderWaypoints(waypoints)}
 ${renderDoubts(doubts, positions)}
   </g>
 ${renderLegend({
+    emptySpaceCount: emptySpaces.length,
     doubtKindCounts,
     labelledRegionCount,
     totalRegionCount: regions.length,

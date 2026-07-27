@@ -105,6 +105,11 @@ MICRO_AREA_PX2 = 25.0
 # геометрии линий. Значение не назначено, а измерено по авторскому файлу.
 DOMINANT_STROKE_WIDTH_PX = 6.970
 
+# Доля площади участка, обязанная лежать внутри страновых заливок, чтобы участок
+# считался игровой территорией. Значение измерено: 913 участков лежат внутри
+# более чем на 99%, три — целиком снаружи, промежуточных значений нет.
+EMPTY_SPACE_MAX_INSIDE_SHARE = 0.5
+
 
 def effective_width(polygon: Polygon) -> float:
     """Насколько фигура «толстая»: удвоенная площадь, делённая на периметр.
@@ -373,6 +378,42 @@ def load_country_polygons(path: Path) -> list[Polygon]:
     for country in data.get("countries", []):
         polygons.extend(rings_to_polygons(country.get("contour") or []))
     return polygons
+
+
+def separate_empty_spaces(
+    regions: list[Polygon],
+    countries: list[Polygon],
+    max_inside_share: float = EMPTY_SPACE_MAX_INSIDE_SHARE,
+) -> tuple[list[Polygon], list[Polygon]]:
+    """Отделить пустые пространства от игровых областей.
+
+    Пустое пространство — это вода или иная незанятая площадь: на карте она
+    нарисована гладкой тёмной заливкой без внутреннего деления на области и не
+    принадлежит ни одной стране. Игровой территорией она не является, поэтому
+    областью считаться не должна.
+
+    Признак прямой: игровая территория — это то, что покрыто цветной заливкой
+    какой-либо страны. Участок, лежащий вне всех страновых заливок, к игре не
+    относится.
+
+    Порог измерен, а не назначен: из 919 участков 913 лежат внутри стран более
+    чем на 99%, а три — целиком снаружи; значений между 10% и 99% нет вовсе, то
+    есть полоса, в которой стоит порог, пуста.
+
+    Пустые пространства не отбрасываются молча: они возвращаются отдельным
+    списком и сохраняются в черновике.
+    """
+
+    if not countries:
+        return regions, []
+
+    land = unary_union(countries)
+    playable: list[Polygon] = []
+    empty: list[Polygon] = []
+    for region in regions:
+        inside = region.intersection(land).area / region.area if region.area else 0.0
+        (playable if inside > max_inside_share else empty).append(region)
+    return playable, empty
 
 
 def clip_regions_by_countries(
@@ -1061,6 +1102,13 @@ def main() -> None:
 
     real_paint = [region for region in paint_regions if region.area >= MICRO_AREA_PX2]
     real_center = [region for region in centerline["regions"] if region.area >= MICRO_AREA_PX2]
+
+    # Пустые пространства (вода) исключаются из обоих разбиений до сверки: они
+    # не игровая территория, и их присутствие с одной стороны выглядело бы
+    # расхождением способов, хотя расхождения нет.
+    real_paint, paint_empty = separate_empty_spaces(real_paint, country_polygons)
+    real_center, empty_spaces = separate_empty_spaces(real_center, country_polygons)
+    print(f"пустых пространств исключено: {len(empty_spaces)} по осевым, {len(paint_empty)} по краске")
     comparison = compare_partitions(real_paint, real_center)
     print(f"областей, совпавших один к одному: {comparison['pairCount']}")
     print(f"область краски без пары (слиты «осевыми»): {len(comparison['paintWithoutPair'])}")
@@ -1083,6 +1131,44 @@ def main() -> None:
         for country in countries_data.get("countries", [])
         for polygon in rings_to_polygons(country.get("contour") or [])
     ]
+
+    # Перечень пустых пространств берётся от способа «краска»: он образует их
+    # все как отдельные участки, тогда как способ «осевые» часть из них вовсе не
+    # замыкает в грань. Для каждого отмечается, увидел ли его второй способ.
+    centerline_empty_tree = STRtree(empty_spaces) if empty_spaces else None
+    empty_records = []
+    for order, space in enumerate(stable_region_order(paint_empty), start=1):
+        seen_by_centerline = False
+        if centerline_empty_tree is not None:
+            probe = space.representative_point()
+            seen_by_centerline = any(
+                empty_spaces[int(i)].covers(probe)
+                for i in centerline_empty_tree.query(probe)
+            )
+        min_x, min_y, max_x, max_y = space.bounds
+        point = space.representative_point()
+        empty_records.append(
+            {
+                "id": f"empty-space-{order:04d}",
+                "geometryFingerprint": geometry_fingerprint(space),
+                "areaPx2": _round(space.area),
+                "bounds": {
+                    "minX": _round(min_x),
+                    "minY": _round(min_y),
+                    "maxX": _round(max_x),
+                    "maxY": _round(max_y),
+                },
+                "representativePoint": {"x": _round(point.x), "y": _round(point.y)},
+                "interpretation": (
+                    "пустое пространство: вода или иная незанятая площадь вне "
+                    "всех страновых заливок; игровой территорией не является"
+                ),
+                "foundByBothMethods": seen_by_centerline,
+                "exteriorRing": [
+                    [_round(x), _round(y)] for x, y in space.exterior.coords
+                ],
+            }
+        )
 
     region_records = build_regions(
         real_center,
@@ -1139,6 +1225,12 @@ def main() -> None:
             "runtimeIntegrationAllowed": False,
             "flattenTolerancePx": FLATTEN_TOLERANCE_PX,
             "dominantStrokeWidthPx": DOMINANT_STROKE_WIDTH_PX,
+            "emptySpaceRule": (
+                "Участок, лежащий вне всех страновых заливок, считается пустым "
+                "пространством (водой) и игровой областью не является. Порог "
+                "измерен: 913 участков внутри стран более чем на 99%, три — "
+                "целиком снаружи, промежуточных значений нет."
+            ),
             "sliverRule": (
                 "Участок с действующей шириной меньше толщины основной линии "
                 "карты присоединяется к соседу по самой длинной общей границе. "
@@ -1171,9 +1263,11 @@ def main() -> None:
             "stationCount": len(countries_data.get("stations", [])),
             "waypointCount": len(countries_data.get("waypoints", [])),
             "regionsWithoutCountryCount": len(without_country),
+            "emptySpaceCount": len(empty_records),
             "totalAreaPx2": center_summary["totalAreaPx2"],
         },
         "regions": region_records,
+        "emptySpaces": empty_records,
         "joins": [
             {
                 "candidateId": join["candidateId"],
