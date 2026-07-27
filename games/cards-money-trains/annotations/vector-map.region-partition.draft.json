@@ -61,7 +61,7 @@
     }
   },
   "policy": {
-    "decision": "ADR-097",
+    "decisionRecord": "games/cards-money-trains/annotations/README.md#полное-разбиение-на-области",
     "authoritativeMethod": "centerlines-with-ink-derived-tolerance",
     "verificationMethod": "paint-free-space",
     "semanticAssignmentsConfirmed": false,
