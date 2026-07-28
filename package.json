@@ -54,6 +54,7 @@
     "verify:cards-money-trains-content": "node --test games/cards-money-trains/tools/import-cargo-news.test.mjs games/cards-money-trains/tools/import-country-descriptions.test.mjs && node games/cards-money-trains/tools/import-cargo-news.mjs --check && node games/cards-money-trains/tools/import-country-descriptions.mjs --check",
     "generate:cards-money-trains-vector-review": "node games/cards-money-trains/tools/extract-vector-map-review.mjs",
     "verify:map-annotations": "node --test scripts/map-annotation/map-annotation.test.mjs games/cards-money-trains/tools/map-annotation.test.mjs games/cards-money-trains/tools/extract-vector-map-review.test.mjs",
+    "verify:cards-money-trains-initial-network": "node games/cards-money-trains/tools/measure-author-network-style.mjs --check && node --experimental-strip-types games/cards-money-trains/tools/render-initial-network-check.mjs --check",
     "generate:contracts": "node scripts/manifest-tools/generate-contracts-types.cjs",
     "verify:contracts-schema-parity": "node scripts/ci/validate-contracts-schema-parity.js",
     "verify:contracts-manifest": "npm run typecheck --workspace @cubica/contracts-manifest && npm test --workspace @cubica/contracts-manifest",

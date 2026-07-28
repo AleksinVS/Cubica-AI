@@ -2,11 +2,16 @@
 /**
  * Build the delivery map used by the Cards Money Trains player.
  *
- * The initial railway is permanent game content, so the delivery texture is
- * derived from the author's initial-network PNG. Baking only that immutable
- * layer keeps one GPU texture and exact visual alignment; Phaser still renders
- * new roads and every changing state above it. This is game-owned asset
- * preparation and does not add game semantics to the shared player.
+ * The delivery texture is derived from the author's clean board — the map
+ * with countries, printed station icons and half-stop marks, but without any
+ * railway. The transport network is not part of the picture: roads open,
+ * close and get split during a session, so the player draws all of them from
+ * runtime-owned data, in the author's own rails-and-sleepers style (see
+ * `plugins/cards-money-trains-player/src/author-network-style.ts`). Earlier
+ * this tool baked the author's initial-network image instead; that made the
+ * ten initial roads immutable pixels, which had to be painted over whenever
+ * their state changed. This is game-owned asset preparation and does not add
+ * game semantics to the shared player.
  *
  * `asset-provenance.json` is a registry (a list of records), not a single
  * flat record: it also tracks author source materials that this tool never
@@ -32,11 +37,11 @@ import sharp from "sharp";
 const TOOL_ROOT = path.dirname(fileURLToPath(import.meta.url));
 const GAME_ROOT = path.resolve(TOOL_ROOT, "..");
 const REPO_ROOT = path.resolve(GAME_ROOT, "..", "..");
-const SOURCE_PATH = path.join(REPO_ROOT, "draft", "trains", "Начальная транспортная сеть.png");
+const SOURCE_PATH = path.join(REPO_ROOT, "draft", "trains", "Игровая Карта.png");
 const TARGET_PATH = path.join(GAME_ROOT, "assets", "images", "guinea-map.webp");
 const PROVENANCE_PATH = path.join(GAME_ROOT, "asset-provenance.json");
 // Stable id of this tool's own record inside the asset-provenance.json
-// registry (see games/cards-money-trains/asset-provenance.schema.json).
+// registry (see docs/architecture/schemas/asset-provenance.schema.json).
 const PROVENANCE_ENTRY_ID = "board-guinea-optimized";
 const CHECK = process.argv.slice(2).includes("--check");
 const UNKNOWN_ARGS = process.argv.slice(2).filter((argument) => argument !== "--check");
@@ -89,7 +94,7 @@ const nextEntry = {
   sha256: sha256(deliveryBytes),
   derivedFrom: {
     source: {
-      path: "draft/trains/Начальная транспортная сеть.png",
+      path: "draft/trains/Игровая Карта.png",
       root: "repo",
       contentType: "image/png",
       width: sourceMetadata.width,

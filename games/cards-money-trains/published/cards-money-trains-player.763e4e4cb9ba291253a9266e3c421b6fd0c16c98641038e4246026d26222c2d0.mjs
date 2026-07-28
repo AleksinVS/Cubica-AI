@@ -54,6 +54,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.createCardsMoneyTrainsScene = void 0;
 const plugin_api_1 = __pluginRequire("@cubica/player-web/plugin-api");
 const accessible_actions_ts_1 = __pluginRequire("src/accessible-actions.ts");
+const author_network_style_ts_1 = __pluginRequire("src/author-network-style.ts");
 const camera_math_ts_1 = __pluginRequire("src/camera-math.ts");
 const board_state_ts_1 = __pluginRequire("src/board-state.ts");
 const board_transition_ts_1 = __pluginRequire("src/board-transition.ts");
@@ -87,42 +88,20 @@ const AUTHOR_BASE_NODE_IDS = new Set([
     "terminal-3-14",
     "waypoint-9-3-4"
 ]);
-const AUTHOR_INITIAL_EDGE_IDS = new Set([
-    "road-1-2",
-    "road-1-9",
-    "road-2-3-14",
-    "road-3-3-14",
-    "road-4-7",
-    "road-5-6",
-    "road-6-7",
-    "road-6-waypoint-9-3-4",
-    "road-8-waypoint-9-3-4",
-    "road-9-waypoint-9-3-4"
-]);
-const AUTHOR_INITIAL_CONNECTED_NODE_IDS = new Set([
-    "terminal-1",
-    "terminal-2",
-    "terminal-3",
-    "terminal-4",
-    "terminal-5",
-    "terminal-6",
-    "terminal-7",
-    "terminal-8",
-    "terminal-9",
-    "terminal-3-14",
-    "waypoint-9-3-4"
-]);
 // The author board uses a restrained printed palette. Network state must stay
-// legible without turning the warm map into a generic technical graph.
-const TRACK_OPEN_COLOR = 0x4f3026;
+// legible without turning the warm map into a generic technical graph. The
+// open colours are measured from the author's own drawing of the initial
+// network; see `author-network-style.ts`.
+const TRACK_OPEN_COLOR = author_network_style_ts_1.AUTHOR_TRACK_INK;
 const TRACK_BLOCKED_COLOR = 0xb6403b;
 const TRACK_BUILDING_COLOR = 0xb77a22;
 const TRACK_SELECTED_COLOR = 0x16865a;
-const TERMINAL_CONNECTED_COLOR = 0x3f6e40;
+const TERMINAL_CONNECTED_COLOR = author_network_style_ts_1.AUTHOR_STATION_GREEN;
 const TERMINAL_BLOCKED_COLOR = 0xb6403b;
 const TERMINAL_BUILDING_COLOR = 0xb77a22;
-const TERMINAL_INNER_COLOR = 0xf1ead7;
-const TERMINAL_OUTLINE_COLOR = 0x6b533f;
+const TERMINAL_INNER_COLOR = author_network_style_ts_1.AUTHOR_STATION_DISC;
+/** Phaser text styles take a CSS colour, while shapes take a number. */
+const cssColor = (value) => `#${value.toString(16).padStart(6, "0")}`;
 const edgeColor = (edge) => {
     if (edge.visualState === "blocked")
         return TRACK_BLOCKED_COLOR;
@@ -131,13 +110,7 @@ const edgeColor = (edge) => {
     return TRACK_OPEN_COLOR;
 };
 /** Reduce long manifest labels to the short marks printed on the board. */
-const nodePresentationLabel = (node) => {
-    if (node.id === "terminal-3-14")
-        return "π";
-    if (node.id === "waypoint-9-3-4")
-        return "9¾";
-    return node.label;
-};
+const nodePresentationLabel = (node) => (0, author_network_style_ts_1.printedNodeLabel)(node.id, node.label);
 /** Choose a state colour without inferring whether the move itself is legal. */
 const nodeMarkerColor = (node) => {
     if (node.visualState === "blocked")
@@ -1717,8 +1690,6 @@ const createCardsMoneyTrainsScene = (context) => {
                 const highlight = edgeHighlights.get(edge.id);
                 const selected = selectedEdgeId === edge.id;
                 const trackColor = selected || highlight ? TRACK_SELECTED_COLOR : edgeColor(edge);
-                const isBakedOpenAuthorEdge = AUTHOR_INITIAL_EDGE_IDS.has(edge.id)
-                    && edge.visualState === "open";
                 if (selected || highlight) {
                     // A translucent halo preserves the railway texture while making the
                     // complete selectable route visible against country boundaries.
@@ -1730,20 +1701,7 @@ const createCardsMoneyTrainsScene = (context) => {
                             graphics.lineBetween(from.x, from.y, to.x, to.y);
                     }
                 }
-                if (!isBakedOpenAuthorEdge || selected || highlight) {
-                    if (AUTHOR_INITIAL_EDGE_IDS.has(edge.id) && edge.visualState === "blocked") {
-                        // Fully cover the immutable brown author track before painting its
-                        // blocked state; otherwise a few antialiased pixels remain visible.
-                        graphics.lineStyle(38, TRACK_BLOCKED_COLOR, 0.86);
-                        for (let index = 1; index < points.length; index += 1) {
-                            const from = points[index - 1];
-                            const to = points[index];
-                            if (from && to)
-                                graphics.lineBetween(from.x, from.y, to.x, to.y);
-                        }
-                    }
-                    this.drawRailwayPolyline(graphics, points, trackColor);
-                }
+                this.drawRailwayPolyline(graphics, points, trackColor);
                 for (let index = 1; index < points.length; index += 1) {
                     const from = points[index - 1];
                     const to = points[index];
@@ -1751,10 +1709,12 @@ const createCardsMoneyTrainsScene = (context) => {
                         continue;
                     const length = Phaser.Math.Distance.Between(from.x, from.y, to.x, to.y);
                     // A repeated portal is harmless route data but cannot form a useful
-                    // line or hit target, so it is intentionally skipped.
+                    // hit target, so it is intentionally skipped. Nothing is drawn here:
+                    // the visible road is exactly the rails and sleepers painted above,
+                    // and a stroke along the centre line would fill the gap between the
+                    // rails that the author's drawing keeps open.
                     if (length === 0)
                         continue;
-                    graphics.lineBetween(from.x, from.y, to.x, to.y);
                     if (!canSelectWaypoint && !highlight?.actionId && !canTraverse)
                         continue;
                     const zoneKey = `${edge.id}\u0000${index}`;
@@ -1812,61 +1772,33 @@ const createCardsMoneyTrainsScene = (context) => {
             }
         }
         /**
-         * Draw a dynamic road with the same rails-and-sleepers language as the
-         * author artwork.
+         * Draw a road with the author's own rails-and-sleepers language.
          *
-         * Only the immutable author network is baked into the source texture.
-         * Roads created, closed or split during a session must still be rendered
-         * from runtime-owned polylines so the picture never becomes the source of
-         * gameplay truth.
+         * The delivery map carries no railway at all, so this is the only place a
+         * road becomes visible: the ten roads of the author's initial network and
+         * every road created, closed or split during a session are painted the
+         * same way, from runtime-owned polylines. The picture therefore never
+         * becomes the source of gameplay truth, and a closed road simply stops
+         * being drawn instead of being covered up.
+         *
+         * The shapes come from the shared measured style module, which the
+         * offline check tool draws with as well.
          */
         drawRailwayPolyline(graphics, points, color) {
-            const railOffset = 9.5;
-            const sleeperHalfLength = 17;
-            const sleeperSpacing = 18;
-            // Sleepers sit below both rails, matching the printed track motif.
-            graphics.lineStyle(7, color, 0.92);
-            let traversedLength = 0;
-            let nextSleeperDistance = sleeperSpacing / 2;
-            for (let index = 1; index < points.length; index += 1) {
-                const from = points[index - 1];
-                const to = points[index];
-                if (!from || !to)
-                    continue;
-                const dx = to.x - from.x;
-                const dy = to.y - from.y;
-                const length = Math.hypot(dx, dy);
-                if (length === 0)
-                    continue;
-                const normalX = -dy / length;
-                const normalY = dx / length;
-                // One accumulated distance keeps the printed rhythm continuous across
-                // technical route-plan vertices instead of restarting it per segment.
-                while (nextSleeperDistance < traversedLength + length) {
-                    const distance = nextSleeperDistance - traversedLength;
-                    const centreX = from.x + (dx * distance) / length;
-                    const centreY = from.y + (dy * distance) / length;
-                    graphics.lineBetween(centreX - normalX * sleeperHalfLength, centreY - normalY * sleeperHalfLength, centreX + normalX * sleeperHalfLength, centreY + normalY * sleeperHalfLength);
-                    nextSleeperDistance += sleeperSpacing;
-                }
-                traversedLength += length;
+            const shapes = (0, author_network_style_ts_1.railwayTrackShapes)(points);
+            // Sleepers sit under both rails, matching the printed track motif.
+            graphics.lineStyle(author_network_style_ts_1.AUTHOR_TRACK_STYLE.sleeperWidth, color, 1);
+            for (const sleeper of shapes.sleepers) {
+                graphics.lineBetween(sleeper.from.x, sleeper.from.y, sleeper.to.x, sleeper.to.y);
             }
             // Two continuous rails make bends and multi-region polylines readable.
-            graphics.lineStyle(7, color, 0.98);
-            for (const offset of [-railOffset, railOffset]) {
-                for (let index = 1; index < points.length; index += 1) {
-                    const from = points[index - 1];
-                    const to = points[index];
-                    if (!from || !to)
-                        continue;
-                    const dx = to.x - from.x;
-                    const dy = to.y - from.y;
-                    const length = Math.hypot(dx, dy);
-                    if (length === 0)
-                        continue;
-                    const normalX = -dy / length;
-                    const normalY = dx / length;
-                    graphics.lineBetween(from.x + normalX * offset, from.y + normalY * offset, to.x + normalX * offset, to.y + normalY * offset);
+            graphics.lineStyle(author_network_style_ts_1.AUTHOR_TRACK_STYLE.railWidth, color, 1);
+            for (const rail of shapes.rails) {
+                for (let index = 1; index < rail.length; index += 1) {
+                    const from = rail[index - 1];
+                    const to = rail[index];
+                    if (from && to)
+                        graphics.lineBetween(from.x, from.y, to.x, to.y);
                 }
             }
         }
@@ -1901,9 +1833,12 @@ const createCardsMoneyTrainsScene = (context) => {
                 const selected = selectedNodeIds.has(node.id);
                 const isConnected = connectedNodeIds.has(node.id);
                 const isAuthorBaseNode = AUTHOR_BASE_NODE_IDS.has(node.id);
-                const isBakedInitialConnectedNode = AUTHOR_INITIAL_CONNECTED_NODE_IDS.has(node.id)
-                    && node.visualState === "open";
-                const shouldPaintMarker = (isConnected && !isBakedInitialConnectedNode)
+                // An author station that no road reaches yet keeps the neutral grey
+                // symbol already printed on the map; painting a marker over it would
+                // announce a connection the network does not have. Every other case —
+                // a station on the network, a changed state, a selection, or a point
+                // created during the session — is painted from runtime data.
+                const shouldPaintMarker = isConnected
                     || node.visualState !== "open"
                     || selected
                     || Boolean(highlight)
@@ -1917,10 +1852,10 @@ const createCardsMoneyTrainsScene = (context) => {
                 let label = this.nodeLabels.get(node.id);
                 if (!label) {
                     label = this.add.text(0, 0, "", {
-                        color: "#594335",
+                        color: cssColor(author_network_style_ts_1.AUTHOR_STATION_LABEL_INK),
                         fontFamily: "Georgia, serif",
                         fontStyle: "bold",
-                        fontSize: "42px",
+                        fontSize: `${author_network_style_ts_1.AUTHOR_STATION_LABEL_SIZE}px`,
                         align: "center"
                     }).setOrigin(0.5);
                     semanticLayer.add(label);
@@ -1930,13 +1865,15 @@ const createCardsMoneyTrainsScene = (context) => {
                 label
                     .setPosition(position.x, position.y + 1)
                     .setVisible(shouldPaintMarker)
+                    // A single printed digit is measured directly from the author board;
+                    // longer marks are shrunk proportionally so they still fit the disc.
                     .setFontSize(node.objectType === "transport.waypoint"
-                    ? 25
+                    ? Math.round(author_network_style_ts_1.AUTHOR_STATION_LABEL_SIZE * 0.6)
                     : presentationLabel.length > 2
-                        ? 27
+                        ? Math.round(author_network_style_ts_1.AUTHOR_STATION_LABEL_SIZE * 0.64)
                         : presentationLabel.length === 2
-                            ? 35
-                            : 42);
+                            ? Math.round(author_network_style_ts_1.AUTHOR_STATION_LABEL_SIZE * 0.83)
+                            : author_network_style_ts_1.AUTHOR_STATION_LABEL_SIZE);
                 if (label.text !== presentationLabel)
                     label.setText(presentationLabel);
                 if (canSelectRoad || highlight?.actionId || hasCountryInformation) {
@@ -2011,43 +1948,26 @@ const createCardsMoneyTrainsScene = (context) => {
                 graphics.strokeCircle(position.x, position.y, 61);
             }
             if (node.objectType === "transport.waypoint" || node.id === "terminal-3-14") {
+                // A half-stop is a plain disc on the author board, without a ring.
                 graphics.fillStyle(color, 1);
-                graphics.lineStyle(3, TERMINAL_OUTLINE_COLOR, 0.9);
-                graphics.fillCircle(position.x, position.y, 30);
-                graphics.strokeCircle(position.x, position.y, 30);
+                graphics.fillCircle(position.x, position.y, author_network_style_ts_1.AUTHOR_STATION_STYLE.waypointRadius);
                 return;
             }
-            const teeth = 12;
-            const rootRadius = 48;
-            const outerRadius = 57;
-            const step = (Math.PI * 2) / teeth;
+            const outline = (0, author_network_style_ts_1.stationGearOutline)(position);
             graphics.beginPath();
-            for (let tooth = 0; tooth < teeth; tooth += 1) {
-                const base = tooth * step - Math.PI / 2;
-                const vertices = [
-                    { angle: base, radius: rootRadius },
-                    { angle: base + step * 0.18, radius: outerRadius },
-                    { angle: base + step * 0.58, radius: outerRadius },
-                    { angle: base + step * 0.78, radius: rootRadius }
-                ];
-                for (const vertex of vertices) {
-                    const x = position.x + Math.cos(vertex.angle) * vertex.radius;
-                    const y = position.y + Math.sin(vertex.angle) * vertex.radius;
-                    if (tooth === 0 && vertex === vertices[0])
-                        graphics.moveTo(x, y);
-                    else
-                        graphics.lineTo(x, y);
-                }
-            }
+            outline.forEach((vertex, index) => {
+                if (index === 0)
+                    graphics.moveTo(vertex.x, vertex.y);
+                else
+                    graphics.lineTo(vertex.x, vertex.y);
+            });
             graphics.closePath();
             graphics.fillStyle(color, 1);
             graphics.fillPath();
-            graphics.lineStyle(3, TERMINAL_OUTLINE_COLOR, 0.82);
-            graphics.strokePath();
+            // The light disc carries the printed number; on the author board it has
+            // no outline of its own, the gear ring around it provides the edge.
             graphics.fillStyle(TERMINAL_INNER_COLOR, 1);
-            graphics.lineStyle(3, TERMINAL_OUTLINE_COLOR, 0.72);
-            graphics.fillCircle(position.x, position.y, 31);
-            graphics.strokeCircle(position.x, position.y, 31);
+            graphics.fillCircle(position.x, position.y, author_network_style_ts_1.AUTHOR_STATION_STYLE.discRadius);
         }
         /** Open immutable country content without dispatching a runtime command. */
         showCountryInformation(countryId) {
@@ -4143,6 +4063,202 @@ function teamMarkerColor(colorId, fallback) {
 }
 /** Exposed only to focused tests that prove every accepted setup id is mapped. */
 exports.TEAM_MARKER_COLOR_IDS = Object.freeze(Object.keys(TEAM_MARKER_COLORS));
+
+});
+__pluginDefine("src/author-network-style.ts", (exports, module) => {
+"use strict";
+/**
+ * Visual language of the author's transport network: rails, sleepers and
+ * station marks.
+ *
+ * Why this module exists. The delivery map is the clean author board
+ * (`draft/trains/Игровая Карта.png`): it carries countries, the printed grey
+ * station icons and the two half-stop marks, but no railway. The whole
+ * transport network — the ten roads the author drew for the first turn and
+ * every road built, closed or split later — is painted by the player from
+ * runtime-owned data. The picture therefore never becomes the source of
+ * gameplay truth, and a closed road disappears instead of being covered up.
+ *
+ * Because the network is now drawn rather than baked, its appearance has to
+ * reproduce the author's own drawing. Every number below is *measured* from
+ * the author's reference image `draft/trains/Начальная транспортная сеть.png`
+ * in canonical design pixels (the 5079×3627 plane shared by the manifest, the
+ * review annotations and this renderer), not chosen by eye:
+ *
+ * - road 6 ↔ 9¾ is exactly horizontal on the reference, so a vertical cut
+ *   across it measures the two rails directly: their centres are 18.6 px
+ *   apart and each rail is 5.1 px wide at half depth of colour;
+ * - scanning along the same road, the sleepers form a regular rhythm with a
+ *   17.5 px step; each sleeper is 4 px thick and 27.6 px long, so it
+ *   protrudes slightly past both rails, exactly as on the printed board;
+ * - the ink of the rails is the average colour of the darkest fifth of the
+ *   rail pixels, #553418;
+ * - the connected station mark is a ten-tooth gear: teeth tips at radius
+ *   58.8, tooth roots at 48.8, a light inner disc of radius 33.3; its green is
+ *   the median colour of the ring, #427246, and the disc is #d8cab6;
+ * - the two half-stops (9¾ and π) are plain discs of radius 30 in the same
+ *   green.
+ *
+ * The measurement is reproducible: `tools/measure-author-network-style.mjs`
+ * re-derives every value from the reference image and compares it with the
+ * table below, and `tools/render-initial-network-check.mjs` redraws the whole
+ * initial network with these very shapes and compares the result with the
+ * author's image pixel by pixel.
+ *
+ * The module is deliberately pure geometry: it returns plain point lists and
+ * never touches Phaser. The scene draws the shapes on the GPU, the check tool
+ * writes the same shapes into SVG, so the picture that is verified offline is
+ * the picture the player shows.
+ */
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.stationGearOutline = exports.railwayTrackShapes = exports.printedNodeLabel = exports.AUTHOR_STATION_LABEL_SIZE = exports.AUTHOR_STATION_LABEL_INK = exports.AUTHOR_STATION_DISC = exports.AUTHOR_STATION_GREEN = exports.AUTHOR_TRACK_INK = exports.AUTHOR_STATION_STYLE = exports.AUTHOR_TRACK_STYLE = void 0;
+exports.AUTHOR_TRACK_STYLE = {
+    railOffset: 9.3,
+    railWidth: 5.1,
+    sleeperWidth: 4,
+    sleeperHalfLength: 13.8,
+    sleeperSpacing: 17.5
+};
+exports.AUTHOR_STATION_STYLE = {
+    teeth: 10,
+    rootRadius: 48.8,
+    tipRadius: 58.8,
+    discRadius: 33.3,
+    waypointRadius: 30
+};
+/** Ink of the rails and sleepers on the author board. */
+exports.AUTHOR_TRACK_INK = 0x553418;
+/** Green of a station that is part of the open network. */
+exports.AUTHOR_STATION_GREEN = 0x427246;
+/** Light disc under the printed station number. */
+exports.AUTHOR_STATION_DISC = 0xd8cab6;
+/** Ink of the printed station number. */
+exports.AUTHOR_STATION_LABEL_INK = 0x685642;
+/**
+ * Height of a printed digit, measured on station 6. A Georgia-like serif face
+ * renders a digit at roughly 0.72 of its font size, which puts the font size
+ * at 46 px.
+ */
+exports.AUTHOR_STATION_LABEL_SIZE = 46;
+/**
+ * The short mark printed inside a station on the author board.
+ *
+ * Two points carry a printed sign rather than a number, and the manifest
+ * spells their identifiers out in full. The board shows the signs themselves,
+ * so the renderer and the offline check share this one mapping.
+ */
+const printedNodeLabel = (nodeId, label) => {
+    if (nodeId === "terminal-3-14")
+        return "π";
+    if (nodeId === "waypoint-9-3-4")
+        return "9¾";
+    return label;
+};
+exports.printedNodeLabel = printedNodeLabel;
+/**
+ * Build the rails and sleepers of a track that follows `centreLine`.
+ *
+ * The sleeper rhythm is accumulated over the whole polyline instead of being
+ * restarted at every vertex: a road planned through several map regions has
+ * technical vertices that carry no visual meaning, and restarting the rhythm
+ * there would produce a visible stutter that the author's drawing does not
+ * have.
+ *
+ * Repeated points (a legal but empty piece of route data) are skipped rather
+ * than treated as a zero-length segment, which would divide by zero.
+ */
+const railwayTrackShapes = (centreLine, style = exports.AUTHOR_TRACK_STYLE) => {
+    const rails = [[], []];
+    const sleepers = [];
+    let traversedLength = 0;
+    // The first sleeper sits half a step in, so a short road still shows the
+    // rhythm symmetrically instead of starting with a tie at the station edge.
+    let nextSleeperDistance = style.sleeperSpacing / 2;
+    for (let index = 1; index < centreLine.length; index += 1) {
+        const from = centreLine[index - 1];
+        const to = centreLine[index];
+        if (!from || !to)
+            continue;
+        const dx = to.x - from.x;
+        const dy = to.y - from.y;
+        const length = Math.hypot(dx, dy);
+        if (length === 0)
+            continue;
+        // Unit normal (perpendicular) of this segment: it offsets the rails and
+        // orients every sleeper across the track.
+        const normalX = -dy / length;
+        const normalY = dx / length;
+        // Both ends of every segment are kept, so a bend joins the two offset
+        // pieces with a short link instead of leaving a notch in the rail. On a
+        // straight author road the link has zero length and changes nothing.
+        rails.forEach((rail, railIndex) => {
+            const offset = railIndex === 0 ? -style.railOffset : style.railOffset;
+            rail.push({
+                x: from.x + normalX * offset,
+                y: from.y + normalY * offset
+            });
+            rail.push({
+                x: to.x + normalX * offset,
+                y: to.y + normalY * offset
+            });
+        });
+        while (nextSleeperDistance < traversedLength + length) {
+            const distance = nextSleeperDistance - traversedLength;
+            const centreX = from.x + (dx * distance) / length;
+            const centreY = from.y + (dy * distance) / length;
+            sleepers.push({
+                from: {
+                    x: centreX - normalX * style.sleeperHalfLength,
+                    y: centreY - normalY * style.sleeperHalfLength
+                },
+                to: {
+                    x: centreX + normalX * style.sleeperHalfLength,
+                    y: centreY + normalY * style.sleeperHalfLength
+                }
+            });
+            nextSleeperDistance += style.sleeperSpacing;
+        }
+        traversedLength += length;
+    }
+    return { rails, sleepers };
+};
+exports.railwayTrackShapes = railwayTrackShapes;
+/**
+ * Outline of a terminal gear mark centred at `centre`.
+ *
+ * Each tooth is symmetric around its own centre: it leaves the root radius,
+ * holds the tip radius across the middle, and returns to the root before the
+ * gap that separates it from the next tooth. The proportions repeat the
+ * printed icon — at half the tooth height the metal takes a little more than
+ * half of the circle, which is what the reference measures.
+ *
+ * The teeth are not placed at an arbitrary angle. On the author board a tooth
+ * points straight up, which the measurement confirms on every station mark
+ * (the angular rhythm of the green ring has its peak exactly there). Getting
+ * this wrong is visible: the drawn mark sits on top of the grey icon printed
+ * on the map, and a shifted tooth lets the grey one show through the gaps.
+ */
+const stationGearOutline = (centre, style = exports.AUTHOR_STATION_STYLE) => {
+    const outline = [];
+    const step = (Math.PI * 2) / style.teeth;
+    for (let tooth = 0; tooth < style.teeth; tooth += 1) {
+        const toothCentre = tooth * step - Math.PI / 2;
+        const vertices = [
+            { angle: toothCentre - step * 0.39, radius: style.rootRadius },
+            { angle: toothCentre - step * 0.2, radius: style.tipRadius },
+            { angle: toothCentre + step * 0.2, radius: style.tipRadius },
+            { angle: toothCentre + step * 0.39, radius: style.rootRadius }
+        ];
+        for (const vertex of vertices) {
+            outline.push({
+                x: centre.x + Math.cos(vertex.angle) * vertex.radius,
+                y: centre.y + Math.sin(vertex.angle) * vertex.radius
+            });
+        }
+    }
+    return outline;
+};
+exports.stationGearOutline = stationGearOutline;
 
 });
 __pluginDefine("src/camera-math.ts", (exports, module) => {

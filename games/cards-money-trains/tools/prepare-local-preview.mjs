@@ -237,7 +237,10 @@ async function openPreviewBrowser({ playerUrl, contentSourceId }) {
   previewUrl.searchParams.set("preview", "1");
   previewUrl.searchParams.set("sessionId", session.sessionId);
   previewUrl.searchParams.set("contentSourceId", contentSourceId);
-  await page.goto(previewUrl, { waitUntil: "domcontentloaded" });
+  // Playwright accepts only a string here; a URL object fails the argument
+  // check and would abort the launch after the session has already been
+  // created, leaving a live session with no window attached to it.
+  await page.goto(previewUrl.toString(), { waitUntil: "domcontentloaded" });
   console.log(`Preview opened: ${previewUrl}`);
   console.log("Close the browser window or press Ctrl+C in this terminal to stop the preview browser.");
   await new Promise((resolve) => browser.once("disconnected", resolve));

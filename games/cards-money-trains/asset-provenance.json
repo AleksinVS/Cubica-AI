@@ -1,5 +1,5 @@
 {
-  "$schema": "asset-provenance.schema.json",
+  "$schema": "../../docs/architecture/schemas/asset-provenance.schema.json",
   "schemaVersion": "1.0",
   "gameId": "cards-money-trains",
   "locationNotice": "Место хранения авторских первоисточников (сейчас каталог draft/ в корне репозитория) пересматривается задачей TSK-20260726-source-materials-governance: draft/ признан непригодным для промышленной среды. Пути в этом реестре указывают на действующее расположение и подлежат обновлению по итогам той задачи; переносить файлы заранее не следует.",
@@ -12,17 +12,17 @@
       "contentType": "image/webp",
       "width": 2560,
       "height": 1828,
-      "byteSize": 314026,
-      "sha256": "04bdd854c0980dc637497accffa62af77f781b76fb8943b12fcdc736fc9ae471",
+      "byteSize": 306808,
+      "sha256": "c6c52f27b348e4f2d56fb936227518921da98542ce3bf69794abf6fdf58480be",
       "derivedFrom": {
         "source": {
-          "path": "draft/trains/Начальная транспортная сеть.png",
+          "path": "draft/trains/Игровая Карта.png",
           "root": "repo",
           "contentType": "image/png",
           "width": 5079,
           "height": 3627,
-          "byteSize": 6715420,
-          "sha256": "e6460c1fccbf2f3b520c81b1fdc3bd26fb7d78a881889d56fb5712c5b19e2b1b"
+          "byteSize": 5051693,
+          "sha256": "2059ed6f429667da7d51f96a9f447c5f5a286980abc70ebb0ea979f451376e1b"
         },
         "transform": {
           "tool": "sharp",
@@ -99,7 +99,7 @@
         ],
         "confirmedBy": "PM",
         "confirmedAt": "2026-07-26",
-        "note": "PM подтвердил 2026-07-26 то же разрешение на использование для этого растрового файла. Файл — первоисточник канонической системы координат карты (5079×3627 пикселей design-pixel), на который ссылаются проверочные отчёты (annotations/vector-map.review.json как backgroundImage, а также отчёты о топологии и полигонализации через калибровку affine-least-squares в координатное пространство canonical-map-pixels)."
+        "note": "PM подтвердил 2026-07-26 то же разрешение на использование для этого растрового файла. Файл — первоисточник канонической системы координат карты (5079×3627 пикселей design-pixel), на который ссылаются проверочные отчёты (annotations/vector-map.review.json как backgroundImage, а также отчёты о топологии и полигонализации через калибровку affine-least-squares в координатное пространство canonical-map-pixels). С 2026-07-27 этот же файл — источник поставочной подложки board-guinea-optimized: подложка перестала содержать нарисованную транспортную сеть, и игрок рисует сеть целиком по данным."
       }
     }
   ]

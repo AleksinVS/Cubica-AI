@@ -1,0 +1,136 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cubica.platform/schemas/cards-money-trains/initial-network.track-style.schema.json",
+  "title": "Измерение авторского рисунка транспортной сети",
+  "description": "Форма записи измерения, которую строит games/cards-money-trains/tools/measure-author-network-style.mjs. Запись описывает, как выглядит дорога и значок станции на авторском изображении начальной сети, и служит обоснованием постоянных величин отрисовки в plugins/cards-money-trains-player/src/author-network-style.ts. Это измерение, а не игровое содержимое: публиковать его нельзя.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schemaVersion",
+    "status",
+    "publishable",
+    "warning",
+    "source",
+    "coordinateSystem",
+    "method",
+    "track",
+    "station"
+  ],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "const": "1.0" },
+    "status": { "const": "measurement" },
+    "publishable": {
+      "const": false,
+      "description": "Запись описывает авторский рисунок, а не игровое содержимое, и никогда не попадает в публикуемый пакет."
+    },
+    "warning": { "type": "string", "minLength": 1 },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "root", "width", "height", "sha256"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "root": { "const": "repo" },
+        "width": { "const": 5079 },
+        "height": { "const": 3627 },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      }
+    },
+    "coordinateSystem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["origin", "units", "width", "height"],
+      "properties": {
+        "origin": { "const": "top-left" },
+        "units": { "const": "design-pixel" },
+        "width": { "const": 5079 },
+        "height": { "const": 3627 }
+      }
+    },
+    "method": {
+      "type": "object",
+      "description": "Как получено каждое семейство величин. Текст предназначен человеку, который проверяет запись, не открывая исходный код инструмента.",
+      "additionalProperties": false,
+      "required": ["horizontalRoad", "strokeWidth", "ink", "stationMark"],
+      "properties": {
+        "horizontalRoad": { "type": "string", "minLength": 1 },
+        "strokeWidth": { "type": "string", "minLength": 1 },
+        "ink": { "type": "string", "minLength": 1 },
+        "stationMark": { "type": "string", "minLength": 1 }
+      }
+    },
+    "track": {
+      "type": "object",
+      "description": "Размеры одной дороги в канонических точках изображения.",
+      "additionalProperties": false,
+      "required": [
+        "railGaugePx",
+        "railOffsetPx",
+        "railWidthPx",
+        "sleeperSpacingPx",
+        "sleeperWidthPx",
+        "sleeperLengthPx",
+        "sleeperHalfLengthPx",
+        "inkHex",
+        "sampledSleepers",
+        "sampledRailColumns"
+      ],
+      "properties": {
+        "railGaugePx": { "type": "number", "exclusiveMinimum": 0 },
+        "railOffsetPx": { "type": "number", "exclusiveMinimum": 0 },
+        "railWidthPx": { "type": "number", "exclusiveMinimum": 0 },
+        "sleeperSpacingPx": { "type": "number", "exclusiveMinimum": 0 },
+        "sleeperWidthPx": { "type": "number", "exclusiveMinimum": 0 },
+        "sleeperLengthPx": { "type": "number", "exclusiveMinimum": 0 },
+        "sleeperHalfLengthPx": { "type": "number", "exclusiveMinimum": 0 },
+        "inkHex": { "type": "string", "pattern": "^#[0-9a-f]{6}$" },
+        "sampledSleepers": {
+          "type": "integer",
+          "minimum": 5,
+          "description": "Сколько шпал участвовало в измерении шага; меньшее число означало бы, что измерение опирается на случайный участок."
+        },
+        "sampledRailColumns": {
+          "type": "integer",
+          "minimum": 50,
+          "description": "Сколько поперечных разрезов дороги участвовало в измерении рельсов."
+        }
+      }
+    },
+    "station": {
+      "type": "object",
+      "description": "Размеры значка станции и полустанка в канонических точках изображения.",
+      "additionalProperties": false,
+      "required": [
+        "teeth",
+        "toothUpwardOffsetDeg",
+        "tipRadiusPx",
+        "rootRadiusPx",
+        "discRadiusPx",
+        "waypointRadiusPx",
+        "greenHex",
+        "discHex",
+        "labelInkHex",
+        "labelCapHeightPx"
+      ],
+      "properties": {
+        "teeth": { "type": "integer", "minimum": 6, "maximum": 20 },
+        "toothUpwardOffsetDeg": {
+          "type": "number",
+          "minimum": -18,
+          "maximum": 18,
+          "description": "Угол между ближайшим центром зуба и вертикалью. Ноль означает, что зуб смотрит строго вверх, как и рисует игрок."
+        },
+        "tipRadiusPx": { "type": "number", "exclusiveMinimum": 0 },
+        "rootRadiusPx": { "type": "number", "exclusiveMinimum": 0 },
+        "discRadiusPx": { "type": "number", "exclusiveMinimum": 0 },
+        "waypointRadiusPx": { "type": "number", "exclusiveMinimum": 0 },
+        "greenHex": { "type": "string", "pattern": "^#[0-9a-f]{6}$" },
+        "discHex": { "type": "string", "pattern": "^#[0-9a-f]{6}$" },
+        "labelInkHex": { "type": "string", "pattern": "^#[0-9a-f]{6}$" },
+        "labelCapHeightPx": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    }
+  }
+}

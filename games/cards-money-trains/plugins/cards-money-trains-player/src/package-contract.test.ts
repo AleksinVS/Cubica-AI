@@ -217,7 +217,11 @@ test("ADR-063 registry stays minimal while provenance verifies the optimized der
   const provenance = readJson("../../../asset-provenance.json");
   const assets = registry.assets as Array<Record<string, unknown>>;
   const asset = assets[0];
-  const delivery = provenance.delivery as Record<string, unknown>;
+  // Provenance is a registry of records: the delivery asset is one entry among
+  // the author source materials, and it is found by its stable id.
+  const entries = provenance.entries as Array<Record<string, unknown>>;
+  const delivery = entries.find((entry) => entry.id === "board-guinea-optimized");
+  const rights = delivery?.rights as Record<string, unknown>;
   const image = readFileSync(new URL("../../../assets/images/guinea-map.webp", import.meta.url));
   const digest = createHash("sha256").update(image).digest("hex");
 
@@ -225,10 +229,10 @@ test("ADR-063 registry stays minimal while provenance verifies the optimized der
   assert.deepEqual(Object.keys(asset ?? {}).sort(), ["file", "id", "kind", "origin"]);
   assert.equal(asset?.id, "board-guinea-optimized");
   assert.equal(asset?.file, "images/guinea-map.webp");
-  assert.equal(digest, delivery.sha256);
-  assert.equal((provenance.rights as Record<string, unknown>).status, "confirmed");
-  assert.equal((provenance.rights as Record<string, unknown>).publicationAllowed, true);
-  assert.equal((provenance.rights as Record<string, unknown>).modificationAllowed, true);
+  assert.equal(digest, delivery?.sha256);
+  assert.equal(rights.status, "confirmed");
+  assert.equal(rights.publicationAllowed, true);
+  assert.equal(rights.modificationAllowed, true);
 });
 
 test("normative board declarations stay aligned with the 5079 by 3627 author plane", () => {
@@ -249,7 +253,10 @@ test("normative board declarations stay aligned with the 5079 by 3627 author pla
   );
   const surface = (boardZone?.children as Array<Record<string, unknown>> | undefined)?.[0];
   const surfaceProps = surface?.props as Record<string, unknown> | undefined;
-  const source = provenance.source as Record<string, unknown>;
+  const deliveryEntry = (provenance.entries as Array<Record<string, unknown>>)
+    .find((entry) => entry.id === "board-guinea-optimized");
+  const source = (deliveryEntry?.derivedFrom as Record<string, unknown>)
+    .source as Record<string, unknown>;
 
   assert.deepEqual(
     { width: board.designWidth, height: board.designHeight },
