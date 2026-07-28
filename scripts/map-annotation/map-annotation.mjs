@@ -121,37 +121,120 @@ const segmentsProperlyIntersect = (a, b, c, d) => {
       (cdA < -GEOMETRY_EPSILON && cdB > GEOMETRY_EPSILON));
 };
 
+/**
+ * Exact spatial prefilter for pairwise geometry work.
+ *
+ * Both the overlap check and the portal derivation ask the same question of
+ * every pair of regions, and then of every pair of their sides. Asking it of
+ * all pairs is quadratic: a map of nine hundred regions with eighty thousand
+ * vertices would need about three billion segment comparisons, which is hours
+ * of work for a result that is almost entirely "these two are nowhere near
+ * each other".
+ *
+ * The prefilter removes exactly those pairs and nothing else. Two shapes whose
+ * axis-aligned bounds do not touch cannot overlap and cannot share a boundary,
+ * so skipping them cannot change the answer. This is important: the derived
+ * navigation graph is fixed by its hash, so an acceleration is only allowed if
+ * it is exact. No tolerance, no "close enough" merging of nearby borders — the
+ * bounds are compared with the same epsilon the geometry itself uses, and every
+ * surviving pair is still tested exactly as before.
+ *
+ * Pairs are found by sweeping along the x axis: shapes are visited in order of
+ * their left edge, and a shape leaves the active set as soon as its right edge
+ * falls behind the current left edge. Only shapes that are simultaneously
+ * active can touch, and a cheap comparison of the y ranges removes the rest.
+ */
+const boundsOfPoints = (points) => {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const point of points) {
+    if (point.x < minX) minX = point.x;
+    if (point.x > maxX) maxX = point.x;
+    if (point.y < minY) minY = point.y;
+    if (point.y > maxY) maxY = point.y;
+  }
+  return { minX, minY, maxX, maxY };
+};
+
+/** Sides of a closed polygon, each with its own bounds. */
+const polygonSidesWithBounds = (polygon) => polygon.map((point, index) => {
+  const next = polygon[(index + 1) % polygon.length];
+  return { from: point, to: next, bounds: boundsOfPoints([point, next]) };
+});
+
+const boundsOverlapInY = (left, right) =>
+  left.minY - GEOMETRY_EPSILON <= right.maxY && right.minY - GEOMETRY_EPSILON <= left.maxY;
+
+/** Every unordered pair of items whose bounds touch, each pair reported once. */
+const touchingSelfPairs = (items) => {
+  const order = items
+    .map((item, index) => ({ index, bounds: item.bounds }))
+    .sort((left, right) => left.bounds.minX - right.bounds.minX || left.index - right.index);
+  const pairs = [];
+  let active = [];
+  for (const item of order) {
+    active = active.filter((other) => other.bounds.maxX >= item.bounds.minX - GEOMETRY_EPSILON);
+    for (const other of active) {
+      if (!boundsOverlapInY(item.bounds, other.bounds)) continue;
+      pairs.push(item.index < other.index
+        ? [item.index, other.index]
+        : [other.index, item.index]);
+    }
+    active.push(item);
+  }
+  return pairs;
+};
+
+/** Every pair of items from two different sets whose bounds touch. */
+const touchingCrossPairs = (left, right) => {
+  const order = [
+    ...left.map((item, index) => ({ side: 0, index, bounds: item.bounds })),
+    ...right.map((item, index) => ({ side: 1, index, bounds: item.bounds }))
+  ].sort((first, second) =>
+    first.bounds.minX - second.bounds.minX || first.side - second.side || first.index - second.index);
+  const pairs = [];
+  let active = [];
+  for (const item of order) {
+    active = active.filter((other) => other.bounds.maxX >= item.bounds.minX - GEOMETRY_EPSILON);
+    for (const other of active) {
+      if (other.side === item.side) continue;
+      if (!boundsOverlapInY(item.bounds, other.bounds)) continue;
+      pairs.push(item.side === 0 ? [item.index, other.index] : [other.index, item.index]);
+    }
+    active.push(item);
+  }
+  return pairs;
+};
+
 /** Reject ambiguous interior overlaps instead of guessing which region owns them. */
 const assertRegionsDoNotOverlap = (regions) => {
-  for (let leftIndex = 0; leftIndex < regions.length; leftIndex += 1) {
-    const left = regions[leftIndex];
-    const leftClosed = closedCanonicalPolygon(left.polygon);
-    for (let rightIndex = leftIndex + 1; rightIndex < regions.length; rightIndex += 1) {
-      const right = regions[rightIndex];
-      const rightClosed = closedCanonicalPolygon(right.polygon);
-      const leftSamples = left.polygon.flatMap((point, index) => {
-        const next = left.polygon[(index + 1) % left.polygon.length];
-        return [point, { x: (point.x + next.x) / 2, y: (point.y + next.y) / 2 }];
-      });
-      const rightSamples = right.polygon.flatMap((point, index) => {
-        const next = right.polygon[(index + 1) % right.polygon.length];
-        return [point, { x: (point.x + next.x) / 2, y: (point.y + next.y) / 2 }];
-      });
-      if (JSON.stringify(left.polygon) === JSON.stringify(right.polygon) ||
-          leftSamples.some((point) => pointStrictlyInPolygon(point, rightClosed)) ||
-          rightSamples.some((point) => pointStrictlyInPolygon(point, leftClosed))) {
-        fail(`regions "${left.id}" and "${right.id}" overlap`);
-      }
-      for (let leftSide = 0; leftSide < left.polygon.length; leftSide += 1) {
-        const a = left.polygon[leftSide];
-        const b = left.polygon[(leftSide + 1) % left.polygon.length];
-        for (let rightSide = 0; rightSide < right.polygon.length; rightSide += 1) {
-          const c = right.polygon[rightSide];
-          const d = right.polygon[(rightSide + 1) % right.polygon.length];
-          if (segmentsProperlyIntersect(a, b, c, d)) {
-            fail(`regions "${left.id}" and "${right.id}" cross each other`);
-          }
-        }
+  const prepared = regions.map((region) => ({
+    region,
+    closed: closedCanonicalPolygon(region.polygon),
+    sides: polygonSidesWithBounds(region.polygon),
+    bounds: boundsOfPoints(region.polygon),
+    samples: region.polygon.flatMap((point, index) => {
+      const next = region.polygon[(index + 1) % region.polygon.length];
+      return [point, { x: (point.x + next.x) / 2, y: (point.y + next.y) / 2 }];
+    })
+  }));
+  // Regions whose bounds do not touch cannot overlap, so only touching pairs
+  // are examined. The examination itself is unchanged.
+  for (const [leftIndex, rightIndex] of touchingSelfPairs(prepared)) {
+    const left = prepared[leftIndex];
+    const right = prepared[rightIndex];
+    if (JSON.stringify(left.region.polygon) === JSON.stringify(right.region.polygon) ||
+        left.samples.some((point) => pointStrictlyInPolygon(point, right.closed)) ||
+        right.samples.some((point) => pointStrictlyInPolygon(point, left.closed))) {
+      fail(`regions "${left.region.id}" and "${right.region.id}" overlap`);
+    }
+    for (const [leftSideIndex, rightSideIndex] of touchingCrossPairs(left.sides, right.sides)) {
+      const leftSide = left.sides[leftSideIndex];
+      const rightSide = right.sides[rightSideIndex];
+      if (segmentsProperlyIntersect(leftSide.from, leftSide.to, rightSide.from, rightSide.to)) {
+        fail(`regions "${left.region.id}" and "${right.region.id}" cross each other`);
       }
     }
   }
@@ -212,29 +295,32 @@ const mergeBoundaryParts = (parts) => {
 
 /** Compile the finite navigation graph from exact shared polygon boundaries. */
 const deriveRegionPortals = (regions) => {
+  const prepared = regions.map((region) => ({
+    region,
+    sides: polygonSidesWithBounds(region.polygon),
+    bounds: boundsOfPoints(region.polygon)
+  }));
   const portals = [];
-  for (let leftIndex = 0; leftIndex < regions.length; leftIndex += 1) {
-    const left = regions[leftIndex];
-    for (let rightIndex = leftIndex + 1; rightIndex < regions.length; rightIndex += 1) {
-      const right = regions[rightIndex];
-      const parts = [];
-      for (let leftSide = 0; leftSide < left.polygon.length; leftSide += 1) {
-        const a = left.polygon[leftSide];
-        const b = left.polygon[(leftSide + 1) % left.polygon.length];
-        for (let rightSide = 0; rightSide < right.polygon.length; rightSide += 1) {
-          const c = right.polygon[rightSide];
-          const d = right.polygon[(rightSide + 1) % right.polygon.length];
-          const shared = sharedBoundaryPart(a, b, c, d);
-          if (shared) parts.push(shared);
-        }
-      }
-      mergeBoundaryParts(parts).forEach((part, index) => portals.push({
-        id: `portal:${left.id}:${right.id}:${index + 1}`,
-        regionIds: [left.id, right.id],
-        from: part.from,
-        to: part.to
-      }));
+  // Only regions whose bounds touch can share a border, and inside such a pair
+  // only sides whose own bounds touch can overlap. Both filters are exact, so
+  // the resulting graph — and therefore its hash — is the same as it would be
+  // after comparing every pair.
+  for (const [leftIndex, rightIndex] of touchingSelfPairs(prepared)) {
+    const left = prepared[leftIndex];
+    const right = prepared[rightIndex];
+    const parts = [];
+    for (const [leftSideIndex, rightSideIndex] of touchingCrossPairs(left.sides, right.sides)) {
+      const leftSide = left.sides[leftSideIndex];
+      const rightSide = right.sides[rightSideIndex];
+      const shared = sharedBoundaryPart(leftSide.from, leftSide.to, rightSide.from, rightSide.to);
+      if (shared) parts.push(shared);
     }
+    mergeBoundaryParts(parts).forEach((part, index) => portals.push({
+      id: `portal:${left.region.id}:${right.region.id}:${index + 1}`,
+      regionIds: [left.region.id, right.region.id],
+      from: part.from,
+      to: part.to
+    }));
   }
   return portals.sort((left, right) => compareText(left.id, right.id));
 };

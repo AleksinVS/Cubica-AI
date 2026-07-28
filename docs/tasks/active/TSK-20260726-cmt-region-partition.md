@@ -324,7 +324,7 @@ node games/cards-money-trains/tools/render-region-partition-overview.mjs --check
 ~/.local/share/cubica/venvs/cmt-map-tools/bin/python \
   games/cards-money-trains/tools/test_vector_map_polygonizer.py
 node games/cards-money-trains/tools/build-vector-map-polygonization-review.mjs --check
-node games/cards-money-trains/tools/validate-asset-provenance.mjs
+node scripts/asset-provenance/validate-asset-provenance.mjs --game cards-money-trains
 node games/cards-money-trains/tools/build-map-asset.mjs --check
 
 git diff --check

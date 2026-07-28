@@ -14,9 +14,16 @@ import { compareCanonicalIds } from "./canonicalOrder.ts";
 
 export const GRAPH_GEOMETRY_EPSILON = 1e-9;
 export const GRAPH_MAX_COORDINATE_MAGNITUDE = 1_000_000_000;
-export const GRAPH_MAX_REGIONS = 512;
+// The number of regions is deliberately not bounded here. Geometry work scales
+// with the total number of polygon vertices, which stays bounded below, and not
+// with how those vertices are grouped into regions: an author map of nine
+// hundred small areas is no more work than one of five hundred larger ones with
+// the same outline detail.
 export const GRAPH_MAX_VERTICES_PER_REGION = 512;
-export const GRAPH_MAX_TOTAL_REGION_VERTICES = 20_000;
+// Measured against the first real author map: a partition of 917 areas holds
+// 78 352 vertices. The limit sits well above it so an ordinary map passes,
+// while a runaway one is still stopped.
+export const GRAPH_MAX_TOTAL_REGION_VERTICES = 200_000;
 export const GRAPH_MAX_POLYLINE_POINTS = 20_000;
 
 export const GRAPH_EDGE_POSITION_ALGORITHM = "polyline-arc-length-v1" as const;
@@ -199,10 +206,10 @@ export function splitGraphPolyline(
 export function canonicalizeGraphRegions(
   rawRegions: ReadonlyArray<GameManifestTransportRegion>
 ): Array<CanonicalGraphRegion> {
-  if (rawRegions.length < 1 || rawRegions.length > GRAPH_MAX_REGIONS) {
+  if (rawRegions.length < 1) {
     throw new GraphGeometryError(
       "MECHANICS_GRAPH_GEOMETRY_INVALID",
-      `Graph geometry supports 1..${GRAPH_MAX_REGIONS} regions`
+      "Graph geometry requires at least one region"
     );
   }
   const ids = new Set<string>();
@@ -221,6 +228,14 @@ export function canonicalizeGraphRegions(
       );
     }
     ids.add(rawRegion.id);
+    // Inner rings are expressible in the contract but not supported by this
+    // geometry version; see regionRoadPlanner.ts for the reasoning.
+    if (Array.isArray(rawRegion.holes) && rawRegion.holes.length > 0) {
+      throw new GraphGeometryError(
+        "MECHANICS_GRAPH_GEOMETRY_INVALID",
+        `Graph region "${rawRegion.id}" declares inner rings, which this geometry version does not support`
+      );
+    }
     let polygon = rawRegion.polygon.map((point, index) =>
       canonicalGraphPoint(point, `Graph region "${rawRegion.id}" point ${index}`));
     if (polygon.length > 1 && graphPointsEqual(polygon[0], polygon.at(-1) as GraphPoint)) {

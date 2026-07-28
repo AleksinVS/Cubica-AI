@@ -18,7 +18,7 @@
  * когда файл незаметно подменили или реестр устарел.
  *
  * Использование:
- *   node games/cards-money-trains/tools/validate-asset-provenance.mjs
+ *   node scripts/asset-provenance/validate-asset-provenance.mjs [--game <id>]
  *
  * Код завершения: 0 — реестр валиден и все отпечатки совпали; 1 — найдены
  * расхождения (подробности печатаются в stderr).
@@ -38,12 +38,34 @@ import AjvImport from "ajv";
 const Ajv = AjvImport.default ?? AjvImport;
 
 const moduleFile = fileURLToPath(import.meta.url);
-const toolsDirectory = path.dirname(moduleFile);
-const gameRoot = path.resolve(toolsDirectory, "..");
-const repoRoot = path.resolve(gameRoot, "..", "..");
+const repoRoot = path.resolve(path.dirname(moduleFile), "..", "..");
 
+// Реестр происхождения ничем не связан с конкретной игрой: он перечисляет
+// авторские первоисточники, производные от них файлы и подтверждённые права.
+// Поэтому схема лежит среди общих схем платформы, а игра называется аргументом.
+// По умолчанию берётся первая игра, у которой такой реестр есть, чтобы обычный
+// запуск без аргументов остался прежним.
+const SCHEMA_PATH = path.join(repoRoot, "docs", "architecture", "schemas", "asset-provenance.schema.json");
+const gameArgumentIndex = process.argv.indexOf("--game");
+const gameId = gameArgumentIndex === -1 ? null : process.argv[gameArgumentIndex + 1];
+if (gameArgumentIndex !== -1 && !gameId) {
+  throw new Error("--game требует идентификатор игры");
+}
+const gamesRoot = path.join(repoRoot, "games");
+const resolvedGameId = gameId ?? (await (async () => {
+  const { readdir } = await import("node:fs/promises");
+  const { existsSync } = await import("node:fs");
+  const entries = await readdir(gamesRoot, { withFileTypes: true });
+  const withRegistry = entries
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .filter((name) => existsSync(path.join(gamesRoot, name, "asset-provenance.json")))
+    .sort();
+  if (withRegistry.length === 0) throw new Error("ни у одной игры нет asset-provenance.json");
+  return withRegistry[0];
+})());
+const gameRoot = path.join(gamesRoot, resolvedGameId);
 const REGISTRY_PATH = path.join(gameRoot, "asset-provenance.json");
-const SCHEMA_PATH = path.join(gameRoot, "asset-provenance.schema.json");
 
 /** Прочитать и распарсить JSON-файл, с понятной ошибкой при поломке. */
 const readJson = async (filePath) => {

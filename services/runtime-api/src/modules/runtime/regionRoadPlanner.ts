@@ -32,11 +32,18 @@ export const regionRoadRandomStreamId = (networkId: string): string =>
   `graph.${networkId}.road-planning`;
 
 const EPSILON = 1e-9;
-const MAX_REGIONS = 512;
+// The number of regions is deliberately unbounded; see graphGeometry.ts. What
+// bounds the work are the limits below.
+//
+// Their values are measured on the first real author map rather than guessed:
+// a partition of 917 areas with 78 352 vertices produces 33 470 portals, and
+// the spatial prefilter reduces the shared-boundary work on it to about
+// 1.2e5 comparisons. Each limit sits well above the measured value, so an
+// ordinary map passes and a runaway one is still stopped.
 const MAX_VERTICES_PER_REGION = 512;
-const MAX_TOTAL_VERTICES = 20_000;
-const MAX_PORTALS = 4_096;
-const MAX_BOUNDARY_COMPARISONS = 2_000_000;
+const MAX_TOTAL_VERTICES = 200_000;
+const MAX_PORTALS = 131_072;
+const MAX_BOUNDARY_COMPARISONS = 20_000_000;
 const MAX_ROUTE_CANDIDATES = 128;
 const MAX_PORTAL_COMBINATIONS = 128;
 const MAX_VISIBILITY_WORK = 5_000_000;
@@ -84,21 +91,34 @@ const chargePlannerWork = (meter: RegionRoadPlannerWorkMeter | undefined, units:
   if (units > 0) meter?.charge(units);
 };
 
-/** Conservatively price immutable geometry validation before doing the work. */
+/**
+ * Price immutable geometry validation before doing the work.
+ *
+ * The charge must reflect the work that will actually happen. Charging the
+ * quadratic upper bound over all region pairs — as this did before — priced a
+ * cost that the spatial prefilter never pays: on the first real author map the
+ * estimate exceeded its own budget twelve thousand times while the real work
+ * was four orders of magnitude smaller. A budget that refuses ordinary maps
+ * measures the wrong thing.
+ *
+ * The estimate therefore runs the same prefilter first. The prefilter itself
+ * is cheap — one sort and one sweep — and it is charged too, so no work is
+ * unmetered.
+ */
 const estimateCompilationWork = (model: GameManifestTransportNetworkModel): number => {
   const vertexCounts = model.regions.map((region) => region.polygon.length);
+  const totalVertices = vertexCounts.reduce((sum, count) => sum + count, 0);
   const selfComparisons = vertexCounts.reduce((sum, count) => sum + count * Math.max(0, count - 1) / 2, 0);
+  const bounds = model.regions.map((region) => ({ bounds: boundsOfPoints(region.polygon) }));
   let crossComparisons = 0;
-  for (let left = 0; left < vertexCounts.length; left += 1) {
-    for (let right = left + 1; right < vertexCounts.length; right += 1) {
-      crossComparisons += vertexCounts[left] * vertexCounts[right];
-    }
+  for (const [left, right] of touchingSelfPairs(bounds)) {
+    crossComparisons += vertexCounts[left] * vertexCounts[right];
   }
-  // Cross-region geometry is visited by overlap validation, shared-boundary
-  // derivation and bounded interior probes. Charging the conservative upper
-  // bound is stable and prevents unmetered work without wall-clock semantics.
-  return model.regions.length + vertexCounts.reduce((sum, count) => sum + count, 0) +
-    selfComparisons + crossComparisons * 8 + (model.roadPlanning?.navigationGraph.portals.length ?? 0);
+  // Touching pairs are visited by overlap validation, shared-boundary
+  // derivation and bounded interior probes, hence the constant factor. The
+  // sweep that found those pairs costs about one unit per region.
+  return model.regions.length + totalVertices + selfComparisons +
+    crossComparisons * 8 + (model.roadPlanning?.navigationGraph.portals.length ?? 0);
 };
 
 const finitePoint = (raw: Point, label: string): Point => {
@@ -228,41 +248,162 @@ const assertSimplePolygon = (polygon: ReadonlyArray<Point>, regionId: string) =>
  * direct manifest from inventing ambiguous overlapping paid areas even if it
  * bypasses the authoring converter.
  */
+
+/**
+ * Exact spatial prefilter for pairwise geometry work.
+ *
+ * Validating regions, deriving portals and pricing that work all ask the same
+ * question of every pair of regions, and then of every pair of their sides.
+ * Asking it of all pairs is quadratic: the first real author map — 917 areas
+ * with 78 352 vertices — would need about three billion segment comparisons,
+ * and the cost estimate alone would exceed its own budget twelve thousand
+ * times over. In other words the platform refused real cartography by
+ * construction, not by accident.
+ *
+ * The prefilter removes exactly the pairs that cannot matter and nothing else.
+ * Two shapes whose axis-aligned bounds do not touch can neither overlap nor
+ * share a boundary, so skipping them cannot change any answer. Exactness is
+ * not optional here: the derived navigation graph is fixed by its published
+ * hash, so an acceleration that merged "almost touching" borders would produce
+ * a different graph and break the package. Bounds are therefore compared with
+ * the same epsilon as the geometry itself, and every surviving pair is still
+ * tested exactly as before.
+ *
+ * Pairs are found by sweeping along the x axis: shapes are visited in order of
+ * their left edge and leave the active set once their right edge falls behind
+ * the current left edge. On the map above this leaves 2 828 region pairs out of
+ * 419 986 and about 1.2e5 side comparisons instead of 3.1e9.
+ */
+interface Bounds {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+}
+
+interface BoundedSide {
+  from: Point;
+  to: Point;
+  bounds: Bounds;
+}
+
+const boundsOfPoints = (points: ReadonlyArray<Point>): Bounds => {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const point of points) {
+    if (point.x < minX) minX = point.x;
+    if (point.x > maxX) maxX = point.x;
+    if (point.y < minY) minY = point.y;
+    if (point.y > maxY) maxY = point.y;
+  }
+  return { minX, minY, maxX, maxY };
+};
+
+const polygonSidesWithBounds = (polygon: ReadonlyArray<Point>): Array<BoundedSide> =>
+  polygon.map((point, index) => {
+    const next = polygon[(index + 1) % polygon.length];
+    return { from: point, to: next, bounds: boundsOfPoints([point, next]) };
+  });
+
+const boundsOverlapInY = (left: Bounds, right: Bounds): boolean =>
+  left.minY - EPSILON <= right.maxY && right.minY - EPSILON <= left.maxY;
+
+/** Every unordered pair of items whose bounds touch, each reported once. */
+const touchingSelfPairs = (items: ReadonlyArray<{ bounds: Bounds }>): Array<[number, number]> => {
+  const order = items
+    .map((item, index) => ({ index, bounds: item.bounds }))
+    .sort((left, right) => left.bounds.minX - right.bounds.minX || left.index - right.index);
+  const pairs: Array<[number, number]> = [];
+  let active: Array<{ index: number; bounds: Bounds }> = [];
+  for (const item of order) {
+    active = active.filter((other) => other.bounds.maxX >= item.bounds.minX - EPSILON);
+    for (const other of active) {
+      if (!boundsOverlapInY(item.bounds, other.bounds)) continue;
+      pairs.push(item.index < other.index ? [item.index, other.index] : [other.index, item.index]);
+    }
+    active.push(item);
+  }
+  return pairs;
+};
+
+/** Every pair of items from two different sets whose bounds touch. */
+const touchingCrossPairs = (
+  left: ReadonlyArray<{ bounds: Bounds }>,
+  right: ReadonlyArray<{ bounds: Bounds }>
+): Array<[number, number]> => {
+  const order = [
+    ...left.map((item, index) => ({ set: 0, index, bounds: item.bounds })),
+    ...right.map((item, index) => ({ set: 1, index, bounds: item.bounds }))
+  ].sort((first, second) =>
+    first.bounds.minX - second.bounds.minX || first.set - second.set || first.index - second.index);
+  const pairs: Array<[number, number]> = [];
+  let active: Array<{ set: number; index: number; bounds: Bounds }> = [];
+  for (const item of order) {
+    active = active.filter((other) => other.bounds.maxX >= item.bounds.minX - EPSILON);
+    for (const other of active) {
+      if (other.set === item.set) continue;
+      if (!boundsOverlapInY(item.bounds, other.bounds)) continue;
+      pairs.push(item.set === 0 ? [item.index, other.index] : [other.index, item.index]);
+    }
+    active.push(item);
+  }
+  return pairs;
+};
+
+/** Regions prepared once and reused by every pairwise pass. */
+interface PreparedRegion {
+  region: Region;
+  sides: Array<BoundedSide>;
+  bounds: Bounds;
+}
+
+const prepareRegions = (regions: ReadonlyArray<Region>): Array<PreparedRegion> =>
+  regions.map((region) => ({
+    region,
+    sides: polygonSidesWithBounds(region.polygon),
+    bounds: boundsOfPoints(region.polygon)
+  }));
+
 const assertDisjointRegionInteriors = (regions: ReadonlyArray<Region>) => {
+  const prepared = prepareRegions(regions);
   let comparisons = 0;
-  for (let leftIndex = 0; leftIndex < regions.length; leftIndex += 1) {
-    const left = regions[leftIndex];
-    for (let rightIndex = leftIndex + 1; rightIndex < regions.length; rightIndex += 1) {
-      const right = regions[rightIndex];
-      for (let leftEdge = 0; leftEdge < left.polygon.length; leftEdge += 1) {
-        for (let rightEdge = 0; rightEdge < right.polygon.length; rightEdge += 1) {
-          comparisons += 1;
-          if (comparisons > MAX_BOUNDARY_COMPARISONS) {
-            throw new Error("Road-planning geometry exceeds the bounded cross-region work limit");
-          }
-          if (segmentsProperlyCross(
-            left.polygon[leftEdge], left.polygon[(leftEdge + 1) % left.polygon.length],
-            right.polygon[rightEdge], right.polygon[(rightEdge + 1) % right.polygon.length]
-          )) {
-            throw new Error(`Road-planning regions "${left.id}" and "${right.id}" have overlapping interiors`);
-          }
-        }
+  // Regions whose bounds do not touch cannot share interior points, so only
+  // touching pairs are examined; each examination is unchanged.
+  for (const [leftIndex, rightIndex] of touchingSelfPairs(prepared)) {
+    const left = prepared[leftIndex].region;
+    const right = prepared[rightIndex].region;
+    for (const [leftSide, rightSide] of
+      touchingCrossPairs(prepared[leftIndex].sides, prepared[rightIndex].sides)) {
+      comparisons += 1;
+      if (comparisons > MAX_BOUNDARY_COMPARISONS) {
+        throw new Error(
+          "Road-planning geometry exceeds the bounded cross-region work limit. "
+          + "The limit counts side comparisons that survive the spatial prefilter, "
+          + "so reaching it means the regions genuinely touch that much."
+        );
       }
-      const hasInteriorVertex = left.polygon.some((point) => pointStrictlyInsidePolygon(point, right.polygon)) ||
-        right.polygon.some((point) => pointStrictlyInsidePolygon(point, left.polygon));
-      const hasInteriorProbe = interiorBoundaryProbes(left.polygon)
-        .some((point) => pointStrictlyInsidePolygon(point, right.polygon)) ||
-        interiorBoundaryProbes(right.polygon)
-          .some((point) => pointStrictlyInsidePolygon(point, left.polygon));
-      const sameBoundary = left.polygon.every((point) =>
-        right.polygon.some((candidate, index) =>
-          pointOnSegment(point, candidate, right.polygon[(index + 1) % right.polygon.length]))) &&
-        right.polygon.every((point) =>
-          left.polygon.some((candidate, index) =>
-            pointOnSegment(point, candidate, left.polygon[(index + 1) % left.polygon.length])));
-      if (hasInteriorVertex || hasInteriorProbe || sameBoundary) {
+      const first = prepared[leftIndex].sides[leftSide];
+      const second = prepared[rightIndex].sides[rightSide];
+      if (segmentsProperlyCross(first.from, first.to, second.from, second.to)) {
         throw new Error(`Road-planning regions "${left.id}" and "${right.id}" have overlapping interiors`);
       }
+    }
+    const hasInteriorVertex = left.polygon.some((point) => pointStrictlyInsidePolygon(point, right.polygon)) ||
+      right.polygon.some((point) => pointStrictlyInsidePolygon(point, left.polygon));
+    const hasInteriorProbe = interiorBoundaryProbes(left.polygon)
+      .some((point) => pointStrictlyInsidePolygon(point, right.polygon)) ||
+      interiorBoundaryProbes(right.polygon)
+        .some((point) => pointStrictlyInsidePolygon(point, left.polygon));
+    const sameBoundary = left.polygon.every((point) =>
+      right.polygon.some((candidate, index) =>
+        pointOnSegment(point, candidate, right.polygon[(index + 1) % right.polygon.length]))) &&
+      right.polygon.every((point) =>
+        left.polygon.some((candidate, index) =>
+          pointOnSegment(point, candidate, left.polygon[(index + 1) % left.polygon.length])));
+    if (hasInteriorVertex || hasInteriorProbe || sameBoundary) {
+      throw new Error(`Road-planning regions "${left.id}" and "${right.id}" have overlapping interiors`);
     }
   }
 };
@@ -271,8 +412,8 @@ const assertDisjointRegionInteriors = (regions: ReadonlyArray<Region>) => {
 export const canonicalizeRoadPlanningRegions = (
   rawRegions: ReadonlyArray<GameManifestTransportRegion>
 ): Array<Region> => {
-  if (rawRegions.length < 1 || rawRegions.length > MAX_REGIONS) {
-    throw new Error(`Road planning supports 1..${MAX_REGIONS} regions`);
+  if (rawRegions.length < 1) {
+    throw new Error("Road planning requires at least one region");
   }
   const ids = new Set<string>();
   let totalVertices = 0;
@@ -282,6 +423,18 @@ export const canonicalizeRoadPlanningRegions = (
     }
     if (ids.has(rawRegion.id)) throw new Error(`Duplicate road-planning region id "${rawRegion.id}"`);
     ids.add(rawRegion.id);
+    // A hole can be written down in the contract so that a map with an enclave
+    // is recorded truthfully, but this algorithm version plans only simple
+    // rings. Refusing is deliberate: silently ignoring an inner ring would let
+    // a road cross an area the author excluded, and silently "repairing" the
+    // geometry would make the price unexplainable.
+    if (Array.isArray(rawRegion.holes) && rawRegion.holes.length > 0) {
+      throw new Error(
+        `Road-planning region "${rawRegion.id}" declares inner rings, which `
+        + `${REGION_ROAD_PLANNING_ALGORITHM} does not support. A wider geometry `
+        + "class requires a new planning algorithm version."
+      );
+    }
     let polygon = rawRegion.polygon.map((point, index) =>
       finitePoint(point, `Road-planning region "${rawRegion.id}" point ${index}`));
     if (polygon.length > 1 && pointEquals(polygon[0], polygon[polygon.length - 1])) polygon = polygon.slice(0, -1);
@@ -344,56 +497,66 @@ const portalGeometryKey = (portal: Pick<Portal, "regionIds" | "from" | "to">): s
 export const deriveRoadPlanningPortalGeometry = (
   regions: ReadonlyArray<Region>
 ): Array<DerivedPortalGeometry> => {
+  const prepared = prepareRegions(regions);
   const result: Array<DerivedPortalGeometry> = [];
   let comparisons = 0;
-  for (let leftIndex = 0; leftIndex < regions.length; leftIndex += 1) {
-    const left = regions[leftIndex];
-    for (let rightIndex = leftIndex + 1; rightIndex < regions.length; rightIndex += 1) {
-      const right = regions[rightIndex];
-      for (let leftEdge = 0; leftEdge < left.polygon.length; leftEdge += 1) {
-        for (let rightEdge = 0; rightEdge < right.polygon.length; rightEdge += 1) {
-          comparisons += 1;
-          if (comparisons > MAX_BOUNDARY_COMPARISONS) {
-            throw new Error("Road-planning geometry exceeds the bounded shared-boundary work limit");
-          }
-          const overlap = sharedBoundary(
-            left.polygon[leftEdge], left.polygon[(leftEdge + 1) % left.polygon.length],
-            right.polygon[rightEdge], right.polygon[(rightEdge + 1) % right.polygon.length]
-          );
-          if (overlap) result.push({ regionIds: [left.id, right.id], ...overlap });
+  // Only regions whose bounds touch can share a border, and inside such a pair
+  // only sides whose own bounds touch can overlap. Both filters are exact, so
+  // the derived graph and its hash are the same as after comparing every pair.
+  for (const [leftIndex, rightIndex] of touchingSelfPairs(prepared)) {
+    const left = prepared[leftIndex];
+    const right = prepared[rightIndex];
+    const pairParts: Array<DerivedPortalGeometry> = [];
+    for (const [leftSide, rightSide] of touchingCrossPairs(left.sides, right.sides)) {
+      comparisons += 1;
+      if (comparisons > MAX_BOUNDARY_COMPARISONS) {
+        throw new Error(
+          "Road-planning geometry exceeds the bounded shared-boundary work limit. "
+          + "The limit counts side comparisons that survive the spatial prefilter, "
+          + "so reaching it means the regions genuinely share that much border."
+        );
+      }
+      const first = left.sides[leftSide];
+      const second = right.sides[rightSide];
+      const overlap = sharedBoundary(first.from, first.to, second.from, second.to);
+      if (overlap) {
+        pairParts.push({ regionIds: [left.region.id, right.region.id], ...overlap });
+      }
+    }
+    // A compiler may simplify one side of a shared boundary differently from
+    // the other. Touching collinear pieces are merged so that an extra
+    // intermediate vertex cannot change graph topology or the advertised hash.
+    // Merging is scoped to the one region pair the pieces belong to, which is
+    // where it was always confined: pieces of different pairs never merge.
+    const unique = new Map(pairParts.map((portal) => [portalGeometryKey(portal), portal]));
+    const merged = [...unique.values()];
+    let changed = true;
+    while (changed) {
+      changed = false;
+      outer: for (let firstIndex = 0; firstIndex < merged.length; firstIndex += 1) {
+        for (let secondIndex = firstIndex + 1; secondIndex < merged.length; secondIndex += 1) {
+          const first = merged[firstIndex];
+          const second = merged[secondIndex];
+          if (!segmentsIntersect(first.from, first.to, second.from, second.to) ||
+              Math.abs(orientation(first.from, first.to, second.from)) > EPSILON ||
+              Math.abs(orientation(first.from, first.to, second.to)) > EPSILON) continue;
+          const endpoints = [first.from, first.to, second.from, second.to].sort(pointCompare);
+          merged.splice(firstIndex, 1, {
+            regionIds: first.regionIds,
+            from: { ...endpoints[0] },
+            to: { ...endpoints[endpoints.length - 1] }
+          });
+          merged.splice(secondIndex, 1);
+          changed = true;
+          break outer;
         }
       }
     }
+    result.push(...merged);
   }
   const unique = new Map(result.map((portal) => [portalGeometryKey(portal), portal]));
-  const merged = [...unique.values()];
-  // A compiler may simplify one side of a shared boundary differently from
-  // the other. Merge touching collinear pieces so an extra intermediate vertex
-  // cannot change graph topology or the advertised hash.
-  let changed = true;
-  while (changed) {
-    changed = false;
-    outer: for (let firstIndex = 0; firstIndex < merged.length; firstIndex += 1) {
-      for (let secondIndex = firstIndex + 1; secondIndex < merged.length; secondIndex += 1) {
-        const first = merged[firstIndex];
-        const second = merged[secondIndex];
-        if (first.regionIds[0] !== second.regionIds[0] || first.regionIds[1] !== second.regionIds[1] ||
-            !segmentsIntersect(first.from, first.to, second.from, second.to) ||
-            Math.abs(orientation(first.from, first.to, second.from)) > EPSILON ||
-            Math.abs(orientation(first.from, first.to, second.to)) > EPSILON) continue;
-        const endpoints = [first.from, first.to, second.from, second.to].sort(pointCompare);
-        merged.splice(firstIndex, 1, {
-          regionIds: first.regionIds,
-          from: { ...endpoints[0] },
-          to: { ...endpoints[endpoints.length - 1] }
-        });
-        merged.splice(secondIndex, 1);
-        changed = true;
-        break outer;
-      }
-    }
-  }
-  return merged.sort((left, right) => codepointCompare(portalGeometryKey(left), portalGeometryKey(right)));
+  return [...unique.values()]
+    .sort((left, right) => codepointCompare(portalGeometryKey(left), portalGeometryKey(right)));
 };
 
 const canonicalizeDeclaredPortals = (rawPortals: ReadonlyArray<Portal>): Array<Portal> => {
@@ -731,7 +894,20 @@ const candidateLength = (candidate: RegionRoadCandidate): number => candidate.po
   .slice(0, -1)
   .reduce((sum, point, index) => sum + distance(point, candidate.points[index + 1]), 0);
 
-/** Choose the shortest valid midpoint route; exact ties use codepoint geometry order. */
+/**
+ * Choose the shortest valid midpoint route; exact ties use codepoint geometry
+ * order.
+ *
+ * This is where algorithm version `region-segment-minimum-v1` fixes its own
+ * rule, which ADR-081 deliberately does not: the route crosses a shared border
+ * at its middle, and when one pair of regions has several separate shared
+ * borders, a bounded number of combinations is tried and the shortest valid
+ * polyline between those middles wins. The rule makes the result finite and
+ * reproducible. Choosing the crossing point freely along the border would give
+ * shorter roads, but it is a different answer, so it may only arrive as a new
+ * algorithm version — already stored roads must stay explainable by the version
+ * recorded in them.
+ */
 const buildCandidate = (
   compiled: CompiledRegionRoadPlanning,
   sequence: Array<string>,

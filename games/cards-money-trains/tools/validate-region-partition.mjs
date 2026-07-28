@@ -9,7 +9,8 @@
  * этой схеме, а не вручную написанными проверками вида
  * `if (typeof x !== "string")` (см. правило платформы о declarative-vs-imperative
  * drift в корневом CLAUDE.md). Этот скрипт — прямой аналог соседнего
- * `validate-asset-provenance.mjs`, адаптированный под один крупный файл вместо
+ * общего `scripts/asset-provenance/validate-asset-provenance.mjs`, адаптированный
+ * под один крупный файл вместо
  * реестра из многих записей.
  *
  * Помимо структурной проверки по схеме, скрипт перепроверяет вещи, которые
@@ -46,7 +47,7 @@ import AjvImport from "ajv";
 
 // Ajv публикуется и как CommonJS default-экспорт, и как именованный —
 // это же приведение используется в соседних инструментах игры
-// (validate-asset-provenance.mjs, build-vector-map-topology-review.mjs).
+// (build-vector-map-topology-review.mjs).
 const Ajv = AjvImport.default ?? AjvImport;
 
 const moduleFile = fileURLToPath(import.meta.url);

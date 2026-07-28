@@ -145,7 +145,7 @@
     },
     "GameManifestTransportRegion": {
       "additionalProperties": false,
-      "description": "Bounded simple polygon. A final point equal to the first is an optional explicit closure and is not counted as an additional canonical vertex.",
+      "description": "Bounded simple polygon with optional inner rings. A final point equal to the first is an optional explicit closure and is not counted as an additional canonical vertex.",
       "properties": {
         "id": {
           "maxLength": 256,
@@ -153,11 +153,25 @@
           "type": "string"
         },
         "polygon": {
+          "description": "Outer ring of the region.",
           "items": {
             "$ref": "#/definitions/GameManifestCanonicalPoint"
           },
           "maxItems": 513,
           "minItems": 3,
+          "type": "array"
+        },
+        "holes": {
+          "description": "Inner rings: areas enclosed by the outer ring that do not belong to this region, such as an enclave that is a region of its own. A hole is expressible here so that a map can be recorded truthfully, but planning algorithm region-segment-minimum-v1 does not support it and refuses such a region instead of guessing. A wider geometry class requires a new algorithm version, which is what keeps already-built roads explainable.",
+          "items": {
+            "items": {
+              "$ref": "#/definitions/GameManifestCanonicalPoint"
+            },
+            "maxItems": 513,
+            "minItems": 3,
+            "type": "array"
+          },
+          "maxItems": 64,
           "type": "array"
         }
       },
@@ -204,7 +218,7 @@
     },
     "GameManifestTransportRoadPlanning": {
       "additionalProperties": false,
-      "description": "Explicit opt-in contract for authoritative minimum-region road planning. The navigation graph and hash are compiler-derived from canonical region polygons.",
+      "description": "Explicit opt-in contract for authoritative minimum-region road planning. The navigation graph and hash are compiler-derived from canonical region polygons: derive them with the shared map-annotation pipeline rather than writing portals by hand, because runtime rebuilds the graph from the polygons and refuses any package whose declared graph or hash differs.",
       "properties": {
         "mode": {
           "const": "region-segment-minimum"
@@ -499,10 +513,10 @@
           "$ref": "#/definitions/GameManifestSafeIdentifier"
         },
         "regions": {
+          "description": "Canonical region polygons. The number of regions is deliberately unbounded: the cost of geometry work scales with the total number of polygon vertices, which stays bounded, and not with how those vertices are grouped into regions. Pairwise work is filtered spatially before it is done and before it is priced, so a map of many small areas is admitted; a real author map of 917 areas with 78 352 vertices is the measured reference.",
           "items": {
             "$ref": "#/definitions/GameManifestTransportRegion"
           },
-          "maxItems": 512,
           "minItems": 1,
           "type": "array"
         },

@@ -435,15 +435,16 @@ export interface GameManifestTransportNetworkModel {
   builtEdgeState: GameManifestObjectFacetValue;
   sequenceEndpoint: GameManifestSafeIdentifier;
   /**
+   * Canonical region polygons. The number of regions is deliberately unbounded: the cost of geometry work scales with the total number of polygon vertices, which stays bounded, and not with how those vertices are grouped into regions. Pairwise work is filtered spatially before it is done and before it is priced, so a map of many small areas is admitted; a real author map of 917 areas with 78 352 vertices is the measured reference.
+   *
    * @minItems 1
-   * @maxItems 512
    */
   regions: [GameManifestTransportRegion, ...GameManifestTransportRegion[]];
   roadPlanning?: GameManifestTransportRoadPlanning;
   movement?: GameManifestTransportMovementModel;
 }
 /**
- * Bounded simple polygon. A final point equal to the first is an optional explicit closure and is not counted as an additional canonical vertex.
+ * Bounded simple polygon with optional inner rings. A final point equal to the first is an optional explicit closure and is not counted as an additional canonical vertex.
  *
  * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
  * via the `definition` "GameManifestTransportRegion".
@@ -451,6 +452,8 @@ export interface GameManifestTransportNetworkModel {
 export interface GameManifestTransportRegion {
   id: string;
   /**
+   * Outer ring of the region.
+   *
    * @minItems 3
    * @maxItems 513
    */
@@ -460,6 +463,17 @@ export interface GameManifestTransportRegion {
     GameManifestCanonicalPoint,
     ...GameManifestCanonicalPoint[]
   ];
+  /**
+   * Inner rings: areas enclosed by the outer ring that do not belong to this region, such as an enclave that is a region of its own. A hole is expressible here so that a map can be recorded truthfully, but planning algorithm region-segment-minimum-v1 does not support it and refuses such a region instead of guessing. A wider geometry class requires a new algorithm version, which is what keeps already-built roads explainable.
+   *
+   * @maxItems 64
+   */
+  holes?: [
+    GameManifestCanonicalPoint,
+    GameManifestCanonicalPoint,
+    GameManifestCanonicalPoint,
+    ...GameManifestCanonicalPoint[]
+  ][];
 }
 /**
  * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
@@ -470,7 +484,7 @@ export interface GameManifestCanonicalPoint {
   y: number;
 }
 /**
- * Explicit opt-in contract for authoritative minimum-region road planning. The navigation graph and hash are compiler-derived from canonical region polygons.
+ * Explicit opt-in contract for authoritative minimum-region road planning. The navigation graph and hash are compiler-derived from canonical region polygons: derive them with the shared map-annotation pipeline rather than writing portals by hand, because runtime rebuilds the graph from the polygons and refuses any package whose declared graph or hash differs.
  *
  * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
  * via the `definition` "GameManifestTransportRoadPlanning".

@@ -118,6 +118,61 @@ test("automatic planning derives stable positive shared-boundary portals", async
   }]);
 });
 
+test("planning scales to a map of many regions without changing its answer", async () => {
+  // A real author map turned out to hold nine hundred areas, which used to be
+  // impossible: comparing every pair of regions and every pair of their sides
+  // is quadratic. The pairwise work is now filtered spatially, and this test
+  // fixes both halves of the claim — that such a map compiles at all, and that
+  // filtering did not change the result.
+  //
+  // A plain grid is used on purpose: its complete set of borders follows from
+  // the shape of the map, so the expectation below is independent of the code
+  // that derives them.
+  // The grid covers the whole neutral plane, so both fixture nodes fall inside
+  // a cell: a node outside every region is a different failure than the one
+  // this test is about.
+  const columns = 32;
+  const rows = 24;
+  const size = 20;
+  const inputPath = path.join(fixtureRoot, "neutral-map-annotation.json");
+  const source = await readFixture("neutral-map-annotation.json");
+  source.regions = [];
+  for (let column = 0; column < columns; column += 1) {
+    for (let row = 0; row < rows; row += 1) {
+      const left = column * size;
+      const top = row * size;
+      source.regions.push({
+        id: `neutral-region-${String(column).padStart(3, "0")}-${String(row).padStart(3, "0")}`,
+        label: `Cell ${column}-${row}`,
+        countryId: "neutral-country",
+        polygon: [
+          { x: left, y: top },
+          { x: left + size, y: top },
+          { x: left + size, y: top + size },
+          { x: left, y: top + size },
+          { x: left, y: top }
+        ],
+        evidence: "Neutral exact region"
+      });
+    }
+  }
+
+  const fragment = createTransportManifestFragment(
+    await validateMapAnnotation(source, inputPath),
+    neutralManifestOptions
+  );
+  const { portals } = fragment.networkModels.neutral.roadPlanning.navigationGraph;
+
+  assert.equal(fragment.networkModels.neutral.regions.length, columns * rows);
+  // Side-by-side cells share one border; cells meeting at a corner share none.
+  assert.equal(portals.length, columns * (rows - 1) + (columns - 1) * rows);
+  for (const portal of portals) {
+    const horizontal = portal.from.y === portal.to.y;
+    const vertical = portal.from.x === portal.to.x;
+    assert.ok(horizontal !== vertical);
+  }
+});
+
 test("automatic planning rejects overlapping regions and ignores point-only contact", async () => {
   const inputPath = path.join(fixtureRoot, "neutral-map-annotation.json");
   const source = await readFixture("neutral-map-annotation.json");

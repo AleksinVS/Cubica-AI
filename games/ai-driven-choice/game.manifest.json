@@ -109,7 +109,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:405dfda43422227425ef08615f95414850bbaf65b70f380b79e53347ee8eeeee"
+      "definitionHash": "sha256:a4722eb6fa5edcf8b83770f738f4f7ec0ca61df62b5d1bc226dcfa9e7a96624a"
     },
     "agent.choice.resolve": {
       "displayName": "Resolve the agent choice",
@@ -124,7 +124,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:55d85736bf63be8e77dd493caa03f1ff78db18ae71e234a0ca23658112e37553"
+      "definitionHash": "sha256:1b31eae69c2059194e03b8c065fd5cf47c146046d2c1455ccb73d5aadfb4852b"
     }
   },
   "mechanics": {
@@ -134,7 +134,7 @@
       "cubica.core": {
         "moduleId": "cubica.core",
         "moduleVersion": "1.4.3",
-        "artifactHash": "sha256:a1cc5b8f73e4cb7938441f81c25024edf6199e4524783a676205854f6506dc9c"
+        "artifactHash": "sha256:d345ef2e4adb39ec6f8f863adbb6fcb7bdd5b9ed82764160e881b34e80adc554"
       }
     },
     "stateModel": {
@@ -321,7 +321,7 @@
     },
     "plans": {
       "agent.request-choice": {
-        "planHash": "sha256:5cfc2cbbf932e4fc9f7b071ed84eab79355267bab6d6d1390137999008647eb9",
+        "planHash": "sha256:12fa0d9df245f13092d2b0296ef1a7b4d4b1a4e9435a5c4968f42e00469365fb",
         "transaction": {
           "steps": [
             {
@@ -338,7 +338,7 @@
         }
       },
       "agent.choice.resolve": {
-        "planHash": "sha256:95224fbfb6415343b5eea5f911f22971d6c2899a8e89294099efc11efd13f3b3",
+        "planHash": "sha256:265af1b3c9ac1b0a8d4cdfc252080f79bf742886c850aa8f02a2f44aa04fd3c1",
         "transaction": {
           "steps": [
             {

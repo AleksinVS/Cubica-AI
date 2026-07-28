@@ -163,6 +163,49 @@ const assertManifestActionAbsent = (relativePath, actionId, reason) => {
  * then it prints a non-gating summary so the boundary is visible and R3 has a
  * live checklist without turning the canonical contour red.
  */
+/**
+ * A game package must not re-derive the road-planning navigation graph.
+ *
+ * The graph is compiler-derived from region polygons by the shared
+ * map-annotation pipeline, and runtime rebuilds it from the same polygons to
+ * check the published hash. A game that grew its own copy would look correct
+ * until the shared derivation changed — and the first symptom would be a
+ * package the runtime refuses, with no hint that two implementations had
+ * drifted apart. The pipeline is also where the spatial prefilter lives that
+ * makes a real map affordable, so a private copy silently loses it.
+ */
+function checkNavigationGraphDerivationStaysShared() {
+  const gamesRoot = path.join(repoRoot, "games");
+  if (!fs.existsSync(gamesRoot)) return;
+  const offenders = [];
+  const walk = (directory) => {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      const absolute = path.join(directory, entry.name);
+      if (entry.isDirectory()) {
+        if (entry.name === "node_modules" || entry.name === "published") continue;
+        walk(absolute);
+        continue;
+      }
+      if (!/\.(mjs|cjs|js|ts)$/u.test(entry.name)) continue;
+      const text = fs.readFileSync(absolute, "utf8");
+      // The marker is the act of deriving portals, not the word itself: a game
+      // may name portals in data and comments, but must not build them.
+      if (/\bderiveRegionPortals\b|\bderiveRoadPlanningPortalGeometry\b/u.test(text)
+        && !/from ["'][^"']*map-annotation/u.test(text)) {
+        offenders.push(path.relative(repoRoot, absolute));
+      }
+    }
+  };
+  walk(gamesRoot);
+  if (offenders.length > 0) {
+    throw new Error(
+      "Game packages must not derive the road-planning navigation graph themselves; "
+      + "use the shared scripts/map-annotation pipeline. Offending files: "
+      + offenders.sort().join(", ")
+    );
+  }
+}
+
 function checkGlobalStyleBoundary() {
   const cssText = read(GLOBAL_STYLESHEET);
   const forbiddenIds = collectGameManifestComponentIds();
@@ -283,6 +326,9 @@ function main() {
     "scaffold must not generate no-op layout resolvers"
   );
 
+  // ADR-081 §4.8: the navigation graph has exactly one derivation.
+  checkNavigationGraphDerivationStaysShared();
+
   // ADR-091 global-style boundary (gated by ENFORCE_GLOBAL_STYLE_BOUNDARY).
   checkGlobalStyleBoundary();
 
@@ -299,5 +345,6 @@ module.exports = {
   collectGameManifestComponentIds,
   findGlobalStyleGameLeaks,
   checkGlobalStyleBoundary,
+  checkNavigationGraphDerivationStaysShared,
   main
 };

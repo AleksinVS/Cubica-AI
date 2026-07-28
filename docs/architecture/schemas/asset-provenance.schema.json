@@ -1,15 +1,15 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://cubica.platform/games/cards-money-trains/asset-provenance.schema.json",
-  "title": "Cards, Money, Trains asset & source-material provenance registry",
-  "description": "Реестр происхождения (provenance): для игры «Карты, деньги, поезда» перечисляет все первоисточники (файлы, полученные напрямую от автора/правообладателя игры) и производные ассеты платформы, а также права на их использование. Реестр — список записей, а не одна запись, потому что производные артефакты уже создаются из нескольких разных первоисточников (растровая и векторная карта). Каждая запись самодостаточна: по ней одной видно, что это за файл, откуда он взят, можно ли его публиковать и кто это подтвердил.",
+  "$id": "https://cubica.platform/schemas/asset-provenance.schema.json",
+  "title": "Game asset & source-material provenance registry",
+  "description": "Реестр происхождения (provenance): для одной игры перечисляет все первоисточники (файлы, полученные напрямую от автора/правообладателя игры) и производные ассеты платформы, а также права на их использование. Реестр — список записей, а не одна запись, потому что производные артефакты уже создаются из нескольких разных первоисточников (растровая и векторная карта). Каждая запись самодостаточна: по ней одной видно, что это за файл, откуда он взят, можно ли его публиковать и кто это подтвердил.",
   "type": "object",
   "additionalProperties": false,
   "required": ["$schema", "schemaVersion", "gameId", "locationNotice", "entries"],
   "properties": {
-    "$schema": { "const": "asset-provenance.schema.json" },
+    "$schema": { "type": "string", "minLength": 1, "description": "Ссылка на эту схему; путь зависит от расположения реестра относительно каталога общих схем." },
     "schemaVersion": { "const": "1.0" },
-    "gameId": { "const": "cards-money-trains" },
+    "gameId": { "type": "string", "minLength": 1, "pattern": "^[a-z0-9-]+$", "description": "Идентификатор игры, которой принадлежит реестр." },
     "locationNotice": {
       "type": "string",
       "minLength": 1,
