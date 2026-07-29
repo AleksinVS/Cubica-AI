@@ -261,12 +261,17 @@ test("non-random deck lifecycle operations do not initialize random state", () =
   }
 });
 
-test("random-tie road planning does not initialize persistent generator state", () => {
+test("road planning does not initialize persistent generator state", () => {
   const manifest = createManifest();
   // The initializer only needs to detect the schema-validated capability here;
-  // geometric contract validation is covered by the platform fixture.
+  // geometric contract validation is covered by the platform fixture. Version
+  // 2 of the region road planner (ADR-100) is deterministic and declares
+  // `tieBreak: "shortest-then-codepoint"` instead of the version 1
+  // `"server-random"` value — this fixture no longer exercises randomness at
+  // all, but it still proves that declaring road planning does not, by
+  // itself, cause the initializer to materialize persisted generator state.
   (manifest as any).networkModels = {
-    grid: { roadPlanning: { tieBreak: "server-random" } }
+    grid: { roadPlanning: { tieBreak: "shortest-then-codepoint" } }
   };
   manifest.actions = {};
   manifest.mechanics.plans = {

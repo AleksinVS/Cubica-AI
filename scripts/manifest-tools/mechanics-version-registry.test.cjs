@@ -206,7 +206,7 @@ test("shared validation identity pins exact validator dependency versions", () =
 });
 
 test("current exact modules pin the live server-random provider", () => {
-  assert.equal(SHARED_KERNEL_VERSION, "mechanics-shared-kernel-v10");
+  assert.equal(SHARED_KERNEL_VERSION, "mechanics-shared-kernel-v11");
   assert.equal(MODULE_REGISTRY.get("cubica.random").moduleVersion, "1.1.0");
   assert.equal(
     MODULE_REGISTRY.get("cubica.random").algorithmVersions.randomProvider,
@@ -216,10 +216,17 @@ test("current exact modules pin the live server-random provider", () => {
     MODULE_REGISTRY.get("cubica.deck").algorithmVersions.shuffle,
     "fisher-yates-server-crypto-random-v1"
   );
-  assert.equal(
-    MODULE_REGISTRY.get("cubica.graph").algorithmVersions.randomTieBreak,
-    "server-crypto-random-v1"
-  );
+});
+
+test("the region graph module draws no random value at all", () => {
+  // Version 2 of the region path algorithm decides a route by geometry, so this
+  // module stopped using the random provider (ADR-100 § 4.6). Both the missing
+  // algorithm identity and the missing dependency are asserted, because either
+  // one left behind would claim a capability the module no longer has.
+  const graph = MODULE_REGISTRY.get("cubica.graph");
+  assert.equal(graph.algorithmVersions.regionPath, "region-segment-minimum-v2");
+  assert.equal(graph.algorithmVersions.randomTieBreak, undefined);
+  assert.deepEqual(graph.dependencies, []);
 });
 
 test("pre-registry production locks are known but blocked without a frozen executor", () => {

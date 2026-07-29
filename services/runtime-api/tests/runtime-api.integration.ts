@@ -116,7 +116,6 @@ type TransportRoadPreviewResponse = {
   polyline: Array<{ x: number; y: number }>;
   regionSequence: Array<string>;
   regionSegments: number;
-  candidateCount: number;
 };
 
 const runtimeApi = createRuntimeApiServer({
@@ -950,7 +949,6 @@ test("POST /action-previews/transport-road is read-only, schema-bounded and stal
     assert.match(preview.body.definitionHash, /^sha256:[a-f0-9]{64}$/u);
     assert.ok(preview.body.polyline.length >= 2);
     assert.equal(preview.body.regionSegments, preview.body.regionSequence.length);
-    assert.ok(preview.body.candidateCount >= 1);
     assert.equal(JSON.stringify(preview.body).includes("randomCounter"), false);
     const afterPreview = await store.getSession(sessionId);
     assert.deepEqual(afterPreview?.version, before.version);

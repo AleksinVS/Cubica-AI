@@ -4650,9 +4650,9 @@
                 "regionSegments": 2,
                 "routePlan": {
                   "mode": "region-segment-minimum",
-                  "algorithmVersion": "region-segment-minimum-v1",
+                  "algorithmVersion": "region-segment-minimum-v2",
                   "geometryVersion": "technical-placeholder-vertical-strips-v1",
-                  "geometryHash": "sha256:5f5c005afc15f73508a75477ce6006da1f85066cedbbae2cdedb8dc130afb78e",
+                  "geometryHash": "sha256:c44d5206911064196880de8d3fb5be9e8530188974f0221deb1fa2bb0302fff3",
                   "boundaryPolicy": "lowest-region-id",
                   "regionSequence": [
                     "technical-placeholder-region-15",
@@ -4671,9 +4671,7 @@
                     }
                   ],
                   "tieBreak": {
-                    "policy": "technical-straight-initial-network",
-                    "candidateCount": 1,
-                    "selectedCandidateIndex": 0
+                    "policy": "shortest-then-codepoint"
                   },
                   "source": "technical-initial-network-review",
                   "geometryStatus": "awaiting-author-overlay-confirmation"
@@ -4717,9 +4715,9 @@
                 "regionSegments": 1,
                 "routePlan": {
                   "mode": "region-segment-minimum",
-                  "algorithmVersion": "region-segment-minimum-v1",
+                  "algorithmVersion": "region-segment-minimum-v2",
                   "geometryVersion": "technical-placeholder-vertical-strips-v1",
-                  "geometryHash": "sha256:5f5c005afc15f73508a75477ce6006da1f85066cedbbae2cdedb8dc130afb78e",
+                  "geometryHash": "sha256:c44d5206911064196880de8d3fb5be9e8530188974f0221deb1fa2bb0302fff3",
                   "boundaryPolicy": "lowest-region-id",
                   "regionSequence": [
                     "technical-placeholder-region-15"
@@ -4732,9 +4730,7 @@
                     }
                   ],
                   "tieBreak": {
-                    "policy": "technical-straight-initial-network",
-                    "candidateCount": 1,
-                    "selectedCandidateIndex": 0
+                    "policy": "shortest-then-codepoint"
                   },
                   "source": "technical-initial-network-review",
                   "geometryStatus": "awaiting-author-overlay-confirmation"
@@ -4782,9 +4778,9 @@
                 "regionSegments": 2,
                 "routePlan": {
                   "mode": "region-segment-minimum",
-                  "algorithmVersion": "region-segment-minimum-v1",
+                  "algorithmVersion": "region-segment-minimum-v2",
                   "geometryVersion": "technical-placeholder-vertical-strips-v1",
-                  "geometryHash": "sha256:5f5c005afc15f73508a75477ce6006da1f85066cedbbae2cdedb8dc130afb78e",
+                  "geometryHash": "sha256:c44d5206911064196880de8d3fb5be9e8530188974f0221deb1fa2bb0302fff3",
                   "boundaryPolicy": "lowest-region-id",
                   "regionSequence": [
                     "technical-placeholder-region-14",
@@ -4803,9 +4799,7 @@
                     }
                   ],
                   "tieBreak": {
-                    "policy": "technical-straight-initial-network",
-                    "candidateCount": 1,
-                    "selectedCandidateIndex": 0
+                    "policy": "shortest-then-codepoint"
                   },
                   "source": "technical-initial-network-review",
                   "geometryStatus": "awaiting-author-overlay-confirmation"
@@ -4853,9 +4847,9 @@
                 "regionSegments": 2,
                 "routePlan": {
                   "mode": "region-segment-minimum",
-                  "algorithmVersion": "region-segment-minimum-v1",
+                  "algorithmVersion": "region-segment-minimum-v2",
                   "geometryVersion": "technical-placeholder-vertical-strips-v1",
-                  "geometryHash": "sha256:5f5c005afc15f73508a75477ce6006da1f85066cedbbae2cdedb8dc130afb78e",
+                  "geometryHash": "sha256:c44d5206911064196880de8d3fb5be9e8530188974f0221deb1fa2bb0302fff3",
                   "boundaryPolicy": "lowest-region-id",
                   "regionSequence": [
                     "technical-placeholder-region-12",
@@ -4874,9 +4868,7 @@
                     }
                   ],
                   "tieBreak": {
-                    "policy": "technical-straight-initial-network",
-                    "candidateCount": 1,
-                    "selectedCandidateIndex": 0
+                    "policy": "shortest-then-codepoint"
                   },
                   "source": "technical-initial-network-review",
                   "geometryStatus": "awaiting-author-overlay-confirmation"
@@ -4924,9 +4916,9 @@
                 "regionSegments": 2,
                 "routePlan": {
                   "mode": "region-segment-minimum",
-                  "algorithmVersion": "region-segment-minimum-v1",
+                  "algorithmVersion": "region-segment-minimum-v2",
                   "geometryVersion": "technical-placeholder-vertical-strips-v1",
-                  "geometryHash": "sha256:5f5c005afc15f73508a75477ce6006da1f85066cedbbae2cdedb8dc130afb78e",
+                  "geometryHash": "sha256:c44d5206911064196880de8d3fb5be9e8530188974f0221deb1fa2bb0302fff3",
                   "boundaryPolicy": "lowest-region-id",
                   "regionSequence": [
                     "technical-placeholder-region-12",
@@ -4945,9 +4937,7 @@
                     }
                   ],
                   "tieBreak": {
-                    "policy": "technical-straight-initial-network",
-                    "candidateCount": 1,
-                    "selectedCandidateIndex": 0
+                    "policy": "shortest-then-codepoint"
                   },
                   "source": "technical-initial-network-review",
                   "geometryStatus": "awaiting-author-overlay-confirmation"
@@ -4995,9 +4985,9 @@
                 "regionSegments": 2,
                 "routePlan": {
                   "mode": "region-segment-minimum",
-                  "algorithmVersion": "region-segment-minimum-v1",
+                  "algorithmVersion": "region-segment-minimum-v2",
                   "geometryVersion": "technical-placeholder-vertical-strips-v1",
-                  "geometryHash": "sha256:5f5c005afc15f73508a75477ce6006da1f85066cedbbae2cdedb8dc130afb78e",
+                  "geometryHash": "sha256:c44d5206911064196880de8d3fb5be9e8530188974f0221deb1fa2bb0302fff3",
                   "boundaryPolicy": "lowest-region-id",
                   "regionSequence": [
                     "technical-placeholder-region-09",
@@ -5016,9 +5006,7 @@
                     }
                   ],
                   "tieBreak": {
-                    "policy": "technical-straight-initial-network",
-                    "candidateCount": 1,
-                    "selectedCandidateIndex": 0
+                    "policy": "shortest-then-codepoint"
                   },
                   "source": "technical-initial-network-review",
                   "geometryStatus": "awaiting-author-overlay-confirmation"
@@ -5066,9 +5054,9 @@
                 "regionSegments": 2,
                 "routePlan": {
                   "mode": "region-segment-minimum",
-                  "algorithmVersion": "region-segment-minimum-v1",
+                  "algorithmVersion": "region-segment-minimum-v2",
                   "geometryVersion": "technical-placeholder-vertical-strips-v1",
-                  "geometryHash": "sha256:5f5c005afc15f73508a75477ce6006da1f85066cedbbae2cdedb8dc130afb78e",
+                  "geometryHash": "sha256:c44d5206911064196880de8d3fb5be9e8530188974f0221deb1fa2bb0302fff3",
                   "boundaryPolicy": "lowest-region-id",
                   "regionSequence": [
                     "technical-placeholder-region-10",
@@ -5087,9 +5075,7 @@
                     }
                   ],
                   "tieBreak": {
-                    "policy": "technical-straight-initial-network",
-                    "candidateCount": 1,
-                    "selectedCandidateIndex": 0
+                    "policy": "shortest-then-codepoint"
                   },
                   "source": "technical-initial-network-review",
                   "geometryStatus": "awaiting-author-overlay-confirmation"
@@ -5141,9 +5127,9 @@
                 "regionSegments": 3,
                 "routePlan": {
                   "mode": "region-segment-minimum",
-                  "algorithmVersion": "region-segment-minimum-v1",
+                  "algorithmVersion": "region-segment-minimum-v2",
                   "geometryVersion": "technical-placeholder-vertical-strips-v1",
-                  "geometryHash": "sha256:5f5c005afc15f73508a75477ce6006da1f85066cedbbae2cdedb8dc130afb78e",
+                  "geometryHash": "sha256:c44d5206911064196880de8d3fb5be9e8530188974f0221deb1fa2bb0302fff3",
                   "boundaryPolicy": "lowest-region-id",
                   "regionSequence": [
                     "technical-placeholder-region-10",
@@ -5168,9 +5154,7 @@
                     }
                   ],
                   "tieBreak": {
-                    "policy": "technical-straight-initial-network",
-                    "candidateCount": 1,
-                    "selectedCandidateIndex": 0
+                    "policy": "shortest-then-codepoint"
                   },
                   "source": "technical-initial-network-review",
                   "geometryStatus": "awaiting-author-overlay-confirmation"
@@ -5218,9 +5202,9 @@
                 "regionSegments": 2,
                 "routePlan": {
                   "mode": "region-segment-minimum",
-                  "algorithmVersion": "region-segment-minimum-v1",
+                  "algorithmVersion": "region-segment-minimum-v2",
                   "geometryVersion": "technical-placeholder-vertical-strips-v1",
-                  "geometryHash": "sha256:5f5c005afc15f73508a75477ce6006da1f85066cedbbae2cdedb8dc130afb78e",
+                  "geometryHash": "sha256:c44d5206911064196880de8d3fb5be9e8530188974f0221deb1fa2bb0302fff3",
                   "boundaryPolicy": "lowest-region-id",
                   "regionSequence": [
                     "technical-placeholder-region-11",
@@ -5239,9 +5223,7 @@
                     }
                   ],
                   "tieBreak": {
-                    "policy": "technical-straight-initial-network",
-                    "candidateCount": 1,
-                    "selectedCandidateIndex": 0
+                    "policy": "shortest-then-codepoint"
                   },
                   "source": "technical-initial-network-review",
                   "geometryStatus": "awaiting-author-overlay-confirmation"
@@ -5297,9 +5279,9 @@
                 "regionSegments": 4,
                 "routePlan": {
                   "mode": "region-segment-minimum",
-                  "algorithmVersion": "region-segment-minimum-v1",
+                  "algorithmVersion": "region-segment-minimum-v2",
                   "geometryVersion": "technical-placeholder-vertical-strips-v1",
-                  "geometryHash": "sha256:5f5c005afc15f73508a75477ce6006da1f85066cedbbae2cdedb8dc130afb78e",
+                  "geometryHash": "sha256:c44d5206911064196880de8d3fb5be9e8530188974f0221deb1fa2bb0302fff3",
                   "boundaryPolicy": "lowest-region-id",
                   "regionSequence": [
                     "technical-placeholder-region-15",
@@ -5330,9 +5312,7 @@
                     }
                   ],
                   "tieBreak": {
-                    "policy": "technical-straight-initial-network",
-                    "candidateCount": 1,
-                    "selectedCandidateIndex": 0
+                    "policy": "shortest-then-codepoint"
                   },
                   "source": "technical-initial-network-review",
                   "geometryStatus": "awaiting-author-overlay-confirmation"
@@ -57365,16 +57345,6 @@
                       "op": "value.literal",
                       "value": "reporting"
                     }
-                  },
-                  {
-                    "operation": "set",
-                    "target": {
-                      "endpoint": "public.session.canRequestFinish"
-                    },
-                    "value": {
-                      "op": "value.literal",
-                      "value": true
-                    }
                   }
                 ]
               },
@@ -57895,301 +57865,12 @@
         },
         "roadPlanning": {
           "mode": "region-segment-minimum",
-          "algorithmVersion": "region-segment-minimum-v1",
+          "algorithmVersion": "region-segment-minimum-v2",
           "geometryVersion": "technical-placeholder-vertical-strips-v1",
-          "geometryHash": "sha256:5f5c005afc15f73508a75477ce6006da1f85066cedbbae2cdedb8dc130afb78e",
-          "tieBreak": "server-random",
+          "geometryHash": "sha256:c44d5206911064196880de8d3fb5be9e8530188974f0221deb1fa2bb0302fff3",
+          "tieBreak": "shortest-then-codepoint",
           "boundaryPolicy": "lowest-region-id",
-          "excludedRegionIdsEndpoint": "public.transportNetworks.main.excludedRegionIds",
-          "navigationGraph": {
-            "portals": [
-              {
-                "id": "portal:technical-placeholder-region-01:technical-placeholder-region-02:1",
-                "regionIds": [
-                  "technical-placeholder-region-01",
-                  "technical-placeholder-region-02"
-                ],
-                "from": {
-                  "x": 253.95,
-                  "y": 0
-                },
-                "to": {
-                  "x": 253.95,
-                  "y": 3627
-                }
-              },
-              {
-                "id": "portal:technical-placeholder-region-02:technical-placeholder-region-03:1",
-                "regionIds": [
-                  "technical-placeholder-region-02",
-                  "technical-placeholder-region-03"
-                ],
-                "from": {
-                  "x": 507.9,
-                  "y": 0
-                },
-                "to": {
-                  "x": 507.9,
-                  "y": 3627
-                }
-              },
-              {
-                "id": "portal:technical-placeholder-region-03:technical-placeholder-region-04:1",
-                "regionIds": [
-                  "technical-placeholder-region-03",
-                  "technical-placeholder-region-04"
-                ],
-                "from": {
-                  "x": 761.8499999999999,
-                  "y": 0
-                },
-                "to": {
-                  "x": 761.8499999999999,
-                  "y": 3627
-                }
-              },
-              {
-                "id": "portal:technical-placeholder-region-04:technical-placeholder-region-05:1",
-                "regionIds": [
-                  "technical-placeholder-region-04",
-                  "technical-placeholder-region-05"
-                ],
-                "from": {
-                  "x": 1015.8,
-                  "y": 0
-                },
-                "to": {
-                  "x": 1015.8,
-                  "y": 3627
-                }
-              },
-              {
-                "id": "portal:technical-placeholder-region-05:technical-placeholder-region-06:1",
-                "regionIds": [
-                  "technical-placeholder-region-05",
-                  "technical-placeholder-region-06"
-                ],
-                "from": {
-                  "x": 1269.75,
-                  "y": 0
-                },
-                "to": {
-                  "x": 1269.75,
-                  "y": 3627
-                }
-              },
-              {
-                "id": "portal:technical-placeholder-region-06:technical-placeholder-region-07:1",
-                "regionIds": [
-                  "technical-placeholder-region-06",
-                  "technical-placeholder-region-07"
-                ],
-                "from": {
-                  "x": 1523.6999999999998,
-                  "y": 0
-                },
-                "to": {
-                  "x": 1523.6999999999998,
-                  "y": 3627
-                }
-              },
-              {
-                "id": "portal:technical-placeholder-region-07:technical-placeholder-region-08:1",
-                "regionIds": [
-                  "technical-placeholder-region-07",
-                  "technical-placeholder-region-08"
-                ],
-                "from": {
-                  "x": 1777.6499999999999,
-                  "y": 0
-                },
-                "to": {
-                  "x": 1777.6499999999999,
-                  "y": 3627
-                }
-              },
-              {
-                "id": "portal:technical-placeholder-region-08:technical-placeholder-region-09:1",
-                "regionIds": [
-                  "technical-placeholder-region-08",
-                  "technical-placeholder-region-09"
-                ],
-                "from": {
-                  "x": 2031.6,
-                  "y": 0
-                },
-                "to": {
-                  "x": 2031.6,
-                  "y": 3627
-                }
-              },
-              {
-                "id": "portal:technical-placeholder-region-09:technical-placeholder-region-10:1",
-                "regionIds": [
-                  "technical-placeholder-region-09",
-                  "technical-placeholder-region-10"
-                ],
-                "from": {
-                  "x": 2285.5499999999997,
-                  "y": 0
-                },
-                "to": {
-                  "x": 2285.5499999999997,
-                  "y": 3627
-                }
-              },
-              {
-                "id": "portal:technical-placeholder-region-10:technical-placeholder-region-11:1",
-                "regionIds": [
-                  "technical-placeholder-region-10",
-                  "technical-placeholder-region-11"
-                ],
-                "from": {
-                  "x": 2539.5,
-                  "y": 0
-                },
-                "to": {
-                  "x": 2539.5,
-                  "y": 3627
-                }
-              },
-              {
-                "id": "portal:technical-placeholder-region-11:technical-placeholder-region-12:1",
-                "regionIds": [
-                  "technical-placeholder-region-11",
-                  "technical-placeholder-region-12"
-                ],
-                "from": {
-                  "x": 2793.45,
-                  "y": 0
-                },
-                "to": {
-                  "x": 2793.45,
-                  "y": 3627
-                }
-              },
-              {
-                "id": "portal:technical-placeholder-region-12:technical-placeholder-region-13:1",
-                "regionIds": [
-                  "technical-placeholder-region-12",
-                  "technical-placeholder-region-13"
-                ],
-                "from": {
-                  "x": 3047.3999999999996,
-                  "y": 0
-                },
-                "to": {
-                  "x": 3047.3999999999996,
-                  "y": 3627
-                }
-              },
-              {
-                "id": "portal:technical-placeholder-region-13:technical-placeholder-region-14:1",
-                "regionIds": [
-                  "technical-placeholder-region-13",
-                  "technical-placeholder-region-14"
-                ],
-                "from": {
-                  "x": 3301.35,
-                  "y": 0
-                },
-                "to": {
-                  "x": 3301.35,
-                  "y": 3627
-                }
-              },
-              {
-                "id": "portal:technical-placeholder-region-14:technical-placeholder-region-15:1",
-                "regionIds": [
-                  "technical-placeholder-region-14",
-                  "technical-placeholder-region-15"
-                ],
-                "from": {
-                  "x": 3555.2999999999997,
-                  "y": 0
-                },
-                "to": {
-                  "x": 3555.2999999999997,
-                  "y": 3627
-                }
-              },
-              {
-                "id": "portal:technical-placeholder-region-15:technical-placeholder-region-16:1",
-                "regionIds": [
-                  "technical-placeholder-region-15",
-                  "technical-placeholder-region-16"
-                ],
-                "from": {
-                  "x": 3809.25,
-                  "y": 0
-                },
-                "to": {
-                  "x": 3809.25,
-                  "y": 3627
-                }
-              },
-              {
-                "id": "portal:technical-placeholder-region-16:technical-placeholder-region-17:1",
-                "regionIds": [
-                  "technical-placeholder-region-16",
-                  "technical-placeholder-region-17"
-                ],
-                "from": {
-                  "x": 4063.2,
-                  "y": 0
-                },
-                "to": {
-                  "x": 4063.2,
-                  "y": 3627
-                }
-              },
-              {
-                "id": "portal:technical-placeholder-region-17:technical-placeholder-region-18:1",
-                "regionIds": [
-                  "technical-placeholder-region-17",
-                  "technical-placeholder-region-18"
-                ],
-                "from": {
-                  "x": 4317.15,
-                  "y": 0
-                },
-                "to": {
-                  "x": 4317.15,
-                  "y": 3627
-                }
-              },
-              {
-                "id": "portal:technical-placeholder-region-18:technical-placeholder-region-19:1",
-                "regionIds": [
-                  "technical-placeholder-region-18",
-                  "technical-placeholder-region-19"
-                ],
-                "from": {
-                  "x": 4571.099999999999,
-                  "y": 0
-                },
-                "to": {
-                  "x": 4571.099999999999,
-                  "y": 3627
-                }
-              },
-              {
-                "id": "portal:technical-placeholder-region-19:technical-placeholder-region-20:1",
-                "regionIds": [
-                  "technical-placeholder-region-19",
-                  "technical-placeholder-region-20"
-                ],
-                "from": {
-                  "x": 4825.05,
-                  "y": 0
-                },
-                "to": {
-                  "x": 4825.05,
-                  "y": 3627
-                }
-              }
-            ]
-          }
+          "excludedRegionIdsEndpoint": "public.transportNetworks.main.excludedRegionIds"
         }
       }
     }

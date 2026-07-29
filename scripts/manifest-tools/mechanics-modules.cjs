@@ -37,7 +37,7 @@ if (!operationCatalogValidation.valid) {
     .map((error) => `${error.pointer || "/"} ${error.message}`)
     .join("; ")}`);
 }
-const SHARED_KERNEL_VERSION = "mechanics-shared-kernel-v10";
+const SHARED_KERNEL_VERSION = "mechanics-shared-kernel-v11";
 /**
  * Shared trusted Mechanics corpus.
  *
@@ -68,6 +68,7 @@ const SHARED_KERNEL_FILES = Object.freeze([
   "services/runtime-api/src/modules/mechanics/mechanicsExecutor.ts",
   "services/runtime-api/src/modules/mechanics/stateModel.ts",
   "services/runtime-api/src/modules/mechanics/types.ts",
+  "services/runtime-api/src/modules/runtime/regionRoadGeometry.ts",
   "services/runtime-api/src/modules/runtime/regionRoadPlanner.ts"
 ]);
 
@@ -111,12 +112,20 @@ const MODULE_CORPUS_FILES = Object.freeze({
     "services/runtime-api/src/modules/mechanics/operationRegistry.ts",
     "services/runtime-api/src/modules/mechanics/orderingOperations.ts"
   ]),
+  // Splitting a region into triangles, choosing a corridor and pulling the
+  // line straight all happen only while planning a road, never while admitting
+  // a package, so those three files belong to this module rather than to the
+  // shared kernel. `sessionRandom.ts` left this list with algorithm version 2:
+  // the route is decided by geometry, so the graph module no longer draws a
+  // random value at all (ADR-100 § 4.6).
   "cubica.graph": Object.freeze([
     "services/runtime-api/src/modules/content/canonicalJson.ts",
     "services/runtime-api/src/modules/mechanics/domainOperations.ts",
     "services/runtime-api/src/modules/mechanics/graphGeometry.ts",
+    "services/runtime-api/src/modules/runtime/funnelPath.ts",
+    "services/runtime-api/src/modules/runtime/navigationMesh.ts",
+    "services/runtime-api/src/modules/runtime/polygonTriangulation.ts",
     "services/runtime-api/src/modules/runtime/regionRoadPlanner.ts",
-    "services/runtime-api/src/modules/runtime/sessionRandom.ts",
     "services/runtime-api/src/modules/runtime/transportRoadPreview.ts"
   ]),
   "cubica.relations": Object.freeze([
@@ -236,9 +245,14 @@ const rawDescriptors = [
   },
   {
     moduleId: "cubica.graph",
-    moduleVersion: "2.2.0",
-    behaviorVersion: "mechanics-region-graph-v1alpha1-8",
-    dependencies: ["cubica.random"],
+    moduleVersion: "2.3.0",
+    behaviorVersion: "mechanics-region-graph-v1alpha1-9",
+    // No dependency on cubica.random any more: version 2 of the region path
+    // algorithm decides the route by geometry, so nothing here is drawn at
+    // random (ADR-100 § 4.6). The dependency is removed rather than left in
+    // place, because a declared dependency that is never used is a false
+    // statement about what this module can do.
+    dependencies: [],
     operations: [
       "graph.regions.route.plan",
       "graph.edge.position.inspect",
@@ -247,8 +261,7 @@ const rawDescriptors = [
       "graph.shortestPath"
     ],
     algorithmVersions: {
-      regionPath: "region-segment-minimum-v1",
-      randomTieBreak: "server-crypto-random-v1",
+      regionPath: "region-segment-minimum-v2",
       edgePosition: "polyline-arc-length-v1",
       regionMembership: "closed-polygon-all-memberships-v1",
       geometryFingerprint: "canonical-json-sha256-v1"

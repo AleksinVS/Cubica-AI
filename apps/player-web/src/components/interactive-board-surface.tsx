@@ -598,9 +598,6 @@ export function InteractiveBoardSurface({
                       {action.preview?.kind === "transport-road" && hasCurrentPreview && roadPreview ? (
                         <p className={styles.previewResult} role="status">
                           Сегментов по областям: {roadPreview.response.regionSegments}.
-                          {roadPreview.response.candidateCount > 1
-                            ? ` Равноценных маршрутов: ${roadPreview.response.candidateCount}; при подтверждении система может выбрать другой равноценный вариант.`
-                            : " Маршрут однозначен."}
                         </p>
                       ) : null}
                       <button

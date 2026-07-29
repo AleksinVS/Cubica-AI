@@ -464,7 +464,7 @@ export interface GameManifestTransportRegion {
     ...GameManifestCanonicalPoint[]
   ];
   /**
-   * Inner rings: areas enclosed by the outer ring that do not belong to this region, such as an enclave that is a region of its own. A hole is expressible here so that a map can be recorded truthfully, but planning algorithm region-segment-minimum-v1 does not support it and refuses such a region instead of guessing. A wider geometry class requires a new algorithm version, which is what keeps already-built roads explainable.
+   * Inner rings: areas enclosed by the outer ring that do not belong to this region, such as an enclave that is a region of its own. Planning algorithm region-segment-minimum-v2 supports them: the region is split into triangles for path finding, and an inner ring needs no special case there. An enclave and the region around it share one closed border, which is one navigation crossing.
    *
    * @maxItems 64
    */
@@ -484,41 +484,22 @@ export interface GameManifestCanonicalPoint {
   y: number;
 }
 /**
- * Explicit opt-in contract for authoritative minimum-region road planning. The navigation graph and hash are compiler-derived from canonical region polygons: derive them with the shared map-annotation pipeline rather than writing portals by hand, because runtime rebuilds the graph from the polygons and refuses any package whose declared graph or hash differs.
+ * Explicit opt-in contract for authoritative minimum-region road planning (ADR-100). Only the region polygons and one checksum are declared here. The navigation graph — which pairs of regions border each other and along which line — is derived from the polygons by runtime and is deliberately not stored: it carries no information the polygons do not already carry, and on a real author map it was larger than the polygons themselves. geometryHash is the proof that the package publisher derived the same graph from the same polygons; runtime derives the graph again on load and refuses the package if the checksum differs. Derive geometryHash with the shared map-annotation pipeline rather than by hand.
  *
  * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
  * via the `definition` "GameManifestTransportRoadPlanning".
  */
 export interface GameManifestTransportRoadPlanning {
   mode: "region-segment-minimum";
-  algorithmVersion: "region-segment-minimum-v1";
+  algorithmVersion: "region-segment-minimum-v2";
   geometryVersion: string;
   geometryHash: string;
-  tieBreak: "server-random";
+  /**
+   * Version 2 has nothing left to decide by chance: the corridor is chosen by a deterministic search and the line inside it is unique. The shorter line wins; an exact tie is broken by codepoint order of the point list.
+   */
+  tieBreak: "shortest-then-codepoint";
   boundaryPolicy: "lowest-region-id";
   excludedRegionIdsEndpoint?: GameManifestSafeIdentifier;
-  navigationGraph: {
-    /**
-     * @maxItems 4096
-     */
-    portals: GameManifestTransportRoadPortal[];
-  };
-}
-/**
- * One compiler-derived positive-length shared boundary between two transport regions.
- *
- * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
- * via the `definition` "GameManifestTransportRoadPortal".
- */
-export interface GameManifestTransportRoadPortal {
-  id: string;
-  /**
-   * @minItems 2
-   * @maxItems 2
-   */
-  regionIds: [string, string];
-  from: GameManifestCanonicalPoint;
-  to: GameManifestCanonicalPoint;
 }
 /**
  * Declarative rules for moving authoritative vehicles through one network edge.

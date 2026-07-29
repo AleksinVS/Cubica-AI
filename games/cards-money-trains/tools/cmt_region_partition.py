@@ -124,15 +124,50 @@ def effective_width(polygon: Polygon) -> float:
     return 2.0 * polygon.area / polygon.length if polygon.length else 0.0
 
 
+def classify_sliver_countries(
+    sliver: Polygon,
+    named_countries: list[tuple[str, str | None, Polygon]],
+    min_share: float = 0.02,
+) -> list[str]:
+    """Страны, заметно перекрывающие щель (не менее `min_share` её площади).
+
+    Обычная внутренняя щель (не на границе страны) пересекается ровно с одной
+    страной почти по всей своей площади. Щель на границе двух стран — другое
+    дело: она пересекается либо сразу с двумя странами (их заливки
+    перекрываются, или щель лежит ровно между ними), либо ни с одной (щель —
+    зазор МЕЖДУ двумя заливками, авторские контуры которых не сходятся точно в
+    этом месте). Оба этих случая отличаются от обычной внутренней щели тем, что
+    список здесь получается не из ровно одного элемента, и именно по этому
+    признаку такую щель нужно отдельно отметить в реестре решений: присоединение
+    всё равно происходит по тому же правилу самой длинной общей границы, но
+    государственная граница на этом участке слегка сдвигается, и человек должен
+    иметь возможность это увидеть и пересмотреть.
+    """
+
+    if sliver.area <= 0.0:
+        return []
+    touching: list[str] = []
+    for country_id, _name, polygon in named_countries:
+        if not polygon.intersects(sliver):
+            continue
+        overlap_area = polygon.intersection(sliver).area
+        if overlap_area >= min_share * sliver.area:
+            touching.append(country_id)
+    return touching
+
+
 def collapse_slivers(
     regions: list[Polygon],
     min_width: float = DOMINANT_STROKE_WIDTH_PX,
+    named_countries: list[tuple[str, str | None, Polygon]] | None = None,
 ) -> tuple[list[Polygon], list[dict[str, Any]]]:
     """Схлопнуть узкие щели, присоединив каждую к соседу по длинной общей границе.
 
     Щели возникают вдоль границ стран: край цветной заливки идёт рядом с осевой
     линией лежащей поверх него обводки, и между ними остаётся узкая полоса.
-    Областью такая полоса не является.
+    Областью такая полоса не является. Того же происхождения — узкие грани,
+    целиком лежащие внутри нарисованной краски (сдвоенные линии); вызывающий
+    код передаёт их сюда вместе с обычными щелями, не отбрасывая заранее.
 
     Порог взят равным толщине основной линии карты. Он измерен, а не назначен:
     при этом пороге под правило попадают ровно те фигуры, что лежат у границ
@@ -140,7 +175,21 @@ def collapse_slivers(
     вчетверо больше порога.
 
     Щель не исчезает бесследно: каждое схлопывание возвращается отдельной
-    записью и попадает в реестр решений.
+    записью и попадает в реестр решений — кроме тех редких случаев, где щель
+    настолько мала (площадь после округления до шести знаков — как везде в
+    этом файле — равна ровно 0.0, то есть меньше одной миллионной точки в
+    квадрате), что печатать про неё запись было бы не честной фиксацией
+    решения, а бессмысленным шумом; геометрия при этом всё равно объединяется,
+    неучтённой остаётся только сама эта неизмеримая крошка площади, а не
+    территория.
+
+    Если передан `named_countries`, каждая запись дополнительно получает поле
+    `touchingCountryIds` — список стран, заметно перекрывающих щель (см.
+    classify_sliver_countries()). Это не меняет сам способ присоединения: щель
+    всё равно достаётся соседу с самой длинной общей границей независимо от
+    того, к какой стране он относится. Поле лишь помечает случаи, где щель
+    лежит на границе двух стран или вовсе вне обеих заливок, — вызывающий код
+    заносит такие случаи в реестр решений отдельным видом записи.
     """
 
     keep = [region for region in regions if effective_width(region) >= min_width]
@@ -169,6 +218,10 @@ def collapse_slivers(
             "sharedBoundaryPx": _round(best_length),
             "merged": best_index is not None,
         }
+        if named_countries is not None:
+            record["touchingCountryIds"] = classify_sliver_countries(
+                sliver, named_countries
+            )
         if best_index is None:
             # Соседа нет: щель оставлена как есть, чтобы не потерять территорию.
             keep.append(sliver)
@@ -181,9 +234,102 @@ def collapse_slivers(
             else:
                 keep.append(sliver)
                 record["merged"] = False
-        collapsed.append(record)
+        if record["areaPx2"] > 0.0:
+            collapsed.append(record)
 
     return keep, collapsed
+
+
+def merge_residual_micro_regions(
+    regions: list[Polygon],
+    min_area: float = MICRO_AREA_PX2,
+    named_countries: list[tuple[str, str | None, Polygon]] | None = None,
+) -> tuple[list[Polygon], list[dict[str, Any]]]:
+    """Второй шанс для щелей, которые collapse_slivers() не смогла присоединить.
+
+    collapse_slivers() выше присоединяет щели по длине общей границы с
+    соседом, и это работает почти везде. Но там, где на карте сходятся сразу
+    несколько пересекающихся линий, полигонизация иногда даёт вырожденную
+    грань числовой ничтожности — площадью меньше MICRO_AREA_PX2, того же
+    порога, что уже отделяет числовой шум от настоящей территории по всему
+    этому файлу (drop_micro_holes(), summarize(), clip_regions_by_countries()).
+    У такой вырожденной грани длина общей границы с соседом может по чистой
+    числовой случайности измериться нулём, хотя геометрически грань явно
+    чему-то прилегает — потому что её собственный контур настолько мал и
+    неровен, что пересечение с буфером соседа даёт пустое множество или
+    единственную точку, а не отрезок. Присоединение по длине границы в этом
+    случае ненадёжно; вместо него берётся присоединение к ближайшему по
+    расстоянию соседу — тот же принцип «к соседу», но единственным
+    измерением, которое на такой геометрии вообще работает.
+
+    Площадь и здесь не теряется бесследно: если объединение с ближайшим
+    соседом не дало одной простой фигуры (в измеренных данных этого файла не
+    происходит, но проверяется на будущее), фрагмент остаётся как есть, и это
+    видно в возвращаемой записи по `merged: false` — как и в collapse_slivers().
+
+    Запись о присоединении печатается, только если площадь фрагмента после
+    округления до шести знаков (_round(), как и везде в этом файле) больше
+    нуля. Некоторые из этих фрагментов настолько малы (меньше одной миллионной
+    точки в квадрате — числовой мусор кластера пересекающихся линий, а не
+    измеримая территория), что округление даёт ровно 0.0; схема черновика
+    требует строго положительной площади у любой записи о присоединении, и это
+    верно: печатать «присоединён участок площадью 0.0» было бы не честной
+    записью решения, а бессмысленным шумом. Геометрия при этом объединяется
+    всегда, независимо от того, печатается ли запись, — неучтённой в записи
+    остаётся только сама эта неизмеримая крошка площади, а не территория.
+    """
+
+    keep = [region for region in regions if region.area >= min_area]
+    tiny = [region for region in regions if region.area < min_area]
+    resolved: list[dict[str, Any]] = []
+
+    for fragment in sorted(tiny, key=lambda region: region.area):
+        point = fragment.representative_point()
+        record = {
+            "areaPx2": _round(fragment.area),
+            "effectiveWidthPx": _round(effective_width(fragment)),
+            "atX": _round(point.x),
+            "atY": _round(point.y),
+            # Присоединение здесь идёт по расстоянию, а не по длине общей
+            # границы (см. докстринг выше), поэтому это поле всегда 0 —
+            # честно показывает, что обычное измерение collapse_slivers() тут
+            # неприменимо, а не подделывает его несуществующим числом.
+            "sharedBoundaryPx": 0.0,
+            "merged": False,
+        }
+        if named_countries is not None:
+            record["touchingCountryIds"] = classify_sliver_countries(
+                fragment, named_countries
+            )
+        if keep:
+            # Несколько соседей могут оказаться на одном и том же (нулевом)
+            # расстоянии от вырожденного фрагмента: он лежит в точке, где
+            # сходится сразу несколько других граней. Объединение с ближайшим
+            # из них не обязано дать простую фигуру именно из-за вырожденности
+            # самого фрагмента — поэтому здесь перебираются все соседи по
+            # возрастанию расстояния, и берётся первый, для которого
+            # объединение действительно сошлось в одну фигуру, а не первый
+            # по расстоянию сам по себе.
+            candidates_by_distance = sorted(
+                range(len(keep)), key=lambda index: fragment.distance(keep[index])
+            )
+            merged_index = None
+            for candidate_index in candidates_by_distance:
+                merged = unary_union([keep[candidate_index], fragment])
+                if isinstance(merged, Polygon):
+                    keep[candidate_index] = merged
+                    merged_index = candidate_index
+                    break
+            if merged_index is None:
+                keep.append(fragment)
+            else:
+                record["merged"] = True
+        else:
+            keep.append(fragment)
+        if record["areaPx2"] > 0.0:
+            resolved.append(record)
+
+    return keep, resolved
 
 
 def _round(value: float) -> float:
@@ -721,6 +867,71 @@ def compare_partitions(
     }
 
 
+# --- Новый критерий приёмки: связность графа соседства областей ---------------
+#
+# Зачем это нужно (для новичка в проекте): дорога в этой игре строится между
+# соседними областями, а маршрут между терминалами разных стран — это цепочка
+# соседств через несколько областей подряд. Если граф соседства (области —
+# вершины, ребро — общая граница положительной длины) распадается на
+# несколько частей, между областями из разных частей маршрута не существует
+# вообще, и построить дорогу между ними нельзя ни при каком количестве денег.
+# До исправления пустот в разбиении (см. main()) карта именно так и
+# распадалась: 917 областей делились на шесть частей размерами 400, 234, 105,
+# 99, 52 и 27 — по границам целых стран, — потому что незамкнутые пустоты
+# рвали общую границу как раз там, где одна страна граничит с другой.
+
+
+def build_region_adjacency(polygons: list[Polygon]) -> list[set[int]]:
+    """Построить граф соседства: связаны области с общей границей ненулевой длины.
+
+    Проверяется именно длина пересечения внешних контуров, а не просто факт
+    пересечения: две области, соприкасающиеся только в одной точке (углом),
+    не могут пропустить через эту точку дорогу и соседями в смысле этой игры
+    не считаются.
+    """
+
+    tree = STRtree(polygons)
+    neighbors: list[set[int]] = [set() for _ in polygons]
+    for index, polygon in enumerate(polygons):
+        for candidate in tree.query(polygon):
+            candidate = int(candidate)
+            if candidate <= index:
+                # Пара уже обработана с другой стороны, либо это сама область.
+                continue
+            shared = polygon.exterior.intersection(polygons[candidate].exterior)
+            if shared.length > 1e-6:
+                neighbors[index].add(candidate)
+                neighbors[candidate].add(index)
+    return neighbors
+
+
+def connected_components(neighbors: list[set[int]]) -> list[list[int]]:
+    """Связные части графа соседства (обход в глубину без рекурсии).
+
+    Без рекурсии — потому что при нескольких сотнях вершин глубина обхода
+    легко превысила бы предел рекурсии Python на неудачно устроенном графе;
+    явный стек этого ограничения не имеет.
+    """
+
+    visited = [False] * len(neighbors)
+    components: list[list[int]] = []
+    for start in range(len(neighbors)):
+        if visited[start]:
+            continue
+        stack = [start]
+        visited[start] = True
+        component = [start]
+        while stack:
+            node = stack.pop()
+            for neighbor in neighbors[node]:
+                if not visited[neighbor]:
+                    visited[neighbor] = True
+                    stack.append(neighbor)
+                    component.append(neighbor)
+        components.append(component)
+    return components
+
+
 # --- Постоянный артефакт черновика -------------------------------------------
 
 
@@ -965,18 +1176,49 @@ def build_doubts(
         )
 
     for record in collapsed:
-        add(
-            "collapsed-sliver",
-            (record["atX"], record["atY"]),
-            "Узкая щель у границы страны присоединена к соседней области.",
-            "Считать щель самостоятельной областью.",
-            "high",
-            {
-                "areaPx2": record["areaPx2"],
-                "effectiveWidthPx": record["effectiveWidthPx"],
-                "merged": record["merged"],
-            },
-        )
+        # touchingCountryIds присутствует только тогда, когда collapse_slivers()
+        # вызвана с named_countries (так вызывается только сборка по осевым
+        # линиям — см. main()). Ровно один элемент означает обычную внутреннюю
+        # щель: она лежит внутри одной страны, и государственная граница не
+        # меняется. Ноль или два и более элементов означают щель НА границе
+        # стран — присоединение всё равно происходит по тому же sliverRule, но
+        # государственная граница на этом участке слегка сдвигается, и это
+        # обязано попасть в реестр отдельным видом записи, а не потеряться
+        # среди обычных щелей.
+        touching = record.get("touchingCountryIds")
+        if touching is not None and len(touching) != 1:
+            add(
+                "country-border-gap-merged",
+                (record["atX"], record["atY"]),
+                (
+                    "Щель на границе стран присоединена к соседней области по "
+                    "самой длинной общей границе (правило sliverRule); "
+                    "государственная граница на этом участке сместилась на "
+                    "ширину щели."
+                ),
+                "Считать щель самостоятельной областью или провести границу иначе.",
+                "medium",
+                {
+                    "areaPx2": record["areaPx2"],
+                    "effectiveWidthPx": record["effectiveWidthPx"],
+                    "merged": record["merged"],
+                    "touchingCountryCount": len(touching),
+                    "touchingCountryIds": touching,
+                },
+            )
+        else:
+            add(
+                "collapsed-sliver",
+                (record["atX"], record["atY"]),
+                "Узкая щель у границы страны присоединена к соседней области.",
+                "Считать щель самостоятельной областью.",
+                "high",
+                {
+                    "areaPx2": record["areaPx2"],
+                    "effectiveWidthPx": record["effectiveWidthPx"],
+                    "merged": record["merged"],
+                },
+            )
 
     for record in micro_holes:
         add(
@@ -1020,6 +1262,28 @@ def main() -> None:
         else []
     )
     print(f"фигур стран: {len(country_polygons)}")
+
+    # Именованные страны (идентификатор игры, название, заливка) загружаются
+    # здесь, раньше, чем раньше: щели, схлопываемые ниже собственным правилом
+    # sliverRule, обязаны знать, какую страну (или страны) они затрагивают,
+    # чтобы отличить обычную внутреннюю щель от щели на границе двух стран —
+    # см. classify_sliver_countries(). Загрузка не зависит от флага
+    # `--no-countries`: даже когда границы стран не участвуют в самом
+    # разбиении, принадлежность области стране всё равно вычисляется — так
+    # было и до этого переноса, когда блок читался позже, перед сборкой
+    # черновика.
+    countries_path = annotations / "vector-map.countries-stations.draft.json"
+    countries_data = (
+        json.loads(countries_path.read_text(encoding="utf-8"))
+        if countries_path.exists()
+        else {"countries": [], "stations": []}
+    )
+    named_countries = [
+        (country.get("gameCountryId") or country["id"], country.get("name"), polygon)
+        for country in countries_data.get("countries", [])
+        for polygon in rings_to_polygons(country.get("contour") or [])
+    ]
+
     matrix = review["calibration"]["pdfToCanonical"]
     scale = affine_scale(matrix)
     half_widths = sorted({_round(stroke.half_width) for stroke in strokes})
@@ -1070,20 +1334,75 @@ def main() -> None:
 
     # Там, где контур страны идёт рядом с толстой обводкой, между ними
     # появляется узкая грань, целиком лежащая внутри нарисованной краски. Это не
-    # область, а внутренность самой линии. Правило отбрасывания то же самое, по
-    # которому область определяется в способе «краска»: у настоящей области
-    # внутри есть незакрашенное место.
-    before_ink_filter = len(centerline["regions"])
-    centerline["regions"] = [
+    # самостоятельная область, а внутренность самой линии — но и не пустота:
+    # игровая территория под ней никуда не делась, поэтому грань обязана
+    # присоединиться к соседней области, а не исчезнуть.
+    #
+    # НАЙДЕННАЯ И ИСПРАВЛЕННАЯ ОШИБКА. Раньше такие грани здесь просто
+    # выбрасывались из списка областей, и покрытая ими территория не
+    # доставалась ни одной области — получалась настоящая дыра в играбельной
+    # карте. Пять из десяти авторских дорог проходили ровно через такие дыры:
+    # маршрут дороги на этом отрезке не принадлежал ни одной области.
+    # Измерение показало, что действующая ширина ВСЕХ таких граней (2290 из
+    # 3247 до сверки в авторской карте) меньше толщины основной линии карты —
+    # не больше 4.77 точки против порога 6.97, — то есть по уже принятому
+    # правилу sliverRule они являются щелями и обязаны присоединиться к соседу
+    # по самой длинной общей границе, как и любая другая щель. Поэтому здесь
+    # эти грани больше не отбрасываются: они остаются в общем списке и ниже
+    # передаются в collapse_slivers() вместе со всеми остальными гранями — тот
+    # же вызов, что уже схлопывал щели у границ стран, находит соседа и для них.
+    ink_covered_count = sum(
+        1
+        for region in centerline["regions"]
+        if region.difference(ink).area < MICRO_AREA_PX2
+    )
+    print(
+        "граней внутри краски (щелей у сдвоенных линий, подлежат схлопыванию): "
+        f"{ink_covered_count}"
+    )
+
+    # Защитная проверка вместо тихого возврата к старому поведению. Вывод выше
+    # опирается на измеренный факт: такие грани УЖЕ уже основной линии. Если
+    # это когда-нибудь перестанет быть так (новый авторский файл, другая
+    # обводка), автоматическое схлопывание широкой грани щелью было бы не
+    # измерением, а новым допуском — правильнее остановиться и разобраться.
+    oversized_ink_covered = [
         region
         for region in centerline["regions"]
-        if region.difference(ink).area >= MICRO_AREA_PX2
+        if region.difference(ink).area < MICRO_AREA_PX2
+        and effective_width(region) >= DOMINANT_STROKE_WIDTH_PX
     ]
-    dropped = before_ink_filter - len(centerline["regions"])
-    print(f"граней внутри краски отброшено: {dropped}")
+    if oversized_ink_covered:
+        point = oversized_ink_covered[0].representative_point()
+        raise SystemExit(
+            "грань внутри краски шире основной линии карты "
+            f"({effective_width(oversized_ink_covered[0]):.3f} >= "
+            f"{DOMINANT_STROKE_WIDTH_PX}) у точки ({point.x:.1f}, {point.y:.1f}); "
+            "автоматическое схлопывание такой грани щелью было бы предположением, "
+            "не измерением — нужно решение человека"
+        )
 
-    centerline["regions"], centerline_collapsed = collapse_slivers(centerline["regions"])
+    centerline["regions"], centerline_collapsed = collapse_slivers(
+        centerline["regions"], named_countries=named_countries
+    )
     print(f"узких щелей схлопнуто: {len(centerline_collapsed)}")
+
+    # Второй шанс для тех немногих щелей (в измеренных данных — 5), которые
+    # collapse_slivers() выше не смогла присоединить: на кластерах, где
+    # сходятся сразу несколько пересекающихся линий, полигонизация иногда даёт
+    # вырожденную грань числовой ничтожности, у которой длина общей границы с
+    # соседом по чистой числовой случайности измеряется нулём. См. докстринг
+    # merge_residual_micro_regions() — присоединение здесь идёт по расстоянию,
+    # а не по длине границы, единственному измерению, которое на такой
+    # геометрии вообще работает.
+    centerline["regions"], residual_micro_merged = merge_residual_micro_regions(
+        centerline["regions"], named_countries=named_countries
+    )
+    print(
+        "вырожденных граней-остатков присоединено вторым шансом: "
+        f"{len(residual_micro_merged)}"
+    )
+    centerline_collapsed = centerline_collapsed + residual_micro_merged
 
     centerline["regions"], micro_holes = drop_micro_holes(centerline["regions"])
     print(f"ничтожных внутренних отверстий убрано: {len(micro_holes)}")
@@ -1109,6 +1428,36 @@ def main() -> None:
     real_paint, paint_empty = separate_empty_spaces(real_paint, country_polygons)
     real_center, empty_spaces = separate_empty_spaces(real_center, country_polygons)
     print(f"пустых пространств исключено: {len(empty_spaces)} по осевым, {len(paint_empty)} по краске")
+
+    # Проверка полноты замощения. Играбельная карта — это объединение всех
+    # страновых заливок за вычетом трёх исключённых пустых пространств (морей):
+    # внутри неё не должно остаться ни одного участка, не принадлежащего ни
+    # одной области. До исправления обработки граней внутри краски здесь
+    # оставалось 30687 точек в квадрате пустоты в 852 отдельных местах — ровно
+    # там, где потом проваливались авторские дороги. Проверка не чинит пропуски
+    # сама: если она находит хоть один, значит sliverRule почему-то не
+    # сработал выше, и это повод остановиться и разобраться, а не придумать
+    # здесь новый допуск.
+    if country_polygons:
+        playable_land = unary_union(country_polygons)
+        covered_land = unary_union(real_center + empty_spaces)
+        residual_void = playable_land.difference(covered_land)
+        residual_void_area = residual_void.area
+        if residual_void_area > 1e-6:
+            void_parts = [
+                part
+                for part in getattr(residual_void, "geoms", [residual_void])
+                if part.area > 1e-9
+            ]
+            raise SystemExit(
+                f"в играбельной карте осталось {residual_void_area:.3f} точки "
+                f"в квадрате пустоты в {len(void_parts)} местах, не "
+                "принадлежащих ни одной области и ни одному пустому "
+                "пространству; sliverRule обязан был присоединить их к соседу "
+                "выше, но не сработал — нужен разбор причины, а не новый допуск"
+            )
+        print("проверка полноты замощения играбельной карты: пустот не найдено")
+
     comparison = compare_partitions(real_paint, real_center)
     print(f"областей, совпавших один к одному: {comparison['pairCount']}")
     print(f"область краски без пары (слиты «осевыми»): {len(comparison['paintWithoutPair'])}")
@@ -1119,18 +1468,9 @@ def main() -> None:
     print(f"доля согласия: {agreement:.2%}")
 
     # --- постоянный артефакт черновика ---------------------------------------
-
-    countries_path = annotations / "vector-map.countries-stations.draft.json"
-    countries_data = (
-        json.loads(countries_path.read_text(encoding="utf-8"))
-        if countries_path.exists()
-        else {"countries": [], "stations": []}
-    )
-    named_countries = [
-        (country.get("gameCountryId") or country["id"], country.get("name"), polygon)
-        for country in countries_data.get("countries", [])
-        for polygon in rings_to_polygons(country.get("contour") or [])
-    ]
+    # countries_path / countries_data / named_countries уже загружены в самом
+    # начале main() — раньше, чем здесь, потому что collapse_slivers() выше
+    # уже использовала named_countries для классификации щелей.
 
     # Перечень пустых пространств берётся от способа «краска»: он образует их
     # все как отдельные участки, тогда как способ «осевые» часть из них вовсе не
@@ -1186,6 +1526,40 @@ def main() -> None:
         micro_holes,
     )
     without_country = [r["id"] for r in region_records if r["countryId"] is None]
+
+    # Новый критерий приёмки: граф соседства обязан быть связным (см.
+    # build_region_adjacency()/connected_components() выше). stable_region_order()
+    # — чистая функция уже собранного списка областей, поэтому повторный вызов
+    # здесь на том же real_center детерминированно даёт тот же порядок, каким
+    # build_regions() уже пронумеровала области: индекс i в графе соответствует
+    # region_records[i].
+    print("\n--- граф соседства областей ---")
+    ordered_polygons_for_adjacency = stable_region_order(real_center)
+    adjacency = build_region_adjacency(ordered_polygons_for_adjacency)
+    components = connected_components(adjacency)
+    components.sort(key=len, reverse=True)
+    component_sizes = [len(component) for component in components]
+    cross_country_adjacency_count = 0
+    same_country_adjacency_count = 0
+    for index, neighbor_set in enumerate(adjacency):
+        for neighbor in neighbor_set:
+            if neighbor <= index:
+                continue
+            if region_records[index]["countryId"] != region_records[neighbor]["countryId"]:
+                cross_country_adjacency_count += 1
+            else:
+                same_country_adjacency_count += 1
+    print(f"связных частей: {len(components)}; размеры частей: {component_sizes}")
+    print(f"переходов между областями разных стран: {cross_country_adjacency_count}")
+    print(f"переходов между областями одной страны: {same_country_adjacency_count}")
+    if len(components) != 1:
+        raise SystemExit(
+            f"граф соседства областей распался на {len(components)} несвязных "
+            f"частей размерами {component_sizes}; маршрут между областями из "
+            "разных частей не существует, строительство дорог между ними "
+            "невозможно ни при каком бюджете — разбиение непригодно для "
+            "алгоритмов, пока связность не восстановлена"
+        )
 
     draft = {
         "$schema": "./vector-map-region-partition.schema.json",
@@ -1265,6 +1639,9 @@ def main() -> None:
             "regionsWithoutCountryCount": len(without_country),
             "emptySpaceCount": len(empty_records),
             "totalAreaPx2": center_summary["totalAreaPx2"],
+            "connectedComponentCount": len(components),
+            "largestConnectedComponentSize": component_sizes[0] if component_sizes else 0,
+            "crossCountryAdjacencyCount": cross_country_adjacency_count,
         },
         "regions": region_records,
         "emptySpaces": empty_records,
@@ -1285,7 +1662,23 @@ def main() -> None:
                 joins, key=lambda item: (item["candidateId"], item["endpoint"])
             )
         ],
-        "collapsedSlivers": centerline_collapsed,
+        # Поле touchingCountryIds — диагностика для build_doubts() выше, не
+        # часть постоянной формы записи collapsedSliver (её закрепляет схема
+        # шестью полями: areaPx2, effectiveWidthPx, atX, atY, sharedBoundaryPx,
+        # merged). Здесь она отбрасывается, чтобы список остался в прежней,
+        # проверенной схемой форме независимо от того, помогла ли эта
+        # диагностика построить какой-то doubt.
+        "collapsedSlivers": [
+            {
+                "areaPx2": record["areaPx2"],
+                "effectiveWidthPx": record["effectiveWidthPx"],
+                "atX": record["atX"],
+                "atY": record["atY"],
+                "sharedBoundaryPx": record["sharedBoundaryPx"],
+                "merged": record["merged"],
+            }
+            for record in centerline_collapsed
+        ],
         "removedMicroHoles": micro_holes,
         "doubts": doubts,
     }

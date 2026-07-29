@@ -858,8 +858,12 @@ const hasExecutableRoutePlan = (edge) => {
     typeof routePlan.boundaryPolicy === "string" &&
     Array.isArray(routePlan.regionSequence) &&
     Array.isArray(routePlan.passages) &&
+    // Version 2's tieBreak (ADR-100 §4.6) is just a named policy — no
+    // candidate list or chosen index survives, because there is no set of
+    // equal candidates left to choose between by the time a route is stored.
     routePlan.tieBreak !== null &&
-    typeof routePlan.tieBreak === "object"
+    typeof routePlan.tieBreak === "object" &&
+    typeof routePlan.tieBreak.policy === "string"
   );
 };
 

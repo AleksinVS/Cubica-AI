@@ -224,6 +224,7 @@ const DOUBT_KIND_ORDER = [
   "unresolved-gap",
   "assumed-connection",
   "collapsed-sliver",
+  "country-border-gap-merged",
   "removed-micro-hole",
   "methods-disagree-merged",
   "methods-disagree-split",
@@ -256,8 +257,13 @@ const loadInputs = async ({ regionPartitionPath, countriesStationsPath, backgrou
   if (doubtKindCounts["unresolved-gap"] !== regionPartition.summary.unresolvedGapCount) {
     fail("unresolved-gap count disagrees with summary.unresolvedGapCount");
   }
-  if (doubtKindCounts["collapsed-sliver"] !== regionPartition.summary.collapsedSliverCount) {
-    fail("collapsed-sliver count disagrees with summary.collapsedSliverCount");
+  // Сводка считает все присоединённые щели одним числом, а реестр сомнений
+  // делит их на два вида: обычную щель внутри страны и щель на границе стран,
+  // из-за которой граница страны сместилась. Сверяется сумма обоих видов.
+  const collapsedDoubtCount = doubtKindCounts["collapsed-sliver"] +
+    doubtKindCounts["country-border-gap-merged"];
+  if (collapsedDoubtCount !== regionPartition.summary.collapsedSliverCount) {
+    fail("collapsed-sliver + country-border-gap-merged count disagrees with summary.collapsedSliverCount");
   }
   if (doubtKindCounts["removed-micro-hole"] !== regionPartition.summary.removedMicroHoleCount) {
     fail("removed-micro-hole count disagrees with summary.removedMicroHoleCount");
@@ -423,6 +429,16 @@ const DOUBT_KIND_STYLE = {
     stroke: "#134e4a",
     variant: "solid",
     title: "Схлопнутая щель"
+  },
+  // Щель, доставшаяся соседу через государственную границу: тот же вид
+  // присоединения, но граница страны при этом сместилась на несколько точек,
+  // поэтому такие места отделены от обычных щелей и показаны полым квадратом.
+  "country-border-gap-merged": {
+    shape: "square",
+    fill: "#14b8a6",
+    stroke: "#134e4a",
+    variant: "ring",
+    title: "Щель на границе стран"
   },
   "removed-micro-hole": {
     shape: "star",

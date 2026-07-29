@@ -13,6 +13,22 @@ import {
   validateMapAnnotation
 } from "./map-annotation.mjs";
 
+// road-planning contracts (ADR-100) no longer expose their navigation graph —
+// only the region polygons and a checksum are published, and the graph is
+// re-derived from them. These two functions are imported directly, the same
+// way map-annotation.mjs itself imports them, so tests can inspect the
+// crossings a fragment implies without the production code needing to expose
+// them anywhere in its own output.
+import {
+  canonicalizeRoadPlanningRegions,
+  deriveRegionCrossings
+} from "../../services/runtime-api/src/modules/runtime/regionRoadGeometry.ts";
+
+/** Total length of a polyline, used to check a crossing spans a whole border. */
+const chainLength = (chain) => chain
+  .slice(0, -1)
+  .reduce((sum, point, index) => sum + Math.hypot(chain[index + 1].x - point.x, chain[index + 1].y - point.y), 0);
+
 const fixtureRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), "fixtures");
 const readFixture = async (name) =>
   JSON.parse(await readFile(path.join(fixtureRoot, name), "utf8"));
@@ -59,7 +75,7 @@ test("strict neutral annotation validates and creates a configured fragment", as
   assert.match(fragment.networkModels.neutral.roadPlanning.geometryHash, /^sha256:[0-9a-f]{64}$/u);
 });
 
-test("automatic planning derives stable positive shared-boundary portals", async () => {
+test("automatic planning derives stable positive shared-boundary crossings", async () => {
   const inputPath = path.join(fixtureRoot, "neutral-map-annotation.json");
   const source = await readFixture("neutral-map-annotation.json");
   source.regions = [
@@ -89,8 +105,11 @@ test("automatic planning derives stable positive shared-boundary portals", async
     neutralManifestOptions
   );
 
-  // Equivalent authoring order and winding must compile to the same hash and
-  // navigation graph, otherwise replay would depend on an editor-only detail.
+  // Equivalent authoring order and winding must compile to the same hash,
+  // otherwise replay would depend on an editor-only detail. The navigation
+  // graph itself is not stored (ADR-100 § 4.3), so the check below re-derives
+  // crossings from each fragment's own published `regions` field with the
+  // shared runtime module and compares those instead of a stored graph.
   const reordered = structuredClone(source);
   reordered.regions.reverse();
   for (const region of reordered.regions) {
@@ -106,16 +125,131 @@ test("automatic planning derives stable positive shared-boundary portals", async
     second.networkModels.neutral.roadPlanning.geometryHash,
     first.networkModels.neutral.roadPlanning.geometryHash
   );
-  assert.deepEqual(
-    second.networkModels.neutral.roadPlanning.navigationGraph,
-    first.networkModels.neutral.roadPlanning.navigationGraph
-  );
-  assert.deepEqual(first.networkModels.neutral.roadPlanning.navigationGraph.portals, [{
-    id: "portal:neutral-region-east:neutral-region-west:1",
+  const crossingsOf = (fragment) =>
+    deriveRegionCrossings(canonicalizeRoadPlanningRegions(fragment.networkModels.neutral.regions));
+  assert.deepEqual(crossingsOf(second), crossingsOf(first));
+  assert.deepEqual(crossingsOf(first), [{
+    id: "crossing:neutral-region-east:neutral-region-west:1",
     regionIds: ["neutral-region-east", "neutral-region-west"],
-    from: { x: 320, y: 80 },
-    to: { x: 320, y: 420 }
+    chain: [
+      { x: 320, y: 80 },
+      { x: 320, y: 420 }
+    ]
   }]);
+});
+
+test("the emitted roadPlanning contract carries no navigationGraph key", async () => {
+  // ADR-100 § 4.3: the graph is derived at load time, not published. A key
+  // that silently reappeared here — even accidentally, e.g. from a merge or a
+  // copy-pasted branch — would resurrect the exact duplication the migration
+  // to region-segment-minimum-v2 was meant to remove.
+  const inputPath = path.join(fixtureRoot, "neutral-map-annotation.json");
+  const annotation = await validateMapAnnotation(
+    await readFixture("neutral-map-annotation.json"),
+    inputPath
+  );
+  const fragment = createTransportManifestFragment(annotation, neutralManifestOptions);
+  assert.equal(Object.hasOwn(fragment.networkModels.neutral.roadPlanning, "navigationGraph"), false);
+  assert.deepEqual(Object.keys(fragment.networkModels.neutral.roadPlanning).sort(), [
+    "algorithmVersion",
+    "boundaryPolicy",
+    "excludedRegionIdsEndpoint",
+    "geometryHash",
+    "geometryVersion",
+    "mode",
+    "tieBreak"
+  ]);
+});
+
+test("a bent shared border becomes exactly one crossing spanning its whole length", async () => {
+  // Two regions meeting along a five-step staircase instead of one straight
+  // line. Version 1 (region-segment-minimum-v1) reported one portal per
+  // straight piece — five here — and had to try their combinations; version 2
+  // reports the whole border as a single crossing (ADR-100 § 4.2). The
+  // network nodes are moved into these two regions so validation's "every
+  // node sits in some region" gate still passes; this test cares only about
+  // the region shapes, not the network.
+  const steps = 5;
+  const unit = 10;
+  const border = [];
+  for (let step = 0; step <= steps; step += 1) border.push({ x: 10 + step, y: step * unit });
+  const inputPath = path.join(fixtureRoot, "neutral-map-annotation.json");
+  const source = await readFixture("neutral-map-annotation.json");
+  source.nodes[0].position = { x: 2, y: steps * unit - 5 };
+  source.nodes[1].position = { x: 30, y: steps * unit - 5 };
+  source.regions = [
+    {
+      id: "staircase-west",
+      label: "West of the staircase",
+      countryId: "neutral-country",
+      polygon: [{ x: 0, y: 0 }, ...border, { x: 0, y: steps * unit }, { x: 0, y: 0 }],
+      evidence: "Bent-border fixture"
+    },
+    {
+      id: "staircase-east",
+      label: "East of the staircase",
+      countryId: "neutral-country",
+      polygon: [
+        { x: 40, y: 0 }, { x: 40, y: steps * unit },
+        ...[...border].reverse(), { x: 40, y: 0 }
+      ],
+      evidence: "Bent-border fixture"
+    }
+  ];
+  const fragment = createTransportManifestFragment(
+    await validateMapAnnotation(source, inputPath),
+    neutralManifestOptions
+  );
+  const crossings = deriveRegionCrossings(
+    canonicalizeRoadPlanningRegions(fragment.networkModels.neutral.regions)
+  );
+  assert.equal(crossings.length, 1);
+  assert.equal(crossings[0].chain.length, steps + 1, "the chain keeps every step of the border");
+  assert.equal(chainLength(crossings[0].chain), Math.hypot(1, unit) * steps,
+    "the crossing spans the whole staircase, not one step of it");
+});
+
+test("two regions touching in two separate places produce two crossings", async () => {
+  // A C-shaped bracket and the bar that closes it touch along the top arm and
+  // along the bottom arm, with a gap between the arms. Those are two distinct
+  // borders, so two crossings — collapsing them into one would claim a
+  // passage straight across the gap, which the map does not have.
+  const inputPath = path.join(fixtureRoot, "neutral-map-annotation.json");
+  const source = await readFixture("neutral-map-annotation.json");
+  source.nodes[0].position = { x: 2, y: 2 };
+  source.nodes[1].position = { x: 23, y: 10 };
+  source.regions = [
+    {
+      id: "bracket",
+      label: "Bracket",
+      countryId: "neutral-country",
+      polygon: [
+        { x: 0, y: 0 }, { x: 20, y: 0 }, { x: 20, y: 4 }, { x: 6, y: 4 },
+        { x: 6, y: 16 }, { x: 20, y: 16 }, { x: 20, y: 20 }, { x: 0, y: 20 }, { x: 0, y: 0 }
+      ],
+      evidence: "Two-crossings fixture"
+    },
+    {
+      id: "bar",
+      label: "Bar",
+      countryId: "neutral-country",
+      polygon: [
+        { x: 20, y: 0 }, { x: 26, y: 0 }, { x: 26, y: 20 }, { x: 20, y: 20 },
+        { x: 20, y: 16 }, { x: 20, y: 4 }, { x: 20, y: 0 }
+      ],
+      evidence: "Two-crossings fixture"
+    }
+  ];
+  const fragment = createTransportManifestFragment(
+    await validateMapAnnotation(source, inputPath),
+    neutralManifestOptions
+  );
+  const crossings = deriveRegionCrossings(
+    canonicalizeRoadPlanningRegions(fragment.networkModels.neutral.regions)
+  );
+  assert.equal(crossings.length, 2);
+  const lengths = crossings.map((crossing) => chainLength(crossing.chain)).sort((left, right) => left - right);
+  assert.deepEqual(lengths, [4, 4], "each arm contributes its own four-unit border");
 });
 
 test("planning scales to a map of many regions without changing its answer", async () => {
@@ -161,16 +295,64 @@ test("planning scales to a map of many regions without changing its answer", asy
     await validateMapAnnotation(source, inputPath),
     neutralManifestOptions
   );
-  const { portals } = fragment.networkModels.neutral.roadPlanning.navigationGraph;
+  const crossings = deriveRegionCrossings(
+    canonicalizeRoadPlanningRegions(fragment.networkModels.neutral.regions)
+  );
 
   assert.equal(fragment.networkModels.neutral.regions.length, columns * rows);
   // Side-by-side cells share one border; cells meeting at a corner share none.
-  assert.equal(portals.length, columns * (rows - 1) + (columns - 1) * rows);
-  for (const portal of portals) {
-    const horizontal = portal.from.y === portal.to.y;
-    const vertical = portal.from.x === portal.to.x;
+  // A grid cell's border with its neighbour is one straight side, so each
+  // crossing here is also exactly one border — the count is unaffected by the
+  // move from portals (v1) to crossings (v2, ADR-100 § 4.2).
+  assert.equal(crossings.length, columns * (rows - 1) + (columns - 1) * rows);
+  for (const crossing of crossings) {
+    assert.equal(crossing.chain.length, 2, "a border between two grid cells is one straight piece");
+    const [from, to] = crossing.chain;
+    const horizontal = from.y === to.y;
+    const vertical = from.x === to.x;
     assert.ok(horizontal !== vertical);
   }
+});
+
+test("regions split into islands cannot produce a manifest fragment", async () => {
+  // The first real author map failed exactly this way: a strip of space that
+  // belonged to no region ran along every country border, so regions on either
+  // side were not neighbours and the navigation graph fell apart. Nothing
+  // noticed, because each region on its own was valid.
+  //
+  // Here the two network nodes sit in two squares separated by a one-pixel
+  // strip. Every region is valid, they do not overlap, and they touch nothing —
+  // exactly the shape of the real fault.
+  const inputPath = path.join(fixtureRoot, "neutral-map-annotation.json");
+  const source = await readFixture("neutral-map-annotation.json");
+  source.regions = [
+    {
+      id: "neutral-region-west",
+      label: "West",
+      countryId: "neutral-country",
+      polygon: [
+        { x: 40, y: 80 }, { x: 319, y: 80 }, { x: 319, y: 420 },
+        { x: 40, y: 420 }, { x: 40, y: 80 }
+      ],
+      evidence: "Neutral exact region"
+    },
+    {
+      id: "neutral-region-east",
+      label: "East",
+      countryId: "neutral-country",
+      polygon: [
+        { x: 320, y: 80 }, { x: 600, y: 80 }, { x: 600, y: 420 },
+        { x: 320, y: 420 }, { x: 320, y: 80 }
+      ],
+      evidence: "Neutral exact region"
+    }
+  ];
+  const annotation = await validateMapAnnotation(source, inputPath);
+
+  assert.throws(
+    () => createTransportManifestFragment(annotation, neutralManifestOptions),
+    /separate region islands/u
+  );
 });
 
 test("automatic planning rejects overlapping regions and ignores point-only contact", async () => {
@@ -207,7 +389,10 @@ test("automatic planning rejects overlapping regions and ignores point-only cont
     await validateMapAnnotation(touching, inputPath),
     neutralManifestOptions
   );
-  assert.deepEqual(fragment.networkModels.neutral.roadPlanning.navigationGraph.portals, []);
+  const crossings = deriveRegionCrossings(
+    canonicalizeRoadPlanningRegions(fragment.networkModels.neutral.regions)
+  );
+  assert.deepEqual(crossings, []);
 });
 
 test("review draft accepts independent network intake but cannot be published", async () => {

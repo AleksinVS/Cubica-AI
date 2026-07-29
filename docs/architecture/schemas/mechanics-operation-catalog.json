@@ -197,8 +197,8 @@
       "moduleId": "cubica.graph", "kind": "command", "schemaRef": "https://cubica.platform/schemas/mechanics-plan.v1alpha1.json#/$defs/graphRegionRouteStep",
       "inputType": "Network id and endpoint node expressions", "outputType": "Pinned route geometry and segment count",
       "confidentiality": { "input": "declared-flow", "output": "joined-input" }, "integrity": "module-checked",
-      "reads": ["network geometry", "existing edges", "protected server random provider"], "writes": [], "determinism": "server-random", "orderPolicy": "Use the pinned region planner and one server-random choice for equal minimum candidates under the authored purpose id.", "errorPolicy": "Abort on unknown nodes, blocked route, planner bounds, or unavailable provider.",
-      "cost": { "class": "bounded-graph", "formula": "Pinned region planner bounds plus edge collection capacity and one bounded equal-candidate choice." }, "errors": ["MECHANICS_GRAPH_ROUTE_UNAVAILABLE", "MECHANICS_GRAPH_UNKNOWN", "MECHANICS_RANDOM_PROVIDER_MISSING"],
+      "reads": ["network geometry", "existing edges"], "writes": [], "determinism": "state-deterministic", "orderPolicy": "Use the pinned region planner: the smallest possible number of regions, then the shortest line inside the chosen corridor, decided without randomness (ADR-100).", "errorPolicy": "Abort on unknown nodes, blocked route, or planner bounds.",
+      "cost": { "class": "bounded-graph", "formula": "Pinned region planner bounds plus edge collection capacity." }, "errors": ["MECHANICS_GRAPH_ROUTE_UNAVAILABLE", "MECHANICS_GRAPH_UNKNOWN"],
       "examples": [{ "op": "graph.regions.route.plan", "kind": "command" }], "counterexamples": [{ "reason": "Payment and lifecycle fields are game composition, not route input.", "value": { "op": "graph.regions.route.plan", "payments": [] } }], "conformanceTests": ["mechanics.registry.graph.regions.route.plan"]
     },
     "graph.edge.position.inspect": {

@@ -17,6 +17,26 @@ import { fileURLToPath } from "node:url";
 
 import AjvImport from "ajv";
 
+// Road-planning geometry (which regions border each other, and along which
+// line — see ADR-100) is imported from the runtime module rather than
+// re-derived here. The checksum this tool writes at publish time and the
+// checksum runtime recomputes at load time must agree exactly, forever: two
+// implementations of the same derivation are two things that can drift apart,
+// one implementation cannot. Node 22 strips TypeScript types at import time
+// (no flag, no build step needed — the `import type` in the source module is
+// erased entirely, so the runtime-only workspace package it names is never
+// actually resolved), which is what makes importing a `.ts` file straight
+// from this `.mjs` script possible.
+import {
+  canonicalizeRoadPlanningRegions,
+  computeRegionRoadPlanningHash,
+  deriveRegionCrossings,
+  REGION_ROAD_BOUNDARY_POLICY,
+  REGION_ROAD_PLANNING_ALGORITHM,
+  REGION_ROAD_PLANNING_MODE,
+  REGION_ROAD_TIE_BREAK
+} from "../../services/runtime-api/src/modules/runtime/regionRoadGeometry.ts";
+
 const Ajv = AjvImport.default ?? AjvImport;
 const moduleFile = fileURLToPath(import.meta.url);
 const repoRoot = path.resolve(path.dirname(moduleFile), "..", "..");
@@ -240,109 +260,128 @@ const assertRegionsDoNotOverlap = (regions) => {
   }
 };
 
-const pointAtAxisValue = (start, end, axis, value) => {
-  const delta = end[axis] - start[axis];
-  const t = Math.abs(delta) < GEOMETRY_EPSILON ? 0 : (value - start[axis]) / delta;
-  return {
-    x: start.x + (end.x - start.x) * t,
-    y: start.y + (end.y - start.y) * t
-  };
-};
-
-/** Return the positive-length collinear overlap of two boundary sides. */
-const sharedBoundaryPart = (a, b, c, d) => {
-  if (Math.abs(cross(a, b, c)) >= GEOMETRY_EPSILON ||
-      Math.abs(cross(a, b, d)) >= GEOMETRY_EPSILON) return null;
-  const axis = Math.abs(b.x - a.x) >= Math.abs(b.y - a.y) ? "x" : "y";
-  const overlapStart = Math.max(Math.min(a[axis], b[axis]), Math.min(c[axis], d[axis]));
-  const overlapEnd = Math.min(Math.max(a[axis], b[axis]), Math.max(c[axis], d[axis]));
-  if (overlapEnd - overlapStart <= GEOMETRY_EPSILON) return null;
-  const endpoints = [
-    pointAtAxisValue(a, b, axis, overlapStart),
-    pointAtAxisValue(a, b, axis, overlapEnd)
-  ].sort(comparePoint);
-  return { from: endpoints[0], to: endpoints[1] };
-};
-
-const segmentsAreMergeable = (left, right) =>
-  Math.abs(cross(left.from, left.to, right.from)) < GEOMETRY_EPSILON &&
-  Math.abs(cross(left.from, left.to, right.to)) < GEOMETRY_EPSILON &&
-  (pointOnSegment(left.to, right.from, right.to) ||
-    pointOnSegment(right.from, left.from, left.to) ||
-    samePoint(left.to, right.from) || samePoint(right.to, left.from));
-
 /**
- * Merge authoring sides into one portal: an exact positive-length border
- * through which the planner may move from one region to its neighbour.
+ * Refuse a map whose regions cannot carry a road between two network nodes.
+ *
+ * Regions are neighbours only where they share an exact border of positive
+ * length. If a strip of space belongs to no region — the painted border of a
+ * country, a lost face, a sliver — the regions on either side are not
+ * neighbours, and the navigation graph silently falls apart into islands. The
+ * package still compiles, the map still looks right, and only much later does
+ * a road refuse to be built because no route exists at all.
+ *
+ * The first real author map failed exactly this way: 917 regions formed six
+ * islands along country borders, and four countries were cut off completely.
+ * Nothing in the pipeline noticed.
+ *
+ * The check is deliberately phrased in game terms rather than in graph terms.
+ * A map may legitimately consist of separate land masses; what may not happen
+ * is two network nodes sitting in different islands, because then a road
+ * between them can never be planned. That is the condition tested here.
+ *
+ * Version 2 (ADR-100) reports one crossing per whole shared border instead of
+ * one portal per straight piece of it, but the island question only ever
+ * needed `regionIds` — which two regions the graph edge connects, not its
+ * exact line — so walking crossings instead of portals changes nothing else
+ * about this check.
  */
-const mergeBoundaryParts = (parts) => {
-  const pending = parts
-    .map((part) => ({ from: { ...part.from }, to: { ...part.to } }))
-    .sort((left, right) => comparePoint(left.from, right.from) || comparePoint(left.to, right.to));
-  const merged = [];
-  for (const part of pending) {
-    const previous = merged.at(-1);
-    if (!previous || !segmentsAreMergeable(previous, part)) {
-      merged.push(part);
-      continue;
+const assertNetworkNodesShareOneRegionIsland = (regions, crossings, nodes) => {
+  if (nodes.length < 2) return;
+  const island = new Map(regions.map((region) => [region.id, region.id]));
+  const find = (id) => {
+    let root = id;
+    while (island.get(root) !== root) root = island.get(root);
+    let cursor = id;
+    while (island.get(cursor) !== root) {
+      const next = island.get(cursor);
+      island.set(cursor, root);
+      cursor = next;
     }
-    const endpoints = [previous.from, previous.to, part.from, part.to].sort(comparePoint);
-    previous.from = endpoints[0];
-    previous.to = endpoints.at(-1);
+    return root;
+  };
+  for (const crossing of crossings) {
+    const left = find(crossing.regionIds[0]);
+    const right = find(crossing.regionIds[1]);
+    if (left !== right) island.set(left, right);
   }
-  return merged;
-};
 
-/** Compile the finite navigation graph from exact shared polygon boundaries. */
-const deriveRegionPortals = (regions) => {
-  const prepared = regions.map((region) => ({
-    region,
-    sides: polygonSidesWithBounds(region.polygon),
+  const closed = regions.map((region) => ({
+    id: region.id,
+    polygon: closedCanonicalPolygon(region.polygon),
     bounds: boundsOfPoints(region.polygon)
   }));
-  const portals = [];
-  // Only regions whose bounds touch can share a border, and inside such a pair
-  // only sides whose own bounds touch can overlap. Both filters are exact, so
-  // the resulting graph — and therefore its hash — is the same as it would be
-  // after comparing every pair.
-  for (const [leftIndex, rightIndex] of touchingSelfPairs(prepared)) {
-    const left = prepared[leftIndex];
-    const right = prepared[rightIndex];
-    const parts = [];
-    for (const [leftSideIndex, rightSideIndex] of touchingCrossPairs(left.sides, right.sides)) {
-      const leftSide = left.sides[leftSideIndex];
-      const rightSide = right.sides[rightSideIndex];
-      const shared = sharedBoundaryPart(leftSide.from, leftSide.to, rightSide.from, rightSide.to);
-      if (shared) parts.push(shared);
-    }
-    mergeBoundaryParts(parts).forEach((part, index) => portals.push({
-      id: `portal:${left.region.id}:${right.region.id}:${index + 1}`,
-      regionIds: [left.region.id, right.region.id],
-      from: part.from,
-      to: part.to
-    }));
+  const nodeIsland = new Map();
+  for (const node of nodes) {
+    const host = closed.find((region) =>
+      node.position.x >= region.bounds.minX - GEOMETRY_EPSILON &&
+      node.position.x <= region.bounds.maxX + GEOMETRY_EPSILON &&
+      node.position.y >= region.bounds.minY - GEOMETRY_EPSILON &&
+      node.position.y <= region.bounds.maxY + GEOMETRY_EPSILON &&
+      pointInOrOnPolygon(node.position, region.polygon));
+    // A node outside every region is a different fault, reported elsewhere.
+    if (host) nodeIsland.set(node.id, find(host.id));
   }
-  return portals.sort((left, right) => compareText(left.id, right.id));
+  const islands = new Map();
+  for (const [nodeId, root] of nodeIsland) {
+    if (!islands.has(root)) islands.set(root, []);
+    islands.get(root).push(nodeId);
+  }
+  if (islands.size <= 1) return;
+  const summary = [...islands.values()]
+    .map((group) => group.slice().sort(compareText))
+    .sort((left, right) => compareText(left[0], right[0]))
+    .map((group) => `${group[0]} (+${group.length - 1})`)
+    .join(", ");
+  fail(
+    `network nodes fall into ${islands.size} separate region islands, so no road can ` +
+    `be planned between them: ${summary}. Regions are neighbours only where they ` +
+    "share an exact border of positive length; a strip belonging to no region " +
+    "splits the navigation graph"
+  );
 };
 
-const createRoadPlanningContract = (regions, options) => {
-  const portals = deriveRegionPortals(regions);
-  const algorithmVersion = "region-segment-minimum-v1";
-  const boundaryPolicy = "lowest-region-id";
-  const geometryHash = createHash("sha256")
-    .update(JSON.stringify({ algorithmVersion, boundaryPolicy, regions, portals }))
-    .digest("hex");
+/**
+ * Build the `roadPlanning` contract block (ADR-100).
+ *
+ * The geometry work — canonicalising the regions, finding the crossings
+ * between them, and hashing the result — is delegated entirely to the same
+ * module runtime loads at play time. This function's own job is narrow: run
+ * the shared island check, then shape the runtime's answer into the six
+ * declared fields. It must not compute anything about the shapes itself,
+ * because the whole point of sharing the implementation is that there is
+ * exactly one place a mistake in that computation could live.
+ *
+ * `regions` here are already this file's own canonical form (see
+ * `canonicalPolygon` above) — the same value written to the manifest's
+ * `regions` field. Feeding the runtime module that exact value, rather than
+ * some other representation, is what guarantees its checksum matches the one
+ * runtime recomputes from the published manifest: canonicalisation is
+ * idempotent, so re-canonicalising an already-canonical shape is a no-op.
+ */
+const createRoadPlanningContract = (regions, options, nodes) => {
+  const canonicalRegions = canonicalizeRoadPlanningRegions(regions);
+  const crossings = deriveRegionCrossings(canonicalRegions);
+  assertNetworkNodesShareOneRegionIsland(regions, crossings, nodes);
+  const geometryHash = computeRegionRoadPlanningHash({
+    algorithmVersion: REGION_ROAD_PLANNING_ALGORITHM,
+    boundaryPolicy: REGION_ROAD_BOUNDARY_POLICY,
+    regions: canonicalRegions,
+    crossings
+  });
   return {
-    mode: "region-segment-minimum",
-    algorithmVersion,
+    mode: REGION_ROAD_PLANNING_MODE,
+    algorithmVersion: REGION_ROAD_PLANNING_ALGORITHM,
     geometryVersion: options.geometryVersion,
-    geometryHash: `sha256:${geometryHash}`,
-    tieBreak: "server-random",
-    boundaryPolicy,
+    geometryHash,
+    tieBreak: REGION_ROAD_TIE_BREAK,
+    boundaryPolicy: REGION_ROAD_BOUNDARY_POLICY,
     ...(options.excludedRegionIdsEndpoint
       ? { excludedRegionIdsEndpoint: options.excludedRegionIdsEndpoint }
-      : {}),
-    navigationGraph: { portals }
+      : {})
+    // No navigationGraph: ADR-100 removes it from the contract entirely. The
+    // graph is derived, not declared — runtime re-derives it from `regions`
+    // and checks `geometryHash`, so storing it here would only duplicate data
+    // that is, by the geometryHash comparison itself, already proven correct.
   };
 };
 
@@ -619,7 +658,7 @@ export const createTransportManifestFragment = (annotation, options) => {
         // one hash and replay identity.
         regions,
         ...(options.roadPlanning
-          ? { roadPlanning: createRoadPlanningContract(regions, options.roadPlanning) }
+          ? { roadPlanning: createRoadPlanningContract(regions, options.roadPlanning, annotation.nodes) }
           : {})
       }
     },

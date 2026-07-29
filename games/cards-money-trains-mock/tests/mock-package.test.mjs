@@ -216,7 +216,11 @@ test("mock annotation validates and reproduces the committed manifest fragment",
   assert.equal(fragment.networkModels.main.regions[0].polygon.length, 4);
   assert.notDeepEqual(fragment.networkModels.main.regions[0].polygon[0], fragment.networkModels.main.regions[0].polygon.at(-1));
   assert.equal(fragment.networkModels.main.roadPlanning.mode, "region-segment-minimum");
-  assert.equal(fragment.networkModels.main.roadPlanning.navigationGraph.portals.length, 2);
+  assert.equal(fragment.networkModels.main.roadPlanning.algorithmVersion, "region-segment-minimum-v2");
+  // ADR-100 §4.3: the navigation graph is derived by runtime from `regions`
+  // on every load and is deliberately not part of the published contract, so
+  // there is nothing named `navigationGraph` left to assert on here.
+  assert.equal(Object.hasOwn(fragment.networkModels.main.roadPlanning, "navigationGraph"), false);
   assert.match(fragment.networkModels.main.roadPlanning.geometryHash, /^sha256:[0-9a-f]{64}$/u);
   for (const node of Object.values(fragment.state.public.objects.networkNodes)) {
     assert.equal(Object.hasOwn(node.attributes, "positionX"), false);
@@ -313,7 +317,7 @@ test("compiled mock executes the documented operating and construction transcrip
   assert.equal(plannedRoad.constructionCost, 6);
   assert.equal(plannedRoad.regionSegments, 3);
   assert.ok(plannedRoad.geometry.polyline.length >= 2);
-  assert.equal(plannedRoad.routePlan.algorithmVersion, "region-segment-minimum-v1");
+  assert.equal(plannedRoad.routePlan.algorithmVersion, "region-segment-minimum-v2");
   assert.deepEqual(plannedRoad.routePlan.regionSequence, [
     "mock-region-west",
     "mock-region-central",

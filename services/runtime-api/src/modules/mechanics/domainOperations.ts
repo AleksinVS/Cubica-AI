@@ -11,11 +11,7 @@ import type {
   GameManifestObjectModelMap,
   GameManifestTransportNetworkModel
 } from "@cubica/contracts-manifest";
-import type { SessionRandomProvider } from "../runtime/sessionRandom.ts";
-import {
-  prepareMinimumRegionRoadCandidates,
-  regionRoadRandomStreamId
-} from "../runtime/regionRoadPlanner.ts";
+import { planMinimumRegionRoad } from "../runtime/regionRoadPlanner.ts";
 import { charge, measureBoundedJson } from "./budget.ts";
 import { compareCanonicalIds } from "./canonicalOrder.ts";
 import { MechanicsExecutionError } from "./errors.ts";
@@ -52,7 +48,6 @@ type DomainStep = Extract<Step, {
     | "relation.detach";
 }>;
 type Point = GraphPoint;
-type RegionRoadCandidate = ReturnType<typeof prepareMinimumRegionRoadCandidates>["candidates"][number];
 type PolylineSplit = GraphPolylineSplit;
 
 interface GraphEdgePositionInspection {
@@ -198,8 +193,13 @@ function planRegionRoute(
 
   const from = objectPoint(fromNode, "from node", step.id);
   const to = objectPoint(toNode, "to node", step.id);
-  const planned = model.roadPlanning
-    ? prepareMinimumRegionRoadCandidates({
+  // Version 2 of the region road planner (ADR-100) is deterministic: it always
+  // returns exactly one road, not a set of equally good candidates to pick
+  // from. There is therefore nothing left for the session random provider to
+  // decide here, unlike deck ordering or entity ordering elsewhere in this
+  // module, which keep using it for their own unrelated tie-breaks.
+  const road = model.roadPlanning
+    ? planMinimumRegionRoad({
         model,
         from,
         to,
@@ -207,28 +207,30 @@ function planRegionRoute(
         workMeter: {
           charge: (units) => charge(context, "algorithmWork", units)
         }
-      })
+      }).road
     : undefined;
-  const selected = selectRoadCandidate(planned?.candidates, context, step.id, step.networkId);
-  const regionSegments = selected?.value.regionSequence.length ?? countLineRegions(from, to, model);
+  const regionSegments = road?.regionSequence.length ?? countLineRegions(from, to, model);
   if (regionSegments < 1) fail("MECHANICS_GRAPH_ROUTE_INVALID", "A graph edge must cross at least one declared region", step.id);
-  const geometry = selected
-    ? { from, to, polyline: structuredClone(selected.value.points) }
+  const geometry = road
+    ? { from, to, polyline: structuredClone(road.points) }
     : { from, to };
   let routePlan: JsonRecord | undefined;
-  if (selected && model.roadPlanning) {
+  if (road && model.roadPlanning) {
     routePlan = {
       mode: model.roadPlanning.mode,
       algorithmVersion: model.roadPlanning.algorithmVersion,
       geometryVersion: model.roadPlanning.geometryVersion,
       geometryHash: model.roadPlanning.geometryHash,
       boundaryPolicy: model.roadPlanning.boundaryPolicy,
-      regionSequence: [...selected.value.regionSequence],
-      passages: structuredClone(selected.value.passages),
+      regionSequence: [...road.regionSequence],
+      passages: structuredClone(road.passages),
+      // `tieBreak` no longer records a choice — version 2 never has more than
+      // one candidate to choose from (ADR-100 §4.6). The field stays because a
+      // stored road must still say by which rule its shape was decided: a
+      // future algorithm version could resolve geometric ties differently, and
+      // this is the one place that decision is recorded per stored road.
       tieBreak: {
-        policy: model.roadPlanning.tieBreak,
-        candidateCount: planned?.candidates.length ?? 1,
-        selectedCandidateIndex: selected.index
+        policy: model.roadPlanning.tieBreak
       }
     };
   }
@@ -655,36 +657,6 @@ function initialFacets(
   };
 }
 
-function selectRoadCandidate(
-  candidates: ReturnType<typeof prepareMinimumRegionRoadCandidates>["candidates"] | undefined,
-  context: MechanicsExecutionContext,
-  stepId: string,
-  networkId: string
-): {
-  value: RegionRoadCandidate;
-  index: number;
-} | undefined {
-  if (candidates === undefined) return undefined;
-  if (candidates.length === 0) fail("MECHANICS_GRAPH_ROUTE_UNAVAILABLE", "Road planner returned no route candidate", stepId);
-  if (candidates.length === 1) return { value: candidates[0], index: 0 };
-  const random = requireRandomProvider(context, stepId);
-  const streamId = regionRoadRandomStreamId(networkId);
-  const selected = random.choose(streamId, candidates);
-  return { value: selected.value, index: selected.index };
-}
-
-function requireRandomProvider(
-  context: MechanicsExecutionContext,
-  stepId: string
-): SessionRandomProvider {
-  if (context.random) return context.random;
-  fail(
-    "MECHANICS_RANDOM_PROVIDER_MISSING",
-    "Graph tie-breaking requires a runtime random provider",
-    stepId
-  );
-}
-
 function readExcludedRegionIds(model: GameManifestTransportNetworkModel, context: MechanicsExecutionContext): Array<string> {
   const endpoint = model.roadPlanning?.excludedRegionIdsEndpoint;
   if (!endpoint) return [];
@@ -835,6 +807,19 @@ function splitStoredRoutePlan(
   if (rawRoutePlan === undefined) return {};
   if (!isRecord(rawRoutePlan) || !Array.isArray(rawRoutePlan.passages)) {
     fail("MECHANICS_GRAPH_ROUTE_PLAN_INVALID", "Stored route plan is malformed", stepId);
+  }
+  // Version 1 of the road planner recorded a resolved random choice in
+  // `tieBreak` (`policy`, `candidateCount`, `selectedCandidateIndex` — see the
+  // pre-ADR-100 shape). ADR-100 §4.8 replaced version 1 outright because no
+  // road was ever stored under it in a real session, so the only route plans
+  // this runtime can ever legitimately read are version 2's: `{ policy }`,
+  // with nothing left to describe a choice that no longer happens (§4.6).
+  // Accepting the old shape here anyway would silently paper over a package
+  // that could not have been produced by any version this server ever ran —
+  // exactly the "broken package" this check exists to catch, not hide.
+  const tieBreak = rawRoutePlan.tieBreak;
+  if (!isRecord(tieBreak) || typeof tieBreak.policy !== "string" || Object.keys(tieBreak).length !== 1) {
+    fail("MECHANICS_GRAPH_ROUTE_PLAN_INVALID", "Stored route plan declares an unsupported tie-break shape", stepId);
   }
   const assignments = Array<string | undefined>(pointCount - 1).fill(undefined);
   for (const passage of rawRoutePlan.passages) {

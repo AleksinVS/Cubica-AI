@@ -92,7 +92,64 @@ function collectGameManifestComponentIds(gamesRoot = path.join(repoRoot, "games"
 }
 
 /**
+ * Remove comments from a stylesheet, leaving the rules untouched.
+ *
+ * The boundary this file guards is about what the platform stylesheet **does**,
+ * not about which words appear in it. A comment does nothing: it cannot show a
+ * game's picture, draw its chrome or target its component. Reading comments as
+ * if they were rules produced a guard that fought its own documentation — the
+ * sentence explaining that Antarctica's card styling had been moved out to the
+ * game theme was itself reported as an Antarctica leak, and the check stayed red
+ * from 2026-07-20 onwards while the boundary it protects was in fact intact.
+ *
+ * Worse, it discouraged exactly the comment worth keeping: the one that tells
+ * the next developer why something is deliberately absent here.
+ *
+ * Only `/* ... *\/` exists in CSS. Quoted strings are tracked so that a comment
+ * marker inside `content: "/*"` is not mistaken for the start of one. Each
+ * removed comment leaves a newline behind, so tokens on either side cannot merge
+ * into a selector that was never written.
+ */
+function stripCssComments(cssText) {
+  let out = "";
+  let index = 0;
+  let quote = null;
+  while (index < cssText.length) {
+    const char = cssText[index];
+    if (quote !== null) {
+      if (char === "\\") {
+        out += char + (cssText[index + 1] ?? "");
+        index += 2;
+        continue;
+      }
+      if (char === quote) quote = null;
+      out += char;
+      index += 1;
+      continue;
+    }
+    if (char === '"' || char === "'") {
+      quote = char;
+      out += char;
+      index += 1;
+      continue;
+    }
+    if (char === "/" && cssText[index + 1] === "*") {
+      const end = cssText.indexOf("*/", index + 2);
+      out += "\n";
+      index = end === -1 ? cssText.length : end + 2;
+      continue;
+    }
+    out += char;
+    index += 1;
+  }
+  return out;
+}
+
+/**
  * Detect game-owned styling that has leaked into a platform stylesheet.
+ *
+ * Comments are removed before any detector runs (see `stripCssComments`), so
+ * every signal below is a statement about a real rule.
  *
  * Returns a list of human-readable violation messages for three signals:
  *   1. `url(...)` with a baked-in absolute path (e.g. url("/images/...")): game
@@ -101,8 +158,9 @@ function collectGameManifestComponentIds(gamesRoot = path.join(repoRoot, "games"
  *   2. Decorative emoji (game chrome).
  *   3. `#<id>` selectors whose ids are declared by a game UI manifest component.
  */
-function findGlobalStyleGameLeaks(cssText, forbiddenIds = new Set()) {
+function findGlobalStyleGameLeaks(rawCssText, forbiddenIds = new Set()) {
   const leaks = [];
+  const cssText = stripCssComments(rawCssText);
 
   const urlPattern = /url\(\s*(?:"([^"]*)"|'([^']*)'|([^)]*))\)/giu;
   const absoluteUrls = new Set();
@@ -188,10 +246,26 @@ function checkNavigationGraphDerivationStaysShared() {
       }
       if (!/\.(mjs|cjs|js|ts)$/u.test(entry.name)) continue;
       const text = fs.readFileSync(absolute, "utf8");
-      // The marker is the act of deriving portals, not the word itself: a game
-      // may name portals in data and comments, but must not build them.
-      if (/\bderiveRegionPortals\b|\bderiveRoadPlanningPortalGeometry\b/u.test(text)
-        && !/from ["'][^"']*map-annotation/u.test(text)) {
+      // The marker is the act of deriving the graph, not the word itself: a
+      // game may name crossings in data and comments, but must not build them.
+      // The names are those of the shared derivation as of algorithm version 2
+      // (ADR-100); version 1 called the same thing portals, and when those
+      // functions were renamed this check silently stopped guarding anything,
+      // which is why the names are listed here beside the reason rather than
+      // buried in a regular expression.
+      const derivationNames = /\bderiveRegionCrossings\b|\bcanonicalizeRoadPlanningRegions\b|\bcomputeRegionRoadPlanningHash\b/u;
+      // Two import paths count as "shared, not reimplemented":
+      // - scripts/map-annotation/map-annotation.mjs, the annotation-to-fragment
+      //   pipeline used by games that convert an author's hand-drawn map;
+      // - services/runtime-api/.../regionRoadGeometry.ts, the module those same
+      //   names are actually defined in. A game that has no annotation to
+      //   convert (for example, a generator that builds a technical placeholder
+      //   region set procedurally) has nothing to feed the annotation pipeline
+      //   and must import the canonical functions directly instead of copying
+      //   their logic; that is still "shared", because there is exactly one
+      //   implementation and this file imports it rather than re-deriving it.
+      const importsFromSharedSource = /from ["'][^"']*(?:map-annotation|regionRoadGeometry)(?:\.[a-z]+)?["']/u.test(text);
+      if (derivationNames.test(text) && !importsFromSharedSource) {
         offenders.push(path.relative(repoRoot, absolute));
       }
     }
@@ -200,7 +274,9 @@ function checkNavigationGraphDerivationStaysShared() {
   if (offenders.length > 0) {
     throw new Error(
       "Game packages must not derive the road-planning navigation graph themselves; "
-      + "use the shared scripts/map-annotation pipeline. Offending files: "
+      + "import it from the shared scripts/map-annotation pipeline or "
+      + "services/runtime-api's regionRoadGeometry module instead of re-deriving it. "
+      + "Offending files: "
       + offenders.sort().join(", ")
     );
   }
@@ -344,6 +420,7 @@ module.exports = {
   EMOJI_PATTERN,
   collectGameManifestComponentIds,
   findGlobalStyleGameLeaks,
+  stripCssComments,
   checkGlobalStyleBoundary,
   checkNavigationGraphDerivationStaysShared,
   main

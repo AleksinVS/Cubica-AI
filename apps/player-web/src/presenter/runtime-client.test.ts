@@ -274,7 +274,6 @@ describe("runtime-client", () => {
       polyline: [{ x: 10, y: 20 }, { x: 90, y: 20 }],
       regionSequence: ["east", "west"],
       regionSegments: 2,
-      candidateCount: 1,
       planning: {
         mode: "region-segment-minimum" as const,
         algorithmVersion: "1",

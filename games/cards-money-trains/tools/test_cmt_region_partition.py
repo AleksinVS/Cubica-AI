@@ -39,7 +39,9 @@ from shapely.geometry import Point, Polygon, box
 # реальный артефакт, а не хранит собственную копию числа 25.0.
 from cmt_region_partition import (
     MICRO_AREA_PX2,
+    build_region_adjacency,
     collapse_slivers,
+    connected_components,
     drop_micro_holes,
     effective_width,
     stable_region_order,
@@ -312,6 +314,70 @@ class RegionPartitionDraftFacts(unittest.TestCase):
         # территории означала бы, что связь установлена неверно.
         used = {region["countryId"] for region in self.draft["regions"]} - {None}
         self.assertEqual(used, set(catalog), "не у всех стран каталога есть области")
+
+    def test_region_adjacency_graph_is_a_single_connected_component(self) -> None:
+        """Новый критерий приёмки: граф соседства областей связен.
+
+        Дороги в этой игре строятся между соседними областями, поэтому
+        маршрут между двумя терминалами — это цепочка соседств. Если граф
+        соседства (области — вершины, ребро — общая граница положительной
+        длины) распадается на несколько частей, между областями из разных
+        частей маршрута не существует вообще, и построить дорогу между ними
+        нельзя ни при каком количестве денег — именно так была устроена карта
+        до исправления пустот в разбиении (шесть частей по границам стран).
+
+        Проверка здесь не пересобирает карту — она восстанавливает каждую
+        область из уже записанных `exteriorRing`/`interiorRings` (как и
+        `test_recorded_regions_reproduce_their_own_geometry_fingerprint` выше)
+        и строит граф соседства заново тем же кодом, что использует
+        cmt_region_partition.py, — независимая проверка уже записанного
+        артефакта, а не просто доверие числу из summary.
+        """
+
+        polygons = [
+            Polygon(record["exteriorRing"], record["interiorRings"])
+            for record in self.draft["regions"]
+        ]
+        neighbors = build_region_adjacency(polygons)
+        components = connected_components(neighbors)
+
+        self.assertEqual(
+            len(components),
+            1,
+            "граф соседства областей обязан быть одной связной частью — иначе "
+            "маршрут между областями из разных частей не существует",
+        )
+        self.assertEqual(
+            len(components[0]),
+            len(polygons),
+            "единственная связная часть обязана охватывать все области без исключения",
+        )
+
+        # Пересчитанные числа обязаны совпасть с тем, что записано в summary:
+        # иначе сводка молча разошлась бы с фактическим содержимым черновика.
+        summary = self.draft["summary"]
+        self.assertEqual(summary["connectedComponentCount"], len(components))
+        self.assertEqual(
+            summary["largestConnectedComponentSize"], len(components[0])
+        )
+
+        recomputed_cross_country_edges = 0
+        regions = self.draft["regions"]
+        for index, neighbor_set in enumerate(neighbors):
+            for neighbor in neighbor_set:
+                if neighbor <= index:
+                    continue
+                if regions[index]["countryId"] != regions[neighbor]["countryId"]:
+                    recomputed_cross_country_edges += 1
+        self.assertEqual(
+            summary["crossCountryAdjacencyCount"], recomputed_cross_country_edges
+        )
+        self.assertGreater(
+            recomputed_cross_country_edges,
+            0,
+            "при единственной связной части обязан быть хотя бы один переход "
+            "между областями разных стран — иначе страны не соединены друг с другом",
+        )
 
     def test_empty_spaces_are_listed_and_lie_outside_every_country(self) -> None:
         """Пустые пространства перечислены отдельно и не попали в области.

@@ -19,14 +19,7 @@ import { hashCanonicalJson } from "../content/canonicalJson.ts";
 import { executeMechanicsTransaction } from "../mechanics/index.ts";
 import { isRecord } from "../mechanics/stateModel.ts";
 import { RequestValidationError } from "../errors.ts";
-import {
-  createSessionRandomProvider,
-  type SessionRandomProviderInput
-} from "./sessionRandom.ts";
-import {
-  prepareMinimumRegionRoadCandidates,
-  regionRoadRandomStreamId
-} from "./regionRoadPlanner.ts";
+import { planMinimumRegionRoad } from "./regionRoadPlanner.ts";
 import {
   resolveActionReferences,
   validateActionReferenceParameterSubset
@@ -50,7 +43,6 @@ export const previewRuntimeTransportRoad = (options: {
   bundle: GameBundle;
   actorPlayerId?: string;
   sessionRole: "player" | "facilitator" | "assistant" | "observer";
-  random?: SessionRandomProviderInput;
   input: TransportRoadPreviewRequest;
 }): TransportRoadPreviewResponse => {
   try {
@@ -70,7 +62,6 @@ function previewOrThrow(options: {
   bundle: GameBundle;
   actorPlayerId?: string;
   sessionRole: "player" | "facilitator" | "assistant" | "observer";
-  random?: SessionRandomProviderInput;
   input: TransportRoadPreviewRequest;
 }): TransportRoadPreviewResponse {
   const { snapshot, bundle, input } = options;
@@ -145,17 +136,17 @@ function previewOrThrow(options: {
   }
   const from = objectPoint(fromNode);
   const to = objectPoint(toNode);
-  const prepared = prepareMinimumRegionRoadCandidates({
+  // Version 2 of the region road planner (ADR-100) always returns exactly one
+  // road, so there is nothing left to choose between and no random provider
+  // to consult here — unlike version 1, which could offer several equally
+  // short roads and pick one with the session random provider.
+  const road = planMinimumRegionRoad({
     model,
     from,
     to,
     excludedRegionIds: readExcludedRegionIds(snapshot.state, bundle, model)
-  });
-  const random = createSessionRandomProvider(options.random);
-  const selected = prepared.candidates.length > 1
-    ? random.choose(regionRoadRandomStreamId(graphStep.networkId), prepared.candidates).value
-    : prepared.candidates[0];
-  const regionSegments = selected.regionSequence.length;
+  }).road;
+  const regionSegments = road.regionSequence.length;
   return {
     sessionId: snapshot.sessionId,
     actionId: input.actionId,
@@ -165,10 +156,9 @@ function previewOrThrow(options: {
     networkId: graphStep.networkId,
     fromNodeId,
     toNodeId,
-    polyline: structuredClone(selected.points),
-    regionSequence: [...selected.regionSequence],
+    polyline: structuredClone(road.points),
+    regionSequence: [...road.regionSequence],
     regionSegments,
-    candidateCount: prepared.candidates.length,
     planning: {
       mode: model.roadPlanning.mode,
       algorithmVersion: model.roadPlanning.algorithmVersion,

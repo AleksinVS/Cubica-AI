@@ -134,7 +134,10 @@
         "waypointCount",
         "emptySpaceCount",
         "regionsWithoutCountryCount",
-        "totalAreaPx2"
+        "totalAreaPx2",
+        "connectedComponentCount",
+        "largestConnectedComponentSize",
+        "crossCountryAdjacencyCount"
       ],
       "properties": {
         "regionCount": { "type": "integer", "minimum": 1, "maximum": 5000 },
@@ -199,7 +202,25 @@
           "minimum": 0,
           "maximum": 5000
         },
-        "totalAreaPx2": { "type": "number", "exclusiveMinimum": 0 }
+        "totalAreaPx2": { "type": "number", "exclusiveMinimum": 0 },
+        "connectedComponentCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5000,
+          "description": "Число связных частей графа соседства областей (см. build_region_adjacency()/connected_components() в cmt_region_partition.py). Обязано быть 1: разбиение, распавшееся на несколько частей, непригодно для построения дорог между областями из разных частей, и main() останавливается раньше, чем записать такой черновик."
+        },
+        "largestConnectedComponentSize": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5000,
+          "description": "Размер наибольшей (при connectedComponentCount == 1 — единственной) связной части графа соседства."
+        },
+        "crossCountryAdjacencyCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20000,
+          "description": "Число рёбер графа соседства между областями разных стран — переходов, через которые может пройти дорога между странами."
+        }
       }
     },
     "emptySpaces": {
@@ -578,6 +599,7 @@
         { "$ref": "#/definitions/doubtMethodsDisagreeUnmatched" },
         { "$ref": "#/definitions/doubtAssumedConnection" },
         { "$ref": "#/definitions/doubtCollapsedSliver" },
+        { "$ref": "#/definitions/doubtCountryBorderGapMerged" },
         { "$ref": "#/definitions/doubtRemovedMicroHole" },
         { "$ref": "#/definitions/doubtUnresolvedGap" }
       ]
@@ -709,6 +731,48 @@
         "areaPx2": { "type": "number", "exclusiveMinimum": 0 },
         "effectiveWidthPx": { "type": "number", "minimum": 0, "maximum": 50 },
         "merged": { "type": "boolean" }
+      }
+    },
+    "doubtCountryBorderGapMerged": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Щель, которая до объединения не лежала заметно (не менее 2% своей площади) ровно в одной стране: либо она заметно перекрывается сразу двумя странами (их заливки перекрываются, или щель лежит ровно между ними), либо ни с одной (зазор между двумя заливками, авторские контуры которых не сходятся точно в этом месте). Присоединение всё равно выполнено по тому же sliverRule, что и у обычной записи collapsed-sliver, но государственная граница на этом участке слегка сдвинулась, и это обязано быть видно человеку отдельно от обычных внутренних щелей.",
+      "required": [
+        "id",
+        "kind",
+        "atX",
+        "atY",
+        "chosenHypothesis",
+        "consideredAlternative",
+        "confidence",
+        "areaPx2",
+        "effectiveWidthPx",
+        "merged",
+        "touchingCountryCount",
+        "touchingCountryIds"
+      ],
+      "properties": {
+        "id": { "$ref": "#/definitions/doubtId" },
+        "kind": { "const": "country-border-gap-merged" },
+        "atX": { "type": "number" },
+        "atY": { "type": "number" },
+        "chosenHypothesis": { "type": "string", "minLength": 1 },
+        "consideredAlternative": { "type": "string", "minLength": 1 },
+        "confidence": { "$ref": "#/definitions/confidence" },
+        "areaPx2": { "type": "number", "exclusiveMinimum": 0 },
+        "effectiveWidthPx": { "type": "number", "minimum": 0, "maximum": 50 },
+        "merged": { "type": "boolean" },
+        "touchingCountryCount": {
+          "type": "integer",
+          "enum": [0, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+          "description": "0 — щель лежит вне заметного покрытия любой страны (зазор между заливками); 2 и более — щель заметно перекрывается несколькими странами разом (заливки стран перекрываются или щель лежит ровно на их общей границе). Ровно 1 сюда не попадает — такая щель считается обычной записью collapsed-sliver."
+        },
+        "touchingCountryIds": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/countryId" },
+          "uniqueItems": true,
+          "maxItems": 10
+        }
       }
     },
     "doubtRemovedMicroHole": {
