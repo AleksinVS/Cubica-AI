@@ -20,18 +20,29 @@ import path from "node:path";
  *   use `npm run test:e2e:prod` (scripts/dev/run-e2e-prod.mjs), which builds
  *   player-web and editor-web one at a time before starting the services.
  *
- * Low-resource mode (E2E_LOW_RESOURCE=1): disables trace/video/screenshot
- * capture. Playwright records trace and video during EVERY run and only
- * decides retention afterwards ("retain-on-failure"), so recording itself
- * costs CPU — a real tax on a starved host. CI keeps full capture.
+ * E2E profiles (E2E_PROFILE): "full", "smoke", "player", "editor", or
+ * "portal". Tags select the matching tests, while every profile remains on
+ * the installed Desktop Chrome emulation with one worker.
  *
- * Player-only mode (E2E_PLAYER_ONLY=1): starts runtime-api and player-web but
- * not editor-web. Use it for delivery tests that never visit the authoring
- * surface; this avoids a second Next.js dev process on the shared host.
+ * The first pass never records trace/video. Those modes record throughout a
+ * successful test even when Playwright later discards them. The production
+ * harness performs a failure-only `--last-failed --trace on` diagnostic rerun.
  */
 const serverMode = process.env.E2E_SERVER_MODE === "prod" ? "prod" : "dev";
-const lowResource = process.env.E2E_LOW_RESOURCE === "1";
-const playerOnly = process.env.E2E_PLAYER_ONLY === "1";
+const supportedProfiles = ["full", "smoke", "player", "editor", "portal"] as const;
+type E2EProfile = typeof supportedProfiles[number];
+// Preserve the former player-only switch as a compatibility alias while
+// keeping one source of truth for test filtering and server selection.
+const requestedProfile = process.env.E2E_PROFILE ??
+  (process.env.E2E_PLAYER_ONLY === "1" ? "player" : "full");
+if (!supportedProfiles.includes(requestedProfile as E2EProfile)) {
+  throw new Error(`Unsupported E2E_PROFILE: ${requestedProfile}`);
+}
+const e2eProfile = requestedProfile as E2EProfile;
+const playerOnly = e2eProfile === "smoke" ||
+  e2eProfile === "player" ||
+  e2eProfile === "portal";
+const profileGrep = e2eProfile === "full" ? undefined : new RegExp(`@${e2eProfile}`);
 
 const runtimePort = Number(process.env.E2E_RUNTIME_PORT ?? 3201);
 const playerPort = Number(process.env.E2E_PLAYER_PORT ?? 3200);
@@ -68,16 +79,17 @@ export default defineConfig({
   },
   fullyParallel: false,
   workers: 1,
-  reporter: process.env.CI ? [["dot"], ["html", { open: "never" }]] : "list",
+  reporter: process.env.CI ? "dot" : "list",
   use: {
     baseURL: playerUrl,
-    trace: lowResource ? "off" : "retain-on-failure",
-    screenshot: lowResource ? "off" : "only-on-failure",
-    video: lowResource ? "off" : "retain-on-failure"
+    trace: "off",
+    screenshot: "only-on-failure",
+    video: "off"
   },
   projects: [
     {
-      name: "chromium",
+      name: e2eProfile === "full" ? "chromium" : `chromium-${e2eProfile}`,
+      grep: profileGrep,
       use: { ...devices["Desktop Chrome"] }
     }
   ],

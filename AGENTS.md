@@ -160,12 +160,17 @@ Agents must always:
     - JSON Schema is the Single Source of Truth (SSOT) for data structures like Game Manifests. Validation must be performed by executing a standard validator (like AJV) against the JSON Schema, not by writing manual `if (typeof x !== 'string')` checks.
 
 14. **Scale verification to the size and risk of the change**
+    - Before running checks, classify the changed boundary and its risk; choose the narrowest direct test that can prove the changed behavior.
     - A commit by itself is not a reason to run the entire project test suite.
     - After an ordinary small or medium change, run only the focused tests for the changed behavior and the cheapest relevant static checks, such as type checking, schema validation, or `git diff --check`.
     - After a large implementation block that changes several subsystem boundaries, run an expanded cross-subsystem verification once the block is stable. Do not repeat the same expensive checks after every intermediate commit when the verified code has not changed.
     - Run the full canonical verification only at a stage boundary, before a release or final acceptance, after a high-risk change to shared contracts or infrastructure, when explicitly requested by the user, or when narrower evidence cannot establish safety.
     - If a later edit affects behavior that was already checked, rerun the narrowest check that directly covers that behavior. Reuse still-current evidence for unaffected areas.
-    - In the handoff, state which checks were run, which were intentionally not run, and what residual risk remains.
+    - Do not repeat an expensive check for unchanged code. When a check fails, retain its full local log in `.tmp/`, put only the meaningful excerpt in agent context, and retry only with a new hypothesis or a last-failed selection.
+    - Run browser E2E only when the changed risk crosses a user-facing boundary. Do not create a subagent merely to execute one known deterministic command; it is useful to delegate a bounded read-only QA package of several simple checks when it has exact commands, acceptance criteria, a short-result format, and the main agent accepts the final result.
+    - Run checks inside a delegated QA package sequentially unless ports, build outputs, temporary directories, fixtures, environment variables, and other mutable state are proven isolated. Never run full suites, builds, or E2E concurrently in one workspace; a `serial` label is not a cross-process lock.
+    - Aim for an edit-loop check under two minutes, without treating that as a hard limit for builds or E2E.
+    - In the handoff, state the command and result, what was intentionally not checked, and the residual risk.
 
 15. **Complete agent branches through user-approved integration**
     - Work committed or pushed only to an agent/feature branch is not yet integrated into the project.

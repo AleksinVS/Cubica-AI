@@ -18,11 +18,30 @@
  *    behind explicit authenticated route handlers and never use a catch-all
  *    rewrite.
  *
- * Usage: npm run test:e2e:prod [-- <playwright args>]
+ * Usage: npm run test:e2e:prod [-- --profile full|smoke|player|editor|portal]
+ *                              [playwright args]
  * Extra args are forwarded to `playwright test`
  * (e.g. `npm run test:e2e:prod -- apps/editor-web/e2e`).
  */
 import { spawnSync } from "node:child_process";
+
+const supportedProfiles = new Set(["full", "smoke", "player", "editor", "portal"]);
+const forwardedArgs = process.argv.slice(2);
+let profile = process.env.E2E_PROFILE ?? "full";
+const profileIndex = forwardedArgs.indexOf("--profile");
+if (profileIndex !== -1) {
+  const requestedProfile = forwardedArgs[profileIndex + 1];
+  if (!requestedProfile) {
+    console.error("[e2e-prod] --profile requires a value");
+    process.exit(2);
+  }
+  profile = requestedProfile;
+  forwardedArgs.splice(profileIndex, 2);
+}
+if (!supportedProfiles.has(profile)) {
+  console.error(`[e2e-prod] unsupported profile: ${profile}`);
+  process.exit(2);
+}
 
 const runtimePort = Number(process.env.E2E_RUNTIME_PORT ?? 3201);
 const playerPort = Number(process.env.E2E_PLAYER_PORT ?? 3200);
@@ -31,37 +50,74 @@ const runtimeUrl = `http://127.0.0.1:${runtimePort}`;
 // cookie semantics; the actual Next.js listener remains bound to 127.0.0.1.
 const playerUrl = `http://localhost:${playerPort}`;
 
-/** Run a command inheriting stdio; abort the whole run on failure. */
+/** Run a command inheriting stdio and return its exit result to the caller. */
 function run(label, command, args, extraEnv = {}) {
   console.log(`\n[e2e-prod] ${label}: ${command} ${args.join(" ")}`);
   const result = spawnSync(command, args, {
     stdio: "inherit",
     env: { ...process.env, ...extraEnv }
   });
+  return result;
+}
+
+function requireSuccess(label, result) {
   if (result.status !== 0) {
-    console.error(`[e2e-prod] step failed: ${label} (exit ${result.status})`);
+    console.error(`[e2e-prod] step failed: ${label} (exit ${result.status ?? 1})`);
     process.exit(result.status ?? 1);
   }
 }
 
-// Sequential builds — never in parallel on this class of host (see header).
-run("build player-web", "npm", ["run", "build", "--workspace", "@cubica/player-web"], {
-  // Keep server-side content resolution aligned with the later E2E runtime.
-  RUNTIME_API_URL: runtimeUrl,
-  PLAYER_WEB_URL: playerUrl,
-  NEXT_IGNORE_INCORRECT_LOCKFILE: "1"
-});
+// Every current profile needs player-web. Editor and full additionally need
+// editor-web; the two builds always remain strictly sequential.
+requireSuccess("build player-web", run(
+  "build player-web",
+  "npm",
+  ["run", "build", "--workspace", "@cubica/player-web"],
+  {
+    RUNTIME_API_URL: runtimeUrl,
+    PLAYER_WEB_URL: playerUrl,
+    NEXT_IGNORE_INCORRECT_LOCKFILE: "1"
+  }
+));
 
-run("build editor-web", "npm", ["run", "build", "--workspace", "@cubica/editor-web"], {
-  NEXT_IGNORE_INCORRECT_LOCKFILE: "1"
-});
+if (profile === "full" || profile === "editor") {
+  requireSuccess("build editor-web", run(
+    "build editor-web",
+    "npm",
+    ["run", "build", "--workspace", "@cubica/editor-web"],
+    { NEXT_IGNORE_INCORRECT_LOCKFILE: "1" }
+  ));
+}
 
 // Playwright starts/reuses the servers itself; prod mode switches its
 // webServer commands to `next start` (see playwright.config.ts).
-const playwrightArgs = ["playwright", "test", ...process.argv.slice(2)];
-run("playwright (prod servers)", "npx", playwrightArgs, {
+const playwrightEnv = {
   E2E_SERVER_MODE: "prod",
-  // Recording trace/video costs CPU during the run; keep the starved host
-  // focused on the app itself. Override with E2E_LOW_RESOURCE=0 if needed.
-  E2E_LOW_RESOURCE: process.env.E2E_LOW_RESOURCE ?? "1"
-});
+  E2E_PROFILE: profile,
+  E2E_PLAYER_ONLY: ["smoke", "player", "portal"].includes(profile) ? "1" : "0"
+};
+const firstPass = run(
+  `playwright ${profile} first pass`,
+  "npx",
+  ["playwright", "test", "--max-failures=1", ...forwardedArgs],
+  playwrightEnv
+);
+
+if (firstPass.status === 0) {
+  process.exit(0);
+}
+
+// Only a genuine test failure gets a diagnostic retry. A signal or launch
+// failure is not made noisier by attempting another browser/server startup.
+if (typeof firstPass.status === "number") {
+  run(
+    `playwright ${profile} diagnostic rerun`,
+    "npx",
+    ["playwright", "test", "--last-failed", "--trace=on", "--reporter=dot", ...forwardedArgs],
+    playwrightEnv
+  );
+}
+
+// The diagnostic rerun is evidence only. The original first-pass failure stays
+// blocking even when the isolated retry happens to pass.
+process.exit(firstPass.status ?? 1);

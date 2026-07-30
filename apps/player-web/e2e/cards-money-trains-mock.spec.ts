@@ -68,7 +68,7 @@ interface RuntimeSnapshot {
   };
 }
 
-test.describe("Cards Money Trains browser lifecycle", () => {
+test.describe("Cards Money Trains browser lifecycle", { tag: "@player" }, () => {
   test.skip(transcript === null, "complete mock transcript is being produced by the game-content slice");
 
   test("starts by keyboard, repeats every phase and completes the finish handshake", async ({ page }) => {

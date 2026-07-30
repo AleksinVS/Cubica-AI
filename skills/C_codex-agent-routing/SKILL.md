@@ -18,6 +18,13 @@ Never create an agent only to execute a known deterministic test command. Run
 that command directly. Use a QA agent when test design, failure analysis, or an
 independent assessment requires model work.
 
+A bounded read-only verification packet is also a valid QA delegation when it
+combines many simple commands and inspections that a cheaper model can execute
+and summarize without expanding the parent context. The packet must name every
+allowed command or check, forbid file changes, define the concise evidence to
+return, and still leave integrated acceptance with the primary agent. Do not
+disguise one deterministic command as a verification packet.
+
 Keep at most two subagents active concurrently. Give parallel writers
 non-overlapping ownership. Only the primary agent delegates; project
 configuration prevents nested subagent delegation.
