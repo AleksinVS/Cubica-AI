@@ -16,6 +16,7 @@
     "summary",
     "regions",
         "emptySpaces",
+    "impassableTerrain",
     "joins",
     "collapsedSlivers",
     "removedMicroHoles",
@@ -137,7 +138,17 @@
         "totalAreaPx2",
         "connectedComponentCount",
         "largestConnectedComponentSize",
-        "crossCountryAdjacencyCount"
+        "crossCountryAdjacencyCount",
+        "baseRegionCountBeforeTerrainSurgery",
+        "impassableTerrainRegionCount",
+        "regionsTouchedByTerrainSurgeryCount",
+        "regionsSplitByTerrainRemovalCount",
+        "connectedComponentCountAfterTerrainSurgery",
+        "largestConnectedComponentSizeAfterTerrainSurgery",
+        "playableConnectedComponentCountAfterTerrainSurgery",
+        "playableLargestConnectedComponentSizeAfterTerrainSurgery",
+        "networkNodesInOneComponentAfterTerrainSurgery",
+        "crossCountryAdjacencyCountAfterTerrainSurgery"
       ],
       "properties": {
         "regionCount": { "type": "integer", "minimum": 1, "maximum": 5000 },
@@ -207,19 +218,77 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 5000,
-          "description": "Число связных частей графа соседства областей (см. build_region_adjacency()/connected_components() в cmt_region_partition.py). Обязано быть 1: разбиение, распавшееся на несколько частей, непригодно для построения дорог между областями из разных частей, и main() останавливается раньше, чем записать такой черновик."
+          "description": "Число связных частей графа соседства БАЗОВОГО разбиения — то есть baseRegionCountBeforeTerrainSurgery областей, ДО финального шага вырезания непроходимой местности (см. build_region_adjacency()/connected_components() в cmt_region_partition.py). Обязано быть 1: разбиение, распавшееся на несколько частей, непригодно для построения дорог между областями из разных частей, и main() останавливается раньше, чем записать такой черновик. Числа ПОСЛЕ вырезания местности — connectedComponentCountAfterTerrainSurgery (геометрическая проверка) и playableConnectedComponentCountAfterTerrainSurgery (играбельная проверка) ниже."
         },
         "largestConnectedComponentSize": {
           "type": "integer",
           "minimum": 1,
           "maximum": 5000,
-          "description": "Размер наибольшей (при connectedComponentCount == 1 — единственной) связной части графа соседства."
+          "description": "Размер наибольшей (при connectedComponentCount == 1 — единственной) связной части графа соседства БАЗОВОГО разбиения (см. connectedComponentCount)."
         },
         "crossCountryAdjacencyCount": {
           "type": "integer",
           "minimum": 0,
           "maximum": 20000,
           "description": "Число рёбер графа соседства между областями разных стран — переходов, через которые может пройти дорога между странами."
+        },
+        "baseRegionCountBeforeTerrainSurgery": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5000,
+          "description": "regionCount ДО финального шага вырезания непроходимой местности (см. impassableTerrain и apply_impassable_terrain() в cmt_region_partition.py). Разница между этим числом и regionCount — это новые области, появившиеся из вырезания местности (непроходимые и, редко, обычные — там, где вырезание местности у самого края области раскалывает её землю на два куска)."
+        },
+        "impassableTerrainRegionCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5000,
+          "description": "Сколько областей в regions помечены isImpassableTerrain: true. Обязано совпадать с длиной impassableTerrain.regionIds."
+        },
+        "regionsTouchedByTerrainSurgeryCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5000,
+          "description": "Сколько областей из БАЗОВОГО разбиения (до вырезания местности) хоть где-то соприкоснулись с маской непроходимой местности значимой (не числовым шумом) площадью."
+        },
+        "regionsSplitByTerrainRemovalCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5000,
+          "description": "Сколько раз вырезание местности у самого края области раскалывало оставшуюся играбельную землю этой области на несколько значимых кусков (а не оставляло один многоугольник, возможно с новым внутренним кольцом). Каждый такой раскол добавляет одну ОБЫЧНУЮ (не непроходимую) новую область — см. impassableTerrain.surgeryLog, kind == 'region-split-by-terrain-removal'."
+        },
+        "connectedComponentCountAfterTerrainSurgery": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5000,
+          "description": "Число связных частей ПОЛНОГО геометрического графа соседства ПОСЛЕ вырезания местности — все regionCount областей, включая непроходимые. Обязано быть 1: вырезание местности само по себе не может физически расколоть карту на куски суши, не касающиеся друг друга (анклав всегда смежен со своей окружающей областью), поэтому большее значение означало бы ошибку хирургии, а не законное следствие непроходимой реки, и main() останавливается раньше, чем записать такой черновик."
+        },
+        "largestConnectedComponentSizeAfterTerrainSurgery": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5000,
+          "description": "Размер наибольшей (при connectedComponentCountAfterTerrainSurgery == 1 — единственной) связной части полного графа соседства ПОСЛЕ вырезания местности."
+        },
+        "playableConnectedComponentCountAfterTerrainSurgery": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5000,
+          "description": "Число связных частей графа соседства ИГРАБЕЛЬНЫХ областей (области с isImpassableTerrain: true исключены из графа целиком) после вырезания местности. В отличие от connectedComponentCount выше, здесь больше 1 — не отказ, а измеренный факт: непроходимая река может (хотя на текущей карте не оказалась обязана) разъединить карту на несколько частей."
+        },
+        "playableLargestConnectedComponentSizeAfterTerrainSurgery": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5000,
+          "description": "Размер наибольшей связной части играбельного графа соседства после вырезания местности."
+        },
+        "crossCountryAdjacencyCountAfterTerrainSurgery": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20000,
+          "description": "То же число переходов между областями разных стран, но пересчитанное ПОСЛЕ вырезания непроходимой местности, по итоговым regionCount областям. Отдельное поле, а не поправка к crossCountryAdjacencyCount: вырезанный кусок наследует страну своего родителя, но граничить может и с областью другой страны, поэтому число законно отличается от базового."
+        },
+        "networkNodesInOneComponentAfterTerrainSurgery": {
+          "type": "boolean",
+          "description": "Лежат ли все 25 узлов начальной транспортной сети в ОДНОЙ связной части играбельного графа соседства после вырезания местности. false означало бы, что непроходимая река отрезала часть карты от сети терминалов, — решение продюсера, а не инструмента; на измеренной карте это поле равно true."
         }
       }
     },
@@ -234,6 +303,7 @@
       "maxItems": 5000,
       "items": { "$ref": "#/definitions/region" }
     },
+    "impassableTerrain": { "$ref": "#/definitions/impassableTerrain" },
     "joins": {
       "type": "array",
       "maxItems": 20000,
@@ -513,9 +583,156 @@
         "exteriorRing": { "$ref": "#/definitions/linearRing" },
         "interiorRings": {
           "type": "array",
-          "description": "Внутренние кольца области (дырки, то есть возможные анклавы), уже очищенные от ничтожных отверстий (drop_micro_holes() убирает и заносит в removedMicroHoles всё, что меньше порога). Обязательное поле у каждой области, даже когда список пуст: без него площадь и отпечаток области с настоящими дырками нельзя было бы восстановить из одного лишь exteriorRing.",
+          "description": "Внутренние кольца области (дырки, то есть возможные анклавы), уже очищенные от ничтожных отверстий (drop_micro_holes() убирает и заносит в removedMicroHoles всё, что меньше порога). Обязательное поле у каждой области, даже когда список пуст: без него площадь и отпечаток области с настоящими дырками нельзя было бы восстановить из одного лишь exteriorRing. Начиная с вырезания непроходимой местности (см. impassableTerrain выше по файлу) кольцо может означать не только числовой артефакт, но и настоящий анклав — соседнюю область в списке regions, вырезанную из этой как непроходимая местность.",
           "maxItems": 64,
           "items": { "$ref": "#/definitions/linearRing" }
+        },
+        "isImpassableTerrain": {
+          "type": "boolean",
+          "const": true,
+          "description": "Присутствует и равно true только у областей, вырезанных из разбиения как непроходимая местность (нарисованные художником тёмно-коричневые пятна местности и река у двух озёр — см. README.md, раздел «Непроходимая местность и река», и поле impassableTerrain на верхнем уровне черновика). У всех остальных областей поле отсутствует — отсутствие значит «не местность», а не «неизвестно»: на этой карте область не может быть местностью лишь отчасти, поэтому промежуточного значения не предусмотрено. Дороги не могут проходить через области с этим полем; движок исполнения читает список их id из public.transportNetworks.main.excludedRegionIds (см. games/cards-money-trains/tools/build-construction-cycle.mjs)."
+        }
+      }
+    },
+    "impassableTerrain": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Продюсерское решение вырезать нарисованную художником непроходимую местность (тёмно-коричневые пятна и река у двух озёр) из разбиения как области своего рода — см. README.md, раздел «Непроходимая местность и река», и apply_impassable_terrain()/build_impassable_terrain_mask() в cmt_region_partition.py.",
+      "required": ["decisionRecord", "fieldName", "measurement", "regionIds", "surgeryLog"],
+      "properties": {
+        "decisionRecord": {
+          "const": "games/cards-money-trains/annotations/README.md#непроходимая-местность-и-река"
+        },
+        "fieldName": {
+          "const": "isImpassableTerrain",
+          "description": "Имя поля региона (region.isImpassableTerrain), которым отмечена непроходимая местность — записано здесь же, чтобы не расходиться с полем IMPASSABLE_TERRAIN_FIELD в cmt_region_partition.py."
+        },
+        "measurement": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Измерение, приведшее к маске непроходимой местности: сколько пятен цвета местности нашлось, сколько из них — настоящая местность против декорации, какое пятно исключено решением продюсера, и результат замера расстояния «река против границы области» (см. README).",
+          "required": [
+            "patchCount",
+            "terrainPatchCount",
+            "decorationPatchCount",
+            "excludedPatch",
+            "riverCandidatePixelCount",
+            "riverSelectedPixelCount",
+            "riverHalfStrokeWidthPx",
+            "riverDistanceMinPx",
+            "riverDistanceMedianPx",
+            "riverDistanceMaxPx",
+            "riverShareWithinHalfStrokeWidth"
+          ],
+          "properties": {
+            "patchCount": { "type": "integer", "minimum": 0, "maximum": 5000 },
+            "terrainPatchCount": { "type": "integer", "minimum": 0, "maximum": 5000 },
+            "decorationPatchCount": { "type": "integer", "minimum": 0, "maximum": 5000 },
+            "excludedPatch": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Пятно, которое продюсер решил оставить проходимым (дорога road-6-7 идёт прямо через него), несмотря на то, что оно прошло признак «местность».",
+              "required": ["areaPx2", "centroid"],
+              "properties": {
+                "areaPx2": { "type": "number", "exclusiveMinimum": 0 },
+                "centroid": { "$ref": "#/definitions/point" }
+              }
+            },
+            "riverCandidatePixelCount": { "type": "integer", "minimum": 0 },
+            "riverSelectedPixelCount": { "type": "integer", "minimum": 0 },
+            "riverHalfStrokeWidthPx": { "type": "number", "exclusiveMinimum": 0 },
+            "riverDistanceMinPx": {
+              "anyOf": [{ "type": "number", "minimum": 0 }, { "type": "null" }]
+            },
+            "riverDistanceMedianPx": {
+              "anyOf": [{ "type": "number", "minimum": 0 }, { "type": "null" }]
+            },
+            "riverDistanceMaxPx": {
+              "anyOf": [{ "type": "number", "minimum": 0 }, { "type": "null" }]
+            },
+            "riverShareWithinHalfStrokeWidth": {
+              "anyOf": [{ "type": "number", "minimum": 0, "maximum": 1 }, { "type": "null" }]
+            }
+          }
+        },
+        "regionIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "maxItems": 5000,
+          "items": { "$ref": "#/definitions/regionId" },
+          "description": "Идентификаторы всех областей с isImpassableTerrain: true — тот же список, что и public.transportNetworks.main.excludedRegionIds в скомпилированном манифесте (см. build-construction-cycle.mjs)."
+        },
+        "surgeryLog": {
+          "type": "array",
+          "maxItems": 5000,
+          "items": { "$ref": "#/definitions/terrainSurgeryLogEntry" },
+          "description": "Каждая операция хирургии разбиения — ничего не происходит молча: вырезание куска местности из области и (в редких случаях) раскол оставшейся земли области на несколько кусков."
+        }
+      }
+    },
+    "terrainSurgeryLogEntry": {
+      "oneOf": [
+        { "$ref": "#/definitions/terrainSurgeryImpassableRegionEntry" },
+        { "$ref": "#/definitions/terrainSurgerySplitRegionEntry" },
+        { "$ref": "#/definitions/terrainSurgeryOverlapCleanupEntry" }
+      ]
+    },
+    "terrainSurgeryImpassableRegionEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "parentRegionId", "newRegionId", "countryId", "areaPx2"],
+      "properties": {
+        "kind": { "const": "impassable-terrain-region" },
+        "parentRegionId": { "$ref": "#/definitions/regionId" },
+        "newRegionId": { "$ref": "#/definitions/regionId" },
+        "countryId": {
+          "anyOf": [{ "$ref": "#/definitions/countryId" }, { "type": "null" }]
+        },
+        "areaPx2": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
+    "terrainSurgerySplitRegionEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Вырезание местности у самого края области раскололо оставшуюся играбельную землю этой области на несколько кусков: самый большой кусок унаследовал прежний id области (и в этой записи не появляется отдельно), а этот кусок стал НОВОЙ обычной (не непроходимой) областью той же страны.",
+      "required": ["kind", "originalRegionId", "newRegionId", "areaPx2"],
+      "properties": {
+        "kind": { "const": "region-split-by-terrain-removal" },
+        "originalRegionId": { "$ref": "#/definitions/regionId" },
+        "newRegionId": { "$ref": "#/definitions/regionId" },
+        "areaPx2": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
+    "terrainSurgeryOverlapCleanupEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Уборка неизмеримо узких наложений, остающихся после округления координат до сетки хранения (шесть знаков). Запись одна на весь проход уборки и перечисляет каждую исправленную пару вместе с тем, КАКИМ способом наложение снято и сколько общей границы у пары было до и осталось после: способ snap сшивает контуры и границу сохраняет, способ subtract вычитает раздутое наложение и границу пары отрывает целиком. Разрушительный способ обязан быть виден в данных, а не молчать, потому что оторванная общая граница — это запрет проезда там, где земля сплошная (см. apply_impassable_terrain() в ../tools/cmt_region_partition.py и ADR-100).",
+      "required": ["kind", "fixedPairs"],
+      "properties": {
+        "kind": { "const": "overlap-cleanup" },
+        "fixedPairs": {
+          "type": "array",
+          "maxItems": 5000,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "shrunkRegionId",
+              "keptRegionId",
+              "overlapAreaPx2",
+              "method",
+              "sharedBoundaryBeforePx",
+              "sharedBoundaryAfterPx"
+            ],
+            "properties": {
+              "shrunkRegionId": { "$ref": "#/definitions/regionId" },
+              "keptRegionId": { "$ref": "#/definitions/regionId" },
+              "overlapAreaPx2": { "type": "number", "minimum": 0 },
+              "method": { "enum": ["snap", "subtract"] },
+              "sharedBoundaryBeforePx": { "type": "number", "minimum": 0 },
+              "sharedBoundaryAfterPx": { "type": "number", "minimum": 0 }
+            }
+          }
         }
       }
     },
@@ -736,7 +953,7 @@
     "doubtCountryBorderGapMerged": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Щель, которая до объединения не лежала заметно (не менее 2% своей площади) ровно в одной стране: либо она заметно перекрывается сразу двумя странами (их заливки перекрываются, или щель лежит ровно между ними), либо ни с одной (зазор между двумя заливками, авторские контуры которых не сходятся точно в этом месте). Присоединение всё равно выполнено по тому же sliverRule, что и у обычной записи collapsed-sliver, но государственная граница на этом участке слегка сдвинулась, и это обязано быть видно человеку отдельно от обычных внутренних щелей.",
+      "description": "Щель, часть площади которой в действительности принадлежала ДРУГОЙ стране, нежели та, чьей области щель досталась при присоединении по sliverRule (проверено напрямую — пересечением геометрии щели outline с авторскими заливками стран, за вычетом заливки страны mergedIntoRegionId; см. foreignAreaPx2). Присоединение выполнено по тому же sliverRule, что и у обычной записи collapsed-sliver, но фактическая площадь foreignAreaPx2 перешла другой стране, то есть государственная граница на этом участке сдвинулась, и это обязано быть видно человеку отдельно от обычных внутренних щелей. Только для щелей, которые удалось присоединить (merged: true) — щель без соседа (merged: false) не может нести эту претензию, потому что проверять её не с чем.",
       "required": [
         "id",
         "kind",
@@ -748,8 +965,9 @@
         "areaPx2",
         "effectiveWidthPx",
         "merged",
-        "touchingCountryCount",
-        "touchingCountryIds"
+        "outline",
+        "mergedIntoRegionId",
+        "foreignAreaPx2"
       ],
       "properties": {
         "id": { "$ref": "#/definitions/doubtId" },
@@ -761,17 +979,22 @@
         "confidence": { "$ref": "#/definitions/confidence" },
         "areaPx2": { "type": "number", "exclusiveMinimum": 0 },
         "effectiveWidthPx": { "type": "number", "minimum": 0, "maximum": 50 },
-        "merged": { "type": "boolean" },
-        "touchingCountryCount": {
-          "type": "integer",
-          "enum": [0, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-          "description": "0 — щель лежит вне заметного покрытия любой страны (зазор между заливками); 2 и более — щель заметно перекрывается несколькими странами разом (заливки стран перекрываются или щель лежит ровно на их общей границе). Ровно 1 сюда не попадает — такая щель считается обычной записью collapsed-sliver."
+        "merged": {
+          "const": true,
+          "description": "Всегда true у этого вида записи: щель без соседа (merged: false) не может нести претензию «часть территории перешла другой стране» — проверять её не с чем, поэтому такая щель заносится как collapsed-sliver, а не country-border-gap-merged."
         },
-        "touchingCountryIds": {
-          "type": "array",
-          "items": { "$ref": "#/definitions/countryId" },
-          "uniqueItems": true,
-          "maxItems": 10
+        "outline": {
+          "$ref": "#/definitions/linearRing",
+          "description": "Контур самой щели (замкнутое внешнее кольцо, тот же формат координат и то же округление _round(), что exteriorRing области). Записан только для этого вида сомнения — человеку нужно увидеть саму спорную полосу на схеме, а не только её точку, площадь и ширину; для обычной внутренней щели (collapsed-sliver) поле отсутствует намеренно, чтобы не утяжелять черновик контуром без читателя."
+        },
+        "mergedIntoRegionId": {
+          "$ref": "#/definitions/regionId",
+          "description": "Финальная область, в которую щель фактически вошла — «в какую сторону присоединилась» это половина того, что решает проверяющий человек. Всегда присутствует и никогда не null у этого вида записи (см. merged)."
+        },
+        "foreignAreaPx2": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Сколько площади щели (в точках карты в квадрате) фактически принадлежало ДРУГОЙ стране, нежели страна области mergedIntoRegionId — пересечение геометрии outline с авторскими заливками стран, за вычетом заливки своей страны. Это и есть измеренный размер сдвига государственной границы: ширина щели (effectiveWidthPx) говорит, насколько узкой была полоса, а это поле — сколько территории в ней в действительности сменило страну. Порог по минимальной площади не установлен: любая строго положительная величина уже означает, что территория перешла, а именно её размер — то, что должен оценивать проверяющий человек, не отсекающее число в коде."
         }
       }
     },

@@ -138,6 +138,9 @@ function createDeckMechanics(steps: [Step, ...Array<Step>]): CubicaMechanicsIRV1
 
 /** Recompute the compiler-owned plan identity after a test-only mutation. */
 function finalizePlanHash(mechanics: CubicaMechanicsIRV1Alpha1): void {
+  // networkModels is bound by digest, not by embedded value -- must mirror
+  // checkMechanicsBundle in scripts/manifest-tools/mechanics-checker.cjs.
+  const networkModelsHash = mechanicsSha256({});
   for (const [planId, plan] of Object.entries(mechanics.plans)) {
     plan.planHash = mechanicsSha256({
       apiVersion: mechanics.apiVersion,
@@ -145,7 +148,7 @@ function finalizePlanHash(mechanics: CubicaMechanicsIRV1Alpha1): void {
       moduleLock: mechanics.moduleLock,
       stateModel: mechanics.stateModel,
       objectModels: {},
-      networkModels: {},
+      networkModelsHash,
       planId,
       transaction: plan.transaction
     });

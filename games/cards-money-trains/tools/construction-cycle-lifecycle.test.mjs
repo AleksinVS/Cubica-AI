@@ -17,6 +17,7 @@ import authoringCompiler from "../../../scripts/manifest-tools/authoring-compile
 import { createImmutableBundleContent } from "../../../services/runtime-api/src/modules/content/immutableBundle.ts";
 import { validateGameManifest } from "../../../services/runtime-api/src/modules/content/manifestValidation.ts";
 import { dispatchRuntimeAction } from "../../../services/runtime-api/src/modules/runtime/actionDispatcher.ts";
+import { planMinimumRegionRoad } from "../../../services/runtime-api/src/modules/runtime/regionRoadPlanner.ts";
 import { InMemorySessionStore } from "../../../services/runtime-api/src/modules/session/inMemorySessionStore.ts";
 import {
   authoringPath,
@@ -143,6 +144,23 @@ const dispatch = async ({ store, sessionId, actionId, params = {} }) => {
   });
 };
 
+/**
+ * A short, readable reason a dispatch failed.
+ *
+ * `JSON.stringify(outcome)` was used here before and is unusable in practice:
+ * a rejected outcome carries the whole compiled manifest, so a single failing
+ * assertion printed over half a megabyte of region polygons and buried the one
+ * line that says what actually went wrong.
+ */
+const rejectionReason = (outcome) =>
+  JSON.stringify({
+    ok: outcome?.result?.ok,
+    error: outcome?.result?.error,
+    errorCode: outcome?.result?.errorCode,
+    status: outcome?.receipt?.status,
+    receiptError: outcome?.receipt?.error
+  });
+
 /** Change only a bounded upstream fact while preserving state-version rules. */
 const updateScenario = async ({ store, sessionId }, mutate) => {
   const current = await store.getSession(sessionId);
@@ -195,6 +213,35 @@ const chooseMode = async (session, mode) => {
 
 const currentEdges = (state) => state.public.objects.networkEdges;
 
+/**
+ * How many regions the server's own planner would charge for a *new* road
+ * between two named nodes, on the exact map this compiled manifest declares.
+ *
+ * The real author map (917 regions, ADR-100) replaced the old 20-strip
+ * placeholder, and the planner's region-minimising search generally does not
+ * find the same segment count the placeholder gave for the same two
+ * terminals. Rather than pin a literal count here — which would only ever be
+ * a guess at what the real geometry happens to produce, and would go stale
+ * the moment the map changes again — tests that need an exact price compute
+ * it the same way the server does and assert derived quantities (discount,
+ * payable segments, cost) against that measured value.
+ */
+const regionSegmentsBetween = (manifest, fromNodeId, toNodeId) => {
+  const nodes = manifest.state.public.objects.networkNodes;
+  const { road } = planMinimumRegionRoad({
+    model: manifest.networkModels.main,
+    from: nodes[fromNodeId].attributes.position,
+    to: nodes[toNodeId].attributes.position,
+    // The same forbidden regions the running game applies: the author declared
+    // some terrain impassable, and the runtime reads that list from state (see
+    // `excludedRegionIdsEndpoint` in the road-planning contract). Planning here
+    // without it would price a road along a route the game itself would never
+    // build — and the price is exactly what these tests then pledge.
+    excludedRegionIds: manifest.state.public.transportNetworks.main.excludedRegionIds
+  });
+  return road.passages.length;
+};
+
 const prepareCurrentNews = (state, number) => {
   const newsId = `news-${String(number).padStart(2, "0")}`;
   state.public.cards.initialized = true;
@@ -207,7 +254,7 @@ const prepareCurrentNews = (state, number) => {
 
 test("construction generator is idempotent and publishes only six dynamic intents", async () => {
   const source = await readJson(authoringPath);
-  assert.deepEqual(buildConstructionCycleAuthoring(source), source);
+  assert.deepEqual(await buildConstructionCycleAuthoring(source), source);
 
   const manifest = await loadManifest();
   const ids = Object.keys(manifest.actions)
@@ -232,9 +279,31 @@ test("construction generator is idempotent and publishes only six dynamic intent
     ["edgeId", "positionT"]
   );
   assert.equal(manifest.config.runtimeReady, false);
+  // ADR-100: regions now come from the real author map, so there is nothing
+  // left to replace before publication (`runtimeReady` stays false only
+  // because of the unrelated market/cargo/reporting blockers tracked below).
   assert.equal(
     manifest.content.data.constructionCycle.regionData.replaceBeforePublication,
-    true
+    false
+  );
+  // The published map must be exactly the partition draft the tools produced —
+  // no more, no less. Comparing against the draft instead of a literal keeps
+  // this honest across map redraws (the first partition held 917 areas;
+  // cutting the impassable terrain out of it raised that to 984) while still
+  // failing loudly whenever the compiled manifest drifts from its source.
+  const partitionDraft = await readJson(
+    path.join(gameRoot, "annotations", "vector-map.region-partition.draft.json")
+  );
+  assert.equal(
+    manifest.networkModels.main.regions.length,
+    partitionDraft.regions.length
+  );
+  // Every region the author declared impassable must reach the runtime as an
+  // excluded region, or roads would be planned straight through lakes and
+  // rivers (see README.md, "Непроходимая местность и река").
+  assert.deepEqual(
+    manifest.state.public.transportNetworks.main.excludedRegionIds,
+    partitionDraft.impassableTerrain.regionIds
   );
 });
 
@@ -260,8 +329,15 @@ test("pledges are reversible agreements and all debit/create failures are atomic
   snapshot = await session.store.getSession(session.sessionId);
   assert.equal(snapshot.state.public.construction.totalPledged, 0);
 
+  // The real map's planner charges whatever it charges for this pair (see
+  // regionSegmentsBetween); what this test needs is only that it costs more
+  // than firstTeam's 30 coins, so reaching the exact price still fails atomically
+  // on the fund transfer rather than on the price check.
+  const roadCost = regionSegmentsBetween(manifest, "terminal-20", "terminal-14") * 2;
+  assert.ok(roadCost > 30, `test fixture needs a road pricier than firstTeam's 30 coins; measured ${roadCost}`);
+
   await chooseMode(session, "road");
-  await pledge(session, firstTeam, 31);
+  await pledge(session, firstTeam, roadCost - 1);
   await assertRejectedWithoutMutation(session, {
     actionId: "construction.road.build",
     params: {
@@ -270,6 +346,8 @@ test("pledges are reversible agreements and all debit/create failures are atomic
     }
   });
 
+  // Bringing the total to exactly `roadCost` clears the price check, so this
+  // second rejection proves the atomic fund-transfer failure instead.
   await pledge(session, secondTeam, 1);
   await assertRejectedWithoutMutation(session, {
     actionId: "construction.road.build",
@@ -291,7 +369,11 @@ test("a building road closes both endpoint stations for movement, loading and de
   const session = await createSession(manifest, constructionState(manifest));
   const [logisticsTeamId, guildTeamId] = await teamIds(session);
   await chooseMode(session, "road");
-  await pledge(session, logisticsTeamId, 32);
+  await pledge(
+    session,
+    logisticsTeamId,
+    regionSegmentsBetween(manifest, "terminal-20", "terminal-14") * 2
+  );
   const built = await dispatch({
     ...session,
     actionId: "construction.road.build",
@@ -410,9 +492,13 @@ test("a building road closes both endpoint stations for movement, loading and de
 test("overlapping roads extend a shared station closure and preserve news blockers", async () => {
   const manifest = await loadManifest();
   const session = await createSession(manifest, constructionState(manifest));
-  const [firstTeam] = await teamIds(session);
+  const [firstTeam, secondTeam] = await teamIds(session);
   await chooseMode(session, "road");
-  await pledge(session, firstTeam, 32);
+  await pledge(
+    session,
+    firstTeam,
+    regionSegmentsBetween(manifest, "terminal-20", "terminal-14") * 2
+  );
   assert.equal(
     (
       await dispatch({
@@ -433,7 +519,15 @@ test("overlapping roads extend a shared station closure and preserve news blocke
     state.public.construction.available = true;
     state.public.construction.mode = "road";
   });
-  await pledge(session, firstTeam, 28);
+  // The real map's second road can cost more than firstTeam's remaining
+  // balance after the first one; pay it from secondTeam instead of splitting
+  // pledges, since this test only cares that overlapping projects on a shared
+  // station succeed, not which team funded which road.
+  await pledge(
+    session,
+    secondTeam,
+    regionSegmentsBetween(manifest, "terminal-20", "terminal-15") * 2
+  );
   assert.equal(
     (
       await dispatch({
@@ -540,15 +634,22 @@ test("news 26 survives a waypoint and a failed road, then discounts only the fir
   assert.equal(
     waypointOutcome.result.ok,
     true,
-    JSON.stringify(waypointOutcome)
+    rejectionReason(waypointOutcome)
   );
   let snapshot = await session.store.getSession(session.sessionId);
   assert.equal(snapshot.state.public.turnEffects.firstRoadFreeSegments, 6);
   assert.equal(Object.keys(currentEdges(snapshot.state)).length, sourceEdgeCount + 1);
   assert.equal(snapshot.state.public.session.phase, "construction");
 
+  const firstRoadSegments = regionSegmentsBetween(manifest, "terminal-20", "terminal-14");
+  const firstRoadDiscount = Math.min(firstRoadSegments, 6);
+  const firstRoadPayable = firstRoadSegments - firstRoadDiscount;
+  const firstRoadCost = firstRoadPayable * 2;
+
   await chooseMode(session, "road");
-  await pledge(session, firstTeam, 19);
+  // Deliberately one coin short of the real cost: any wrong pledge must be
+  // rejected regardless of how many regions the real map's planner charges.
+  await pledge(session, firstTeam, firstRoadCost - 1);
   await assertRejectedWithoutMutation(session, {
     actionId: "construction.road.build",
     params: {
@@ -562,7 +663,7 @@ test("news 26 survives a waypoint and a failed road, then discounts only the fir
     6
   );
 
-  await pledge(session, firstTeam, 20);
+  await pledge(session, firstTeam, firstRoadCost);
   const firstRoad = await dispatch({
     ...session,
     actionId: "construction.road.build",
@@ -579,13 +680,20 @@ test("news 26 survives a waypoint and a failed road, then discounts only the fir
       && edge.attributes.toNodeId === "terminal-14"
     );
   assert.ok(discountedRoad);
-  assert.equal(discountedRoad.attributes.regionSegments, 16);
-  assert.equal(discountedRoad.attributes.discountedRegionSegments, 6);
-  assert.equal(discountedRoad.attributes.payableRegionSegments, 10);
-  assert.equal(discountedRoad.attributes.constructionCost, 20);
+  assert.equal(discountedRoad.attributes.regionSegments, firstRoadSegments);
+  assert.equal(discountedRoad.attributes.discountedRegionSegments, firstRoadDiscount);
+  assert.equal(discountedRoad.attributes.payableRegionSegments, firstRoadPayable);
+  assert.equal(discountedRoad.attributes.constructionCost, firstRoadCost);
   assert.equal(snapshot.state.public.turnEffects.firstRoadFreeSegments, 0);
 
-  await pledge(session, firstTeam, 28);
+  const secondRoadSegments = regionSegmentsBetween(manifest, "terminal-21", "terminal-15");
+  // No discount left: news 26 pays out only once per turn, already spent above.
+  const secondRoadCost = secondRoadSegments * 2;
+  // firstTeam's 100 coins are already down to 100 - firstRoadCost from the
+  // road above (plus its earlier waypoint share); pay this one from
+  // secondTeam so the real map's segment count cannot exhaust either team's
+  // balance — which team pays is not what this test is proving.
+  await pledge(session, secondTeam, secondRoadCost);
   const secondRoad = await dispatch({
     ...session,
     actionId: "construction.road.build",
@@ -602,9 +710,9 @@ test("news 26 survives a waypoint and a failed road, then discounts only the fir
       && edge.attributes.toNodeId === "terminal-15"
     );
   assert.ok(fullPriceRoad);
-  assert.equal(fullPriceRoad.attributes.regionSegments, 14);
+  assert.equal(fullPriceRoad.attributes.regionSegments, secondRoadSegments);
   assert.equal(fullPriceRoad.attributes.discountedRegionSegments, 0);
-  assert.equal(fullPriceRoad.attributes.constructionCost, 28);
+  assert.equal(fullPriceRoad.attributes.constructionCost, secondRoadCost);
   assert.equal(snapshot.state.public.session.phase, "construction");
 
   await pledge(session, secondTeam, 4);
@@ -625,8 +733,18 @@ test("news 26 survives a waypoint and a failed road, then discounts only the fir
   }
 });
 
-test("news 26 makes a one-region first road free and expires unused at the next news boundary", async () => {
+test("news 26 makes a road within the free cap fully free and expires unused at the next news boundary", async () => {
   const manifest = await loadManifest();
+  // terminal-4 <-> terminal-10 is the shortest unbuilt route on the real map
+  // (2 regions; measured against the compiled manifest, see
+  // regionSegmentsBetween) — comfortably at or under news 26's six-segment
+  // cap, so the whole road is free. Any pair with regionSegments <= 6 would
+  // prove the same boundary behaviour; this one is just the smallest found.
+  const freeRoadSegments = regionSegmentsBetween(manifest, "terminal-4", "terminal-10");
+  assert.ok(
+    freeRoadSegments <= 6,
+    `test fixture terminal-4<->terminal-10 must stay within the free cap; measured ${freeRoadSegments} regions`
+  );
   const state = constructionState(manifest);
   prepareCurrentNews(state, 26);
   const session = await createSession(manifest, state);
@@ -640,19 +758,19 @@ test("news 26 makes a one-region first road free and expires unused at the next 
     ...session,
     actionId: "construction.road.build",
     params: {
-      fromNodeId: "terminal-12",
-      toNodeId: "terminal-22"
+      fromNodeId: "terminal-4",
+      toNodeId: "terminal-10"
     }
   });
   assert.equal(built.result.ok, true);
   const snapshot = await session.store.getSession(session.sessionId);
   const edge = Object.values(currentEdges(snapshot.state))
     .find((candidate) =>
-      candidate.attributes.fromNodeId === "terminal-12"
-      && candidate.attributes.toNodeId === "terminal-22"
+      candidate.attributes.fromNodeId === "terminal-4"
+      && candidate.attributes.toNodeId === "terminal-10"
     );
-  assert.equal(edge.attributes.regionSegments, 1);
-  assert.equal(edge.attributes.discountedRegionSegments, 1);
+  assert.equal(edge.attributes.regionSegments, freeRoadSegments);
+  assert.equal(edge.attributes.discountedRegionSegments, freeRoadSegments);
   assert.equal(edge.attributes.payableRegionSegments, 0);
   assert.equal(edge.attributes.constructionCost, 0);
   assert.equal(snapshot.state.public.turnEffects.firstRoadFreeSegments, 0);
@@ -687,11 +805,16 @@ test("waypoint validation and split remain atomic and preserve independent block
   const [firstTeam] = await teamIds(session);
   await chooseMode(session, "waypoint");
   await pledge(session, firstTeam, 5);
+  // road-1-2's own first region passage (map-region-0270, the region
+  // terminal-1 itself sits in) covers about the first 27% of the road's
+  // length — measured against initial-network.road-passages.json — so any
+  // position well inside that span, not just the middle, still lands in the
+  // same region as an endpoint and must be rejected.
   await assertRejectedWithoutMutation(session, {
     actionId: "construction.waypoint.build",
     params: {
       edgeId: "road-1-2",
-      positionT: 0.5
+      positionT: 0.1
     }
   });
 
@@ -712,7 +835,7 @@ test("waypoint validation and split remain atomic and preserve independent block
       positionT: 0.5
     }
   });
-  assert.equal(outcome.result.ok, true, JSON.stringify(outcome));
+  assert.equal(outcome.result.ok, true, rejectionReason(outcome));
   const snapshot = await session.store.getSession(session.sessionId);
   const children = Object.values(currentEdges(snapshot.state))
     .filter((edge) =>
@@ -733,7 +856,11 @@ test("ordinary construction opens at N+2 while unrelated reasons remain closed",
   const session = await createSession(manifest, constructionState(manifest));
   const [firstTeam] = await teamIds(session);
   await chooseMode(session, "road");
-  await pledge(session, firstTeam, 32);
+  await pledge(
+    session,
+    firstTeam,
+    regionSegmentsBetween(manifest, "terminal-20", "terminal-14") * 2
+  );
   assert.equal(
     (
       await dispatch({

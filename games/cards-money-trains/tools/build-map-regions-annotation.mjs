@@ -12,7 +12,7 @@
  *     convert-map-annotation.mjs for how this feeds the manifest once
  *     confirmed).
  *   - `vector-map.region-partition.draft.json` — a much bigger, separately
- *     produced partition of the same map into 917 small playable "regions"
+ *     produced partition of the same map into small playable "regions"
  *     (each region belongs to exactly one of the ten in-game countries).
  * The road-building planner (see `roadPlanning` / `createRoadPlanningContract`
  * in scripts/map-annotation/map-annotation.mjs) prices a new road by how many
@@ -76,7 +76,12 @@ const OUTPUT_PATH = path.join(annotationsDirectory, "initial-network-with-region
 // silently drifting the merged output.
 const EXPECTED_NODE_COUNT = 25;
 const EXPECTED_EDGE_COUNT = 10;
-const EXPECTED_REGION_COUNT = 917;
+// 917 author-confirmed regions plus 67 regions from the impassable-terrain
+// surgery (65 forbidden-terrain regions and 2 ordinary regions where cutting
+// terrain at a region's own edge split its remaining land into two pieces —
+// see games/cards-money-trains/annotations/README.md, "Непроходимая местность
+// и река", and apply_impassable_terrain() in cmt_region_partition.py).
+const EXPECTED_REGION_COUNT = 984;
 const EXPECTED_EMPTY_SPACE_COUNT = 3;
 
 const fail = (message) => { throw new Error(message); };
@@ -106,14 +111,28 @@ const closePolygon = (exteriorRing) => {
 /**
  * Convert every partition-draft region into the schema's region shape.
  *
- * Only `id`, `countryId` and a closed `polygon` survive from the draft; the
- * schema's region definition is closed (`additionalProperties: false`), so
- * draft-only bookkeeping fields such as `geometryFingerprint`, `areaPx2`,
- * `bounds`, `stationIds` and `waypointIds` are intentionally dropped here —
- * they belong to the partition tool's own review, not to the runtime
- * contract. `countryName` is not carried over as a field (the schema has no
- * place for it); instead it is folded into the human-readable `label` so a
- * reviewer can still see which country a region belongs to at a glance.
+ * Only `id`, `countryId`, a closed `polygon` and (when present) `holes`
+ * survive from the draft; the schema's region definition is closed
+ * (`additionalProperties: false`), so draft-only bookkeeping fields such as
+ * `geometryFingerprint`, `areaPx2`, `bounds`, `stationIds` and `waypointIds`
+ * are intentionally dropped here — they belong to the partition tool's own
+ * review, not to the runtime contract. `countryName` is not carried over as a
+ * field (the schema has no place for it); instead it is folded into the
+ * human-readable `label` so a reviewer can still see which country a region
+ * belongs to at a glance.
+ *
+ * `interiorRings` used to be rejected outright: before the impassable-terrain
+ * cut (see games/cards-money-trains/annotations/README.md, "Непроходимая
+ * местность и река"), every region was a simple polygon and a non-empty
+ * `interiorRings` could only mean a bug. Now a region can genuinely have an
+ * inner ring — a terrain patch or the lakes' river sits strictly inside it
+ * and is itself a separate region (an enclave) — and the shared schema
+ * already carries this as `holes` on a region (the platform's road-planning
+ * geometry, `regionRoadGeometry.ts`, has supported region holes since ADR-100
+ * removed the region-count cap). Each inner ring is closed with the same
+ * `closePolygon()` used for the outer ring, for the same reason: the draft's
+ * ring already repeats its first point as its last on this map, but this
+ * conversion must not assume that stays true forever.
  */
 const buildRegions = (partitionRegions) => {
   // Sorting by id — the draft already happens to store regions in this order,
@@ -130,19 +149,15 @@ const buildRegions = (partitionRegions) => {
   const countryOrdinal = new Map();
 
   return sortedById.map((region) => {
-    if (Array.isArray(region.interiorRings) && region.interiorRings.length > 0) {
-      fail(
-        `region "${region.id}" has a non-empty interiorRings; this tool only ` +
-        "expects simple polygons without holes"
-      );
-    }
     const ordinal = (countryOrdinal.get(region.countryId) ?? 0) + 1;
     countryOrdinal.set(region.countryId, ordinal);
+    const holes = Array.isArray(region.interiorRings) ? region.interiorRings : [];
     return {
       id: region.id,
       label: `${region.countryName} · ${ordinal}`,
       countryId: region.countryId,
-      polygon: closePolygon(region.exteriorRing)
+      polygon: closePolygon(region.exteriorRing),
+      ...(holes.length > 0 ? { holes: holes.map(closePolygon) } : {})
     };
   });
 };
@@ -167,6 +182,16 @@ const buildAnnotation = (network, partition) => {
 
   const regions = buildRegions(partition.regions);
 
+  // Numbers in the confirmation record below are read from the draft rather
+  // than written into this tool. A literal here goes stale silently: the
+  // sentence about collapsed gaps once said "39", stayed at 39 while the draft
+  // grew past two thousand, and so misstated the very thing a reviewer was
+  // being asked to accept. A number that comes from the source cannot drift
+  // away from it.
+  const collapsedCount = partition.summary?.collapsedSliverCount ?? 0;
+  const borderGapCount = (partition.doubts ?? [])
+    .filter((doubt) => doubt.kind === "country-border-gap-merged").length;
+
   return {
     $schema: network.$schema,
     schemaVersion: network.schemaVersion,
@@ -183,7 +208,8 @@ const buildAnnotation = (network, partition) => {
       "СОБРАННОЕ АВТОМАТИЧЕСКИ; НЕ РЕДАКТИРОВАТЬ ВРУЧНУЮ. Собран инструментом " +
       "games/cards-money-trains/tools/build-map-regions-annotation.mjs из двух " +
       "источников: initial-network.review.json (25 узлов, 10 дорог) и " +
-      "vector-map.region-partition.draft.json (917 областей; 3 пустых пространства " +
+      `vector-map.region-partition.draft.json (${partition.regions.length} областей; ` +
+      `${partition.emptySpaces.length} пустых пространства ` +
       "исключены как непроходимые «моря» — не игровые области). " +
       "ОСНОВАНИЕ ПОДТВЕРЖДЕНИЯ, зафиксированное здесь, чтобы не поднимать " +
       "переписку: " +
@@ -197,9 +223,23 @@ const buildAnnotation = (network, partition) => {
       "(vector-map.region-partition.overview.png/.svg) и подтвердил его дословно: " +
       "«Разбиение выглядит правильным. Разреши оставшиеся конфликты " +
       "самостоятельно — если ошибешься, то выявим это на стадии тестирования " +
-      "игры», отдельно поручив схлопнуть щели по границам стран — это уже сделано " +
-      "внутри черновика его собственным sliverRule (39 схлопнутых участков, все " +
-      "у границ стран; см. README.md, раздел «Полное разбиение на области»). " +
+      "игры», отдельно поручив схлопнуть щели по границам стран — это сделано " +
+      "внутри черновика его собственным sliverRule. " +
+      "ЧИСЛА ИЗМЕНИЛИСЬ ПОСЛЕ ПОДТВЕРЖДЕНИЯ, и это сказано здесь прямо: на момент " +
+      "просмотра PM схлопнутых участков было 39, сейчас их " +
+      `${collapsedCount}, из них у границ стран ${borderGapCount}. ` +
+      "Рост вызван исправлением ошибки, найденной 2026-07-28: грани внутри " +
+      "нарисованной краски у границ стран молча выбрасывались вместо " +
+      "присоединения к соседу, из-за чего граф соседства областей распадался на " +
+      "шесть несвязных частей и межстранового маршрута не существовало вовсе. " +
+      "Исправление применило к ним то же измеренное правило. Оно подпадает под " +
+      "выданное PM разрешение «разреши оставшиеся конфликты самостоятельно», но " +
+      "величина изменения такова, что скрывать её за прежним числом нельзя. " +
+      "Мера последствия измерена независимо: между странами перешло 0,08% площади " +
+      "карты, наибольшее расхождение государственной границы с авторской заливкой " +
+      "4,29 px при ширине карты 5079 px, и в половине своей длины граница " +
+      "совпадает с авторской точно. См. README.md, раздел «Полное разбиение на " +
+      "области». " +
       "Это подтверждение сделано ПОЗЖЕ даты черновика " +
       "vector-map.region-partition.draft.json: его собственные поля " +
       "policy.semanticAssignmentsConfirmed=false и " +

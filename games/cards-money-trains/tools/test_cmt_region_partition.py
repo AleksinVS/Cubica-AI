@@ -44,6 +44,7 @@ from cmt_region_partition import (
     connected_components,
     drop_micro_holes,
     effective_width,
+    foreign_area_after_merge,
     stable_region_order,
 )
 
@@ -355,10 +356,20 @@ class RegionPartitionDraftFacts(unittest.TestCase):
 
         # Пересчитанные числа обязаны совпасть с тем, что записано в summary:
         # иначе сводка молча разошлась бы с фактическим содержимым черновика.
+        #
+        # Сверяться нужно с ПОСЛЕ-хирургическими полями, а не с базовыми:
+        # `connectedComponentCount`/`largestConnectedComponentSize` описывают
+        # разбиение ДО вырезания непроходимой местности (917 областей), а
+        # `regions` черновика — уже после него (984). Сверка с базовыми полями
+        # сравнивала бы два разных множества областей и падала бы не на
+        # дефекте, а на собственной путанице.
         summary = self.draft["summary"]
-        self.assertEqual(summary["connectedComponentCount"], len(components))
         self.assertEqual(
-            summary["largestConnectedComponentSize"], len(components[0])
+            summary["connectedComponentCountAfterTerrainSurgery"], len(components)
+        )
+        self.assertEqual(
+            summary["largestConnectedComponentSizeAfterTerrainSurgery"],
+            len(components[0]),
         )
 
         recomputed_cross_country_edges = 0
@@ -369,8 +380,12 @@ class RegionPartitionDraftFacts(unittest.TestCase):
                     continue
                 if regions[index]["countryId"] != regions[neighbor]["countryId"]:
                     recomputed_cross_country_edges += 1
+        # Опять же ПОСЛЕ-хирургическое поле: `crossCountryAdjacencyCount`
+        # описывает базовое разбиение, а пересчёт выше идёт по итоговым
+        # областям черновика.
         self.assertEqual(
-            summary["crossCountryAdjacencyCount"], recomputed_cross_country_edges
+            summary["crossCountryAdjacencyCountAfterTerrainSurgery"],
+            recomputed_cross_country_edges,
         )
         self.assertGreater(
             recomputed_cross_country_edges,
@@ -594,6 +609,84 @@ class PureFunctionTests(unittest.TestCase):
             area_before + 9.0,
             places=6,
             msg="площадь обязана вырасти ровно на площадь убранного отверстия",
+        )
+
+    def test_foreign_area_after_merge_tests_the_claim_directly(self) -> None:
+        """`foreign_area_after_merge()` проверяет само утверждение, а не его признак.
+
+        Два более ранних признака (доля перекрытия щели с заливкой, затем
+        расстояние до заливки) оба проверяли не саму претензию «государственная
+        граница сдвинулась», а её приближение, и оба на этом ошибались:
+        измерение по авторской карте показало, что признак «расстояние»
+        по-прежнему помечал 280 из 1039 щелей как сдвиг границы, хотя вся их
+        площадь лежала внутри собственной страны той области, к которой они
+        присоединились, — никакая чужая территория не переходила. Прямая
+        проверка пересечения реальной геометрии щели с реальной геометрией
+        чужой заливки такой ошибки не допускает: либо чужая площадь есть,
+        либо её нет. Четыре сценария проверяют по отдельности стороны этого
+        различия.
+        """
+
+        country_a = box(0.0, 0.0, 100.0, 100.0)
+        country_b = box(100.0, 0.0, 200.0, 100.0)
+        named_countries = [
+            ("country-a", "Страна A", country_a),
+            ("country-b", "Страна B", country_b),
+        ]
+
+        # Сценарий 1: щель целиком внутри страны A, присоединилась к области
+        # страны A (own_country_id == "country-a"). Чужой территории здесь
+        # нет вообще, поэтому итог обязан быть ровно 0.0, а не малым, но
+        # положительным числом, — это и есть случай, который признак
+        # «расстояние» путал со сдвигом границы, если по соседству случайно
+        # оказывалась другая страна.
+        inside_sliver = box(40.0, 40.0, 42.0, 60.0)
+        self.assertEqual(
+            foreign_area_after_merge(inside_sliver, "country-a", named_countries),
+            0.0,
+            "щель целиком внутри своей страны не отдаёт никому чужую территорию",
+        )
+
+        # Сценарий 2: щель — непрокрашенная полоса ровно НА границе A и B,
+        # присоединилась к области страны A. Половина щели (10×100 = 1000)
+        # лежит на стороне B — эта половина фактически "перешла" стране A,
+        # и foreign_area_after_merge() обязана вернуть именно её площадь,
+        # точным числом, а не признаком присутствия.
+        straddling_sliver = box(90.0, 0.0, 110.0, 100.0)
+        expected_foreign_area = country_b.intersection(straddling_sliver).area
+        self.assertAlmostEqual(expected_foreign_area, 1000.0, places=6)
+        self.assertAlmostEqual(
+            foreign_area_after_merge(straddling_sliver, "country-a", named_countries),
+            expected_foreign_area,
+            places=6,
+            msg="ровно половина щели лежала на территории B — это и обязано "
+            "быть возвращённой площадью, не больше и не меньше",
+        )
+
+        # Сценарий 3: щель целиком внутри страны B, но по каким-то причинам
+        # (например, из-за самой длинной общей границы у sliverRule)
+        # присоединилась к области страны A. Вся площадь щели тогда — чужая
+        # территория: foreign_area_after_merge() обязана вернуть площадь щели
+        # целиком, а не только её часть.
+        fully_foreign_sliver = box(150.0, 0.0, 152.0, 100.0)
+        self.assertTrue(country_b.contains(fully_foreign_sliver))
+        self.assertAlmostEqual(
+            foreign_area_after_merge(fully_foreign_sliver, "country-a", named_countries),
+            fully_foreign_sliver.area,
+            places=6,
+            msg="щель целиком внутри чужой страны отдаёт ей всю свою площадь",
+        )
+
+        # Сценарий 4: область, в которую вошла щель, сама не привязана ни к
+        # одной стране (own_country_id is None — на измеренной карте таких
+        # регионов нет, но функция обязана остаться безопасной). Исключать
+        # тогда нечего, и в сумму идёт пересечение со всеми странами.
+        self.assertAlmostEqual(
+            foreign_area_after_merge(straddling_sliver, None, named_countries),
+            straddling_sliver.area,
+            places=6,
+            msg="без своей страны у щели нечего исключать из суммы — вся её "
+            "площадь, попавшая в чью-то заливку, считается чужой",
         )
 
     def test_stable_region_order_is_independent_of_input_order(self) -> None:

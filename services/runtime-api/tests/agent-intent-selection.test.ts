@@ -32,6 +32,9 @@ const { mechanicsSha256 } = require("../../../scripts/manifest-tools/mechanics-c
 
 /** Re-publish compiler-owned hashes after this test mutates its in-memory fixture. */
 const republishFixtureHashes = (manifest: GameManifest): void => {
+  // networkModels is bound by digest, not by embedded value -- must mirror
+  // checkMechanicsBundle in scripts/manifest-tools/mechanics-checker.cjs.
+  const networkModelsHash = mechanicsSha256(manifest.networkModels ?? {});
   for (const [planId, plan] of Object.entries(manifest.mechanics.plans)) {
     plan.planHash = mechanicsSha256({
       apiVersion: manifest.mechanics.apiVersion,
@@ -39,7 +42,7 @@ const republishFixtureHashes = (manifest: GameManifest): void => {
       moduleLock: manifest.mechanics.moduleLock,
       stateModel: manifest.mechanics.stateModel,
       objectModels: manifest.objectModels ?? {},
-      networkModels: manifest.networkModels ?? {},
+      networkModelsHash,
       planId,
       transaction: plan.transaction
     });

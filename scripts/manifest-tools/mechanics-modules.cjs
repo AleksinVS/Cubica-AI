@@ -245,8 +245,8 @@ const rawDescriptors = [
   },
   {
     moduleId: "cubica.graph",
-    moduleVersion: "2.3.0",
-    behaviorVersion: "mechanics-region-graph-v1alpha1-9",
+    moduleVersion: "2.4.0",
+    behaviorVersion: "mechanics-region-graph-v1alpha1-10",
     // No dependency on cubica.random any more: version 2 of the region path
     // algorithm decides the route by geometry, so nothing here is drawn at
     // random (ADR-100 § 4.6). The dependency is removed rather than left in
@@ -263,7 +263,7 @@ const rawDescriptors = [
     algorithmVersions: {
       regionPath: "region-segment-minimum-v2",
       edgePosition: "polyline-arc-length-v1",
-      regionMembership: "closed-polygon-all-memberships-v1",
+      regionMembership: "closed-polygon-all-memberships-v2",
       geometryFingerprint: "canonical-json-sha256-v1"
     }
   },

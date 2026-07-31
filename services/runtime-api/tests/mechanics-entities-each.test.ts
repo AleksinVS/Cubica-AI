@@ -381,6 +381,9 @@ function eachResultIsolationStep(): EntitiesEachStep {
 function finalizePlanHashes(
   mechanics: CubicaMechanicsIRV1Alpha1
 ): CubicaMechanicsIRV1Alpha1 {
+  // networkModels is bound by digest, not by embedded value -- must mirror
+  // checkMechanicsBundle in scripts/manifest-tools/mechanics-checker.cjs.
+  const networkModelsHash = mechanicsSha256(NETWORK_MODELS);
   for (const [planId, plan] of Object.entries(mechanics.plans)) {
     plan.planHash = mechanicsSha256({
       apiVersion: mechanics.apiVersion,
@@ -388,7 +391,7 @@ function finalizePlanHashes(
       moduleLock: mechanics.moduleLock,
       stateModel: mechanics.stateModel,
       objectModels: {},
-      networkModels: NETWORK_MODELS,
+      networkModelsHash,
       planId,
       transaction: plan.transaction
     });
@@ -659,4 +662,83 @@ test("checker rejects conditional sources and multiplication above the selected 
       error instanceof MechanicsSemanticError &&
       error.code === "MECHANICS_STATIC_BUDGET_EXCEEDED"
   );
+});
+
+/**
+ * Prove that every plan hash still depends on the full network geometry after
+ * checkMechanicsBundle switched from embedding `networkModels` by value to
+ * folding a single `networkModelsHash` digest into each plan's hash input
+ * (see the "Why the digest is equivalent" comment in mechanics-checker.cjs).
+ *
+ * A digest is only as trustworthy as its sensitivity to its input: this test
+ * mutates one coordinate of one region polygon -- the exact kind of change a
+ * future author might make to the real cards-money-trains map -- and checks
+ * that every published plan hash is rejected as stale, while leaving the
+ * network models untouched keeps every plan hash valid.
+ */
+test("every plan hash still changes when one region polygon coordinate changes", () => {
+  const mechanics = createMechanics();
+
+  // Unchanged network models: the plan hashes createMechanics() published
+  // (via finalizePlanHashes, which hashes NETWORK_MODELS) must still match
+  // what checkMechanicsBundle recomputes from the same network models --
+  // changing nothing leaves every plan hash identical.
+  assert.doesNotThrow(() => checkMechanicsBundle(mechanics, { networkModels: NETWORK_MODELS }));
+
+  // Move one vertex of the sole region's polygon by a tiny amount. The
+  // triangle stays simple (no self-intersection, no zero-length edge), so any
+  // rejection below is caused by exactly one thing: the plan hash no longer
+  // matching what checkMechanicsBundle recomputes from the mutated bytes.
+  const mutatedNetworkModels = structuredClone(NETWORK_MODELS);
+  const mutatedPoint = mutatedNetworkModels.main.regions[0].polygon[1];
+  assert.deepEqual(mutatedPoint, { x: 10, y: 0 });
+  mutatedPoint.x = 10.000001;
+
+  // Directly recompute, per plan, the hash that checkMechanicsBundle would
+  // now expect and prove it differs from the one createMechanics() published
+  // against the original geometry. This is the load-bearing assertion: the
+  // digest is sensitive to a single coordinate, so the universal binding (every
+  // plan depends on the full network graph) survives the by-value -> by-digest
+  // change untouched.
+  const mutatedNetworkModelsHash = mechanicsSha256(mutatedNetworkModels);
+  for (const [planId, plan] of Object.entries(mechanics.plans)) {
+    const recomputedHash = mechanicsSha256({
+      apiVersion: mechanics.apiVersion,
+      budgetProfile: mechanics.budgetProfile,
+      moduleLock: mechanics.moduleLock,
+      stateModel: mechanics.stateModel,
+      objectModels: {},
+      networkModelsHash: mutatedNetworkModelsHash,
+      planId,
+      transaction: plan.transaction
+    });
+    assert.notEqual(recomputedHash, plan.planHash);
+  }
+
+  // End to end: checkMechanicsBundle itself rejects the now-stale plan
+  // hashes as soon as it sees the mutated network models.
+  assert.throws(
+    () => checkMechanicsBundle(mechanics, { networkModels: mutatedNetworkModels }),
+    (error: unknown) =>
+      error instanceof MechanicsSemanticError &&
+      error.code === "MECHANICS_PLAN_HASH_MISMATCH"
+  );
+
+  // Re-publishing the plan hashes against the mutated network models makes
+  // them agree again -- the binding tracks content, not a stale snapshot.
+  const republished = createMechanics();
+  const republishedNetworkModelsHash = mechanicsSha256(mutatedNetworkModels);
+  for (const [planId, plan] of Object.entries(republished.plans)) {
+    plan.planHash = mechanicsSha256({
+      apiVersion: republished.apiVersion,
+      budgetProfile: republished.budgetProfile,
+      moduleLock: republished.moduleLock,
+      stateModel: republished.stateModel,
+      objectModels: {},
+      networkModelsHash: republishedNetworkModelsHash,
+      planId,
+      transaction: plan.transaction
+    });
+  }
+  assert.doesNotThrow(() => checkMechanicsBundle(republished, { networkModels: mutatedNetworkModels }));
 });

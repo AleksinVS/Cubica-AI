@@ -97,3 +97,8 @@ test("--check style comparison detects stylesheet drift", () => {
     fs.rmSync(path.dirname(tempFile), { recursive: true, force: true });
   }
 });
+
+// Exported so authoring-compiler-source-map-collapse.test.cjs can reuse this
+// fixture for its source-map-collapsing equivalence proof, instead of a
+// second, drifting copy of the same authoring document.
+module.exports = { styledAuthoring, job };

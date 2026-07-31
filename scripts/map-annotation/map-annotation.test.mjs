@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 import {
   createMapAnnotationReviewOverlaySvg,
   createTransportManifestFragment,
+  MAP_ANNOTATION_SCHEMA_PATH,
   runMapAnnotationCli,
   validateMapAnnotation
 } from "./map-annotation.mjs";
@@ -21,7 +22,8 @@ import {
 // them anywhere in its own output.
 import {
   canonicalizeRoadPlanningRegions,
-  deriveRegionCrossings
+  deriveRegionCrossings,
+  MAX_RINGS_PER_REGION
 } from "../../services/runtime-api/src/modules/runtime/regionRoadGeometry.ts";
 
 /** Total length of a polyline, used to check a crossing spans a whole border. */
@@ -393,6 +395,235 @@ test("automatic planning rejects overlapping regions and ignores point-only cont
     canonicalizeRoadPlanningRegions(fragment.networkModels.neutral.regions)
   );
   assert.deepEqual(crossings, []);
+});
+
+// A region hole is an inner ring excluded from the region — for example a
+// terrain patch or lake cut out of it — and the patch itself is published as
+// a brand-new "enclave" region whose own outer polygon matches that hole
+// exactly. `holeRing` below is reused as both the parent's hole and the
+// enclave's polygon, which is precisely the shape the platform must treat as
+// two disjoint, non-overlapping regions rather than as an overlap.
+const lakeHoleRing = [
+  { x: 200, y: 150 }, { x: 300, y: 150 }, { x: 300, y: 250 }, { x: 200, y: 250 }, { x: 200, y: 150 }
+];
+
+test("a region with a hole and its matching enclave validate without a false overlap", async () => {
+  const inputPath = path.join(fixtureRoot, "neutral-map-annotation.json");
+  const source = await readFixture("neutral-map-annotation.json");
+  source.regions[0].holes = [lakeHoleRing];
+  source.regions.push({
+    id: "neutral-region-lake",
+    label: "Lake enclave",
+    countryId: "neutral-country",
+    polygon: lakeHoleRing,
+    evidence: "Hole/enclave fixture"
+  });
+
+  const annotation = await validateMapAnnotation(source, inputPath);
+  const fragment = createTransportManifestFragment(annotation, neutralManifestOptions);
+
+  const parent = fragment.networkModels.neutral.regions.find((region) => region.id === "neutral-region");
+  const enclave = fragment.networkModels.neutral.regions.find((region) => region.id === "neutral-region-lake");
+  assert.equal(parent.holes.length, 1);
+  // The manifest's canonical ring form drops the repeated closing point (see
+  // `canonicalPolygon`), so a 5-point authored ring becomes 4 canonical points.
+  assert.equal(parent.holes[0].length, lakeHoleRing.length - 1);
+  assert.equal(enclave.polygon.length, lakeHoleRing.length - 1);
+
+  // Road planning (ADR-100) must also accept the pair and derive the shared
+  // border between the parent and its enclave as one closed crossing, proving
+  // the hole reaches the runtime's own canonicaliser intact.
+  assert.match(fragment.networkModels.neutral.roadPlanning.geometryHash, /^sha256:[0-9a-f]{64}$/u);
+  const crossings = deriveRegionCrossings(
+    canonicalizeRoadPlanningRegions(fragment.networkModels.neutral.regions)
+  );
+  assert.equal(crossings.length, 1);
+  assert.deepEqual(crossings[0].regionIds.slice().sort(), ["neutral-region", "neutral-region-lake"]);
+});
+
+test("two holes of one region reach the manifest in canonical order whatever order the author listed them", async () => {
+  // Regression guard for a real, measured blocker: the runtime re-canonicalises
+  // the published regions when it loads a package and refuses one whose regions
+  // are not already compiler-canonical. `canonicalizeRoadPlanningRegions` sorts
+  // a region's holes by their first vertex, so a fragment that keeps the author's
+  // own order makes the whole map unloadable as soon as any region has two holes.
+  // Measured on the real map of «Карты, деньги, поезда»: exactly one region of
+  // 984 has more than one hole, and it alone broke the load.
+  const inputPath = path.join(fixtureRoot, "neutral-map-annotation.json");
+  const source = await readFixture("neutral-map-annotation.json");
+  const secondHoleRing = [
+    { x: 400, y: 150 }, { x: 450, y: 150 }, { x: 450, y: 200 }, { x: 400, y: 200 }, { x: 400, y: 150 }
+  ];
+  // Listed with the RIGHTMOST hole first, i.e. deliberately not in canonical order.
+  source.regions[0].holes = [secondHoleRing, lakeHoleRing];
+  for (const [id, ring] of [["neutral-region-lake", lakeHoleRing], ["neutral-region-pond", secondHoleRing]]) {
+    source.regions.push({
+      id,
+      label: `Enclave ${id}`,
+      countryId: "neutral-country",
+      polygon: ring,
+      evidence: "Two-hole ordering fixture"
+    });
+  }
+
+  const annotation = await validateMapAnnotation(source, inputPath);
+  const fragment = createTransportManifestFragment(annotation, neutralManifestOptions);
+  const parent = fragment.networkModels.neutral.regions.find((region) => region.id === "neutral-region");
+  assert.equal(parent.holes.length, 2);
+  assert.deepEqual(parent.holes[0][0], { x: 200, y: 150 }, "the leftmost hole must come first");
+
+  // The decisive check: what the runtime does on load must be a no-op.
+  assert.deepEqual(
+    canonicalizeRoadPlanningRegions(fragment.networkModels.neutral.regions),
+    fragment.networkModels.neutral.regions
+  );
+});
+
+test("a hole does not mask a genuine overlap between two unrelated regions", async () => {
+  // Regression guard: adding hole-awareness to assertRegionsDoNotOverlap must
+  // not loosen the check for regions that have no hole relationship at all.
+  const inputPath = path.join(fixtureRoot, "neutral-map-annotation.json");
+  const source = await readFixture("neutral-map-annotation.json");
+  source.regions[0].holes = [lakeHoleRing];
+  source.regions.push({
+    id: "neutral-region-lake",
+    label: "Lake enclave",
+    countryId: "neutral-country",
+    polygon: lakeHoleRing,
+    evidence: "Hole/enclave fixture"
+  });
+  // Overlaps the parent's outer boundary directly, far from the hole — a
+  // genuine overlap that the hole must not hide.
+  source.regions.push({
+    id: "overlap",
+    label: "Overlap",
+    countryId: "neutral-country",
+    polygon: [
+      { x: 300, y: 200 }, { x: 620, y: 200 }, { x: 620, y: 460 },
+      { x: 300, y: 460 }, { x: 300, y: 200 }
+    ],
+    evidence: "Negative fixture"
+  });
+
+  const annotation = await validateMapAnnotation(source, inputPath);
+  assert.throws(
+    () => createTransportManifestFragment(annotation, neutralManifestOptions),
+    /regions .* overlap/
+  );
+});
+
+test("a region's hole is checked the same way as its outer polygon", async () => {
+  const inputPath = path.join(fixtureRoot, "neutral-map-annotation.json");
+  const source = await readFixture("neutral-map-annotation.json");
+
+  const notClosed = structuredClone(source);
+  notClosed.regions[0].holes = [[
+    { x: 200, y: 150 }, { x: 300, y: 150 }, { x: 300, y: 250 }, { x: 200, y: 250 }
+  ]];
+  await assert.rejects(
+    validateMapAnnotation(notClosed, inputPath),
+    /hole 0.*repeat its first point/
+  );
+
+  const outside = structuredClone(source);
+  outside.regions[0].holes = [[
+    { x: 200, y: 150 }, { x: 99999, y: 150 }, { x: 300, y: 250 }, { x: 200, y: 250 }, { x: 200, y: 150 }
+  ]];
+  await assert.rejects(
+    validateMapAnnotation(outside, inputPath),
+    /hole 0.*outside/
+  );
+
+  const crossed = structuredClone(source);
+  crossed.regions[0].holes = [[
+    { x: 200, y: 150 },
+    { x: 300, y: 250 },
+    { x: 200, y: 250 },
+    { x: 280, y: 150 },
+    { x: 200, y: 150 }
+  ]];
+  await assert.rejects(
+    validateMapAnnotation(crossed, inputPath),
+    /hole 0.*self-intersects/
+  );
+});
+
+// Gap closed by this block: `holes` (docs/architecture/schemas/map-annotation.schema.json)
+// is available to every game, but until now the check that a hole actually
+// lies inside its own region's outer contour ran only inside
+// `canonicalizeRoadPlanningRegions`, i.e. only for a game that opted into
+// `roadPlanning` (ADR-100). A game that never turns road planning on could
+// previously publish a hole that was not a hole at all, and
+// `validateMapAnnotation` — the one path every game always goes through —
+// would not notice.
+
+test("a hole strictly inside its own region validates without road planning enabled", async () => {
+  const inputPath = path.join(fixtureRoot, "neutral-map-annotation.json");
+  const source = await readFixture("neutral-map-annotation.json");
+  source.regions[0].holes = [lakeHoleRing];
+
+  // No roadPlanning option anywhere here: this exercises exactly the
+  // previously-unchecked path, `validateMapAnnotation` on its own, not
+  // `createTransportManifestFragment` with a roadPlanning-enabled adapter.
+  const annotation = await validateMapAnnotation(source, inputPath);
+  assert.equal(annotation.regions[0].holes.length, 1);
+});
+
+test("a hole entirely outside its own region's outer contour is rejected", async () => {
+  const inputPath = path.join(fixtureRoot, "neutral-map-annotation.json");
+  const source = await readFixture("neutral-map-annotation.json");
+  // neutral-region spans x:40..600, y:80..420 (see the fixture); this hole
+  // sits well clear of that rectangle but still inside the 640x480 image, so
+  // only the hole-vs-outer-contour check can be what rejects it.
+  source.regions[0].holes = [[
+    { x: 610, y: 430 }, { x: 630, y: 430 }, { x: 630, y: 450 }, { x: 610, y: 450 }, { x: 610, y: 430 }
+  ]];
+  await assert.rejects(
+    validateMapAnnotation(source, inputPath),
+    /region "neutral-region" hole 0 is not strictly inside its own outer contour/
+  );
+});
+
+test("a hole that partially sticks out of its own region's outer contour is rejected", async () => {
+  const inputPath = path.join(fixtureRoot, "neutral-map-annotation.json");
+  const source = await readFixture("neutral-map-annotation.json");
+  // neutral-region's right edge is at x=600; this hole straddles it (spans
+  // x:580..635), so two of its four vertices land inside the region and two
+  // land outside — a hole that is only partially a hole.
+  source.regions[0].holes = [[
+    { x: 580, y: 100 }, { x: 635, y: 100 }, { x: 635, y: 200 }, { x: 580, y: 200 }, { x: 580, y: 100 }
+  ]];
+  await assert.rejects(
+    validateMapAnnotation(source, inputPath),
+    /region "neutral-region" hole 0 (touches its own outer contour|is not strictly inside its own outer contour)/
+  );
+});
+
+test("two holes of the same region that intersect each other are rejected", async () => {
+  const inputPath = path.join(fixtureRoot, "neutral-map-annotation.json");
+  const source = await readFixture("neutral-map-annotation.json");
+  // Both squares sit well inside neutral-region's outer contour on their own;
+  // only their overlap with EACH OTHER is at fault.
+  source.regions[0].holes = [
+    [{ x: 100, y: 100 }, { x: 200, y: 100 }, { x: 200, y: 200 }, { x: 100, y: 200 }, { x: 100, y: 100 }],
+    [{ x: 150, y: 150 }, { x: 250, y: 150 }, { x: 250, y: 250 }, { x: 150, y: 250 }, { x: 150, y: 150 }]
+  ];
+  await assert.rejects(
+    validateMapAnnotation(source, inputPath),
+    /region "neutral-region" holes 0 and 1 (cross each other|overlap)/
+  );
+});
+
+// The schema's `holes.maxItems` and the runtime's `MAX_RINGS_PER_REGION`
+// express the same limit (1 outer ring + 64 holes = 65 rings) in two files
+// that cannot reference each other's source directly (JSON schema has no
+// import mechanism). This test is the thing that actually keeps them in sync
+// — the code comments next to each number only explain the relationship, they
+// cannot enforce it.
+test("the schema's holes.maxItems and MAX_RINGS_PER_REGION express the same limit", async () => {
+  const schema = JSON.parse(await readFile(MAP_ANNOTATION_SCHEMA_PATH, "utf8"));
+  const holesMaxItems = schema.definitions.region.properties.holes.maxItems;
+  assert.equal(holesMaxItems, MAX_RINGS_PER_REGION - 1);
 });
 
 test("review draft accepts independent network intake but cannot be published", async () => {

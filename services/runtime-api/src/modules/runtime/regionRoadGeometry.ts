@@ -46,14 +46,28 @@ const EPSILON = 1e-9;
  * The number of regions is deliberately unbounded (ADR-081 § 4.7): cost grows
  * with the number of polygon vertices, not with how those vertices are grouped.
  * The limits below are the ones that do bound the cost, and their values are
- * measured on the first real author map rather than guessed — a partition of
- * 917 areas with 79 549 vertices, whose widest region has 511 vertices, which
- * produces 2 485 crossings using about 1.2·10⁵ side comparisons. Each limit
- * leaves room above the measured value, so an ordinary map passes and a runaway
- * one is still stopped.
+ * measured on the first real author map rather than guessed.
+ *
+ * That map was measured twice, and the second measurement is why the
+ * per-ring limit is what it is. As first partitioned it held 917 areas with
+ * 79 549 vertices, the widest ring having 511, producing 2 485 crossings from
+ * about 1.2·10⁵ side comparisons — which is where a limit of 512 came from.
+ * The author then declared some terrain impassable, and cutting that terrain
+ * out gave 984 areas with 89 276 vertices: a region keeps its own outline and
+ * gains the outline of every patch cut out of it, so the widest ring grew to
+ * 1 508. A limit set to the largest thing seen so far is not a limit, it is a
+ * coincidence; 2 048 leaves room for the same thing happening again while
+ * still stopping a runaway map.
  */
-const MAX_VERTICES_PER_RING = 512;
-const MAX_RINGS_PER_REGION = 65;
+const MAX_VERTICES_PER_RING = 2048;
+// Kept in lockstep with `holes.maxItems` in
+// docs/architecture/schemas/map-annotation.schema.json, which is the same
+// limit expressed as "at most 64 holes" (1 outer ring + 64 holes = 65 rings).
+// The schema is the source of truth for the shape; this constant is the
+// source of truth for what runtime enforces, and
+// `map-annotation.test.mjs` asserts the two numbers agree so they cannot
+// silently drift apart.
+export const MAX_RINGS_PER_REGION = 65;
 const MAX_TOTAL_VERTICES = 200_000;
 const MAX_CROSSINGS = 65_536;
 const MAX_CROSSING_VERTICES = 400_000;

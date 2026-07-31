@@ -1,7 +1,7 @@
 {
   "generatedFrom": {
     "annotation": "annotations/initial-network-with-regions.review.json",
-    "sha256": "188932b5012638e61aaef193c61758a7ee02e62a9d964b3d2651c60b31abb38f",
+    "sha256": "856349b02620d0b860fce5025ba601fcdbe5666f244498337d199a4a17429aab",
     "algorithmVersion": "initial-road-straight-line-region-crossing-v1",
     "epsilon": 1e-9
   },
@@ -663,7 +663,7 @@
           "toPointIndex": 3
         },
         {
-          "regionId": "map-region-0038",
+          "regionId": "map-region-0919",
           "fromPointIndex": 3,
           "toPointIndex": 4
         },
@@ -677,7 +677,7 @@
         "map-region-0051",
         "map-region-0057",
         "map-region-0052",
-        "map-region-0038",
+        "map-region-0919",
         "map-region-0056"
       ]
     },

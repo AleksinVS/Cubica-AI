@@ -103,6 +103,10 @@ function finalizeFixture(fixture) {
     .flatMap((candidate) => candidate.transaction.steps.map((step) => step.op));
   fixture.mechanics.moduleLock = recommendedModuleLockForOperations(operations);
 
+  // networkModels is bound by digest, not by embedded value -- mirrors the
+  // per-plan hash input computed in checkMechanicsBundle (mechanics-checker.cjs)
+  // and in compileAuthoringText (authoring-compiler.cjs).
+  const networkModelsHash = mechanicsSha256(fixture.networkModels || {});
   for (const [planId, candidate] of Object.entries(fixture.mechanics.plans)) {
     candidate.planHash = mechanicsSha256({
       apiVersion: fixture.mechanics.apiVersion,
@@ -110,7 +114,7 @@ function finalizeFixture(fixture) {
       moduleLock: fixture.mechanics.moduleLock,
       stateModel: fixture.mechanics.stateModel,
       objectModels: fixture.objectModels || {},
-      networkModels: fixture.networkModels || {},
+      networkModelsHash,
       planId,
       transaction: candidate.transaction
     });

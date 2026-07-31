@@ -115,6 +115,28 @@ function joinPointer(parent, segment) {
   return `${parent}/${toPointerSegment(segment)}`;
 }
 
+/**
+ * Returns the JSON Pointer one level up from `pointer`, or `undefined` once
+ * `pointer` is already the document root (`""`).
+ *
+ * This is a deliberate, self-contained port of the identically-named helper
+ * in the two editor-web consumers that read a compiled source map
+ * (`apps/editor-web/src/lib/preview-message-adapter.ts` and
+ * `apps/editor-web/src/lib/compiler-workflow.ts`, both function
+ * `mapGeneratedPointerToAuthoring`). Every place in this file that writes into
+ * a mappings object now records an entry only when it differs from what this
+ * exact upward walk would already find at an ancestor pointer — see
+ * `recordMapping` below — so the walk here MUST match those two consumers
+ * exactly, or "collapsing" would silently change an answer a consumer gives.
+ */
+function parentPointer(pointer) {
+  if (pointer === "") {
+    return undefined;
+  }
+  const lastSlashIndex = pointer.lastIndexOf("/");
+  return lastSlashIndex <= 0 ? "" : pointer.slice(0, lastSlashIndex);
+}
+
 function readJson(filePath) {
   try {
     return JSON.parse(fs.readFileSync(filePath, "utf8"));
@@ -364,6 +386,64 @@ function uniqueSources(sources) {
   return result;
 }
 
+/**
+ * Order-sensitive deep equality of two source lists (arrays of {file, pointer}).
+ *
+ * Used to decide whether a node's mapping entry is redundant: if this node's
+ * sources are exactly the sources its nearest recorded ancestor already
+ * carries, a consumer walking up from this node's pointer would land on the
+ * ancestor and read the identical list anyway (see `mapGeneratedPointerToAuthoring`
+ * in the two editor-web consumers). Comparing the whole list rather than just
+ * its first element is the conservative choice: both consumers currently only
+ * read `sources[0]`, but comparing the full list means this rule stays correct
+ * even if a future consumer inspects the rest of the array.
+ */
+function sourcesEqual(a, b) {
+  if (a === b) {
+    return true;
+  }
+  if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) {
+    return false;
+  }
+  for (let i = 0; i < a.length; i += 1) {
+    if (a[i].file !== b[i].file || a[i].pointer !== b[i].pointer) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * Second collapse case: a node's source is not byte-identical to its nearest
+ * recorded ancestor's (see `sourcesEqual`), but it is *reconstructible* from
+ * it, because the ancestor's subtree was copied through verbatim — the
+ * child's authoring pointer is exactly the ancestor's authoring pointer with
+ * the same relative path the child has below the ancestor in the generated
+ * (runtime) tree. This is exactly what happens whenever `deriveChildSources`
+ * takes its "concrete pointer exists" branch all the way down a plain,
+ * `_type`-free literal subtree (e.g. a region's polygon vertices): every
+ * level extends both the generated pointer and the authoring pointer by the
+ * identical key/index, so the two never drift apart. It requires a SINGLE
+ * unambiguous source at both ends — with more than one candidate source there
+ * is no one pointer to reconstruct from, so this only ever fires past a
+ * genuinely single-sourced ancestor.
+ *
+ * This is a distinct case from `sourcesEqual` and must be marked separately
+ * (see `verbatimSubtrees` in the source map): an identical source means "the
+ * child's source *is* the ancestor's pointer" (appending anything would
+ * fabricate a pointer that does not exist), while a positional match means
+ * "append the remaining generated-pointer suffix to the ancestor's authoring
+ * pointer to get the child's exact source". Confusing the two would produce a
+ * wrong reconstructed pointer, not merely a less precise one.
+ */
+function isPositionalMatch(sources, pointer, ancestorPointer, ancestorSources) {
+  if (ancestorPointer === undefined || sources.length !== 1 || ancestorSources.length !== 1) {
+    return false;
+  }
+  const expectedPointer = ancestorSources[0].pointer + pointer.slice(ancestorPointer.length);
+  return sources[0].file === ancestorSources[0].file && sources[0].pointer === expectedPointer;
+}
+
 function deriveChildSources(parentSources, segment, context) {
   const candidates = parentSources.map((source) => ({
     file: source.file,
@@ -416,27 +496,87 @@ function resolveDefinition(typeName, context, stack = []) {
   return result;
 }
 
-function compileNode(node, context, pointer, inheritedSources = []) {
+/**
+ * Compiles one authoring node into its runtime value plus a source-map
+ * fragment, recursing into children.
+ *
+ * `ancestorSources` is the source list a consumer would already find by
+ * walking up from this node's pointer to the nearest pointer this function
+ * (or one of its recursive calls) actually recorded, and `ancestorPointer` is
+ * that same recorded pointer itself (needed for the positional check below).
+ * Both are `undefined` only at the very first call, where there is no
+ * ancestor yet. Before the first collapse rule existed, every single node —
+ * every array element, every scalar, every coordinate — got its own mappings
+ * entry, even when it was byte-identical to what the node's parent already
+ * said. Measured on a real game (see the compiler's accompanying task notes)
+ * 70% of entries were exactly that: pure repetition carrying no information,
+ * because both source-map consumers already walk upward to the nearest
+ * recorded ancestor when a pointer has no exact entry
+ * (`mapGeneratedPointerToAuthoring` in
+ * apps/editor-web/src/lib/preview-message-adapter.ts and in
+ * apps/editor-web/src/lib/compiler-workflow.ts).
+ *
+ * Two independent reasons can make a node's own entry redundant, and this
+ * function checks both before deciding to record anything:
+ *   1. `sourcesEqual` — this node's source is byte-identical to the nearest
+ *      recorded ancestor's. Omitting it can never change what a consumer
+ *      resolves, because the walk would find the identical value one level up.
+ *   2. `isPositionalMatch` — this node's source is not identical, but it is
+ *      reconstructible: the ancestor's subtree is being copied through
+ *      verbatim (e.g. thousands of polygon vertices with no `_type` merge
+ *      anywhere in between), so the child's authoring pointer is exactly the
+ *      ancestor's authoring pointer plus the same relative path the child has
+ *      below the ancestor in the generated tree. Every pointer where this
+ *      fires is recorded in `verbatimAnchors` (keyed by the ancestor's own
+ *      pointer) so the source map can tell a consumer it is safe to
+ *      reconstruct rather than merely fall back to the ancestor's own pointer.
+ * Either way, this check happens inline, during construction, specifically so
+ * a wide, deep authoring document never has to materialize a dense map before
+ * being collapsed — the redundant entries are never created.
+ */
+function compileNode(node, context, pointer, inheritedSources = [], ancestorSources = undefined, ancestorPointer = undefined) {
   const sourceFile = context.sourceFile;
   if (Array.isArray(node)) {
+    const ownSources = inheritedSources.length > 0 ? inheritedSources : [{ file: relativePath(sourceFile), pointer }];
+    const identicalMatch = ancestorSources !== undefined && sourcesEqual(ownSources, ancestorSources);
+    const positionalMatch = !identicalMatch && isPositionalMatch(ownSources, pointer, ancestorPointer, ancestorSources);
+    const recordOwn = ancestorSources === undefined || (!identicalMatch && !positionalMatch);
+    const childAncestorSources = recordOwn ? ownSources : ancestorSources;
+    const childAncestorPointer = recordOwn ? pointer : ancestorPointer;
     const values = [];
     const mappings = {};
+    const verbatimAnchors = new Set();
+    if (positionalMatch) {
+      verbatimAnchors.add(ancestorPointer);
+    }
     node.forEach((item, index) => {
       const childSources = deriveChildSources(inheritedSources, index, context);
-      const child = compileNode(item, context, joinPointer(pointer, index), childSources);
+      const child = compileNode(item, context, joinPointer(pointer, index), childSources, childAncestorSources, childAncestorPointer);
       values.push(child.value);
       Object.assign(mappings, child.mappings);
+      for (const anchor of child.verbatimAnchors) {
+        verbatimAnchors.add(anchor);
+      }
     });
-    mappings[pointer] = inheritedSources.length > 0 ? inheritedSources : [{ file: relativePath(sourceFile), pointer }];
-    return { value: values, mappings };
+    // Written after the children (same order as before this change) so an
+    // array node's own key still sits last in its subtree's contiguous run —
+    // see getSubtreeIndex's docstring for why that ordering matters.
+    if (recordOwn) {
+      mappings[pointer] = ownSources;
+    }
+    return { value: values, mappings, verbatimAnchors };
   }
 
   if (!hasPlainObject(node)) {
+    const ownSources = inheritedSources.length > 0 ? inheritedSources : [{ file: relativePath(sourceFile), pointer }];
+    const identicalMatch = ancestorSources !== undefined && sourcesEqual(ownSources, ancestorSources);
+    const positionalMatch = !identicalMatch && isPositionalMatch(ownSources, pointer, ancestorPointer, ancestorSources);
+    const recordOwn = ancestorSources === undefined || (!identicalMatch && !positionalMatch);
+    const verbatimAnchors = positionalMatch ? new Set([ancestorPointer]) : new Set();
     return {
       value: node,
-      mappings: {
-        [pointer]: inheritedSources.length > 0 ? inheritedSources : [{ file: relativePath(sourceFile), pointer }]
-      }
+      mappings: recordOwn ? { [pointer]: ownSources } : {},
+      verbatimAnchors
     };
   }
 
@@ -451,19 +591,29 @@ function compileNode(node, context, pointer, inheritedSources = []) {
     sources = uniqueSources([...ownSources, ...resolved.sources]);
   }
 
+  const identicalMatch = ancestorSources !== undefined && sourcesEqual(sources, ancestorSources);
+  const positionalMatch = !identicalMatch && isPositionalMatch(sources, pointer, ancestorPointer, ancestorSources);
+  const recordOwn = ancestorSources === undefined || (!identicalMatch && !positionalMatch);
+  const childAncestorSources = recordOwn ? sources : ancestorSources;
+  const childAncestorPointer = recordOwn ? pointer : ancestorPointer;
+
   const result = {};
-  const mappings = {
-    [pointer]: sources
-  };
+  // Written before the children (same order as before this change) so an
+  // object node's own key still sits first in its subtree's contiguous run.
+  const mappings = recordOwn ? { [pointer]: sources } : {};
+  const verbatimAnchors = positionalMatch ? new Set([ancestorPointer]) : new Set();
   for (const [key, value] of Object.entries(working)) {
     const childPointer = joinPointer(pointer, key);
     const childSources = deriveChildSources(sources, key, context);
-    const child = compileNode(value, context, childPointer, childSources);
+    const child = compileNode(value, context, childPointer, childSources, childAncestorSources, childAncestorPointer);
     result[key] = child.value;
     Object.assign(mappings, child.mappings);
+    for (const anchor of child.verbatimAnchors) {
+      verbatimAnchors.add(anchor);
+    }
   }
 
-  return { value: result, mappings };
+  return { value: result, mappings, verbatimAnchors };
 }
 
 function assertNoAuthoringKeys(value, filePath, pointer = "") {
@@ -554,7 +704,15 @@ function compileAuthoringDocument(job, authoring, ajv) {
     version: 1,
     generatedFile: relativePath(job.outputFile),
     sourceFile: relativePath(job.sourceFile),
-    mappings: normalizeRuntimePointers(compiled.mappings)
+    mappings: normalizeRuntimePointers(compiled.mappings),
+    // Additive field (see isPositionalMatch): pointers whose entire subtree
+    // was omitted because it is a verbatim, position-for-position copy of an
+    // ancestor's authoring subtree. A consumer that does not read this field
+    // still gets a correct (only less precise) answer by walking up to the
+    // ancestor as before; a consumer that reads it can append the remaining
+    // generated-pointer path to the ancestor's source pointer and recover the
+    // exact one.
+    verbatimSubtrees: normalizeVerbatimSubtrees(compiled.verbatimAnchors)
   };
 
   const validateSourceMap = ajv.getSchema("https://cubica.platform/schemas/manifest-source-map.v1.json");
@@ -685,18 +843,57 @@ function compileAuthoringTextCached(job, text, ajv = getSharedAjv(), options = {
   return output;
 }
 
+/**
+ * Renames one v1 (non-2.0) pointer from compileNode's internal "/root/..."
+ * space to the runtime "" / "/..." space the source map publishes. Shared by
+ * `normalizeRuntimePointers` (mapping keys) and `normalizeVerbatimSubtrees`
+ * (verbatim-anchor pointers) so both apply the identical rename.
+ */
+function normalizeRuntimePointer(pointer) {
+  if (pointer === "/root") {
+    return "";
+  }
+  if (pointer.startsWith("/root/")) {
+    return pointer.slice("/root".length);
+  }
+  return pointer;
+}
+
+/**
+ * Renames v1 (non-2.0) pointers from compileNode's internal "/root/..." space
+ * to the runtime "" / "/..." space the source map publishes.
+ *
+ * This is a pure, bijective rename (it does not add, drop, or merge entries),
+ * so it needs no collapsing logic of its own: the rule compileNode already
+ * applied — record a pointer only if it differs from its nearest recorded
+ * ancestor — is defined purely in terms of JSON Pointer parent/child
+ * structure, and stripping a shared "/root" prefix from every key preserves
+ * that structure exactly (parent("/root/x") = "/root" renames to
+ * parent("/x") = "", consistently). "/root" is always a key here (compileNode
+ * always records the very first node it compiles), so "" is always present
+ * after this rename, satisfying the same "root always resolvable" guarantee.
+ */
 function normalizeRuntimePointers(mappings) {
   const normalized = {};
   for (const [pointer, sources] of Object.entries(mappings)) {
-    if (pointer === "/root") {
-      normalized[""] = sources;
-    } else if (pointer.startsWith("/root/")) {
-      normalized[pointer.slice("/root".length)] = sources;
-    } else {
-      normalized[pointer] = sources;
-    }
+    normalized[normalizeRuntimePointer(pointer)] = sources;
   }
   return normalized;
+}
+
+/**
+ * Renames and sorts a set of "verbatim subtree" anchor pointers (see
+ * `isPositionalMatch`) for publication in the source map. For a v2 document
+ * these pointers are already in runtime space (built up by
+ * `compileGameAuthoringV2` / `compileUiAuthoringV2` copying compileNode's own
+ * anchors across via `copySubtreeMappings`), so `normalizeRuntimePointer` is a
+ * no-op for them; for a v1 document it strips the same "/root" prefix
+ * `normalizeRuntimePointers` strips from `mappings`. Sorted so the published
+ * file is deterministic and diff-friendly, matching the worked example in the
+ * task that introduced this field.
+ */
+function normalizeVerbatimSubtrees(anchors) {
+  return Array.from(anchors, normalizeRuntimePointer).sort();
 }
 
 function schemaIdForAuthoringJob(job, authoring) {
@@ -762,12 +959,131 @@ function assertUiAuthoringWorkspaceSemantics(root, sourceFile) {
   });
 }
 
+/**
+ * Walks up from `pointer` to the nearest ancestor pointer that actually has a
+ * mappings entry — the same walk `compileNode` used to decide what was safe
+ * to omit while building this very map, and the same walk performed by
+ * `mapGeneratedPointerToAuthoring` in
+ * apps/editor-web/src/lib/preview-message-adapter.ts and
+ * apps/editor-web/src/lib/compiler-workflow.ts. Returns `undefined` if no
+ * ancestor (including the root) has an entry, otherwise `{ pointer, sources }`
+ * — the ancestor's own pointer is returned alongside its sources because
+ * `sourceFor` needs it to tell an identical-match ancestor (rule 1: return its
+ * sources as-is) from a verbatim-subtree ancestor (rule 2: reconstruct the
+ * exact pointer — see `isPositionalMatch`).
+ */
+function resolveViaAncestor(mappings, pointer) {
+  let current = pointer;
+  for (;;) {
+    const sources = mappings[current];
+    if (sources !== undefined) {
+      return { pointer: current, sources };
+    }
+    const parent = parentPointer(current);
+    if (parent === undefined) {
+      return undefined;
+    }
+    current = parent;
+  }
+}
+
+/**
+ * Looks up the exact source for `pointer` inside one authoring document's own
+ * compiled map (`compiled.mappings` plus `compiled.verbatimAnchors`, still in
+ * `/root/...` pointer space), and reports whether that exact source is itself
+ * safe to reuse as a *new* positional anchor for pointers strictly below it.
+ *
+ * A direct `compiled.mappings[pointer]` read would silently return the wrong
+ * (too-specific, stale) fallback for any pointer whose entry was omitted as
+ * redundant, because `compileNode` now omits an entry for either of two
+ * reasons (see its docstring):
+ *   - rule 1, byte-identical: the ancestor's own sources ARE the answer,
+ *     unchanged. Nothing may be appended — this node has no evidence that
+ *     *its* descendants follow any particular pattern relative to it, because
+ *     "identical" only proves this one node's value, not its children's (a
+ *     `_type` default with no override anywhere below it stays byte-identical
+ *     to the same distant ancestor at every depth, not merely at this one).
+ *   - rule 2, verbatim positional (`compiled.verbatimAnchors` names exactly
+ *     which found ancestors this applies to): the remaining pointer suffix is
+ *     appended to reconstruct the exact source, and — because that same
+ *     suffix-appending relationship provably continues below `pointer` too
+ *     (it is the same base anchor, just a longer suffix) — the result is
+ *     itself `verbatim: true` and may be used as a new anchor further down.
+ * Confusing the two would fabricate a pointer that does not exist for rule-1
+ * subtrees, which is exactly why `copySubtreeMappings` (the only caller that
+ * needs the `verbatim` flag) must not treat a rule-1 reconstruction as a new
+ * anchor. The `{file, pointer}` fallback only fires for a pointer genuinely
+ * outside anything `compileNode` ever produced (defensive; `/root` itself is
+ * always recorded, so real callers always resolve through the walk).
+ */
+function reconstructSource(compiled, sourceFile, pointer) {
+  const found = resolveViaAncestor(compiled.mappings, pointer);
+  if (found === undefined) {
+    return { sources: [{ file: relativePath(sourceFile), pointer }], verbatim: false };
+  }
+
+  const anchorIsVerbatim = found.sources.length === 1 &&
+    compiled.verbatimAnchors !== undefined &&
+    compiled.verbatimAnchors.has(found.pointer);
+
+  if (found.pointer === pointer) {
+    // Exact hit: `pointer`'s own recorded sources are the answer unchanged.
+    // It only doubles as a new anchor for `pointer`'s own descendants when
+    // compileNode itself already marked `pointer` as a verbatim anchor.
+    return { sources: found.sources, verbatim: anchorIsVerbatim };
+  }
+
+  if (anchorIsVerbatim) {
+    return {
+      sources: [{
+        file: found.sources[0].file,
+        pointer: found.sources[0].pointer + pointer.slice(found.pointer.length)
+      }],
+      verbatim: true
+    };
+  }
+
+  // Rule-1 identical match: the ancestor's raw sources ARE the answer for
+  // `pointer` too, but appending anything further would fabricate a pointer
+  // that does not exist — not usable as a new anchor for descendants.
+  return { sources: found.sources, verbatim: false };
+}
+
 function sourceFor(compiled, sourceFile, pointer) {
-  return compiled.mappings[pointer] || [{ file: relativePath(sourceFile), pointer }];
+  return reconstructSource(compiled, sourceFile, pointer).sources;
+}
+
+/**
+ * Writes `mappings[pointer] = sources`, but only when that differs from what
+ * `resolveViaAncestor` would already return for `pointer` from an ancestor.
+ * Every runtime-field builder below (object models, actions, screens,
+ * mechanics publication) funnels its writes through this one function so the
+ * whole v2 runtime mapping — not just the per-authoring-document map built by
+ * compileNode — applies the identical "omit only if a consumer's upward walk
+ * already finds the same answer" rule. `pointer === ""` (the manifest root)
+ * has no parent, so it is always recorded — the walk always has somewhere to
+ * terminate. (This only applies the byte-identical rule, not the verbatim
+ * positional one — see `copySubtreeMappings` for where a copy's own re-anchor
+ * point is explicitly materialized instead.)
+ */
+function recordMapping(mappings, pointer, sources) {
+  const parent = parentPointer(pointer);
+  const found = parent === undefined ? undefined : resolveViaAncestor(mappings, parent);
+  if (found === undefined || !sourcesEqual(sources, found.sources)) {
+    mappings[pointer] = sources;
+  }
+}
+
+/** Unwraps `resolveViaAncestor`'s `{pointer, sources}` result down to just the
+ * sources array (or `undefined` if nothing was found), for callers that only
+ * need "whatever an ancestor already says" and not the ancestor's own pointer. */
+function ancestorSourcesFor(mappings, pointer) {
+  const found = resolveViaAncestor(mappings, pointer);
+  return found === undefined ? undefined : found.sources;
 }
 
 function addRuntimeMapping(mappings, targetPointer, compiled, sourceFile, sourcePointer) {
-  mappings[targetPointer] = sourceFor(compiled, sourceFile, sourcePointer);
+  recordMapping(mappings, targetPointer, sourceFor(compiled, sourceFile, sourcePointer));
 }
 
 // Per-compiled-document index used to copy a source-map subtree without
@@ -808,7 +1124,9 @@ function isInSubtree(pointer, prefix) {
 /**
  * Copies every source-map entry under `sourcePrefix` to `targetPrefix`,
  * preserving the original key order (so the serialized source map stays
- * byte-identical).
+ * byte-identical), and carries over any `verbatimSubtrees` anchor
+ * (`compiled.verbatimAnchors`, see `isPositionalMatch`) that falls in the same
+ * subtree, rewritten under `targetPrefix` the same way.
  *
  * WHY the rewrite: this used to scan *all* mapping keys on every call, and it is
  * called once per action / per screen. On antarctica that was 141 actions ×
@@ -817,46 +1135,90 @@ function isInSubtree(pointer, prefix) {
  * locate the prefix's own position and expand left/right only across its own
  * run, making each call proportional to the subtree it copies and the total
  * work linear in the number of mappings.
+ *
+ * WHY carrying anchors over is safe without re-deriving them: an anchor A
+ * under `sourcePrefix` means every un-recorded descendant of A reconstructs
+ * as A's source pointer plus the descendant's own relative path below A. That
+ * relative path is exactly what this function preserves for every recorded
+ * key (`targetPrefix + sourcePointer.slice(sourcePrefix.length)`), and
+ * `sourceFor` returns the identical {file, pointer} regardless of where the
+ * copy lands — so the same reconstruction is valid at A's new, copied
+ * location without re-checking `isPositionalMatch` against anything.
+ *
+ * WHY `sourcePrefix` itself is always materialized when it has no exact
+ * entry: this function's own sourcePrefix -> targetPrefix rename is *not*
+ * positional in general (an action's authoring array index becomes its
+ * runtime id; a screen's array index becomes its screen id), so it is exactly
+ * the kind of "something between them broke the pattern" `isPositionalMatch`
+ * warns about. If a whole verbatim-copied subtree sits above `sourcePrefix`
+ * (nothing recorded at or below it — see the cards-money-trains "roughly one
+ * entry for 79,549 vertices" case), the copy loop below would otherwise find
+ * zero keys and copy nothing, silently losing every pointer under this
+ * subtree to an outer ancestor two renames removed. Recording `targetPrefix`
+ * itself (via `reconstructSource`, the same verbatim-aware lookup `sourceFor`
+ * uses) re-establishes a correct, exact anchor at the new boundary — and
+ * `targetPrefix` is only re-published as a *new* verbatim anchor when that
+ * lookup reports `verbatim: true` (a rule-2 reconstruction), never for a
+ * rule-1 identical match, so descendants below `targetPrefix` only keep
+ * reconstructing positionally past the rename when doing so is still sound.
  */
-function copySubtreeMappings(mappings, compiled, sourceFile, sourcePrefix, targetPrefix) {
+function copySubtreeMappings(mappings, compiled, sourceFile, sourcePrefix, targetPrefix, verbatimAnchors) {
   const { orderedKeys, positionByKey } = getSubtreeIndex(compiled);
   const anchor = positionByKey.get(sourcePrefix);
 
-  // Fallback for the (unused by current callers) case where the exact prefix
-  // pointer is not itself a mapping key: fall back to the exhaustive scan so
-  // semantics never depend on the contiguity assumption.
+  // Fallback for the case where the exact prefix pointer is not itself a
+  // mapping key. Before collapsing this was rare (every node had an entry);
+  // now that compileNode omits a node's entry whenever it repeats its nearest
+  // recorded ancestor, `sourcePrefix` (e.g. one action's own pointer) very
+  // often has no exact entry, so this branch is the common case, not a rare
+  // one — but it stays correct either way, since it never relied on the
+  // contiguity assumption in the first place.
   if (anchor === undefined) {
+    const { sources: ownSources, verbatim } = reconstructSource(compiled, sourceFile, sourcePrefix);
+    recordMapping(mappings, targetPrefix, ownSources);
+    if (verbatimAnchors !== undefined && verbatim) {
+      verbatimAnchors.add(targetPrefix);
+    }
     for (const sourcePointer of orderedKeys) {
       if (!isInSubtree(sourcePointer, sourcePrefix)) {
         continue;
       }
-      mappings[`${targetPrefix}${sourcePointer.slice(sourcePrefix.length)}`] = sourceFor(compiled, sourceFile, sourcePointer);
+      recordMapping(mappings, `${targetPrefix}${sourcePointer.slice(sourcePrefix.length)}`, sourceFor(compiled, sourceFile, sourcePointer));
     }
-    return;
+  } else {
+    // Expand outward from the prefix's own position to cover the contiguous run
+    // of its subtree; the run includes the prefix regardless of whether it sits
+    // first (object node) or last (array node) within it. Contiguity survives
+    // collapsing (see compileNode's docstring): omitting some entries never
+    // moves the ones that remain relative to sibling subtrees.
+    let lo = anchor;
+    while (lo > 0 && isInSubtree(orderedKeys[lo - 1], sourcePrefix)) {
+      lo -= 1;
+    }
+    let hi = anchor;
+    while (hi + 1 < orderedKeys.length && isInSubtree(orderedKeys[hi + 1], sourcePrefix)) {
+      hi += 1;
+    }
+
+    for (let i = lo; i <= hi; i += 1) {
+      const sourcePointer = orderedKeys[i];
+      recordMapping(mappings, `${targetPrefix}${sourcePointer.slice(sourcePrefix.length)}`, sourceFor(compiled, sourceFile, sourcePointer));
+    }
   }
 
-  // Expand outward from the prefix's own position to cover the contiguous run
-  // of its subtree; the run includes the prefix regardless of whether it sits
-  // first (object node) or last (array node) within it.
-  let lo = anchor;
-  while (lo > 0 && isInSubtree(orderedKeys[lo - 1], sourcePrefix)) {
-    lo -= 1;
-  }
-  let hi = anchor;
-  while (hi + 1 < orderedKeys.length && isInSubtree(orderedKeys[hi + 1], sourcePrefix)) {
-    hi += 1;
-  }
-
-  for (let i = lo; i <= hi; i += 1) {
-    const sourcePointer = orderedKeys[i];
-    mappings[`${targetPrefix}${sourcePointer.slice(sourcePrefix.length)}`] = sourceFor(compiled, sourceFile, sourcePointer);
+  if (verbatimAnchors !== undefined) {
+    for (const sourceAnchor of compiled.verbatimAnchors) {
+      if (isInSubtree(sourceAnchor, sourcePrefix)) {
+        verbatimAnchors.add(`${targetPrefix}${sourceAnchor.slice(sourcePrefix.length)}`);
+      }
+    }
   }
 }
 
-function copyIfPresent(target, mappings, compiled, sourceFile, source, key) {
+function copyIfPresent(target, mappings, compiled, sourceFile, source, key, verbatimAnchors) {
   if (Object.prototype.hasOwnProperty.call(source, key)) {
     target[key] = source[key];
-    copySubtreeMappings(mappings, compiled, sourceFile, joinPointer("/root", key), joinPointer("", key));
+    copySubtreeMappings(mappings, compiled, sourceFile, joinPointer("/root", key), joinPointer("", key), verbatimAnchors);
   }
 }
 
@@ -1018,7 +1380,7 @@ function appendObjectModelsRuntimeField(manifest, mappings, compiledRoot, source
   addRuntimeMapping(mappings, "/objectModels", compiledRoot, sourceFile, "/root/objectTypes");
 }
 
-function appendGameLogicRuntimeFields(manifest, mappings, compiledRoot, sourceFile, logic) {
+function appendGameLogicRuntimeFields(manifest, mappings, compiledRoot, sourceFile, logic, verbatimAnchors) {
   if (Object.prototype.hasOwnProperty.call(logic, "actions")) {
     const actions = {};
     const actionItems = ensureArray(logic.actions, sourceFile, "/root/logic/actions", "game v2 root.logic.actions");
@@ -1033,7 +1395,7 @@ function appendGameLogicRuntimeFields(manifest, mappings, compiledRoot, sourceFi
       }
       const { id, ...runtimeAction } = actionObject;
       actions[id] = runtimeAction;
-      copySubtreeMappings(mappings, compiledRoot, sourceFile, actionPointer, joinPointer("/actions", actionObject.id));
+      copySubtreeMappings(mappings, compiledRoot, sourceFile, actionPointer, joinPointer("/actions", actionObject.id), verbatimAnchors);
     });
     manifest.actions = actions;
     addRuntimeMapping(mappings, "/actions", compiledRoot, sourceFile, "/root/logic/actions");
@@ -1335,13 +1697,37 @@ function deleteMappingSubtree(mappings, prefix) {
   }
 }
 
+/**
+ * Stamps every node of a compiler-generated value (e.g. a lowered Mechanics
+ * step or module lock, which has no authoring counterpart of its own) with
+ * the same fixed `sources` list, recursively.
+ *
+ * Before a generated subtree can be compared against an ancestor, it needs to
+ * know what that ancestor's recorded sources actually are — `mapGeneratedSubtree`
+ * (the entry point below) looks that up once via `resolveViaAncestor`, then
+ * `mapGeneratedSubtreeNode` carries it down through the recursion exactly like
+ * compileNode's `ancestorSources` parameter, applying the identical "only
+ * record if this differs from the nearest recorded ancestor" rule. Every leaf
+ * here shares the very same `sources` array, so without this rule a subtree
+ * with N nodes would previously store the identical list N times.
+ */
 function mapGeneratedSubtree(mappings, pointer, value, sources) {
-  mappings[pointer] = uniqueSources(sources);
+  const parent = parentPointer(pointer);
+  const found = parent === undefined ? undefined : resolveViaAncestor(mappings, parent);
+  mapGeneratedSubtreeNode(mappings, pointer, value, uniqueSources(sources), found?.sources);
+}
+
+function mapGeneratedSubtreeNode(mappings, pointer, value, sources, ancestorSources) {
+  const recordOwn = ancestorSources === undefined || !sourcesEqual(sources, ancestorSources);
+  if (recordOwn) {
+    mappings[pointer] = sources;
+  }
+  const childAncestor = recordOwn ? sources : ancestorSources;
   if (Array.isArray(value)) {
-    value.forEach((child, index) => mapGeneratedSubtree(mappings, joinPointer(pointer, index), child, sources));
+    value.forEach((child, index) => mapGeneratedSubtreeNode(mappings, joinPointer(pointer, index), child, sources, childAncestor));
   } else if (hasPlainObject(value)) {
     for (const [key, child] of Object.entries(value)) {
-      mapGeneratedSubtree(mappings, joinPointer(pointer, key), child, sources);
+      mapGeneratedSubtreeNode(mappings, joinPointer(pointer, key), child, sources, childAncestor);
     }
   }
 }
@@ -1377,6 +1763,15 @@ function publishMechanics(manifest, mappings, compiledRoot, sourceFile) {
   mapGeneratedSubtree(mappings, "/mechanics/moduleLock", source.moduleLock, mechanicsSources);
   const plans = ensureObject(source.plans, sourceFile, "/root/mechanics/plans", "game v2 mechanics.plans");
   const publishedPlans = {};
+  // Hash networkModels once for the whole compilation and fold that digest
+  // into every plan's hash input, instead of embedding the full object per
+  // plan. See the matching comment in mechanics-checker.cjs's
+  // checkMechanicsBundle for why the digest is equivalent (same bytes, same
+  // hash) and the measurements that motivated it (2.71 MB networkModels on
+  // the real cards-money-trains map, ~357ms per serialization, 99 plans). The
+  // compiler and the checker must compute planHash identically, or a package
+  // this compiler publishes would fail semantic validation at load time.
+  const networkModelsHash = mechanicsSha256(manifest.networkModels || {});
   for (const [planId, rawPlan] of Object.entries(plans)) {
     const sourcePointer = joinPointer("/root/mechanics/plans", planId);
     const plan = ensureObject(rawPlan, sourceFile, sourcePointer, `mechanics plan "${planId}"`);
@@ -1389,10 +1784,10 @@ function publishMechanics(manifest, mappings, compiledRoot, sourceFile) {
       "steps"
     );
     deleteMappingSubtree(mappings, stepsPointer);
-    mappings[stepsPointer] = sourceFor(
-      compiledRoot,
-      sourceFile,
-      joinPointer(joinPointer(sourcePointer, "transaction"), "steps")
+    recordMapping(
+      mappings,
+      stepsPointer,
+      sourceFor(compiledRoot, sourceFile, joinPointer(joinPointer(sourcePointer, "transaction"), "steps"))
     );
     transaction.steps.forEach((step, index) => {
       const sources = uniqueSources(lowered.origins[planId][index].flatMap((pointer) =>
@@ -1407,9 +1802,11 @@ function publishMechanics(manifest, mappings, compiledRoot, sourceFile) {
       // Domain operations such as graph edits interpret their generic steps
       // through these published models. Pinning both maps prevents an
       // otherwise byte-identical plan from changing meaning after a model
-      // declaration changes.
+      // declaration changes. objectModels stays embedded by value (it is a
+      // few KB, not a measured cost); networkModels is bound by digest -- see
+      // networkModelsHash above.
       objectModels: manifest.objectModels || {},
-      networkModels: manifest.networkModels || {},
+      networkModelsHash,
       planId,
       transaction
     };
@@ -1417,10 +1814,10 @@ function publishMechanics(manifest, mappings, compiledRoot, sourceFile) {
       planHash: mechanicsSha256(planContext),
       transaction
     };
-    mappings[joinPointer(joinPointer("/mechanics/plans", planId), "planHash")] = sourceFor(
-      compiledRoot,
-      sourceFile,
-      sourcePointer
+    recordMapping(
+      mappings,
+      joinPointer(joinPointer("/mechanics/plans", planId), "planHash"),
+      sourceFor(compiledRoot, sourceFile, sourcePointer)
     );
   }
   manifest.mechanics = { ...source, plans: publishedPlans };
@@ -1450,16 +1847,29 @@ function publishMechanics(manifest, mappings, compiledRoot, sourceFile) {
         properties: {},
         required: []
       };
-      mappings[joinPointer(joinPointer("/actions", actionId), "paramsSchema")] =
-        mappings[joinPointer("/actions", actionId)] || sourceFor(compiledRoot, sourceFile, "/root/logic/actions");
+      // resolveViaAncestor (not a direct `mappings[...]` read) because the
+      // action's own pointer may itself have been collapsed away if it never
+      // introduced anything past what its ancestor already said; walking up
+      // finds the same source a consumer would. recordMapping then almost
+      // always omits this entry too — a synthesized default has exactly the
+      // same provenance as its action, so recording it would repeat that
+      // action's own mapping (or, one level further, its ancestor's).
+      recordMapping(
+        mappings,
+        joinPointer(joinPointer("/actions", actionId), "paramsSchema"),
+        ancestorSourcesFor(mappings, joinPointer("/actions", actionId)) || sourceFor(compiledRoot, sourceFile, "/root/logic/actions")
+      );
     }
     if (!Object.prototype.hasOwnProperty.call(action, "invocation")) {
       // Invocation is part of the immutable definition identity. Normalize
       // before definitionHash so an omitted authoring default cannot become a
       // transport- or consumer-specific fallback.
       action.invocation = "external";
-      mappings[joinPointer(joinPointer("/actions", actionId), "invocation")] =
-        mappings[joinPointer("/actions", actionId)] || sourceFor(compiledRoot, sourceFile, "/root/logic/actions");
+      recordMapping(
+        mappings,
+        joinPointer(joinPointer("/actions", actionId), "invocation"),
+        ancestorSourcesFor(mappings, joinPointer("/actions", actionId)) || sourceFor(compiledRoot, sourceFile, "/root/logic/actions")
+      );
     }
     action.definitionHash = mechanicsSha256({
       apiVersion: source.apiVersion,
@@ -1467,8 +1877,11 @@ function publishMechanics(manifest, mappings, compiledRoot, sourceFile) {
       definition: action,
       planHash: referencedPlan.planHash
     });
-    mappings[joinPointer(joinPointer("/actions", actionId), "definitionHash")] =
-      mappings[joinPointer("/actions", actionId)] || sourceFor(compiledRoot, sourceFile, "/root/logic/actions");
+    recordMapping(
+      mappings,
+      joinPointer(joinPointer("/actions", actionId), "definitionHash"),
+      ancestorSourcesFor(mappings, joinPointer("/actions", actionId)) || sourceFor(compiledRoot, sourceFile, "/root/logic/actions")
+    );
   }
 }
 
@@ -1502,17 +1915,25 @@ function compileGameAuthoringV2(job, compiledRoot) {
   const root = ensureObject(compiledRoot.value, sourceFile, "/root", "game v2 root");
   const logic = ensureObject(root.logic, sourceFile, "/root/logic", "game v2 root.logic");
   const manifest = {};
+  // Direct assignment (not recordMapping) is correct here: "" is the manifest
+  // root, has no parent pointer, and per the collapsing rule a pointer with no
+  // ancestor is always recorded — otherwise a consumer's upward walk would
+  // have nowhere to terminate.
   const mappings = {
     "": sourceFor(compiledRoot, sourceFile, "/root")
   };
+  // Carries verbatim-subtree anchors (see isPositionalMatch) forward from
+  // compiledRoot's own "/root/..." pointer space into this manifest's runtime
+  // pointer space, via copySubtreeMappings/copyIfPresent below.
+  const verbatimAnchors = new Set();
 
   for (const [key, value] of Object.entries(root)) {
     if (key === "logic") {
-      appendGameLogicRuntimeFields(manifest, mappings, compiledRoot, sourceFile, value);
+      appendGameLogicRuntimeFields(manifest, mappings, compiledRoot, sourceFile, value, verbatimAnchors);
     } else if (key === "objectTypes") {
       appendObjectModelsRuntimeField(manifest, mappings, compiledRoot, sourceFile, value);
     } else {
-      copyIfPresent(manifest, mappings, compiledRoot, sourceFile, root, key);
+      copyIfPresent(manifest, mappings, compiledRoot, sourceFile, root, key, verbatimAnchors);
     }
   }
 
@@ -1527,7 +1948,7 @@ function compileGameAuthoringV2(job, compiledRoot) {
   assertPublishedGameIntentContract(manifest.actions, sourceFile);
   assertAgentRuntimeInitialAction(manifest, sourceFile);
 
-  return { value: manifest, mappings };
+  return { value: manifest, mappings, verbatimAnchors };
 }
 
 /**
@@ -1591,7 +2012,7 @@ function assertPublishedGameIntentContract(actions, sourceFile) {
   );
 }
 
-function appendUiScreensRuntimeField(manifest, mappings, compiledRoot, sourceFile, screensValue) {
+function appendUiScreensRuntimeField(manifest, mappings, compiledRoot, sourceFile, screensValue, verbatimAnchors) {
   const screens = {};
   const screenItems = ensureArray(screensValue, sourceFile, "/root/screens", "UI v2 root.screens");
   screenItems.forEach((screen, index) => {
@@ -1605,7 +2026,7 @@ function appendUiScreensRuntimeField(manifest, mappings, compiledRoot, sourceFil
     }
     const { id, ...runtimeScreen } = screenObject;
     screens[screenObject.id] = runtimeScreen;
-    copySubtreeMappings(mappings, compiledRoot, sourceFile, screenPointer, joinPointer("/screens", screenObject.id));
+    copySubtreeMappings(mappings, compiledRoot, sourceFile, screenPointer, joinPointer("/screens", screenObject.id), verbatimAnchors);
   });
   manifest.screens = screens;
   addRuntimeMapping(mappings, "/screens", compiledRoot, sourceFile, "/root/screens");
@@ -1616,19 +2037,26 @@ function compileUiAuthoringV2(job, compiledRoot) {
   const root = ensureObject(compiledRoot.value, sourceFile, "/root", "UI v2 root");
   assertUiAuthoringWorkspaceSemantics(root, sourceFile);
   const manifest = {};
+  // Direct assignment (not recordMapping) is correct here: "" is the manifest
+  // root, has no parent pointer, and per the collapsing rule a pointer with no
+  // ancestor is always recorded — otherwise a consumer's upward walk would
+  // have nowhere to terminate.
   const mappings = {
     "": sourceFor(compiledRoot, sourceFile, "/root")
   };
+  // See compileGameAuthoringV2's identical field for why this is threaded
+  // through copyIfPresent/copySubtreeMappings rather than recomputed here.
+  const verbatimAnchors = new Set();
 
   for (const [key, value] of Object.entries(root)) {
     if (key === "screens") {
-      appendUiScreensRuntimeField(manifest, mappings, compiledRoot, sourceFile, value);
+      appendUiScreensRuntimeField(manifest, mappings, compiledRoot, sourceFile, value, verbatimAnchors);
     } else {
-      copyIfPresent(manifest, mappings, compiledRoot, sourceFile, root, key);
+      copyIfPresent(manifest, mappings, compiledRoot, sourceFile, root, key, verbatimAnchors);
     }
   }
 
-  return { value: manifest, mappings };
+  return { value: manifest, mappings, verbatimAnchors };
 }
 
 function compileAuthoringV2(job, compiledRoot) {

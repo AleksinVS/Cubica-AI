@@ -4,41 +4,71 @@
  *
  * This game-local generator composes only accepted, generic Mechanics
  * operations: bounded entity selection/iteration, arithmetic, resource
- * transfer, graph planning/splitting, state patches and events. The temporary
- * vertical regions below are explicitly non-publishable test data. They prove
- * the workflow while the author's exact closed region contours remain the
- * publication gate.
+ * transfer, graph planning/splitting, state patches and events. The regions
+ * and the ten initial roads below are the real author map (ADR-100): the
+ * regions and the roads the author actually drew, converted from the
+ * author-confirmed annotation `annotations/initial-network-with-regions.
+ * review.json` by the shared map-annotation pipeline — not an interpretation
+ * invented by this generator. `config.runtimeReady` still stays `false`
+ * because of remaining market, cargo and reporting workflows this generator
+ * does not own (see the blocker bookkeeping near the end of this file), not
+ * because of the map.
  */
 
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFile, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-// Region canonicalisation, crossing derivation and the checksum formula are
-// owned by the runtime module that also re-derives them on every package
-// load (ADR-100 §4.3/4.6). Importing the same functions here — rather than
-// re-implementing "canonicalize a polygon" or "hash this geometry" a second
-// time in this game package — is the whole point: a game that computed its
-// own checksum with its own copy of the rules would produce a package the
-// runtime silently refuses the moment the shared rules changed, with no hint
-// that two implementations had drifted apart. Node >=22.7 strips the type
-// annotations from a `.ts` module at import time with no build step and no
-// flag, so this plain top-level import of a TypeScript file works unmodified.
-import {
-  REGION_ROAD_BOUNDARY_POLICY,
-  REGION_ROAD_PLANNING_ALGORITHM,
-  REGION_ROAD_PLANNING_MODE,
-  REGION_ROAD_TIE_BREAK,
-  canonicalizeRoadPlanningRegions,
-  computeRegionRoadPlanningHash,
-  deriveRegionCrossings
-} from "../../../services/runtime-api/src/modules/runtime/regionRoadGeometry.ts";
+import { validateMapAnnotation } from "../../../scripts/map-annotation/map-annotation.mjs";
+import { toManifestFragment } from "./convert-map-annotation.mjs";
+
+// `REGION_ROAD_PLANNING_MODE` is the one road-planning constant this file
+// still needs directly: every stored road, whether traced from the author's
+// drawing or found later by the planner, declares the same `mode` (ADR-081
+// §4.1/ADR-100 §4.1 — the goal, "fewest regions", does not change; only how
+// it is achieved does). Everything else about the map's geometry —
+// canonicalisation, border crossings, the published checksum — is derived
+// exactly once, inside the shared pipeline imported above, and must not be
+// re-derived here: a game package that computed its own checksum with its
+// own copy of those rules would produce a package the runtime silently
+// refuses the moment the shared rules changed, with no hint that two
+// implementations had drifted apart. A CI guard
+// (scripts/ci/validate-game-agnostic.js) fails the build if a game file
+// calls the shared derivation functions by name without importing them from
+// one of the two places that actually define them.
+import { REGION_ROAD_PLANNING_MODE } from "../../../services/runtime-api/src/modules/runtime/regionRoadGeometry.ts";
 
 const scriptFile = fileURLToPath(import.meta.url);
 const toolsRoot = path.dirname(scriptFile);
 const gameRoot = path.resolve(toolsRoot, "..");
 const authoringPath = path.join(gameRoot, "authoring", "game.authoring.json");
+const annotationPath = path.join(
+  gameRoot,
+  "annotations",
+  "initial-network-with-regions.review.json"
+);
+// Непубликуемый черновик разбиения (`cmt_region_partition.py`) — единственное
+// место, где решается, какие области стали непроходимой местностью (см.
+// `impassableTerrain.regionIds` и games/cards-money-trains/annotations/
+// README.md, раздел «Непроходимая местность и река»). Публикуемая аннотация
+// `initial-network-with-regions.review.json`, в отличие от него, не несёт
+// собственного признака непроходимости на области (общая схема аннотации не
+// расширялась под этот частный, специфичный для этой игры факт — расширять
+// её означало бы протащить игровое правило в общий контракт, который читают
+// все игры), поэтому этот список читается напрямую из черновика, а не
+// выводится из аннотации.
+const regionPartitionDraftPath = path.join(
+  gameRoot,
+  "annotations",
+  "vector-map.region-partition.draft.json"
+);
+const roadPassagesPath = path.join(
+  gameRoot,
+  "annotations",
+  "initial-network.road-passages.json"
+);
 
 const normalFixtureId = "normal-start-policy";
 const constructionActionPrefix = "construction.";
@@ -51,9 +81,6 @@ const ownedBoardActionIds = new Set([
   "construction-waypoint-build",
   "construction-phase-finish"
 ]);
-const technicalRegionCount = 20;
-const boardWidth = 5079;
-const boardHeight = 3627;
 const constructionPendingReason = "construction-pending";
 
 const readJson = async (filePath) => JSON.parse(await readFile(filePath, "utf8"));
@@ -792,117 +819,143 @@ const buildPhaseFinish = () => {
 };
 
 /**
- * Build a deterministic technical region graph over the existing 5079×3627
- * coordinate system. These strips are not an interpretation of the author's
- * countries; their only purpose is to exercise multi-region construction.
+ * Load the real author map: the region polygons and the `roadPlanning`
+ * contract derived from them (ADR-100), by running the annotation through
+ * the same shared conversion the map-annotation intake pipeline always uses.
+ *
+ * This is the map's *only* derivation. `toManifestFragment` (imported from
+ * `convert-map-annotation.mjs`, the game's thin adapter over the shared
+ * pipeline) canonicalises the polygons, derives the border crossings between
+ * them and hashes the result — this function must not compute any of that
+ * itself, because the whole point of the shared pipeline is that there is
+ * exactly one place a mistake in that computation could live (see the CI
+ * guard referenced in the import comment above).
+ *
+ * The road-passages file pins the exact annotation bytes it was traced from
+ * (`generatedFrom.sha256`); this loader re-checks that pin rather than
+ * trusting that `build-initial-road-passages.mjs` was already re-run after
+ * the annotation last changed, because a silently stale pin would mean the
+ * roads below claim to cross regions that are not the ones this run just
+ * published.
  */
-const buildTechnicalRegions = () => {
-  const width = boardWidth / technicalRegionCount;
-  const rawRegions = Array.from({ length: technicalRegionCount }, (_, index) => {
-    const left = index * width;
-    const right = index === technicalRegionCount - 1
-      ? boardWidth
-      : (index + 1) * width;
-    return {
-      id: `technical-placeholder-region-${String(index + 1).padStart(2, "0")}`,
-      polygon: [
-        { x: left, y: 0 },
-        { x: right, y: 0 },
-        { x: right, y: boardHeight },
-        { x: left, y: boardHeight }
-      ]
-    };
-  });
-  // Canonicalize with the exact same function runtime calls when it loads
-  // the package. `regions` is what the manifest declares; `crossings` is the
-  // navigation graph ADR-100 §4.3 explicitly forbids storing, derived here
-  // only long enough to fold it into the checksum below.
-  const regions = canonicalizeRoadPlanningRegions(rawRegions);
-  const crossings = deriveRegionCrossings(regions);
-  const geometryHash = computeRegionRoadPlanningHash({
-    algorithmVersion: REGION_ROAD_PLANNING_ALGORITHM,
-    boundaryPolicy: REGION_ROAD_BOUNDARY_POLICY,
+const loadAuthorMapNetwork = async () => {
+  const annotationText = await readFile(annotationPath, "utf8");
+  const validatedAnnotation = await validateMapAnnotation(
+    JSON.parse(annotationText),
+    annotationPath
+  );
+  const fragment = toManifestFragment(validatedAnnotation);
+  const { regions, roadPlanning } = fragment.networkModels.main;
+
+  const roadPassages = JSON.parse(await readFile(roadPassagesPath, "utf8"));
+  const actualAnnotationSha256 = createHash("sha256")
+    .update(annotationText)
+    .digest("hex");
+  assert.equal(
+    roadPassages.generatedFrom.sha256,
+    actualAnnotationSha256,
+    `${roadPassagesPath} was traced from a different annotation than the one ` +
+    `currently on disk; rerun build-initial-road-passages.mjs before ` +
+    "build-construction-cycle.mjs"
+  );
+
+  // Непроходимая местность (см. константу regionPartitionDraftPath выше):
+  // список id читается из черновика разбиения, а затем проверяется против
+  // самих регионов этого запуска — каждый заявленный id обязан существовать
+  // среди regions, иначе excludedRegionIds сослался бы на несуществующую
+  // область, а road-planning-контракт (см. regionRoadPlanner.ts)
+  // отказался бы компилировать пакет с понятной, но поздней ошибкой вместо
+  // ранней и точной.
+  const regionPartitionDraft = JSON.parse(
+    await readFile(regionPartitionDraftPath, "utf8")
+  );
+  const excludedRegionIds = regionPartitionDraft.impassableTerrain?.regionIds;
+  assert.ok(
+    Array.isArray(excludedRegionIds) && excludedRegionIds.length > 0,
+    `${regionPartitionDraftPath} does not declare impassableTerrain.regionIds; ` +
+    "rerun cmt_region_partition.py before build-construction-cycle.mjs"
+  );
+  const knownRegionIds = new Set(regions.map((region) => region.id));
+  for (const regionId of excludedRegionIds) {
+    assert.ok(
+      knownRegionIds.has(regionId),
+      `impassableTerrain.regionIds references "${regionId}", which is not among ` +
+      `the ${regions.length} regions this run just built from ${annotationPath}; ` +
+      "the draft and the annotation are out of sync — rerun the chain from " +
+      "cmt_region_partition.py forward"
+    );
+  }
+
+  return {
     regions,
-    crossings
-  });
-  return { regions, geometryHash };
+    roadPlanning,
+    excludedRegionIds,
+    roadsByEdgeId: new Map(roadPassages.roads.map((road) => [road.id, road])),
+    tracingAlgorithmVersion: roadPassages.generatedFrom.algorithmVersion
+  };
 };
 
 /**
- * Give pre-existing straight test edges a complete route plan for the same
- * technical strips.
+ * Store each author-drawn initial road's real geometry and route plan.
  *
- * `graph.edge.split` validates and divides a stored route plan. The earlier
- * review placeholder stored prose in that field, which was useful provenance
- * but not executable geometry. This normalization inserts strip-boundary
- * vertices while preserving every author-derived endpoint and edge id.
+ * `graph.edge.split` validates and divides a stored route plan, so every
+ * initial edge needs one from the start. Earlier this field held a straight
+ * line re-cut at technical strip boundaries; now it holds the author's own
+ * polyline together with the region passages `build-initial-road-passages.mjs`
+ * traced across the real map, matched to each edge by id.
+ *
+ * ADR-100 §4.8 is why `algorithmVersion` below is the *tracing tool's* own
+ * version and not the planner's `region-segment-minimum-v2`: measured on this
+ * map, the planner routes these same ten roads through fewer regions than the
+ * author did (seven instead of thirteen on the longest one), because the
+ * author drew a straight line while the planner minimises regions. A stored
+ * road claiming the planner's version would therefore be unreproducible by
+ * that version — exactly what ADR-081 §4.3 promises never happens. `mode`
+ * still stays `region-segment-minimum` (`build-session-setup.mjs`'s
+ * `hasExecutableRoutePlan` checks this): the road is still described as a
+ * sequence of paid region passages, only *found* differently.
  */
-const normalizeTechnicalInitialEdges = (
+const normalizeAuthorInitialEdges = (
   root,
-  regions,
-  geometryHash
+  { roadsByEdgeId, roadPlanning, tracingAlgorithmVersion }
 ) => {
-  const regionWidth = boardWidth / technicalRegionCount;
-  const nodes = root.state.public.objects.networkNodes;
   for (const [edgeId, edge] of Object.entries(
     root.state.public.objects.networkEdges
   )) {
-    const from = nodes[edge.attributes.fromNodeId]?.attributes.position;
-    const to = nodes[edge.attributes.toNodeId]?.attributes.position;
-    assert.ok(from && to, `${edgeId} must reference two positioned nodes`);
-    const parameters = [0, 1];
-    if (from.x !== to.x) {
-      for (let index = 1; index < technicalRegionCount; index += 1) {
-        const boundaryX = index * regionWidth;
-        const parameter = (boundaryX - from.x) / (to.x - from.x);
-        if (parameter > 0 && parameter < 1) parameters.push(parameter);
-      }
-    }
-    parameters.sort((left, right) => left - right);
-    const points = parameters.map((parameter) => ({
-      x: from.x + (to.x - from.x) * parameter,
-      y: from.y + (to.y - from.y) * parameter
-    }));
-    const passages = Array.from(
-      { length: points.length - 1 },
-      (_, index) => {
-        const midpointX = (points[index].x + points[index + 1].x) / 2;
-        const regionIndex = Math.min(
-          technicalRegionCount - 1,
-          Math.max(0, Math.floor(midpointX / regionWidth))
-        );
-        return {
-          regionId: regions[regionIndex].id,
-          fromPointIndex: index,
-          toPointIndex: index + 1
-        };
-      }
+    const road = roadsByEdgeId.get(edgeId);
+    assert.ok(
+      road,
+      `${edgeId} has no traced region passages in ${roadPassagesPath}; ` +
+      "rerun build-initial-road-passages.mjs"
     );
     edge.attributes.geometry = {
-      from,
-      to,
-      polyline: points
+      from: road.polyline[0],
+      to: road.polyline[road.polyline.length - 1],
+      polyline: road.polyline
     };
-    edge.attributes.regionSegments = passages.length;
+    edge.attributes.regionSegments = road.passages.length;
     edge.attributes.routePlan = {
       mode: REGION_ROAD_PLANNING_MODE,
-      algorithmVersion: REGION_ROAD_PLANNING_ALGORITHM,
-      geometryVersion: "technical-placeholder-vertical-strips-v1",
-      geometryHash,
-      boundaryPolicy: REGION_ROAD_BOUNDARY_POLICY,
-      regionSequence: passages.map((passage) => passage.regionId),
-      passages,
-      // Version 2 has nothing left to break a tie with chance (ADR-100
-      // §4.6): the shape is just the winning policy name, no candidate list
-      // or chosen index, because there is no candidate list to choose from.
-      tieBreak: { policy: REGION_ROAD_TIE_BREAK },
-      source: "technical-initial-network-review",
-      geometryStatus: "awaiting-author-overlay-confirmation"
+      algorithmVersion: tracingAlgorithmVersion,
+      geometryVersion: roadPlanning.geometryVersion,
+      geometryHash: roadPlanning.geometryHash,
+      boundaryPolicy: roadPlanning.boundaryPolicy,
+      regionSequence: road.regionSequence,
+      passages: road.passages,
+      // There is no candidate list to break a tie among: the author drew
+      // this exact line by hand, so "which shape won" is not a question the
+      // tie-break policies of ADR-100 §4.6 (which choose among candidates
+      // the *planner* found) answer. "author-drawn" names the true way this
+      // road's shape was decided, instead of borrowing a planner policy name
+      // that would misdescribe it.
+      tieBreak: { policy: "author-drawn" },
+      source: "author-confirmed-initial-network-review",
+      geometryStatus: "author-confirmed"
     };
   }
 };
 
-const declareConstructionState = (root) => {
+const declareConstructionState = (root, excludedRegionIds) => {
   root.state.public.construction = {
     ...(root.state.public.construction ?? {}),
     mode: root.state.public.construction?.mode ?? null,
@@ -915,7 +968,19 @@ const declareConstructionState = (root) => {
     firstRoadFreeSegments:
       root.state.public.turnEffects?.firstRoadFreeSegments ?? 0
   };
-  root.state.public.transportNetworks.main.excludedRegionIds = [];
+  // Initial value of the excluded-region set: the author's dark-brown terrain
+  // and the lakes' river (see games/cards-money-trains/annotations/README.md,
+  // "Непроходимая местность и река", and impassableTerrain.regionIds in the
+  // region-partition draft). These entries are PERMANENT terrain, not a
+  // temporary closure — unlike an in-session event that blocks a region for a
+  // few turns and later lifts the block, nothing in this game's rules ever
+  // removes a terrain region from this set again. Any future rule that reads
+  // or writes public.transportNetworks.main.excludedRegionIds (a temporary
+  // regional closure event, for instance) MUST treat these ids as a floor: it
+  // may add its own region ids on top for the duration of its own effect, but
+  // it must never remove one of the ids listed below, because doing so would
+  // make the game briefly claim a road can cross drawn terrain or a river.
+  root.state.public.transportNetworks.main.excludedRegionIds = [...excludedRegionIds];
 
   const stateModel = root.mechanics.stateModel;
   stateModel.collections.teams.fields.constructionPledge = {
@@ -1107,33 +1172,31 @@ const constructionBoardActions = () => [
  * Cloning the input allows tests and `--check` to prove deterministic,
  * idempotent composition with every earlier game-local generator.
  */
-const buildConstructionCycleAuthoring = (sourceAuthoring) => {
+const buildConstructionCycleAuthoring = async (sourceAuthoring) => {
   const authoring = structuredClone(sourceAuthoring);
   const root = authoring.root;
   assert.ok(root.mechanics.stateModel.collections.teams, "dynamic team collection is required");
   assert.ok(root.networkModels?.main, "main network model is required");
 
-  declareConstructionState(root);
+  // Loaded before declareConstructionState() so the initial excluded-region
+  // set (permanent terrain — see the comment inside declareConstructionState())
+  // can be declared in one place instead of patched in afterwards.
+  const mapNetwork = await loadAuthorMapNetwork();
+  declareConstructionState(root, mapNetwork.excludedRegionIds);
   declareConstructionEvents(root);
 
-  const { regions, geometryHash } = buildTechnicalRegions();
-  normalizeTechnicalInitialEdges(root, regions, geometryHash);
-  root.networkModels.main.regions = regions;
+  normalizeAuthorInitialEdges(root, mapNetwork);
+  root.networkModels.main.regions = mapNetwork.regions;
   root.networkModels.main.buildableNodeStates = ["open", "building"];
   // No `navigationGraph` here: ADR-100 §4.3 removes it from the contract.
   // Runtime derives the navigation graph itself from `regions` on every load
   // and checks it against `geometryHash`; storing a second copy here would
-  // only be a second place for the two to silently disagree.
-  root.networkModels.main.roadPlanning = {
-    mode: REGION_ROAD_PLANNING_MODE,
-    algorithmVersion: REGION_ROAD_PLANNING_ALGORITHM,
-    geometryVersion: "technical-placeholder-vertical-strips-v1",
-    geometryHash,
-    tieBreak: REGION_ROAD_TIE_BREAK,
-    boundaryPolicy: REGION_ROAD_BOUNDARY_POLICY,
-    excludedRegionIdsEndpoint:
-      "public.transportNetworks.main.excludedRegionIds"
-  };
+  // only be a second place for the two to silently disagree. `roadPlanning`
+  // itself comes straight from the shared pipeline's fragment (mode,
+  // planner algorithmVersion, geometryVersion/geometryHash, tieBreak,
+  // boundaryPolicy, excludedRegionIdsEndpoint) — reconstructing it field by
+  // field here would be exactly the second derivation ADR-100 forbids.
+  root.networkModels.main.roadPlanning = mapNetwork.roadPlanning;
   root.objectTypes["transport.waypoint"].facets.availability.values.building = {
     visible: true,
     interactive: false,
@@ -1216,7 +1279,7 @@ const buildConstructionCycleAuthoring = (sourceAuthoring) => {
   }
 
   root.content.data.constructionActionIntent = {
-    status: "executable-technical-region-draft",
+    status: "executable-author-confirmed-region-network",
     publishable: false,
     road: {
       actionId: "construction.road.build",
@@ -1235,13 +1298,16 @@ const buildConstructionCycleAuthoring = (sourceAuthoring) => {
     }
   };
   root.content.data.constructionCycle = {
-    status: "executable-on-non-publishable-technical-regions",
+    status: "executable-on-author-confirmed-regions",
     publishable: false,
     regionData: {
-      provenance: "generated technical placeholder; not author geography",
-      geometryVersion: "technical-placeholder-vertical-strips-v1",
-      regionCount: technicalRegionCount,
-      replaceBeforePublication: true
+      provenance:
+        "author-confirmed partition of the real map (annotations/" +
+        "initial-network-with-regions.review.json), compiled by " +
+        "convert-map-annotation.mjs; see ADR-100",
+      geometryVersion: mapNetwork.roadPlanning.geometryVersion,
+      regionCount: mapNetwork.regions.length,
+      replaceBeforePublication: false
     },
     pricing: {
       roadCoinsPerRegionSegment: 2,
@@ -1292,6 +1358,10 @@ const serialize = (value) => `${JSON.stringify(value, null, 2)}\n`;
 
 const buildFromDisk = async () =>
   buildConstructionCycleAuthoring(await readJson(authoringPath));
+// (buildConstructionCycleAuthoring is itself async — loading the real map
+// requires reading and validating the annotation and road-passages files —
+// so this arrow function's returned promise adopts that inner promise; no
+// extra `await` is needed here for the resolved value to come out right.)
 
 const writeAtomically = async (filePath, content) => {
   const temporaryPath = `${filePath}.${process.pid}.tmp`;
@@ -1320,7 +1390,7 @@ const run = async (argv) => {
     await writeAtomically(authoringPath, builtText);
   }
   process.stdout.write(
-    `cards-money-trains: ${checkOnly ? "verified" : "built"} dynamic construction on technical placeholder regions\n`
+    `cards-money-trains: ${checkOnly ? "verified" : "built"} dynamic construction on the real author map\n`
   );
 };
 
@@ -1335,5 +1405,5 @@ export {
   authoringPath,
   buildConstructionCycleAuthoring,
   buildFromDisk,
-  buildTechnicalRegions
+  loadAuthorMapNetwork
 };

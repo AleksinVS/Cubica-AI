@@ -88,9 +88,20 @@ const isRecord = (value) => value !== null && typeof value === "object" && !Arra
 const SAFE_IDENTIFIER = /^(?!__proto__$|constructor$|prototype$)[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u;
 const SYSTEM_SCHEDULE_ID_PATTERN = /^[A-Za-z0-9_-]{22,128}$/u;
 const isSafeMechanicsIdentifier = (value) => typeof value === "string" && SAFE_IDENTIFIER.test(value);
-const GRAPH_MAX_REGIONS = 512;
-const GRAPH_MAX_VERTICES_PER_REGION = 512;
-const GRAPH_MAX_TOTAL_REGION_VERTICES = 20_000;
+// These bounds mirror services/runtime-api/src/modules/mechanics/graphGeometry.ts
+// and must stay equal to it: this checker runs at publication time and that
+// module runs at load time, so a package the two judge differently is a package
+// that publishes cleanly and then cannot be loaded. Keep the two lists side by
+// side whenever either changes.
+//
+// The number of regions is deliberately unbounded (ADR-081 § 4.7): the cost of
+// geometry grows with the total number of contour vertices, not with how those
+// vertices are grouped into regions. A map of nine hundred small regions costs
+// the same as one of five hundred large ones drawn in the same detail. What is
+// bounded is what actually drives the cost, and the values are measured on the
+// first real author map — 917 regions with 79 549 vertices, widest region 511.
+const GRAPH_MAX_VERTICES_PER_REGION = 2048;
+const GRAPH_MAX_TOTAL_REGION_VERTICES = 200_000;
 const GRAPH_MAX_POLYLINE_POINTS = 20_000;
 const GRAPH_GEOMETRY_EPSILON = 1e-9;
 
@@ -176,6 +187,32 @@ function checkMechanicsBundle(mechanics, options = {}) {
   );
   checkExactModuleLockUsage(mechanics.plans, lockedModules);
 
+  // Bind every plan hash to `networkModels` by digest, not by embedded value.
+  //
+  // Why the digest is equivalent: `mechanicsSha256` is a pure function of the
+  // canonical byte serialization of its input (see mechanics-canonicalize.cjs).
+  // Hashing `networkModels` once and folding that single digest into each
+  // plan's hash input changes the plan hash under exactly the same conditions
+  // as embedding the object itself would: any change to any byte of
+  // `networkModels` changes `networkModelsHash`, which changes every plan
+  // hash, while no change to `networkModels` leaves it identical. The
+  // universal binding the product owner wants (every plan depends on the full
+  // network graph, whether or not it reads it) is therefore preserved exactly
+  // -- only the amount of hashing work changes.
+  //
+  // Why this was worth doing: on the real cards-money-trains author map (917
+  // region polygons, 79,549 vertices) `networkModels` is 2.71 MB and one
+  // canonical serialization of it measured ~357ms. The old code serialized it
+  // once per plan; with 99 plans that is 99 x 357ms = ~35s, which matched the
+  // entire measured `checkMechanicsBundle` wall clock at the time this was
+  // profiled. Hashing it once here instead of once per plan turns that
+  // specific 99x cost into a single ~200-360ms pass -- the dominant cost this
+  // change targets. (checkMechanicsBundle also does other, smaller-order work
+  // over networkModels -- e.g. per-step audience derivation for graph
+  // operations -- that this change does not touch; that residual cost was
+  // simply invisible next to the 35s this fixes.)
+  const networkModelsHash = mechanicsSha256(options.networkModels || {});
+
   const costs = {};
   const scheduleRegistrations = [];
   for (const [planId, plan] of Object.entries(mechanics.plans)) {
@@ -184,8 +221,16 @@ function checkMechanicsBundle(mechanics, options = {}) {
       budgetProfile: mechanics.budgetProfile,
       moduleLock: mechanics.moduleLock,
       stateModel: mechanics.stateModel,
+      // objectModels stays embedded by value: measured at ~3 KB for the real
+      // manifest (vs. 2.71 MB for networkModels), it costs ~0.2ms per
+      // serialization, so 99 plans cost ~17ms total -- not a problem worth
+      // the same digest indirection. Re-measure before changing this if
+      // objectModels ever grows the way networkModels did.
       objectModels: options.objectModels || {},
-      networkModels: options.networkModels || {},
+      // Named networkModelsHash (not networkModels) so the input stays
+      // self-describing: this field now holds a digest of the network
+      // models, not the network models themselves.
+      networkModelsHash,
       planId,
       transaction: plan.transaction
     });
@@ -901,8 +946,8 @@ function checkNetworkBindings(networkModels, model) {
  * counting or checking a simple polygon, matching the runtime geometry helper.
  */
 function checkNetworkRegionGeometry(regions, pointer) {
-  if (!Array.isArray(regions) || regions.length < 1 || regions.length > GRAPH_MAX_REGIONS) {
-    fail("MECHANICS_GRAPH_GEOMETRY_INVALID", pointer, `network must declare 1..${GRAPH_MAX_REGIONS} regions`);
+  if (!Array.isArray(regions) || regions.length < 1) {
+    fail("MECHANICS_GRAPH_GEOMETRY_INVALID", pointer, "network must declare at least one region");
   }
   const ids = new Set();
   let totalVertices = 0;
@@ -912,60 +957,76 @@ function checkNetworkRegionGeometry(regions, pointer) {
       fail("MECHANICS_GRAPH_GEOMETRY_INVALID", `${regionPointer}/id`, "region id must be unique");
     }
     ids.add(region.id);
-    let polygon = region.polygon;
-    if (polygon.length > 1 && graphPointEqual(polygon[0], polygon.at(-1))) polygon = polygon.slice(0, -1);
-    if (polygon.length < 3 || polygon.length > GRAPH_MAX_VERTICES_PER_REGION) {
-      fail(
-        "MECHANICS_GRAPH_GEOMETRY_INVALID",
-        `${regionPointer}/polygon`,
-        `canonical polygon must contain 3..${GRAPH_MAX_VERTICES_PER_REGION} vertices`
-      );
-    }
-    totalVertices += polygon.length;
-    if (totalVertices > GRAPH_MAX_TOTAL_REGION_VERTICES) {
-      fail(
-        "MECHANICS_GRAPH_GEOMETRY_INVALID",
-        pointer,
-        `network regions exceed ${GRAPH_MAX_TOTAL_REGION_VERTICES} canonical vertices`
-      );
-    }
-    const vertexKeys = new Set();
-    for (const [pointIndex, point] of polygon.entries()) {
-      const key = `${point.x},${point.y}`;
-      if (vertexKeys.has(key)) {
+
+    // One ring — the outer contour or any hole — checked the same way. Holes
+    // (inner rings: a lake, an enclave, a patch of terrain the author declared
+    // impassable) reach real published maps, and a hole that publishes here but
+    // fails the runtime's own ring check at load would be exactly the kind of
+    // silent gap between two independent implementations this checker exists to
+    // prevent. Sharing this closure is what guarantees a hole cannot be held to
+    // a weaker standard than the outline.
+    const checkRing = (rawRing, ringPointer) => {
+      let ring = rawRing;
+      if (ring.length > 1 && graphPointEqual(ring[0], ring.at(-1))) ring = ring.slice(0, -1);
+      if (ring.length < 3 || ring.length > GRAPH_MAX_VERTICES_PER_REGION) {
         fail(
           "MECHANICS_GRAPH_GEOMETRY_INVALID",
-          `${regionPointer}/polygon/${pointIndex}`,
-          "simple polygon cannot repeat a canonical vertex"
+          ringPointer,
+          `canonical polygon must contain 3..${GRAPH_MAX_VERTICES_PER_REGION} vertices`
         );
       }
-      vertexKeys.add(key);
-    }
-    for (let first = 0; first < polygon.length; first += 1) {
-      const firstNext = (first + 1) % polygon.length;
-      if (graphDistance(polygon[first], polygon[firstNext]) <= GRAPH_GEOMETRY_EPSILON) {
+      totalVertices += ring.length;
+      if (totalVertices > GRAPH_MAX_TOTAL_REGION_VERTICES) {
         fail(
           "MECHANICS_GRAPH_GEOMETRY_INVALID",
-          `${regionPointer}/polygon/${first}`,
-          "simple polygon cannot contain a zero-length edge"
+          pointer,
+          `network regions exceed ${GRAPH_MAX_TOTAL_REGION_VERTICES} canonical vertices`
         );
       }
-      for (let second = first + 1; second < polygon.length; second += 1) {
-        const secondNext = (second + 1) % polygon.length;
-        const adjacent = first === second || firstNext === second || secondNext === first;
-        if (!adjacent && graphSegmentsIntersect(
-          polygon[first],
-          polygon[firstNext],
-          polygon[second],
-          polygon[secondNext]
-        )) {
+      const vertexKeys = new Set();
+      for (const [pointIndex, point] of ring.entries()) {
+        const key = `${point.x},${point.y}`;
+        if (vertexKeys.has(key)) {
           fail(
             "MECHANICS_GRAPH_GEOMETRY_INVALID",
-            `${regionPointer}/polygon`,
-            "region must be a simple polygon"
+            `${ringPointer}/${pointIndex}`,
+            "simple polygon cannot repeat a canonical vertex"
           );
         }
+        vertexKeys.add(key);
       }
+      for (let first = 0; first < ring.length; first += 1) {
+        const firstNext = (first + 1) % ring.length;
+        if (graphDistance(ring[first], ring[firstNext]) <= GRAPH_GEOMETRY_EPSILON) {
+          fail(
+            "MECHANICS_GRAPH_GEOMETRY_INVALID",
+            `${ringPointer}/${first}`,
+            "simple polygon cannot contain a zero-length edge"
+          );
+        }
+        for (let second = first + 1; second < ring.length; second += 1) {
+          const secondNext = (second + 1) % ring.length;
+          const adjacent = first === second || firstNext === second || secondNext === first;
+          if (!adjacent && graphSegmentsIntersect(
+            ring[first],
+            ring[firstNext],
+            ring[second],
+            ring[secondNext]
+          )) {
+            fail(
+              "MECHANICS_GRAPH_GEOMETRY_INVALID",
+              ringPointer,
+              "region must be a simple polygon"
+            );
+          }
+        }
+      }
+    };
+
+    checkRing(region.polygon, `${regionPointer}/polygon`);
+    const holes = Array.isArray(region.holes) ? region.holes : [];
+    for (const [holeIndex, hole] of holes.entries()) {
+      checkRing(hole, `${regionPointer}/holes/${holeIndex}`);
     }
   }
 }

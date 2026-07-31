@@ -307,9 +307,15 @@ const loadInputs = async ({ regionPartitionPath, countriesStationsPath, backgrou
 // ---------------------------------------------------------------------------
 
 /** Классический тест "точка внутри многоугольника" методом луча (ray casting). */
-const pointInRing = (x, y, ring) => {
+export const pointInRing = (x, y, ring) => {
   let inside = false;
-  for (let i = 0, j = ring.length - 1; i < ring.length; j = i += 1) {
+  // `j = i++` (постфиксный инкремент) обязателен: он присваивает j значение i
+  // ДО увеличения, то есть предыдущий индекс. `j = i += 1` (префиксный,
+  // как было раньше) присваивает j уже увеличенное значение i — тогда j и i
+  // совпадают на каждом шаге, ребро вырождается в точку, пересечение луча с
+  // ним никогда не засчитывается, и функция объявляет любую точку внутри
+  // кольца лежащей снаружи (кроме одного случая — замыкающего ребра при i=0).
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
     const [xi, yi] = ring[i];
     const [xj, yj] = ring[j];
     const crosses = (yi > y) !== (yj > y) &&
@@ -331,9 +337,11 @@ const distancePointToSegment = (px, py, ax, ay, bx, by) => {
   return Math.hypot(px - cx, py - cy);
 };
 
-const distancePointToRing = (x, y, ring) => {
+export const distancePointToRing = (x, y, ring) => {
   let minDistance = Infinity;
-  for (let i = 0, j = ring.length - 1; i < ring.length; j = i += 1) {
+  // Тот же постфиксный `j = i++`, что и в pointInRing() выше и по той же
+  // причине: префиксная форма склеивала j и i в один и тот же индекс.
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
     const distance = distancePointToSegment(x, y, ring[i][0], ring[i][1], ring[j][0], ring[j][1]);
     if (distance < minDistance) minDistance = distance;
   }
@@ -884,6 +892,20 @@ const kindSpecificDetail = (doubt) => {
   if (doubt.kind === "collapsed-sliver") {
     return `площадь ${round(doubt.areaPx2, 0)} px², ширина ≈ ${round(doubt.effectiveWidthPx, 2)} px`;
   }
+  if (doubt.kind === "country-border-gap-merged") {
+    // mergedIntoRegionId называет область, в которую щель фактически вошла —
+    // «в какую сторону присоединилась» это половина того, что решает
+    // проверяющий человек, наравне с самим спорным контуром (см. outline,
+    // который эта таблица не показывает: он нужен инструментам построения
+    // схемы, а не текстовому реестру). У этого вида записи щель всегда
+    // присоединена (merged: true — иначе проверить нечего, см. схему), так
+    // что mergedIntoRegionId здесь никогда не null. foreignAreaPx2 — сколько
+    // именно площади щели фактически принадлежало другой стране: это и есть
+    // измеренный размер сдвига границы, величина, по которой человеку стоит
+    // сортировать и оценивать записи, а не только ширина самой щели.
+    return `площадь ${round(doubt.areaPx2, 0)} px², ширина ≈ ${round(doubt.effectiveWidthPx, 2)} px, ` +
+      `чужой территории ${round(doubt.foreignAreaPx2, 2)} px², вошла в область ${numericSuffix(doubt.mergedIntoRegionId)}`;
+  }
   if (doubt.kind === "removed-micro-hole") {
     return `площадь убранного отверстия ≈ ${round(doubt.areaPx2, 1)} px²`;
   }
@@ -921,6 +943,7 @@ const buildDoubtsMarkdown = ({ regionPartition, doubtKindCounts }) => {
     "- [Незамкнутая граница (unresolved-gap)](#unresolved-gap)",
     "- [Предположенное соединение (assumed-connection)](#assumed-connection)",
     "- [Схлопнутая щель (collapsed-sliver)](#collapsed-sliver)",
+    "- [Щель на границе стран (country-border-gap-merged)](#country-border-gap-merged)",
     "- [Убранное микро-отверстие (removed-micro-hole)](#removed-micro-hole)",
     "- [Расхождение способов — объединение (methods-disagree-merged)](#methods-disagree-merged)",
     "- [Расхождение способов — разделение (methods-disagree-split)](#methods-disagree-split)",
@@ -975,7 +998,7 @@ const buildDoubtsMarkdown = ({ regionPartition, doubtKindCounts }) => {
 - **уверенность (confidence)** — насколько автоматическое решение
   надёжно: низкая, средняя или высокая.
 
-Семь видов сомнений:
+Восемь видов сомнений:
 
 1. **unresolved-gap** — «незамкнутая граница»: на карте есть линия, которая
    должна была бы упереться в другую линию и замкнуть границу, но их
@@ -986,16 +1009,26 @@ const buildDoubtsMarkdown = ({ regionPartition, doubtKindCounts }) => {
    самой линии — настолько мал, что решили считать их соединёнными.
    Это предположение, а не точное совпадение.
 3. **collapsed-sliver** — «схлопнутая щель»: узкая щель у границы страны
-   присоединена к соседней области, а не оставлена отдельной областью.
-4. **removed-micro-hole** — «убранное микро-отверстие»: ничтожно маленькое
+   присоединена к соседней области, а не оставлена отдельной областью. Щель
+   целиком лежала внутри своей же страны (или её вообще не удалось ни к
+   чему присоединить) — государственной границы это решение не касается.
+4. **country-border-gap-merged** — «щель на границе стран»: тот же приём
+   присоединения, что и у collapsed-sliver, но часть площади щели (см.
+   foreignAreaPx2) в действительности лежала в заливке ДРУГОЙ страны, чем та,
+   которой досталась область после присоединения, — проверено напрямую
+   пересечением контура щели (outline) с авторскими заливками стран, а не
+   через приближение (расстояние или долю перекрытия). Присоединение слегка
+   сдвинуло государственную границу — ровно на измеренную площадь
+   foreignAreaPx2, а не только «на ширину щели».
+5. **removed-micro-hole** — «убранное микро-отверстие»: ничтожно маленькое
    внутреннее отверстие внутри области сочли шумом измерения и убрали,
    а не оставили как настоящий анклав внутри области.
-5. **methods-disagree-merged** — способ «осевые» (принятый) объединил
+6. **methods-disagree-merged** — способ «осевые» (принятый) объединил
    область с соседней, а способ «краска» (проверочный) считает её
    отдельной.
-6. **methods-disagree-split** — способ «осевые» разделил область на части,
+7. **methods-disagree-split** — способ «осевые» разделил область на части,
    а способ «краска» считает её единой.
-7. **methods-disagree-unmatched** — способ «краска» вообще не даёт для
+8. **methods-disagree-unmatched** — способ «краска» вообще не даёт для
    этого места однозначного соответствия ни с одной областью способа
    «осевые».
 
@@ -1077,6 +1110,10 @@ ${buildDoubtTable(list, regionPartition)}
     kindSection("unresolved-gap", "Незамкнутая граница (unresolved-gap) {#unresolved-gap}"),
     kindSection("assumed-connection", "Предположенное соединение (assumed-connection) {#assumed-connection}"),
     kindSection("collapsed-sliver", "Схлопнутая щель (collapsed-sliver) {#collapsed-sliver}"),
+    kindSection(
+      "country-border-gap-merged",
+      "Щель на границе стран (country-border-gap-merged) {#country-border-gap-merged}"
+    ),
     kindSection(
       "removed-micro-hole",
       "Убранное микро-отверстие (removed-micro-hole) {#removed-micro-hole}"

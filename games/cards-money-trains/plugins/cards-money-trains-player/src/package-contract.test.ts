@@ -32,24 +32,28 @@ test("compiled manifest exposes safe setup and server-owned movement controls", 
   assert.equal(config.sessionMode, "facilitated");
   assert.equal(mainNetwork.nodeCollection, "networkNodes");
   assert.equal(mainNetwork.edgeCollection, "networkEdges");
-  // Construction currently proves server-side multi-region routing with
-  // explicitly non-publishable strips. The exact author polygons replace
-  // these fixtures before publication; one whole-board region is no longer
-  // an accurate representation of the executable technical package.
-  assert.equal(regions.length, 20);
-  assert.deepEqual(
-    regions.map((region) => region.id),
-    Array.from(
-      { length: 20 },
-      (_, index) => `technical-placeholder-region-${String(index + 1).padStart(2, "0")}`
-    )
+  // ADR-100: construction now routes over the real author map — regions
+  // converted from the author-confirmed annotation, not a technical
+  // placeholder. A pinned count or id list here would only ever describe
+  // today's map and go stale the moment the map is redrawn (it already did:
+  // the first partition held 917 areas, and cutting the impassable terrain
+  // out of it raised that to 984). So this asserts the properties that must
+  // hold of *any* published region set instead: a plausible, non-placeholder
+  // size, every id following the real partition's naming convention
+  // (`map-region-<4 digits>`, see build-map-regions-annotation.mjs), and the
+  // declared count agreeing with the regions actually shipped.
+  assert.ok(
+    regions.length > 100,
+    `the published map must be a real partition, not a placeholder; got ${regions.length} regions`
   );
-  assert.deepEqual(regionData, {
-    provenance: "generated technical placeholder; not author geography",
-    geometryVersion: "technical-placeholder-vertical-strips-v1",
-    regionCount: 20,
-    replaceBeforePublication: true
-  });
+  assert.ok(
+    regions.every((region) => /^map-region-\d{4}$/u.test(region.id as string)),
+    "every region id must follow the real partition's map-region-<4 digits> convention"
+  );
+  assert.equal(regionData.regionCount, regions.length);
+  assert.equal(regionData.replaceBeforePublication, false);
+  assert.equal(regionData.geometryVersion, "guinea-regions-v1");
+  assert.equal(typeof regionData.provenance, "string");
   assert.equal(config.runtimeReady, false);
   assert.deepEqual(
     (actions["construction.road.build"]?.paramsSchema as Record<string, unknown>)

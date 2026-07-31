@@ -9,6 +9,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import type { GameManifestTransportRegion } from "@cubica/contracts-manifest";
+
 import {
   GraphGeometryError,
   canonicalGraphPoint,
@@ -18,6 +20,9 @@ import {
   readEffectiveGraphPolyline,
   splitGraphPolyline
 } from "../src/modules/mechanics/graphGeometry.ts";
+
+/** One closed ring of a region — its outline or one of its holes. */
+type RegionRing = GameManifestTransportRegion["polygon"];
 
 test("straight and bent polylines resolve positions by travelled arc length", () => {
   const straight = splitGraphPolyline([{ x: 0, y: 0 }, { x: 10, y: 0 }], 1 / 3);
@@ -138,5 +143,69 @@ test("coordinates, zero-length segments, and self-intersecting polygons fail clo
     }]),
     (error) => error instanceof GraphGeometryError &&
       error.code === "MECHANICS_GRAPH_GEOMETRY_INVALID"
+  );
+});
+
+test("a region's hole is not part of it, but its border still belongs to both", () => {
+  // A lake cut out of a region, published as its own enclave region — the shape
+  // real author maps now carry. Version 1 of this geometry rejected any region
+  // with an inner ring outright; version 2 must instead answer the membership
+  // question correctly for every point around and inside the hole.
+  // The contract types a ring as "at least three points", which an ordinary
+  // array literal assigned to a `const` widens away; naming the type keeps the
+  // fixture honest instead of casting it back at every use.
+  const lake: RegionRing = [
+    { x: 3, y: 3 },
+    { x: 7, y: 3 },
+    { x: 7, y: 7 },
+    { x: 3, y: 7 }
+  ];
+  const regions = canonicalizeGraphRegions([
+    {
+      id: "shore",
+      polygon: [
+        { x: 0, y: 0 },
+        { x: 10, y: 0 },
+        { x: 10, y: 10 },
+        { x: 0, y: 10 }
+      ],
+      holes: [lake]
+    },
+    { id: "lake", polygon: lake }
+  ]);
+  assert.equal(regions.find((region) => region.id === "shore")?.holes?.length, 1);
+  // A region without holes must not gain an empty `holes` field: an unchanged
+  // canonical value is what keeps every existing map's fingerprint unchanged.
+  assert.equal("holes" in (regions.find((region) => region.id === "lake") ?? {}), false);
+
+  // Strictly inside the hole: the surrounding region no longer contains it.
+  assert.deepEqual(closedGraphRegionMembership({ x: 5, y: 5 }, regions), ["lake"]);
+  // On the hole's border: both, exactly as on a border between two neighbours.
+  assert.deepEqual(closedGraphRegionMembership({ x: 5, y: 3 }, regions), ["lake", "shore"]);
+  // Outside the hole but inside the region: only the surrounding region.
+  assert.deepEqual(closedGraphRegionMembership({ x: 1, y: 1 }, regions), ["shore"]);
+});
+
+test("a hole is held to the same ring rules as the outline it sits in", () => {
+  const square: RegionRing = [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }];
+  const selfIntersecting: RegionRing = [
+    { x: 3, y: 3 }, { x: 7, y: 7 }, { x: 7, y: 3 }, { x: 3, y: 7 }
+  ];
+  // Deliberately fewer points than a ring may have. The contract's own type
+  // forbids writing this, which is the point: the check under test is the
+  // runtime one, guarding against a value that reached the manifest without
+  // passing through TypeScript at all.
+  const tooShort = [{ x: 3, y: 3 }, { x: 7, y: 3 }] as unknown as RegionRing;
+  assert.throws(
+    () => canonicalizeGraphRegions([{ id: "shore", polygon: square, holes: [selfIntersecting] }]),
+    (error: unknown) =>
+      error instanceof GraphGeometryError && /hole 0.*simple polygon/su.test(error.message)
+  );
+  assert.throws(
+    () => canonicalizeGraphRegions([
+      { id: "shore", polygon: square, holes: [tooShort] }
+    ]),
+    (error: unknown) =>
+      error instanceof GraphGeometryError && /hole 0.*3\.\./su.test(error.message)
   );
 });

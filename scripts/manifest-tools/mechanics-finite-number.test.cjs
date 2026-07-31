@@ -98,6 +98,9 @@ function finalize(mechanics) {
   const operations = Object.values(mechanics.plans)
     .flatMap((plan) => plan.transaction.steps.map((step) => step.op));
   mechanics.moduleLock = recommendedModuleLockForOperations(operations);
+  // networkModels is bound by digest, not by embedded value -- must mirror
+  // checkMechanicsBundle in mechanics-checker.cjs.
+  const networkModelsHash = mechanicsSha256({});
   for (const [planId, plan] of Object.entries(mechanics.plans)) {
     plan.planHash = mechanicsSha256({
       apiVersion: mechanics.apiVersion,
@@ -105,7 +108,7 @@ function finalize(mechanics) {
       moduleLock: mechanics.moduleLock,
       stateModel: mechanics.stateModel,
       objectModels: {},
-      networkModels: {},
+      networkModelsHash,
       planId,
       transaction: plan.transaction
     });

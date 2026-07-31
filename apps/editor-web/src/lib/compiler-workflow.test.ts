@@ -35,9 +35,32 @@ describe("editor compiler workflow", () => {
       file: "games/example/authoring/game.authoring.json",
       pointer: "/root/actions/start/displayName"
     });
+    // "/actions" has no `verbatimSubtrees` marker here, so this is the
+    // identical-match (rule 1) case: the ancestor's own pointer is the exact
+    // answer, unchanged — appending "/missing" would fabricate a pointer that
+    // was never recorded.
     expect(mapGeneratedPointerToAuthoring(sourceMap, "/actions/start/missing")).toEqual({
       file: "games/example/authoring/game.authoring.json",
       pointer: "/root/actions"
+    });
+  });
+
+  it("reconstructs the exact authoring pointer under a verbatim subtree", () => {
+    // A large literal subtree (e.g. authored polygon vertices) is published as
+    // one recorded entry plus a `verbatimSubtrees` marker, instead of one
+    // entry per vertex — see authoring-compiler.cjs's `isPositionalMatch`.
+    const verbatimMap = {
+      generatedFile: "games/example/game.manifest.json",
+      sourceFile: "games/example/authoring/game.authoring.json",
+      mappings: {
+        "/networkModels": [{ file: "games/example/authoring/game.authoring.json", pointer: "/root/networkModels" }]
+      },
+      verbatimSubtrees: ["/networkModels"]
+    };
+
+    expect(mapGeneratedPointerToAuthoring(verbatimMap, "/networkModels/main/regions/0/polygon/1/x")).toEqual({
+      file: "games/example/authoring/game.authoring.json",
+      pointer: "/root/networkModels/main/regions/0/polygon/1/x"
     });
   });
 

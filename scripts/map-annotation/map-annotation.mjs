@@ -130,6 +130,33 @@ const pointStrictlyInPolygon = (point, closedPolygon) => {
   return pointInOrOnPolygon(point, closedPolygon);
 };
 
+/**
+ * Hole-aware containment for a region shape: `closedRegion.polygon` is the
+ * outer ring and `closedRegion.holes` is zero or more inner rings excluded
+ * from the region (a terrain patch/enclave sitting strictly inside it) — both
+ * already closed rings (first point repeated as last), the same convention
+ * `pointInOrOnPolygon`/`pointStrictlyInPolygon` use for a plain polygon.
+ *
+ * These two mirror `pointInOrOnRegion`/`pointStrictlyInsideRegion` in
+ * `services/runtime-api/src/modules/runtime/regionRoadGeometry.ts`, the
+ * runtime module that is the authoritative consumer of these same regions
+ * once road planning is enabled: a point belongs to a region when it is
+ * inside (or on) the outer ring and not strictly inside one of its holes — a
+ * point exactly on a hole's edge is still the region's own border, because the
+ * enclave that fills the hole is a separate region entirely.
+ */
+const pointInOrOnRegion = (point, closedRegion) => {
+  if (!pointInOrOnPolygon(point, closedRegion.polygon)) return false;
+  return !closedRegion.holes.some((hole) => pointStrictlyInPolygon(point, hole));
+};
+
+/** Strict counterpart of `pointInOrOnRegion`: also excludes the outer ring's
+ * own border and any point on a hole's edge, not only a hole's interior. */
+const pointStrictlyInsideRegion = (point, closedRegion) => {
+  if (!pointStrictlyInPolygon(point, closedRegion.polygon)) return false;
+  return !closedRegion.holes.some((hole) => pointInOrOnPolygon(point, hole));
+};
+
 const segmentsProperlyIntersect = (a, b, c, d) => {
   const abC = cross(a, b, c);
   const abD = cross(a, b, d);
@@ -228,17 +255,59 @@ const touchingCrossPairs = (left, right) => {
   return pairs;
 };
 
-/** Reject ambiguous interior overlaps instead of guessing which region owns them. */
+/**
+ * Every vertex of a ring together with the midpoint of each of its sides.
+ *
+ * Extracted so `assertRegionsDoNotOverlap` (regions vs. regions) and
+ * `assertHolesLieInsideOwnRegion` (a region's holes vs. its own outer ring,
+ * and vs. each other) sample interior-overlap candidates the same way instead
+ * of each re-deriving the same list. A vertex alone can miss an overlap that
+ * only touches along an edge with no shared vertex; the midpoint exposes that
+ * case (see the fuller explanation on `sideInteriorProbes` in
+ * `regionRoadGeometry.ts`, the runtime module this technique mirrors).
+ * `ring` uses the open convention: no repeated closing point, walked with
+ * wraparound.
+ */
+const ringSamples = (ring) => ring.flatMap((point, index) => {
+  const next = ring[(index + 1) % ring.length];
+  return [point, { x: (point.x + next.x) / 2, y: (point.y + next.y) / 2 }];
+});
+
+/**
+ * Reject ambiguous interior overlaps instead of guessing which region owns
+ * them.
+ *
+ * This check is independent of `roadPlanning` (ADR-100's option is per-game)
+ * and always runs, so it must understand holes on its own rather than relying
+ * on the later, road-planning-only `canonicalizeRoadPlanningRegions` check —
+ * an enclave region (its whole polygon matching a hole cut into its parent) is
+ * a legitimate, disjoint pair of shapes, not an overlap, and that must hold
+ * true even for a game that never turns road planning on.
+ */
 const assertRegionsDoNotOverlap = (regions) => {
   const prepared = regions.map((region) => ({
     region,
-    closed: closedCanonicalPolygon(region.polygon),
-    sides: polygonSidesWithBounds(region.polygon),
+    // The outer ring and every hole, closed, for the hole-aware containment
+    // test below.
+    closedRegion: {
+      polygon: closedCanonicalPolygon(region.polygon),
+      holes: (region.holes ?? []).map(closedCanonicalPolygon)
+    },
+    // Sides of the outer ring AND every hole. An enclave's own outer ring
+    // exactly retraces its parent's hole, so the hole's sides must be checked
+    // for improper crossings the same way the outer ring's sides are — a
+    // shared border is fine, a proper crossing is not, regardless of which
+    // ring it involves.
+    sides: [
+      ...polygonSidesWithBounds(region.polygon),
+      ...(region.holes ?? []).flatMap((hole) => polygonSidesWithBounds(hole))
+    ],
     bounds: boundsOfPoints(region.polygon),
-    samples: region.polygon.flatMap((point, index) => {
-      const next = region.polygon[(index + 1) % region.polygon.length];
-      return [point, { x: (point.x + next.x) / 2, y: (point.y + next.y) / 2 }];
-    })
+    // Vertices and edge midpoints of the outer ring and every hole. Hole
+    // samples matter too: without them, a genuine overlap that only touches a
+    // region along one of its holes (rather than its outer boundary) could go
+    // undetected.
+    samples: [region.polygon, ...(region.holes ?? [])].flatMap(ringSamples)
   }));
   // Regions whose bounds do not touch cannot overlap, so only touching pairs
   // are examined. The examination itself is unchanged.
@@ -246,8 +315,8 @@ const assertRegionsDoNotOverlap = (regions) => {
     const left = prepared[leftIndex];
     const right = prepared[rightIndex];
     if (JSON.stringify(left.region.polygon) === JSON.stringify(right.region.polygon) ||
-        left.samples.some((point) => pointStrictlyInPolygon(point, right.closed)) ||
-        right.samples.some((point) => pointStrictlyInPolygon(point, left.closed))) {
+        left.samples.some((point) => pointStrictlyInsideRegion(point, right.closedRegion)) ||
+        right.samples.some((point) => pointStrictlyInsideRegion(point, left.closedRegion))) {
       fail(`regions "${left.region.id}" and "${right.region.id}" overlap`);
     }
     for (const [leftSideIndex, rightSideIndex] of touchingCrossPairs(left.sides, right.sides)) {
@@ -308,16 +377,22 @@ const assertNetworkNodesShareOneRegionIsland = (regions, crossings, nodes) => {
   const closed = regions.map((region) => ({
     id: region.id,
     polygon: closedCanonicalPolygon(region.polygon),
+    holes: (region.holes ?? []).map(closedCanonicalPolygon),
     bounds: boundsOfPoints(region.polygon)
   }));
   const nodeIsland = new Map();
   for (const node of nodes) {
+    // Hole-aware: a node sitting inside a hole belongs to the enclave region
+    // that fills it, not to the region the hole is cut out of. Without this,
+    // a node placed inside an enclave would also match its parent's outer
+    // ring (the hole is invisible to a plain point-in-polygon test), and
+    // `.find` would silently pick whichever region happens to come first.
     const host = closed.find((region) =>
       node.position.x >= region.bounds.minX - GEOMETRY_EPSILON &&
       node.position.x <= region.bounds.maxX + GEOMETRY_EPSILON &&
       node.position.y >= region.bounds.minY - GEOMETRY_EPSILON &&
       node.position.y <= region.bounds.maxY + GEOMETRY_EPSILON &&
-      pointInOrOnPolygon(node.position, region.polygon));
+      pointInOrOnRegion(node.position, region));
     // A node outside every region is a different fault, reported elsewhere.
     if (host) nodeIsland.set(node.id, find(host.id));
   }
@@ -415,27 +490,133 @@ const assertPointInBounds = (point, width, height, label) => {
   }
 };
 
-const assertSimpleClosedPolygon = (region, width, height) => {
-  const polygon = region.polygon;
-  if (!samePoint(polygon[0], polygon[polygon.length - 1])) {
-    fail(`region "${region.id}" must repeat its first point as the last point`);
+/**
+ * Geometry checks shared by a region's outer polygon and each of its holes:
+ * closed (first point repeats as last), every vertex in the map's bounds, no
+ * zero-length side, positive area, and no self-intersection. `label` names the
+ * ring being checked in a failure message, e.g. `region "lake" hole 0`.
+ */
+const assertSimpleClosedRing = (ring, label, width, height) => {
+  if (!samePoint(ring[0], ring[ring.length - 1])) {
+    fail(`${label} must repeat its first point as the last point`);
   }
-  polygon.forEach((point, index) =>
-    assertPointInBounds(point, width, height, `region "${region.id}" point ${index}`));
-  for (let index = 0; index < polygon.length - 1; index += 1) {
-    if (samePoint(polygon[index], polygon[index + 1])) {
-      fail(`region "${region.id}" contains a zero-length side at point ${index}`);
+  ring.forEach((point, index) =>
+    assertPointInBounds(point, width, height, `${label} point ${index}`));
+  for (let index = 0; index < ring.length - 1; index += 1) {
+    if (samePoint(ring[index], ring[index + 1])) {
+      fail(`${label} contains a zero-length side at point ${index}`);
     }
   }
-  if (polygonArea(polygon) < 1) fail(`region "${region.id}" has zero area`);
+  if (polygonArea(ring) < 1) fail(`${label} has zero area`);
 
-  const sideCount = polygon.length - 1;
+  const sideCount = ring.length - 1;
   for (let left = 0; left < sideCount; left += 1) {
     for (let right = left + 1; right < sideCount; right += 1) {
       const adjacent = right === left + 1 || (left === 0 && right === sideCount - 1);
       if (adjacent) continue;
-      if (segmentsIntersect(polygon[left], polygon[left + 1], polygon[right], polygon[right + 1])) {
-        fail(`region "${region.id}" self-intersects between sides ${left} and ${right}`);
+      if (segmentsIntersect(ring[left], ring[left + 1], ring[right], ring[right + 1])) {
+        fail(`${label} self-intersects between sides ${left} and ${right}`);
+      }
+    }
+  }
+};
+
+/**
+ * A region's outer polygon and every hole (an inner ring excluded from the
+ * region, e.g. a terrain patch that is its own enclave region) must each be a
+ * simple, in-bounds, positive-area closed contour. The two shapes are
+ * otherwise unrelated at this stage — whether a hole actually sits inside its
+ * own outer ring, and whether two holes of the same region overlap, is
+ * checked next by `assertHolesLieInsideOwnRegion`; whether one region overlaps
+ * a *different* region is a separate, later question (`assertRegionsDoNotOverlap`,
+ * run only once a manifest fragment is requested).
+ */
+const assertSimpleClosedPolygon = (region, width, height) => {
+  assertSimpleClosedRing(region.polygon, `region "${region.id}"`, width, height);
+  (region.holes ?? []).forEach((hole, index) =>
+    assertSimpleClosedRing(hole, `region "${region.id}" hole ${index}`, width, height));
+};
+
+/**
+ * Confirm every hole is a real hole of its OWN region: strictly inside the
+ * outer ring, and not intersecting another hole of the same region.
+ *
+ * `holes` is a field of the shared schema
+ * (docs/architecture/schemas/map-annotation.schema.json) available to every
+ * game, not only the ones that opt into road planning (ADR-100).
+ * `regionRoadGeometry.ts`'s own `assertHolesAreInside` runs an equivalent
+ * check, but only for a game that turned road planning on, as part of
+ * `canonicalizeRoadPlanningRegions`. This one runs unconditionally, from
+ * `validateMapAnnotation` itself, so a game that never touches road planning
+ * still cannot publish a hole that does not actually behave like a hole.
+ *
+ * The two halves of the check use two different tolerances for touching, and
+ * that difference is deliberate rather than an oversight:
+ * - A hole sharing so much as a point with its own outer ring is not a
+ *   neighbour relationship the way two regions sharing a border are — it is a
+ *   pinch that could split the region's interior into two pieces along that
+ *   point. So no touching at all is tolerated between a hole and its own
+ *   outer ring: a plain `segmentsIntersect` (crossing OR touching) on the
+ *   sides, plus every sample required to be strictly inside (not merely
+ *   inside-or-on) the outer ring.
+ * - Two holes of the SAME region, however, are exactly as free to share a
+ *   border as two ordinary regions are: each hole is eventually published as
+ *   its own enclave region (see the "lake" example on `pointInOrOnRegion`
+ *   above), and two neighbouring enclaves sharing a border is the normal
+ *   case, not a fault. So that half reuses `segmentsProperlyIntersect`, the
+ *   exact tolerance `assertRegionsDoNotOverlap` already grants two
+ *   neighbouring regions — deliberately the same logic, not a second
+ *   invention of it.
+ *
+ * This runs on the annotation's own closed-ring convention (first point
+ * repeated as last) — the form `region.polygon`/`region.holes` already have
+ * before any canonicalisation — unlike `assertRegionsDoNotOverlap`, which runs
+ * later on the already-canonical (open, de-duplicated) manifest form. Side
+ * lists are built by re-opening the ring (`ring.slice(0, -1)`) and reusing
+ * `polygonSidesWithBounds`, which already knows how to wrap the last side
+ * back to the first point of an open ring; containment tests are run
+ * directly against the closed ring, which is the convention
+ * `pointStrictlyInPolygon`/`pointInOrOnPolygon` already expect.
+ */
+const assertHolesLieInsideOwnRegion = (regions) => {
+  for (const region of regions) {
+    const holes = region.holes ?? [];
+    if (holes.length === 0) continue;
+    const outerSides = polygonSidesWithBounds(region.polygon.slice(0, -1));
+
+    const prepared = holes.map((hole) => ({
+      closedHole: hole,
+      sides: polygonSidesWithBounds(hole.slice(0, -1)),
+      samples: ringSamples(hole.slice(0, -1)),
+      bounds: boundsOfPoints(hole)
+    }));
+
+    prepared.forEach((entry, index) => {
+      for (const [outerSideIndex, holeSideIndex] of touchingCrossPairs(outerSides, entry.sides)) {
+        const outerSide = outerSides[outerSideIndex];
+        const holeSide = entry.sides[holeSideIndex];
+        if (segmentsIntersect(outerSide.from, outerSide.to, holeSide.from, holeSide.to)) {
+          fail(`region "${region.id}" hole ${index} touches its own outer contour`);
+        }
+      }
+      if (!entry.samples.every((point) => pointStrictlyInPolygon(point, region.polygon))) {
+        fail(`region "${region.id}" hole ${index} is not strictly inside its own outer contour`);
+      }
+    });
+
+    for (const [leftIndex, rightIndex] of touchingSelfPairs(prepared)) {
+      const left = prepared[leftIndex];
+      const right = prepared[rightIndex];
+      for (const [leftSideIndex, rightSideIndex] of touchingCrossPairs(left.sides, right.sides)) {
+        const leftSide = left.sides[leftSideIndex];
+        const rightSide = right.sides[rightSideIndex];
+        if (segmentsProperlyIntersect(leftSide.from, leftSide.to, rightSide.from, rightSide.to)) {
+          fail(`region "${region.id}" holes ${leftIndex} and ${rightIndex} cross each other`);
+        }
+      }
+      if (left.samples.some((point) => pointStrictlyInPolygon(point, right.closedHole)) ||
+          right.samples.some((point) => pointStrictlyInPolygon(point, left.closedHole))) {
+        fail(`region "${region.id}" holes ${leftIndex} and ${rightIndex} overlap`);
       }
     }
   }
@@ -497,6 +678,11 @@ export const validateMapAnnotation = async (annotation, inputPath = "annotation.
   for (const region of annotation.regions) {
     assertSimpleClosedPolygon(region, width, height);
   }
+  // Runs unconditionally, unlike the road-planning-only equivalent in
+  // regionRoadGeometry.ts: `holes` is available to every game regardless of
+  // whether that game ever turns road planning on (see the function's own
+  // doc comment for why the two touching tolerances differ).
+  assertHolesLieInsideOwnRegion(annotation.regions);
   if (annotation.status !== "review-draft") {
     for (const node of annotation.nodes) {
       if (!annotation.regions.some((region) => pointInOrOnPolygon(node.position, region.polygon))) {
@@ -604,7 +790,34 @@ export const createTransportManifestFragment = (annotation, options) => {
     fail("annotation with unknown runtime states cannot produce a manifest fragment");
   }
   const regions = annotation.regions
-    .map((region) => ({ id: region.id, polygon: canonicalPolygon(region.polygon) }))
+    .map((region) => ({
+      id: region.id,
+      polygon: canonicalPolygon(region.polygon),
+      // A hole ring is canonicalised the same way as the outer ring — see
+      // `canonicalizeRing` in regionRoadGeometry.ts, which the checksum
+      // downstream is computed with: it applies the identical winding and
+      // starting-vertex normalisation to every ring of a region regardless of
+      // whether it is the outer boundary or a hole, so there is no separate
+      // "opposite winding" convention to reproduce here. Omitted entirely when
+      // there are no holes, matching how `holes` is optional on the wire.
+      //
+      // The holes are also SORTED by their canonical first vertex, exactly as
+      // `canonicalizeRoadPlanningRegions` sorts them, so that the order the
+      // author happened to list them in cannot change the published checksum.
+      // Leaving them in author order looks harmless but is not: the runtime
+      // re-canonicalises the published regions on load and refuses a package
+      // whose regions are not already compiler-canonical, so an unsorted pair
+      // of holes makes the map unloadable. Measured on the real map of
+      // «Карты, деньги, поезда»: exactly one region of 984 has more than one
+      // hole, and it alone broke the load until the sort was added here.
+      ...(region.holes?.length
+        ? {
+          holes: region.holes
+            .map(canonicalPolygon)
+            .sort((left, right) => comparePoint(left[0], right[0]))
+        }
+        : {})
+    }))
     .sort((left, right) => compareText(left.id, right.id));
   assertRegionsDoNotOverlap(regions);
   const nodes = Object.fromEntries(annotation.nodes.map((node) => [node.id, {

@@ -192,6 +192,17 @@
           "items": { "$ref": "#/definitions/point" },
           "description": "Замкнутый контур: последняя точка должна совпадать с первой."
         },
+        "holes": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "type": "array",
+            "minItems": 4,
+            "items": { "$ref": "#/definitions/point" },
+            "description": "Замкнутый контур: последняя точка должна совпадать с первой."
+          },
+          "description": "Внутренние контуры, исключённые из этого региона — например, участок рельефа или озеро (терраин-патч), лежащий строго внутри региона и оформленный как отдельный регион-анклав. Необязательное поле. Предел 64 синхронизирован с MAX_RINGS_PER_REGION в services/runtime-api/src/modules/runtime/regionRoadGeometry.ts (65 колец = 1 внешний контур + 64 дыры); map-annotation.test.mjs проверяет, что оба числа совпадают."
+        },
         "evidence": { "type": "string", "minLength": 1 },
         "confidence": { "$ref": "#/definitions/reviewFields/properties/confidence" },
         "reviewNote": { "$ref": "#/definitions/reviewFields/properties/reviewNote" }

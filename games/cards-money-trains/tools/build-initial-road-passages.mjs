@@ -12,7 +12,7 @@
  * placeholder partition: twenty vertical strips running the full height of
  * the board. That placeholder was never real geometry, so every historical
  * price computed from it was fictitious. The map now has a real partition
- * into 917 author-confirmed regions (see
+ * into author-confirmed regions (see
  * `annotations/initial-network-with-regions.review.json`), and this tool
  * recomputes the true passages of the ten initial roads against it.
  *

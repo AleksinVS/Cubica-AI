@@ -413,13 +413,13 @@ test("setup, card, and operating-turn generators compose idempotently", async ()
 test("late formation and construction rebuilds preserve the resolved market blocker", async () => {
   const source = await readJson(authoringPath);
   const marketReady = buildOperatingTurnAuthoring(source);
-  const withLateGenerators = buildConstructionCycleAuthoring(
+  const withLateGenerators = await buildConstructionCycleAuthoring(
     buildTrainFormationAuthoring(marketReady)
   );
   const fixedPoint = buildOperatingTurnAuthoring(withLateGenerators);
 
   assert.deepEqual(buildTrainFormationAuthoring(fixedPoint), fixedPoint);
-  assert.deepEqual(buildConstructionCycleAuthoring(fixedPoint), fixedPoint);
+  assert.deepEqual(await buildConstructionCycleAuthoring(fixedPoint), fixedPoint);
   assert.ok(
     fixedPoint.root.config.runtimeBlockers.includes(
       "remaining reporting workflows"

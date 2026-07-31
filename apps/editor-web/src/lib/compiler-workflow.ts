@@ -113,6 +113,15 @@ export interface EditorPreviewSourceMap {
   readonly generatedFile: string;
   readonly sourceFile: string;
   readonly mappings: Record<string, readonly { readonly file: string; readonly pointer: string }[]>;
+  /**
+   * Sorted generated JSON Pointers whose entire subtree was omitted from
+   * `mappings` because it is a position-for-position verbatim copy of an
+   * ancestor's authoring subtree — see `mapGeneratedPointerToAuthoring`
+   * below and the identical field on `PreviewSelectionSourceMap` in
+   * preview-message-adapter.ts. Optional so a source map read before this
+   * field existed still resolves every pointer, just less precisely.
+   */
+  readonly verbatimSubtrees?: readonly string[];
 }
 
 interface AuthoringCompilerModule {
@@ -169,6 +178,8 @@ interface CompilerSourceMap {
   readonly generatedFile: string;
   readonly sourceFile: string;
   readonly mappings: Record<string, readonly CompilerSource[]>;
+  // See EditorPreviewSourceMap's identical field above.
+  readonly verbatimSubtrees?: readonly string[];
 }
 
 interface CompilerSource {
@@ -407,12 +418,25 @@ export function mapGeneratedPointerToAuthoring(
   sourceMap: CompilerSourceMap,
   generatedPointer: string
 ): CompilerSource | undefined {
-  let pointer = normalizeGeneratedPointer(generatedPointer);
+  const originalPointer = normalizeGeneratedPointer(generatedPointer);
+  let pointer = originalPointer;
 
   for (;;) {
     const sources = sourceMap.mappings[pointer];
     if (sources !== undefined && sources.length > 0) {
-      return sources[0];
+      const source = sources[0];
+      // See preview-message-adapter.ts's identical check for why this can
+      // only append the walked-past suffix when `pointer` is listed in
+      // `verbatimSubtrees` — an identical (non-listed) match's source already
+      // IS the answer, and appending to it would fabricate a pointer that
+      // does not exist.
+      if (sourceMap.verbatimSubtrees?.includes(pointer)) {
+        return {
+          file: source.file,
+          pointer: source.pointer + originalPointer.slice(pointer.length)
+        };
+      }
+      return source;
     }
 
     const parent = parentPointer(pointer);
@@ -448,7 +472,8 @@ export async function loadPreviewSelectionSourceMaps(
       sourceMaps.push({
         generatedFile: parsed.generatedFile,
         sourceFile: parsed.sourceFile,
-        mappings: parsed.mappings as EditorPreviewSourceMap["mappings"]
+        mappings: parsed.mappings as EditorPreviewSourceMap["mappings"],
+        verbatimSubtrees: Array.isArray(parsed.verbatimSubtrees) ? parsed.verbatimSubtrees : undefined
       });
     }
   }

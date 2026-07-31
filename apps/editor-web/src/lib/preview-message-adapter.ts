@@ -22,6 +22,17 @@ export interface PreviewSelectionSourceMap {
   readonly generatedFile: string;
   readonly sourceFile: string;
   readonly mappings: Record<string, readonly PreviewSourceMapping[]>;
+  /**
+   * Sorted generated JSON Pointers whose entire subtree was omitted from
+   * `mappings` because it is a position-for-position verbatim copy of an
+   * ancestor's authoring subtree (e.g. thousands of authored polygon vertices
+   * collapsing to one entry at their containing array). See
+   * `mapGeneratedPointerToAuthoring` below for how this is used. Optional so a
+   * source map produced before this field existed (or read before a rebuild)
+   * still works — it then behaves exactly as before: every pointer resolves
+   * to its nearest recorded ancestor's own pointer, just less precisely.
+   */
+  readonly verbatimSubtrees?: readonly string[];
 }
 
 export interface PlayerPreviewEntityMessage {
@@ -179,12 +190,31 @@ export function mapGeneratedPointerToAuthoring(
   sourceMap: PreviewSelectionSourceMap,
   generatedPointer: string
 ): PreviewSourceMapping | undefined {
-  let pointer = normalizeGeneratedPointer(generatedPointer);
+  const originalPointer = normalizeGeneratedPointer(generatedPointer);
+  let pointer = originalPointer;
 
   for (;;) {
     const sources = sourceMap.mappings[pointer];
     if (sources !== undefined && sources.length > 0) {
-      return sources[0];
+      const source = sources[0];
+      // The compiler omits an entry for two reasons (see the source map's
+      // `verbatimSubtrees` doc comment and authoring-compiler.cjs's
+      // `isPositionalMatch`): this pointer's source is byte-identical to
+      // `pointer`'s (nothing to append — `source` IS the answer), or its
+      // whole subtree is copied verbatim from `pointer`'s subtree, in which
+      // case `pointer` is listed here and the exact source is recovered by
+      // appending the remaining generated-pointer path — the same suffix we
+      // walked past on the way here — to `source`'s own pointer. Appending
+      // that suffix for an *identical* match (not listed) would fabricate a
+      // pointer that does not exist, which is exactly why this must check
+      // membership rather than always appending.
+      if (sourceMap.verbatimSubtrees?.includes(pointer)) {
+        return {
+          file: source.file,
+          pointer: source.pointer + originalPointer.slice(pointer.length)
+        };
+      }
+      return source;
     }
 
     const parent = parentPointer(pointer);

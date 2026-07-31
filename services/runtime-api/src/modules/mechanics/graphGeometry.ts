@@ -19,7 +19,7 @@ export const GRAPH_MAX_COORDINATE_MAGNITUDE = 1_000_000_000;
 // with how those vertices are grouped into regions: an author map of nine
 // hundred small areas is no more work than one of five hundred larger ones with
 // the same outline detail.
-export const GRAPH_MAX_VERTICES_PER_REGION = 512;
+export const GRAPH_MAX_VERTICES_PER_REGION = 2048;
 // Measured against the first real author map: a partition of 917 areas holds
 // 78 352 vertices. The limit sits well above it so an ordinary map passes,
 // while a runaway one is still stopped.
@@ -27,7 +27,15 @@ export const GRAPH_MAX_TOTAL_REGION_VERTICES = 200_000;
 export const GRAPH_MAX_POLYLINE_POINTS = 20_000;
 
 export const GRAPH_EDGE_POSITION_ALGORITHM = "polyline-arc-length-v1" as const;
-export const GRAPH_REGION_MEMBERSHIP_ALGORITHM = "closed-polygon-all-memberships-v1" as const;
+// Version 2 differs from version 1 in exactly one respect: a region's inner
+// rings (holes) are honoured. A point strictly inside a hole is no longer a
+// member of the region around it, because the hole is not part of that region —
+// it is a separate area cut out of it (an enclave, a lake, a patch of terrain).
+// Version 1 rejected any region with holes outright, so no stored proof can
+// have been produced under version 1 for a map that has them, and the version
+// is bumped rather than reused so a fingerprint always states which rule
+// produced it.
+export const GRAPH_REGION_MEMBERSHIP_ALGORITHM = "closed-polygon-all-memberships-v2" as const;
 export const GRAPH_GEOMETRY_FINGERPRINT_ALGORITHM = "canonical-json-sha256-v1" as const;
 export const GRAPH_CANONICAL_JSON_ALGORITHM = "utf16-key-order-v1" as const;
 export const GRAPH_EDGE_POSITION_PROOF_VERSION = "graph-edge-position-proof/v1" as const;
@@ -50,6 +58,12 @@ export interface GraphPolylineSplit {
 export interface CanonicalGraphRegion {
   id: string;
   polygon: Array<GraphPoint>;
+  /**
+   * Inner rings cut out of the region: a lake, an enclave, a patch of terrain
+   * declared impassable. Absent on a region that has none, so a map without
+   * holes canonicalizes to exactly the value it did before holes existed.
+   */
+  holes?: Array<Array<GraphPoint>>;
 }
 
 /**
@@ -228,45 +242,64 @@ export function canonicalizeGraphRegions(
       );
     }
     ids.add(rawRegion.id);
-    // Inner rings are expressible in the contract but not supported by this
-    // geometry version; see regionRoadPlanner.ts for the reasoning.
-    if (Array.isArray(rawRegion.holes) && rawRegion.holes.length > 0) {
-      throw new GraphGeometryError(
-        "MECHANICS_GRAPH_GEOMETRY_INVALID",
-        `Graph region "${rawRegion.id}" declares inner rings, which this geometry version does not support`
-      );
-    }
-    let polygon = rawRegion.polygon.map((point, index) =>
-      canonicalGraphPoint(point, `Graph region "${rawRegion.id}" point ${index}`));
-    if (polygon.length > 1 && graphPointsEqual(polygon[0], polygon.at(-1) as GraphPoint)) {
-      polygon = polygon.slice(0, -1);
-    }
-    if (polygon.length < 3 || polygon.length > GRAPH_MAX_VERTICES_PER_REGION) {
-      throw new GraphGeometryError(
-        "MECHANICS_GRAPH_GEOMETRY_INVALID",
-        `Graph region "${rawRegion.id}" must contain 3..${GRAPH_MAX_VERTICES_PER_REGION} vertices`
-      );
-    }
-    totalVertices += polygon.length;
-    if (totalVertices > GRAPH_MAX_TOTAL_REGION_VERTICES) {
-      throw new GraphGeometryError(
-        "MECHANICS_GRAPH_GEOMETRY_INVALID",
-        `Graph geometry supports at most ${GRAPH_MAX_TOTAL_REGION_VERTICES} region vertices`
-      );
-    }
-    assertSimplePolygon(polygon, rawRegion.id);
-    return { id: rawRegion.id, polygon };
+    // One ring — the outer contour or any hole — canonicalized and checked the
+    // same way. Holes were rejected outright by version 1 of this geometry;
+    // they are now part of real published maps (a lake, an enclave, a patch of
+    // terrain the author declared impassable), so every ring of a region has to
+    // be carried through, not just its outline. Sharing this closure is what
+    // guarantees a hole cannot be held to a weaker standard than the outline.
+    const canonicalizeRing = (ring: ReadonlyArray<{ x: number; y: number }>, label: string) => {
+      let points = ring.map((point, index) =>
+        canonicalGraphPoint(point, `${label} point ${index}`));
+      if (points.length > 1 && graphPointsEqual(points[0], points.at(-1) as GraphPoint)) {
+        points = points.slice(0, -1);
+      }
+      if (points.length < 3 || points.length > GRAPH_MAX_VERTICES_PER_REGION) {
+        throw new GraphGeometryError(
+          "MECHANICS_GRAPH_GEOMETRY_INVALID",
+          `${label} must contain 3..${GRAPH_MAX_VERTICES_PER_REGION} vertices`
+        );
+      }
+      totalVertices += points.length;
+      if (totalVertices > GRAPH_MAX_TOTAL_REGION_VERTICES) {
+        throw new GraphGeometryError(
+          "MECHANICS_GRAPH_GEOMETRY_INVALID",
+          `Graph geometry supports at most ${GRAPH_MAX_TOTAL_REGION_VERTICES} region vertices`
+        );
+      }
+      assertSimplePolygon(points, label);
+      return points;
+    };
+
+    const polygon = canonicalizeRing(rawRegion.polygon, `Graph region "${rawRegion.id}"`);
+    const rawHoles = Array.isArray(rawRegion.holes) ? rawRegion.holes : [];
+    const holes = rawHoles.map((hole, index) =>
+      canonicalizeRing(hole, `Graph region "${rawRegion.id}" hole ${index}`));
+    // Omitted entirely when the region has none, so a map without holes yields
+    // byte-for-byte the same canonical value it did before holes were supported.
+    return holes.length > 0 ? { id: rawRegion.id, polygon, holes } : { id: rawRegion.id, polygon };
   });
   return regions.sort((left, right) => compareCanonicalIds(left.id, right.id));
 }
 
-/** Return every region whose closed polygon contains or touches the point. */
+/**
+ * Return every region whose closed shape contains or touches the point.
+ *
+ * A region's shape is its outer ring MINUS its holes. A point strictly inside
+ * a hole therefore does not belong to the region around it: the hole is a
+ * separate area cut out of that region — a lake, an enclave, a patch of
+ * impassable terrain — and is published as a region in its own right. A point
+ * exactly ON a hole's border does belong to both, exactly as a point on the
+ * border between two ordinary neighbouring regions belongs to both.
+ */
 export function closedGraphRegionMembership(
   point: GraphPoint,
   regions: ReadonlyArray<CanonicalGraphRegion>
 ): Array<string> {
   return regions
-    .filter((region) => pointInOrOnPolygon(point, region.polygon))
+    .filter((region) =>
+      pointInOrOnPolygon(point, region.polygon)
+      && !(region.holes ?? []).some((hole) => pointStrictlyInPolygon(point, hole)))
     .map((region) => region.id)
     .sort(compareCanonicalIds);
 }
@@ -321,6 +354,21 @@ function assertPositiveSegment(from: GraphPoint, to: GraphPoint, label: string):
       `${label} must have positive length`
     );
   }
+}
+
+/**
+ * Inside the ring and not on it — the test a hole needs.
+ *
+ * A hole's own border is shared with the region around it, exactly like the
+ * border between two neighbouring regions, so a point sitting on it must stay
+ * a member of both. Only a point strictly inside the hole has genuinely left
+ * the surrounding region.
+ */
+function pointStrictlyInPolygon(point: GraphPoint, polygon: ReadonlyArray<GraphPoint>): boolean {
+  for (let index = 0; index < polygon.length; index += 1) {
+    if (pointOnSegment(point, polygon[index], polygon[(index + 1) % polygon.length])) return false;
+  }
+  return pointInOrOnPolygon(point, polygon);
 }
 
 function pointInOrOnPolygon(point: GraphPoint, polygon: ReadonlyArray<GraphPoint>): boolean {

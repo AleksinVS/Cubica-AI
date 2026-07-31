@@ -279,6 +279,13 @@
               "additionalProperties": false
             }
           }
+        },
+        "verbatimSubtrees": {
+          "type": "array",
+          "description": "Sorted generated JSON Pointers whose entire subtree was omitted from `mappings` because it is a position-for-position verbatim copy of an ancestor's authoring subtree (see the authoring compiler's isPositionalMatch). A consumer that ignores this field still gets a correct, only less precise, answer by walking up to the nearest recorded ancestor as before; a consumer that reads it can append the remaining generated-pointer path to that ancestor's source pointer to recover the exact one. Optional so a source map produced before this field existed remains valid.",
+          "items": {
+            "type": "string"
+          }
         }
       },
       "additionalProperties": false

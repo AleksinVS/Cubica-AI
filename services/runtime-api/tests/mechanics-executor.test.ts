@@ -231,6 +231,9 @@ function finalizePlanHashes(
     networkModels?: GameManifestTransportNetworkModelMap;
   } = {}
 ): CubicaMechanicsIRV1Alpha1 {
+  // networkModels is bound by digest, not by embedded value -- must mirror
+  // checkMechanicsBundle in scripts/manifest-tools/mechanics-checker.cjs.
+  const networkModelsHash = mechanicsSha256(models.networkModels || {});
   for (const [planId, plan] of Object.entries(mechanics.plans)) {
     plan.planHash = mechanicsSha256({
       apiVersion: mechanics.apiVersion,
@@ -238,7 +241,7 @@ function finalizePlanHashes(
       moduleLock: mechanics.moduleLock,
       stateModel: mechanics.stateModel,
       objectModels: models.objectModels || {},
-      networkModels: models.networkModels || {},
+      networkModelsHash,
       planId,
       transaction: plan.transaction
     });

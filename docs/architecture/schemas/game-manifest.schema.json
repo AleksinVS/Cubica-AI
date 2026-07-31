@@ -157,7 +157,7 @@
           "items": {
             "$ref": "#/definitions/GameManifestCanonicalPoint"
           },
-          "maxItems": 513,
+          "maxItems": 2049,
           "minItems": 3,
           "type": "array"
         },
@@ -167,7 +167,7 @@
             "items": {
               "$ref": "#/definitions/GameManifestCanonicalPoint"
             },
-            "maxItems": 513,
+            "maxItems": 2049,
             "minItems": 3,
             "type": "array"
           },
