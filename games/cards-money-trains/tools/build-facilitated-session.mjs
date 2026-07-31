@@ -587,8 +587,14 @@ const buildFacilitatedSessionAuthoring = (sourceAuthoring) => {
   const preservedBoardActions = availableActions.filter(
     (candidate) => !candidate.id.startsWith(ownedBoardActionPrefix)
   );
+  /*
+   * Keep the whole learning-pause group before the market group. Anchoring to
+   * the first market action, rather than only to the phase-finish action,
+   * prevents the operating-turn generator from moving newly added purchase
+   * actions across the pause group on the next deterministic rebuild.
+   */
   const marketBoardIndex = preservedBoardActions.findIndex(
-    (candidate) => candidate.actionId === "market.phase.finish"
+    (candidate) => candidate.actionId?.startsWith("market.")
   );
   const boardInsertionIndex =
     marketBoardIndex === -1

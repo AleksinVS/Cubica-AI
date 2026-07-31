@@ -45,6 +45,10 @@
   background: rgb(29 27 22 / 98%);
 }
 
+.actionPanelToggle {
+  display: none;
+}
+
 .cameraControls {
   position: absolute;
   z-index: 6;
@@ -234,6 +238,50 @@
   color: #ffe9e4;
 }
 
+/*
+ * A persistent action column is useful only when the viewport leaves enough
+ * untouched map beside it. On smaller desktop and tablet widths the same
+ * controls become an explicit, initially closed drawer: the map remains
+ * readable, while every action is still available as ordinary keyboard-safe
+ * DOM content.
+ */
+@media (max-width: 1500px) {
+  .surfaceMapFirst .actionPanelToggle {
+    position: absolute;
+    z-index: 7;
+    top: 4.5rem;
+    right: 1rem;
+    display: block;
+    min-height: 2.75rem;
+    padding: 0.55rem 0.85rem;
+    border: 1px solid #bca46f;
+    border-radius: 0.45rem;
+    background: #2b281f;
+    color: #fff2b8;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 0.8rem 2rem rgb(0 0 0 / 32%);
+  }
+
+  .surfaceMapFirst .actionPanelToggle:focus-visible {
+    outline: 3px solid #fff2b8;
+    outline-offset: 3px;
+  }
+
+  .surfaceMapFirst .accessibleControls {
+    top: 7.75rem;
+    display: none;
+    max-height: min(60vh, 38rem);
+    scrollbar-color: #bca46f #2b281f;
+    scrollbar-width: auto;
+  }
+
+  .surfaceMapFirst .accessibleControls[data-panel-open="true"] {
+    display: block;
+  }
+}
+
 @media (max-width: 800px) {
   .surface {
     grid-template-columns: 1fr;
@@ -245,14 +293,14 @@
   }
 
   .surfaceMapFirst .accessibleControls {
-    top: auto;
+    top: 7.75rem;
     right: 0.75rem;
     /* The manifest action tray occupies the lowest safe area. Accessible
        board actions remain independently usable immediately above it. */
     bottom: 5.75rem;
     left: 0.75rem;
     width: auto;
-    max-height: 42vh;
+    max-height: none;
     border: 1px solid rgb(246 240 223 / 24%);
   }
 

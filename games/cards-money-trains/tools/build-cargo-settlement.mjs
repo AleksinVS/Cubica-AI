@@ -13,8 +13,8 @@
  *   the normal slice and the protected technical replay;
  * - movement still owns locomotive resolution, while this later slice changes
  *   only its final phase destination from construction to settlement;
- * - market sequencing and the one-card terminal policy remain unresolved and
- *   are not invented here.
+ * - market sequencing and the one-card terminal policy are owned by their
+ *   earlier generators; this later slice preserves their resolved status.
  */
 
 import assert from "node:assert/strict";
@@ -52,6 +52,10 @@ const postCargoPriorityRuntimeBlocker =
   "remaining market and reporting workflows";
 const preConstructionPostCargoPriorityRuntimeBlocker =
   "remaining market, construction and reporting workflows";
+const postMarketConstructionRuntimeBlocker =
+  "remaining construction and reporting workflows";
+const reportingOnlyRuntimeBlocker =
+  "remaining reporting workflows";
 
 const readJson = async (filePath) => JSON.parse(await readFile(filePath, "utf8"));
 const literal = (value) => ({ op: "value.literal", value });
@@ -74,6 +78,7 @@ const compare = (operator, left, right) => ({
   right
 });
 const all = (...items) => ({ op: "predicate.all", items });
+const any = (...items) => ({ op: "predicate.any", items });
 const exists = (value, expected = true) => ({
   op: "predicate.exists",
   value,
@@ -212,13 +217,20 @@ const turnNumber = () => state("public.session.turnNumber");
  * Replace the old proof-oriented load macro with the complete normal rule.
  *
  * An attached wagon is intentionally allowed: trains persist between turns,
- * and the accepted rules define “free wagon” by its empty cargo slot.
+ * and the accepted rules define “free wagon” by its empty cargo slot. A cargo
+ * card normally remains reserved for its selecting company; a card released
+ * by news № 19 has no holder and may be claimed by any logistics company
+ * whose empty wagon is at `availableAtNodeId`.
  */
 const buildLoadMacro = () => {
   const wagonId = { $macroInput: "containerId" };
   const cargoId = { $macroInput: "itemId" };
   const ownerTeamId = wagonOwner(wagonId);
-  const originNodeId = entityValue("cargoOrders", cargoId, "fromNodeId");
+  const sourceNodeId = entityValue("cargoOrders", cargoId, "fromNodeId");
+  const pickupNodeId =
+    entityValue("cargoOrders", cargoId, "availableAtNodeId");
+  const holderTeamId =
+    entityValue("cargoOrders", cargoId, "holderTeamId");
   return {
     inputs: {
       containerId: { kind: "value-expression" },
@@ -237,7 +249,7 @@ const buildLoadMacro = () => {
             facets: { availability: literal("active") },
             attributes: {
               cargoId: literal(null),
-              nodeId: originNodeId,
+              nodeId: pickupNodeId,
               networkId: entityValue("cargoOrders", cargoId, "networkId")
             }
           },
@@ -245,12 +257,23 @@ const buildLoadMacro = () => {
             op: "predicate.entity.matches",
             entity: { collection: "cargoOrders", entityId: cargoId },
             objectType: "transport.cargo",
-            facets: { status: literal("available") },
-            attributes: { holderTeamId: ownerTeamId }
+            facets: { status: literal("available") }
           },
+          // A selected card is private to its holder. Only a confiscated
+          // wagon releases a card with no holder, allowing this server-derived
+          // wagon owner to become the new holder atomically.
+          any(
+            exists(holderTeamId, false),
+            {
+              op: "predicate.entity.matches",
+              entity: { collection: "cargoOrders", entityId: cargoId },
+              objectType: "transport.cargo",
+              attributes: { holderTeamId: ownerTeamId }
+            }
+          ),
           compare(
             "eq",
-            entityValue("networkNodes", originNodeId, "availability"),
+            entityValue("networkNodes", pickupNodeId, "availability"),
             literal("open")
           ),
           compare(
@@ -266,11 +289,21 @@ const buildLoadMacro = () => {
         kind: "command",
         op: "core.entity.attributes.patch",
         entity: { collection: "wagons", entityId: wagonId },
-        patches: [{
-          operation: "set",
-          path: ["cargoId"],
-          value: cargoId
-        }]
+        patches: [
+          {
+            operation: "set",
+            path: ["cargoId"],
+            value: cargoId
+          },
+          {
+            // Manual-detach billing reads only the public wagon. Copying the
+            // server-owned destination here avoids nullable entity lookups
+            // inside every later bounded train traversal.
+            operation: "set",
+            path: ["manualTariffDestinationNodeId"],
+            value: entityValue("cargoOrders", cargoId, "toNodeId")
+          }
+        ]
       },
       {
         id: "mark-in-transit",
@@ -279,6 +312,33 @@ const buildLoadMacro = () => {
         entity: { collection: "cargoOrders", entityId: cargoId },
         facet: "status",
         value: literal("in_transit")
+      },
+      {
+        // Both ownership and the active carriage leg are derived from public
+        // server state. `fromNodeId` remains the immutable source printed on
+        // the card, while settlement uses the actual pickup point for this
+        // carrier after a possible news № 19 release.
+        id: "record-carrier",
+        kind: "command",
+        op: "core.entity.attributes.patch",
+        entity: { collection: "cargoOrders", entityId: cargoId },
+        patches: [
+          {
+            operation: "set",
+            path: ["carrierWagonId"],
+            value: wagonId
+          },
+          {
+            operation: "set",
+            path: ["holderTeamId"],
+            value: ownerTeamId
+          },
+          {
+            operation: "set",
+            path: ["activeLegFromNodeId"],
+            value: pickupNodeId
+          }
+        ]
       },
       {
         id: "journal",
@@ -292,7 +352,8 @@ const buildLoadMacro = () => {
           cargoId,
           wagonId,
           logisticsTeamId: ownerTeamId,
-          originNodeId,
+          sourceNodeId,
+          pickupNodeId,
           turnNumber: turnNumber()
         }
       }
@@ -319,8 +380,10 @@ const buildDeliveryMacro = () => {
     entityValue("locomotives", locomotiveId, "ownerTeamId");
   const cargoNetworkId =
     entityValue("cargoOrders", cargoId, "networkId");
-  const originNodeId =
+  const sourceNodeId =
     entityValue("cargoOrders", cargoId, "fromNodeId");
+  const activeLegFromNodeId =
+    entityValue("cargoOrders", cargoId, "activeLegFromNodeId");
   const destinationNodeId =
     entityValue("cargoOrders", cargoId, "toNodeId");
   const basePayout =
@@ -393,7 +456,7 @@ const buildDeliveryMacro = () => {
         kind: "algorithm",
         op: "graph.shortestPath",
         networkId: "main",
-        fromNode: originNodeId,
+        fromNode: activeLegFromNodeId,
         toNode: destinationNodeId
       },
       {
@@ -446,7 +509,8 @@ const buildDeliveryMacro = () => {
           locomotiveId,
           logisticsTeamId,
           guildTeamId,
-          originNodeId,
+          originNodeId: sourceNodeId,
+          activeLegFromNodeId,
           destinationNodeId,
           basePayout,
           payoutBonus,
@@ -486,6 +550,10 @@ const buildDeliveryMacro = () => {
           operation: "set",
           path: ["holderTeamId"],
           value: literal(null)
+        }, {
+          operation: "set",
+          path: ["carrierWagonId"],
+          value: literal(null)
         }]
       },
       {
@@ -500,6 +568,22 @@ const buildDeliveryMacro = () => {
           operation: "set",
           path: ["cargoId"],
           value: literal(null)
+        }, {
+          operation: "set",
+          path: ["manualTariffOriginNodeId"],
+          value: literal(null)
+        }, {
+          operation: "set",
+          path: ["manualTariffDestinationNodeId"],
+          value: literal(null)
+        }, {
+          operation: "set",
+          path: ["manualTariffBillableEdgeCount"],
+          value: literal(0)
+        }, {
+          operation: "set",
+          path: ["manualTariffTrackingActive"],
+          value: literal(false)
         }]
       }
     ]
@@ -513,7 +597,7 @@ const buildLoadAction = () => {
       id,
       label: "Загрузить груз",
       semantics:
-        "Загружает выбранный удерживаемый груз в пустой активный вагон той же логистической компании на открытом исходном терминале.",
+        "Загружает доступный груз в пустой активный вагон на открытом терминале; удерживаемый груз доступен только своей компании, а свободный после изъятия вагона получает новый перевозчик.",
       paramsSchema: loadParams
     }),
     plan: {
@@ -744,7 +828,8 @@ const declareEvents = (root) => {
         cargoId: { typeRef: "core.string", optional: false },
         wagonId: { typeRef: "core.string", optional: false },
         logisticsTeamId: { typeRef: "core.string", optional: false },
-        originNodeId: { typeRef: "core.string", optional: false },
+        sourceNodeId: { typeRef: "core.string", optional: false },
+        pickupNodeId: { typeRef: "core.string", optional: false },
         turnNumber: { typeRef: "core.integer", optional: false }
       }
     },
@@ -758,6 +843,7 @@ const declareEvents = (root) => {
         logisticsTeamId: { typeRef: "core.string", optional: false },
         guildTeamId: { typeRef: "core.string", optional: false },
         originNodeId: { typeRef: "core.string", optional: false },
+        activeLegFromNodeId: { typeRef: "core.string", optional: false },
         destinationNodeId: { typeRef: "core.string", optional: false },
         basePayout: { typeRef: "core.integer", optional: false },
         payoutBonus: { typeRef: "core.integer", optional: false },
@@ -939,7 +1025,7 @@ const buildCargoSettlementAuthoring = (sourceAuthoring) => {
       id: "cargo-load",
       label: "Загрузить груз",
       description:
-        "Выберите вагон и удерживаемую карту; владелец, терминал и допустимость проверяются сервером.",
+        "Выберите вагон и доступную карту; владелец, текущий терминал и допустимость проверяются сервером.",
       actionId: "cargo.load",
       phase: "cargo",
       section: "cargo"
@@ -983,6 +1069,13 @@ const buildCargoSettlementAuthoring = (sourceAuthoring) => {
       delivery: ["wagonId"]
     },
     ownerAndRouteSource: "server-state",
+    cargoAvailability: {
+      reservedCard: "only-current-holder-logistics-company",
+      releasedCard: "any-logistics-company-at-availableAtNodeId",
+      printedSourceField: "fromNodeId",
+      currentPickupField: "availableAtNodeId",
+      activeSettlementLegField: "activeLegFromNodeId"
+    },
     tariffPerShortestOpenEdge: 2,
     deliveryOrder: [
       "bank-payout-plus-current-bonus",
@@ -995,13 +1088,14 @@ const buildCargoSettlementAuthoring = (sourceAuthoring) => {
     settlementFinishAllowsUndeliveredCargo: true,
     unresolvedBeforeFullTurn: [
       ...(
-        root.content.data.operatingTurn?.repeatablePhaseCycle
+      root.content.data.operatingTurn?.repeatablePhaseCycle
           ? []
           : ["market-entry-to-cargo"]
-      ),
-      "single-remaining-card-policy"
+      )
     ]
   };
+  const marketReady =
+    root.content.data.operatingTurn?.market?.status === "executable";
   const movementTurn = root.content.data.movementTurn;
   if (movementTurn) {
     movementTurn.status =
@@ -1016,12 +1110,19 @@ const buildCargoSettlementAuthoring = (sourceAuthoring) => {
       && item !== "remaining-market-cargo-selection-construction-and-reporting-workflows"
       && item !== "remaining-market-construction-and-reporting-workflows"
       && item !== "remaining-market-and-reporting-workflows"
+      && item !== "remaining-cargo-selection-construction-and-reporting-workflows"
+      && item !== "remaining-construction-and-reporting-workflows"
+      && item !== "remaining-reporting-workflows"
     );
     for (const item of [
       "publishable-author-confirmed-network-overlay",
       root.content.data.constructionCycle
-        ? "remaining-market-and-reporting-workflows"
-        : "remaining-market-construction-and-reporting-workflows"
+        ? marketReady
+          ? "remaining-reporting-workflows"
+          : "remaining-market-and-reporting-workflows"
+        : marketReady
+          ? "remaining-construction-and-reporting-workflows"
+          : "remaining-market-construction-and-reporting-workflows"
     ]) {
       if (!movementTurn.unresolvedAfterBoundary.includes(item)) {
         movementTurn.unresolvedAfterBoundary.push(item);
@@ -1034,10 +1135,17 @@ const buildCargoSettlementAuthoring = (sourceAuthoring) => {
   blockers.delete(preciseRuntimeBlocker);
   blockers.delete(postConstructionRuntimeBlocker);
   blockers.delete(preConstructionPostCargoPriorityRuntimeBlocker);
+  blockers.delete(postCargoPriorityRuntimeBlocker);
+  blockers.delete(postMarketConstructionRuntimeBlocker);
+  blockers.delete(reportingOnlyRuntimeBlocker);
   blockers.add(
     root.content.data.constructionCycle
-      ? postCargoPriorityRuntimeBlocker
-      : preConstructionPostCargoPriorityRuntimeBlocker
+      ? marketReady
+        ? reportingOnlyRuntimeBlocker
+        : postCargoPriorityRuntimeBlocker
+      : marketReady
+        ? postMarketConstructionRuntimeBlocker
+        : preConstructionPostCargoPriorityRuntimeBlocker
   );
   root.config.runtimeBlockers = [...blockers];
   root.config.runtimeReady = false;

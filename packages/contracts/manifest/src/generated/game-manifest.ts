@@ -435,15 +435,16 @@ export interface GameManifestTransportNetworkModel {
   builtEdgeState: GameManifestObjectFacetValue;
   sequenceEndpoint: GameManifestSafeIdentifier;
   /**
+   * Canonical region polygons. The number of regions is deliberately unbounded: the cost of geometry work scales with the total number of polygon vertices, which stays bounded, and not with how those vertices are grouped into regions. Pairwise work is filtered spatially before it is done and before it is priced, so a map of many small areas is admitted; a real author map of 917 areas with 78 352 vertices is the measured reference.
+   *
    * @minItems 1
-   * @maxItems 512
    */
   regions: [GameManifestTransportRegion, ...GameManifestTransportRegion[]];
   roadPlanning?: GameManifestTransportRoadPlanning;
   movement?: GameManifestTransportMovementModel;
 }
 /**
- * Bounded simple polygon. A final point equal to the first is an optional explicit closure and is not counted as an additional canonical vertex.
+ * Bounded simple polygon with optional inner rings. A final point equal to the first is an optional explicit closure and is not counted as an additional canonical vertex.
  *
  * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
  * via the `definition` "GameManifestTransportRegion".
@@ -451,6 +452,8 @@ export interface GameManifestTransportNetworkModel {
 export interface GameManifestTransportRegion {
   id: string;
   /**
+   * Outer ring of the region.
+   *
    * @minItems 3
    * @maxItems 513
    */
@@ -460,6 +463,17 @@ export interface GameManifestTransportRegion {
     GameManifestCanonicalPoint,
     ...GameManifestCanonicalPoint[]
   ];
+  /**
+   * Inner rings: areas enclosed by the outer ring that do not belong to this region, such as an enclave that is a region of its own. Planning algorithm region-segment-minimum-v2 supports them: the region is split into triangles for path finding, and an inner ring needs no special case there. An enclave and the region around it share one closed border, which is one navigation crossing.
+   *
+   * @maxItems 64
+   */
+  holes?: [
+    GameManifestCanonicalPoint,
+    GameManifestCanonicalPoint,
+    GameManifestCanonicalPoint,
+    ...GameManifestCanonicalPoint[]
+  ][];
 }
 /**
  * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
@@ -470,41 +484,22 @@ export interface GameManifestCanonicalPoint {
   y: number;
 }
 /**
- * Explicit opt-in contract for authoritative minimum-region road planning. The navigation graph and hash are compiler-derived from canonical region polygons.
+ * Explicit opt-in contract for authoritative minimum-region road planning (ADR-100). Only the region polygons and one checksum are declared here. The navigation graph — which pairs of regions border each other and along which line — is derived from the polygons by runtime and is deliberately not stored: it carries no information the polygons do not already carry, and on a real author map it was larger than the polygons themselves. geometryHash is the proof that the package publisher derived the same graph from the same polygons; runtime derives the graph again on load and refuses the package if the checksum differs. Derive geometryHash with the shared map-annotation pipeline rather than by hand.
  *
  * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
  * via the `definition` "GameManifestTransportRoadPlanning".
  */
 export interface GameManifestTransportRoadPlanning {
   mode: "region-segment-minimum";
-  algorithmVersion: "region-segment-minimum-v1";
+  algorithmVersion: "region-segment-minimum-v2";
   geometryVersion: string;
   geometryHash: string;
-  tieBreak: "session-random";
+  /**
+   * Version 2 has nothing left to decide by chance: the corridor is chosen by a deterministic search and the line inside it is unique. The shorter line wins; an exact tie is broken by codepoint order of the point list.
+   */
+  tieBreak: "shortest-then-codepoint";
   boundaryPolicy: "lowest-region-id";
   excludedRegionIdsEndpoint?: GameManifestSafeIdentifier;
-  navigationGraph: {
-    /**
-     * @maxItems 4096
-     */
-    portals: GameManifestTransportRoadPortal[];
-  };
-}
-/**
- * One compiler-derived positive-length shared boundary between two transport regions.
- *
- * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
- * via the `definition` "GameManifestTransportRoadPortal".
- */
-export interface GameManifestTransportRoadPortal {
-  id: string;
-  /**
-   * @minItems 2
-   * @maxItems 2
-   */
-  regionIds: [string, string];
-  from: GameManifestCanonicalPoint;
-  to: GameManifestCanonicalPoint;
 }
 /**
  * Declarative rules for moving authoritative vehicles through one network edge.

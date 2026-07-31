@@ -1,8 +1,8 @@
 # ADR-039: Player-web Plugin Bundle Handoff
 
 - **Дата**: 2026-05-29
-- **Актуализировано**: 2026-07-13 — пример и политика версии синхронизированы с текущим API 2.0
-- **Статус**: Accepted; local editor preview and production/published handoff implemented for trusted project-local `player-web` plugins
+- **Актуализировано**: 2026-07-13
+- **Статус**: Accepted
 - **Авторы**: Codex
 - **Компоненты**: Editor Web, Player Web, Runtime API, Game Projects, Plugin Validation
 - **Связанные решения**: ADR-019, ADR-026, ADR-036, ADR-037
@@ -21,19 +21,25 @@
 
 ## 1. Понимание решения
 
-Решение понято так: ADR-037 уже определил, что пользовательские плагины должны жить в `games/<gameId>/plugins/<pluginId>/`, а первый этап поддерживает только доверенные локальные `player-web` плагины без npm-зависимостей. Однако для реализации hot preview reload нужно дополнительно зафиксировать, как код плагина попадает в браузерный `player-web` без перезапуска dev-сервера и без загрузки editor worktree кода в production player.
+Решение понято так: ADR-037 уже определил, что пользовательские плагины должны
+жить в `games/<gameId>/plugins/<pluginId>/`. Поддерживаемая граница допускает
+только доверенные project-local `player-web` плагины без npm-зависимостей и
+должна явно определять безопасную передачу browser bundle для preview и
+production.
 
 Этот ADR фиксирует две границы:
 
-1. Local preview: `editor-web` собирает session-scoped browser bundle для `player-web`, `runtime-api` регистрирует ссылку на него внутри существующей `contentSourceId` границы, а `player-web` загружает такой bundle только в editor preview mode. Этот baseline реализован 2026-05-30.
+1. Local preview: `editor-web` собирает session-scoped browser bundle для `player-web`, `runtime-api` регистрирует ссылку на него внутри существующей `contentSourceId` границы, а `player-web` загружает такой bundle только в editor preview mode.
 2. Production/published: publish pipeline выпускает неизменяемый bundle с content hash, кладет ссылку на него в published content metadata, а `runtime-api` отдает эту ссылку в обычном `PlayerFacingContent` без `contentSourceId`. Production player загружает только published bundle references, а не editor worktree и не project source files.
 
 ## 2. Контекст
 
-До production handoff `player-web` использовал статический local bridge `@/plugins/register-games`, который вызывал `activate(api)` у project-local плагина. До миграции такой подход напрямую импортировал платформенный каталог с кодом конкретной игры. Оба варианта были недостаточны как целевая модель ADR-037 и теперь заменены bundle handoff:
+Статический импорт project-local плагина из платформенного приложения не
+соответствует целевой модели ADR-037:
 
 - session worktree находится под `.tmp/editor-worktrees/<sessionId>/`, а не в исходниках `apps/player-web`;
-- `contentSourceId` сейчас передает generated manifests через `runtime-api`, но не передает исполняемый клиентский код;
+- `contentSourceId` передаёт generated manifests через Runtime API, но не
+  исполняемый клиентский код;
 - статический импорт из `apps/player-web` не увидит изменения plugin source внутри session worktree и привязывает платформенный код к конкретной игре;
 - копирование session plugin source в `apps/player-web/src` нарушило бы session boundary и рисковало бы попасть в production build;
 - runtime-api не должен исполнять `player-web` plugin code, потому что first-class backend plugins требуют отдельного ADR.
@@ -66,14 +72,15 @@ Context7 по Next.js подтверждает, что Next dev умеет hot r
    - runtime-api exposes a bundle reference with `contentHash`;
    - `player-web` invalidates dynamic import by URL with hash query and remounts the game config.
 8. npm dependencies в project-local plugins остаются запрещенными. Bundle builder должен разрешать только platform-provided API facade and plugin-local relative imports.
-9. `simple-choice` не объявляет plugins и продолжает идти через default manifest-driven path.
-10. Antarctica живет в `games/antarctica/plugins/antarctica-player`; runtime behavior подключается через session/published bundle handoff без статической регистрации в `apps/player-web`.
+9. Игра без плагинов продолжает использовать default manifest-driven path.
+10. Project-local plugin подключается через session/published bundle handoff без
+    статической регистрации конкретной игры в `apps/player-web`.
 
 ## 5. Production Published Handoff
 
 Production handoff uses the same browser activation shape as preview: the bundle exports `activate(api)`, and `player-web` calls it with `PlayerPluginApi`. The difference is the source of the bundle reference.
 
-Implemented flow:
+Normative flow:
 
 ```text
 Publish game version
@@ -88,42 +95,43 @@ Publish game version
   -> activate(api) registers config/resolvers
 ```
 
-Published metadata is generated, not hand-written runtime manifest data. The implemented shape is:
+Published metadata is generated, not hand-written runtime manifest data. Минимальная форма контракта:
 
 ```json
 {
   "schemaVersion": "1.0",
   "bundles": [
     {
-      "pluginId": "antarctica-player",
-      "gameId": "antarctica",
+      "pluginId": "example-player",
+      "gameId": "example-game",
       "apiVersion": "2.0",
       "target": "player-web",
       "scope": "published",
       "contentHash": "64-char-sha256-hex",
       "integrity": "sha256-base64-digest",
-      "filePath": "published/antarctica-player.64-char-sha256-hex.mjs",
-      "url": "/published-plugin-bundles/antarctica/antarctica-player/64-char-sha256-hex.mjs"
+      "filePath": "published/example-player.64-char-sha256-hex.mjs",
+      "url": "/published-plugin-bundles/example-game/example-player/64-char-sha256-hex.mjs"
     }
   ]
 }
 ```
 
-Implementation rules:
+Архитектурные ограничения:
 
-1. The first implementation serves published bundles through `runtime-api`. A CDN or object storage origin can replace the storage backend later if it preserves immutable URLs and the same metadata contract.
+1. Runtime API может отдавать published bundles непосредственно; CDN или
+   object storage допустимы при сохранении неизменяемых URL и того же metadata
+   contract.
 2. Bundle URLs must be content-addressed: the hash in metadata and filename identifies the exact bytes. Existing bundle bytes are never overwritten.
 3. `runtime-api` must verify that a published bundle file path stays inside the published artifact root and that the served bytes match `contentHash`.
-4. Published bundle responses should use `Cache-Control: public, max-age=31536000, immutable`. The metadata that points to bundles should remain revalidated with the game content response.
+4. Published bundle responses используют долгоживущее неизменяемое
+   кэширование; metadata со ссылками перепроверяется вместе с игровым контентом.
 5. `player-web` must not import project source files for production plugins. It should use one loader for preview and published bundles, with explicit scope checks.
 6. `PlayerWebPluginBundleReference` has an explicit `scope: "preview" | "published"`. Preview references are `scope: "preview"`; published references are `scope: "published"`.
-7. Supported API versions are exact and explicit: `player-web` currently supports
-   only `apiVersion: "2.0"`, matching the bundle builder, browser loader and all
-   published game plugins. Unsupported versions fail validation before publish
-   and fail closed in the browser if somehow delivered. The former `1.0` example
-   is historical and is not an accepted runtime version.
+7. Supported API versions are exact and explicit: принята версия
+   `apiVersion: "2.0"`. Unsupported versions fail validation before publish and
+   fail closed in the browser if somehow delivered.
 8. npm dependencies remain forbidden for project-local plugins until verified dependency policy exists. The published bundle builder may include only relative plugin files and platform-provided facade imports.
-9. The temporary static local bridge in `apps/player-web/src/plugins/register-games.ts` is removed. Antarctica non-preview mode uses the published bundle reference.
+9. A static registry of concrete games is not an accepted production fallback.
 
 ## 6. Best Practices Used
 
@@ -162,7 +170,9 @@ References:
 
 ### E. Записывать production bundle URL прямо в `game.manifest.json`
 
-Отклоняется для первого production среза. Runtime game manifest должен описывать игру, а published artifact metadata должна описывать результат сборки. Это разделение не смешивает authoring/runtime semantics с конкретным CDN или file layout.
+Отклоняется для целевой границы. Runtime game manifest описывает игру, а
+published artifact metadata — результат сборки. Это разделение не смешивает
+authoring/runtime semantics с конкретным CDN или file layout.
 
 ### F. Использовать Module Federation как основной механизм
 
@@ -182,7 +192,6 @@ References:
 
 - нужен platform-owned plugin bundle builder;
 - нужен стабильный `Player plugin API facade`, чтобы плагины не импортировали private app modules;
-- Antarctica migration уже адаптировала старые imports к facade/contribution contract; production player now uses the published bundle instead of a static bridge;
 - published metadata and artifact storage add one more generated artifact class;
 - `apiVersion` policy becomes a publish blocker instead of an informal field;
 - optional CDN delivery requires origin allowlist, immutable URL discipline and cache invalidation only for metadata, not bundle files.
@@ -191,6 +200,3 @@ References:
 
 - `docs/architecture/adrs/037-project-local-plugins-and-marketplace-safe-evolution.md`
 - `docs/architecture/adrs/036-semantic-authoring-and-preview-timeline-editor.md`
-- `docs/tasks/archive/TSK-20260531-player-web-published-plugin-bundle-handoff.md`
-- `docs/tasks/archive/TSK-20260527-editor-engine-preview-timeline-editor.md`
-- `docs/tasks/artifacts/TSK-20260527-editor-engine-preview-timeline-editor/execution-matrix.md`

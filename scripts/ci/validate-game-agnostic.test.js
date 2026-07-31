@@ -15,7 +15,8 @@ const { afterEach, test } = require("node:test");
 
 const {
   collectGameManifestComponentIds,
-  findGlobalStyleGameLeaks
+  findGlobalStyleGameLeaks,
+  stripCssComments
 } = require("./validate-game-agnostic.js");
 
 const tempRoots = [];
@@ -68,6 +69,56 @@ test("does not confuse hex colors with forbidden id-selectors", () => {
   const css = ":root { --text: #f4fbff; } #btn-journal-extended { color: #btn; }";
   const leaks = findGlobalStyleGameLeaks(css, new Set(["btn-journal", "f4"]));
   assert.deepEqual(leaks, []);
+});
+
+test("a comment is not a rule and cannot be a leak", () => {
+  // Every detector had read comments as if they were rules. That turned the
+  // guard against its own documentation: the sentence recording that a game's
+  // styling had been moved out to the game theme was itself reported as that
+  // game leaking in, and the check stayed red while the boundary was intact.
+  const css = `
+    /* Antarctica card styling (🐧, url("/images/penguin.png"), #btn-journal)
+       was moved out of platform globals into games/antarctica/assets/styles
+       per ADR-091. Only the generic container grid below stays here. */
+    .cards-container { display: grid; gap: 20px; }
+  `;
+  assert.deepEqual(findGlobalStyleGameLeaks(css, new Set(["btn-journal"])), []);
+});
+
+test("the same content outside a comment is still a leak", () => {
+  // The counterpart of the test above: removing comments must not remove the
+  // guard. Written as a rule, each signal is reported exactly as before.
+  const css = `
+    .deco::after { content: "🐧"; background-image: url("/images/penguin.png"); }
+    #btn-journal { color: red; }
+  `;
+  const leaks = findGlobalStyleGameLeaks(css, new Set(["btn-journal"])).join("\n");
+  assert.match(leaks, /url\("\/images\/penguin\.png"\)/u);
+  assert.match(leaks, /decorative emoji/u);
+  assert.match(leaks, /#btn-journal/u);
+});
+
+test("stripCssComments leaves rules alone and does not join what it separates", () => {
+  assert.equal(stripCssComments(".a { color: red; }"), ".a { color: red; }");
+  // Without a separator in place of the comment, ".a" and "{ color: red; }"
+  // would fuse into a selector nobody wrote.
+  assert.match(stripCssComments(".a/* note */{ color: red; }"), /^\.a\s*\{ color: red; \}$/u);
+  assert.equal(stripCssComments("/* only a comment */").trim(), "");
+  // An unterminated comment swallows the rest of the file rather than leaving
+  // half a comment to be read as a rule.
+  assert.equal(stripCssComments(".a { }/* oops").trim(), ".a { }");
+});
+
+test("stripCssComments does not mistake a comment marker inside a string", () => {
+  // `content: "/*"` is a legal declaration. Treating its quoted text as the
+  // start of a comment would silently delete the rules that follow — the guard
+  // would then pass on a stylesheet it never actually looked at.
+  const css = '.a::before { content: "/*"; } #btn-journal { color: red; }';
+  assert.equal(stripCssComments(css), css);
+  assert.match(
+    findGlobalStyleGameLeaks(css, new Set(["btn-journal"])).join("\n"),
+    /#btn-journal/u
+  );
 });
 
 test("collectGameManifestComponentIds gathers css-safe ids and skips dotted meta ids", () => {

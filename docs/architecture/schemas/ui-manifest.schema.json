@@ -641,6 +641,14 @@
             "properties": {
               "props": {
                 "type": "object",
+                "properties": {
+                  "backText": {
+                    "description": "Public content of the card's back face. When this field is present and visualState resolves to 'resolved', the common card renderer shows this content as the active face."
+                  },
+                  "visualState": {
+                    "description": "Presenter-derived visual state. The value 'resolved' shows backText when backText is present; this presentation state does not itself perform a game action or reveal secret server data."
+                  }
+                },
                 "anyOf": [
                   {
                     "required": ["text"],

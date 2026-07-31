@@ -24,7 +24,7 @@
   },
   "placement": {
     "controller": "facilitator",
-    "teamOrder": "server-seeded-random",
+    "teamOrder": "server-random",
     "allowedTargets": "open terminals on the main technical network",
     "maximumLocomotivesPerTerminal": 2,
     "teamAdvancesAfterAllOwnedReserveAssetsPlaced": true

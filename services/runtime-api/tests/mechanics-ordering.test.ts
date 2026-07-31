@@ -16,7 +16,6 @@ import {
   MechanicsExecutionError
 } from "../src/modules/mechanics/index.ts";
 import { requireSelection } from "../src/modules/mechanics/coreOperations.ts";
-import { createSessionRandomStreamsState } from "../src/modules/runtime/sessionRandom.ts";
 
 const require = createRequire(import.meta.url);
 const { recommendedModuleLockForOperations } = require(
@@ -33,7 +32,6 @@ const { mechanicsSha256 } = require(
 };
 
 const HASH = `sha256:${"0".repeat(64)}`;
-const SEED = "0123456789abcdeffedcba9876543210";
 
 const collectionField = (
   name: string,
@@ -219,12 +217,12 @@ function createOrderingMechanics(): CubicaMechanicsIRV1Alpha1 {
         source: { kind: "current-field", field: "rank" },
         direction: "ascending",
         missing: "error"
-      }], { kind: "seeded-random", stream: "fixture.order" }),
+      }], { kind: "server-random", stream: "fixture.order" }),
       seededWithoutTies: orderingPlan([{
         source: { kind: "current-field", field: "sequence" },
         direction: "ascending",
         missing: "error"
-      }], { kind: "seeded-random", stream: "fixture.order" }),
+      }], { kind: "server-random", stream: "fixture.order" }),
       missingError: orderingPlan([{
         source: {
           kind: "related-field",
@@ -234,9 +232,18 @@ function createOrderingMechanics(): CubicaMechanicsIRV1Alpha1 {
         },
         direction: "ascending",
         missing: "error"
-      }], { kind: "seeded-random", stream: "fixture.order" })
+      }], { kind: "server-random", stream: "fixture.order" })
     }
   } as unknown as CubicaMechanicsIRV1Alpha1;
+
+  mechanics.plans.seededThenFail = structuredClone(mechanics.plans.seededTies);
+  mechanics.plans.seededThenFail.transaction.steps.push({
+    id: "reject-after-random",
+    kind: "assert",
+    op: "core.assert",
+    predicate: { op: "predicate.constant", value: false },
+    errorCode: "FIXTURE_REJECT_AFTER_RANDOM"
+  });
 
   const operations = Object.values(mechanics.plans)
     .flatMap((plan) => plan.transaction.steps.map((step) => step.op));
@@ -277,8 +284,6 @@ const measurement = (
 });
 
 function createOrderingState(): Record<string, unknown> {
-  const random = createSessionRandomStreamsState(SEED);
-  random.counters["fixture.other"] = 7;
   return {
     public: {
       entities: {
@@ -314,20 +319,22 @@ function createOrderingState(): Record<string, unknown> {
         "measurement-4": measurement("delta", -1)
       }
     },
-    secret: { random }
+    secret: {}
   };
 }
 
 function executePlan(
   planId: keyof ReturnType<typeof createOrderingMechanics>["plans"],
-  state = createOrderingState()
+  state = createOrderingState(),
+  sampleRange: (exclusiveUpperBound: number) => number = () => 0
 ) {
   const mechanics = createOrderingMechanics();
   return executeMechanicsTransaction({
     mechanics,
     plan: mechanics.plans[String(planId)],
     state,
-    actorContext: { sessionRole: "player" }
+    actorContext: { sessionRole: "player" },
+    random: { sampleRange }
   });
 }
 
@@ -391,7 +398,7 @@ test("finite-number ordering preserves close binary64 values and exact ties", ()
   );
 });
 
-test("seeded ties are reproducible, stay inside complete-tie groups and isolate streams", () => {
+test("injected live randomness stays inside complete-tie groups", () => {
   const first = executePlan("seededTies");
   const second = executePlan("seededTies");
   const firstResult = first.result as { ids: Array<string>; tieGroups: Array<Array<string>> };
@@ -399,40 +406,36 @@ test("seeded ties are reproducible, stay inside complete-tie groups and isolate 
   assert.deepEqual(first.result, second.result);
   assert.deepEqual(firstResult.tieGroups, [["alpha", "bravo", "charlie"]]);
   assert.equal(firstResult.ids.at(-1), "delta", "a non-tied entity must not cross its key boundary");
-  assert.equal(first.randomState?.counters["fixture.other"], 7);
-  assert.equal(first.randomState?.counters["fixture.order"], 2);
+  assert.equal("random" in (first.candidateState.secret as Record<string, unknown>), false);
 });
 
-test("seeded mode without a complete tie neither reads nor persists its random stream", () => {
+test("random tie-breaking without a complete tie does not sample", () => {
   const original = createOrderingState();
-  const output = executePlan("seededWithoutTies", original);
+  let samplerCalls = 0;
+  const output = executePlan("seededWithoutTies", original, () => {
+    samplerCalls += 1;
+    return 0;
+  });
 
   assert.deepEqual(output.candidateState, original);
-  assert.equal(output.randomState, undefined);
-  assert.deepEqual(
-    ((output.candidateState.secret as Record<string, unknown>).random as { counters: Record<string, number> }).counters,
-    { "fixture.other": 7 }
-  );
+  assert.equal(samplerCalls, 0);
 });
 
-test("an error before tie breaking rolls back and leaves the random counters untouched", () => {
+test("a failed transaction after tie breaking leaves its input state untouched", () => {
   const original = createOrderingState();
-  const entities = (original.public as {
-    entities: Record<string, { attributes: Record<string, unknown> }>;
-  }).entities;
-  entities.charlie.attributes.ownerRef = "owner-missing";
   const snapshot = structuredClone(original);
   const mechanics = createOrderingMechanics();
 
   assert.throws(
     () => executeMechanicsTransaction({
       mechanics,
-      plan: mechanics.plans.missingError,
+      plan: mechanics.plans.seededThenFail,
       state: original,
-      actorContext: { sessionRole: "player" }
+      actorContext: { sessionRole: "player" },
+      random: { sampleRange: () => 0 }
     }),
     (error) => error instanceof MechanicsExecutionError &&
-      error.code === "MECHANICS_ORDER_VALUE_MISSING"
+      error.code === "FIXTURE_REJECT_AFTER_RANDOM"
   );
   assert.deepEqual(original, snapshot);
 });

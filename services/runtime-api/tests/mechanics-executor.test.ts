@@ -26,17 +26,14 @@ import {
   readCollectionField,
   writeCollectionField
 } from "../src/modules/mechanics/stateModel.ts";
-import { createSessionRandomStreamsState } from "../src/modules/runtime/sessionRandom.ts";
 
 const require = createRequire(import.meta.url);
 const {
-  MAX_SESSION_RANDOM_STREAMS,
   hashMechanicsCorpus,
   hashModuleArtifact,
   recommendedModuleLock,
   recommendedModuleLockForOperations
 } = require("../../../scripts/manifest-tools/mechanics-modules.cjs") as {
-  MAX_SESSION_RANDOM_STREAMS: number;
   hashMechanicsCorpus: (entries: Array<{ name: string; bytes: Uint8Array | string }>) => string;
   hashModuleArtifact: (descriptor: Record<string, unknown>, executionCorpusHash: string) => string;
   recommendedModuleLock: (moduleIds: Array<string>) => CubicaMechanicsIRV1Alpha1["moduleLock"];
@@ -251,46 +248,6 @@ function finalizePlanHashes(
 
 const isSemanticError = (error: unknown, code: string): boolean =>
   typeof error === "object" && error !== null && "code" in error && error.code === code;
-
-test("publication rejects aggregate named random streams beyond runtime capacity", () => {
-  const mechanics = createMechanics();
-  mechanics.moduleLock = recommendedModuleLock(["cubica.core", "cubica.deck"]);
-
-  // Five small neutral plans prove that the bound covers the union across
-  // actions, not merely the per-plan step limit. The checker rejects the first
-  // stream that runtime could not persist in its shared session counter map.
-  const stepsPerPlan = 512;
-  const streamCount = MAX_SESSION_RANDOM_STREAMS + 1;
-  for (let planIndex = 0; planIndex < Math.ceil(streamCount / stepsPerPlan); planIndex += 1) {
-    const firstStreamIndex = planIndex * stepsPerPlan;
-    const planSteps = Array.from(
-      { length: Math.min(stepsPerPlan, streamCount - firstStreamIndex) },
-      (_, localIndex) => {
-        const streamIndex = firstStreamIndex + localIndex;
-        return {
-          id: `shuffle-${streamIndex}`,
-          kind: "command" as const,
-          op: "deck.shuffle" as const,
-          deckId: `deck-${streamIndex}`,
-          sourceCollection: "pieces",
-          stream: `stream-${streamIndex}`
-        };
-      }
-    );
-    const [firstStep, ...remainingSteps] = planSteps;
-    assert.ok(firstStep, "every generated random-stream plan must contain a step");
-    mechanics.plans[`random-streams-${planIndex}`] = {
-      planHash: HASH,
-      transaction: { steps: [firstStep, ...remainingSteps] }
-    };
-  }
-  finalizePlanHashes(mechanics);
-
-  assert.throws(
-    () => checkMechanicsBundle(mechanics),
-    (error) => isSemanticError(error, "MECHANICS_RANDOM_STREAM_LIMIT_EXCEEDED")
-  );
-});
 
 const createState = () => ({
   public: {
@@ -1830,44 +1787,35 @@ test("module corpus identity changes when one executable source byte changes", (
   );
 });
 
-test("additional deck.news consumption cannot change the independent deck.cargo shuffle", () => {
+test("deck shuffle uses bounded live samples without persisting generator state", () => {
   const mechanics = createIndependentDeckMechanics();
   const original = createIndependentDeckState();
+  const snapshot = structuredClone(original);
+  const requestedRanges: Array<number> = [];
 
-  const cargoWithoutNews = executeMechanicsTransaction({
+  const shuffled = executeMechanicsTransaction({
     mechanics,
     plan: mechanics.plans.shuffleCargo,
     state: original,
-    actorContext: { sessionRole: "player" }
-  });
-  const newsOnce = executeMechanicsTransaction({
-    mechanics,
-    plan: mechanics.plans.shuffleNews,
-    state: original,
-    actorContext: { sessionRole: "player" }
-  });
-  const newsTwice = executeMechanicsTransaction({
-    mechanics,
-    plan: mechanics.plans.shuffleNews,
-    state: newsOnce.candidateState,
-    actorContext: { sessionRole: "player" }
-  });
-  const cargoAfterExtraNews = executeMechanicsTransaction({
-    mechanics,
-    plan: mechanics.plans.shuffleCargo,
-    state: newsTwice.candidateState,
-    actorContext: { sessionRole: "player" }
+    actorContext: { sessionRole: "player" },
+    random: {
+      sampleRange: (range) => {
+        requestedRanges.push(range);
+        return 0;
+      }
+    }
   });
 
-  const withoutNewsSecret = cargoWithoutNews.candidateState.secret as any;
-  const afterNewsSecret = cargoAfterExtraNews.candidateState.secret as any;
-  assert.deepEqual(afterNewsSecret.decks.cargo, withoutNewsSecret.decks.cargo);
-  assert.equal(afterNewsSecret.random.counters["deck.cargo"], withoutNewsSecret.random.counters["deck.cargo"]);
-  assert.ok(afterNewsSecret.random.counters["deck.news"] > 0, "the control branch must really consume news randomness");
-  assert.deepEqual(original, createIndependentDeckState(), "all comparison branches must preserve their input snapshots");
+  const shuffledSecret = shuffled.candidateState.secret as any;
+  assert.deepEqual([...shuffledSecret.decks.cargo.order].sort(), [
+    "c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8"
+  ]);
+  assert.deepEqual(requestedRanges, [8, 7, 6, 5, 4, 3, 2]);
+  assert.equal("random" in shuffledSecret, false);
+  assert.deepEqual(original, snapshot, "the transaction must preserve its input snapshot");
 });
 
-test("the Mechanics schema rejects random stream ids that are unsafe persisted map keys", () => {
+test("the Mechanics schema rejects unsafe random purpose identifiers", () => {
   const mechanics = createIndependentDeckMechanics();
   const step = mechanics.plans.shuffleNews.transaction.steps[0];
   assert.equal(step.op, "deck.shuffle");
@@ -2481,7 +2429,6 @@ function createIndependentDeckState(): Record<string, unknown> {
   return {
     public: {},
     secret: {
-      random: createSessionRandomStreamsState("0123456789abcdeffedcba9876543210"),
       decks: {},
       cards: {
         news: Object.fromEntries(Array.from({ length: 8 }, (_, index) => `n${index + 1}`)

@@ -17,6 +17,26 @@ import { fileURLToPath } from "node:url";
 
 import AjvImport from "ajv";
 
+// Road-planning geometry (which regions border each other, and along which
+// line — see ADR-100) is imported from the runtime module rather than
+// re-derived here. The checksum this tool writes at publish time and the
+// checksum runtime recomputes at load time must agree exactly, forever: two
+// implementations of the same derivation are two things that can drift apart,
+// one implementation cannot. Node 22 strips TypeScript types at import time
+// (no flag, no build step needed — the `import type` in the source module is
+// erased entirely, so the runtime-only workspace package it names is never
+// actually resolved), which is what makes importing a `.ts` file straight
+// from this `.mjs` script possible.
+import {
+  canonicalizeRoadPlanningRegions,
+  computeRegionRoadPlanningHash,
+  deriveRegionCrossings,
+  REGION_ROAD_BOUNDARY_POLICY,
+  REGION_ROAD_PLANNING_ALGORITHM,
+  REGION_ROAD_PLANNING_MODE,
+  REGION_ROAD_TIE_BREAK
+} from "../../services/runtime-api/src/modules/runtime/regionRoadGeometry.ts";
+
 const Ajv = AjvImport.default ?? AjvImport;
 const moduleFile = fileURLToPath(import.meta.url);
 const repoRoot = path.resolve(path.dirname(moduleFile), "..", "..");
@@ -121,142 +141,247 @@ const segmentsProperlyIntersect = (a, b, c, d) => {
       (cdA < -GEOMETRY_EPSILON && cdB > GEOMETRY_EPSILON));
 };
 
+/**
+ * Exact spatial prefilter for pairwise geometry work.
+ *
+ * Both the overlap check and the portal derivation ask the same question of
+ * every pair of regions, and then of every pair of their sides. Asking it of
+ * all pairs is quadratic: a map of nine hundred regions with eighty thousand
+ * vertices would need about three billion segment comparisons, which is hours
+ * of work for a result that is almost entirely "these two are nowhere near
+ * each other".
+ *
+ * The prefilter removes exactly those pairs and nothing else. Two shapes whose
+ * axis-aligned bounds do not touch cannot overlap and cannot share a boundary,
+ * so skipping them cannot change the answer. This is important: the derived
+ * navigation graph is fixed by its hash, so an acceleration is only allowed if
+ * it is exact. No tolerance, no "close enough" merging of nearby borders — the
+ * bounds are compared with the same epsilon the geometry itself uses, and every
+ * surviving pair is still tested exactly as before.
+ *
+ * Pairs are found by sweeping along the x axis: shapes are visited in order of
+ * their left edge, and a shape leaves the active set as soon as its right edge
+ * falls behind the current left edge. Only shapes that are simultaneously
+ * active can touch, and a cheap comparison of the y ranges removes the rest.
+ */
+const boundsOfPoints = (points) => {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const point of points) {
+    if (point.x < minX) minX = point.x;
+    if (point.x > maxX) maxX = point.x;
+    if (point.y < minY) minY = point.y;
+    if (point.y > maxY) maxY = point.y;
+  }
+  return { minX, minY, maxX, maxY };
+};
+
+/** Sides of a closed polygon, each with its own bounds. */
+const polygonSidesWithBounds = (polygon) => polygon.map((point, index) => {
+  const next = polygon[(index + 1) % polygon.length];
+  return { from: point, to: next, bounds: boundsOfPoints([point, next]) };
+});
+
+const boundsOverlapInY = (left, right) =>
+  left.minY - GEOMETRY_EPSILON <= right.maxY && right.minY - GEOMETRY_EPSILON <= left.maxY;
+
+/** Every unordered pair of items whose bounds touch, each pair reported once. */
+const touchingSelfPairs = (items) => {
+  const order = items
+    .map((item, index) => ({ index, bounds: item.bounds }))
+    .sort((left, right) => left.bounds.minX - right.bounds.minX || left.index - right.index);
+  const pairs = [];
+  let active = [];
+  for (const item of order) {
+    active = active.filter((other) => other.bounds.maxX >= item.bounds.minX - GEOMETRY_EPSILON);
+    for (const other of active) {
+      if (!boundsOverlapInY(item.bounds, other.bounds)) continue;
+      pairs.push(item.index < other.index
+        ? [item.index, other.index]
+        : [other.index, item.index]);
+    }
+    active.push(item);
+  }
+  return pairs;
+};
+
+/** Every pair of items from two different sets whose bounds touch. */
+const touchingCrossPairs = (left, right) => {
+  const order = [
+    ...left.map((item, index) => ({ side: 0, index, bounds: item.bounds })),
+    ...right.map((item, index) => ({ side: 1, index, bounds: item.bounds }))
+  ].sort((first, second) =>
+    first.bounds.minX - second.bounds.minX || first.side - second.side || first.index - second.index);
+  const pairs = [];
+  let active = [];
+  for (const item of order) {
+    active = active.filter((other) => other.bounds.maxX >= item.bounds.minX - GEOMETRY_EPSILON);
+    for (const other of active) {
+      if (other.side === item.side) continue;
+      if (!boundsOverlapInY(item.bounds, other.bounds)) continue;
+      pairs.push(item.side === 0 ? [item.index, other.index] : [other.index, item.index]);
+    }
+    active.push(item);
+  }
+  return pairs;
+};
+
 /** Reject ambiguous interior overlaps instead of guessing which region owns them. */
 const assertRegionsDoNotOverlap = (regions) => {
-  for (let leftIndex = 0; leftIndex < regions.length; leftIndex += 1) {
-    const left = regions[leftIndex];
-    const leftClosed = closedCanonicalPolygon(left.polygon);
-    for (let rightIndex = leftIndex + 1; rightIndex < regions.length; rightIndex += 1) {
-      const right = regions[rightIndex];
-      const rightClosed = closedCanonicalPolygon(right.polygon);
-      const leftSamples = left.polygon.flatMap((point, index) => {
-        const next = left.polygon[(index + 1) % left.polygon.length];
-        return [point, { x: (point.x + next.x) / 2, y: (point.y + next.y) / 2 }];
-      });
-      const rightSamples = right.polygon.flatMap((point, index) => {
-        const next = right.polygon[(index + 1) % right.polygon.length];
-        return [point, { x: (point.x + next.x) / 2, y: (point.y + next.y) / 2 }];
-      });
-      if (JSON.stringify(left.polygon) === JSON.stringify(right.polygon) ||
-          leftSamples.some((point) => pointStrictlyInPolygon(point, rightClosed)) ||
-          rightSamples.some((point) => pointStrictlyInPolygon(point, leftClosed))) {
-        fail(`regions "${left.id}" and "${right.id}" overlap`);
-      }
-      for (let leftSide = 0; leftSide < left.polygon.length; leftSide += 1) {
-        const a = left.polygon[leftSide];
-        const b = left.polygon[(leftSide + 1) % left.polygon.length];
-        for (let rightSide = 0; rightSide < right.polygon.length; rightSide += 1) {
-          const c = right.polygon[rightSide];
-          const d = right.polygon[(rightSide + 1) % right.polygon.length];
-          if (segmentsProperlyIntersect(a, b, c, d)) {
-            fail(`regions "${left.id}" and "${right.id}" cross each other`);
-          }
-        }
+  const prepared = regions.map((region) => ({
+    region,
+    closed: closedCanonicalPolygon(region.polygon),
+    sides: polygonSidesWithBounds(region.polygon),
+    bounds: boundsOfPoints(region.polygon),
+    samples: region.polygon.flatMap((point, index) => {
+      const next = region.polygon[(index + 1) % region.polygon.length];
+      return [point, { x: (point.x + next.x) / 2, y: (point.y + next.y) / 2 }];
+    })
+  }));
+  // Regions whose bounds do not touch cannot overlap, so only touching pairs
+  // are examined. The examination itself is unchanged.
+  for (const [leftIndex, rightIndex] of touchingSelfPairs(prepared)) {
+    const left = prepared[leftIndex];
+    const right = prepared[rightIndex];
+    if (JSON.stringify(left.region.polygon) === JSON.stringify(right.region.polygon) ||
+        left.samples.some((point) => pointStrictlyInPolygon(point, right.closed)) ||
+        right.samples.some((point) => pointStrictlyInPolygon(point, left.closed))) {
+      fail(`regions "${left.region.id}" and "${right.region.id}" overlap`);
+    }
+    for (const [leftSideIndex, rightSideIndex] of touchingCrossPairs(left.sides, right.sides)) {
+      const leftSide = left.sides[leftSideIndex];
+      const rightSide = right.sides[rightSideIndex];
+      if (segmentsProperlyIntersect(leftSide.from, leftSide.to, rightSide.from, rightSide.to)) {
+        fail(`regions "${left.region.id}" and "${right.region.id}" cross each other`);
       }
     }
   }
 };
-
-const pointAtAxisValue = (start, end, axis, value) => {
-  const delta = end[axis] - start[axis];
-  const t = Math.abs(delta) < GEOMETRY_EPSILON ? 0 : (value - start[axis]) / delta;
-  return {
-    x: start.x + (end.x - start.x) * t,
-    y: start.y + (end.y - start.y) * t
-  };
-};
-
-/** Return the positive-length collinear overlap of two boundary sides. */
-const sharedBoundaryPart = (a, b, c, d) => {
-  if (Math.abs(cross(a, b, c)) >= GEOMETRY_EPSILON ||
-      Math.abs(cross(a, b, d)) >= GEOMETRY_EPSILON) return null;
-  const axis = Math.abs(b.x - a.x) >= Math.abs(b.y - a.y) ? "x" : "y";
-  const overlapStart = Math.max(Math.min(a[axis], b[axis]), Math.min(c[axis], d[axis]));
-  const overlapEnd = Math.min(Math.max(a[axis], b[axis]), Math.max(c[axis], d[axis]));
-  if (overlapEnd - overlapStart <= GEOMETRY_EPSILON) return null;
-  const endpoints = [
-    pointAtAxisValue(a, b, axis, overlapStart),
-    pointAtAxisValue(a, b, axis, overlapEnd)
-  ].sort(comparePoint);
-  return { from: endpoints[0], to: endpoints[1] };
-};
-
-const segmentsAreMergeable = (left, right) =>
-  Math.abs(cross(left.from, left.to, right.from)) < GEOMETRY_EPSILON &&
-  Math.abs(cross(left.from, left.to, right.to)) < GEOMETRY_EPSILON &&
-  (pointOnSegment(left.to, right.from, right.to) ||
-    pointOnSegment(right.from, left.from, left.to) ||
-    samePoint(left.to, right.from) || samePoint(right.to, left.from));
 
 /**
- * Merge authoring sides into one portal: an exact positive-length border
- * through which the planner may move from one region to its neighbour.
+ * Refuse a map whose regions cannot carry a road between two network nodes.
+ *
+ * Regions are neighbours only where they share an exact border of positive
+ * length. If a strip of space belongs to no region — the painted border of a
+ * country, a lost face, a sliver — the regions on either side are not
+ * neighbours, and the navigation graph silently falls apart into islands. The
+ * package still compiles, the map still looks right, and only much later does
+ * a road refuse to be built because no route exists at all.
+ *
+ * The first real author map failed exactly this way: 917 regions formed six
+ * islands along country borders, and four countries were cut off completely.
+ * Nothing in the pipeline noticed.
+ *
+ * The check is deliberately phrased in game terms rather than in graph terms.
+ * A map may legitimately consist of separate land masses; what may not happen
+ * is two network nodes sitting in different islands, because then a road
+ * between them can never be planned. That is the condition tested here.
+ *
+ * Version 2 (ADR-100) reports one crossing per whole shared border instead of
+ * one portal per straight piece of it, but the island question only ever
+ * needed `regionIds` — which two regions the graph edge connects, not its
+ * exact line — so walking crossings instead of portals changes nothing else
+ * about this check.
  */
-const mergeBoundaryParts = (parts) => {
-  const pending = parts
-    .map((part) => ({ from: { ...part.from }, to: { ...part.to } }))
-    .sort((left, right) => comparePoint(left.from, right.from) || comparePoint(left.to, right.to));
-  const merged = [];
-  for (const part of pending) {
-    const previous = merged.at(-1);
-    if (!previous || !segmentsAreMergeable(previous, part)) {
-      merged.push(part);
-      continue;
+const assertNetworkNodesShareOneRegionIsland = (regions, crossings, nodes) => {
+  if (nodes.length < 2) return;
+  const island = new Map(regions.map((region) => [region.id, region.id]));
+  const find = (id) => {
+    let root = id;
+    while (island.get(root) !== root) root = island.get(root);
+    let cursor = id;
+    while (island.get(cursor) !== root) {
+      const next = island.get(cursor);
+      island.set(cursor, root);
+      cursor = next;
     }
-    const endpoints = [previous.from, previous.to, part.from, part.to].sort(comparePoint);
-    previous.from = endpoints[0];
-    previous.to = endpoints.at(-1);
+    return root;
+  };
+  for (const crossing of crossings) {
+    const left = find(crossing.regionIds[0]);
+    const right = find(crossing.regionIds[1]);
+    if (left !== right) island.set(left, right);
   }
-  return merged;
+
+  const closed = regions.map((region) => ({
+    id: region.id,
+    polygon: closedCanonicalPolygon(region.polygon),
+    bounds: boundsOfPoints(region.polygon)
+  }));
+  const nodeIsland = new Map();
+  for (const node of nodes) {
+    const host = closed.find((region) =>
+      node.position.x >= region.bounds.minX - GEOMETRY_EPSILON &&
+      node.position.x <= region.bounds.maxX + GEOMETRY_EPSILON &&
+      node.position.y >= region.bounds.minY - GEOMETRY_EPSILON &&
+      node.position.y <= region.bounds.maxY + GEOMETRY_EPSILON &&
+      pointInOrOnPolygon(node.position, region.polygon));
+    // A node outside every region is a different fault, reported elsewhere.
+    if (host) nodeIsland.set(node.id, find(host.id));
+  }
+  const islands = new Map();
+  for (const [nodeId, root] of nodeIsland) {
+    if (!islands.has(root)) islands.set(root, []);
+    islands.get(root).push(nodeId);
+  }
+  if (islands.size <= 1) return;
+  const summary = [...islands.values()]
+    .map((group) => group.slice().sort(compareText))
+    .sort((left, right) => compareText(left[0], right[0]))
+    .map((group) => `${group[0]} (+${group.length - 1})`)
+    .join(", ");
+  fail(
+    `network nodes fall into ${islands.size} separate region islands, so no road can ` +
+    `be planned between them: ${summary}. Regions are neighbours only where they ` +
+    "share an exact border of positive length; a strip belonging to no region " +
+    "splits the navigation graph"
+  );
 };
 
-/** Compile the finite navigation graph from exact shared polygon boundaries. */
-const deriveRegionPortals = (regions) => {
-  const portals = [];
-  for (let leftIndex = 0; leftIndex < regions.length; leftIndex += 1) {
-    const left = regions[leftIndex];
-    for (let rightIndex = leftIndex + 1; rightIndex < regions.length; rightIndex += 1) {
-      const right = regions[rightIndex];
-      const parts = [];
-      for (let leftSide = 0; leftSide < left.polygon.length; leftSide += 1) {
-        const a = left.polygon[leftSide];
-        const b = left.polygon[(leftSide + 1) % left.polygon.length];
-        for (let rightSide = 0; rightSide < right.polygon.length; rightSide += 1) {
-          const c = right.polygon[rightSide];
-          const d = right.polygon[(rightSide + 1) % right.polygon.length];
-          const shared = sharedBoundaryPart(a, b, c, d);
-          if (shared) parts.push(shared);
-        }
-      }
-      mergeBoundaryParts(parts).forEach((part, index) => portals.push({
-        id: `portal:${left.id}:${right.id}:${index + 1}`,
-        regionIds: [left.id, right.id],
-        from: part.from,
-        to: part.to
-      }));
-    }
-  }
-  return portals.sort((left, right) => compareText(left.id, right.id));
-};
-
-const createRoadPlanningContract = (regions, options) => {
-  const portals = deriveRegionPortals(regions);
-  const algorithmVersion = "region-segment-minimum-v1";
-  const boundaryPolicy = "lowest-region-id";
-  const geometryHash = createHash("sha256")
-    .update(JSON.stringify({ algorithmVersion, boundaryPolicy, regions, portals }))
-    .digest("hex");
+/**
+ * Build the `roadPlanning` contract block (ADR-100).
+ *
+ * The geometry work — canonicalising the regions, finding the crossings
+ * between them, and hashing the result — is delegated entirely to the same
+ * module runtime loads at play time. This function's own job is narrow: run
+ * the shared island check, then shape the runtime's answer into the six
+ * declared fields. It must not compute anything about the shapes itself,
+ * because the whole point of sharing the implementation is that there is
+ * exactly one place a mistake in that computation could live.
+ *
+ * `regions` here are already this file's own canonical form (see
+ * `canonicalPolygon` above) — the same value written to the manifest's
+ * `regions` field. Feeding the runtime module that exact value, rather than
+ * some other representation, is what guarantees its checksum matches the one
+ * runtime recomputes from the published manifest: canonicalisation is
+ * idempotent, so re-canonicalising an already-canonical shape is a no-op.
+ */
+const createRoadPlanningContract = (regions, options, nodes) => {
+  const canonicalRegions = canonicalizeRoadPlanningRegions(regions);
+  const crossings = deriveRegionCrossings(canonicalRegions);
+  assertNetworkNodesShareOneRegionIsland(regions, crossings, nodes);
+  const geometryHash = computeRegionRoadPlanningHash({
+    algorithmVersion: REGION_ROAD_PLANNING_ALGORITHM,
+    boundaryPolicy: REGION_ROAD_BOUNDARY_POLICY,
+    regions: canonicalRegions,
+    crossings
+  });
   return {
-    mode: "region-segment-minimum",
-    algorithmVersion,
+    mode: REGION_ROAD_PLANNING_MODE,
+    algorithmVersion: REGION_ROAD_PLANNING_ALGORITHM,
     geometryVersion: options.geometryVersion,
-    geometryHash: `sha256:${geometryHash}`,
-    tieBreak: "session-random",
-    boundaryPolicy,
+    geometryHash,
+    tieBreak: REGION_ROAD_TIE_BREAK,
+    boundaryPolicy: REGION_ROAD_BOUNDARY_POLICY,
     ...(options.excludedRegionIdsEndpoint
       ? { excludedRegionIdsEndpoint: options.excludedRegionIdsEndpoint }
-      : {}),
-    navigationGraph: { portals }
+      : {})
+    // No navigationGraph: ADR-100 removes it from the contract entirely. The
+    // graph is derived, not declared — runtime re-derives it from `regions`
+    // and checks `geometryHash`, so storing it here would only duplicate data
+    // that is, by the geometryHash comparison itself, already proven correct.
   };
 };
 
@@ -533,7 +658,7 @@ export const createTransportManifestFragment = (annotation, options) => {
         // one hash and replay identity.
         regions,
         ...(options.roadPlanning
-          ? { roadPlanning: createRoadPlanningContract(regions, options.roadPlanning) }
+          ? { roadPlanning: createRoadPlanningContract(regions, options.roadPlanning, annotation.nodes) }
           : {})
       }
     },

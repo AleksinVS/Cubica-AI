@@ -527,7 +527,6 @@ describe("InteractiveBoardSurface", () => {
       polyline: [{ x: 10, y: 20 }, { x: 40, y: 30 }, { x: 90, y: 20 }],
       regionSequence: ["left", "right"],
       regionSegments: 2,
-      candidateCount: 2,
       planning: {
         mode: "region-segment-minimum",
         algorithmVersion: "1",

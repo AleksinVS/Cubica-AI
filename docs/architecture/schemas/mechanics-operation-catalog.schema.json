@@ -85,7 +85,7 @@
           "items": { "$ref": "#/$defs/nonEmptyString" }
         },
         "determinism": {
-          "enum": ["pure", "state-deterministic", "pinned-random-stream"]
+          "enum": ["pure", "state-deterministic", "server-random"]
         },
         "orderPolicy": { "$ref": "#/$defs/nonEmptyString" },
         "errorPolicy": { "$ref": "#/$defs/nonEmptyString" },

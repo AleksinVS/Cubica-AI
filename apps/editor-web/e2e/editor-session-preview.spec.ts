@@ -53,7 +53,7 @@ async function expectLocatorWidthStable(locator: Locator, expectedWidth: number,
   expect(Math.abs((box?.width ?? 0) - expectedWidth)).toBeLessThanOrEqual(tolerancePx);
 }
 
-test.describe("editor-web session preview", () => {
+test.describe("editor-web session preview", { tag: "@editor" }, () => {
   test("opens a session worktree and prepares player preview with contentSourceId", async ({ page, request }) => {
     let editorSessionId: string | undefined;
 

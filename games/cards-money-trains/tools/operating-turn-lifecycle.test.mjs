@@ -14,16 +14,19 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
+import authoringCompiler from "../../../scripts/manifest-tools/authoring-compiler.cjs";
 import { createImmutableBundleContent } from "../../../services/runtime-api/src/modules/content/immutableBundle.ts";
 import { validateGameManifest } from "../../../services/runtime-api/src/modules/content/manifestValidation.ts";
 import { dispatchRuntimeAction } from "../../../services/runtime-api/src/modules/runtime/actionDispatcher.ts";
 import { InMemorySessionStore } from "../../../services/runtime-api/src/modules/session/inMemorySessionStore.ts";
 import { buildLifecycleAuthoring } from "./build-card-lifecycle.mjs";
+import { buildConstructionCycleAuthoring } from "./build-construction-cycle.mjs";
 import {
   buildSessionSetupAuthoring,
   contrastColorIds,
   supportedOddTeamCounts
 } from "./build-session-setup.mjs";
+import { buildTrainFormationAuthoring } from "./build-train-formation.mjs";
 import {
   authoringPath,
   buildOperatingTurnAuthoring
@@ -31,6 +34,7 @@ import {
 
 const toolsRoot = path.dirname(fileURLToPath(import.meta.url));
 const gameRoot = path.resolve(toolsRoot, "..");
+const repoRoot = path.resolve(gameRoot, "..", "..");
 const intakePath = path.join(
   gameRoot,
   "authoring",
@@ -47,6 +51,8 @@ const admissionController = {
   async assertNewCommandAdmitted() {}
 };
 let commandSequence = 0;
+const { compileAuthoringText } = authoringCompiler;
+let generatedManifestPromise;
 
 const readJson = async (absolutePath) =>
   JSON.parse(await readFile(absolutePath, "utf8"));
@@ -58,9 +64,32 @@ const nextCommandId = () => {
   return `cli_${bytes.toString("base64url")}`;
 };
 
-/** Load the generated manifest only through the production validator. */
-const loadManifest = async () =>
-  validateGameManifest(await readJson(path.join(gameRoot, "game.manifest.json")));
+/**
+ * Compile the fresh operating-turn transformation entirely in memory.
+ *
+ * This keeps the focused test independent from the later shared integration
+ * step that rewrites authoring, manifest and source-map artifacts.
+ */
+const loadManifest = async () => {
+  generatedManifestPromise ??= (async () => {
+    const generated = buildOperatingTurnAuthoring(await readJson(authoringPath));
+    const output = compileAuthoringText(
+      {
+        kind: "game",
+        sourceFile: authoringPath,
+        outputFile: path.join(repoRoot, ".tmp", "cmt-operating-turn.manifest.json"),
+        sourceMapFile: path.join(
+          repoRoot,
+          ".tmp",
+          "cmt-operating-turn.manifest.source-map.json"
+        )
+      },
+      JSON.stringify(generated)
+    );
+    return validateGameManifest(output.manifest);
+  })();
+  return generatedManifestPromise;
+};
 
 /** Create one facilitator-owned normal session from the immutable game bundle. */
 const createSession = async (manifest) => {
@@ -281,22 +310,60 @@ const payAllActiveVehicles = async (session) => {
   }
 };
 
+/** Reach the repeatable market after paying all mandatory first-turn upkeep. */
+const prepareMarket = async (manifest, count = 5) => {
+  const session = await prepareMaintenance(manifest, count);
+  await payAllActiveVehicles(session);
+  const finished = await dispatch({
+    ...session,
+    actionId: "maintenance.phase.finish"
+  });
+  assert.equal(finished.result.ok, true);
+  const current = await session.store.getSession(session.sessionId);
+  assert.equal(current.state.public.session.phase, "market");
+  return session;
+};
+
+/** Resolve one protected server-side team id by its confirmed product role. */
+const findTeamId = (state, type) => {
+  const teamId = Object.entries(state.public.objects.teams)
+    .find(([, team]) => team.attributes.type === type)?.[0];
+  assert.ok(teamId, `a ${type} team is required`);
+  return teamId;
+};
+
+/** Resolve one active server-side vehicle owned by the requested team. */
+const findOwnedActiveVehicleId = (state, collection, teamId) => {
+  const vehicleId = Object.entries(state.public.objects[collection])
+    .find(([, vehicle]) =>
+      vehicle.facets.availability === "active" &&
+      vehicle.attributes.ownerTeamId === teamId
+    )?.[0];
+  assert.ok(vehicleId, `an active ${collection} vehicle is required for ${teamId}`);
+  return vehicleId;
+};
+
+/** Return the one id added to a protected object collection by an action. */
+const findCreatedId = (before, after) => {
+  const previous = new Set(Object.keys(before));
+  const created = Object.keys(after).filter((id) => !previous.has(id));
+  assert.equal(created.length, 1, "the market action must create exactly one vehicle");
+  return created[0];
+};
+
 test("setup, card, and operating-turn generators compose idempotently", async () => {
-  const [actual, network, intake] = await Promise.all([
+  const [source, network, intake] = await Promise.all([
     readJson(authoringPath),
     readJson(networkPath),
     readJson(intakePath)
   ]);
-
-  assert.deepEqual(buildSessionSetupAuthoring(actual, network), actual);
-  assert.deepEqual(buildLifecycleAuthoring(actual, intake), actual);
-  assert.deepEqual(buildOperatingTurnAuthoring(actual), actual);
-  assert.deepEqual(
-    buildOperatingTurnAuthoring(
-      buildLifecycleAuthoring(buildSessionSetupAuthoring(actual, network), intake)
-    ),
-    actual
+  const withLateExtensions = buildLifecycleAuthoring(
+    buildSessionSetupAuthoring(buildOperatingTurnAuthoring(source), network),
+    intake
   );
+  const actual = buildOperatingTurnAuthoring(withLateExtensions);
+
+  assert.deepEqual(buildOperatingTurnAuthoring(actual), actual);
   assert.deepEqual(
     buildLifecycleAuthoring(
       buildSessionSetupAuthoring(buildOperatingTurnAuthoring(actual), network),
@@ -309,8 +376,25 @@ test("setup, card, and operating-turn generators compose idempotently", async ()
   assert.equal(root.config.runtimeReady, false);
   assert.match(
     root.config.runtimeBlockers.join("\n"),
-    /remaining market and reporting workflows/u
+    /remaining reporting workflows/u
   );
+  assert.doesNotMatch(
+    root.config.runtimeBlockers.join("\n"),
+    /remaining market/u
+  );
+  assert.equal(root.content.data.operatingTurn.market.status, "executable");
+  for (const actionId of [
+    "market.purchase.wagon",
+    "market.purchase.locomotive",
+    "market.sell.wagon",
+    "market.sell.locomotive",
+    "market.phase.finish"
+  ]) {
+    assert.ok(
+      root.logic.actions.some((candidate) => candidate.id === actionId),
+      `${actionId} must remain in the composed facilitator market`
+    );
+  }
   for (const collectionId of ["locomotives", "wagons", "cargoOrders"]) {
     assert.deepEqual(
       root.mechanics.stateModel.collections[collectionId].fields.maintenancePaidTurn,
@@ -324,6 +408,27 @@ test("setup, card, and operating-turn generators compose idempotently", async ()
   assert.ok(Object.values(root.state.public.objects.cargoOrders).every(
     (cargo) => cargo.attributes.maintenancePaidTurn === 0
   ));
+});
+
+test("late formation and construction rebuilds preserve the resolved market blocker", async () => {
+  const source = await readJson(authoringPath);
+  const marketReady = buildOperatingTurnAuthoring(source);
+  const withLateGenerators = buildConstructionCycleAuthoring(
+    buildTrainFormationAuthoring(marketReady)
+  );
+  const fixedPoint = buildOperatingTurnAuthoring(withLateGenerators);
+
+  assert.deepEqual(buildTrainFormationAuthoring(fixedPoint), fixedPoint);
+  assert.deepEqual(buildConstructionCycleAuthoring(fixedPoint), fixedPoint);
+  assert.ok(
+    fixedPoint.root.config.runtimeBlockers.includes(
+      "remaining reporting workflows"
+    )
+  );
+  assert.doesNotMatch(
+    fixedPoint.root.config.runtimeBlockers.join("\n"),
+    /remaining market/u
+  );
 });
 
 test("all confirmed odd setups reach maintenance without consuming first-turn news", async () => {
@@ -605,4 +710,326 @@ test("wrong phase, forged owner, unavailable asset, unknown id, and insufficient
     actionId: "maintenance.pay.wagon",
     params: { wagonId }
   });
+});
+
+test("market buys both vehicle kinds at authoritative base prices", async () => {
+  const manifest = await loadManifest();
+  const session = await prepareMarket(manifest);
+  let current = await session.store.getSession(session.sessionId);
+  const logisticsTeamId = findTeamId(current.state, "logistics_company");
+  const guildTeamId = findTeamId(current.state, "locomotive_guild");
+  await updateScenario(session, (state) => {
+    state.public.objects.teams[logisticsTeamId].attributes.coins = 30;
+    state.public.objects.teams[guildTeamId].attributes.coins = 30;
+  });
+
+  const beforeWagon = await session.store.getSession(session.sessionId);
+  const boughtWagon = await dispatch({
+    ...session,
+    actionId: "market.purchase.wagon",
+    params: { teamId: logisticsTeamId, stationId: "terminal-3" }
+  });
+  assert.equal(boughtWagon.result.ok, true);
+  const afterWagon = await session.store.getSession(session.sessionId);
+  const wagonId = findCreatedId(
+    beforeWagon.state.public.objects.wagons,
+    afterWagon.state.public.objects.wagons
+  );
+  const wagon = afterWagon.state.public.objects.wagons[wagonId];
+  assert.equal(afterWagon.state.public.objects.teams[logisticsTeamId].attributes.coins, 25);
+  assert.equal(wagon.facets.availability, "active");
+  assert.equal(wagon.attributes.ownerTeamId, logisticsTeamId);
+  assert.equal(wagon.attributes.nodeId, "terminal-3");
+  assert.equal(wagon.attributes.networkId, "main");
+  assert.equal(wagon.attributes.maintenancePaidTurn, 1);
+  assert.equal(wagon.attributes.attachedVehicleId, null);
+  assert.equal(wagon.attributes.cargoId, null);
+  assert.equal(wagon.attributes.cargoOfferEligibleTurn, 0);
+  assert.equal(wagon.attributes.cargoOfferResolvedTurn, 0);
+  assert.equal(wagon.attributes.cargoPriorityActiveCount, 0);
+  if ("formationTargetLocomotiveId" in wagon.attributes) {
+    assert.equal(wagon.attributes.formationTargetLocomotiveId, null);
+  }
+  assert.deepEqual(afterWagon.state.public.log.at(-1)?.data, {
+    kind: "market-purchase",
+    assetKind: "wagon",
+    teamId: logisticsTeamId,
+    vehicleId: wagonId,
+    amount: 5,
+    turnNumber: 1
+  });
+
+  const beforeLocomotive = afterWagon;
+  const boughtLocomotive = await dispatch({
+    ...session,
+    actionId: "market.purchase.locomotive",
+    params: { teamId: guildTeamId, stationId: "terminal-3" }
+  });
+  assert.equal(boughtLocomotive.result.ok, true);
+  current = await session.store.getSession(session.sessionId);
+  const locomotiveId = findCreatedId(
+    beforeLocomotive.state.public.objects.locomotives,
+    current.state.public.objects.locomotives
+  );
+  const locomotive = current.state.public.objects.locomotives[locomotiveId];
+  assert.equal(current.state.public.objects.teams[guildTeamId].attributes.coins, 20);
+  assert.equal(locomotive.facets.availability, "active");
+  assert.equal(locomotive.attributes.ownerTeamId, guildTeamId);
+  assert.equal(locomotive.attributes.nodeId, "terminal-3");
+  assert.equal(locomotive.attributes.actionPoints, 5);
+  assert.equal(locomotive.attributes.turnOrderCount, 1);
+  assert.equal(locomotive.attributes.movementResolvedTurn, 0);
+  assert.equal(locomotive.attributes.lastMovedTurn, 0);
+  assert.equal(locomotive.attributes.maintenancePaidTurn, 1);
+  assert.deepEqual(current.state.public.log.at(-1)?.data, {
+    kind: "market-purchase",
+    assetKind: "locomotive",
+    teamId: guildTeamId,
+    vehicleId: locomotiveId,
+    amount: 10,
+    turnNumber: 1
+  });
+});
+
+test("market applies turn discounts and rejects news-prohibited purchases", async () => {
+  const manifest = await loadManifest();
+  const session = await prepareMarket(manifest);
+  let current = await session.store.getSession(session.sessionId);
+  const logisticsTeamId = findTeamId(current.state, "logistics_company");
+  const guildTeamId = findTeamId(current.state, "locomotive_guild");
+  await updateScenario(session, (state) => {
+    state.public.objects.teams[logisticsTeamId].attributes.coins = 30;
+    state.public.objects.teams[guildTeamId].attributes.coins = 30;
+    state.public.turnEffects.purchasePriceOverrides.wagon = 4;
+    state.public.turnEffects.purchasePriceOverrides.locomotive = 8;
+  });
+
+  assert.equal((await dispatch({
+    ...session,
+    actionId: "market.purchase.wagon",
+    params: { teamId: logisticsTeamId, stationId: "terminal-3" }
+  })).result.ok, true);
+  assert.equal((await dispatch({
+    ...session,
+    actionId: "market.purchase.locomotive",
+    params: { teamId: guildTeamId, stationId: "terminal-3" }
+  })).result.ok, true);
+  current = await session.store.getSession(session.sessionId);
+  assert.equal(current.state.public.objects.teams[logisticsTeamId].attributes.coins, 26);
+  assert.equal(current.state.public.objects.teams[guildTeamId].attributes.coins, 22);
+
+  await updateScenario(session, (state) => {
+    state.public.turnEffects.purchasePermissions.wagon = false;
+    state.public.turnEffects.purchasePermissions.locomotive = false;
+  });
+  await assertRejectedWithoutMutation(session, {
+    actionId: "market.purchase.wagon",
+    params: { teamId: logisticsTeamId, stationId: "terminal-4" }
+  });
+  await assertRejectedWithoutMutation(session, {
+    actionId: "market.purchase.locomotive",
+    params: { teamId: guildTeamId, stationId: "terminal-4" }
+  });
+});
+
+test("market rejects purchases by the wrong team type", async () => {
+  const manifest = await loadManifest();
+  const session = await prepareMarket(manifest);
+  const current = await session.store.getSession(session.sessionId);
+  const logisticsTeamId = findTeamId(current.state, "logistics_company");
+  const guildTeamId = findTeamId(current.state, "locomotive_guild");
+  await updateScenario(session, (state) => {
+    state.public.objects.teams[logisticsTeamId].attributes.coins = 30;
+    state.public.objects.teams[guildTeamId].attributes.coins = 30;
+  });
+
+  await assertRejectedWithoutMutation(session, {
+    actionId: "market.purchase.locomotive",
+    params: { teamId: logisticsTeamId, stationId: "terminal-3" }
+  });
+  await assertRejectedWithoutMutation(session, {
+    actionId: "market.purchase.wagon",
+    params: { teamId: guildTeamId, stationId: "terminal-3" }
+  });
+});
+
+test("market purchase rejects insufficient funds without consuming id or creating an asset", async () => {
+  const manifest = await loadManifest();
+  const session = await prepareMarket(manifest);
+  const current = await session.store.getSession(session.sessionId);
+  const logisticsTeamId = findTeamId(current.state, "logistics_company");
+  await updateScenario(session, (state) => {
+    state.public.objects.teams[logisticsTeamId].attributes.coins = 4;
+  });
+
+  await assertRejectedWithoutMutation(session, {
+    actionId: "market.purchase.wagon",
+    params: { teamId: logisticsTeamId, stationId: "terminal-3" }
+  });
+});
+
+test("market rejects a third locomotive at one terminal atomically", async () => {
+  const manifest = await loadManifest();
+  const session = await prepareMarket(manifest);
+  const current = await session.store.getSession(session.sessionId);
+  const guildTeamId = findTeamId(current.state, "locomotive_guild");
+  const activeLocomotiveIds = Object.entries(current.state.public.objects.locomotives)
+    .filter(([, locomotive]) => locomotive.facets.availability === "active")
+    .map(([locomotiveId]) => locomotiveId);
+  assert.ok(activeLocomotiveIds.length >= 2);
+  await updateScenario(session, (state) => {
+    state.public.objects.teams[guildTeamId].attributes.coins = 30;
+    for (const locomotiveId of activeLocomotiveIds.slice(0, 2)) {
+      state.public.objects.locomotives[locomotiveId].attributes.nodeId = "terminal-3";
+    }
+  });
+
+  await assertRejectedWithoutMutation(session, {
+    actionId: "market.purchase.locomotive",
+    params: { teamId: guildTeamId, stationId: "terminal-3" }
+  });
+});
+
+test("market sells eligible wagon and locomotive for fixed prices", async () => {
+  const manifest = await loadManifest();
+  const session = await prepareMarket(manifest);
+  let current = await session.store.getSession(session.sessionId);
+  const logisticsTeamId = findTeamId(current.state, "logistics_company");
+  const guildTeamId = findTeamId(current.state, "locomotive_guild");
+  const wagonId = findOwnedActiveVehicleId(
+    current.state,
+    "wagons",
+    logisticsTeamId
+  );
+  const locomotiveId = findOwnedActiveVehicleId(
+    current.state,
+    "locomotives",
+    guildTeamId
+  );
+  const logisticsCoins = current.state.public.objects.teams[
+    logisticsTeamId
+  ].attributes.coins;
+  const guildCoins = current.state.public.objects.teams[guildTeamId].attributes.coins;
+
+  assert.equal((await dispatch({
+    ...session,
+    actionId: "market.sell.wagon",
+    params: { wagonId }
+  })).result.ok, true);
+  current = await session.store.getSession(session.sessionId);
+  assert.equal(
+    current.state.public.objects.teams[logisticsTeamId].attributes.coins,
+    logisticsCoins + 2
+  );
+  assert.equal(current.state.public.objects.wagons[wagonId].facets.availability, "sold");
+  assert.equal(current.state.public.objects.wagons[wagonId].attributes.nodeId, null);
+  assert.equal(current.state.public.objects.wagons[wagonId].attributes.cargoOfferEligibleTurn, 0);
+  assert.equal(current.state.public.objects.wagons[wagonId].attributes.cargoOfferResolvedTurn, 0);
+  assert.deepEqual(current.state.public.log.at(-1)?.data, {
+    kind: "market-sale",
+    assetKind: "wagon",
+    teamId: logisticsTeamId,
+    vehicleId: wagonId,
+    amount: 2,
+    turnNumber: 1
+  });
+
+  assert.equal((await dispatch({
+    ...session,
+    actionId: "market.sell.locomotive",
+    params: { locomotiveId }
+  })).result.ok, true);
+  current = await session.store.getSession(session.sessionId);
+  assert.equal(
+    current.state.public.objects.teams[guildTeamId].attributes.coins,
+    guildCoins + 4
+  );
+  const locomotive = current.state.public.objects.locomotives[locomotiveId];
+  assert.equal(locomotive.facets.availability, "sold");
+  assert.equal(locomotive.attributes.nodeId, null);
+  assert.equal(locomotive.attributes.actionPoints, 0);
+  assert.equal(locomotive.attributes.turnOrderCount, 0);
+  assert.equal(locomotive.attributes.movementResolvedTurn, 0);
+  assert.equal(locomotive.attributes.lastMovedTurn, 0);
+  assert.deepEqual(current.state.public.log.at(-1)?.data, {
+    kind: "market-sale",
+    assetKind: "locomotive",
+    teamId: guildTeamId,
+    vehicleId: locomotiveId,
+    amount: 4,
+    turnNumber: 1
+  });
+});
+
+test("market rejects loaded or attached wagons and locomotives with attached wagons", async () => {
+  const manifest = await loadManifest();
+  const session = await prepareMarket(manifest);
+  let current = await session.store.getSession(session.sessionId);
+  const logisticsTeamId = findTeamId(current.state, "logistics_company");
+  const guildTeamId = findTeamId(current.state, "locomotive_guild");
+  const wagonId = findOwnedActiveVehicleId(
+    current.state,
+    "wagons",
+    logisticsTeamId
+  );
+  const locomotiveId = findOwnedActiveVehicleId(
+    current.state,
+    "locomotives",
+    guildTeamId
+  );
+  const cargoId = Object.keys(current.state.public.objects.cargoOrders)[0];
+  assert.ok(cargoId);
+
+  await updateScenario(session, (state) => {
+    state.public.objects.wagons[wagonId].attributes.cargoId = cargoId;
+  });
+  await assertRejectedWithoutMutation(session, {
+    actionId: "market.sell.wagon",
+    params: { wagonId }
+  });
+
+  await updateScenario(session, (state) => {
+    state.public.objects.wagons[wagonId].attributes.cargoId = null;
+    state.public.objects.wagons[wagonId].attributes.attachedVehicleId =
+      locomotiveId;
+  });
+  await assertRejectedWithoutMutation(session, {
+    actionId: "market.sell.wagon",
+    params: { wagonId }
+  });
+  await assertRejectedWithoutMutation(session, {
+    actionId: "market.sell.locomotive",
+    params: { locomotiveId }
+  });
+});
+
+test("market supports repeated trades with deterministic distinct vehicle ids", async () => {
+  const manifest = await loadManifest();
+  const session = await prepareMarket(manifest);
+  let current = await session.store.getSession(session.sessionId);
+  const logisticsTeamId = findTeamId(current.state, "logistics_company");
+  await updateScenario(session, (state) => {
+    state.public.objects.teams[logisticsTeamId].attributes.coins = 30;
+  });
+  current = await session.store.getSession(session.sessionId);
+  const sequenceBefore = current.state.public.setup.assetSequence;
+  const wagonIdsBefore = new Set(Object.keys(current.state.public.objects.wagons));
+
+  for (const stationId of ["terminal-3", "terminal-4"]) {
+    const purchased = await dispatch({
+      ...session,
+      actionId: "market.purchase.wagon",
+      params: { teamId: logisticsTeamId, stationId }
+    });
+    assert.equal(purchased.result.ok, true);
+  }
+
+  current = await session.store.getSession(session.sessionId);
+  const createdIds = Object.keys(current.state.public.objects.wagons)
+    .filter((wagonId) => !wagonIdsBefore.has(wagonId));
+  assert.equal(createdIds.length, 2);
+  assert.equal(new Set(createdIds).size, 2);
+  assert.equal(current.state.public.setup.assetSequence, sequenceBefore + 2);
+  assert.equal(current.state.public.objects.teams[logisticsTeamId].attributes.coins, 20);
+  assert.ok(createdIds.every((wagonId) => wagonId.startsWith("wagon:")));
 });

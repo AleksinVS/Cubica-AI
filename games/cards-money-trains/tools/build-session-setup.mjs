@@ -4,8 +4,8 @@
  *
  * The generator deliberately composes already accepted generic Mechanics
  * operations. It does not add a setup-specific runtime branch, publish the
- * review network, decide the unresolved even-team rule, or implement market
- * stock. Keeping this transformation separate from the card lifecycle gives
+ * review network or implement market workflows. Keeping this transformation
+ * separate from the card lifecycle gives
  * each generator one clear ownership boundary and prevents either import from
  * restoring the obsolete four-team record map.
  */
@@ -28,6 +28,7 @@ const lifecyclePrefixes = [
   // these prefixes as the next generated block keeps all independent
   // generators idempotent regardless of which one is checked last.
   "session.play.",
+  "facilitator.economy.",
   "maintenance.",
   "movement.",
   "cards.lifecycle.",
@@ -37,7 +38,23 @@ const lifecyclePrefixes = [
   "news.cargo-addition.",
   "news.effect."
 ];
-const supportedOddTeamCounts = [5, 7, 9, 11];
+const supportedTeamCompositions = [
+  { teamCount: 4, logisticsCompanyCount: 2, locomotiveGuildCount: 2 },
+  { teamCount: 5, logisticsCompanyCount: 3, locomotiveGuildCount: 2 },
+  { teamCount: 6, logisticsCompanyCount: 3, locomotiveGuildCount: 3 },
+  { teamCount: 7, logisticsCompanyCount: 4, locomotiveGuildCount: 3 },
+  { teamCount: 8, logisticsCompanyCount: 4, locomotiveGuildCount: 4 },
+  { teamCount: 9, logisticsCompanyCount: 5, locomotiveGuildCount: 4 },
+  { teamCount: 10, logisticsCompanyCount: 5, locomotiveGuildCount: 5 },
+  { teamCount: 11, logisticsCompanyCount: 6, locomotiveGuildCount: 5 },
+  { teamCount: 12, logisticsCompanyCount: 6, locomotiveGuildCount: 6 }
+];
+const supportedTeamCounts = supportedTeamCompositions.map(
+  ({ teamCount }) => teamCount
+);
+const supportedOddTeamCounts = supportedTeamCounts.filter(
+  (teamCount) => teamCount % 2 === 1
+);
 const contrastColorIds = [
   "cobalt",
   "orange",
@@ -62,6 +79,53 @@ const ownedSetupBoardActionIds = new Set([
   "session.setup.place.wagon",
   "session.setup.place.locomotive"
 ]);
+const sessionCompletionCreateFields = new Map([
+  ["teams", new Set(["finalScoreBase"])],
+  ["wagons", new Set(["finalScoreOwnerTeamId", "finalPurchaseValue"])],
+  ["locomotives", new Set(["finalScoreOwnerTeamId", "finalPurchaseValue"])]
+]);
+const sessionCompletionAvailabilityEndpoint =
+  "public.session.canRequestFinish";
+
+/**
+ * Capture extensions added to setup-owned plans by the later completion slice.
+ *
+ * Setup rebuilds its base actions, but must not erase typed defaults or
+ * phase-derived UI availability that another game-local generator appended.
+ * Plan and step ids keep each fragment attached to its original command.
+ */
+const captureSessionCompletionPlanExtensions = (plans) => {
+  const createAttributes = new Map();
+  const availabilityPatches = new Map();
+  for (const [planId, plan] of Object.entries(plans)) {
+    if (!planId.startsWith(setupActionPrefix)) continue;
+    for (const step of plan.transaction.steps) {
+      const stepKey = `${planId}\0${step.id}`;
+      const preservedFields = sessionCompletionCreateFields.get(step.collection);
+      if (step.op === "core.entity.create" && preservedFields) {
+        const attributes = Object.fromEntries(
+          Object.entries(step.attributes).filter(([field]) =>
+            preservedFields.has(field)
+          )
+        );
+        if (Object.keys(attributes).length > 0) {
+          createAttributes.set(stepKey, attributes);
+        }
+      }
+      if (step.op === "core.state.patch") {
+        const patches = step.patches.filter(
+          (patch) =>
+            patch.operation === "set"
+            && patch.target?.endpoint === sessionCompletionAvailabilityEndpoint
+        );
+        if (patches.length > 0) {
+          availabilityPatches.set(stepKey, patches);
+        }
+      }
+    }
+  }
+  return { createAttributes, availabilityPatches };
+};
 
 const readJson = async (filePath) => JSON.parse(await readFile(filePath, "utf8"));
 const literal = (value) => ({ op: "value.literal", value });
@@ -223,6 +287,10 @@ const createTeamStep = (teamType) => ({
     // object. Money remains on the team until the construction transaction
     // validates the exact total and can create the object atomically.
     constructionPledge: literal(0),
+    // Loans are explicit facilitator decisions, never an implicit negative
+    // balance. Every later economy action therefore starts from a durable zero
+    // principal instead of interpreting a missing field as "no debt".
+    outstandingDebt: literal(0),
     // A constant key intentionally creates one complete tie group. The named
     // seeded stream below then supplies the reproducible random order.
     placementOrderKey: literal(0),
@@ -230,7 +298,15 @@ const createTeamStep = (teamType) => ({
     // active vehicles inside maintenance completion. Setup initializes them
     // because this is the only normal-session path that creates teams.
     progressiveTaxLocomotiveCount: literal(0),
-    progressiveTaxWagonCount: literal(0)
+    progressiveTaxWagonCount: literal(0),
+    // News №19 is resolved team by team. Setup initializes the durable quota
+    // bookkeeping so a newly created team cannot enter the staged workflow
+    // with fields that are missing or inherited from a later generator order.
+    news19PreparedTurn: literal(0),
+    news19VehicleCountSnapshot: literal(0),
+    news19RemovalRequired: literal(0),
+    news19RemovalRemaining: literal(0),
+    news19ResolvedTurn: literal(0)
   }
 });
 
@@ -260,7 +336,8 @@ const createWagonStep = (idStep, createStep) => ({
     // preparation transaction proves its terminal, owner and active status.
     cargoOfferEligibleTurn: literal(0),
     cargoOfferResolvedTurn: literal(0),
-    cargoPriorityActiveCount: literal(0)
+    cargoPriorityActiveCount: literal(0),
+    news19ConfiscatedTurn: literal(0)
   }
 });
 
@@ -291,7 +368,8 @@ const createLocomotiveStep = () => ({
     lastMovedTurn: literal(0),
     // See createWagonStep: setup must initialize every newly created asset so
     // a later maintenance selector never has to interpret a missing value.
-    maintenancePaidTurn: literal(0)
+    maintenancePaidTurn: literal(0),
+    news19ConfiscatedTurn: literal(0)
   }
 });
 
@@ -388,14 +466,30 @@ const buildAddLocomotiveGuild = () => {
 
 const buildFinalize = () => {
   const id = "session.setup.finalize";
-  const supportedCount = any(...supportedOddTeamCounts.map((count) =>
-    compare("eq", state("public.setup.teamCount"), literal(count))
+  const supportedComposition = any(...supportedTeamCompositions.map((composition) =>
+    all(
+      compare(
+        "eq",
+        state("public.setup.teamCount"),
+        literal(composition.teamCount)
+      ),
+      compare(
+        "eq",
+        state("public.setup.logisticsCompanyCount"),
+        literal(composition.logisticsCompanyCount)
+      ),
+      compare(
+        "eq",
+        state("public.setup.locomotiveGuildCount"),
+        literal(composition.locomotiveGuildCount)
+      )
+    )
   ));
   return {
     action: action({
       id,
       label: "Зафиксировать состав и порядок размещения",
-      semantics: "Принимает только подтверждённые нечётные составы и создаёт воспроизводимую случайную очередь размещения."
+      semantics: "Принимает от 4 до 12 команд: при чётном составе типов поровну, при нечётном перевозчиков на одну больше. Затем создаёт воспроизводимую случайную очередь размещения."
     }),
     plan: {
       transaction: {
@@ -406,20 +500,9 @@ const buildFinalize = () => {
             op: "core.assert",
             predicate: all(
               setupGuard(),
-              supportedCount,
-              compare(
-                "eq",
-                state("public.setup.logisticsCompanyCount"),
-                {
-                  op: "number.add",
-                  items: [
-                    state("public.setup.locomotiveGuildCount"),
-                    literal(1)
-                  ]
-                }
-              )
+              supportedComposition
             ),
-            errorCode: "SESSION_SETUP_TEAM_COMPOSITION_UNCONFIRMED"
+            errorCode: "SESSION_SETUP_TEAM_COMPOSITION_INVALID"
           },
           {
             id: "select-teams",
@@ -427,7 +510,7 @@ const buildFinalize = () => {
             op: "core.entities.select",
             selector: {
               collection: "teams",
-              cardinality: { min: 5, max: 11 }
+              cardinality: { min: 4, max: 12 }
             }
           },
           {
@@ -441,7 +524,7 @@ const buildFinalize = () => {
               missing: "error"
             }],
             tieBreak: {
-              kind: "seeded-random",
+              kind: "server-random",
               stream: "session-setup-placement-order"
             }
           },
@@ -775,8 +858,12 @@ const hasExecutableRoutePlan = (edge) => {
     typeof routePlan.boundaryPolicy === "string" &&
     Array.isArray(routePlan.regionSequence) &&
     Array.isArray(routePlan.passages) &&
+    // Version 2's tieBreak (ADR-100 §4.6) is just a named policy — no
+    // candidate list or chosen index survives, because there is no set of
+    // equal candidates left to choose between by the time a route is stored.
     routePlan.tieBreak !== null &&
-    typeof routePlan.tieBreak === "object"
+    typeof routePlan.tieBreak === "object" &&
+    typeof routePlan.tieBreak.policy === "string"
   );
 };
 
@@ -963,6 +1050,15 @@ const removeObsoleteFixedConstruction = (root) => {
 const buildSessionSetupAuthoring = (sourceAuthoring, network) => {
   const authoring = structuredClone(sourceAuthoring);
   const root = authoring.root;
+  const completionPlanExtensions =
+    captureSessionCompletionPlanExtensions(root.mechanics.plans);
+  const completionTeamFields = Object.fromEntries(
+    Object.entries(
+      root.mechanics.stateModel.collections.teams?.fields ?? {}
+    ).filter(([field]) =>
+      sessionCompletionCreateFields.get("teams").has(field)
+    )
+  );
   const { networkNodes, networkEdges } = buildNetworkObjects(
     network,
     root.state.public.objects?.networkEdges,
@@ -981,7 +1077,11 @@ const buildSessionSetupAuthoring = (sourceAuthoring, network) => {
         initial: "configured",
         values: {
           configured: { visible: true, interactive: true },
-          placed: { visible: true, interactive: false }
+          placed: { visible: true, interactive: false },
+          // Exclusion reuses the established participation facet so every
+          // existing `placed` guard fails closed without a parallel status
+          // source that older game-local plans would ignore.
+          excluded: { visible: true, interactive: false }
         }
       }
     }
@@ -1019,7 +1119,7 @@ const buildSessionSetupAuthoring = (sourceAuthoring, network) => {
     },
     "game.team-placement-status": {
       kind: "enum",
-      values: ["configured", "placed"]
+      values: ["configured", "placed", "excluded"]
     },
     "game.session-setup-status": {
       kind: "enum",
@@ -1088,6 +1188,11 @@ const buildSessionSetupAuthoring = (sourceAuthoring, network) => {
         valueType: "core.integer",
         access: "read-write"
       },
+      outstandingDebt: {
+        storage: { kind: "attribute", name: "outstandingDebt" },
+        valueType: "core.integer",
+        access: "read-write"
+      },
       placementOrderKey: {
         storage: { kind: "attribute", name: "placementOrderKey" },
         valueType: "core.integer",
@@ -1108,7 +1213,33 @@ const buildSessionSetupAuthoring = (sourceAuthoring, network) => {
         },
         valueType: "core.integer",
         access: "read-write"
-      }
+      },
+      news19PreparedTurn: {
+        storage: { kind: "attribute", name: "news19PreparedTurn" },
+        valueType: "core.integer",
+        access: "read-write"
+      },
+      news19VehicleCountSnapshot: {
+        storage: { kind: "attribute", name: "news19VehicleCountSnapshot" },
+        valueType: "core.integer",
+        access: "read-write"
+      },
+      news19RemovalRequired: {
+        storage: { kind: "attribute", name: "news19RemovalRequired" },
+        valueType: "core.integer",
+        access: "read-write"
+      },
+      news19RemovalRemaining: {
+        storage: { kind: "attribute", name: "news19RemovalRemaining" },
+        valueType: "core.integer",
+        access: "read-write"
+      },
+      news19ResolvedTurn: {
+        storage: { kind: "attribute", name: "news19ResolvedTurn" },
+        valueType: "core.integer",
+        access: "read-write"
+      },
+      ...completionTeamFields
     }
   };
   collections.networkNodes.fields.label = {
@@ -1141,6 +1272,11 @@ const buildSessionSetupAuthoring = (sourceAuthoring, network) => {
     valueType: "game.binary-count",
     access: "read-write"
   };
+  collections.wagons.fields.news19ConfiscatedTurn = {
+    storage: { kind: "attribute", name: "news19ConfiscatedTurn" },
+    valueType: "core.integer",
+    access: "read-write"
+  };
   // Setup owns locomotive creation and placement, so it also preserves the
   // movement generator's explicit markers when generators run in any order.
   collections.locomotives.fields.turnOrderCount = {
@@ -1158,6 +1294,11 @@ const buildSessionSetupAuthoring = (sourceAuthoring, network) => {
     valueType: "core.integer",
     access: "read-write"
   };
+  collections.locomotives.fields.news19ConfiscatedTurn = {
+    storage: { kind: "attribute", name: "news19ConfiscatedTurn" },
+    valueType: "core.integer",
+    access: "read-write"
+  };
 
   const endpoints = root.mechanics.stateModel.endpoints;
   endpoints["public.teams.bound.coins"] = {
@@ -1170,6 +1311,21 @@ const buildSessionSetupAuthoring = (sourceAuthoring, network) => {
         { binding: "teamId" },
         "attributes",
         "coins"
+      ]
+    },
+    valueType: "core.integer",
+    access: "read-write"
+  };
+  endpoints["public.teams.bound.outstandingDebt"] = {
+    audienceRef: "public",
+    storage: {
+      root: "public",
+      segments: [
+        "objects",
+        "teams",
+        { binding: "teamId" },
+        "attributes",
+        "outstandingDebt"
       ]
     },
     valueType: "core.integer",
@@ -1223,7 +1379,36 @@ const buildSessionSetupAuthoring = (sourceAuthoring, network) => {
       for (const step of generatedPlan.transaction.steps) {
         if (step.op === "core.entity.create" && step.collection === "wagons") {
           step.attributes.formationTargetLocomotiveId = literal(null);
+          if (
+            root.mechanics.stateModel.collections.wagons.fields
+              .manualTariffTrackingActive !== undefined
+          ) {
+            // The later manual-coupling slice owns these fields. Preserve its
+            // complete default shape when setup is regenerated after it.
+            step.attributes.manualTariffOriginNodeId = literal(null);
+            step.attributes.manualTariffDestinationNodeId = literal(null);
+            step.attributes.manualTariffBillableEdgeCount = literal(0);
+            step.attributes.manualTariffTrackingActive = literal(false);
+          }
         }
+      }
+    }
+  }
+  // Reattach only the later completion slice's declared extensions. Every
+  // setup-owned base step still comes from this generator, while the captured
+  // values and patch order remain byte-for-byte stable under recomposition.
+  for (const generatedItem of generated) {
+    for (const step of generatedItem.plan.transaction.steps) {
+      const stepKey = `${generatedItem.action.id}\0${step.id}`;
+      const createAttributes =
+        completionPlanExtensions.createAttributes.get(stepKey);
+      if (createAttributes) {
+        Object.assign(step.attributes, createAttributes);
+      }
+      const availabilityPatches =
+        completionPlanExtensions.availabilityPatches.get(stepKey);
+      if (availabilityPatches) {
+        step.patches.push(...availabilityPatches);
       }
     }
   }
@@ -1326,38 +1511,39 @@ const buildSessionSetupAuthoring = (sourceAuthoring, network) => {
     .find((step) => step.id === "facilitator.setup");
   if (setupStep) {
     setupStep._semantics =
-      "Ведущий создаёт подтверждённый нечётный состав, фиксирует случайную очередь и размещает всю стартовую технику.";
+      "Ведущий создаёт от 4 до 12 команд в подтверждённом соотношении типов, фиксирует случайную очередь и размещает всю стартовую технику.";
     setupStep.actionIds = [
       ...generated.map((item) => item.action.id),
       ...setupStep.actionIds.filter((actionId) => !actionId.startsWith(setupActionPrefix))
     ];
   }
 
+  root.content.data.rules.teams.supportedCounts = supportedTeamCounts;
   root.content.data.rules.teams.supportedOddCounts = supportedOddTeamCounts;
   root.content.data.rules.teams.oddComposition =
     "logistics_company_count = locomotive_guild_count + 1";
+  root.content.data.rules.teams.evenComposition =
+    "logistics_company_count = locomotive_guild_count";
   root.content.data.rules.teams.contrastColorIds = contrastColorIds;
   root.content.data.sessionSetup = {
     status: "executable-technical-draft",
     publishable: false,
     sourceNetwork: "annotations/initial-network.review.json",
     networkUse: "technical placement only until author overlay confirmation",
-    supportedTeamCounts: supportedOddTeamCounts,
+    supportedTeamCounts,
     initialResources: {
       coinsPerTeam: 10,
       logisticsCompany: { wagons: 2, locomotives: 0 },
       locomotiveGuild: { wagons: 0, locomotives: 1 }
     },
     placement: {
-      order: "server-seeded-random",
+      order: "server-random",
       controller: "facilitator",
       targets: "open terminals in the main technical network",
       maximumLocomotivesPerTerminal: 2,
       advancesOnlyAfterAllCurrentTeamAssetsArePlaced: true
     },
     unresolved: [
-      "R-28-even-team-composition",
-      "R-26-finite-market-stock-or-explicit-no-extra-limit",
       "dynamic-team-construction-contributions",
       "author-confirmation-of-initial-network-overlay"
     ]
@@ -1374,8 +1560,8 @@ const buildSessionSetupAuthoring = (sourceAuthoring, network) => {
   const blockers = new Set(root.config.runtimeBlockers);
   blockers.delete("team configuration and initial transport assets");
   blockers.delete("accessible free-text team-name entry");
-  blockers.add("R-28 even-team composition");
-  blockers.add("R-26 finite market stock or explicit no-extra-limit confirmation");
+  blockers.delete("R-28 even-team composition");
+  blockers.delete("R-26 finite market stock or explicit no-extra-limit confirmation");
   root.config.runtimeBlockers = [...blockers];
   root.config.runtimeReady = false;
 
@@ -1419,7 +1605,7 @@ const run = async (argv) => {
     await writeAtomically(authoringPath, builtText);
   }
   process.stdout.write(
-    `cards-money-trains: ${checkOnly ? "verified" : "built"} bounded odd-team session setup\n`
+    `cards-money-trains: ${checkOnly ? "verified" : "built"} bounded 4–12-team session setup\n`
   );
 };
 
@@ -1436,5 +1622,7 @@ export {
   buildSessionSetupAuthoring,
   contrastColorIds,
   networkPath,
-  supportedOddTeamCounts
+  supportedOddTeamCounts,
+  supportedTeamCompositions,
+  supportedTeamCounts
 };

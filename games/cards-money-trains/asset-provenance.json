@@ -1,44 +1,106 @@
 {
+  "$schema": "../../docs/architecture/schemas/asset-provenance.schema.json",
+  "schemaVersion": "1.0",
   "gameId": "cards-money-trains",
-  "assetId": "board-guinea-optimized",
-  "deliveryFile": "assets/images/guinea-map.webp",
-  "delivery": {
-    "mimeType": "image/webp",
-    "width": 2560,
-    "height": 1828,
-    "byteSize": 306808,
-    "sha256": "c6c52f27b348e4f2d56fb936227518921da98542ce3bf69794abf6fdf58480be"
-  },
-  "source": {
-    "path": "draft/trains/Игровая Карта.png",
-    "mimeType": "image/png",
-    "width": 5079,
-    "height": 3627,
-    "sha256": "2059ed6f429667da7d51f96a9f447c5f5a286980abc70ebb0ea979f451376e1b"
-  },
-  "transform": {
-    "tool": "sharp",
-    "format": "webp",
-    "maxWidth": 2560,
-    "maxHeight": 1829,
-    "fit": "inside",
-    "quality": 84,
-    "effort": 6,
-    "smartSubsample": true
-  },
-  "rights": {
-    "status": "confirmed",
-    "license": "direct-permission-from-author-and-rightsholder",
-    "owner": "game author/rightsholder; legal name is not recorded in repository metadata",
-    "publicationAllowed": true,
-    "modificationAllowed": true,
-    "distributionChannels": [
-      "Cubica web application",
-      "development and test environments",
-      "published game package"
-    ],
-    "confirmedBy": "PM",
-    "confirmedAt": "2026-07-11",
-    "note": "The PM confirmed that use of the map is agreed with both the game author and the rightsholder. Cubica may optimize, include, and publish the derivative without a known rights risk."
-  }
+  "locationNotice": "Место хранения авторских первоисточников (сейчас каталог draft/ в корне репозитория) пересматривается задачей TSK-20260726-source-materials-governance: draft/ признан непригодным для промышленной среды. Пути в этом реестре указывают на действующее расположение и подлежат обновлению по итогам той задачи; переносить файлы заранее не следует.",
+  "entries": [
+    {
+      "id": "board-guinea-optimized",
+      "path": "assets/images/guinea-map.webp",
+      "root": "game",
+      "kind": "derived-asset",
+      "contentType": "image/webp",
+      "width": 2560,
+      "height": 1828,
+      "byteSize": 306808,
+      "sha256": "c6c52f27b348e4f2d56fb936227518921da98542ce3bf69794abf6fdf58480be",
+      "derivedFrom": {
+        "source": {
+          "path": "draft/trains/Игровая Карта.png",
+          "root": "repo",
+          "contentType": "image/png",
+          "width": 5079,
+          "height": 3627,
+          "byteSize": 5051693,
+          "sha256": "2059ed6f429667da7d51f96a9f447c5f5a286980abc70ebb0ea979f451376e1b"
+        },
+        "transform": {
+          "tool": "sharp",
+          "toolVersion": "0.33.5",
+          "format": "webp",
+          "maxWidth": 2560,
+          "maxHeight": 1829,
+          "fit": "inside",
+          "quality": 84,
+          "effort": 6,
+          "smartSubsample": true
+        }
+      },
+      "rights": {
+        "status": "confirmed",
+        "license": "direct-permission-from-author-and-rightsholder",
+        "owner": "game author/rightsholder; legal name is not recorded in repository metadata",
+        "publicationAllowed": true,
+        "modificationAllowed": true,
+        "distributionChannels": [
+          "Cubica web application",
+          "development and test environments",
+          "published game package"
+        ],
+        "confirmedBy": "PM",
+        "confirmedAt": "2026-07-11",
+        "note": "The PM confirmed that use of the map is agreed with both the game author and the rightsholder. Cubica may optimize, include, and publish the derivative without a known rights risk."
+      }
+    },
+    {
+      "id": "source-vector-guinea-map-ai",
+      "path": "draft/trains/Карта Гвиней  а4.ai",
+      "root": "repo",
+      "kind": "source-original",
+      "contentType": "application/vnd.adobe.illustrator",
+      "byteSize": 26909057,
+      "sha256": "453703c064cf6aa6220f5059f83c9fa33404310f5a65cce5529900f0ddee1806",
+      "rights": {
+        "status": "confirmed",
+        "license": "direct-permission-from-author-and-rightsholder",
+        "owner": "game author/rightsholder; legal name is not recorded in repository metadata",
+        "publicationAllowed": true,
+        "modificationAllowed": true,
+        "distributionChannels": [
+          "Cubica web application",
+          "development and test environments",
+          "published game package"
+        ],
+        "confirmedBy": "PM",
+        "confirmedAt": "2026-07-26",
+        "note": "PM подтвердил 2026-07-26, что разрешение автора и правообладателя распространяется на все авторские исходные материалы карты, включая этот векторный первоисточник (исходник Adobe Illustrator) и производную от него геометрию областей. Из этого файла выведены проверяемые аннотации карты (annotations/vector-map.review.json и последующие отчёты о классификации, топологии и полигонализации) и черновик разбиения карты на области (annotations/vector-map.countries-stations.draft.json). Публикация производных, включая геометрию областей карты, разрешена."
+      }
+    },
+    {
+      "id": "source-raster-game-map-png",
+      "path": "draft/trains/Игровая Карта.png",
+      "root": "repo",
+      "kind": "source-original",
+      "contentType": "image/png",
+      "width": 5079,
+      "height": 3627,
+      "byteSize": 5051693,
+      "sha256": "2059ed6f429667da7d51f96a9f447c5f5a286980abc70ebb0ea979f451376e1b",
+      "rights": {
+        "status": "confirmed",
+        "license": "direct-permission-from-author-and-rightsholder",
+        "owner": "game author/rightsholder; legal name is not recorded in repository metadata",
+        "publicationAllowed": true,
+        "modificationAllowed": true,
+        "distributionChannels": [
+          "Cubica web application",
+          "development and test environments",
+          "published game package"
+        ],
+        "confirmedBy": "PM",
+        "confirmedAt": "2026-07-26",
+        "note": "PM подтвердил 2026-07-26 то же разрешение на использование для этого растрового файла. Файл — первоисточник канонической системы координат карты (5079×3627 пикселей design-pixel), на который ссылаются проверочные отчёты (annotations/vector-map.review.json как backgroundImage, а также отчёты о топологии и полигонализации через калибровку affine-least-squares в координатное пространство canonical-map-pixels). С 2026-07-27 этот же файл — источник поставочной подложки board-guinea-optimized: подложка перестала содержать нарисованную транспортную сеть, и игрок рисует сеть целиком по данным."
+      }
+    }
+  ]
 }

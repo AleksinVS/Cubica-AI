@@ -11,6 +11,8 @@ import type { BoardVehicleView } from "./board-state.ts";
 export const TRAIN_WAGON_SELECT_ACTION_ID = "movement.train.wagon.select";
 export const TRAIN_WAGON_UNSELECT_ACTION_ID = "movement.train.wagon.unselect";
 export const TRAIN_ATTACH_SELECTED_ACTION_ID = "movement.train.attach.selected";
+export const TRAIN_MANUAL_ATTACH_ACTION_ID = "movement.train.attach.manual";
+export const TRAIN_MANUAL_DETACH_ACTION_ID = "movement.train.detach.manual";
 
 /** Copy one public wagon reference into the exact scalar Game Intent payload. */
 export function trainWagonSelectionParams(

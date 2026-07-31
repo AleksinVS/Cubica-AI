@@ -2151,7 +2151,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:37f8ea52860db5df201f38d221fb6f18b3ea85795ef8cfba047567f8a21ba8c4"
+      "definitionHash": "sha256:0ba53e2636efd60655014fdf15e1c417fb9eb28f1ff916ce793a9d93aeb4751c"
     },
     "opening.card.2": {
       "capabilityFamily": "game.card.resolve",
@@ -2175,7 +2175,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:27503a24e3aad14df0bce0c82cc8458baf7ec4fea1ceb7a4c8ea57aa89c4f3a2"
+      "definitionHash": "sha256:049cef5e4b1a38b0b9a96e21cafe1002e293b825e55509525fb3c0d502726357"
     },
     "opening.card.3": {
       "capabilityFamily": "game.card.resolve",
@@ -2199,7 +2199,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:8931a9ec68c504e3d01cd2178fe503efa73bc8a85e4349b80210963afd8eb295"
+      "definitionHash": "sha256:2d79c06ce66f6b0b04f68b6356be1476b6801d0d8f6a75ad416e56395f1bc9de"
     },
     "opening.card.4": {
       "capabilityFamily": "game.card.resolve",
@@ -2223,7 +2223,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:9c32261a4029e6bc399bb964275bdec224a21df3253bf18b4941bd89beaa0fa3"
+      "definitionHash": "sha256:39684a73f488ced34a1735f158ae9a74325bd41bc5a9841c881dd3fb68fd480c"
     },
     "opening.card.5": {
       "capabilityFamily": "game.card.resolve",
@@ -2247,7 +2247,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:f508f0e63472d3af71aebc0762c4738317cbc57f321e9769bb695c4cc9a37e45"
+      "definitionHash": "sha256:bbf3167a2968285fb6d1d790e40c14c534a7b6eb42a533d1996523068cc8d72c"
     },
     "opening.card.6": {
       "capabilityFamily": "game.card.resolve",
@@ -2271,7 +2271,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:aec3c491b0f50eb55596b4fd0a230a186bbd18a513b498e7a4b12a184b443623"
+      "definitionHash": "sha256:215e1feaebbd458eb320eb59e2f4d80b448fe8282488a69287cea050aa55c3cb"
     },
     "opening.card.7": {
       "capabilityFamily": "game.card.resolve",
@@ -2295,7 +2295,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:5d0b29ac272ca0762287fbc74ca2a911d22febe858eb9106080ede1e2dd4588e"
+      "definitionHash": "sha256:640477de1f7ebb8fd01bc600869f1cfe5934df1c6b33f58fab90126fdeddf896"
     },
     "opening.card.8": {
       "capabilityFamily": "game.card.resolve",
@@ -2319,7 +2319,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:f5f30d32b1752064fd06a6c06f68c38b24e8eff4d0ee792b0bd3caea3bb7f49f"
+      "definitionHash": "sha256:cc867f0f33e9bbf20ec08cda595f78ae7d020b4fc3fd70ecb2a18a08a0df54a4"
     },
     "opening.card.9": {
       "capabilityFamily": "game.card.resolve",
@@ -2343,7 +2343,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:7afdabad7fdff8fa3c74f97d5ef40c25eac9fc2d395a7a7b52ecbc381cfd406c"
+      "definitionHash": "sha256:731a279c48041233604cc248dd34e11963d38b83cd22a9b79a85d2c2ee4fd5fe"
     },
     "opening.card.10": {
       "capabilityFamily": "game.card.resolve",
@@ -2367,7 +2367,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:397a730756fdc7c353c3899dab9e1861300bc9882e2c6397635377a88b965ca3"
+      "definitionHash": "sha256:1e4fb13aad73bc5f37ddf21079011c1f948c7e4d4f5372e35bb51ad0f562482f"
     },
     "opening.card.11": {
       "capabilityFamily": "game.card.resolve",
@@ -2391,7 +2391,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:20aaccb21113585c5a08d4dd76281e63a50995e5d2619d5f38383bbafe639d58"
+      "definitionHash": "sha256:e01a486adb3ef74687d7ed4f5c371502d04c0479f4d0bb635519121ac5964a95"
     },
     "opening.card.12": {
       "capabilityFamily": "game.card.resolve",
@@ -2415,7 +2415,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:a2e6fd127b319e804bce6e0f656ca9e4a3495dd50d1993e5bc304b95d095786c"
+      "definitionHash": "sha256:c5d2bf0fed73b80550d3baedc583956e3e5ed9e5055f3956672fb5fad449ce37"
     },
     "opening.card.13": {
       "capabilityFamily": "game.card.resolve",
@@ -2439,7 +2439,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:e76e87e57a7821f1f558bfc148479e3cb3e1862c682d4978937d6ddcebea56f4"
+      "definitionHash": "sha256:179396d78103ca80c50e46434d85ebc952221949444722ea58c347c3088184ad"
     },
     "opening.card.14": {
       "capabilityFamily": "game.card.resolve",
@@ -2463,7 +2463,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:f760098c1a928cda21e934d73505217d3d9a9a07d00c3cd3fdc92f8ae1185a66"
+      "definitionHash": "sha256:ffcd133b1e3c7904fd8dac43b3b80d39186d9af659079ae45fb01da75755e33f"
     },
     "opening.card.15": {
       "capabilityFamily": "game.card.resolve",
@@ -2487,7 +2487,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:7737939e4478f61152d19edc336b4e8000ea0c3ed8c00e9c2bdc60c98b30d869"
+      "definitionHash": "sha256:8da657a706ea7475bbc01f63d4728c927040a742b828deebeb49592c1be31349"
     },
     "opening.card.16": {
       "capabilityFamily": "game.card.resolve",
@@ -2511,7 +2511,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:aac569f23c5b93b01795ec716ab01de6602b1a8dfe8e7f803ed7c653cd449e0b"
+      "definitionHash": "sha256:d90fb70b684a3d9f4142f4cf9e86a49039817c41179049eb6795f1f5f0e1e514"
     },
     "opening.card.17": {
       "capabilityFamily": "game.card.resolve",
@@ -2535,7 +2535,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:abd796302dd146134ca29822e445251174bb5bc75df35821e9d44040b3e6af21"
+      "definitionHash": "sha256:017cbbd585e8681c042a73806170bf8eb4213928ccb19811291a92419f646f0b"
     },
     "opening.card.18": {
       "capabilityFamily": "game.card.resolve",
@@ -2559,7 +2559,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:accb22d9e866f1b1c141ee2dde656dd312ae5a21686152d7b0d47ed0574b6e04"
+      "definitionHash": "sha256:db40db318a61c1d644b08d77e81601538b19dcb89c50f3b51206eeca14bf01d6"
     },
     "opening.card.19": {
       "capabilityFamily": "game.card.resolve",
@@ -2583,7 +2583,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:a259270ab00879ce97e87fc1b63d8c88d25a9d0f4a8ecdb154e71b57acfe9bb8"
+      "definitionHash": "sha256:a8698bd7c7df93955fb8a2fafc7d56d60e1856d846253ae643abd01fe2413841"
     },
     "opening.card.20": {
       "capabilityFamily": "game.card.resolve",
@@ -2607,7 +2607,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:b9d747007d86e0a479d5e39270460bbf0ea5ea46fdbd596456a20b4e654ec399"
+      "definitionHash": "sha256:7a02297ac9cc6d6cd9a18669de1a6ed51b10ad2a8eb62e0f8901e7a1e4554661"
     },
     "opening.card.21": {
       "capabilityFamily": "game.card.resolve",
@@ -2631,7 +2631,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:aac799e681eee73d7c7c727fc4a59ed8e0978d8cfba44b2325ece5c4da3ffd17"
+      "definitionHash": "sha256:cb49537665499e1343972ed9cc5a164dec1b688e3d85ae170e7af1331c604378"
     },
     "opening.card.22": {
       "capabilityFamily": "game.card.resolve",
@@ -2655,7 +2655,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:f4857d357add7078a375d0e9f69280287577b115aed3f3ea05828b36c3ca1279"
+      "definitionHash": "sha256:fe3d957423fb5c91d701519f04ccdd713a2ea0d14ce5504eccdd0e616f053f8c"
     },
     "opening.card.23": {
       "capabilityFamily": "game.card.resolve",
@@ -2679,7 +2679,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:4604fc1c80ccfccbc3d364f1eaf018e659cac7a73f35759dde44e7f3f54e6969"
+      "definitionHash": "sha256:d28218d075273964fb9e8cbb146a2602f4b04c5ceb2a4980ca92b7a89d0c2db4"
     },
     "opening.card.24": {
       "capabilityFamily": "game.card.resolve",
@@ -2703,7 +2703,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:d43f20d6ee303d048ccc431d713a2f097ada128783c6686720264f0b0bbc0c02"
+      "definitionHash": "sha256:28401f2144b1f070d5029ae7b77015863015934bd411ad80d6be4ecd4d8a9441"
     },
     "opening.card.25": {
       "capabilityFamily": "game.card.resolve",
@@ -2727,7 +2727,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:2d5fda8d244c0c1cccf82cb59dd853b923153617b489640dbb8aab197fcc0df3"
+      "definitionHash": "sha256:347805f54ccf4ffd99a94b49a891ed35807c6b2caff4e01990fde8d07e87577c"
     },
     "opening.card.26": {
       "capabilityFamily": "game.card.resolve",
@@ -2751,7 +2751,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:e43ba5ed4e989ce35dfebabe87307e8b30965f3dfe749767b5a9a6ede1df2194"
+      "definitionHash": "sha256:a80814ed8df18002059c68f02d14c316d5f580a70631bbe1c88990c9835bc58f"
     },
     "opening.card.27": {
       "capabilityFamily": "game.card.resolve",
@@ -2775,7 +2775,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:e862baad9221e5852b8ecfcd5f68d8a366279c787ce75de44a7c1c1079317c19"
+      "definitionHash": "sha256:c3b2d971720d43b6c84e3a7987b40df247f77d03d103d33bc07885ebbc6fd0e7"
     },
     "opening.card.28": {
       "capabilityFamily": "game.card.resolve",
@@ -2799,7 +2799,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:d2e458c2273af2fae912e414a9f3dd74e997fdefe2819907b5b6ec7c3b09f41f"
+      "definitionHash": "sha256:08493a6db6953f71e70823ae2498e52900b49e3e946254efa2d0500c4e03e29f"
     },
     "opening.card.29": {
       "capabilityFamily": "game.card.resolve",
@@ -2823,7 +2823,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:4d736d3c8871a5a52477e613fc602ab8975accd7a35c290e9fac9b43c13fdd4a"
+      "definitionHash": "sha256:80a34ef8c1ddf557dc126b4597f616cfc94b8892b3203a83c3aaeebb8ab92d80"
     },
     "opening.card.30": {
       "capabilityFamily": "game.card.resolve",
@@ -2847,7 +2847,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:e8c41d9ad1b294921ea42a9475d51641b5406278720131390e651f3691cce93b"
+      "definitionHash": "sha256:912d532a810235268a3c9c499adc499e9aa548158bde9a0299ffc3230d75944f"
     },
     "opening.card.31": {
       "capabilityFamily": "game.card.resolve",
@@ -2871,7 +2871,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:5cc630d092ea2d5efc238016ec15ea35725d5cb01d2e86b01d47436691d01c21"
+      "definitionHash": "sha256:6c93fe01c971218a315ce5c26907ca1303f06edfd55e7ba06c9350cb95114938"
     },
     "opening.card.32": {
       "capabilityFamily": "game.card.resolve",
@@ -2895,7 +2895,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:89c3c0556d0e42d45be8f98d6873b283a350b15f1145afcb03058d546ed21c40"
+      "definitionHash": "sha256:0bafbc99ae9d2e4afb37af4527e5c2d81c85e7192226eb341227a72491033325"
     },
     "opening.card.33": {
       "capabilityFamily": "game.card.resolve",
@@ -2919,7 +2919,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:73b75313e7bfa744831b0b2b709eda51d48418283b5ada89b3ad974375627982"
+      "definitionHash": "sha256:7057b60917075a36259aaf8e398bb3d241f5e96da5e8dd4ab177cafb86984cbf"
     },
     "opening.card.34": {
       "capabilityFamily": "game.card.resolve",
@@ -2944,7 +2944,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:705f927272dbbc943235d6e836d26044173bd175ffa31d33eb9c0fd20f4b2a18"
+      "definitionHash": "sha256:68282472600f3d64e8889b1b6afaa02a1a9dd013f6dc58eb109abb39ff016e7a"
     },
     "opening.card.35": {
       "capabilityFamily": "game.card.resolve",
@@ -2968,7 +2968,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:19f2b1d986ea02257ac705206f583662b8ef29800e79ccf282950ec7747951ce"
+      "definitionHash": "sha256:52e3faf9fef83ae00899bfa83db314a1112a7c3ffa33aa956f25e72a14f26fd7"
     },
     "opening.card.36": {
       "capabilityFamily": "game.card.resolve",
@@ -2992,7 +2992,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:f45cecab3b373aade733eb6bc15e53debef35d24d154e49fd5e5669be59ca2c3"
+      "definitionHash": "sha256:a227beb813c66075388348eff1a04195edadf204b19143b411724da2b47e3650"
     },
     "opening.card.37": {
       "capabilityFamily": "game.card.resolve",
@@ -3017,7 +3017,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:7d5d2f111e95e97682b973da695eba6a160276e6506d56ae6ea3d96037bafc6a"
+      "definitionHash": "sha256:06616fdbe7470fe8f2dc6b46af7002e94fc74a6c255d8f36da42bfb0b2a9a9e7"
     },
     "opening.card.38": {
       "capabilityFamily": "game.card.resolve",
@@ -3042,7 +3042,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:5ecb0d71505f1cf61e612db394f6c63d71fd346bf5725d3400051438aea21975"
+      "definitionHash": "sha256:44f13f2cb3bcb85c186b5a7244fcbb2878921f7b8b2da51e5715b1efacb55d89"
     },
     "opening.card.39": {
       "capabilityFamily": "game.card.resolve",
@@ -3067,7 +3067,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:32e0c049c177665cd3f62a7e20fcb2dc717d3f810831c7ef802f9889b76a39e5"
+      "definitionHash": "sha256:e989b54a621612f67bb4187d9f96580221a61321fdaaa3b84a8261577dc6d3d0"
     },
     "opening.card.3902": {
       "capabilityFamily": "game.card.resolve",
@@ -3092,7 +3092,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:4e4f49450753edbc76b48bf6e45d7e31f9a3262fa4b2d7d581148c6d6302dc2b"
+      "definitionHash": "sha256:a6df65338ec6e1f6cf0010d86b96d73a0e19247494750e06e29f563884a45185"
     },
     "opening.card.40": {
       "capabilityFamily": "game.card.resolve",
@@ -3117,7 +3117,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:0b1b7e1efeaf9a0e539b3aec60fab857a9e964802b801126374d230cf4488b1f"
+      "definitionHash": "sha256:daa64b4ae4a1c9a2fb34dfd08d9b85155081f651ce363ac35c8a5ec1ae5b9999"
     },
     "opening.card.41": {
       "capabilityFamily": "game.card.resolve",
@@ -3142,7 +3142,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:5b2d933a58bc6bf6003382e26840459f4b9d89a59e5ad37e8219f0bbd9cabbcf"
+      "definitionHash": "sha256:a117bde568051c8e7c23a19281a23261b22135687d6c44e1979bb647bdbb79bf"
     },
     "opening.card.42": {
       "capabilityFamily": "game.card.resolve",
@@ -3167,7 +3167,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:793c23e86b347d235bb5b352597bd325fe9eec40e0f9df3b76888a902a0a874d"
+      "definitionHash": "sha256:c9fae67fd99f6fbb4471e7e79d10c52a9202629c14c83a4abdcf0366e16d8224"
     },
     "opening.card.43": {
       "capabilityFamily": "game.card.resolve",
@@ -3192,7 +3192,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:ac96a1ced6a8bc7b712f65ab2590b58e3c32a4d36122b831b1d26dc7ff3441fd"
+      "definitionHash": "sha256:d056ae671380ebbfa403ea5b35f77a501c30348844f83d08321d106cc56e00c6"
     },
     "opening.card.44": {
       "capabilityFamily": "game.card.resolve",
@@ -3217,7 +3217,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:11355aea5a79ff84a32ba6bbafdff127079dc30672c306c0ed91aeed5ea86804"
+      "definitionHash": "sha256:8557a8e6625e16868933cb07a951ba4198f582d305afc2ad59289795343ff25f"
     },
     "opening.card.45": {
       "capabilityFamily": "game.card.resolve",
@@ -3242,7 +3242,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:6108cc5ab3201c3e847494ebd81e675f4b81b1674fc2a447f69c4dd258ce893c"
+      "definitionHash": "sha256:e235a98877200b40280b943b5188e44f33905f0c1e85aba59f2c14428c805b36"
     },
     "opening.card.46": {
       "capabilityFamily": "game.card.resolve",
@@ -3267,7 +3267,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:9756d50041c5e44f7b5a33b0de9c34ff932f59758f73362553b023283a74eec5"
+      "definitionHash": "sha256:a24b5574b15802e69b418923fb9a8171c2faa435470d987286bd5f6a7974f623"
     },
     "opening.card.47": {
       "capabilityFamily": "game.card.resolve",
@@ -3292,7 +3292,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:7607c890e657d1ccf4d41c97669db38c0d9483c707279fa6cd1bd1f9ec37cd74"
+      "definitionHash": "sha256:36440dcaa6f2444ed0ea81e7f4902f93756233ca3d3f2a338c1f6f8bcbed13c3"
     },
     "opening.card.48": {
       "capabilityFamily": "game.card.resolve",
@@ -3317,7 +3317,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:8c2882605b77e08b927589b533b68f0ba315ec32728938fb1f7f936aa5c1fd5f"
+      "definitionHash": "sha256:fb93dc6973f601b8bea2ab43263b475fbf46319ed7cd5edbb254d8483fccf185"
     },
     "opening.card.49": {
       "capabilityFamily": "game.card.resolve",
@@ -3342,7 +3342,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:8836e8aa854531cb84cb2880ea782cf324b349068495cb58a7645cc84dc6e84c"
+      "definitionHash": "sha256:7a7eee0176b0cdcb67c49f6f88f47902ed1e6ba7dcd0aac8e97852f93519b423"
     },
     "opening.card.50": {
       "capabilityFamily": "game.card.resolve",
@@ -3367,7 +3367,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:7250a0cc31eaff440d087f33a804ac37c09262a0955c5fb58b896cebc159d494"
+      "definitionHash": "sha256:31b7d6e6e2332b1b0bfcde64f97abf99622103413d181bb773774dd381280d4d"
     },
     "opening.card.51": {
       "capabilityFamily": "game.card.resolve",
@@ -3392,7 +3392,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:6092eaba95880509135cd7dae3b076f0f5a9dedd6e642beddf868938b5d5f399"
+      "definitionHash": "sha256:db3bf190c3cc979d43395c90f4129ffd280481ce2a4bbcbc23c40338d161c712"
     },
     "opening.card.52": {
       "capabilityFamily": "game.card.resolve",
@@ -3417,7 +3417,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:675383808d2d738cc88832073824a30819a6b56949b967fb9f15e86019efbef8"
+      "definitionHash": "sha256:6babbd412b94704898eae045c359df5d302b9fa54941e48381693ed937f58e8c"
     },
     "opening.card.53": {
       "capabilityFamily": "game.card.resolve",
@@ -3442,7 +3442,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:010278c67c114468ebaac0a0847deca4af056c7e66f09f1590c3a4b6e5191cdf"
+      "definitionHash": "sha256:150f477dfe4b46fc12647e08d2615c51d9478af61d818049a186b4128b1aceff"
     },
     "opening.card.54": {
       "capabilityFamily": "game.card.resolve",
@@ -3467,7 +3467,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:b4530160fb9a14d53691093f5d2dedf9f2ea782b60b9d3a4fce90d4716ee9740"
+      "definitionHash": "sha256:0a6d6c3caa6b1d474f359320b75902fa41a8faf351d954a9e56aead021dc1476"
     },
     "opening.card.55": {
       "capabilityFamily": "game.card.resolve",
@@ -3492,7 +3492,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:0d77ee23fc02141e9ecc4dd2f94af4975ab816773b0740169afedd2bcf354a01"
+      "definitionHash": "sha256:b268b745ac758461a78f259cf6649ba219eecc482fd554125cdf5111f5388ca7"
     },
     "opening.card.56": {
       "capabilityFamily": "game.card.resolve",
@@ -3517,7 +3517,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:b632f78e33e0cf0e3c2b429b87bf45c48d622f4850de25d7267b5ee4179604d6"
+      "definitionHash": "sha256:2bdbb1d890bfab401b51edcfc8ce54ec67210e5f98ddf8e3daaec2c94138e58a"
     },
     "opening.card.57": {
       "capabilityFamily": "game.card.resolve",
@@ -3542,7 +3542,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:6893d471178222ec7a4075641057a9aa376f8ea110ae60a7f0108ee3f5a2ea0a"
+      "definitionHash": "sha256:f5ca1b928ff04e4902fbd7e8ce215ff7d159a71b33592243b936ef961a82b435"
     },
     "opening.card.58": {
       "capabilityFamily": "game.card.resolve",
@@ -3567,7 +3567,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:1c665052b3138a401c4a61e7ac632d553dd25871c47ea99e48ce28975098cdf2"
+      "definitionHash": "sha256:5a0015b7ec3f9125e71257a050aed11592b357e828b6a74f9cd720d37223bb70"
     },
     "opening.card.59": {
       "capabilityFamily": "game.card.resolve",
@@ -3592,7 +3592,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:903c62997fa1184fbb7fd885b3b7cf3c40a6cf29c2889bb0adaad18130d80df9"
+      "definitionHash": "sha256:3d2b9d8503da8b1b8700423228e9ffcb9ce5a0ba33f2c1dae634004782ff633f"
     },
     "opening.card.60": {
       "capabilityFamily": "game.card.resolve",
@@ -3617,7 +3617,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:43304b1b5f78541eb3cc3908b7dcf3db14662177f8d7b3f836dd7ed17a0bfc4d"
+      "definitionHash": "sha256:d4e959bce868818015a792de08aa4399eb7e10f8209b4c5667c743b0128a411f"
     },
     "opening.card.61": {
       "capabilityFamily": "game.card.resolve",
@@ -3642,7 +3642,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:fe813519249d7382ef4136d9d856bd65cdbbc8d24cadc6d0a555eb4a3a9af3d1"
+      "definitionHash": "sha256:e7951e44d84817ab457e180103f9c141289c79ec4444aeb44666e5c663f386f4"
     },
     "opening.card.62": {
       "capabilityFamily": "game.card.resolve",
@@ -3667,7 +3667,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:6977472b207be2713428df00092f6b5397fd321a359c12f4dc6db99e083cf786"
+      "definitionHash": "sha256:d2f09329bbae50fa10adac5f1cb1853210982955b82b139ad8a2bf1ecf152968"
     },
     "opening.card.63": {
       "capabilityFamily": "game.card.resolve",
@@ -3692,7 +3692,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:004a8a6147e4dec2e95804fc8f9de5a3d9cbb5bec37ef18f7cd9514624196f62"
+      "definitionHash": "sha256:4f9b85a2eb89560901d639850fa384725d8c21a25faed4078daee68ecf9a1aa3"
     },
     "opening.card.64": {
       "capabilityFamily": "game.card.resolve",
@@ -3717,7 +3717,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:02b386b5474c1afedf0663151fe04eb0244fdfeff2cdcb3e1f001e01dce22346"
+      "definitionHash": "sha256:008e6c7498b663acd47651a4dc7670a43f3d7b64e847654e101a96ebb2b2bbaf"
     },
     "opening.card.65": {
       "capabilityFamily": "game.card.resolve",
@@ -3742,7 +3742,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:d1ff149e848dad4b589e745c5aff72d2c3df8e655df99f8e182be7a661ef1ccb"
+      "definitionHash": "sha256:15553f546da519a1d5090120ad392d3ea3bb43cfcc0ad1c3b1a757ef6a28cd00"
     },
     "opening.card.66": {
       "capabilityFamily": "game.card.resolve",
@@ -3768,7 +3768,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:c43bcd5d95e94f19713f85d8582f201fa759e28a7af254d7e236d18df2bac472"
+      "definitionHash": "sha256:e345139fd0997fb23715e7896fb5ee0492cd7cbc4eef301a7d058a1fc9f9dd43"
     },
     "opening.card.67": {
       "capabilityFamily": "game.card.resolve",
@@ -3793,7 +3793,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:2680ee743ce139d6957659451ae601fb206ef4e38a1368065ba7cd5bd580306d"
+      "definitionHash": "sha256:76bed166e82590b03746c1b32692f806799788d622931ab9d108a4abb4c4c9b9"
     },
     "opening.card.68": {
       "capabilityFamily": "game.card.resolve",
@@ -3818,7 +3818,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:084a378ca8d28c37aa612a56901bf8743117ab2cc27c5ae152452104d3c2467a"
+      "definitionHash": "sha256:d86fc56829f56c6414bc0e4aeb0eee5e99f08cdf224eb2fca93bd47c0606a6a7"
     },
     "opening.card.69": {
       "capabilityFamily": "game.card.resolve",
@@ -3843,7 +3843,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:8216795cc4a8fbcbddb4166617b63dc4a690901ee33b8c361355a3dcebe9cfca"
+      "definitionHash": "sha256:fec45f8293afdece79be1bb7bdec0933ca35afb4ca3ffde3b40e64753b70786f"
     },
     "opening.card.70": {
       "capabilityFamily": "game.card.resolve",
@@ -3868,7 +3868,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:6266553b22720988426315237af5c9f9457a8779b0ec773eaf937982f2133ba8"
+      "definitionHash": "sha256:486e89a87de364787ca0ec49bfe85053e12c40ab5e1b51806abce04d7d8889f9"
     },
     "opening.card.3.advance": {
       "capabilityFamily": "game.timeline.advance",
@@ -3893,7 +3893,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:6964196f188dee769e5ff7bed58fc008a916f944550a12fe347385a27451e3cb"
+      "definitionHash": "sha256:e59d0897fac726a5b81c352d863e4a5c3a2fd55c3a4b320920b02c0d0fb1205d"
     },
     "opening.card.9.advance": {
       "capabilityFamily": "game.timeline.advance",
@@ -3918,7 +3918,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:537a149180acc615a81c2a7957a4cbc33eaaf4a771c9d62ad79a12aa6e42a3e3"
+      "definitionHash": "sha256:1f0901bdeb65d6b811ac0f6caedf800cbc6a60c4a5f881775dfa522a5a823233"
     },
     "opening.card.18.advance": {
       "capabilityFamily": "game.timeline.advance",
@@ -3943,7 +3943,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:7eed69f064fe77b20a0d6c41dac4641c28499a14e9196116a0dd8db2f03de68b"
+      "definitionHash": "sha256:87b7c3d2c09155978465d40f80e8fb670b003d77da18ce5aae65e1eff245d1a0"
     },
     "opening.card.22.advance": {
       "capabilityFamily": "game.timeline.advance",
@@ -3968,7 +3968,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:6a68d11c30014069cf8eed26200569a312f47827ae3b5b30375a7a2a94150305"
+      "definitionHash": "sha256:8c15b248acbcc34c1558b2825e6f08990a7f052265a00c650ce4fda854eb0b0b"
     },
     "opening.card.23.advance": {
       "capabilityFamily": "game.timeline.advance",
@@ -3993,7 +3993,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:6a9220490102523d5a38d57e36d508214ea55c6fc41b3f9860938da29fdd4e8e"
+      "definitionHash": "sha256:82a0aa61c1a398e99788ca9d6615134624c587e80ecbdabbe4d258da373ba154"
     },
     "opening.card.31.advance": {
       "capabilityFamily": "game.timeline.advance",
@@ -4018,7 +4018,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:7b71668c8339eb63038b247013df22f745ef1e978d35d628aba8654b6b42526e"
+      "definitionHash": "sha256:260943db97354338b959e72a99ebc6fb42e8749cb86a02d57b4a9341542ac064"
     },
     "opening.card.32.advance": {
       "capabilityFamily": "game.timeline.advance",
@@ -4043,7 +4043,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:03e27f682d0d2d702c37013332f357fd9e901c711e63959eaf8efb3e86f8ca6a"
+      "definitionHash": "sha256:13e39c9e0e48b2fd1a26cd23337ae05575dfb4da2e531c6f1a44b48a3aa11c92"
     },
     "opening.card.33.advance": {
       "capabilityFamily": "game.timeline.advance",
@@ -4068,7 +4068,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:e215946f5b7f6234a999d1620e4a131130e227d3b2bdb2ff4639298a95ec2c63"
+      "definitionHash": "sha256:41b124c0bfa69bc31f2e776c8398da6f90f6a66b017ca4a5cd720fc12e2a35dd"
     },
     "opening.card.35.advance": {
       "capabilityFamily": "game.timeline.advance",
@@ -4093,7 +4093,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:d7d4242663916f9c4c17a666560846d7de437534f9381fd3ea143344a2f0c8fe"
+      "definitionHash": "sha256:ed57c7d8e04cb527fa544fa41e18e0e9eee0de011f2a4e38680fc7b602ff3b0b"
     },
     "opening.card.36.advance": {
       "capabilityFamily": "game.timeline.advance",
@@ -4118,7 +4118,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:896587eff0b68a995b2154c903b60549e875e4b75902f35bdeef629afdaa5117"
+      "definitionHash": "sha256:b5351496f0c04fae843cbb101859f701391686e9c1c942887043d688e1021d05"
     },
     "opening.card.39.advance": {
       "capabilityFamily": "game.timeline.advance",
@@ -4143,7 +4143,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:350427cc871f5d5da2db12c623bc745adf9790040f21cd22709844d7f8c10bbb"
+      "definitionHash": "sha256:a69737d86603a12aa7dc62fff803b8f55cd416d4fcd933b4de557e2a5ce43441"
     },
     "opening.card.3902.advance": {
       "capabilityFamily": "game.timeline.advance",
@@ -4168,7 +4168,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:da89743cbfe5776d3083fe1168ec6ec5cfda3c0cbbaffe50b2352075cdc5e679"
+      "definitionHash": "sha256:9b21c7e2ac056560bb116a83ddcc1484bde1123b171e58cda08c107a92737ceb"
     },
     "opening.card.43.advance": {
       "capabilityFamily": "game.timeline.advance",
@@ -4193,7 +4193,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:359466b1c42fe61c14770060fac24a8b3cff8b72ea1f010e420601fa8261ef83"
+      "definitionHash": "sha256:9e8899cafd3bcc7a90ad82f56f84ab7430af9379f90170fb6fd7f6e4a6eda922"
     },
     "opening.card.45.advance": {
       "capabilityFamily": "game.timeline.advance",
@@ -4218,7 +4218,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:ac5c480bc363e8805cf7f1b4cdf43301bf2e5dc804cc89c4b78dd61fc30883c8"
+      "definitionHash": "sha256:1857269cf03030f6ec1d14d9bd488e9724d12e2c78c4ff92f86230388de030e3"
     },
     "opening.card.47.advance": {
       "capabilityFamily": "game.timeline.advance",
@@ -4243,7 +4243,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:57f5723262b4a8629a49363780416570d8ab1d4dc7af4c7a4bc5632807fd776d"
+      "definitionHash": "sha256:30130af4b0eb72b443a90bfbe9b8f7aa6d4c0c634f8df96e6ea01061eef94067"
     },
     "opening.card.48.advance": {
       "capabilityFamily": "game.timeline.advance",
@@ -4268,7 +4268,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:fb468dadc5f6cd7df823d23627e50ee7cf7faa81f9bef56f6f4430cd08eebeed"
+      "definitionHash": "sha256:575a5e8de068b40c4546a0a8135d6b96e6a668b10a593998acc766a309044c39"
     },
     "opening.card.49.advance": {
       "capabilityFamily": "game.timeline.advance",
@@ -4293,7 +4293,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:bd110932c1a99dc7338346bf7813b2e82ab914f0b0bf4678d106670bc45ec0c3"
+      "definitionHash": "sha256:476a04cbc4967d0cfcb4dd4f2d2b1465765a08eb96fe428306fe4540b980a7f8"
     },
     "opening.card.50.advance": {
       "capabilityFamily": "game.timeline.advance",
@@ -4318,7 +4318,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:feb2886bb169b7499d0093dac6fa46fb3bd6087563c4d4b90a37f9c99bf832b6"
+      "definitionHash": "sha256:48c7b6622191886a4f3cd942be53dbcf7dc4fe40cfd8448a04f01fe4f8bfebf8"
     },
     "opening.card.51.advance": {
       "capabilityFamily": "game.timeline.advance",
@@ -4343,7 +4343,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:f26c79ae963e43a18953eaa45f23d473805fcf88ade1725527bf1180bc709967"
+      "definitionHash": "sha256:77a56b794c9f0ab995d46f8872d0e3c00425108930e1bb40dcb4b31041788a9e"
     },
     "opening.card.52.advance": {
       "capabilityFamily": "game.timeline.advance",
@@ -4368,7 +4368,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:6a18b4bfa24a2b211b3df1fb6d10ffde353086d78c8c23cf0b7fb771b5527a27"
+      "definitionHash": "sha256:c0cb8d82486b2eacf4037cfc13490445d0b0b010ff0e90c94646d0466e9f2ae7"
     },
     "opening.card.53.advance": {
       "capabilityFamily": "game.timeline.advance",
@@ -4393,7 +4393,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:a1f12912c02d37824285327b251347a9b49ab7b25a8fb7962313d355127e038c"
+      "definitionHash": "sha256:98755765e9ee7ef884a4672becbeb4676096776f2199713213758df3672a219e"
     },
     "opening.card.54.advance": {
       "capabilityFamily": "game.timeline.advance",
@@ -4418,7 +4418,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:b1cc4b342b88bd39ae37eb9b995666836c3134f7a08e126dad05f361db234d95"
+      "definitionHash": "sha256:c404b3ad1bc06f9bbee81b661f5efaf5dff65c15981a202acc5560d394f05c76"
     },
     "opening.card.55.advance": {
       "capabilityFamily": "game.timeline.advance",
@@ -4443,7 +4443,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:8cef1c3d17a43a81443e91db355fd3757f010188e9aa770b84bd2ecba4d6b6b0"
+      "definitionHash": "sha256:94d70f85b714a3e80c4377a72371796e7cdb7b8bc07ef803fc4d5b6addaf3cdf"
     },
     "opening.card.57.advance": {
       "capabilityFamily": "game.timeline.advance",
@@ -4468,7 +4468,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:6634790fb1e83ec1ffb3dd350cff8d04f72f36d7019acc110d6e4a1ac3e59824"
+      "definitionHash": "sha256:4b7d724f75b2676e9178f7affe00eebe7a3b17f970fbf875ad73cb969a6dd2e0"
     },
     "opening.card.58.advance": {
       "capabilityFamily": "game.timeline.advance",
@@ -4493,7 +4493,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:8df312e0ee50981492a24f5fe9eba5ba4a32382f64df980339fe40fc60f1405b"
+      "definitionHash": "sha256:29cd8b84962aefd1f7f2488fb26707ab69d4d36db81d58f12b5bcde93bf9f347"
     },
     "opening.card.60.advance": {
       "capabilityFamily": "game.timeline.advance",
@@ -4518,7 +4518,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:edb5ab11d3ba781d5fd667d191182ede1a28d1d2ca9354adc9a709db463105f6"
+      "definitionHash": "sha256:dd4b0367a0f85851c10f3f29ae5a2879fe1ef09fc0a33dc40d429786bcd35b72"
     },
     "opening.card.61.advance": {
       "capabilityFamily": "game.timeline.advance",
@@ -4543,7 +4543,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:655ee7d3eeadd4720f04b9dbf439beff7aa2903e7d637d6741a189bd2fb22e63"
+      "definitionHash": "sha256:186afc8ca94e62f1b2990de6faa7222727c920888982cbae50fbbd452450eccb"
     },
     "opening.card.66.advance": {
       "capabilityFamily": "game.timeline.advance",
@@ -4569,7 +4569,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:964ebf202a855fd363bc1f474332dd08e64824ee65960ec291ea81063cccde48"
+      "definitionHash": "sha256:c964cde6ce2b7d5cb87e2862774053aa429bf3f7a4dea1c5bbb2d8d9d53d7c9b"
     },
     "opening.card.68.advance": {
       "capabilityFamily": "game.timeline.advance",
@@ -4594,7 +4594,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:d666a71c5bbfa0c582e00703e1a08e7cbe8020c6e721eb002b0908f59d0c6351"
+      "definitionHash": "sha256:48859bc7b59c3eff73c61a1008330665c2b38e20d0ac6a973088578918f56b5a"
     },
     "opening.card.69.advance": {
       "capabilityFamily": "game.timeline.advance",
@@ -4619,7 +4619,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:1e0199c611709b94017b105dd43028093e938b55ea69c10ee5daf2d451c51609"
+      "definitionHash": "sha256:3407802b1d8758b4ab52928b0b5703daae960c63976fbfe2e2bfe8775e52c679"
     },
     "opening.info.i0.advance": {
       "capabilityFamily": "game.info.advance",
@@ -4644,7 +4644,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:f7bb475ddd6b349ad7b7deac7585203a18ee352763e94acb76586904b1238e05"
+      "definitionHash": "sha256:6b91506ff545b64502b8b5817a1e941884482367eaa19ca144adf7202479fd69"
     },
     "opening.info.i02.advance": {
       "capabilityFamily": "game.info.advance",
@@ -4669,7 +4669,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:08892c10244c58f460bcbc47c5dd298db0c32379a90072b56efccffc6cfe7e54"
+      "definitionHash": "sha256:93c8f73655e62a94170f88e824fa7bb84b10ecbe58afc716e49f17e0d216cc54"
     },
     "opening.info.i03.advance": {
       "capabilityFamily": "game.info.advance",
@@ -4694,7 +4694,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:0ea2f855031c4b8a12c5e81021c632989aed2ba1cb91516f89645b49c108e456"
+      "definitionHash": "sha256:2012af149e3f2bda843b858aaeb1829d7373384fcbe63b307ea3ee0033061688"
     },
     "opening.info.i1.advance": {
       "capabilityFamily": "game.info.advance",
@@ -4719,7 +4719,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:0dbb39f73eeed7e026cd6a9d11dcd1b5d205644302a6dab5b8ec126a41b5341f"
+      "definitionHash": "sha256:7bf0ab9e44d635be32b0486b8c08ab5d60d7fd428b6f2c9025e027d589339764"
     },
     "opening.info.i2.advance": {
       "capabilityFamily": "game.info.advance",
@@ -4744,7 +4744,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:609b53800b18cc633123bc6a9a7f320974cfe9f4ca6e436e660c20be08d5038b"
+      "definitionHash": "sha256:e66f0fb6bf8bd0ddc952ae986e3993025b936954ede69e19e2a88477b6b8c6ae"
     },
     "opening.info.i3.advance": {
       "capabilityFamily": "game.info.advance",
@@ -4769,7 +4769,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:ca9f9d552b7c72b0c678cdfdb0ccc010591535acbfc30a460285b57e975b3138"
+      "definitionHash": "sha256:61a49e2061aeeb9652567a3abd92c618400b4b016d82543da4b116b11580aedd"
     },
     "opening.info.i4.advance": {
       "capabilityFamily": "game.info.advance",
@@ -4794,7 +4794,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:c8283912c2b36f31252496e0f1293c8c9ee2a646e6fbc39ee5bd598c89aed24a"
+      "definitionHash": "sha256:9f76e12f4121b97f04144d195ae3e8abaa512606084f07704fcc26d597b7e41e"
     },
     "opening.info.i5.advance": {
       "capabilityFamily": "game.info.advance",
@@ -4819,7 +4819,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:2b62b01e963226bab35853f5f2f165fe53d7a1981396c590f93e681a559d4870"
+      "definitionHash": "sha256:64221f2e9c05a202e540f74c83caf56ce709ad6b806ff600d2d6d8a241c3f091"
     },
     "opening.info.i6.advance": {
       "capabilityFamily": "game.info.advance",
@@ -4844,7 +4844,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:5b5db1ac1481eebfc02aa635218b8bf50380c98e76b7eb9f16a32f81897b6227"
+      "definitionHash": "sha256:656e2fa4bdaf1ea5dd0677ea6027512c854510718d3ce714e55dc3c80c095296"
     },
     "opening.info.i7.advance": {
       "capabilityFamily": "game.info.advance",
@@ -4869,7 +4869,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:f0cf1623c899fae42e71b2479d4e8b5a6ae8dd5157a696e9d83067c2a75e00d1"
+      "definitionHash": "sha256:462ee29ed92189d6432146d99e5456102bad1ee25da52fa2f9d9d8435067dd82"
     },
     "opening.info.i8.advance": {
       "capabilityFamily": "game.info.advance",
@@ -4894,7 +4894,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:94946b394034ad47dd4b9f225858837a03e2841808d17dc6bc6d73d1f1de5395"
+      "definitionHash": "sha256:7d1bd96361339872bbf52fe170b7f9601798500716772a0e12012f273e20ca42"
     },
     "opening.info.i9.advance": {
       "capabilityFamily": "game.info.advance",
@@ -4919,7 +4919,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:8eb3e1e696390fad6513e32f358dc517dafe0a450df1826af2635adfe692ab85"
+      "definitionHash": "sha256:350280ef637d7bee0204ff4dd584a25dce32a09546fd491f17d853fc88929ad1"
     },
     "opening.info.i10.advance": {
       "capabilityFamily": "game.info.advance",
@@ -4944,7 +4944,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:919643cc7290b170833927ef25833e45cc701b8504e83d635b1f5af1b53aa821"
+      "definitionHash": "sha256:f8d0b87ca95af0f0cfa04940518f5fb680550bb718d2f95c780c93a8aaf248a0"
     },
     "opening.info.i11.advance": {
       "capabilityFamily": "game.info.advance",
@@ -4969,7 +4969,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:b781b4185473784a613c96bd25bfad60a9ffa980f65e1260951032eae19282ba"
+      "definitionHash": "sha256:b2779363351ff6a218301e7ce8474f1e9911128570e8ee07680bdb2db85d9a4e"
     },
     "opening.info.i12.advance": {
       "capabilityFamily": "game.info.advance",
@@ -4994,7 +4994,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:1ed3dd32ce73abe118ebc6d5b9f85c7d9385eac151101db0c0612baf9d3c2eab"
+      "definitionHash": "sha256:1441d94a0eefeafc6fb58563fad182537b561895c0467fee2e88a313625f65ea"
     },
     "opening.info.i13.advance": {
       "capabilityFamily": "game.info.advance",
@@ -5019,7 +5019,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:152d1cc346aea0f25b5f5cdbcdaac97e966e125c40cd2e177de29a807afe7e93"
+      "definitionHash": "sha256:8aaca0e8dc205aeb715a4b4401d348290873b251936429c4e61765bc6bbb1f17"
     },
     "opening.info.i14.advance": {
       "capabilityFamily": "game.info.advance",
@@ -5044,7 +5044,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:0373398415d0668d185ce35b6f8e8718e82154478ddf55b1f6007482f6195fda"
+      "definitionHash": "sha256:1bdf32af2462eb3b1edabdb717fe52d5475840cc0c15db8f0e715f75dd98376a"
     },
     "opening.info.i14_2.advance": {
       "capabilityFamily": "game.info.advance",
@@ -5069,7 +5069,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:ba891ace82dd82ec3345dc497d9154753364b32674909e856718f34fbc0835a0"
+      "definitionHash": "sha256:0b1301d5bf8343257f4e85a68cc12a057f5ed5f5529ec735cf142e00b92f011b"
     },
     "opening.info.i15.advance": {
       "capabilityFamily": "game.info.advance",
@@ -5094,7 +5094,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:ca4931e10454a0b607f6365d5c30bd4940cce17dc207159ffb86867b5f62ef08"
+      "definitionHash": "sha256:1605ad5eac15f33b20591e15130cc4aca9451dc3fbd8ffba8b23e40512971842"
     },
     "opening.info.i16.advance": {
       "capabilityFamily": "game.info.advance",
@@ -5119,7 +5119,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:bfa8d8ef9381a2ef25defb5ced34389fb897958c8f95a763095156218cfa000b"
+      "definitionHash": "sha256:e601643310f669a419dc972884cd26341a9bbb270c5c3e7e94df67547eee966b"
     },
     "opening.info.i17.advance": {
       "capabilityFamily": "game.info.advance",
@@ -5144,7 +5144,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:f84e2d05b18a9fbea2597791617f78c13a03c5bcc64add8c79cbc744a534613a"
+      "definitionHash": "sha256:821431d3b0ed095135f5b7d8422ddcdb31a71eea94b49bb908b61e175162f66b"
     },
     "opening.info.i18.advance": {
       "capabilityFamily": "game.info.advance",
@@ -5169,7 +5169,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:b3ecde6ff729f3208e3f55e299af4796bee7e29e9807d817b98358288a5b8799"
+      "definitionHash": "sha256:1757ed7a17d958febb8b8ac8ff3863b08dd3bd5789a8b4c0cf4d8248fc1244db"
     },
     "opening.info.i19.advance": {
       "capabilityFamily": "game.info.advance",
@@ -5194,7 +5194,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:c61615b307022e71f57e123b4d3a8a534e6fe2fd6f9aa116c99e82c77ccf1510"
+      "definitionHash": "sha256:419674250669ac0c19149ac0b5529bfef1f65c3e0e1a6eb35a87962afbc2f1d5"
     },
     "opening.info.i20.advance": {
       "capabilityFamily": "game.info.advance",
@@ -5219,7 +5219,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:581aad1fbc6cd1abad6627bd7592f34137782a6f2bd07f1a9b3a89e714f7d52b"
+      "definitionHash": "sha256:fc010097c04a9b9c9859166cd25071942367016d99929039345713a2d8f1c54e"
     },
     "opening.info.i21.advance": {
       "capabilityFamily": "game.info.advance",
@@ -5244,7 +5244,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:9810055eaefc250d30c3f05ccf16a5f83392196ea1cba812b37e89a8563ed2cc"
+      "definitionHash": "sha256:1dc9849212ada9db3a341950fbe460b10fb2f6b536cb1c567e483293d5621c0d"
     },
     "opening.info.i34.advance": {
       "capabilityFamily": "game.info.advance",
@@ -5269,7 +5269,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:bd5dc482774bc68ef2d53546417f91203b58b654e6467a475f8fca02f6036b56"
+      "definitionHash": "sha256:05798c60927341bb40837ea19979c38b48f248c90bf8a84a2b043e24c2377e71"
     },
     "opening.info.i34_2.advance": {
       "capabilityFamily": "game.info.advance",
@@ -5294,7 +5294,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:ecc86cb6679ce5decdfd0b037ba128b191b6fc19604481db979459b4cd8fd925"
+      "definitionHash": "sha256:7a42d471a4875e529ac9d0f7dc1b52caa71683a7aa16342b4e533a6fe0366b43"
     },
     "opening.team.select.fedya": {
       "capabilityFamily": "game.team.select",
@@ -5319,7 +5319,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:76454cd62844ffadbdb93bafd0dd385086f0d25881fe04763b7113c65a3898c8"
+      "definitionHash": "sha256:861bf9e597d03fccceae4eb6deea2e83366fee9a5ee82690e82a6278892d15dd"
     },
     "opening.team.select.aliona": {
       "capabilityFamily": "game.team.select",
@@ -5344,7 +5344,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:33bd8cfc26a6e4f29a76be10cc42be84c3194e64853d5cca95776553e51f40f7"
+      "definitionHash": "sha256:15eaa4ed91a715bf5cb771768044a2e9b7438451f228728fd4f41f2c8b108964"
     },
     "opening.team.select.leo": {
       "capabilityFamily": "game.team.select",
@@ -5369,7 +5369,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:68d5d050eae416264219cb09a6615746efb34bbde3001ab875f65e80d33405a8"
+      "definitionHash": "sha256:bc6454b5c5ec73b62c6ec582f191b18e2b1a90b925223cf794f7f15310e4b911"
     },
     "opening.team.select.grisha": {
       "capabilityFamily": "game.team.select",
@@ -5394,7 +5394,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:221de6a48afc661c2d23eeee450ce6d4a3fb97d137fff208d0144cc2eddeb11c"
+      "definitionHash": "sha256:10e2bc325ee1100aa0ed22a00af34336b90af60db552611aa6d70ed85e0b5820"
     },
     "opening.team.select.liza": {
       "capabilityFamily": "game.team.select",
@@ -5419,7 +5419,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:d8968a483ac559068bf33acbe72410334aceb2a439503ef08283e81508cc3328"
+      "definitionHash": "sha256:f42a21acd3f320c8e637288d20ed8d7137e1b552d57a73c305f18bf9c72a8dbd"
     },
     "opening.team.select.zenya": {
       "capabilityFamily": "game.team.select",
@@ -5444,7 +5444,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:94d445120522f1d88a0777e68e3e6fa99c1f3fdca0ee4d74751f27156c1a980a"
+      "definitionHash": "sha256:4cb193defd18b0423a569a24c61ffa3220a6b2cf779bbf50b135b2d89d3237da"
     },
     "opening.team.select.zora": {
       "capabilityFamily": "game.team.select",
@@ -5469,7 +5469,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:04e7ec7fa68779d5acb3203066b3788a87c6d75d3e9c051eb68ac5e2706e1385"
+      "definitionHash": "sha256:aa91b128794ecf85d561d9f6b2a6d09f489adaaa2bdc77b64c60c5d6c6d21a89"
     },
     "opening.team.select.arkadii": {
       "capabilityFamily": "game.team.select",
@@ -5494,7 +5494,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:6159474bffab1dee1885301a3100205b9acab9ab8ea342331b6aa2fc9b013012"
+      "definitionHash": "sha256:7c10e15057a0523d6097bf1df9bbaecc092961c14a02bae79ea656b51b8985df"
     },
     "opening.team.select.vasya": {
       "capabilityFamily": "game.team.select",
@@ -5519,7 +5519,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:16068374659a059514e6f4838d0ca7102d9ccb51599e0f5159a10e9b5b0964de"
+      "definitionHash": "sha256:36514dd76b70431fc19e932bf451ac3baead4a97621c4eba2447460cc62cde5e"
     },
     "opening.team.select.tima": {
       "capabilityFamily": "game.team.select",
@@ -5544,7 +5544,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:c13a911aec1c7abc7753376dc39384288a0cc12332c71b36f4b23cdbfa11f636"
+      "definitionHash": "sha256:c2fc556a513afc35efd6631c513273e7031910f1b8311e4874484a1747fc40a4"
     },
     "opening.board.25_30.advance": {
       "capabilityFamily": "game.collection.threshold",
@@ -5569,7 +5569,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:fdc3d8de26327137fae514f6d0f063db52f01714a3b676082384cf74b28b26dd"
+      "definitionHash": "sha256:c71a23053ee3167d0b03f42b02381e2af4ab7adbb80d67965183113e9ccaf0f1"
     },
     "opening.team.confirm": {
       "capabilityFamily": "game.team.confirm",
@@ -5594,7 +5594,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:befd45d8e2483610661dfe3b77dacac6e8412e3751ba439f90ed4de50299c6e6"
+      "definitionHash": "sha256:7bcd4484388fc98303e48f4c555bb5652e0517354db2a788d0ac057fc4a84408"
     }
   },
   "objectModels": {
@@ -5660,8 +5660,8 @@
     "moduleLock": {
       "cubica.core": {
         "moduleId": "cubica.core",
-        "moduleVersion": "1.3.0",
-        "artifactHash": "sha256:a9d081db599b358d68e0c3b2d8c025bb64afc9643229b9908f976d921b36f594"
+        "moduleVersion": "1.4.3",
+        "artifactHash": "sha256:761718222ed473f16b9ef6920011295847e253af0a3e1dc4af6ca837261b9fae"
       }
     },
     "stateModel": {
@@ -10143,7 +10143,7 @@
     },
     "plans": {
       "opening.card.1": {
-        "planHash": "sha256:7657d88aa7c26df4e2e345da34cc7aa2fe6e1d2fce9c23a86bd1fe941a0788cb",
+        "planHash": "sha256:cf1b8f230aff27b33ea06612790ba1eb1157aca89f5d8488606a3bd0a40343dc",
         "transaction": {
           "steps": [
             {
@@ -10368,7 +10368,7 @@
         }
       },
       "opening.card.2": {
-        "planHash": "sha256:0b3ffea0e2c99c7a176b133498dddc1896f4aedd0bc83cc4da0db793125cc7ef",
+        "planHash": "sha256:09300f11045ed9bbdf0bf85eeac524b1783e04ba855ebc9c61b0474f0989628a",
         "transaction": {
           "steps": [
             {
@@ -10569,7 +10569,7 @@
         }
       },
       "opening.card.3": {
-        "planHash": "sha256:e3bded5908ab1f8ea12e63c572078990ec9eed99c74f2bef74eefdbbc2809df2",
+        "planHash": "sha256:577c80f22c65cc1cad0af5b49b5adffcd1e81a035dd98613ee3d9c15330f19a8",
         "transaction": {
           "steps": [
             {
@@ -10838,7 +10838,7 @@
         }
       },
       "opening.card.4": {
-        "planHash": "sha256:ca2835ae0232627c775a1cff1ddbe0ad0087347402dec4f5c6e4c1c29c4ada27",
+        "planHash": "sha256:a7faba4a2ba697a69da330c423d5041db1ab942e514404ad6ca09cfca577c114",
         "transaction": {
           "steps": [
             {
@@ -11039,7 +11039,7 @@
         }
       },
       "opening.card.5": {
-        "planHash": "sha256:1bcd09364748ed9126a5e3187137f9eab59131b21d57635c8d718e385adbe6b9",
+        "planHash": "sha256:b2fe194499f6253c06493a76f19442384c58badf3c3799dcb8105a2d81e498db",
         "transaction": {
           "steps": [
             {
@@ -11240,7 +11240,7 @@
         }
       },
       "opening.card.6": {
-        "planHash": "sha256:e75cea7f3b0aa1c92bd76b6da6a545ac60c8aac9f51a0d946b33154ea82796d7",
+        "planHash": "sha256:fb5d6095efdb386b8529d82496971f154a618322ab2682c7a460403a40e161e4",
         "transaction": {
           "steps": [
             {
@@ -11441,7 +11441,7 @@
         }
       },
       "opening.card.7": {
-        "planHash": "sha256:a400cac5ed63b4b749c03fc9ce62cf99d7ffc3e6e5b86a25c2b39a35b2b2ad55",
+        "planHash": "sha256:04b6c88246488856cf635cd201d3fa6aee1702351b103347ac2a204dcf3f3fe4",
         "transaction": {
           "steps": [
             {
@@ -11644,7 +11644,7 @@
         }
       },
       "opening.card.8": {
-        "planHash": "sha256:d1b2c16dd7321ce698758a4a3cceefdcde064b299962cedfea2ddb1fe458dc88",
+        "planHash": "sha256:0f13deec884538a72ced1eb354610e596deb0efffe91b1ee43fa858b0f06ef24",
         "transaction": {
           "steps": [
             {
@@ -11847,7 +11847,7 @@
         }
       },
       "opening.card.9": {
-        "planHash": "sha256:d1830a42d2adc6b279d5f0b202d017099aa8db86d818e675edb3fb4ce90927aa",
+        "planHash": "sha256:5dce6399de29001d951efee01b66743e25398476204ddc70132d343db55286e8",
         "transaction": {
           "steps": [
             {
@@ -12096,7 +12096,7 @@
         }
       },
       "opening.card.10": {
-        "planHash": "sha256:fb51286b581a14481683ed704651abc91ae34e5a6e41fa6001f1a413369515ec",
+        "planHash": "sha256:f1399831b9ed3102906250c13aaae19aff5a2609b11c6ae59129fcb1ad0446e4",
         "transaction": {
           "steps": [
             {
@@ -12299,7 +12299,7 @@
         }
       },
       "opening.card.11": {
-        "planHash": "sha256:d3d4833147e42f823b7bd9915fea599dc53a05436e3b56bba94cfe89cd3661c3",
+        "planHash": "sha256:b9d9840af24c40ab36871a5d963bf12f97cbcce90f149ee7fd83bebe99f4a81e",
         "transaction": {
           "steps": [
             {
@@ -12502,7 +12502,7 @@
         }
       },
       "opening.card.12": {
-        "planHash": "sha256:b45320175228e97551c0c0e877bdcd27aadfcb466d1ffd11def09809f5232095",
+        "planHash": "sha256:81667207f2ce3168dac85bac4513e705f28be0a44c18772954d5dc4d98f94ac0",
         "transaction": {
           "steps": [
             {
@@ -12717,7 +12717,7 @@
         }
       },
       "opening.card.13": {
-        "planHash": "sha256:598e19621026e2fc34b141422fc84533ecf6f38a9bcfdb58f4f8c6ed09b3fae2",
+        "planHash": "sha256:6e787ca6fd7618590f68590f5dd3aacb00e2838bff6eef1201ce7d9855b2fcfc",
         "transaction": {
           "steps": [
             {
@@ -12920,7 +12920,7 @@
         }
       },
       "opening.card.14": {
-        "planHash": "sha256:38dfc35a5e0e334f94edd8e076e8ea8c3f858c816e138152552aa7f037191836",
+        "planHash": "sha256:f95616dea987ad8ec72565fe64c88d586808d53970925da241c7d9c80fcc54cc",
         "transaction": {
           "steps": [
             {
@@ -13123,7 +13123,7 @@
         }
       },
       "opening.card.15": {
-        "planHash": "sha256:012d2cfc777bde831cf056374291b52fca2257ce594a1545a0784a1a3228da87",
+        "planHash": "sha256:01b20e825f97a4a50a2f1d77fb1bc84da4e72388618789064e2b03a970118244",
         "transaction": {
           "steps": [
             {
@@ -13326,7 +13326,7 @@
         }
       },
       "opening.card.16": {
-        "planHash": "sha256:56590da70a4e51e9240c3b97fbdadbfac30c191ac485ca6db149fba32e4db33a",
+        "planHash": "sha256:6a766dec818ccd218c63ce866d7a46eda4bf18939822f92332653c9194d525aa",
         "transaction": {
           "steps": [
             {
@@ -13529,7 +13529,7 @@
         }
       },
       "opening.card.17": {
-        "planHash": "sha256:b7337312fbedcdc6bf0b57319b40eec7a15a6e3664fc70a9a2cefaf8da374be6",
+        "planHash": "sha256:7ade0be9afc6d19c8563ee8af99034f9f4d057c180eaff54c2da94d6cf60acf0",
         "transaction": {
           "steps": [
             {
@@ -13744,7 +13744,7 @@
         }
       },
       "opening.card.18": {
-        "planHash": "sha256:ddd01f37997e7be07b720a3f30c8c51aeee69e2216e58066ff60dabd43c94df8",
+        "planHash": "sha256:5af2d6fe76c615f7695a0c38758dd6008753d0fc1c7abf287c2351bfc458eae7",
         "transaction": {
           "steps": [
             {
@@ -13993,7 +13993,7 @@
         }
       },
       "opening.card.19": {
-        "planHash": "sha256:934ff2426b79b882a63dc062f8e85f38996d291e659214db198285b0cd75bd2b",
+        "planHash": "sha256:69e314670fe619932fa7e2f05ebee23f36c0ca397c339a9ea14ce86eb1358614",
         "transaction": {
           "steps": [
             {
@@ -14196,7 +14196,7 @@
         }
       },
       "opening.card.20": {
-        "planHash": "sha256:6307f9ad2971f32a15ab2d0b1a247ea1656ef0e8cc6a52210af67c9d05ee3282",
+        "planHash": "sha256:728e70e583a06b390ac0c7b70afe1abf1f10d2ceb673e6ac66630dd43693d22b",
         "transaction": {
           "steps": [
             {
@@ -14411,7 +14411,7 @@
         }
       },
       "opening.card.21": {
-        "planHash": "sha256:b4cb356b40e44a559633caeec4694cbd197e3f10fa6e8cb1c5dba96757b983e1",
+        "planHash": "sha256:faedc38c034c9f1886f6e2480999c3232448670685f7ca22ce863d15cc2dbe4d",
         "transaction": {
           "steps": [
             {
@@ -14602,7 +14602,7 @@
         }
       },
       "opening.card.22": {
-        "planHash": "sha256:474120e3f344aed906d5e3bb2e2901999a20c85ae066a70aa698fe596fe8e526",
+        "planHash": "sha256:834346fdb8be09c97a78491c8fb6fa8676567648407af6f3d09d4b0860065e9f",
         "transaction": {
           "steps": [
             {
@@ -14863,7 +14863,7 @@
         }
       },
       "opening.card.23": {
-        "planHash": "sha256:a23a9d982c9117cd9bccc4b5033e95e88ac727a474d7bab1ca9c537309e08119",
+        "planHash": "sha256:2a98bc4e81cc86b0cc57d76685666a9ac25d323d3ae3fd7b56b9d26504f747cc",
         "transaction": {
           "steps": [
             {
@@ -15112,7 +15112,7 @@
         }
       },
       "opening.card.24": {
-        "planHash": "sha256:d671a78b702a32d4341351976efbf160c1270802b98cd75a9e03ae824d122302",
+        "planHash": "sha256:53616e7e6ccaf27d70f820ac4172afaf2bcdb9d9b8aff7ddbd2dec7ba4c1410d",
         "transaction": {
           "steps": [
             {
@@ -15303,7 +15303,7 @@
         }
       },
       "opening.card.25": {
-        "planHash": "sha256:798b0d9994e30eaf6f637f70629d0353b5ed1de4df001a964e0bce21d0c348f7",
+        "planHash": "sha256:4db411f8779e76b51cb14305b959542499426c8d80d6d7579927da9da44cf3ac",
         "transaction": {
           "steps": [
             {
@@ -15551,7 +15551,7 @@
         }
       },
       "opening.card.26": {
-        "planHash": "sha256:99dc275dff5daf311a5970a90bc9f5ce6bae73498fa171d6d12c4e4886b6bd03",
+        "planHash": "sha256:31c6145adf09eeca344dd6deea81583e3146a6af5546a0b9d832f7cbbe612588",
         "transaction": {
           "steps": [
             {
@@ -15823,7 +15823,7 @@
         }
       },
       "opening.card.27": {
-        "planHash": "sha256:522e06fdecb03a38544cf8c4c116f120af13155deab6dd10061f8d3ba24d8ace",
+        "planHash": "sha256:b26b3d54d216e6cc9d8c2bde199786a529276f107237c7f8cc6bcb480f64bb97",
         "transaction": {
           "steps": [
             {
@@ -16095,7 +16095,7 @@
         }
       },
       "opening.card.28": {
-        "planHash": "sha256:704cc252dbb91cd6ce15f426a508edef2611842b159800c23ec65a38d26a575b",
+        "planHash": "sha256:836056d688d20fa0e032961fb12733f3c86d7afeb563acd74dd31a74d741967e",
         "transaction": {
           "steps": [
             {
@@ -16343,7 +16343,7 @@
         }
       },
       "opening.card.29": {
-        "planHash": "sha256:01cf97fc077aee2a5108b17cf300c90b25399c82cf35b193b22c80b443bc99a2",
+        "planHash": "sha256:783052ba8a9ea7b35d5d1c3e5c2fb733f3ebe727ed68f71c0165c424a04acdfc",
         "transaction": {
           "steps": [
             {
@@ -16615,7 +16615,7 @@
         }
       },
       "opening.card.30": {
-        "planHash": "sha256:dc173da457d16f70b3ac6e423a034325c3109b913f06d30c9a5c48fbc58eeaa9",
+        "planHash": "sha256:9383a1c621efa52c01377a11570ace8100aae6e4e36b69e7aca7e53e95c4dcef",
         "transaction": {
           "steps": [
             {
@@ -16863,7 +16863,7 @@
         }
       },
       "opening.card.31": {
-        "planHash": "sha256:0ab1e9fee20171d07915a0cf3dd19d12d78a9d13063d87872c8d9683761bd436",
+        "planHash": "sha256:289d2b7e640a3956628d903f4f3931961abe35b714c910795411bd2df296bd72",
         "transaction": {
           "steps": [
             {
@@ -17124,7 +17124,7 @@
         }
       },
       "opening.card.32": {
-        "planHash": "sha256:f4bbd3bb40934b7f4263f045e93d63ae46709684926514e9e1c4d6d49180d844",
+        "planHash": "sha256:10c7b8b4672c5ee618cb092e2c325121cb80ea9da571f419259a25a4cf88ae4a",
         "transaction": {
           "steps": [
             {
@@ -17373,7 +17373,7 @@
         }
       },
       "opening.card.33": {
-        "planHash": "sha256:4ecacecae1368ef974cdea551d8146a47a6b6ba4f36afc558522f85b8fa5ea05",
+        "planHash": "sha256:fb272f9367ce0f0e6efb5cba0109ca1d843b8943c9f8bc96cc0e1dd44aa52bb8",
         "transaction": {
           "steps": [
             {
@@ -17646,7 +17646,7 @@
         }
       },
       "opening.card.34": {
-        "planHash": "sha256:76b3d4ab91525f2c7352a01cf21f3587cc8f5fba03d47dc57efb4828b97bc7b9",
+        "planHash": "sha256:45ac4239bfd896afd51e8822d3dd286f4ec6595ab1ac93d6ef3a1c1de41018e0",
         "transaction": {
           "steps": [
             {
@@ -17988,7 +17988,7 @@
         }
       },
       "opening.card.35": {
-        "planHash": "sha256:f1f31154714b510016d3e4dce731cd39b4a59a0d8a7b516d87ef1374c8836dd6",
+        "planHash": "sha256:c02f5a912661a7cac9a28bb5e936ea688eeeb07c86ffaa35820da0c211534815",
         "transaction": {
           "steps": [
             {
@@ -18249,7 +18249,7 @@
         }
       },
       "opening.card.36": {
-        "planHash": "sha256:18690a528defa93bcde8b20a56791493b74780e72670df4215e2aa9c7b599bc7",
+        "planHash": "sha256:865eba39036a8715547f2558eabad1bbc90c165a547368efb32206e635c0c587",
         "transaction": {
           "steps": [
             {
@@ -18486,7 +18486,7 @@
         }
       },
       "opening.card.37": {
-        "planHash": "sha256:c2ec5039db078784fb01c9220b247ff2a68d7b433832536c70bd10f87d75899d",
+        "planHash": "sha256:375531cedcf3d68dc60f205c5e3738767163d5c57fbc8e428ae441310dbeabfd",
         "transaction": {
           "steps": [
             {
@@ -18865,7 +18865,7 @@
         }
       },
       "opening.card.38": {
-        "planHash": "sha256:962c65f09116c76fec647f79c35170fe0a340052e89de8f8e4ce727d6b258564",
+        "planHash": "sha256:5dec0e4bc842de3ad9c6842c38afa9859d9a8a9e06d252ae7c8628728f832bba",
         "transaction": {
           "steps": [
             {
@@ -19244,7 +19244,7 @@
         }
       },
       "opening.card.39": {
-        "planHash": "sha256:9696b3a42c6f96eeeba2610673b40f36922369e6b149ccc3e441b71b046f7b79",
+        "planHash": "sha256:4c757c31caca1fb9cf2041f3a60995f3e5a5cee550637c04f0699cfa18aaddcd",
         "transaction": {
           "steps": [
             {
@@ -19459,7 +19459,7 @@
         }
       },
       "opening.card.3902": {
-        "planHash": "sha256:1f12bf8879f23a7957a7b2ffefb7bf7d783f0e75648f50e2595fbf372b725ba2",
+        "planHash": "sha256:ed02b5ad5ab7495a3b8a05491cf44802c696aade167bb51638e122659e13eba0",
         "transaction": {
           "steps": [
             {
@@ -19674,7 +19674,7 @@
         }
       },
       "opening.card.40": {
-        "planHash": "sha256:16a4be5eef5021a2c640928aec37788557d70cf1f80c9bf8904bf64b3f1e8b5c",
+        "planHash": "sha256:51b135e66b70546d3d89c583204253265bd3126b62bba7675a5c638d7edccef6",
         "transaction": {
           "steps": [
             {
@@ -20053,7 +20053,7 @@
         }
       },
       "opening.card.41": {
-        "planHash": "sha256:1b3da0ee8d9672a202ec67b8c41f237ced60ffa861982a11d9445f30d3c91fc4",
+        "planHash": "sha256:4fae7790b6108ef1c653dd594fdbe89a5e77674ef3981e6b93e0771837ae2eba",
         "transaction": {
           "steps": [
             {
@@ -20432,7 +20432,7 @@
         }
       },
       "opening.card.42": {
-        "planHash": "sha256:c09fad19d4ea4c0f9817a52ec32cab9ae0c3dc6d586ae7c103b72312cf56278e",
+        "planHash": "sha256:0190e044ff53ccd97a995e03e83235a8e71ad0afef4609ef76cee16aa210f89a",
         "transaction": {
           "steps": [
             {
@@ -20823,7 +20823,7 @@
         }
       },
       "opening.card.43": {
-        "planHash": "sha256:3aad788ac7b6b7263ecb6c45358de0417dfa985f1788a4c8c4cc903642478670",
+        "planHash": "sha256:6f221717f62e6869bf6c212d407760c2387ecb5b1ab992bf8945b8275bc8ff62",
         "transaction": {
           "steps": [
             {
@@ -21099,7 +21099,7 @@
         }
       },
       "opening.card.44": {
-        "planHash": "sha256:8d0a67ca8be4d9729f083f11dbd1bac93dcc2f4c130c14f3980b8c4873d70b10",
+        "planHash": "sha256:225eac656b23428dae9860216dfa8a2e10cd6ee75e57df0d1ad06168cc84a1a3",
         "transaction": {
           "steps": [
             {
@@ -21341,7 +21341,7 @@
         }
       },
       "opening.card.45": {
-        "planHash": "sha256:1f3513e4e3493e328c591f625e7dfb5ed551c53d950e894e486c9fc2827f7f83",
+        "planHash": "sha256:14152f100618ab166b415fbf512c4f2292c1c1c4ebe93cf0d32f22514b583e0e",
         "transaction": {
           "steps": [
             {
@@ -21617,7 +21617,7 @@
         }
       },
       "opening.card.46": {
-        "planHash": "sha256:b1294d1e955a100b585bcc7f4ffe4332c48fbbee8af1d2f3c4d7780da9f03b83",
+        "planHash": "sha256:c3467588f429c5f93a349e840e6ccaea5b25bda5245f79db8e7b9d90f2d27b82",
         "transaction": {
           "steps": [
             {
@@ -21806,7 +21806,7 @@
         }
       },
       "opening.card.47": {
-        "planHash": "sha256:394595ec7f6e6ec7b5df0cdf9cfc0490163166f225695d8b5bedd21945c44b01",
+        "planHash": "sha256:c9f59817351d72e5abf5d15e3035a858be9ca5d82f98452a142bc5c849b1098b",
         "transaction": {
           "steps": [
             {
@@ -22029,7 +22029,7 @@
         }
       },
       "opening.card.48": {
-        "planHash": "sha256:7db2dbd9e468dd185ea1d118b8d04087c6123bdcbabf0568f4181991c3d7345a",
+        "planHash": "sha256:256a22c4ee595643f0faecdc5b2d2657af4ea1e496f2c9448bccce9419c4506d",
         "transaction": {
           "steps": [
             {
@@ -22278,7 +22278,7 @@
         }
       },
       "opening.card.49": {
-        "planHash": "sha256:83411a76b1ca7a04db0023474a41dab4c45fa2921aaa403658ff8b6e3a1ce8a9",
+        "planHash": "sha256:311d8728a34d5cde734ff7e1e139a2d220fe3b9647000b00a7845cc775335c75",
         "transaction": {
           "steps": [
             {
@@ -22539,7 +22539,7 @@
         }
       },
       "opening.card.50": {
-        "planHash": "sha256:111d26fd6834f87113be1c9f58ebb698859b4aace81096939a7d541bac8d2cf9",
+        "planHash": "sha256:f9c0dd874f113ff1e77d90ab65e2941f3ea732f819640b4a5c98fdefbbda49d1",
         "transaction": {
           "steps": [
             {
@@ -22774,7 +22774,7 @@
         }
       },
       "opening.card.51": {
-        "planHash": "sha256:2b9abc197c839c0991efda3470b315842ca9e7926d81fcc90e6b1ff82c44edfe",
+        "planHash": "sha256:0b55d78299094be096aacfe40db35ad0bed9ba66d6bf564d673e2de4d1ea5bea",
         "transaction": {
           "steps": [
             {
@@ -23035,7 +23035,7 @@
         }
       },
       "opening.card.52": {
-        "planHash": "sha256:fc311a38f719a6a517b30970fccd99ff63c2b4099a8be52ef4b57fea7cde81c4",
+        "planHash": "sha256:d132e3d55089f907f666922950c402f12aa93170e976f9c177c5d4d283e096e0",
         "transaction": {
           "steps": [
             {
@@ -23258,7 +23258,7 @@
         }
       },
       "opening.card.53": {
-        "planHash": "sha256:ca43bad499adc8d125f81552fe5a6658da916e36e908baf8793f7a3abd62ffb9",
+        "planHash": "sha256:440b72b4f4466e3e503701a5422fd5188b0a95baceb3b1781a1fdc21d034f4b1",
         "transaction": {
           "steps": [
             {
@@ -23481,7 +23481,7 @@
         }
       },
       "opening.card.54": {
-        "planHash": "sha256:696e3391f256aeafde8f372eb06ab5a0d32a5634d039e8e6273cc0932a053bec",
+        "planHash": "sha256:f5294e2629f3f0c82631c40353f150d54d759aa37ee7f8c6904c5b453531a3f3",
         "transaction": {
           "steps": [
             {
@@ -23704,7 +23704,7 @@
         }
       },
       "opening.card.55": {
-        "planHash": "sha256:4cf33de6b68ebf0c0b7d2e331554d48b660e8df2e56707ddc6a3bfaa63e114ca",
+        "planHash": "sha256:1464011d5460885a60d3251977228515593407669e962086f57310bda1548052",
         "transaction": {
           "steps": [
             {
@@ -24029,7 +24029,7 @@
         }
       },
       "opening.card.56": {
-        "planHash": "sha256:2d42ea1b333f15b8c788005bd0444bf10a8734c633d256494c87459e46b97daf",
+        "planHash": "sha256:7e06afcfdfc870159926fdf29a558ac17705bca95818b6c034297becd87cac92",
         "transaction": {
           "steps": [
             {
@@ -24230,7 +24230,7 @@
         }
       },
       "opening.card.57": {
-        "planHash": "sha256:41eaf52b45ed8564fd64f66e2cb870c2bdf5478388c51d150449920cfa9a3122",
+        "planHash": "sha256:d6e3675ce543f4e9dd72e448b1d916e83809cd4204229a75fdd8dd10cfd3ae15",
         "transaction": {
           "steps": [
             {
@@ -24479,7 +24479,7 @@
         }
       },
       "opening.card.58": {
-        "planHash": "sha256:e1809e2a4250eb483d6f56d3fa84f946aefa1bc1dbb8b15e72b04130f3891990",
+        "planHash": "sha256:7b5e12a519b19ae5d23874799545ed5d79edf9b0c86f0c654ae343ccf9c24eb9",
         "transaction": {
           "steps": [
             {
@@ -24766,7 +24766,7 @@
         }
       },
       "opening.card.59": {
-        "planHash": "sha256:508905a3ffbdc42e71dfcbeac466260ad451ae0bd5e2bdbe3f89dee3c40525a0",
+        "planHash": "sha256:1972920706e7a39ba0ec8a38573e7b7b97b93889ac49ed29e82e1e29b03780a6",
         "transaction": {
           "steps": [
             {
@@ -25083,7 +25083,7 @@
         }
       },
       "opening.card.60": {
-        "planHash": "sha256:e03d9aad7e8d9f3a4ef6415e639ccc6f9d116864a9e8b57a9002d4c4b3bd7f82",
+        "planHash": "sha256:81a8193ed0dee65b882dc62b7d11534937172e6619d271b1070b594a50effd4e",
         "transaction": {
           "steps": [
             {
@@ -25408,7 +25408,7 @@
         }
       },
       "opening.card.61": {
-        "planHash": "sha256:5dd8b6eda7e6769e40252e764bff11057624c92734c7b604a3dc110d79d642c6",
+        "planHash": "sha256:07cb1b1e1bdb3d295fd537e9264ad67f6f0b2280d98e9fa4cdc13e26186657ff",
         "transaction": {
           "steps": [
             {
@@ -25698,7 +25698,7 @@
         }
       },
       "opening.card.62": {
-        "planHash": "sha256:93f2dcf2eb9744bb1d86be7a0ac90e7d2894caafa940ed5e28cde2cf78624f38",
+        "planHash": "sha256:7c1320af130c53f43dce1e067eb00619805e6722e0c52222aa00bb2d9a125b9d",
         "transaction": {
           "steps": [
             {
@@ -25918,7 +25918,7 @@
         }
       },
       "opening.card.63": {
-        "planHash": "sha256:5c1baeb5358f3166ba668d3a27d6c8ddd07c68045790901314e516c91ca298a6",
+        "planHash": "sha256:7245a60266ed44150a5650f161f25bc1635d98d3ce9c6f6d6dfed959f5d49888",
         "transaction": {
           "steps": [
             {
@@ -26138,7 +26138,7 @@
         }
       },
       "opening.card.64": {
-        "planHash": "sha256:a30ee9698cd81e2eb29445dfeee1b1e46074d722e87765fb286d6dda0b3328a2",
+        "planHash": "sha256:85e1a2f32e18c870f4943cdd73b79b72b85e17395d945f20001aac6fb8c3fbae",
         "transaction": {
           "steps": [
             {
@@ -26377,7 +26377,7 @@
         }
       },
       "opening.card.65": {
-        "planHash": "sha256:4f6ea7e2829180f4aa7d36ebfe632e3492ec413bee767d587787a0de010867ee",
+        "planHash": "sha256:08bebb92d61076582753ffefe949b14fd823292c8bfe1a0a2b84e0fe84155873",
         "transaction": {
           "steps": [
             {
@@ -26616,7 +26616,7 @@
         }
       },
       "opening.card.66": {
-        "planHash": "sha256:310f19fae5639f3ed2672eeff06da5096899c8e930ad2640aa25c06ffa09f4b9",
+        "planHash": "sha256:5157c3a58a0ef06ce0fdba46f2ec5839ce0a83bb0c07138533ae730099df2650",
         "transaction": {
           "steps": [
             {
@@ -26957,7 +26957,7 @@
         }
       },
       "opening.card.67": {
-        "planHash": "sha256:63c367e7df26f354d79b240a8ca3a069291170a05ddd1ab0abce7dcfc4ca857f",
+        "planHash": "sha256:a82bcd3766fd27e613e35b78bb2798f61c270e9b0f9e7eee9dc52f37f66b4d07",
         "transaction": {
           "steps": [
             {
@@ -27134,7 +27134,7 @@
         }
       },
       "opening.card.68": {
-        "planHash": "sha256:3a159c45cc9f683edf0d12bcefb8e2a6a78be2c89952b8ae6c6e4a1a7ac6ef16",
+        "planHash": "sha256:b048d8bd394f44649821ff24811c8d42df0e92d721cedd3a128d2f6170201a9a",
         "transaction": {
           "steps": [
             {
@@ -27397,7 +27397,7 @@
         }
       },
       "opening.card.69": {
-        "planHash": "sha256:2a0ce74e8fc9fd5c864cf7e8bd54a1a6d98011a46fbe7bf9f1f4373cb8b500bd",
+        "planHash": "sha256:2101ad1efb60e8a323b0094d1232f664b4eb3f9f648781b4b5957dc9331d1296",
         "transaction": {
           "steps": [
             {
@@ -27608,7 +27608,7 @@
         }
       },
       "opening.card.70": {
-        "planHash": "sha256:46819967aca78991b925152c4a5a51220bb61dfe0c2642d885048129d8663ef1",
+        "planHash": "sha256:d14275f444cd72322b21a324cbb46a5b011aea20029f29f4d2be5d0373d6bbda",
         "transaction": {
           "steps": [
             {
@@ -27785,7 +27785,7 @@
         }
       },
       "opening.card.3.advance": {
-        "planHash": "sha256:c57029ef9a14fdeca6dd8c2e58e5b840ccb4304847fd6e6b868c1748ff5e55c9",
+        "planHash": "sha256:d81438da650cc1e56a92c32c44ae37fadc39c7b4b0eddcad281add4e33edf7ba",
         "transaction": {
           "steps": [
             {
@@ -27999,7 +27999,7 @@
         }
       },
       "opening.card.9.advance": {
-        "planHash": "sha256:0206be1e775471e82cb242cbac6370724a0bce31e862660b6c86fb5936c8717b",
+        "planHash": "sha256:4104c0c2dcfecaabab7653068fdb4c462f2c34887a1e23e4b4a62b99b99994f6",
         "transaction": {
           "steps": [
             {
@@ -28213,7 +28213,7 @@
         }
       },
       "opening.card.18.advance": {
-        "planHash": "sha256:658f1e959ef23ee2c2b4cd6150a570415f8dd887bae1d352e72b0ae96849bdee",
+        "planHash": "sha256:5713f0fe7e79c0c92cf1c034ef72942edf8a69b6daad627bae1b357c4b8e665b",
         "transaction": {
           "steps": [
             {
@@ -28427,7 +28427,7 @@
         }
       },
       "opening.card.22.advance": {
-        "planHash": "sha256:a2d78da94a8a8579fbb22d4217056e9d86058650a19c3b5a903616f9045554ca",
+        "planHash": "sha256:341f49959b3a9d8ebb8536333ef8c13ebf63d44a6eb977ee637dec2939a0752c",
         "transaction": {
           "steps": [
             {
@@ -28641,7 +28641,7 @@
         }
       },
       "opening.card.23.advance": {
-        "planHash": "sha256:8d470421e6ce80e79afdf09229000faf489d711fb168a745cc24a068db479266",
+        "planHash": "sha256:e74bfce73b127c4cdd27896a535efc556f9a5e4f2b754ce14415d87491e12e2e",
         "transaction": {
           "steps": [
             {
@@ -28838,7 +28838,7 @@
         }
       },
       "opening.card.31.advance": {
-        "planHash": "sha256:90733971c3efb965f37ad2002e35ee94baadd9cf0ed2124998db6db50c9bf7dd",
+        "planHash": "sha256:1f3f84059b67918a312264120fa4594bea0db6b5518119d9aa50c3b76f05b2f7",
         "transaction": {
           "steps": [
             {
@@ -29052,7 +29052,7 @@
         }
       },
       "opening.card.32.advance": {
-        "planHash": "sha256:fbcd0aeba54532bdadc81644879edb77d595f9293a2da313e8701010102e6b13",
+        "planHash": "sha256:b658e8154ecfe8a9413b73d8a20c57ba64c7ad7a14ba4d3bb45d48412077cf0a",
         "transaction": {
           "steps": [
             {
@@ -29249,7 +29249,7 @@
         }
       },
       "opening.card.33.advance": {
-        "planHash": "sha256:02064dc1ce451c2d0f3b32cdcd97776994ed72d24d555442e94b83cad862226c",
+        "planHash": "sha256:04356deb11ee650c6d2aa82a8365a961312c6d5494c2f58c9c783ad64a54bbbb",
         "transaction": {
           "steps": [
             {
@@ -29446,7 +29446,7 @@
         }
       },
       "opening.card.35.advance": {
-        "planHash": "sha256:756ecfdb3be05ccda425c05823fa30e84d3048540243f2be31e2d1b9974ad2d5",
+        "planHash": "sha256:7443b7633cea74f4cad9d9e5f6696993c1057a368bb9031d904e4b4515d2ea92",
         "transaction": {
           "steps": [
             {
@@ -29643,7 +29643,7 @@
         }
       },
       "opening.card.36.advance": {
-        "planHash": "sha256:e8691f9d9627f7d4a12e18becb446eab4b32a38216e7ca35bdf354704a11adb1",
+        "planHash": "sha256:2fb21e963f8fa9553c714a44cc9e4bae86da15f7d839a97e6555b6a7c8acbdce",
         "transaction": {
           "steps": [
             {
@@ -29840,7 +29840,7 @@
         }
       },
       "opening.card.39.advance": {
-        "planHash": "sha256:bda1b1d0e23a6ea6d55d4047377123c0f2e13fc6893302b30606c6e07764b005",
+        "planHash": "sha256:db321dd6d93f91b563c1582daa125ff9cf0eeec6635a5167e8b5d04437f8a8f4",
         "transaction": {
           "steps": [
             {
@@ -30037,7 +30037,7 @@
         }
       },
       "opening.card.3902.advance": {
-        "planHash": "sha256:e0d56a7a970ecf05e1018522ee09b51e56b83cf689c9992a81fcb81fcae86fef",
+        "planHash": "sha256:85dd58b06ed7e5d190dfaee17cdc76f189b3361bc1fe1d3259b9ee8ec01f3306",
         "transaction": {
           "steps": [
             {
@@ -30251,7 +30251,7 @@
         }
       },
       "opening.card.43.advance": {
-        "planHash": "sha256:dfbe0aa7c6bb33bf23717f36421b9a16e8827ef922a79751120d72e62e4e8f7d",
+        "planHash": "sha256:8c87a4eadbe9d9b5750e87befde05d5c2c72f636b2c83a3203ef57d2a394a9ed",
         "transaction": {
           "steps": [
             {
@@ -30448,7 +30448,7 @@
         }
       },
       "opening.card.45.advance": {
-        "planHash": "sha256:2138159f815ea6ab1d8a7af70069bbdbb55f71120f0d8c245d60b683795c4af1",
+        "planHash": "sha256:754215b1e4b39a704fbcf6e12af6a67270415eb7e73b87cc417588f6c71a0f7a",
         "transaction": {
           "steps": [
             {
@@ -30645,7 +30645,7 @@
         }
       },
       "opening.card.47.advance": {
-        "planHash": "sha256:e304f9e50bffe144aeb237ad11e3d8140b4dd6eebd91eb76969a1815f20b2095",
+        "planHash": "sha256:91a24405695305da77f8b5df2c23c934fef80f24799d98d6bb64d368697d25b3",
         "transaction": {
           "steps": [
             {
@@ -30842,7 +30842,7 @@
         }
       },
       "opening.card.48.advance": {
-        "planHash": "sha256:1917e1ea65a85232dba337bda674f5f71ec5fe1247265bce72a03dc30dbc2330",
+        "planHash": "sha256:082cc1cd16c93fe346a8cf193676e002f33beb2294c8bc7506ecf76083d3abc3",
         "transaction": {
           "steps": [
             {
@@ -31056,7 +31056,7 @@
         }
       },
       "opening.card.49.advance": {
-        "planHash": "sha256:cd15b3a2f8e13c65612d2e4bfd65a1ebc119560b7850b4c6af871b448085f447",
+        "planHash": "sha256:244207255c5c9f2c248b9d0c6d3950ecfc6ba7229fad1ad3421e3fbcc0576b5c",
         "transaction": {
           "steps": [
             {
@@ -31270,7 +31270,7 @@
         }
       },
       "opening.card.50.advance": {
-        "planHash": "sha256:760bc9e54c8d86b9de01a63a1b4cc276290814f93268fe3ac4d7afaf9afb3f18",
+        "planHash": "sha256:6ea8879d1917e674470f161202c3af129716ebbe6dea377b42ee6c4c13674e94",
         "transaction": {
           "steps": [
             {
@@ -31467,7 +31467,7 @@
         }
       },
       "opening.card.51.advance": {
-        "planHash": "sha256:cb73e6432356d978fe6584e1fe0437e51d9052e5a9da8542aa8bb3975a6a3638",
+        "planHash": "sha256:7685c12922bc73fdb7568586a62ed813c850c7914458fad7f4955063f93bc9ed",
         "transaction": {
           "steps": [
             {
@@ -31664,7 +31664,7 @@
         }
       },
       "opening.card.52.advance": {
-        "planHash": "sha256:c1d41f09abcee496ad916d19164351c5db69d91861ca6468ddffeb853e2ba827",
+        "planHash": "sha256:c5664b71becd3bf756e0fd72588b863e41481cd8247dc7ad209fc7a3a68937ce",
         "transaction": {
           "steps": [
             {
@@ -31861,7 +31861,7 @@
         }
       },
       "opening.card.53.advance": {
-        "planHash": "sha256:57dd5526163e6eb2f6a46604eaa4b52ebdf5949d14d93cc9f4d6e383486ee039",
+        "planHash": "sha256:9c4446b29bf2011de2d41e5d49f79e8e4bb8b8296394131c7193e7569a0528a1",
         "transaction": {
           "steps": [
             {
@@ -32058,7 +32058,7 @@
         }
       },
       "opening.card.54.advance": {
-        "planHash": "sha256:cef1afc70759c828e94588b56848ba935fb8663eb541605323767ec3a4476640",
+        "planHash": "sha256:056817bbf98e0043082b13c70a5ca6ddd859f07de439a94680f7a52d03d5bedc",
         "transaction": {
           "steps": [
             {
@@ -32255,7 +32255,7 @@
         }
       },
       "opening.card.55.advance": {
-        "planHash": "sha256:f6e937d61753f99c922edbcd8f9cad78477c2a9705901464f6e60a8c67a32ee8",
+        "planHash": "sha256:b19009c78295a2e3475c06735b5d29e4300de2ddf9884f3e630e304d1166e06f",
         "transaction": {
           "steps": [
             {
@@ -32452,7 +32452,7 @@
         }
       },
       "opening.card.57.advance": {
-        "planHash": "sha256:a286b7416b5bf68c68d1a0565b6d6c26244757378dfb2c5dc36189ab600d6e41",
+        "planHash": "sha256:f697f4cc11c24c1eaa4bb673332cafc4900ce8cd1bf7baadb8ca6dd5b9ab7bfc",
         "transaction": {
           "steps": [
             {
@@ -32649,7 +32649,7 @@
         }
       },
       "opening.card.58.advance": {
-        "planHash": "sha256:3e28a2bc14468ee0c43a8b72a88202dc8a08ea4e9d2550b5304f9da94a170435",
+        "planHash": "sha256:3d7dda15942c51c4be584d37f0ee59af84dd77cfdb8bdbace71ee1c592cde69a",
         "transaction": {
           "steps": [
             {
@@ -32846,7 +32846,7 @@
         }
       },
       "opening.card.60.advance": {
-        "planHash": "sha256:4a524c491a79670accdf61b057b8e67f11393233c2baa37f3a0c6c1efc1e62e2",
+        "planHash": "sha256:0911afbe5214cafdbb050a23f9f1b1e6512d063f3a56c1e764c9eb5b7652a02c",
         "transaction": {
           "steps": [
             {
@@ -33060,7 +33060,7 @@
         }
       },
       "opening.card.61.advance": {
-        "planHash": "sha256:1743ed8969af1579b81cf6905b61434a35ccf75de2d64f8e95c062c29bb2afdf",
+        "planHash": "sha256:08bf03ceeb28c4ee30eb6b64c5063ff42299e14bd05ad0a8203cded03dfb61b7",
         "transaction": {
           "steps": [
             {
@@ -33257,7 +33257,7 @@
         }
       },
       "opening.card.66.advance": {
-        "planHash": "sha256:2b4f82174a576dc6973ce07ecd78ae88999b2bbaf05a68b9fb45a7afa244470e",
+        "planHash": "sha256:a5e2df8c23c7fbf99c0f3a4cbf51fe94b794196928a8eb792648bde358d0c970",
         "transaction": {
           "steps": [
             {
@@ -33454,7 +33454,7 @@
         }
       },
       "opening.card.68.advance": {
-        "planHash": "sha256:798ed1d5996011fb54e1d69fd905b80cab2c35402d36448aeb3b12db9af31a62",
+        "planHash": "sha256:77d5e50aa73963474e4bb190d1b2d08daa3841750093eeb82bad60c694510231",
         "transaction": {
           "steps": [
             {
@@ -33812,7 +33812,7 @@
         }
       },
       "opening.card.69.advance": {
-        "planHash": "sha256:1a0e43524cbb68a87f81ddcd0bd67a91cff84d030da5ff22d2697059556b41ff",
+        "planHash": "sha256:4b6bb03a77ab5bb304b79782025d6cffb2cf67bfe6692274c92c77434165592a",
         "transaction": {
           "steps": [
             {
@@ -34026,7 +34026,7 @@
         }
       },
       "opening.info.i0.advance": {
-        "planHash": "sha256:f1a0c459315bc34d89d620e562d7fe2ca0f7cf74a7718e99c403daf562a0a390",
+        "planHash": "sha256:0de65f29aa1fd336ebf647491689adf1d2925f55240b39314e15f37a2b441a9b",
         "transaction": {
           "steps": [
             {
@@ -34205,7 +34205,7 @@
         }
       },
       "opening.info.i02.advance": {
-        "planHash": "sha256:b9f9004f956fb5cefbaf2feff50f82cafa70a79d4a5e2ba6f68ba64a5a426362",
+        "planHash": "sha256:2a48a248a1eed3c549ec1610d04727a4dd9d26c9beef44c6b9b9b5b8ae76de39",
         "transaction": {
           "steps": [
             {
@@ -34374,7 +34374,7 @@
         }
       },
       "opening.info.i03.advance": {
-        "planHash": "sha256:0d30756a3c6b33b6143fc3a0caec884ff6f7f4b63ebbd169f3e67c4d3c3fea24",
+        "planHash": "sha256:613676c60292059b9bd9d097f27859ce3b18859f6120217c40635c86d987d859",
         "transaction": {
           "steps": [
             {
@@ -34543,7 +34543,7 @@
         }
       },
       "opening.info.i1.advance": {
-        "planHash": "sha256:1653a4d7137ea3e4e8e7c0a3064e96c76b63def6a23391e01174f05f29fedf5e",
+        "planHash": "sha256:30257094ee33bb1ad6192b453c029b791765a6d479123ec6bad498033be92a2c",
         "transaction": {
           "steps": [
             {
@@ -34712,7 +34712,7 @@
         }
       },
       "opening.info.i2.advance": {
-        "planHash": "sha256:66c526eded0c6f88535a75b9be49c24c04b40727b4c4e37bafa47094ac9cc33e",
+        "planHash": "sha256:a1fd2bfa8e884e1fd50b718208dcf61b8249684b335279bf904a640db9bd20d9",
         "transaction": {
           "steps": [
             {
@@ -34881,7 +34881,7 @@
         }
       },
       "opening.info.i3.advance": {
-        "planHash": "sha256:a0975c5ef63dc3062907f6e937d4e0c94d5dea8fa1f3527c0f87ac20470747ba",
+        "planHash": "sha256:9860c6f88f167fd6167f05c2dffa5aa58577a2a29eeb39532a23971f6291ac09",
         "transaction": {
           "steps": [
             {
@@ -35050,7 +35050,7 @@
         }
       },
       "opening.info.i4.advance": {
-        "planHash": "sha256:b46cf43063bf9336d385ad13c25e4bc66bff7d1dd56e25ece025717b11291b3d",
+        "planHash": "sha256:0aecae49ba9a1d0ed072c53209f2578dc0829abcf4b1d454217b6a6fec32395a",
         "transaction": {
           "steps": [
             {
@@ -35219,7 +35219,7 @@
         }
       },
       "opening.info.i5.advance": {
-        "planHash": "sha256:0b2fab05be3e3659488f4a642d17d2889453621165fd1f3633cb7fbfd7a1b734",
+        "planHash": "sha256:8674ec471d11ea075091ec818b32e11cc771c152fb0db1c2ca4bc448d2d05eed",
         "transaction": {
           "steps": [
             {
@@ -35388,7 +35388,7 @@
         }
       },
       "opening.info.i6.advance": {
-        "planHash": "sha256:4d797342165e2657a911607529d413668517e1637fedba6ef1682a86a5cd5e1e",
+        "planHash": "sha256:6133bbf96d9c49fd4706228ba6a76f42b377dc168d394ca899048e5abedff0de",
         "transaction": {
           "steps": [
             {
@@ -35557,7 +35557,7 @@
         }
       },
       "opening.info.i7.advance": {
-        "planHash": "sha256:4fdd9af6d98b5b2f2b71ec4cf2741c0c474030b0903e3cb0a670c91817e1d31c",
+        "planHash": "sha256:aec35878b2b2c9eed0b4d7ca34f275696f6d5c7afb1633d2e9a4cf95cbd30593",
         "transaction": {
           "steps": [
             {
@@ -35730,7 +35730,7 @@
         }
       },
       "opening.info.i8.advance": {
-        "planHash": "sha256:6d328ded852d892bab16068dd09bd03921e7584e2b0a2d95998712722d8f4623",
+        "planHash": "sha256:24204649dea89fa1acd571795b5861973634bcd6deb6e3f57b3736db0f49c920",
         "transaction": {
           "steps": [
             {
@@ -35903,7 +35903,7 @@
         }
       },
       "opening.info.i9.advance": {
-        "planHash": "sha256:74fbd50c206cd39429c8a6ef0dc703e2da57ab4affd4ee64c91d685610633d47",
+        "planHash": "sha256:5c6ad11a100a0d8f9ba02b4e6c6595060f7c3eae566a145e1c9ce5571ae006bf",
         "transaction": {
           "steps": [
             {
@@ -36076,7 +36076,7 @@
         }
       },
       "opening.info.i10.advance": {
-        "planHash": "sha256:e735c18b22a611b61f582d3bafb49898328224bf5bf073b59fe8d385912b45c4",
+        "planHash": "sha256:34c1fd28a2c19f75a93774773fe76e9861651d253fc09c4a05800ab7419b6d1e",
         "transaction": {
           "steps": [
             {
@@ -36249,7 +36249,7 @@
         }
       },
       "opening.info.i11.advance": {
-        "planHash": "sha256:40f436760b2aa9888def63d6aff72b190287b88177d8a8a16a7bff711fc1a4ce",
+        "planHash": "sha256:2aad61e36f7598a89e16c3f9656c2906d3f87ecf7b3447c6e819cafdd7fab638",
         "transaction": {
           "steps": [
             {
@@ -36408,7 +36408,7 @@
         }
       },
       "opening.info.i12.advance": {
-        "planHash": "sha256:15791833550a9a7e9b35c2606ab7954cea1a703f0fdf4b083fd94ff17efe21be",
+        "planHash": "sha256:c5d2a25ccc8742fda4a42eabac78222494d3c8b653258dace182148625804848",
         "transaction": {
           "steps": [
             {
@@ -36567,7 +36567,7 @@
         }
       },
       "opening.info.i13.advance": {
-        "planHash": "sha256:0ae73138eb16b01d459d5f3f5147c15831ecdfae35d47016f3de22aca8212894",
+        "planHash": "sha256:1b91326c350d61d46500d3a32fe24a586ea8aa47cf7c79c3dbac58d7c214b39a",
         "transaction": {
           "steps": [
             {
@@ -36726,7 +36726,7 @@
         }
       },
       "opening.info.i14.advance": {
-        "planHash": "sha256:636259e88a18404df5cf8468f826d9cb308337c1527848ef5c23e9ba7b529648",
+        "planHash": "sha256:e7e00630af06a6412aaedc56300026e1c170c5aa4ecf068da43fc1fd80c43448",
         "transaction": {
           "steps": [
             {
@@ -36885,7 +36885,7 @@
         }
       },
       "opening.info.i14_2.advance": {
-        "planHash": "sha256:7f5dd27ca9c3f3cc2c03ffe06317326285e7ed89744c5463a793390727cf96f5",
+        "planHash": "sha256:24d9b0451dbe70739ee09a49be41cebea1b81ea3893d11d02e842c583fe52965",
         "transaction": {
           "steps": [
             {
@@ -37044,7 +37044,7 @@
         }
       },
       "opening.info.i15.advance": {
-        "planHash": "sha256:848d559fc1feb6dd402754489207a1c9f51bab251b41c2a8656f39609feed54f",
+        "planHash": "sha256:69cb302ded4d32fa596daf41564a07e354acc17e8d7b7233bbea9931a69243c1",
         "transaction": {
           "steps": [
             {
@@ -37203,7 +37203,7 @@
         }
       },
       "opening.info.i16.advance": {
-        "planHash": "sha256:b6784fcf54cd920d189656911fa3debbcbbd8119fb52ea3f730805f132030a5b",
+        "planHash": "sha256:a955ae2aa07111b50602e6639119af706720aff83a6a9f19e798f6bb355f74bd",
         "transaction": {
           "steps": [
             {
@@ -37362,7 +37362,7 @@
         }
       },
       "opening.info.i17.advance": {
-        "planHash": "sha256:1b199c0c8bc097e61bbff594b54cf06c800aee7d9cbe5f726be2b7bc8053fa7e",
+        "planHash": "sha256:52873debf99a7fce1b17527ec96d9e81da73388fd44f6ab47fb0f2428041b35b",
         "transaction": {
           "steps": [
             {
@@ -37521,7 +37521,7 @@
         }
       },
       "opening.info.i18.advance": {
-        "planHash": "sha256:29d61a5d673624a31f191656537a9762de96a3f1de93a005e7c34ad64fe09518",
+        "planHash": "sha256:7c39d4bf6446732247f7d3dc3c694ec6a6b8b25095425245aca2125f13087a8f",
         "transaction": {
           "steps": [
             {
@@ -37680,7 +37680,7 @@
         }
       },
       "opening.info.i19.advance": {
-        "planHash": "sha256:3403109b16701ef09e3eb68e1231f1dcb97e719da30514acd8460c0c1f240c56",
+        "planHash": "sha256:17eae6c31c128491b028efc8fc79ca7685fc8f880d346600a18ea1fa1f49eb92",
         "transaction": {
           "steps": [
             {
@@ -37839,7 +37839,7 @@
         }
       },
       "opening.info.i20.advance": {
-        "planHash": "sha256:d0434b2c704386d3331a01964036eefd2a511ebde44cb8e14aa35f3e71d32fdf",
+        "planHash": "sha256:ff782ffc53e21a54d3b5342f2431c66a3e29df5ddb5b7d97997b0d5827ed57f7",
         "transaction": {
           "steps": [
             {
@@ -38015,7 +38015,7 @@
         }
       },
       "opening.info.i21.advance": {
-        "planHash": "sha256:9e29e6789044b92781ab349e85b5c88a39353a956bef0b5b581a5b072044ccc3",
+        "planHash": "sha256:86c89b9a1d839b05e3afce238504ba6dc296272c97527837d0a9991a6006ca82",
         "transaction": {
           "steps": [
             {
@@ -38191,7 +38191,7 @@
         }
       },
       "opening.info.i34.advance": {
-        "planHash": "sha256:55daeaca66da6ccf06cc0a999712e838e4459bc21de6897c7e54f60a0810cd0a",
+        "planHash": "sha256:f8ae45229d2c64695b9ee17c83dcf6fbb05b7ff6011351de9847e85bc57edae4",
         "transaction": {
           "steps": [
             {
@@ -38354,7 +38354,7 @@
         }
       },
       "opening.info.i34_2.advance": {
-        "planHash": "sha256:c127f11a8f6bc7b9a340445aad46f8c1dc1258e13e73ee0270818b7fdb4496bc",
+        "planHash": "sha256:e1009d638a8ce5885853e91e2965f7dc06253d94d0d3c33812ed72304535b785",
         "transaction": {
           "steps": [
             {
@@ -38517,7 +38517,7 @@
         }
       },
       "opening.team.select.fedya": {
-        "planHash": "sha256:86e4c494f78a34ef78099b5bfeff551c69f20647f4004899d7b923896bfc4ed0",
+        "planHash": "sha256:2aecba5c4a3384e1b732b74009af11c836d1b46f0b2be26026ca20b2fd2839d1",
         "transaction": {
           "steps": [
             {
@@ -38747,7 +38747,7 @@
         }
       },
       "opening.team.select.aliona": {
-        "planHash": "sha256:2cd60208fcd19b221357cf447fe564de88df96ed9edf1c2ac57aff8ce3cc0f1a",
+        "planHash": "sha256:954e9b674b0564afc0125c4be260dcfb756da9571bdf3f2b1fb84cddebe78f57",
         "transaction": {
           "steps": [
             {
@@ -38989,7 +38989,7 @@
         }
       },
       "opening.team.select.leo": {
-        "planHash": "sha256:79f7361e73f3c8420e1090c08301992834b6d288ce48d6ad205e9329783997a5",
+        "planHash": "sha256:fcf886abd66d334726fe4534095336168b2de5b82e794a6e581adc1bdd3d6be9",
         "transaction": {
           "steps": [
             {
@@ -39231,7 +39231,7 @@
         }
       },
       "opening.team.select.grisha": {
-        "planHash": "sha256:95d78409a9180f25fc9c9eff9ab5dd179fed5ecc5b3791400d490f877b944f69",
+        "planHash": "sha256:f3576e147c91147e275f1fa6fd6382c1f193f48f28813907131fa92d84d4b947",
         "transaction": {
           "steps": [
             {
@@ -39461,7 +39461,7 @@
         }
       },
       "opening.team.select.liza": {
-        "planHash": "sha256:e56fc639aefb2b59bf56d84096022ab908d586cee515249eab37518d27dd3154",
+        "planHash": "sha256:eb52730184d1559d28053fcfa94a0d767c25ef77080b3d25fff83f1419ff81ca",
         "transaction": {
           "steps": [
             {
@@ -39703,7 +39703,7 @@
         }
       },
       "opening.team.select.zenya": {
-        "planHash": "sha256:fe3d244cdfa0196312d6174a546d99208a4ae9e850fd0d6401951e745da24f71",
+        "planHash": "sha256:1acd1fff3aab6e2f4051414d2ce09afdf6a7fe5d57dd6b8f51f3c09ed602f6c4",
         "transaction": {
           "steps": [
             {
@@ -39921,7 +39921,7 @@
         }
       },
       "opening.team.select.zora": {
-        "planHash": "sha256:53c668849e242e51af8b581bd04824f67ea94744493106011e4d9608fb4aee6f",
+        "planHash": "sha256:c071604780fed59d83fbaf938929e1d3ca0589a5667c295b97f4b3ce3e1024f9",
         "transaction": {
           "steps": [
             {
@@ -40139,7 +40139,7 @@
         }
       },
       "opening.team.select.arkadii": {
-        "planHash": "sha256:7013559f6ee8fb74c9e5cbc2ada92d4148e0042ab86304d181593ab23ecc1d66",
+        "planHash": "sha256:489e9acce96b67dfe3ce519293aa3ff7b5fc857fb6fb7061d7d4c8ce0608d3b9",
         "transaction": {
           "steps": [
             {
@@ -40357,7 +40357,7 @@
         }
       },
       "opening.team.select.vasya": {
-        "planHash": "sha256:238536d154ab562cc60226c2c28cd557225dec131365c969e5ed11921c4421aa",
+        "planHash": "sha256:34200ef4ed75a8cf7290dd2ef38ce03332442cdb34b6fec81552c6c805d82263",
         "transaction": {
           "steps": [
             {
@@ -40575,7 +40575,7 @@
         }
       },
       "opening.team.select.tima": {
-        "planHash": "sha256:858019b16dee0937aace3245a88fd2cf88780fced53fce5e46f9a9c4aab05a8c",
+        "planHash": "sha256:aaee724077200fe643b656e8220b88c84b669917cf6f3006dcf885e46ff99311",
         "transaction": {
           "steps": [
             {
@@ -40805,7 +40805,7 @@
         }
       },
       "opening.board.25_30.advance": {
-        "planHash": "sha256:795a20adb1764756456d500bae839272ee03a442a1e136e3c171300e9d33622d",
+        "planHash": "sha256:733b125220b679ed227de97fec14d1788609be5dfd39f6ca928e1ef61924c0ba",
         "transaction": {
           "steps": [
             {
@@ -41006,7 +41006,7 @@
         }
       },
       "opening.team.confirm": {
-        "planHash": "sha256:fab7552d8a9443d4f7757330cb757f43d3df4cbea8703462c5a82ee7ce64774f",
+        "planHash": "sha256:2ba9de23eae0a848197dff5cf53813fe50f2e6c365a192674c64d1dace9dd8d6",
         "transaction": {
           "steps": [
             {

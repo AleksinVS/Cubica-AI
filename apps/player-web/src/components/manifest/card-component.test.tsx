@@ -1,5 +1,5 @@
 /**
- * Tests for cardComponent front/back flip (ADR-094).
+ * Tests for the public cardComponent front/back contract.
  *
  * The flip is a GENERAL, declarative renderer capability:
  *   - A card gets two faces ONLY when it carries `backText` (the outcome text).
@@ -39,7 +39,7 @@ function makeCard(
   } as unknown as GameUiComponent<GameUiCardComponentProps>;
 }
 
-describe("CardComponent front/back flip (ADR-094)", () => {
+describe("CardComponent front/back contract", () => {
   it("renders a single-sided card (no flip structure) when there is no backText", () => {
     const { container } = render(
       <CardComponent component={makeCard({ title: "Опция", summary: "Передняя сторона" })} onAction={() => {}} />

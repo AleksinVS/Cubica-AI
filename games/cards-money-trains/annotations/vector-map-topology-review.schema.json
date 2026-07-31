@@ -1,0 +1,308 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cubica.platform/games/cards-money-trains/vector-map-topology-review.schema.json",
+  "title": "Cards, Money, Trains vector map topology gap review",
+  "description": "Непубликационный fail-closed отчёт о формально замкнутых путях и разрывах открытых векторных линий. Отчёт не соединяет линии и не создаёт полигоны.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schemaVersion",
+    "status",
+    "publishable",
+    "warning",
+    "provenance",
+    "policy",
+    "summary",
+    "formallyClosedContours",
+    "includedOpenCandidates",
+    "nearEndpointPairs",
+    "blockingQuestions"
+  ],
+  "properties": {
+    "$schema": { "const": "vector-map-topology-review.schema.json" },
+    "schemaVersion": { "const": "1.0" },
+    "status": { "const": "review-draft" },
+    "publishable": { "const": false },
+    "warning": { "type": "string", "minLength": 1 },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rawReview", "classification", "source", "calibration"],
+      "properties": {
+        "rawReview": { "$ref": "#/definitions/fileDigest" },
+        "classification": { "$ref": "#/definitions/fileDigest" },
+        "source": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["file", "sha256"],
+          "properties": {
+            "file": { "type": "string", "minLength": 1 },
+            "sha256": { "$ref": "#/definitions/sha256" }
+          }
+        },
+        "calibration": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "coordinateSpace",
+            "width",
+            "height",
+            "rmsErrorPx",
+            "maxErrorPx",
+            "acceptanceThresholdPx"
+          ],
+          "properties": {
+            "kind": { "const": "affine-least-squares" },
+            "coordinateSpace": { "const": "canonical-map-pixels" },
+            "width": { "const": 5079 },
+            "height": { "const": 3627 },
+            "rmsErrorPx": { "type": "number", "minimum": 0 },
+            "maxErrorPx": { "type": "number", "minimum": 0 },
+            "acceptanceThresholdPx": { "type": "number", "exclusiveMinimum": 0 }
+          }
+        }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "syntheticConnectionsAllowed",
+        "polygonizationPerformed",
+        "semanticAssignmentsConfirmed",
+        "exactEndpointRule",
+        "nearEndpointReviewThresholdPx"
+      ],
+      "properties": {
+        "syntheticConnectionsAllowed": { "const": false },
+        "polygonizationPerformed": { "const": false },
+        "semanticAssignmentsConfirmed": { "const": false },
+        "exactEndpointRule": {
+          "const": "source PDF coordinates must be numerically identical"
+        },
+        "nearEndpointReviewThresholdPx": { "const": 3 }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceCandidateCount",
+        "includedCandidateCount",
+        "includedOpenCandidateCount",
+        "includedFormallyClosedCandidateCount",
+        "heldFormallyClosedCandidateCount",
+        "excludedFormallyClosedCandidateCount",
+        "exactEndpointPairCount",
+        "nearEndpointPairCount",
+        "directlyPublishablePolygonCount"
+      ],
+      "properties": {
+        "sourceCandidateCount": { "const": 981 },
+        "includedCandidateCount": { "const": 978 },
+        "includedOpenCandidateCount": { "const": 978 },
+        "includedFormallyClosedCandidateCount": { "const": 0 },
+        "heldFormallyClosedCandidateCount": { "const": 1 },
+        "excludedFormallyClosedCandidateCount": { "const": 2 },
+        "exactEndpointPairCount": { "const": 0 },
+        "nearEndpointPairCount": { "const": 15 },
+        "directlyPublishablePolygonCount": { "const": 0 }
+      }
+    },
+    "formallyClosedContours": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": { "$ref": "#/definitions/closedContour" }
+    },
+    "includedOpenCandidates": {
+      "type": "array",
+      "minItems": 978,
+      "maxItems": 978,
+      "items": { "$ref": "#/definitions/openCandidate" }
+    },
+    "nearEndpointPairs": {
+      "type": "array",
+      "minItems": 15,
+      "maxItems": 15,
+      "items": { "$ref": "#/definitions/endpointPair" }
+    },
+    "blockingQuestions": {
+      "type": "array",
+      "minItems": 3,
+      "items": { "$ref": "#/definitions/blockingQuestion" }
+    }
+  },
+  "definitions": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "fileDigest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file", "sha256"],
+      "properties": {
+        "file": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/definitions/sha256" }
+      }
+    },
+    "point": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" }
+      }
+    },
+    "endpointRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidateId",
+        "endpoint",
+        "styleGroupId",
+        "proposedRole",
+        "proposedCountryId",
+        "point"
+      ],
+      "properties": {
+        "candidateId": { "$ref": "#/definitions/candidateId" },
+        "endpoint": { "enum": ["start", "end"] },
+        "styleGroupId": { "$ref": "#/definitions/styleGroupId" },
+        "proposedRole": {
+          "enum": [
+            "country-internal-boundary",
+            "major-boundary-fragment",
+            "outer-map-boundary"
+          ]
+        },
+        "proposedCountryId": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^cmt-country-[a-z]+(?:-[a-z]+)*$"
+            },
+            { "type": "null" }
+          ]
+        },
+        "point": { "$ref": "#/definitions/point" }
+      }
+    },
+    "candidateId": {
+      "type": "string",
+      "pattern": "^boundary-candidate-[0-9]{4}$"
+    },
+    "styleGroupId": {
+      "type": "string",
+      "pattern": "^boundary-style-[a-f0-9]{16}$"
+    },
+    "closedContour": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidateId",
+        "styleGroupId",
+        "proposedRole",
+        "proposedCountryId",
+        "disposition",
+        "start",
+        "lastExplicitPoint",
+        "closingSegmentLengthPx",
+        "canonicalBounds"
+      ],
+      "properties": {
+        "candidateId": { "$ref": "#/definitions/candidateId" },
+        "styleGroupId": { "$ref": "#/definitions/styleGroupId" },
+        "proposedRole": {
+          "enum": ["ambiguous-closed-contour", "page-frame"]
+        },
+        "proposedCountryId": { "type": "null" },
+        "disposition": { "enum": ["hold", "exclude"] },
+        "start": { "$ref": "#/definitions/point" },
+        "lastExplicitPoint": { "$ref": "#/definitions/point" },
+        "closingSegmentLengthPx": { "type": "number", "minimum": 0 },
+        "canonicalBounds": { "$ref": "#/definitions/bounds" }
+      }
+    },
+    "bounds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["minX", "minY", "maxX", "maxY"],
+      "properties": {
+        "minX": { "type": "number" },
+        "minY": { "type": "number" },
+        "maxX": { "type": "number" },
+        "maxY": { "type": "number" }
+      }
+    },
+    "openCandidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidateId",
+        "styleGroupId",
+        "proposedRole",
+        "proposedCountryId",
+        "start",
+        "end",
+        "selfGapPx"
+      ],
+      "properties": {
+        "candidateId": { "$ref": "#/definitions/candidateId" },
+        "styleGroupId": { "$ref": "#/definitions/styleGroupId" },
+        "proposedRole": {
+          "enum": [
+            "country-internal-boundary",
+            "major-boundary-fragment",
+            "outer-map-boundary"
+          ]
+        },
+        "proposedCountryId": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^cmt-country-[a-z]+(?:-[a-z]+)*$"
+            },
+            { "type": "null" }
+          ]
+        },
+        "start": { "$ref": "#/definitions/point" },
+        "end": { "$ref": "#/definitions/point" },
+        "selfGapPx": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
+    "endpointPair": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["left", "right", "distancePx", "sameProposedCountry"],
+      "properties": {
+        "left": { "$ref": "#/definitions/endpointRef" },
+        "right": { "$ref": "#/definitions/endpointRef" },
+        "distancePx": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 3
+        },
+        "sameProposedCountry": { "type": "boolean" }
+      }
+    },
+    "blockingQuestion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "status", "question", "evidence"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "status": { "const": "open" },
+        "question": { "type": "string", "minLength": 1 },
+        "evidence": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

@@ -101,46 +101,12 @@
       ],
       "roadPlanning": {
         "mode": "region-segment-minimum",
-        "algorithmVersion": "region-segment-minimum-v1",
+        "algorithmVersion": "region-segment-minimum-v2",
         "geometryVersion": "mock-regions-v1",
-        "geometryHash": "sha256:418915f2cb120b41bf6a7809c6864a3e53706ca0d825df799c7ec3cf8d53d7d0",
-        "tieBreak": "session-random",
+        "geometryHash": "sha256:bc78952bb05177b6015bfbf461139d728c9cd40c691e30277031acec980ce5fd",
+        "tieBreak": "shortest-then-codepoint",
         "boundaryPolicy": "lowest-region-id",
-        "excludedRegionIdsEndpoint": "public.transportNetworks.main.excludedRegionIds",
-        "navigationGraph": {
-          "portals": [
-            {
-              "id": "portal:mock-region-central:mock-region-east:1",
-              "regionIds": [
-                "mock-region-central",
-                "mock-region-east"
-              ],
-              "from": {
-                "x": 820,
-                "y": 50
-              },
-              "to": {
-                "x": 820,
-                "y": 900
-              }
-            },
-            {
-              "id": "portal:mock-region-central:mock-region-west:1",
-              "regionIds": [
-                "mock-region-central",
-                "mock-region-west"
-              ],
-              "from": {
-                "x": 480,
-                "y": 50
-              },
-              "to": {
-                "x": 480,
-                "y": 900
-              }
-            }
-          ]
-        }
+        "excludedRegionIdsEndpoint": "public.transportNetworks.main.excludedRegionIds"
       }
     }
   },

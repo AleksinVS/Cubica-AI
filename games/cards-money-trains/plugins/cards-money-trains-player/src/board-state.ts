@@ -7,6 +7,10 @@
  */
 
 import { readCountryId } from "./country-presentation.ts";
+import {
+  readFinalResults,
+  type FinalResultsView
+} from "./final-results-presentation.ts";
 
 export type CanonicalPoint = Readonly<{ x: number; y: number }>;
 
@@ -72,6 +76,10 @@ export interface TeamSummaryView {
   readonly label: string;
   readonly type: string;
   readonly coins: number | null;
+  /** Runtime-owned participation state; only `placed` teams remain playable. */
+  readonly placementStatus?: string | null;
+  /** Unpaid loan principal shown read-only in the facilitator form. */
+  readonly outstandingDebt?: number | null;
   /** Closed game palette id used only for persistent ownership color. */
   readonly colorId?: string;
 }
@@ -137,6 +145,13 @@ export interface BoardProjection {
   /** Currently revealed news card, if the public game state exposes one. */
   readonly currentNewsId?: string | null;
   readonly currentNews?: BoardNewsView | null;
+  /**
+   * Server-calculated terminal result, or `null` outside a valid finished phase.
+   *
+   * Optionality keeps old projection fixtures source-compatible; production
+   * projection always publishes the property.
+   */
+  readonly finalResults?: FinalResultsView | null;
 }
 
 type JsonRecord = Record<string, unknown>;
@@ -321,12 +336,15 @@ const readTeams = (publicState: JsonRecord): TeamSummaryView[] => {
   return Object.entries(objectCollection(publicState, "teams")).flatMap(([id, raw]) => {
     if (!isRecord(raw)) return [];
     const attributes = isRecord(raw.attributes) ? raw.attributes : {};
+    const facets = isRecord(raw.facets) ? raw.facets : {};
     const colorId = text(attributes.colorId);
     return [{
       id,
       label: text(attributes.label) ?? id,
       type: text(attributes.type) ?? "team",
       coins: finiteNumber(attributes.coins),
+      placementStatus: text(facets.placementStatus),
+      outstandingDebt: finiteNumber(attributes.outstandingDebt),
       ...(colorId ? { colorId } : {})
     }];
   });
@@ -458,19 +476,22 @@ export function projectBoardSession(
   const currentNewsId = text(newsState.currentCardId);
   const nodes = readNodes(publicState);
   const movement = readMovement(publicState);
+  const teams = readTeams(publicState);
+  const phase = text(sessionState.phase) ?? "unknown";
   return {
     nodes,
     edges: readEdges(publicState, nodes),
     vehicles: readVehicles(publicState),
     cargos: readCargo(publicState),
-    teams: readTeams(publicState),
+    teams,
     highlights: readHighlights(board),
     availableActions: readActions(board, readActionAvailability(session.actionAvailability)),
     bounds: readBounds(board, nodes),
-    phase: text(sessionState.phase) ?? "unknown",
+    phase,
     turnNumber: finiteNumber(sessionState.turnNumber) ?? 0,
     ...movement,
     currentNewsId,
-    currentNews: readCurrentNews(publicState, currentNewsId)
+    currentNews: readCurrentNews(publicState, currentNewsId),
+    finalResults: readFinalResults(publicState.finalResults, teams, phase)
   };
 }

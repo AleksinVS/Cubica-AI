@@ -11,10 +11,29 @@
  */
 
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
 import { readFile, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
+// Region canonicalisation, crossing derivation and the checksum formula are
+// owned by the runtime module that also re-derives them on every package
+// load (ADR-100 §4.3/4.6). Importing the same functions here — rather than
+// re-implementing "canonicalize a polygon" or "hash this geometry" a second
+// time in this game package — is the whole point: a game that computed its
+// own checksum with its own copy of the rules would produce a package the
+// runtime silently refuses the moment the shared rules changed, with no hint
+// that two implementations had drifted apart. Node >=22.7 strips the type
+// annotations from a `.ts` module at import time with no build step and no
+// flag, so this plain top-level import of a TypeScript file works unmodified.
+import {
+  REGION_ROAD_BOUNDARY_POLICY,
+  REGION_ROAD_PLANNING_ALGORITHM,
+  REGION_ROAD_PLANNING_MODE,
+  REGION_ROAD_TIE_BREAK,
+  canonicalizeRoadPlanningRegions,
+  computeRegionRoadPlanningHash,
+  deriveRegionCrossings
+} from "../../../services/runtime-api/src/modules/runtime/regionRoadGeometry.ts";
 
 const scriptFile = fileURLToPath(import.meta.url);
 const toolsRoot = path.dirname(scriptFile);
@@ -193,6 +212,9 @@ const selectAllTeams = (id, attributes) => ({
   selector: {
     collection: "teams",
     objectTypes: ["game.team"],
+    // An excluded team remains in the public audit collection, but it is no
+    // longer a participant and must never contribute to a later build.
+    facets: { placementStatus: literal("placed") },
     ...(attributes ? { attributes } : {}),
     cardinality: { min: 0, max: 12 }
   }
@@ -257,7 +279,8 @@ const buildContributionSet = () => {
               {
                 op: "predicate.entity.matches",
                 entity: { collection: "teams", entityId: teamId },
-                objectType: "game.team"
+                objectType: "game.team",
+                facets: { placementStatus: literal("placed") }
               }
             ),
             errorCode: "CONSTRUCTION_CONTRIBUTION_UNAVAILABLE"
@@ -775,7 +798,7 @@ const buildPhaseFinish = () => {
  */
 const buildTechnicalRegions = () => {
   const width = boardWidth / technicalRegionCount;
-  const regions = Array.from({ length: technicalRegionCount }, (_, index) => {
+  const rawRegions = Array.from({ length: technicalRegionCount }, (_, index) => {
     const left = index * width;
     const right = index === technicalRegionCount - 1
       ? boardWidth
@@ -790,32 +813,19 @@ const buildTechnicalRegions = () => {
       ]
     };
   });
-  const portals = Array.from(
-    { length: technicalRegionCount - 1 },
-    (_, index) => {
-      const x = (index + 1) * width;
-      const leftId = regions[index].id;
-      const rightId = regions[index + 1].id;
-      return {
-        id: `portal:${leftId}:${rightId}:1`,
-        regionIds: [leftId, rightId],
-        from: { x, y: 0 },
-        to: { x, y: boardHeight }
-      };
-    }
-  );
-  // Runtime hashes the canonical planning contract, not just raw geometry:
-  // the same polygons interpreted by a different algorithm or boundary rule
-  // are intentionally a different authoritative route model.
-  const geometryHash = `sha256:${createHash("sha256")
-    .update(JSON.stringify({
-      algorithmVersion: "region-segment-minimum-v1",
-      boundaryPolicy: "lowest-region-id",
-      regions,
-      portals
-    }))
-    .digest("hex")}`;
-  return { regions, portals, geometryHash };
+  // Canonicalize with the exact same function runtime calls when it loads
+  // the package. `regions` is what the manifest declares; `crossings` is the
+  // navigation graph ADR-100 §4.3 explicitly forbids storing, derived here
+  // only long enough to fold it into the checksum below.
+  const regions = canonicalizeRoadPlanningRegions(rawRegions);
+  const crossings = deriveRegionCrossings(regions);
+  const geometryHash = computeRegionRoadPlanningHash({
+    algorithmVersion: REGION_ROAD_PLANNING_ALGORITHM,
+    boundaryPolicy: REGION_ROAD_BOUNDARY_POLICY,
+    regions,
+    crossings
+  });
+  return { regions, geometryHash };
 };
 
 /**
@@ -875,18 +885,17 @@ const normalizeTechnicalInitialEdges = (
     };
     edge.attributes.regionSegments = passages.length;
     edge.attributes.routePlan = {
-      mode: "region-segment-minimum",
-      algorithmVersion: "region-segment-minimum-v1",
+      mode: REGION_ROAD_PLANNING_MODE,
+      algorithmVersion: REGION_ROAD_PLANNING_ALGORITHM,
       geometryVersion: "technical-placeholder-vertical-strips-v1",
       geometryHash,
-      boundaryPolicy: "lowest-region-id",
+      boundaryPolicy: REGION_ROAD_BOUNDARY_POLICY,
       regionSequence: passages.map((passage) => passage.regionId),
       passages,
-      tieBreak: {
-        policy: "technical-straight-initial-network",
-        candidateCount: 1,
-        selectedCandidateIndex: 0
-      },
+      // Version 2 has nothing left to break a tie with chance (ADR-100
+      // §4.6): the shape is just the winning policy name, no candidate list
+      // or chosen index, because there is no candidate list to choose from.
+      tieBreak: { policy: REGION_ROAD_TIE_BREAK },
       source: "technical-initial-network-review",
       geometryStatus: "awaiting-author-overlay-confirmation"
     };
@@ -1107,20 +1116,23 @@ const buildConstructionCycleAuthoring = (sourceAuthoring) => {
   declareConstructionState(root);
   declareConstructionEvents(root);
 
-  const { regions, portals, geometryHash } = buildTechnicalRegions();
+  const { regions, geometryHash } = buildTechnicalRegions();
   normalizeTechnicalInitialEdges(root, regions, geometryHash);
   root.networkModels.main.regions = regions;
   root.networkModels.main.buildableNodeStates = ["open", "building"];
+  // No `navigationGraph` here: ADR-100 §4.3 removes it from the contract.
+  // Runtime derives the navigation graph itself from `regions` on every load
+  // and checks it against `geometryHash`; storing a second copy here would
+  // only be a second place for the two to silently disagree.
   root.networkModels.main.roadPlanning = {
-    mode: "region-segment-minimum",
-    algorithmVersion: "region-segment-minimum-v1",
+    mode: REGION_ROAD_PLANNING_MODE,
+    algorithmVersion: REGION_ROAD_PLANNING_ALGORITHM,
     geometryVersion: "technical-placeholder-vertical-strips-v1",
     geometryHash,
-    tieBreak: "session-random",
-    boundaryPolicy: "lowest-region-id",
+    tieBreak: REGION_ROAD_TIE_BREAK,
+    boundaryPolicy: REGION_ROAD_BOUNDARY_POLICY,
     excludedRegionIdsEndpoint:
-      "public.transportNetworks.main.excludedRegionIds",
-    navigationGraph: { portals }
+      "public.transportNetworks.main.excludedRegionIds"
   };
   root.objectTypes["transport.waypoint"].facets.availability.values.building = {
     visible: true,
@@ -1256,13 +1268,19 @@ const buildConstructionCycleAuthoring = (sourceAuthoring) => {
     "remaining market, cargo selection sequencing and reporting workflows";
   const postCargoPriorityBlocker =
     "remaining market and reporting workflows";
+  const reportingOnlyBlocker = "remaining reporting workflows";
+  const marketReady =
+    root.content.data.operatingTurn?.market?.status === "executable";
   const blockers = new Set(root.config.runtimeBlockers);
   blockers.delete(broadBlocker);
   blockers.delete(preciseBlocker);
   blockers.delete(postCargoPriorityBlocker);
+  blockers.delete(reportingOnlyBlocker);
   blockers.add(
     root.content.data.cardLifecycle?.cargoSelectionPriority
-      ? postCargoPriorityBlocker
+      ? marketReady
+        ? reportingOnlyBlocker
+        : postCargoPriorityBlocker
       : preciseBlocker
   );
   root.config.runtimeBlockers = [...blockers];

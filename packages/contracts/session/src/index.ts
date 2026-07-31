@@ -451,9 +451,10 @@ export interface TransportRoadPreviewPoint {
  * Safe read-only projection of one planned road.
  *
  * The response deliberately excludes the session seed and random counters.
- * `candidateCount` explains whether the confirmed action may choose among
- * equally minimal routes, while `usedStateVersion` identifies the snapshot on
- * which this non-authoritative calculation was made. The two hashes bind a UI
+ * Region road planning (ADR-100) is deterministic: it always resolves to
+ * exactly one road, so there is no count of equally minimal candidates to
+ * report here. `usedStateVersion` identifies the snapshot on which this
+ * non-authoritative calculation was made. The two hashes bind a UI
  * confirmation to the exact normalized endpoint selection and immutable Game
  * Intent definition without trusting a client-generated identity.
  */
@@ -471,7 +472,6 @@ export interface TransportRoadPreviewResponse {
   polyline: Array<TransportRoadPreviewPoint>;
   regionSequence: Array<string>;
   regionSegments: number;
-  candidateCount: number;
   planning: {
     mode: "region-segment-minimum";
     algorithmVersion: string;

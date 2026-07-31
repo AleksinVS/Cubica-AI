@@ -11,6 +11,10 @@ on:
     types:
       - checks_requested
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   legacy-stub-gate:
     name: legacy/stub gate
@@ -29,7 +33,7 @@ jobs:
         run: npm ci
 
       - name: Validate legacy and stubs
-        run: npm run verify:legacy
+        run: npm run test:profile -- --label "legacy/stub gate" -- npm run verify:legacy
 
   manifest-authoring:
     name: manifest authoring gate
@@ -48,7 +52,7 @@ jobs:
         run: npm ci
 
       - name: Validate manifest authoring layer
-        run: npm run verify:manifest-authoring
+        run: npm run test:profile -- --label "manifest authoring gate" -- npm run verify:manifest-authoring
 
   canonical:
     name: canonical verification
@@ -56,6 +60,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          # The synthetic PR merge commit and its two parents are sufficient
+          # for the observational affected-path diff; avoid downloading full
+          # repository history merely to produce a non-blocking summary.
+          fetch-depth: 2
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -66,8 +75,18 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Verify canonical slice
-        run: npm run verify:canonical
+      - name: Observe affected-test selection
+        env:
+          AFFECTED_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
+        run: |
+          if [ -n "$AFFECTED_BASE_SHA" ]; then
+            node scripts/ci/select-affected-tests.mjs --base "$AFFECTED_BASE_SHA" --summary
+          else
+            node scripts/ci/select-affected-tests.mjs --summary
+          fi
+
+      - name: Verify canonical slice without duplicated gates or player build
+        run: npm run test:profile -- --label "canonical verification" -- npm run verify:canonical:ci
 
   portal-rules:
     name: portal rule tests
@@ -87,11 +106,16 @@ jobs:
         run: npm ci --prefix services/portal-backend
 
       - name: Test portal launch rules
-        run: npm run test:portal-rules --prefix services/portal-backend
+        run: npm run test:profile -- --label "portal rule tests" -- npm run test:portal-rules --prefix services/portal-backend
 
   player-web-e2e:
     name: player-web e2e
     runs-on: ubuntu-latest
+    needs:
+      - legacy-stub-gate
+      - manifest-authoring
+      - canonical
+      - portal-rules
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -112,7 +136,13 @@ jobs:
         # Build the two Next.js apps sequentially, then test `next start`.
         # Running both development compilers during Playwright exhausts the
         # CI worker and can terminate editor-web before the suite starts.
-        env:
-          # Preserve Playwright traces, screenshots, and videos for CI failures.
-          E2E_LOW_RESOURCE: "0"
-        run: npm run test:e2e:prod
+        run: npm run test:profile -- --label "production E2E" -- npm run test:e2e:prod
+
+      - name: Upload failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: player-web-e2e-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 7

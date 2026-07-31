@@ -135,11 +135,11 @@ test("turn-cycle intents and flow remain closed, unique and composition-safe", a
   const root = rebuilt.root;
   const actionIds = root.logic.actions.map((candidate) => candidate.id);
   const planIds = Object.keys(root.mechanics.plans);
-  // Cargo terminal actions are now one generic authoring intent expanded by
-  // the compiler, while dynamic construction contributes six source intents.
-  // Keep this source-level count explicit so a generator cannot silently
-  // restore per-terminal or fixed-team action duplication.
-  assert.equal(actionIds.length, 82);
+  // The source stays bounded at 92 intents after adding four repeatable market
+  // actions and the staged news №19/28/29 workflows. Keep this count explicit
+  // so a generator cannot silently restore per-terminal, per-team or
+  // per-vehicle action duplication.
+  assert.equal(actionIds.length, 92);
   assert.equal(new Set(actionIds).size, actionIds.length);
   assert.equal(new Set(planIds).size, planIds.length);
 
@@ -182,7 +182,7 @@ test("turn-cycle intents and flow remain closed, unique and composition-safe", a
   );
   assert.deepEqual(
     root.content.data.cargoSettlement.unresolvedBeforeFullTurn,
-    ["single-remaining-card-policy"]
+    []
   );
 });
 
@@ -316,6 +316,8 @@ test("market and reporting boundaries preserve game state and start turn two onc
     locomotiveMovementLevy: 0,
     vehicleAndCargoMaintenanceExempt: false,
     firstRoadFreeSegments: 0,
+    cargoDepartureBonusNewsId: null,
+    cargoDepartureBonusTerminalIds: [],
     purchasePermissions: {
       wagon: true,
       locomotive: true
@@ -355,6 +357,11 @@ test("technical fixtures are rejected and stagnation resets only temporary news 
     state.public.turnEffects.deliveryPayoutBonus = -2;
     state.public.turnEffects.locomotiveMovementLevy = 1;
     state.public.turnEffects.vehicleAndCargoMaintenanceExempt = true;
+    state.public.turnEffects.cargoDepartureBonusNewsId = "news-28";
+    state.public.turnEffects.cargoDepartureBonusTerminalIds = [
+      "terminal-5",
+      "terminal-7"
+    ];
     state.public.turnEffects.purchasePermissions = {
       wagon: false,
       locomotive: false
@@ -400,6 +407,8 @@ test("technical fixtures are rejected and stagnation resets only temporary news 
     locomotiveMovementLevy: 0,
     vehicleAndCargoMaintenanceExempt: false,
     firstRoadFreeSegments: 0,
+    cargoDepartureBonusNewsId: null,
+    cargoDepartureBonusTerminalIds: [],
     purchasePermissions: {
       wagon: true,
       locomotive: true

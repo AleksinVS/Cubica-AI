@@ -66,7 +66,7 @@ type BrowserActionResult = {
   snapshot: RuntimeSnapshot;
 };
 
-test.describe("Estate Race GSR-034", () => {
+test.describe("Estate Race GSR-034", { tag: "@player" }, () => {
   test("renders two-player board and completes first purchase and p2-to-p1 rent", async ({ page }) => {
     // The acceptance path includes a cold two-service startup plus a bounded
     // search of up to MAX_PROGRESS_ACTIONS authoritative requests. The former

@@ -139,7 +139,7 @@ test.afterAll(() => {
   }
 });
 
-test.describe("Cards Money Trains real operating-turn preview", () => {
+test.describe("Cards Money Trains real operating-turn preview", { tag: "@player" }, () => {
   test("runs news 24, cargo 1 to 9 and settlement through the facilitator map", async ({ page }) => {
     test.setTimeout(120_000);
     const source = materializePreviewSource("positive");

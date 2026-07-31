@@ -237,7 +237,7 @@ export interface GameUiGameVariableComponentProps {
 }
 
 /**
- * Props for cardComponent (interactive card) in S1.
+ * Props for cardComponent in manifest-driven interfaces.
  */
 export interface GameUiCardComponentProps {
   /** Simple text (backward compatible, single-field rendering). */
@@ -246,13 +246,20 @@ export interface GameUiCardComponentProps {
   title?: string;
   /** Card summary for multi-field rendering (front face text). */
   summary?: string;
-  /** Back (flipped/result) text shown after the card is selected. */
+  /**
+   * Public content of the back face. When this field is present and the
+   * presenter supplies `visualState: "resolved"`, the common renderer shows
+   * this content as the active face. This is presentation, not secret reveal.
+   */
   backText?: string;
   /** Chip labels displayed as metadata tags. */
   chips?: Array<string>;
   /** Label for the select/choose button inside the card. */
   selectLabel?: string;
-  /** Visual state for CSS class selection. */
+  /**
+   * Presenter-derived visual state. `"resolved"` selects `backText` when a
+   * back face exists; changing this value does not itself perform a game action.
+   */
   visualState?: "default" | "selected" | "locked" | "resolved" | string;
   /** Presenter-derived visibility flag. Components obey it but do not derive it. */
   visible?: boolean | string;

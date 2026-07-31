@@ -4,106 +4,113 @@
 **Date:** 2026-05-07
 **Context:** Game Platform "Cubica"
 
+## Оглавление
+
+- [Context and Problem Statement](#context-and-problem-statement)
+- [Decision](#decision)
+- [Consequences](#consequences)
+- [2026-05-28 Amendment](#2026-05-28-amendment)
+- [Related ADRs](#related-adrs)
+
 ## Context and Problem Statement
 
-The platform had 10 identified problems rooted in a single cause: Antarctica-specific concerns leaked into platform code. Key symptoms:
+Generic player and runtime layers must support games with different state
+shapes, screen models and action vocabularies. If a platform component imports a
+concrete game's state type, recognizes its screen names or selects actions by
+game-specific identifiers, adding another game requires changing shared code.
 
-1. `FallbackRenderer` imported Antarctica types and rendered game-specific screens
-2. Two divergent rendering paths (ManifestRenderer + FallbackRenderer)
-3. `AntarcticaGameState` defined in platform files instead of the plugin
-4. Manifest action adapter only handled 4 commands
-5. Data binding limited to `{{game.state.public.metrics.*}}`
-6. Hard-coded step→screen mapping in plugin code
-7. Layout resolution via heuristics instead of manifest data
-8. Design mockups not linked to rendering
-9. Three SDK packages had zero live consumers
-10. Content resolvers imported Antarctica types into platform layer
+The platform therefore needs a stable extension boundary that keeps shared
+rendering, presentation and content delivery game-agnostic while allowing a
+game-owned plugin to provide projections that cannot be expressed directly by
+the manifest.
 
 ## Decision
 
-We adopt a **Game-Agnostic Plugin Architecture** built on the existing game config registry pattern with the following enhancements:
+Adopt a **game-agnostic plugin architecture** with the following rules.
 
-### 1. Type System Cleanup (Problems 3, 10)
+### 1. Generic platform contracts
 
-- `GameState = Record<string, unknown>` added to contracts as the generic platform state type
-- `AntarcticaGameState` moved to `games/antarctica/plugins/antarctica-player/src/contracts.ts`
-- `GameConfig`, `GameConfigResolvers`, `ResolverFactory` default to `GameState` — no game-specific generics in platform code
-- `PlayerState` is no longer generic — `Record<string, unknown> & { sessionId, metrics, screenKey, ... }`
-- `GamePresenter` is no longer generic
-- `game-content-resolvers.ts` split: generic utilities remain, Antarctica-specific resolvers moved to `games/antarctica/plugins/antarctica-player/src/state-resolvers.ts`
+- Shared platform state is treated as a schema-validated record rather than a
+  concrete game's domain type.
+- Generic player, presenter and renderer contracts must not import types,
+  identifiers or rules owned by one game.
+- Game-specific typed views of state belong to the game's package or plugin.
 
-### 2. Unified Rendering via SafeModeRenderer (Problems 1, 2)
+### 2. Manifest-first rendering
 
-- `SafeModeRenderer` replaces `FallbackRenderer` as the catch-all renderer
-- Uses convention-based screen synthesis from generic `GameState` (currentBoard, currentInfo, currentTeamSelection)
-- Game plugins can provide a `fallbackScreenBuilder` for custom rendering
-- `FallbackRenderer` marked `@deprecated`, retained for backward compatibility
-- Single rendering path: ManifestRenderer (primary) → SafeModeRenderer (fallback) → loading/error
+- The UI manifest is the primary source for screens, component trees, routing
+  metadata and layout intent.
+- Shared rendering follows one manifest-driven path.
+- A generic safe fallback may render schema-known state without understanding a
+  game's domain semantics.
+- A custom fallback belongs to the game plugin and must not introduce a
+  game-specific branch into the shared renderer.
 
-### 3. Extensible Action Adapter (Problem 4)
+### 3. Extensible action boundary
 
-- `createManifestActionAdapter` now accepts `commandMap` and `resolveActionId` callbacks
-- `commandMap`: static mapping of manifest commands to action IDs
-- `resolveActionId`: dynamic resolution (e.g., card selection by cardId)
-- Default 4 commands preserved for backward compatibility
-- Plugin provides game-specific resolution via `resolveActionId`
+- UI commands are translated to canonical manifest action identifiers through
+  a generic adapter.
+- Static mappings and bounded dynamic resolution may be supplied by the game
+  plugin.
+- The adapter validates the resolved action against the published manifest; a
+  plugin cannot invent an undeclared runtime action.
 
-### 4. Context-Based Expression Resolver (Problem 5)
+### 4. Context-based expression resolution
 
-- New `expression-resolver.ts` with `resolveExpression()` and `resolveExpressions()`
-- Supports: path binding (`{{game.state.public.metrics.score}}`), context binding (`{{card.title}}`), fallback values (`{{value || 0}}`)
-- `GameUiItemTemplate` added to `GameUiComponent` for collection iteration with local context
-- `metric-resolvers.ts` updated to delegate to `resolveExpression`
+- Data binding supports arbitrary schema-valid state paths and a bounded local
+  context for repeated items.
+- Expression resolution is generic and must not special-case a metric, screen
+  or other domain object by identifier.
+- The supported expression language and fallback semantics are public
+  contracts and remain deterministic.
 
-### 5. Manifest-Driven Screen Routing (Problem 6)
+### 5. Manifest-driven routing and layout
 
-- `ScreenRoutingEntry` type added to contracts
-- New `screen-router.ts` with `resolveScreenKey()` and `resolveLayoutModeFromRouting()`
-- Priority: manifest routing entries → direct screenId lookup → info disambiguation → layout override
-- Plugin can still provide custom `resolveBoardScreenKey` but should migrate to manifest data
+- Screen selection and layout are derived from declarative manifest data by
+  default.
+- A plugin resolver is optional and is used only when the published declarative
+  contract cannot express a game-owned projection.
+- Design annotations may inform rendering, but they do not create hidden
+  gameplay behavior.
 
-### 6. Manifest-Driven Layout (Problem 7)
+### 6. Plugin responsibility
 
-- `layoutMode` field added to `GameUiScreenDefinition` (`"leftsidebar" | "topbar" | "auto"`)
-- `ManifestRenderer` reads `layoutMode` from screen definition with prop fallback
-- When `"auto"` or absent, falls back to prop-based resolution
+A game plugin may own:
 
-### 7. Design Region Annotations (Problem 8)
+- typed projections over that game's state;
+- bounded command-to-action resolution;
+- game-specific fallback presentation;
+- derived values that are not part of the generic player contract.
 
-- `DesignRegion` type added to contracts with `id`, `type`, `description`, `layout` hints, `style` overrides
-- `designRegions` field added to `GameUiScreenDefinition`
-- Renderer can use design regions for CSS class mapping and spacing
-
-### 8. SDK Cleanup (Problem 9)
-
-- `@cubica/sdk-shared`, `@cubica/react-sdk`, `@cubica/viewer-web-base` marked as `@deprecated` with NOTE.md files
-- Only `@cubica/sdk-core` remains active (used for `ViewCommand` and `applyJsonMergePatch`)
-- Dead packages retained for reference, removal after full ADR-026 implementation
+It must not own shared transport, session authority, manifest validation or
+generic renderer behavior.
 
 ## Consequences
 
 ### Positive
 
-- New games can be added by creating a plugin directory with `contracts.ts`, `state-resolvers.ts`, and `register.ts` — zero changes to platform code
-- `GamePlayer`, `GamePresenter`, and `SafeModeRenderer` are game-agnostic
-- Data binding supports arbitrary state paths and local context
-- Screen routing and layout can be manifest-driven instead of code-driven
-- Manifest action adapter is extensible per game
+- New games do not require game-specific changes in shared platform layers.
+- Declarative games can run without a custom plugin.
+- Complex games retain a bounded extension point for projections and command
+  resolution.
+- Routing, layout and data binding remain inspectable in published content.
 
 ### Negative
 
-- Convention-based screen synthesis in SafeModeRenderer may not cover all game mechanics
-- `fallbackScreenBuilder` in plugin config adds complexity to the registration interface
-- `AntarcticaGameState` cast in `game-player.tsx` is temporary until all screens are manifest-driven
+- Plugin registration adds an extension contract that must be versioned.
+- Generic fallback rendering cannot reproduce every domain-specific experience.
+- Dynamic action resolution and derived projections require explicit validation
+  to preserve the manifest as source of truth.
 
 ## 2026-05-28 Amendment
 
-ADR-026 remains valid for the game-agnostic resolver pattern, but ADR-037 supersedes the target plugin location and lifecycle:
+ADR-026 remains valid for the game-agnostic resolver and ownership boundaries.
+ADR-037 supersedes the originally assumed plugin location and lifecycle:
 
-- current `apps/player-web/src/plugins/*` is migration input, not the long-term home for user-editable plugins;
-- target user plugins live under `games/<gameId>/plugins/<pluginId>/`;
-- Antarctica plugin must migrate to `games/antarctica/plugins/antarctica-player`;
-- marketplace and runtime-api plugin targets require the sandbox-ready evolution described in ADR-037.
+- user-editable plugins are owned by their game package;
+- marketplace and server-side plugin targets require the sandbox-ready
+  lifecycle and trust boundaries defined by ADR-037;
+- physical source location does not change the architectural ownership rule.
 
 ## Related ADRs
 
@@ -111,7 +118,6 @@ ADR-026 remains valid for the game-agnostic resolver pattern, but ADR-037 supers
 - ADR-002: Abstract View Protocol
 - ADR-003: Hybrid SDUI Schema
 - ADR-013: Manifest text anchors and UI split
-- ADR-014: Viewers library architecture
 - ADR-018: Game logic source of truth is JSON manifest
-- ADR-019: Runtime-api owns content loading
+- ADR-019: Runtime API owns content loading
 - ADR-037: Project-local plugins and marketplace-safe evolution

@@ -72,7 +72,10 @@
 }
 ```
 
-Первый срез реализации закрепил эту форму в `manifest-authoring-common.schema.json`: `_prompt` разрешен на `semanticEntity`, `_promptTemplate` разрешен на `authoringDefinition`, `status` принимает `draft`, `normalized` или `confirmed`, а `normalized` обязателен для `normalized` и `confirmed`. Служебные поля синхронизации не входят в первый срез и должны быть определены отдельным решением.
+JSON Schema закрепляет эту форму: `_prompt` разрешен на `semanticEntity`,
+`_promptTemplate` — на `authoringDefinition`; допустимые статусы и обязательность
+нормализованного текста определяются схемой. Служебные поля синхронизации не
+входят в этот контракт и требуют отдельного решения.
 
 ## 5. Архитектурные инварианты
 
@@ -105,8 +108,10 @@
 
 - Появляется новый тип дрейфа между промтом и структурированными полями.
 - Нужна отдельная политика синхронизации при ручных и автоматических изменениях манифеста.
-- Первый срез расширяет authoring JSON Schema, правила удаления authoring-only полей в компиляторе и schema readiness редактора. Более глубокий AI prompt flow и diagnostics синхронизации остаются следующим этапом.
-- Нужно решить, какие сущности обязаны иметь `_prompt`, а для каких он опционален.
+- Контракт расширяет authoring JSON Schema и требует удаления authoring-only
+  полей при компиляции.
+- Обязательность `_prompt` для разных типов сущностей задаётся их схемами, а не
+  неявной логикой редактора.
 
 ## 8. Связанные артефакты
 
@@ -118,7 +123,6 @@
 - `docs/architecture/schemas/manifest-authoring-common.schema.json`
 - `docs/architecture/schemas/game-authoring-v2.schema.json`
 - `docs/architecture/schemas/ui-authoring-v2.schema.json`
-- `docs/tasks/archive/TSK-20260612-element-authoring-prompt-contract.md`
 
 ## 9. Решённое направление синхронизации
 
@@ -128,6 +132,5 @@
 `_prompt` хранит только невосстановимый static residue, а reverse flow создаёт
 валидируемый `EditorChangeSet` с coverage/hash diagnostics.
 
-Реализованы YAML projection, field dictionary и `prompt-stale`. Оставшаяся
-миграция persisted `_prompt` к static residue/Markdown refs/sync metadata
-зарегистрирована как `LEGACY-0046` и не является открытым архитектурным выбором.
+Динамическая YAML-проекция, словарь полей и диагностика `prompt-stale` следуют
+этому направлению; legacy-формы не являются альтернативным источником истины.

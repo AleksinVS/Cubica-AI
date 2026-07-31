@@ -5058,7 +5058,7 @@
                 }
               ],
               "tieBreak": {
-                "kind": "seeded-random",
+                "kind": "server-random",
                 "stream": "locomotive-order"
               }
             },

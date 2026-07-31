@@ -282,7 +282,7 @@ test("generators preserve the persistent news №14 contract idempotently", asyn
   );
   assert.deepEqual(
     rebuilt.root.config.runtimeBlockers.filter((item) => /news effects/u.test(item)),
-    ["remaining executable news effects 19, 28 and 29"]
+    []
   );
 });
 

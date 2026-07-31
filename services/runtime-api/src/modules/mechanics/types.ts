@@ -14,7 +14,10 @@ import type {
   GameManifestObjectModelMap,
   GameManifestTransportNetworkModelMap
 } from "@cubica/contracts-manifest";
-import type { SessionRandomStreamsState } from "../runtime/sessionRandom.ts";
+import type {
+  SessionRandomProvider,
+  SessionRandomProviderInput
+} from "../runtime/sessionRandom.ts";
 
 export type RuntimeState = Record<string, unknown>;
 export type JsonRecord = Record<string, unknown>;
@@ -125,7 +128,8 @@ export interface MechanicsExecutionInput {
   state: RuntimeState;
   params?: Record<string, unknown>;
   actorContext: MechanicsActorContext;
-  random?: SessionRandomStreamsState;
+  /** Internal provider configuration; production uses server entropy. */
+  random?: SessionRandomProviderInput;
   /** Test/replay seam for protected opaque schedule identities. */
   createScheduleId?: () => string;
   networkModels?: GameManifestTransportNetworkModelMap;
@@ -142,7 +146,6 @@ export interface MechanicsExecutionInput {
 
 export interface MechanicsExecutionOutput {
   candidateState: RuntimeState;
-  randomState?: SessionRandomStreamsState;
   events: Array<MechanicsEvent>;
   audit: Array<MechanicsAuditEntry>;
   result: unknown;
@@ -156,7 +159,7 @@ export interface MechanicsExecutionContext {
   preActionState: RuntimeState;
   params: Record<string, unknown>;
   actor: MechanicsActorContext;
-  random?: SessionRandomStreamsState;
+  random?: SessionRandomProvider;
   results: Map<string, unknown>;
   events: Array<MechanicsEvent>;
   audit: Array<MechanicsAuditEntry>;

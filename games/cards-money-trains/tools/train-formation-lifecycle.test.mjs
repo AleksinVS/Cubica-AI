@@ -296,6 +296,79 @@ const selectWagon = async (session, wagonId) => {
   assert.equal(outcome.result.ok, true);
 };
 
+/**
+ * Prepare one loaded and one empty attached wagon at terminal 1.
+ *
+ * Direct fixture edits only bridge setup/cargo phases that are outside this
+ * focused test. Attachment, graph movement, tariff tracking, money transfer
+ * and detach all still execute through protected public intents.
+ */
+const prepareManualTariffScenario = async (manifest, carrierCoins = 10) => {
+  const baseState = await prepareFormationState(manifest);
+  const session = await createSession(manifest, baseState);
+  const { currentId, wagonIds } = formationIds(baseState);
+  const loadedWagonId = wagonIds[0];
+  const emptyWagonId = wagonIds[1];
+  let cargoId;
+  let logisticsTeamId;
+  let guildTeamId;
+
+  await updateScenario(session, (state) => {
+    const objects = state.public.objects;
+    const locomotive = objects.locomotives[currentId];
+    const loadedWagon = objects.wagons[loadedWagonId];
+    const emptyWagon = objects.wagons[emptyWagonId];
+    cargoId = Object.keys(objects.cargoOrders)[0];
+    assert.equal(typeof cargoId, "string");
+    const cargo = objects.cargoOrders[cargoId];
+    logisticsTeamId = loadedWagon.attributes.ownerTeamId;
+    guildTeamId = locomotive.attributes.ownerTeamId;
+
+    locomotive.attributes.nodeId = "terminal-1";
+    loadedWagon.attributes.nodeId = "terminal-1";
+    emptyWagon.attributes.nodeId = "terminal-1";
+    loadedWagon.attributes.cargoId = cargoId;
+    loadedWagon.attributes.manualTariffDestinationNodeId = "terminal-3";
+    emptyWagon.attributes.cargoId = null;
+    emptyWagon.attributes.manualTariffDestinationNodeId = null;
+
+    cargo.objectType = "transport.cargo";
+    cargo.facets.status = "in_transit";
+    Object.assign(cargo.attributes, {
+      networkId: "main",
+      fromNodeId: "terminal-1",
+      availableAtNodeId: "terminal-1",
+      activeLegFromNodeId: "terminal-1",
+      toNodeId: "terminal-3",
+      holderTeamId: logisticsTeamId,
+      carrierWagonId: loadedWagonId,
+      originDeparted: false,
+      originDepartureTurn: 0
+    });
+
+    objects.teams[logisticsTeamId].coins = carrierCoins;
+    objects.teams[guildTeamId].coins = 10;
+  });
+
+  await selectWagon(session, loadedWagonId);
+  await selectWagon(session, emptyWagonId);
+  const attached = await dispatch({
+    ...session,
+    actionId: "movement.train.attach.selected"
+  });
+  assert.equal(attached.result.ok, true);
+
+  return {
+    session,
+    currentId,
+    loadedWagonId,
+    emptyWagonId,
+    cargoId,
+    logisticsTeamId,
+    guildTeamId
+  };
+};
+
 test("generator owns explicit scalar selection and one bounded group transaction", async () => {
   const [actual, network, intake] = await Promise.all([
     readJson(authoringPath),
@@ -315,11 +388,18 @@ test("generator owns explicit scalar selection and one bounded group transaction
   assert.deepEqual(actionIds, [
     "movement.train.wagon.select",
     "movement.train.wagon.unselect",
-    "movement.train.attach.selected"
+    "movement.train.attach.selected",
+    "movement.train.attach.manual",
+    "movement.train.detach.manual"
   ]);
   assert.equal(actionIds.includes("movement.train.wagon.toggle"), false);
 
-  for (const actionId of actionIds.slice(0, 2)) {
+  for (const actionId of [
+    "movement.train.wagon.select",
+    "movement.train.wagon.unselect",
+    "movement.train.attach.manual",
+    "movement.train.detach.manual"
+  ]) {
     const action = actual.root.logic.actions.find(
       (candidate) => candidate.id === actionId
     );
@@ -380,21 +460,65 @@ test("generator owns explicit scalar selection and one bounded group transaction
       op: "value.result",
       stepId: "formation-selected-wagons-valid"
     },
-    body: [{
-      id: "formation-attach-selected-item",
-      kind: "command",
-      op: "relation.attach",
-      networkId: "main",
-      primary: {
-        op: "value.state",
-        ref: { endpoint: "public.movement.currentLocomotiveId" }
+    body: [
+      {
+        id: "formation-start-manual-tariff",
+        kind: "command",
+        op: "core.entity.attributes.patch",
+        entity: {
+          collection: "wagons",
+          entityId: {
+            op: "value.item",
+            area: "identity",
+            field: "id"
+          }
+        },
+        patches: [
+          {
+            operation: "set",
+            path: ["manualTariffOriginNodeId"],
+            value: {
+              op: "value.entity",
+              entity: {
+                collection: "locomotives",
+                entityId: {
+                  op: "value.state",
+                  ref: {
+                    endpoint: "public.movement.currentLocomotiveId"
+                  }
+                }
+              },
+              field: "nodeId"
+            }
+          },
+          {
+            operation: "set",
+            path: ["manualTariffBillableEdgeCount"],
+            value: { op: "value.literal", value: 0 }
+          },
+          {
+            operation: "set",
+            path: ["manualTariffTrackingActive"],
+            value: { op: "value.literal", value: true }
+          }
+        ]
       },
-      related: [{
-        op: "value.item",
-        area: "identity",
-        field: "id"
-      }]
-    }]
+      {
+        id: "formation-attach-selected-item",
+        kind: "command",
+        op: "relation.attach",
+        networkId: "main",
+        primary: {
+          op: "value.state",
+          ref: { endpoint: "public.movement.currentLocomotiveId" }
+        },
+        related: [{
+          op: "value.item",
+          area: "identity",
+          field: "id"
+        }]
+      }
+    ]
   });
   assert.equal(
     confirmSteps.filter((step) =>
@@ -429,6 +553,12 @@ test("generator owns explicit scalar selection and one bounded group transaction
   assert.ok(wagonCreates.every((step) =>
     step.attributes.formationTargetLocomotiveId?.op === "value.literal"
     && step.attributes.formationTargetLocomotiveId.value === null
+  ));
+  assert.ok(wagonCreates.every((step) =>
+    step.attributes.manualTariffOriginNodeId?.value === null
+    && step.attributes.manualTariffDestinationNodeId?.value === null
+    && step.attributes.manualTariffBillableEdgeCount?.value === 0
+    && step.attributes.manualTariffTrackingActive?.value === false
   ));
 });
 
@@ -518,6 +648,174 @@ test("select, unselect and two-wagon confirmation persist and spend one action p
       ownerTeamId,
       turnNumber: after.state.public.session.turnNumber
     }
+  });
+});
+
+test("manual detach freezes loaded tariff at first deviation and bills every empty-wagon edge", async () => {
+  const manifest = await loadManifest();
+  const scenario = await prepareManualTariffScenario(manifest);
+  const {
+    session,
+    currentId,
+    loadedWagonId,
+    emptyWagonId,
+    cargoId,
+    logisticsTeamId,
+    guildTeamId
+  } = scenario;
+
+  // Destination 3 has the shortest route 1 → 2 → 3,14 → 3. Choosing
+  // 1 → 9 is the first deviation; the following two edges must not increase
+  // the loaded wagon's tariff. The empty wagon counts all three edges.
+  for (const edgeId of [
+    "road-1-9",
+    "road-9-waypoint-9-3-4",
+    "road-8-waypoint-9-3-4"
+  ]) {
+    const moved = await dispatch({
+      ...session,
+      actionId: "movement.locomotive.traverse",
+      params: { edgeId }
+    });
+    assert.equal(moved.result.ok, true);
+  }
+
+  let current = await session.store.getSession(session.sessionId);
+  assert.equal(
+    current.state.public.objects.wagons[loadedWagonId]
+      .attributes.manualTariffBillableEdgeCount,
+    1
+  );
+  assert.equal(
+    current.state.public.objects.wagons[loadedWagonId]
+      .attributes.manualTariffTrackingActive,
+    false
+  );
+  assert.equal(
+    current.state.public.objects.wagons[emptyWagonId]
+      .attributes.manualTariffBillableEdgeCount,
+    3
+  );
+  assert.equal(
+    current.state.public.objects.wagons[emptyWagonId]
+      .attributes.manualTariffTrackingActive,
+    true
+  );
+  const actionPointsBeforeDetach =
+    current.state.public.objects.locomotives[currentId].attributes.actionPoints;
+
+  const loadedDetached = await dispatch({
+    ...session,
+    actionId: "movement.train.detach.manual",
+    params: { wagonId: loadedWagonId }
+  });
+  assert.equal(loadedDetached.result.ok, true);
+  const emptyDetached = await dispatch({
+    ...session,
+    actionId: "movement.train.detach.manual",
+    params: { wagonId: emptyWagonId }
+  });
+  assert.equal(emptyDetached.result.ok, true);
+
+  current = await session.store.getSession(session.sessionId);
+  assert.equal(
+    current.state.public.objects.teams[logisticsTeamId].coins,
+    2
+  );
+  assert.equal(current.state.public.objects.teams[guildTeamId].coins, 18);
+  assert.equal(
+    current.state.public.objects.wagons[loadedWagonId]
+      .attributes.attachedVehicleId,
+    null
+  );
+  assert.equal(
+    current.state.public.objects.wagons[emptyWagonId]
+      .attributes.attachedVehicleId,
+    null
+  );
+  assert.equal(
+    current.state.public.objects.cargoOrders[cargoId]
+      .attributes.activeLegFromNodeId,
+    "terminal-8"
+  );
+  assert.equal(
+    current.state.public.objects.locomotives[currentId].attributes.actionPoints,
+    actionPointsBeforeDetach
+  );
+
+  const reattached = await dispatch({
+    ...session,
+    actionId: "movement.train.attach.manual",
+    params: { wagonId: loadedWagonId }
+  });
+  assert.equal(reattached.result.ok, true);
+  current = await session.store.getSession(session.sessionId);
+  assert.equal(
+    current.state.public.objects.wagons[loadedWagonId]
+      .attributes.attachedVehicleId,
+    currentId
+  );
+  assert.equal(
+    current.state.public.objects.wagons[loadedWagonId]
+      .attributes.manualTariffOriginNodeId,
+    "terminal-8"
+  );
+  assert.equal(
+    current.state.public.objects.wagons[loadedWagonId]
+      .attributes.manualTariffBillableEdgeCount,
+    0
+  );
+  assert.equal(
+    current.state.public.objects.locomotives[currentId].attributes.actionPoints,
+    actionPointsBeforeDetach
+  );
+});
+
+test("insufficient manual tariff rejects money transfer and detach atomically", async () => {
+  const manifest = await loadManifest();
+  const scenario = await prepareManualTariffScenario(manifest, 1);
+  const { session, loadedWagonId } = scenario;
+
+  const moved = await dispatch({
+    ...session,
+    actionId: "movement.locomotive.traverse",
+    params: { edgeId: "road-1-9" }
+  });
+  assert.equal(moved.result.ok, true);
+  await assertRejectedWithoutMutation(session, {
+    actionId: "movement.train.detach.manual",
+    params: { wagonId: loadedWagonId }
+  });
+});
+
+test("temporarily disconnected cargo destination exposes the non-throwing path blocker", async () => {
+  const manifest = await loadManifest();
+  const scenario = await prepareManualTariffScenario(manifest);
+  const { session } = scenario;
+
+  await updateScenario(session, (state) => {
+    // Destination 3 stays open, but its only road is temporarily closed.
+    // The accepted graph language currently has no non-throwing reachability
+    // query, so tariff inspection rejects and atomically rolls back an
+    // otherwise legal movement into another open part of the network.
+    state.public.objects.networkEdges["road-3-3-14"]
+      .facets.availability = "blocked";
+  });
+  await assertRejectedWithoutMutation(session, {
+    actionId: "movement.locomotive.traverse",
+    params: { edgeId: "road-1-9" }
+  });
+});
+
+test("manual coupling is unavailable before the current locomotive moves to a terminal", async () => {
+  const manifest = await loadManifest();
+  const baseState = await prepareFormationState(manifest);
+  const session = await createSession(manifest, baseState);
+  const { wagonIds } = formationIds(baseState);
+
+  await assertRejectedWithoutMutation(session, {
+    actionId: "movement.train.attach.manual",
+    params: { wagonId: wagonIds[0] }
   });
 });
 

@@ -398,7 +398,7 @@ const build = async () => {
   game.root.content.data.board.designHeight = annotation.coordinateSystem.height;
   game.root.content.data.mapAnnotation = network.generatedFrom;
   game.root.content.data.rules.construction.roadGeometry =
-    "server-planned-region-segment-minimum-v1";
+    "server-planned-region-segment-minimum-v2";
   game.root.content.data.mockGameplay = gameplay;
   game.root.content.data.rules.movement.terminalLocomotiveCapacity =
     gameplay.operations.terminalLocomotiveCapacity;
@@ -532,11 +532,6 @@ const build = async () => {
     }]))
   };
   game.root.state.secret = {
-    random: {
-      alg: "xoshiro128ss-streams-v1",
-      seed: gameplay.decks.controlSeed,
-      counters: {}
-    },
     decks: {}
   };
   publicState.board = {

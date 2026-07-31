@@ -76,7 +76,8 @@
               "purchase": 5,
               "sale": 2
             }
-          }
+          },
+          "mandatoryPaymentDeficit": "facilitator-explicit-loan-or-team-exclusion"
         },
         "teams": {
           "logistics_company": {
@@ -86,7 +87,40 @@
           "locomotive_guild": {
             "startingWagons": 0,
             "startingLocomotives": 1
-          }
+          },
+          "supportedOddCounts": [
+            5,
+            7,
+            9,
+            11
+          ],
+          "oddComposition": "logistics_company_count = locomotive_guild_count + 1",
+          "contrastColorIds": [
+            "cobalt",
+            "orange",
+            "emerald",
+            "magenta",
+            "cyan",
+            "amber",
+            "violet",
+            "lime",
+            "rose",
+            "navy",
+            "coral",
+            "charcoal"
+          ],
+          "supportedCounts": [
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12
+          ],
+          "evenComposition": "logistics_company_count = locomotive_guild_count"
         },
         "movement": {
           "locomotiveActionPoints": 5,
@@ -95,7 +129,7 @@
         "construction": {
           "waypointCost": 5,
           "repeatUntilExplicitFinish": true,
-          "roadGeometry": "server-planned-region-segment-minimum-v1",
+          "roadGeometry": "server-planned-region-segment-minimum-v2",
           "roadCostPerRegionSegment": 2
         }
       },
@@ -113,18 +147,587 @@
         }
       ],
       "constructionActionIntent": {
-        "status": "declared-for-fixed-demo-blocked-until-network-content",
+        "status": "executable-technical-region-draft",
+        "publishable": false,
         "road": {
           "actionId": "construction.road.build",
-          "endpointReferenceSemantics": "schema-declared x-cubica-ref to public network node objects",
-          "payments": "four fixed nonnegative demonstration-team contributions"
+          "trustedInput": [
+            "fromNodeId",
+            "toNodeId"
+          ],
+          "routeAndCostAuthority": "server",
+          "pricePerRegionSegment": 2
         },
         "waypoint": {
           "actionId": "construction.waypoint.build",
-          "edgeReferenceSemantics": "schema-declared x-cubica-ref to a public network edge object",
-          "position": "number strictly between 0 and 1",
-          "payments": "four fixed nonnegative demonstration-team contributions"
+          "trustedInput": [
+            "edgeId",
+            "positionT"
+          ],
+          "serverValidatedPrice": 5
+        },
+        "contributions": {
+          "actionId": "construction.contribution.set",
+          "semantics": "agreement-only-until-atomic-build"
         }
+      },
+      "realOperatingTurnProof": {
+        "status": "technical-review-only",
+        "publishable": false,
+        "sourceFixture": "authoring/fixtures/cargo-news.intake.json",
+        "technicalFixture": "authoring/fixtures/real-operating-turn.technical.json",
+        "cargoRecords": [
+          {
+            "id": "cargo-source-row-005",
+            "sourceRow": 5,
+            "originNodeId": "terminal-1",
+            "destinationNodeId": "terminal-9",
+            "bankPayout": 13,
+            "runtimeCardMultiplicity": 1
+          }
+        ],
+        "newsRecords": [
+          {
+            "id": "news-11",
+            "number": 11,
+            "text": "Стоят лоси в течение этого хода между терминалами 1 и 9.",
+            "effect": {
+              "kind": "block-edge",
+              "edgeId": "road-1-9",
+              "duration": "current-turn"
+            }
+          },
+          {
+            "id": "news-24",
+            "number": 24,
+            "text": "Повышенный спрос на перевозки привел к временному повышению цен: клиенты платят перевозчикам +3 монеты за грузы, доставленные на этом ходу.",
+            "effect": {
+              "kind": "delivery-payout-bonus",
+              "amount": 3,
+              "duration": "current-turn"
+            }
+          }
+        ],
+        "networkEvidence": {
+          "edgeId": "road-1-9",
+          "fromNodeId": "terminal-1",
+          "toNodeId": "terminal-9",
+          "state": "unconfirmed-outside-technical-replay"
+        },
+        "unresolved": []
+      },
+      "cardLifecycle": {
+        "status": "partially-confirmed-executable-draft",
+        "publishable": false,
+        "sourceFixture": "authoring/fixtures/cargo-news.intake.json",
+        "physicalCargoCardCount": 174,
+        "baseCargoCardCount": 112,
+        "newsAddedCargoCardCount": 62,
+        "terminalDeckCount": 23,
+        "oneShotNewsCardCount": 34,
+        "executableCargoAdditionNewsNumbers": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ],
+        "executableNetworkClosureNewsNumbers": [
+          11,
+          12,
+          13,
+          15,
+          17,
+          18,
+          20,
+          21
+        ],
+        "executableEconomicNewsNumbers": [
+          14,
+          16,
+          19,
+          22,
+          28,
+          29
+        ],
+        "executableConstructionNewsNumbers": [
+          26,
+          27
+        ],
+        "executableScalarNewsNumbers": [
+          22,
+          23,
+          24,
+          25,
+          28,
+          29,
+          30,
+          31,
+          32,
+          33,
+          34
+        ],
+        "unresolvedRuleNewsNumbers": [],
+        "invariants": [
+          "one-source-row-is-one-physical-card",
+          "future-order-is-server-only",
+          "unchosen-card-returns-to-origin-deck",
+          "chosen-and-delivered-card-never-returns",
+          "one-server-queue-slot-per-active-empty-carrier-wagon-at-an-open-numbered-terminal",
+          "cargo-priority-is-owner-money-then-total-active-owned-wagons",
+          "cargo-owner-and-current-wagon-are-derived-only-from-the-saved-server-queue",
+          "turn-one-has-no-news",
+          "news-never-repeats",
+          "depleted-news-deck-enters-stagnation",
+          "cargo-addition-news-is-one-shot",
+          "temporary-news-effects-reset-on-next-news-phase",
+          "network-news-remove-only-their-own-blocking-reason",
+          "network-objects-reopen-only-with-no-remaining-blocking-reasons",
+          "news-21-current-draft-targets-only-terminals-5-and-7",
+          "news-14-progressive-asset-tax-persists-until-game-end",
+          "news-19-removes-floor-total-equipment-divided-by-five",
+          "news-19-facilitator-selects-each-unit-from-the-team-decision",
+          "news-19-confiscated-equipment-never-reenters-play",
+          "news-19-cargo-stays-at-confiscated-wagon-terminal-without-owner-or-deck-return",
+          "news-28-and-29-departure-bonus-lasts-one-turn",
+          "news-34-base-purchase-prices-persist-until-game-end"
+        ],
+        "workingInterpretations": [
+          "full-cargo-priority-tie-uses-server-random-until-author-confirmation"
+        ],
+        "cargoSelectionPriority": {
+          "status": "executable-with-two-explicit-technical-policies",
+          "queueSlot": "one-per-eligible-wagon",
+          "eligibility": "active empty logistics-company wagon at an open numbered terminal 1-23",
+          "ownerPriority": [
+            "coins-descending",
+            "active-owned-wagon-count-descending"
+          ],
+          "fullTiePolicy": "server-random:cargo-offer-order",
+          "clientAuthority": {
+            "prepare": [],
+            "draw": [
+              "terminalId"
+            ],
+            "select": [
+              "terminalId",
+              "cargoId"
+            ],
+            "skip": [
+              "terminalId"
+            ]
+          }
+        }
+      },
+      "sessionSetup": {
+        "status": "executable-technical-draft",
+        "publishable": false,
+        "sourceNetwork": "annotations/initial-network.review.json",
+        "networkUse": "technical placement only until author overlay confirmation",
+        "supportedTeamCounts": [
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ],
+        "initialResources": {
+          "coinsPerTeam": 10,
+          "logisticsCompany": {
+            "wagons": 2,
+            "locomotives": 0
+          },
+          "locomotiveGuild": {
+            "wagons": 0,
+            "locomotives": 1
+          }
+        },
+        "placement": {
+          "order": "server-random",
+          "controller": "facilitator",
+          "targets": "open terminals in the main technical network",
+          "maximumLocomotivesPerTerminal": 2,
+          "advancesOnlyAfterAllCurrentTeamAssetsArePlaced": true
+        },
+        "unresolved": [
+          "dynamic-team-construction-contributions",
+          "author-confirmation-of-initial-network-overlay"
+        ]
+      },
+      "operatingTurn": {
+        "status": "executable-repeatable-market-cycle-with-construction",
+        "publishable": false,
+        "supportedSetup": "confirmed team counts 4–12; even split equally, odd split with one extra logistics company",
+        "firstTurnNews": "explicit skip without deck or random consumption",
+        "maintenance": {
+          "coinsPerActiveVehicle": 1,
+          "coinsPerHeldCargo": 1,
+          "heldCargoStatuses": [
+            "available",
+            "in_transit"
+          ],
+          "ownerSource": "server-side object state",
+          "news25": "permits direct journaled phase completion without debit or per-unit clicks",
+          "news14": {
+            "duration": "from application through game end",
+            "locomotiveGuild": {
+              "threshold": 3,
+              "coinsPerActiveLocomotiveAboveThreshold": 1
+            },
+            "logisticsCompany": {
+              "threshold": 5,
+              "coinsPerActiveWagonAboveThreshold": 1
+            },
+            "settlement": "authoritative recount and atomic debit for every team at maintenance finish",
+            "insufficientFunds": "transaction fails without loan, elimination or partial charge"
+          }
+        },
+        "market": {
+          "status": "executable",
+          "permissions": "logistics companies buy/sell wagons; locomotive guilds buy/sell locomotives",
+          "basePurchasePrices": {
+            "wagon": 5,
+            "locomotive": 10
+          },
+          "salePrices": {
+            "wagon": 2,
+            "locomotive": 4
+          },
+          "turnOverrides": "news purchase prohibition and purchase price override are resolved from authoritative turnEffects",
+          "inventory": "no game stock or per-team limit; collection capacity 64 is only a bounded-execution safeguard",
+          "placement": "purchases become active at an open main-network terminal; at most two locomotives per terminal",
+          "repetition": "any number of atomic trades may occur before the facilitator finishes the phase"
+        },
+        "repeatablePhaseCycle": {
+          "marketToCargo": "explicit-finish-after-repeatable-transactions",
+          "reportingToNews": "atomic-turn-increment",
+          "scope": "market-with-construction"
+        },
+        "boundary": "next-turn-news",
+        "unresolvedAfterBoundary": [
+          "author-confirmation-of-initial-network-overlay",
+          "reporting-and-reflection-content"
+        ]
+      },
+      "movementTurn": {
+        "status": "executable-order-traversal-formation-through-settlement-boundary",
+        "publishable": false,
+        "supportedSetup": "confirmed team counts 4–12; even split equally, odd split with one extra logistics company",
+        "order": [
+          "network-node-position-x-descending",
+          "owner-team-coins-descending",
+          "owner-active-locomotive-count-descending",
+          "complete-tie-server-random"
+        ],
+        "randomPurposeId": "locomotive-order",
+        "savedForWholePhase": true,
+        "actionPointsReset": 5,
+        "graphTraversal": "main-technical-review-network",
+        "graphTraversalActionPointCost": 1,
+        "movementKeepsCurrentLocomotive": true,
+        "explicitSkip": true,
+        "boundary": "settlement",
+        "unresolvedAfterBoundary": [
+          "publishable-author-confirmed-network-overlay",
+          "remaining-reporting-workflows"
+        ]
+      },
+      "trainFormation": {
+        "status": "executable-refresh-safe-group-attach",
+        "phase": "operations",
+        "currentLocomotive": "server-owned-public.movement.currentLocomotiveId",
+        "selection": "persisted-per-wagon-target-marker",
+        "scalarSelectionParam": "wagonId",
+        "selectionIntents": [
+          "select",
+          "unselect",
+          "manual-attach",
+          "manual-detach"
+        ],
+        "finalParams": "none",
+        "groupActionPointCost": 1,
+        "groupIteration": "core.entities.each-canonical-order",
+        "manualCoupling": {
+          "terminalOnly": true,
+          "requiresCurrentTurnMovement": true,
+          "actionPointCost": 0,
+          "tariffPerBillableEdge": 2,
+          "loadedWagonBilling": "count-through-first-deviation-from-any-current-shortest-route",
+          "emptyWagonBilling": "all-edges-since-attachment",
+          "insufficientFunds": "reject-whole-detach",
+          "cargoLegAfterDetach": "restart-at-detach-terminal"
+        },
+        "boundary": "current-locomotive-remains-active-and-unresolved"
+      },
+      "cargoSettlement": {
+        "status": "executable-prioritized-selection-loading-and-atomic-delivery",
+        "publishable": false,
+        "loadPhase": "cargo",
+        "movementEntryPhase": "movement-order",
+        "settlementPhase": "settlement",
+        "constructionEntryPhase": "construction",
+        "clientAuthority": {
+          "queuePrepare": [],
+          "offerDraw": [
+            "terminalId"
+          ],
+          "offerSelect": [
+            "terminalId",
+            "cargoId"
+          ],
+          "offerSkip": [
+            "terminalId"
+          ],
+          "load": [
+            "wagonId",
+            "cargoId"
+          ],
+          "delivery": [
+            "wagonId"
+          ]
+        },
+        "ownerAndRouteSource": "server-state",
+        "cargoAvailability": {
+          "reservedCard": "only-current-holder-logistics-company",
+          "releasedCard": "any-logistics-company-at-availableAtNodeId",
+          "printedSourceField": "fromNodeId",
+          "currentPickupField": "availableAtNodeId",
+          "activeSettlementLegField": "activeLegFromNodeId"
+        },
+        "tariffPerShortestOpenEdge": 2,
+        "deliveryOrder": [
+          "bank-payout-plus-current-bonus",
+          "full-logistics-to-guild-tariff",
+          "journal-exact-calculation",
+          "detach-wagon",
+          "settle-cargo"
+        ],
+        "insufficientFunds": "reject-whole-delivery",
+        "settlementFinishAllowsUndeliveredCargo": true,
+        "unresolvedBeforeFullTurn": []
+      },
+      "constructionCycle": {
+        "status": "executable-on-non-publishable-technical-regions",
+        "publishable": false,
+        "regionData": {
+          "provenance": "generated technical placeholder; not author geography",
+          "geometryVersion": "technical-placeholder-vertical-strips-v1",
+          "regionCount": 20,
+          "replaceBeforePublication": true
+        },
+        "pricing": {
+          "roadCoinsPerRegionSegment": 2,
+          "waypointCoins": 5,
+          "news26FirstRoadFreeSegments": 6
+        },
+        "lifecycle": {
+          "ordinaryActivation": "start-of-N-plus-2",
+          "independentBlockingReason": "construction-pending"
+        },
+        "invariants": [
+          "pledges-do-not-debit-before-build",
+          "exact-total-and-all-debits-and-object-create-are-atomic",
+          "multiple-builds-per-phase",
+          "explicit-phase-finish",
+          "waypoint-does-not-consume-news-26",
+          "failed-road-does-not-consume-news-26"
+        ]
+      },
+      "facilitatedSession": {
+        "status": "executable-two-pause-lifecycle",
+        "publishable": false,
+        "reminderBehavior": "non-blocking-persisted-due-turn",
+        "startCanPrecedeReminder": true,
+        "pausePhase": "methodology-pause",
+        "returnPhase": "reporting",
+        "serverTimer": false,
+        "permanentSkip": false,
+        "pauses": {
+          "reflection-after-turn-3": {
+            "targetTurn": 3,
+            "timing": "Ориентир автора: около завершения третьего хода; длительность паузы — 15–30 минут, обсуждение команд — около 10 минут.",
+            "prompts": [
+              "Что вы наблюдаете?",
+              "Какие изменения происходят?",
+              "Какие действия вы предпринимаете?",
+              "Какой результат ожидаете?",
+              "Что хотите сообщить другим командам?"
+            ]
+          },
+          "reflection-after-turn-5": {
+            "targetTurn": 5,
+            "timing": "Ориентир автора: около завершения пятого хода; длительность паузы — около 30 минут, обсуждение команд — около 10 минут.",
+            "prompts": [
+              "Какова текущая ситуация?",
+              "С какими вызовами вы столкнулись?",
+              "Какие стратегии используют другие команды?",
+              "Какова ваша собственная стратегия?",
+              "Какой результат ожидаете?",
+              "Что хотите сообщить другим командам?"
+            ],
+            "requiresCompletedPause": "reflection-after-turn-3"
+          }
+        },
+        "finalReflectionGuide": {
+          "workflowStatus": "pending-author-answers",
+          "preparationMinutes": {
+            "min": 5,
+            "max": 15
+          },
+          "presentationMinutesMax": 2,
+          "conclusionCount": {
+            "min": 2,
+            "max": 3
+          },
+          "questions": [
+            "Какая была стратегия изначально?",
+            "К чему нужно было адаптироваться?",
+            "К чему удалось адаптироваться? За счет чего?",
+            "К чему адаптироваться не удалось? Почему?",
+            "Как бы вы оценили результаты игры для вас и для других команд?"
+          ]
+        }
+      },
+      "countries": {
+        "status": "author-confirmed-terminal-linking",
+        "publishable": true,
+        "terminalLinking": "complete-numbered-terminals-1-through-23",
+        "polygonLinking": "pending-human-vector-review",
+        "countries": [
+          {
+            "id": "cmt-country-proud",
+            "title": "Гордая Гвинея",
+            "description": "Гордая Гвинея — уникальный регион, который следует собственному пути развития, предпочитая сохранять экономическую и культурную самодостаточность. Страна принципиально отказалась от участия в международной торговле и крупных инфраструктурных проектах, считая внутренние ресурсы достаточными для поддержания стабильности. На территории Гордой Гвинеи отсутствуют железнодорожные линии: руководство страны придерживается концепции \"естественного передвижения\", активно поддерживая развитие традиционных способов транспорта. Это решение объясняется необходимостью сохранения экологического баланса и национального колорита. Экономика региона ориентирована на внутреннее потребление, а внешнеполитический курс характеризуется как \"стратегическое невмешательство\". Согласно официальным данным, торговые соглашения с другими странами рассматриваются не ранее, чем через несколько десятилетий успешной практики полной независимости. Население Гордой Гвинеи славится высоким уровнем гражданского самосознания и искренней приверженностью идеям самостоятельности. Культурная жизнь активно поддерживается за счёт традиционных ремёсел, философских диспутов и праздников независимости, которые отмечаются несколько раз в году с особым размахом.",
+            "terminalIds": []
+          },
+          {
+            "id": "cmt-country-north",
+            "title": "Северная Гвинея",
+            "description": "Северная Гвинея — один из наиболее промышленных регионов континента. Средняя плотность населения составляет около восьми человек на квадратный километр, причём официальная статистика учитывает также кочевые поселения в горных районах. Здесь активно развиваются машиностроение и добывающие отрасли. В северо-западной части страны запущены программы стимулирования производственного сектора, а в ряде районов ведётся освоение новых ресурсных зон — включая уголь и перспективные материалы, интерес к которым в последнее время заметно возрос. Сложная география региона (горы, побережье) и высокий уровень сезонных рисков создают дополнительные требования к транспортной инфраструктуре. Законодательная власть в Северной Гвинее представлена Национальным Конвентом, члены которого избираются раз в пять лет, а заседания нередко прерываются по техническим причинам, связанным с погодой. Тем не менее, при грамотном планировании Северная Гвинея может стать важным узлом железнодорожной сети — особенно в условиях растущего спроса на промышленные грузы. По оценкам экспертов, потенциал рынка ж/д перевозок региона составляет порядка 408 монет, а при благоприятном развитии ситуации может достигать 680 монет. Итоговое число заказов составит 25, с потенциалом увеличения ещё на 13 заказов при улучшении внешних условий. Ежегодный Фестиваль Дальних Переездов, традиционно проходящий в начале ледохода, собирает участников со всего континента, невзирая на логистические трудности. Местные условия требуют внимательности: ландшафт сложен, климат — капризен, а в некоторых районах лоси участвуют в экономике опосредованно, но последовательно. Северная Гвинея сохраняет уникальные элементы традиционной архитектуры — в ряде деревень до сих пор строят дома с паровыми отопительными башнями. Тем не менее, Северная Гвинея остаётся привлекательной территорией для устойчивых и дальновидных инвестиций.",
+            "terminalIds": [
+              "terminal-4",
+              "terminal-6",
+              "terminal-8",
+              "terminal-9",
+              "terminal-10"
+            ]
+          },
+          {
+            "id": "cmt-country-white",
+            "title": "Белая Гвинея",
+            "description": "Белая Гвинея — аграрный регион с акцентом на развитие внутренней логистики. Средняя плотность населения здесь одна из самых высоких на континенте, что обусловлено мягким климатом и плодородием долин. В последние годы аграрный сектор демонстрирует устойчивый рост, а особенно успешно развиваются культуры, требующие минимальной механизации. Политическая обстановка в регионе остаётся напряжённой: в отношениях с соседней Левой Гвинеей наблюдаются регулярные осложнения, влияющие на доступ к стратегическим водным путям. Тем не менее, основные экономические показатели Белой Гвинеи сохраняются на стабильном уровне. По оценкам экспертов, потенциал рынка ж/д перевозок региона составляет порядка 130 монет, а при благоприятном развитии ситуации может достигать 240 монет. Итоговое число заказов составит 10, с потенциалом увеличения ещё на 4 заказа при улучшении внешних условий. География региона преимущественно равнинная, однако побережье подвержено сезонным подтоплениям, что в ряде случаев требует дополнительного страхования перевозок. Ряд крупных сельскохозяйственных ярмарок ежегодно собирает фермеров со всего континента, задавая тон в определении цен на основные продовольственные товары. Белая Гвинея гордится своим культурным наследием: здесь сохранилась редкая традиция кулинарных фестивалей, где особое место занимает картофель в десятках вариаций. В некоторых районах продолжают использовать древние ирригационные системы, модернизированные с применением современных технологий.",
+            "terminalIds": [
+              "terminal-5",
+              "terminal-7"
+            ]
+          },
+          {
+            "id": "cmt-country-central",
+            "title": "Центральная Гвинея",
+            "description": "Центральная Гвинея — промышленный регион, где добыча угля и тяжёлых материалов традиционно играет ключевую роль в экономике. Средняя плотность населения здесь сравнительно низкая, за исключением шахтерских посёлков, выросших вдоль старых промышленных трасс. Разработка месторождений ведётся уже несколько десятилетий, однако в последние годы стали заметны первые признаки перегрузки инфраструктуры и накопления добытого сырья. Социальная обстановка в регионе требует особого внимания: в некоторых промышленных зонах фиксируются локальные трудовые споры и требования пересмотра условий труда. Тем не менее, Центральная Гвинея сохраняет значение важного сырьевого поставщика для других частей континента. По оценкам экспертов, потенциал рынка ж/д перевозок региона составляет порядка 175 монет. Итоговое число заказов составит 10 штук. Территория региона представляет собой чередование равнин, отработанных шахт и небольших лесных массивов. В некоторых районах местная фауна оказывает заметное влияние на логистику: в частности, лоси нередко становятся непредвиденным фактором при планировании маршрутов. Центральная Гвинея славится своими горнопромышленными фестивалями, проходящими на заброшенных шахтах и сопровождаемыми конкурсами среди старых проходческих бригад. Административное управление здесь отличается консервативностью: многие решения принимаются традиционными горными советами, чьи протоколы хранятся в бумажных архивах под грифом «особо важные».",
+            "terminalIds": [
+              "terminal-1",
+              "terminal-2"
+            ]
+          },
+          {
+            "id": "cmt-country-south-rorschach",
+            "title": "Южная Гвинея Роршаха",
+            "description": "Южная Гвинея Роршаха — один из наиболее быстро развивающихся регионов континента. Местная экономика демонстрирует устойчивый рост за счёт сочетания традиционной добычи полезных ископаемых и активного развития мелкого предпринимательства. Сектор ручного производства, в особенности текстиля и изделий из металла, укрепил свои позиции на внешних рынках. Государство активно инвестирует в модернизацию железнодорожной инфраструктуры, рассматривая транспорт как основной драйвер дальнейшего экономического роста. Согласно последним данным, в районе терминала 22 наблюдается существенное увеличение объёмов перевалки сыпучих грузов. По оценкам экспертов, потенциал рынка ж/д перевозок региона составляет порядка 427 монет, а при благоприятном развитии ситуации может достигать 932 монет. Итоговое число заказов составит 24, с потенциалом увеличения ещё на 20 заказов при улучшении внешних условий. Внутренний рынок демонстрирует значительное оживление благодаря укреплению торговых связей с Левой Гвинеей. Гористый рельеф региона создаёт определённые сложности для железнодорожного строительства: в отдельных районах фиксируются случаи сезонных селей. В некоторых низинах высока популяция комаров, что требует от пассажиров и грузоперевозчиков дополнительной подготовки в тёплое время года. Согласно действующему политическому устройству, Южная Гвинея Роршаха управляется Национальным Советом Согласия, чьи заседания иногда совпадают с международными визитами, временно влияя на транспортную доступность столицы. Городские власти активно продвигают идею фестиваля ручной работы как новой экономической витрины региона, ставя на первое место местные традиции ремесленного мастерства.",
+            "terminalIds": [
+              "terminal-3",
+              "terminal-11",
+              "terminal-12",
+              "terminal-22",
+              "terminal-23"
+            ]
+          },
+          {
+            "id": "cmt-country-left",
+            "title": "Левая Гвинея",
+            "description": "Левая Гвинея — регион с быстроразвивающейся экономикой, где рост промышленных и энергетических секторов сочетается с активной внешней политикой. На фоне стабилизации объёмов внутренней торговли особенно заметен рост товарооборота с Южной Гвинеей Роршаха, что позитивно отражается на экономических показателях региона. Внутренняя ценовая динамика остаётся напряжённой: повышение стоимости топлива оказывает влияние на себестоимость перевозок и производства. Местные экономисты называют происходящее «переходным этапом к устойчивой модели развития». По оценкам экспертов, потенциал рынка ж/д перевозок региона составляет порядка 184 монет, а при благоприятном развитии ситуации может достигать 404 монет. Итоговое число заказов составит 9, с потенциалом увеличения ещё на 8 заказов при улучшении внешних условий. Транспортная инфраструктура активно модернизируется, хотя некоторые инициативы вызывают обеспокоенность у соседних стран. Так, обсуждение возможных ограничений на передвижение по Ленунецкому каналу уже стало темой дипломатических консультаций.",
+            "terminalIds": [
+              "terminal-20",
+              "terminal-21"
+            ]
+          },
+          {
+            "id": "cmt-country-lower",
+            "title": "Нижняя Гвинея",
+            "description": "Нижняя Гвинея — промышленно ориентированный регион, активно вовлечённый в международное экономическое сотрудничество. В последние годы здесь наблюдается заметный рост металлургического сектора, чему способствовало укрепление партнёрских отношений с соседними странами. На фоне этого развития государство инвестирует в расширение железнодорожной сети, совместно реализуя инфраструктурные проекты с зарубежными компаниями. По оценкам экспертов, потенциал рынка ж/д перевозок региона составляет порядка 166 монет, а при благоприятном развитии ситуации может достигать 266 монет. Итоговое число заказов составит 11, с потенциалом увеличения ещё на 4 заказа при улучшении внешних условий. Несмотря на положительную динамику в промышленности, вопросы безопасности остаются предметом внимания. В отдельных районах фиксируются локальные инциденты, что требует дополнительных мер предосторожности для развития транспортных проектов. Географически регион преимущественно равнинный, с незначительными колебаниями высот, что упрощает строительство железнодорожных линий - но не его удешевление. Внутренние политические дебаты о стратегии внешнеэкономического развития сопровождаются периодическим обострением отношений с рядом партнёров, в частности с Ультраправой Гвинеей. Численность населения региона остаётся стабильной: в структуре доминируют промышленные центры и пригородные агломерации. Культурная жизнь сконцентрирована вокруг традиций инженерных фестивалей, где местные мастера соревнуются в изобретении новых способов механизации сельского и промышленного труда.",
+            "terminalIds": [
+              "terminal-13",
+              "terminal-17"
+            ]
+          },
+          {
+            "id": "cmt-country-subbelly",
+            "title": "Подбрюшинная Гвинея",
+            "description": "Подбрюшинная Гвинея — компактный, но амбициозный регион, ориентированный на развитие обрабатывающей промышленности и усиление транспортной инфраструктуры. Последние государственные инициативы включают участие в совместных проектах по расширению железнодорожной сети с соседними странами. Согласно последним планам, вблизи терминала 16 предусмотрено расширение производственных мощностей, в том числе в сегменте бытовой техники. Эти инициативы рассматриваются как часть стратегии диверсификации экономики и повышения занятости в регионе. По оценкам экспертов, потенциал рынка ж/д перевозок региона составляет порядка 77 монет, а при благоприятном развитии ситуации может достигать 175 монет. Итоговое число заказов составит 4, с потенциалом увеличения ещё на 5 заказов при улучшении внешних условий. Географически регион отличается равнинным рельефом с незначительными колебаниями высот, что благоприятно сказывается на скорости развития инфраструктуры. С другой стороны, большое количество административных единиц не в лучшую стоимость сказывается на стоимости строительства. Основная часть населения сосредоточена в небольших промышленных агломерациях, где сохранились традиции локального самоуправления через собрания старейшин. Культурная жизнь Подбрюшинной Гвинеи активно поддерживается государством: ежегодные фестивали народных ремёсел и механических изобретений становятся центром общественной активности и способом продвижения местной продукции на внешние рынки.",
+            "terminalIds": [
+              "terminal-16"
+            ]
+          },
+          {
+            "id": "cmt-country-ultra-right",
+            "title": "Ультраправая Гвинея",
+            "description": "Ультраправая Гвинея — регион с централизованной экономикой и сильной государственной вертикалью управления. В последние годы здесь отмечается рост металлургического производства, чему способствовало формирование экономического партнёрства с рядом соседних стран. Государственная политика направлена на укрепление внутренних отраслей и минимизацию зависимости от внешних рынков. В то же время международные аналитики отмечают признаки напряжённости во внешнеэкономических отношениях, что теоретически может повлиять на динамику торговли в будущем. По оценкам экспертов, потенциал рынка ж/д перевозок региона составляет порядка 266 монет, а при благоприятном развитии ситуации может достигать 366 монет. Итоговое число заказов составит 9, с потенциалом увеличения ещё на 4 заказа при улучшении внешних условий. Отношения с рядом близлежащих территорий, в том числе с Нижней Гвинеей, остаются предметом сложных консультаций и требуют осторожности в планировании совместных проектов. На внутреннем уровне инфраструктура развивается за счёт целевых государственных инвестиций в ключевые транспортные узлы. Средняя численность населения региона остаётся стабильной благодаря строгим программам урбанизации и переезда населения в промышленные центры. Культурная жизнь контролируется государственными органами: особое внимание уделяется праздникам труда и массовым парадам достижений тяжёлой промышленности.",
+            "terminalIds": [
+              "terminal-14",
+              "terminal-15"
+            ]
+          },
+          {
+            "id": "cmt-country-people",
+            "title": "Народная Гвинея",
+            "description": "Народная Гвинея — регион с развитой тяжёлой промышленностью и активным государственным участием в экономике. За счёт укрепления партнёрских связей с рядом соседних территорий наблюдается рост металлургического производства и развитие базовой инфраструктуры. Власти региона уделяют приоритетное внимание восстановлению и модернизации промышленных предприятий, рассматривая железнодорожную сеть как стратегический ресурс для экономической интеграции. Внутренняя логистика развивается за счёт целевых субсидий и государственных инвестиций в железнодорожный транспорт. По оценкам экспертов, потенциал рынка ж/д перевозок региона составляет порядка 217 монет, а при благоприятном развитии ситуации может достигать 317 монет. Итоговое число заказов составит 10, с потенциалом увеличения ещё на 4 заказа при улучшении внешних условий. Внешнеполитическая обстановка вокруг региона остаётся многовекторной: в некоторых случаях отмечаются сложности в координации трансграничных перевозок. Демографически регион ориентирован на поддержание стабильной численности населения за счёт программ стимулирования занятости в промышленных центрах. Культурная жизнь Народной Гвинеи строится вокруг праздников трудовой доблести, фестивалей промышленного мастерства и общественных мероприятий, подчеркивающих роль рабочих коллективов в развитии страны.",
+            "terminalIds": [
+              "terminal-18",
+              "terminal-19"
+            ]
+          }
+        ]
+      },
+      "facilitatorEconomy": {
+        "status": "executable-game-local",
+        "actions": [
+          "facilitator.economy.adjust.credit",
+          "facilitator.economy.adjust.debit",
+          "facilitator.economy.loan.issue",
+          "facilitator.economy.loan.repay",
+          "facilitator.economy.team.exclude"
+        ],
+        "manualCorrection": "explicit-credit-or-fail-closed-debit",
+        "loan": "explicit-principal-issue-and-explicit-repayment",
+        "exclusion": {
+          "participationFacet": "placementStatus=excluded",
+          "equipmentReturn": "existing-sold-market-state-with-audit-owner-retained",
+          "outstandingDebt": "written-off",
+          "unfinishedCargo": "available-at-current-carrier-terminal"
+        },
+        "platformOperations": "existing-bounded-select-each-transfer-update-event-composition"
+      },
+      "sessionCompletion": {
+        "status": "executable-final-score-and-protected-completion",
+        "completionBoundary": "reporting-after-full-round",
+        "confirmationLifecycle": "running-to-finishing-to-finished",
+        "scoreFormula": "coins + active vehicles at effective purchase prices - outstanding debt",
+        "excludedTeams": "omitted",
+        "rankingGroups": [
+          "logistics-companies",
+          "locomotive-guilds"
+        ],
+        "ties": "shared-rank-and-all-first-place-winners",
+        "immutableAfterCompletion": true
       },
       "mockNotice": {
         "testOnly": true,
@@ -730,32 +1333,6 @@
         }
       }
     },
-    "transport.incompatible-wagon": {
-      "collection": "wagons",
-      "scope": "session",
-      "facets": {
-        "availability": {
-          "initial": "active",
-          "values": [
-            "active",
-            "sold"
-          ]
-        }
-      },
-      "idField": "id",
-      "view": {
-        "facets": {
-          "availability.active": {
-            "visible": true,
-            "interactive": true
-          },
-          "availability.sold": {
-            "visible": false,
-            "interactive": false
-          }
-        }
-      }
-    },
     "transport.cargo": {
       "collection": "cargoOrders",
       "scope": "session",
@@ -782,6 +1359,94 @@
           },
           "status.delivered": {
             "visible": true,
+            "interactive": false
+          }
+        }
+      }
+    },
+    "content.news-card": {
+      "collection": "newsCards",
+      "scope": "session",
+      "facets": {
+        "availability": {
+          "initial": "hidden",
+          "values": [
+            "hidden",
+            "current",
+            "resolved"
+          ]
+        }
+      },
+      "idField": "id",
+      "view": {
+        "facets": {
+          "availability.hidden": {
+            "visible": false,
+            "interactive": false
+          },
+          "availability.current": {
+            "visible": true,
+            "interactive": false
+          },
+          "availability.resolved": {
+            "visible": true,
+            "interactive": false
+          }
+        }
+      }
+    },
+    "game.team": {
+      "collection": "teams",
+      "scope": "session",
+      "facets": {
+        "placementStatus": {
+          "initial": "configured",
+          "values": [
+            "configured",
+            "placed",
+            "excluded"
+          ]
+        }
+      },
+      "idField": "id",
+      "view": {
+        "facets": {
+          "placementStatus.configured": {
+            "visible": true,
+            "interactive": true
+          },
+          "placementStatus.placed": {
+            "visible": true,
+            "interactive": false
+          },
+          "placementStatus.excluded": {
+            "visible": true,
+            "interactive": false
+          }
+        }
+      }
+    },
+    "transport.incompatible-wagon": {
+      "collection": "wagons",
+      "scope": "session",
+      "facets": {
+        "availability": {
+          "initial": "active",
+          "values": [
+            "active",
+            "sold"
+          ]
+        }
+      },
+      "idField": "id",
+      "view": {
+        "facets": {
+          "availability.active": {
+            "visible": true,
+            "interactive": true
+          },
+          "availability.sold": {
+            "visible": false,
             "interactive": false
           }
         }
@@ -849,7 +1514,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:689d38996397e40cc590309664839deef2773d88e02a704e2bba0afc15a6832c"
+      "definitionHash": "sha256:bedcd0b390cf6d44274a1ef54ccc16ca6cf7b7daff2ff7a02280634d551c21fe"
     },
     "mock.market.buy.white-wagon": {
       "capabilityFamily": "runtime.server",
@@ -869,7 +1534,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:6cc0bc882c9d82c36aca9e63d7afc51be772314b2ea407ccfa0427ae518a4b19"
+      "definitionHash": "sha256:b4adb17010d18949b9e10b947c435396e527b63867e17debfdd10378c507774c"
     },
     "mock.market.buy.green-locomotive": {
       "capabilityFamily": "runtime.server",
@@ -889,7 +1554,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:b4529850f3ad2a8356155aa342f3dc51cfe01bbd498ddad316ef7f64bb5d52bf"
+      "definitionHash": "sha256:a4d36efb586af8e5db61eeef22ac484c0f6098853db4b90390cfe6c80525f050"
     },
     "mock.market.sell.red-wagon": {
       "capabilityFamily": "runtime.server",
@@ -909,7 +1574,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:3f7c2c77181710e5d7e37192c0b38f04d7851cb24184c6d39478ebd94f378e4e"
+      "definitionHash": "sha256:37640225e7a93c5286507eab484c1a67d6174592d76b8e513b4bddac586181ee"
     },
     "mock.market.finish": {
       "capabilityFamily": "runtime.server",
@@ -929,7 +1594,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:d86ec88ffa299fa7b521e41222e6f5e71cdfdb8e825f27315f70fc64beb499eb"
+      "definitionHash": "sha256:0d4547b2b97fbd9066170308b59239e7c699bd7d78696749e37d21018311b63d"
     },
     "mock.cargo.finish": {
       "capabilityFamily": "runtime.server",
@@ -949,7 +1614,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:a47d5e7862c7df98c29812ab607d773659f099a2e456af0cef22b2cb06d8a00c"
+      "definitionHash": "sha256:1c53a8468f958496201fb9ec0d3656c4c9a501b69ea03a8594e77c25123acc4f"
     },
     "mock.operations.finish": {
       "capabilityFamily": "runtime.server",
@@ -969,7 +1634,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:9a63a81b975476d32cc880f99e0fc75a3ccbe55f5076d2518ec28d00d0a90552"
+      "definitionHash": "sha256:a6a89cecea0ba21f1c74fb0d43b1a6f097d51cb2c598f6e51378303a9dea6011"
     },
     "mock.construction.open-control-projects": {
       "capabilityFamily": "runtime.server",
@@ -989,7 +1654,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:c9ae1f5b3371c3eb1744c82cd1560f25589dfe0580e17e16cbda99edc8c460fd"
+      "definitionHash": "sha256:11bd02b95ae7a4905da647447f3a0714a43433e970fb952a16bd5b256004fa17"
     },
     "mock.debrief.pause.start": {
       "capabilityFamily": "runtime.server",
@@ -1009,7 +1674,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:33886aa55c54941eb6f71b97da7cdf38096a36e86218b2ad89688fad64eb4879"
+      "definitionHash": "sha256:c407a6c8ef14911d708352120a9a325dd9794f5a1128cea9689f5a60b75bbff7"
     },
     "mock.debrief.pause.postpone": {
       "capabilityFamily": "runtime.server",
@@ -1029,7 +1694,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:a42a19c52eb6c895f5a419bdacd9815854f3ab483ce2d58941034c46f138fa7a"
+      "definitionHash": "sha256:cac439e206118fff29819d894de2ee4bfb1893425a90ed81700d267f34e4f0af"
     },
     "mock.debrief.pause.skip": {
       "capabilityFamily": "runtime.server",
@@ -1049,7 +1714,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:6682731218c6c94eaa27dd1fe1a6d0ccb9fd9e37314e78d5767d0ea8bfa6c01c"
+      "definitionHash": "sha256:13de6ebc0a30e038b078b3bd8b83738d28a5bae0ba235d8cc360000bf5d2aa77"
     },
     "mock.debrief.final-reflection": {
       "capabilityFamily": "runtime.server",
@@ -1069,7 +1734,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:a7f2e08c15d9c739c69d5a0c87e1d8dd2756185e7c1a60344d98b66f50105ebd"
+      "definitionHash": "sha256:1105aaa319ab216a28c3915301a0317090bfce7f275db808f45534ef4fb65152"
     },
     "mock.debrief.next-turn": {
       "capabilityFamily": "runtime.server",
@@ -1089,7 +1754,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:38f7852bec6992b184d04cbaa61c1125f29b6008109d305b92b4b7b788fbb5fd"
+      "definitionHash": "sha256:774cfc7463691691773376b175e23fd7e3cadc5630d1c1a10e1666c238052554"
     },
     "mock.news.draw": {
       "capabilityFamily": "runtime.server",
@@ -1109,7 +1774,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:063e94b6b3ca4cb06fe0065c483bfe90b8df6639d8f21383d657f9a87ffb9be0"
+      "definitionHash": "sha256:903d3523896c9d5726e248a393ee441ce2c2d3dff4a833abc522697c59dc6e00"
     },
     "mock.news.apply.open-road": {
       "capabilityFamily": "runtime.server",
@@ -1129,7 +1794,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:31dbbd47109942b6a4205d6dca850fe533ddb796d2f1e2f370fde84370139672"
+      "definitionHash": "sha256:f04c5fab9f2fa7a7994c981087a997ae22c58bacae48bff1384a44bbeb8619c7"
     },
     "mock.news.apply.held-cargo-prompt": {
       "capabilityFamily": "runtime.server",
@@ -1149,7 +1814,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:34c0c6376da540e98617aeac80072d26767343b41fbe5667164f4abed58bdc68"
+      "definitionHash": "sha256:7a92f300ec3c978c07ceb6b9241bb0e6400760033e6cce4c0e0b14797c827476"
     },
     "mock.news.apply.cheap-wagons": {
       "capabilityFamily": "runtime.server",
@@ -1169,7 +1834,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:16020652e09c8ac5d4f5c7c0cb49985e2b027b4929d2e8971bb988bd40ce535a"
+      "definitionHash": "sha256:cf878eef4e94cbba47b363e7379edb62b0c8a4fa12a644bee845a7d6e19b20c4"
     },
     "mock.news.apply.construction-prompt": {
       "capabilityFamily": "runtime.server",
@@ -1189,7 +1854,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:5907f5863d531414a209c2f8219696e7f239a93d3d203188828cc4ebca6db723"
+      "definitionHash": "sha256:bfff3e5338defdd33f70b75a4032f3ed15dee53f5b492d452558b76eb064d768"
     },
     "mock.news.apply.stable-day": {
       "capabilityFamily": "runtime.server",
@@ -1209,7 +1874,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:47395e3ffd02a28d6fc9822f8b13fac2eb70c314a37a43471d4d253a77963b1f"
+      "definitionHash": "sha256:21c9d1929cbcec1ebcaef4de9ef24abad59e59d0f11e94f4cb7717ae59b53be6"
     },
     "mock.cargo.draw-offer": {
       "capabilityFamily": "runtime.server",
@@ -1229,7 +1894,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:46ec33bce6afed835010476f7ae73ee81ede1780ab77c086afb181f759510d91"
+      "definitionHash": "sha256:37e5ea1c15e2e3716b9f869a418af8863cf792c271adefacb62a73d2ee18a03e"
     },
     "mock.cargo.load.white": {
       "capabilityFamily": "runtime.server",
@@ -1278,7 +1943,7 @@
         "planRef": "mock.cargo.load.white"
       },
       "invocation": "external",
-      "definitionHash": "sha256:c9e936b67318f94b2e76e161abce81d25389fd1043268216a4b03b15414099a0"
+      "definitionHash": "sha256:d5307c374a6221fd7b040e882fd4497bd859f749364e07ff304d38a0a8941522"
     },
     "mock.cargo.deliver.b-f": {
       "capabilityFamily": "runtime.server",
@@ -1333,7 +1998,7 @@
         "planRef": "mock.cargo.deliver.b-f"
       },
       "invocation": "external",
-      "definitionHash": "sha256:4381795329659d71696c0a3f86cdea87f0026f90341d3bde76d4123cf3958d04"
+      "definitionHash": "sha256:bb245a717fc2e7a10336665ffb4376217018b7b5df6db55e90a6cf7a2ae42d02"
     },
     "mock.operations.attach.white": {
       "capabilityFamily": "runtime.server",
@@ -1383,7 +2048,7 @@
         "planRef": "mock.operations.attach.white"
       },
       "invocation": "external",
-      "definitionHash": "sha256:8f5032a38caeb9eb81f057c3f8cd2b1d0e8a28c3ff5564a896a595723776810c"
+      "definitionHash": "sha256:c2b314a39dfac288c4f67614971a32d6dbb957504be1ef2d2b2e0117ed0c2fb4"
     },
     "mock.operations.detach.white": {
       "capabilityFamily": "runtime.server",
@@ -1433,7 +2098,7 @@
         "planRef": "mock.operations.detach.white"
       },
       "invocation": "external",
-      "definitionHash": "sha256:7e610fc2d2c1b02336d287ff2852a2bb73653e91f3abd55a74629db4d74ef288"
+      "definitionHash": "sha256:0e5c8ea9365afb4291e25a6114d3dcd312c87e9174dc91e4abe907ab07a7335f"
     },
     "mock.operations.attach.incompatible": {
       "capabilityFamily": "runtime.server",
@@ -1489,7 +2154,7 @@
         "planRef": "mock.operations.attach.incompatible"
       },
       "invocation": "external",
-      "definitionHash": "sha256:f509d76542dd197cea71ea46896ff810b977a654930140746f4adc5d3fc8c152"
+      "definitionHash": "sha256:b8ea769443c33068eaee20479d536215f7bb541383ce2864b6479c441b0aecb5"
     },
     "mock.ranking.compute": {
       "capabilityFamily": "runtime.server",
@@ -1509,7 +2174,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:1d46119f45de3c1c2525d0f6e45c542fe875b4e7d42e23ce1a3f87f4ce6bac44"
+      "definitionHash": "sha256:39bb8effc56bc82e5f0f38605d248080346c15eac0d16becd05f3a68d49b29a7"
     },
     "mock.news.apply.block-road": {
       "capabilityFamily": "runtime.server",
@@ -1529,7 +2194,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:bbbb52768037e50f1c0471a60696d5f9633105d6bfd5682021b8510194220854"
+      "definitionHash": "sha256:c47062b2cbe950fe1fc1a223b1cd4782487e9a8b9bcabcdc723731b8a9b051b8"
     },
     "mock.maintenance.pay": {
       "capabilityFamily": "runtime.server",
@@ -1549,7 +2214,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:29eb01b3a0817efd8d858b8b1918bba3504c1cc7372f5dd4bb4e659b18bbdbf9"
+      "definitionHash": "sha256:126c8d66d67c625537376563d943cec95f15aba855f506311ee4a0e07c8d28a3"
     },
     "mock.locomotive.move": {
       "capabilityFamily": "runtime.server",
@@ -1599,7 +2264,7 @@
         "planRef": "mock.locomotive.move"
       },
       "invocation": "external",
-      "definitionHash": "sha256:f7c9c39886f554044980b8485b80c96e2a9446ab324e82d1bc7d34cfeace9457"
+      "definitionHash": "sha256:0dcefddc5b54d9ead814597e9748a437b96e5078e6b5925ceb1febcc9d7b8887"
     },
     "mock.cargo.deliver": {
       "capabilityFamily": "runtime.server",
@@ -1648,7 +2313,7 @@
         "planRef": "mock.cargo.deliver"
       },
       "invocation": "external",
-      "definitionHash": "sha256:3a824804d7634a1b32b2b81ef6326770f9d3e54c54a7df6e1b6478ed8a3711e8"
+      "definitionHash": "sha256:a54232e8797cd29d489c6096039e73571004f6b401d2b84612f687b55b867d59"
     },
     "construction.road.build": {
       "capabilityFamily": "runtime.server",
@@ -1720,7 +2385,7 @@
         "planRef": "construction.road.build"
       },
       "invocation": "external",
-      "definitionHash": "sha256:4c64a7a350fa1505c48e9cfb04b8231ceb8eeb67706b2c6949ac12beb34257de"
+      "definitionHash": "sha256:c858762787f74f57cbbf0e9855ed152e86529d2e96e98ea9167ef77d63c614c1"
     },
     "construction.waypoint.build": {
       "capabilityFamily": "runtime.server",
@@ -1782,7 +2447,7 @@
         "planRef": "construction.waypoint.build"
       },
       "invocation": "external",
-      "definitionHash": "sha256:c77f6630e60f40c1641694b550d6f39d2fd6600a201fefa81d9dd5a64fdf7da0"
+      "definitionHash": "sha256:35e052285d515b34f1b14450fd9e5daea5e2a6fcfc5f1cd99ba9897095c55cdf"
     },
     "construction.mode.road": {
       "capabilityFamily": "runtime.server",
@@ -1802,7 +2467,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:6d8ea9a0ed667dc0aca2317fcc40486003c6e82f38686a8991bbb2a342b6f889"
+      "definitionHash": "sha256:5aa11f45331b31ce04be61a97df36c44903cc4bf04bd0505668bccc53d8c1520"
     },
     "construction.mode.waypoint": {
       "capabilityFamily": "runtime.server",
@@ -1822,7 +2487,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:df5b2c24ab4032127a52572d9be1089cd597e0437498a6623babdab8ee7159d2"
+      "definitionHash": "sha256:0e04a57624a5187d99a9f6b3883e0d36e54d8d0752ddb7350e2375bd7f475040"
     },
     "construction.phase.finish": {
       "capabilityFamily": "runtime.server",
@@ -1842,7 +2507,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:3da6498c4062e7a58bc739e70beed85ec6c46011ffef30363d38a9e0672523ae"
+      "definitionHash": "sha256:f13b949838aa352e4e7318d5bb62a75e38627bc25efb5127bb933cfaae8371ad"
     },
     "session.finish.request": {
       "capabilityFamily": "runtime.server",
@@ -1862,7 +2527,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:922ba229b9cbb9bf48e9d2f37dc229895c6106aba95cfcaf465c2466aabfd944"
+      "definitionHash": "sha256:fb1ddd212517e282afbe9b986d74f8410855e5b58f39c90b2e47ccb92df954d7"
     },
     "session.finish.cancel": {
       "capabilityFamily": "runtime.server",
@@ -1882,7 +2547,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:c9f48743564b8fe261f246d88228d73e9bbb8cec2ae50b21c38c1022b84dc133"
+      "definitionHash": "sha256:1929ba3d126f4b4aff2e733e3e07ddce71950d74fecbcdaf577365c96ec1441a"
     },
     "session.finish.confirm": {
       "capabilityFamily": "runtime.server",
@@ -1902,7 +2567,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:56b7c8a0277bb16fa3fb7d6d295a1c5026a6d4b00207dcea4ccefbbd13120466"
+      "definitionHash": "sha256:359b2aeb2f1b49869d664bf5a8d3433cb4362facbd47dffef89cff3a74411d42"
     }
   },
   "state": {
@@ -1922,7 +2587,7 @@
         "turnNumber": 1,
         "phase": "setup",
         "finishConfirmationPending": false,
-        "canRequestFinish": true,
+        "canRequestFinish": false,
         "fixtureId": "development-mock",
         "contentMode": "mock",
         "locomotiveOrder": []
@@ -1930,13 +2595,36 @@
       "construction": {
         "mode": null,
         "available": false,
-        "sequence": 0
+        "sequence": 0,
+        "totalPledged": 0
       },
       "transportNetworks": {
         "main": {
           "sequence": 1000,
           "excludedRegionIds": []
         }
+      },
+      "news": {
+        "currentCardId": null,
+        "remaining": 34,
+        "status": "not-initialized",
+        "activeNetworkClosureReason": null
+      },
+      "turnEffects": {
+        "deliveryPayoutBonus": 0,
+        "locomotiveMovementLevy": 0,
+        "vehicleAndCargoMaintenanceExempt": false,
+        "firstRoadFreeSegments": 0,
+        "purchasePermissions": {
+          "wagon": true,
+          "locomotive": true
+        },
+        "purchasePriceOverrides": {
+          "wagon": null,
+          "locomotive": null
+        },
+        "cargoDepartureBonusNewsId": null,
+        "cargoDepartureBonusTerminalIds": []
       },
       "teamSetupPolicy": {
         "startingCoins": 10,
@@ -1947,32 +2635,6 @@
         "locomotive_guild": {
           "wagons": 0,
           "locomotives": 1
-        }
-      },
-      "teams": {
-        "white-logistics": {
-          "label": "Белая (MOCK)",
-          "type": "logistics_company",
-          "coins": 10,
-          "maintenanceDue": 3
-        },
-        "red-logistics": {
-          "label": "Красная (MOCK)",
-          "type": "logistics_company",
-          "coins": 10,
-          "maintenanceDue": 2
-        },
-        "purple-guild": {
-          "label": "Фиолетовая (MOCK)",
-          "type": "locomotive_guild",
-          "coins": 10,
-          "maintenanceDue": 1
-        },
-        "green-guild": {
-          "label": "Зеленая (MOCK)",
-          "type": "locomotive_guild",
-          "coins": 10,
-          "maintenanceDue": 1
         }
       },
       "objects": {
@@ -3003,12 +3665,77 @@
         ]
       },
       "log": [],
+      "cards": {
+        "initialized": false,
+        "cargo": {
+          "selectionOrder": [],
+          "currentWagonId": null,
+          "preparedTurn": 0,
+          "offer": {
+            "terminalId": null,
+            "firstCardId": null,
+            "secondCardId": null
+          },
+          "remaining": {
+            "terminal-1": 5,
+            "terminal-2": 5,
+            "terminal-3": 4,
+            "terminal-4": 4,
+            "terminal-5": 5,
+            "terminal-6": 5,
+            "terminal-7": 5,
+            "terminal-8": 4,
+            "terminal-9": 6,
+            "terminal-10": 6,
+            "terminal-11": 6,
+            "terminal-12": 4,
+            "terminal-13": 6,
+            "terminal-14": 3,
+            "terminal-15": 6,
+            "terminal-16": 4,
+            "terminal-17": 5,
+            "terminal-18": 4,
+            "terminal-19": 6,
+            "terminal-20": 3,
+            "terminal-21": 6,
+            "terminal-22": 4,
+            "terminal-23": 6
+          }
+        }
+      },
+      "market": {
+        "wagonPurchasePrice": 5
+      },
+      "setup": {
+        "status": "configuration",
+        "teamSequence": 0,
+        "assetSequence": 0,
+        "teamCount": 0,
+        "logisticsCompanyCount": 0,
+        "locomotiveGuildCount": 0,
+        "placementOrder": [],
+        "currentTeamId": ""
+      },
+      "movement": {
+        "locomotiveOrder": [],
+        "currentLocomotiveId": null,
+        "departureWagonId": null
+      },
       "methodology": {
         "status": "idle",
         "activePauseId": null
       },
-      "market": {
-        "wagonPurchasePrice": 5
+      "ruleModifiers": {
+        "progressiveAssetTaxActive": false
+      },
+      "finalResults": {
+        "status": "not-calculated",
+        "completedTurn": 0,
+        "purchasePrice": {
+          "wagon": 0,
+          "locomotive": 0
+        },
+        "rankings": {}
       },
       "ranking": {
         "groups": {}
@@ -3023,14 +3750,35 @@
             "secondCardId": null
           }
         }
+      },
+      "teams": {
+        "white-logistics": {
+          "label": "Белая (MOCK)",
+          "type": "logistics_company",
+          "coins": 10,
+          "maintenanceDue": 3
+        },
+        "red-logistics": {
+          "label": "Красная (MOCK)",
+          "type": "logistics_company",
+          "coins": 10,
+          "maintenanceDue": 2
+        },
+        "purple-guild": {
+          "label": "Фиолетовая (MOCK)",
+          "type": "locomotive_guild",
+          "coins": 10,
+          "maintenanceDue": 1
+        },
+        "green-guild": {
+          "label": "Зеленая (MOCK)",
+          "type": "locomotive_guild",
+          "coins": 10,
+          "maintenanceDue": 1
+        }
       }
     },
     "secret": {
-      "random": {
-        "alg": "xoshiro128ss-streams-v1",
-        "seed": "00000000000000000000000000000fb5",
-        "counters": {}
-      },
       "decks": {}
     }
   },
@@ -3040,41 +3788,40 @@
     "moduleLock": {
       "cubica.core": {
         "moduleId": "cubica.core",
-        "moduleVersion": "1.3.0",
-        "artifactHash": "sha256:a9d081db599b358d68e0c3b2d8c025bb64afc9643229b9908f976d921b36f594"
+        "moduleVersion": "1.4.3",
+        "artifactHash": "sha256:761718222ed473f16b9ef6920011295847e253af0a3e1dc4af6ca837261b9fae"
       },
       "cubica.random": {
         "moduleId": "cubica.random",
-        "moduleVersion": "1.0.2",
-        "artifactHash": "sha256:3161401518d589927b3c181dd356812e92a127e844b38ed04b4a6e1b51101510",
+        "moduleVersion": "1.1.0",
+        "artifactHash": "sha256:c1cf88bd676264c5f016bce073eeafd369c0e5304722a2ae72eed870d572166e",
         "algorithmVersions": {
-          "randomStreams": "xoshiro128ss-streams-v1"
+          "randomProvider": "server-crypto-random-v1"
         }
       },
       "cubica.ordering": {
         "moduleId": "cubica.ordering",
-        "moduleVersion": "1.1.1",
-        "artifactHash": "sha256:ed5851f40ec005f4fa5657548fe53010ef5dda725ef3e5e4b43876230ac413f7",
+        "moduleVersion": "1.2.0",
+        "artifactHash": "sha256:c3986f41a66524de44e363a74b8bc48e5191dc3cf7e38e47394eca45b578f4fc",
         "algorithmVersions": {
           "ordering": "lexicographic-bounded-v1",
-          "tieBreak": "canonical-groups-xoshiro128ss-v1"
+          "tieBreak": "canonical-groups-server-crypto-random-v1"
         }
       },
       "cubica.deck": {
         "moduleId": "cubica.deck",
-        "moduleVersion": "1.2.0",
-        "artifactHash": "sha256:b7999be594d57bcd4639b67207c8863c29e2943121c2aa231c69b75513d1bf70",
+        "moduleVersion": "1.3.0",
+        "artifactHash": "sha256:36fae442b6f4364fbb51308245b942786e072b1d2d5eae39c02ff89c239d5bdc",
         "algorithmVersions": {
-          "shuffle": "fisher-yates-xoshiro128ss-streams-v1"
+          "shuffle": "fisher-yates-server-crypto-random-v1"
         }
       },
       "cubica.graph": {
         "moduleId": "cubica.graph",
-        "moduleVersion": "2.0.1",
-        "artifactHash": "sha256:039cb65d814c9848661d96f4e8b6a17a8c58a1a2b6e3aa64af820ebaebd263b6",
+        "moduleVersion": "2.3.0",
+        "artifactHash": "sha256:75bab6e31b7a7c87836f439ea70a17fac1e4ddbeb240cbc8e32271b50378dd67",
         "algorithmVersions": {
-          "regionPath": "region-segment-minimum-v1",
-          "randomTieBreak": "xoshiro128ss-streams-v1",
+          "regionPath": "region-segment-minimum-v2",
           "edgePosition": "polyline-arc-length-v1",
           "regionMembership": "closed-polygon-all-memberships-v1",
           "geometryFingerprint": "canonical-json-sha256-v1"
@@ -3082,8 +3829,8 @@
       },
       "cubica.relations": {
         "moduleId": "cubica.relations",
-        "moduleVersion": "1.0.2",
-        "artifactHash": "sha256:af4539d2569bf6561a47f2c30e6ff9352c99109d8a1d44b7e3cf5a8e86dec41f"
+        "moduleVersion": "1.0.5",
+        "artifactHash": "sha256:e846b92ca34fc4147ac5d19e8a4213ef2c2d3e6058bac181e16946f42d3fd4b2"
       }
     },
     "stateModel": {
@@ -5602,7 +6349,7 @@
     },
     "plans": {
       "mock.setup.start": {
-        "planHash": "sha256:c4130db519f35946049ea65b262a57574ae64b2dea1d6af8cfe3d8749b4e3c79",
+        "planHash": "sha256:ce6339d5b99c27c9d2cada2101c7f8129f349a915afc0c34036768a147c09c90",
         "transaction": {
           "steps": [
             {
@@ -5690,7 +6437,7 @@
         }
       },
       "mock.market.buy.white-wagon": {
-        "planHash": "sha256:b3b06f2b29ee467dd3625e7396ffb3021a5c91b818ea03c3c88754d04605128f",
+        "planHash": "sha256:7c3f242ff082262e60a2dc80c1ff23a7359dd2dbd0d9f3c83b7cbcd138eb1397",
         "transaction": {
           "steps": [
             {
@@ -5827,7 +6574,7 @@
         }
       },
       "mock.market.buy.green-locomotive": {
-        "planHash": "sha256:0b1550a1d64b892c48018008430f5c76a68a5862342aaa198d3b422631aeb716",
+        "planHash": "sha256:5d3ac0d2feb15f8387b65ab52bf2598c964bfb30b42713f25f4a23678372623a",
         "transaction": {
           "steps": [
             {
@@ -5972,7 +6719,7 @@
         }
       },
       "mock.market.sell.red-wagon": {
-        "planHash": "sha256:cc5d61b158c047d10d8a46bf71597a2a2803cb407a5c5d0df29d60e06db4d7fe",
+        "planHash": "sha256:3e5b5a7692bb04363bf1baf1c10b8d9ea63abb2fe401f986b85feb2d5d018eb9",
         "transaction": {
           "steps": [
             {
@@ -6107,7 +6854,7 @@
         }
       },
       "mock.market.finish": {
-        "planHash": "sha256:c991f2cd422cdf9bb770a1a1b2e6a50601e4801f907b76bfd16591699d3e777c",
+        "planHash": "sha256:5b77d448c116508dd67b6ac73b8dfd310560df7fae46961c3bfa82014bca75d9",
         "transaction": {
           "steps": [
             {
@@ -6168,7 +6915,7 @@
         }
       },
       "mock.cargo.finish": {
-        "planHash": "sha256:4bc31deba0419e159686554791148bea6560efae6c3eae5e3641138ba0cbacdc",
+        "planHash": "sha256:39592b9ac5fc55fdf65cab7d82b78801c8362e30dc9afc62e93cce2989731fc3",
         "transaction": {
           "steps": [
             {
@@ -6358,7 +7105,7 @@
                 }
               ],
               "tieBreak": {
-                "kind": "seeded-random",
+                "kind": "server-random",
                 "stream": "locomotive-order"
               }
             },
@@ -6433,7 +7180,7 @@
         }
       },
       "mock.operations.finish": {
-        "planHash": "sha256:0ade743153773c56f3ef6026c057565f6b31751a031402f2bfb76c782abfeac4",
+        "planHash": "sha256:9ce46430a9f3e89ed6ee3fddd4be4f8fc5a9d5fcc9b2acb441d9915715c3571e",
         "transaction": {
           "steps": [
             {
@@ -6504,7 +7251,7 @@
         }
       },
       "mock.construction.open-control-projects": {
-        "planHash": "sha256:39083e20bceea556e12b04bec154c7833641f188d6247fabefe17bd779790f33",
+        "planHash": "sha256:1994a0f70cd78632d325b62bc14a2e43b2478e16c953224f1fc746403672e1b0",
         "transaction": {
           "steps": [
             {
@@ -6726,7 +7473,7 @@
         }
       },
       "mock.debrief.pause.start": {
-        "planHash": "sha256:4a5ad3a51a7e279f7e45a97924041da793a0d4ce56581157433e52f96db7cd02",
+        "planHash": "sha256:5d8310b5e9f2dcf4888873eb1afccd4fafe4ec1541f46c720abde9ebdf5a1b95",
         "transaction": {
           "steps": [
             {
@@ -6797,7 +7544,7 @@
         }
       },
       "mock.debrief.pause.postpone": {
-        "planHash": "sha256:5268ff5703cc4053dda2d9533b9417fd6dc249677b1cb5e091feda9dd794e400",
+        "planHash": "sha256:000974d3d07db15b1941b0b9e597658a00bf35645c7b36bdacf86aa610f6738d",
         "transaction": {
           "steps": [
             {
@@ -6868,7 +7615,7 @@
         }
       },
       "mock.debrief.pause.skip": {
-        "planHash": "sha256:5dc99e2bb4501b368396bc07ec7217d900f8f7df41f12d9c8848f929747dcf87",
+        "planHash": "sha256:abdd3eb668b598a1d892aeccb0958edf5b4e1705f272ddc49d136bcb869b6bde",
         "transaction": {
           "steps": [
             {
@@ -6939,7 +7686,7 @@
         }
       },
       "mock.debrief.final-reflection": {
-        "planHash": "sha256:99a38573ef9202eeeb576133f18d5223ebea1d6d04f601fa82e6b5433df74103",
+        "planHash": "sha256:0ca20d95fe98e7c51e86dfb4619fc282a42c79ae0c061b6c770d8619be97b365",
         "transaction": {
           "steps": [
             {
@@ -7000,7 +7747,7 @@
         }
       },
       "mock.debrief.next-turn": {
-        "planHash": "sha256:e23b5ac60ded28f83ab69fa050c559fabed8c8d8a3ef52070208efa16da6c6a8",
+        "planHash": "sha256:a4fc26a19fe9423b8684c5c1f25d2de429b1372d5d1bada1fd43b55c1c04725a",
         "transaction": {
           "steps": [
             {
@@ -7340,7 +8087,7 @@
         }
       },
       "mock.news.draw": {
-        "planHash": "sha256:f0679d2c1a0464d119dc97fac7d991561dbca6ffff7f48296cc676964e2b920d",
+        "planHash": "sha256:d6483555d1f2aae11e4b3bfb18f9809620ed247b78bd6d2f6a757a79b07ec538",
         "transaction": {
           "steps": [
             {
@@ -7413,7 +8160,7 @@
         }
       },
       "mock.news.apply.open-road": {
-        "planHash": "sha256:74a63260e67b4a8da181ef2e1050cffc12fe40961a2160acec82abc331c2d900",
+        "planHash": "sha256:bf4633197affa3948d67290854bc764db4d3112513a8dccfc6bc0abd3c70278e",
         "transaction": {
           "steps": [
             {
@@ -7510,7 +8257,7 @@
         }
       },
       "mock.news.apply.held-cargo-prompt": {
-        "planHash": "sha256:3bab2dc3d5b42adcc0488dd00f0d1b99061bd8fe165351e5608c036a0cda888d",
+        "planHash": "sha256:4351a5264924a42df4871be8d67417b86aefc6d9ba5480b134dce3e6742053f5",
         "transaction": {
           "steps": [
             {
@@ -7590,7 +8337,7 @@
         }
       },
       "mock.news.apply.cheap-wagons": {
-        "planHash": "sha256:8d38d0c86fc9077957ebe664ddd0fb52cf8b586efdd541f963afeac40a07f45c",
+        "planHash": "sha256:6c06a8b71f986528c08e1d1d8e954571765d72f169efba290eda37eedfb34f62",
         "transaction": {
           "steps": [
             {
@@ -7687,7 +8434,7 @@
         }
       },
       "mock.news.apply.construction-prompt": {
-        "planHash": "sha256:3af90b20193e28869a4c3d6e049b27df91d87fbdf6d842139f99f3a8033a9148",
+        "planHash": "sha256:31d98de624db9d28466235a64ffcc631653096354e54ffcb488d5dd8ba364b52",
         "transaction": {
           "steps": [
             {
@@ -7767,7 +8514,7 @@
         }
       },
       "mock.news.apply.stable-day": {
-        "planHash": "sha256:cc8540e024d54acdf9ea8d2e13949a271b437b9224430343ac9f3bfa319685e9",
+        "planHash": "sha256:bbf15c46bb1b53250080a8b4a8bf928daff763f408fa379135a313cd548dfc21",
         "transaction": {
           "steps": [
             {
@@ -7847,7 +8594,7 @@
         }
       },
       "mock.cargo.draw-offer": {
-        "planHash": "sha256:08c22491c742987129a863e43c6054b14a368ccfae5e7d8dd4a1a25f5e81c7a6",
+        "planHash": "sha256:112642a2d767b08cfc21a8f7cc4d78c9d165eb8b4de9f8a2bccafbdcf6f23ac4",
         "transaction": {
           "steps": [
             {
@@ -7970,7 +8717,7 @@
         }
       },
       "mock.cargo.load.white": {
-        "planHash": "sha256:6b2e837a1d9a553a0e158f8f2481331b96ab5b0eb4ae97b99e4b7ee7354791c9",
+        "planHash": "sha256:f3e3d262d047076da4fc39238d544aff23d502d35b696e560036d8398f3f6a75",
         "transaction": {
           "steps": [
             {
@@ -8357,7 +9104,7 @@
         }
       },
       "mock.cargo.deliver.b-f": {
-        "planHash": "sha256:7e9710c6d91d45ec92eac5e282bd0291ace24f8d88ca1d9cc16ae22d468f8a58",
+        "planHash": "sha256:85d6a782d16e4ae8051cde3db5b9d9f8633a938ff272fe7db6c2ff109f04bfbf",
         "transaction": {
           "steps": [
             {
@@ -8756,7 +9503,7 @@
         }
       },
       "mock.operations.attach.white": {
-        "planHash": "sha256:122b1e1e32d358f303b0e9afed855886c2fda7205a4b61e33ddb82ce7d0ee128",
+        "planHash": "sha256:8a36610255b6d02a8b3674f2e59d4ca368da87bb3c67a9c8328d9b3e79e698bd",
         "transaction": {
           "steps": [
             {
@@ -8865,7 +9612,7 @@
         }
       },
       "mock.operations.detach.white": {
-        "planHash": "sha256:cec5198bef3dfb6a7a7bfcf7b57354943a5efd83c21b186fc6d9e289dec82600",
+        "planHash": "sha256:4cf80b56cb2e8628b186f9db61f94edbd5df79009e256c8fd296917a512b6f58",
         "transaction": {
           "steps": [
             {
@@ -8974,7 +9721,7 @@
         }
       },
       "mock.operations.attach.incompatible": {
-        "planHash": "sha256:cb357d21cb1cc8978d6e9df0c6d9f94bf3aa883c3cdb802090895a012132ffb3",
+        "planHash": "sha256:cd6fb18aef710b2f8639a99de5380b1c7cc7aca2d6988bc943664c8f2b8f9408",
         "transaction": {
           "steps": [
             {
@@ -9066,7 +9813,7 @@
         }
       },
       "mock.ranking.compute": {
-        "planHash": "sha256:582b4b23467bbf5dd84df3fa210e7c6f77bee22b7b48b5a94384e77a56111f43",
+        "planHash": "sha256:7004171e9e4435663b88aecfb2ffcab6f4f82a30e8a798f1ee8a78cf9bcdf1fa",
         "transaction": {
           "steps": [
             {
@@ -9206,7 +9953,7 @@
         }
       },
       "mock.news.apply.block-road": {
-        "planHash": "sha256:99491d28f967cd9804050c7ec2ff62dfedc6076efd6479916ddd76f42ffdbc0b",
+        "planHash": "sha256:dc0b79ff085041377196bf15e539e0b7346fccb0dc38ddbcb890af8f9e7ef0ee",
         "transaction": {
           "steps": [
             {
@@ -9303,7 +10050,7 @@
         }
       },
       "mock.maintenance.pay": {
-        "planHash": "sha256:59491413b619c9c681b05bd790adaf3b3b0acdda27453faf7dc0c7bd759d7a88",
+        "planHash": "sha256:e61549aa2e7a6a5d1b99ed917d366323774f5cc8659c0b9c251f304877f0a435",
         "transaction": {
           "steps": [
             {
@@ -9448,7 +10195,7 @@
         }
       },
       "mock.locomotive.move": {
-        "planHash": "sha256:9d8b41a143c3a2641246fc08ae8e03a70cc1197c1f274c097ca58bc7668f2653",
+        "planHash": "sha256:5dcfd43373d344ce4d323b970600d2c5f1e989d5bca873771ba475be2d4ccd5b",
         "transaction": {
           "steps": [
             {
@@ -9555,7 +10302,7 @@
         }
       },
       "mock.cargo.deliver": {
-        "planHash": "sha256:ab16b3badea5bdf53ce7049dece18dcfa780fd7dc6b5e23332f6b5e6bc84ede4",
+        "planHash": "sha256:ef01ccefcb9f192de94d1f6f20897ac318d9feb924a9d3a5a6e04c2cab6a6907",
         "transaction": {
           "steps": [
             {
@@ -9967,7 +10714,7 @@
         }
       },
       "construction.road.build": {
-        "planHash": "sha256:9cb2b023dddab9069dec5b812bdfc408eb7afabee0ef8469c0c62c7729a7acd2",
+        "planHash": "sha256:55465a1a8da4914e4ffcb2dc1411bdff4a95528cce4c32253a2f15d4cf138491",
         "transaction": {
           "steps": [
             {
@@ -10246,7 +10993,7 @@
         }
       },
       "construction.waypoint.build": {
-        "planHash": "sha256:481f7192d349ead6ff5864a38335546154e5e0cf6f3c86aaa8bae7de55ae9f16",
+        "planHash": "sha256:c1cc668858ef2bb371542fa004b91fec1a5a7be96e6b6c29a36555272cab621f",
         "transaction": {
           "steps": [
             {
@@ -10682,7 +11429,7 @@
         }
       },
       "construction.mode.road": {
-        "planHash": "sha256:5d17298be6e89e6addd993cbab2a65d6c882a81b6a64e388dd980413a41fbfeb",
+        "planHash": "sha256:ec8cc32963c18910ef593139ec6575c8789668b69a75fb7f13eafe7b342aebf5",
         "transaction": {
           "steps": [
             {
@@ -10726,7 +11473,7 @@
         }
       },
       "construction.mode.waypoint": {
-        "planHash": "sha256:58f2c46897849ec66640a294818e8a6f99f01a6fc9de9dd85bd1ba48d02174d1",
+        "planHash": "sha256:6b07b857684a2f08679bd3169a1d34bbfd32ff04f4e931656d01d762c2ff4ca2",
         "transaction": {
           "steps": [
             {
@@ -10770,7 +11517,7 @@
         }
       },
       "construction.phase.finish": {
-        "planHash": "sha256:b8e0464e0a08004836bbaace69690ac692b4dec360fcb61a6c7441794150efff",
+        "planHash": "sha256:2dfd3857eb31c7dea78a477368d8a7ea20f350f0547e265e17bacc7381d319c5",
         "transaction": {
           "steps": [
             {
@@ -10851,7 +11598,7 @@
         }
       },
       "session.finish.request": {
-        "planHash": "sha256:66719630a0e9d70b5a0104652590234b4a6d3dc903ed9488427f511bf4764347",
+        "planHash": "sha256:485680c36f2a428ef683377be1dfa0a2f488c41a1a297e3b0e8b467ea89f9149",
         "transaction": {
           "steps": [
             {
@@ -10905,7 +11652,7 @@
         }
       },
       "session.finish.cancel": {
-        "planHash": "sha256:37094dcab90c65a6ea357236fb544b01f00db3a17a05469253cbac7dc9f0ef73",
+        "planHash": "sha256:ed8640d175cec6dbd5d66f7ee5071cbb1ec1a55fdb07ea128d95d555c92dbee4",
         "transaction": {
           "steps": [
             {
@@ -10959,7 +11706,7 @@
         }
       },
       "session.finish.confirm": {
-        "planHash": "sha256:b6560ac4ba0948082962cd0ad60ee2fa2e0c4071b0c48f60dc9a0144e2196a3a",
+        "planHash": "sha256:c75a2bab1432d2120914bec8da1f044015e4952981ec0e0259a9508fa4442727",
         "transaction": {
           "steps": [
             {
@@ -11166,46 +11913,12 @@
       ],
       "roadPlanning": {
         "mode": "region-segment-minimum",
-        "algorithmVersion": "region-segment-minimum-v1",
+        "algorithmVersion": "region-segment-minimum-v2",
         "geometryVersion": "mock-regions-v1",
-        "geometryHash": "sha256:418915f2cb120b41bf6a7809c6864a3e53706ca0d825df799c7ec3cf8d53d7d0",
-        "tieBreak": "session-random",
+        "geometryHash": "sha256:bc78952bb05177b6015bfbf461139d728c9cd40c691e30277031acec980ce5fd",
+        "tieBreak": "shortest-then-codepoint",
         "boundaryPolicy": "lowest-region-id",
-        "excludedRegionIdsEndpoint": "public.transportNetworks.main.excludedRegionIds",
-        "navigationGraph": {
-          "portals": [
-            {
-              "id": "portal:mock-region-central:mock-region-east:1",
-              "regionIds": [
-                "mock-region-central",
-                "mock-region-east"
-              ],
-              "from": {
-                "x": 820,
-                "y": 50
-              },
-              "to": {
-                "x": 820,
-                "y": 900
-              }
-            },
-            {
-              "id": "portal:mock-region-central:mock-region-west:1",
-              "regionIds": [
-                "mock-region-central",
-                "mock-region-west"
-              ],
-              "from": {
-                "x": 480,
-                "y": 50
-              },
-              "to": {
-                "x": 480,
-                "y": 900
-              }
-            }
-          ]
-        }
+        "excludedRegionIdsEndpoint": "public.transportNetworks.main.excludedRegionIds"
       },
       "movement": {
         "vehicleCollection": "locomotives",

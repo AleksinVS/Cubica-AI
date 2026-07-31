@@ -2,8 +2,8 @@ import { expect, test } from "@playwright/test";
 
 const storageKey = "cubica-antarctica-session-id";
 
-test.describe("player-web e2e", () => {
-  test("boots Antarctica through Next.js proxy and dispatches a runtime action", async ({ page }) => {
+test.describe("player-web e2e", { tag: "@player" }, () => {
+  test("boots Antarctica through Next.js proxy and dispatches a runtime action", { tag: "@smoke" }, async ({ page }) => {
     const createSession = page.waitForResponse((response) =>
       response.url().endsWith("/api/runtime/sessions") &&
       response.request().method() === "POST"
@@ -49,7 +49,7 @@ test.describe("player-web e2e", () => {
     await expect(page.locator(".hint-screen")).toBeVisible();
   });
 
-  test("uses portal launch binding and stores a launch-scoped session id", async ({ page, request }) => {
+  test("uses portal launch binding and stores a launch-scoped session id", { tag: "@portal" }, async ({ page, request }) => {
     const sessionResponse = await request.post("/api/runtime/sessions", {
       data: {
         gameId: "antarctica"

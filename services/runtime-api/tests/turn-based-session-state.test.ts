@@ -1,4 +1,4 @@
-/** Neutral tests for manifest-declared turn and random runtime state. */
+/** Neutral tests for manifest-declared turn state and server-owned randomness. */
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { test } from "node:test";
@@ -95,7 +95,7 @@ test("participant template expands into isolated p1..pN state and an initial tur
   const state = initializeTurnBasedSessionState(
     manifest,
     declaredState(manifest),
-    { randomSeed: "0123456789abcdeffedcba9876543210" }
+    {}
   );
 
   assert.equal("playersTemplate" in state, false);
@@ -109,26 +109,42 @@ test("participant template expands into isolated p1..pN state and an initial tur
     phase: "roll",
     turnNumber: 1
   });
-  assert.deepEqual((state.secret as Record<string, unknown>).random, {
-    alg: "xoshiro128ss-streams-v1",
-    seed: "0123456789abcdeffedcba9876543210",
-    counters: {}
-  });
+  assert.equal("random" in (state.secret as Record<string, unknown>), false);
 
   const players = state.players as Record<string, Record<string, any>>;
   players.p1.metrics.score = 1;
   assert.equal(players.p2.metrics.score, 10, "participant objects must not share nested references");
 });
 
+test("authored random state is removed unconditionally", () => {
+  const manifest = createManifest();
+  // An authored random object must never become a second source of truth.
+  manifest.state.secret = {
+    random: {
+      alg: "author-authored-placeholder",
+      seed: "must-not-survive-session-initialization"
+    }
+  };
+
+  const state = initializeTurnBasedSessionState(
+    manifest,
+    declaredState(manifest),
+    {}
+  );
+  assert.equal("random" in (state.secret as Record<string, unknown>), false);
+});
+
 test("participant count outside manifest bounds is rejected", () => {
   const manifest = createManifest();
   assert.throws(
-    () => initializeTurnBasedSessionState(manifest, declaredState(manifest), { participantCount: 3 }),
+    () => initializeTurnBasedSessionState(manifest, declaredState(manifest), {
+      participantCount: 3
+    }),
     /outside manifest bounds/u
   );
 });
 
-test("deck-only manifests receive the runtime-owned replay seed", () => {
+test("random deck manifests do not initialize persistent generator state", () => {
   for (const step of [
     {
       id: "shuffle",
@@ -188,18 +204,14 @@ test("deck-only manifests receive the runtime-owned replay seed", () => {
     const state = initializeTurnBasedSessionState(
       manifest,
       declaredState(manifest),
-      { randomSeed: "0123456789abcdeffedcba9876543210" }
+      {}
     );
 
-    assert.deepEqual((state.secret as Record<string, unknown>).random, {
-      alg: "xoshiro128ss-streams-v1",
-      seed: "0123456789abcdeffedcba9876543210",
-      counters: {}
-    });
+    assert.equal("random" in (state.secret as Record<string, unknown>), false);
   }
 });
 
-test("non-random deck lifecycle operations do not initialize a replay seed", () => {
+test("non-random deck lifecycle operations do not initialize random state", () => {
   for (const step of [
     {
       id: "extract",
@@ -236,21 +248,30 @@ test("non-random deck lifecycle operations do not initialize a replay seed", () 
       }
     };
 
-    const state = initializeTurnBasedSessionState(manifest, declaredState(manifest));
+    const state = initializeTurnBasedSessionState(
+      manifest,
+      declaredState(manifest),
+      {}
+    );
     assert.equal(
       "random" in (state.secret as Record<string, unknown>),
       false,
-      `${step.op} must not consume or initialize a random stream`
+      `${step.op} must not initialize persisted random state`
     );
   }
 });
 
-test("random-tie road planning receives runtime-owned replay state before its first action", () => {
+test("road planning does not initialize persistent generator state", () => {
   const manifest = createManifest();
   // The initializer only needs to detect the schema-validated capability here;
-  // geometric contract validation is covered by the platform fixture.
+  // geometric contract validation is covered by the platform fixture. Version
+  // 2 of the region road planner (ADR-100) is deterministic and declares
+  // `tieBreak: "shortest-then-codepoint"` instead of the version 1
+  // `"server-random"` value — this fixture no longer exercises randomness at
+  // all, but it still proves that declaring road planning does not, by
+  // itself, cause the initializer to materialize persisted generator state.
   (manifest as any).networkModels = {
-    grid: { roadPlanning: { tieBreak: "session-random" } }
+    grid: { roadPlanning: { tieBreak: "shortest-then-codepoint" } }
   };
   manifest.actions = {};
   manifest.mechanics.plans = {
@@ -273,20 +294,16 @@ test("random-tie road planning receives runtime-owned replay state before its fi
   const state = initializeTurnBasedSessionState(
     manifest,
     declaredState(manifest),
-    { randomSeed: "0123456789abcdeffedcba9876543210" }
+    {}
   );
 
-  assert.deepEqual((state.secret as Record<string, unknown>).random, {
-    alg: "xoshiro128ss-streams-v1",
-    seed: "0123456789abcdeffedcba9876543210",
-    counters: {}
-  });
+  assert.equal("random" in (state.secret as Record<string, unknown>), false);
 });
 
-test("conditional seeded ordering initializes replay state while canonical ordering does not", () => {
+test("neither conditional random ordering nor canonical ordering initializes random state", () => {
   for (const tieBreak of [
-    { kind: "seeded-random", stream: "fixture.order", expectsRandom: true },
-    { kind: "canonical-id", expectsRandom: false }
+    { kind: "server-random", stream: "fixture.order" },
+    { kind: "canonical-id" }
   ] as const) {
     const manifest = createManifest();
     manifest.actions = {};
@@ -334,12 +351,11 @@ test("conditional seeded ordering initializes replay state while canonical order
                 direction: "ascending",
                 missing: "error"
               }],
-              tieBreak: tieBreak.kind === "seeded-random"
+              tieBreak: tieBreak.kind === "server-random"
                 ? { kind: tieBreak.kind, stream: tieBreak.stream }
                 : { kind: tieBreak.kind },
-              // A false condition in this fixture represents a runtime branch.
-              // Bootstrap must still provision randomness because another
-              // session state can make the same published step executable.
+              // A false condition represents a runtime branch. Initialization
+              // still must not persist generator state for a possible future use.
               when: { op: "predicate.constant", value: false }
             }
           ] as unknown as [Step, ...Array<Step>]
@@ -351,12 +367,12 @@ test("conditional seeded ordering initializes replay state while canonical order
     const state = initializeTurnBasedSessionState(
       manifest,
       declaredState(manifest),
-      { randomSeed: "0123456789abcdeffedcba9876543210" }
+      {}
     );
 
     assert.equal(
       "random" in (state.secret as Record<string, unknown>),
-      tieBreak.expectsRandom
+      false
     );
   }
 });

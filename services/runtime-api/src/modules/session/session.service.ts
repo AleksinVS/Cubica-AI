@@ -43,8 +43,6 @@ type RuntimeState = Record<string, unknown>;
 
 interface SessionServiceOptions {
   sessionStore: SessionStorePort<RuntimeState>;
-  /** Internal deterministic-test seam; HTTP callers can never select a seed. */
-  createSessionRandomSeed?: () => string;
 }
 
 export interface AuthenticatedSessionAccess {
@@ -64,11 +62,9 @@ export type AuthenticatedArchivedSessionAccess = ArchivedSessionAudit<RuntimeSta
 
 export class SessionService {
   private readonly sessionStore: SessionStorePort<RuntimeState>;
-  private readonly createSessionRandomSeed?: () => string;
 
   constructor(options: SessionServiceOptions) {
     this.sessionStore = options.sessionStore;
-    this.createSessionRandomSeed = options.createSessionRandomSeed;
   }
 
   async createSession(request: CreateSessionRequest): Promise<CreateSessionResponse<RuntimeState>> {
@@ -80,9 +76,7 @@ export class SessionService {
     await assertGameLaunchReady({ gameId, contentSourceId: request.contentSourceId });
     const bundle = await contentService.getBundle(gameId, request.contentSourceId);
     const declaredState = extractInitialState(bundle) as RuntimeState;
-    const initialState = initializeTurnBasedSessionState(bundle.manifest, declaredState, {
-      randomSeed: this.createSessionRandomSeed?.()
-    });
+    const initialState = initializeTurnBasedSessionState(bundle.manifest, declaredState, {});
     // A client never chooses its own trusted role. Facilitated mode is the one
     // current manifest rule that creates a facilitator controller.
     const sessionRole = bundle.manifest.config.sessionMode === "facilitated"

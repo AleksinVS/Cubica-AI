@@ -77,6 +77,7 @@ const sourceCollectionId = (terminalId) =>
   `cargoSourceTerminal${String(Number(terminalId.slice("terminal-".length))).padStart(2, "0")}`;
 const activeNetworkClosureReasonEndpoint =
   "public.news.activeNetworkClosureReason";
+const completionAvailabilityEndpoint = "public.session.canRequestFinish";
 
 /**
  * Exact author-confirmed one-turn network closures.
@@ -158,6 +159,38 @@ const cargoSelectionParamsSchema = {
   },
   required: ["terminalId", "cargoId"]
 };
+
+/** Build one flat, live public-object reference for a news action. */
+const newsObjectReference = (collection, objectType, network) => ({
+  type: "string",
+  maxLength: 128,
+  "x-cubica-ref": {
+    kind: "object",
+    collection,
+    ...(network ? { network } : {}),
+    allowedTypes: [objectType],
+    visibility: "public"
+  }
+});
+
+const news19TeamParamsSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    teamId: newsObjectReference("teams", "game.team")
+  },
+  required: ["teamId"]
+};
+
+const news19RemovalParamsSchema = (collection, objectType, parameterName) => ({
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    teamId: newsObjectReference("teams", "game.team"),
+    [parameterName]: newsObjectReference(collection, objectType, "main")
+  },
+  required: ["teamId", parameterName]
+});
 
 const normalLifecycleGuardItems = () => [
   compare("eq", stateValue("public.session.fixtureId"), literal(normalFixtureId)),
@@ -314,7 +347,9 @@ const buildTemporaryNewsEffectResetSteps = () => [
     ["public.turnEffects.purchasePermissions.wagon", true],
     ["public.turnEffects.purchasePermissions.locomotive", true],
     ["public.turnEffects.purchasePriceOverrides.wagon", null],
-    ["public.turnEffects.purchasePriceOverrides.locomotive", null]
+    ["public.turnEffects.purchasePriceOverrides.locomotive", null],
+    ["public.turnEffects.cargoDepartureBonusNewsId", null],
+    ["public.turnEffects.cargoDepartureBonusTerminalIds", []]
   ]),
   ...buildNetworkClosureResetSteps(),
   setState("clear-previous-network-closure-reason", [
@@ -327,6 +362,26 @@ const scalarNewsEffectPatchesByNumber = new Map([
   [23, [["public.turnEffects.deliveryPayoutBonus", -2]]],
   [24, [["public.turnEffects.deliveryPayoutBonus", 3]]],
   [25, [["public.turnEffects.vehicleAndCargoMaintenanceExempt", true]]],
+  [
+    28,
+    [
+      ["public.turnEffects.cargoDepartureBonusNewsId", "news-28"],
+      [
+        "public.turnEffects.cargoDepartureBonusTerminalIds",
+        ["terminal-5", "terminal-7"]
+      ]
+    ]
+  ],
+  [
+    29,
+    [
+      ["public.turnEffects.cargoDepartureBonusNewsId", "news-29"],
+      [
+        "public.turnEffects.cargoDepartureBonusTerminalIds",
+        ["terminal-14", "terminal-15"]
+      ]
+    ]
+  ],
   [30, [["public.turnEffects.purchasePermissions.wagon", false]]],
   [31, [["public.turnEffects.purchasePermissions.locomotive", false]]],
   [32, [["public.turnEffects.purchasePriceOverrides.wagon", 4]]],
@@ -621,7 +676,7 @@ const buildCargoQueuePrepare = () => {
               }
             ],
             tieBreak: {
-              kind: "seeded-random",
+              kind: "server-random",
               stream: "cargo-offer-order"
             },
             when: hasEligibleWagons
@@ -761,11 +816,17 @@ const buildCargoDraw = () => {
   const firstEndpoint = "public.cards.cargo.offer.firstCardId";
   const secondEndpoint = "public.cards.cargo.offer.secondCardId";
   const terminalId = paramValue("terminalId");
+  const hasSecondCard = compare(
+    "gte",
+    stateValue(cargoRemainingEndpoint, { terminalId }),
+    literal(2)
+  );
   return {
     action: action({
       id,
-      label: "Предложить два груза выбранного терминала",
-      semantics: "Открывает ровно две физические карты выбранного терминала, если в его колоде осталось не меньше двух; будущий порядок остаётся в серверном состоянии.",
+      label: "Предложить грузы выбранного терминала",
+      semantics:
+        "Открывает две физические карты выбранного терминала, а при остатке одной карты — только её; будущий порядок остаётся в серверном состоянии.",
       paramsSchema: cargoOfferParamsSchema
     }),
     plan: {
@@ -835,7 +896,7 @@ const buildCargoDraw = () => {
               compare(
                 "gte",
                 stateValue(cargoRemainingEndpoint, { terminalId }),
-                literal(2)
+                literal(1)
               )
             ),
             errorCode: "CARGO_OFFER_UNAVAILABLE"
@@ -862,7 +923,8 @@ const buildCargoDraw = () => {
             op: "deck.draw",
             deckId: terminalId,
             target: { endpoint: secondEndpoint },
-            onEmpty: "reshuffle-discard"
+            onEmpty: "reshuffle-discard",
+            when: hasSecondCard
           },
           {
             id: "hold-second",
@@ -870,7 +932,8 @@ const buildCargoDraw = () => {
             op: "deck.extract",
             deckId: terminalId,
             source: "discard",
-            card: stateValue(secondEndpoint)
+            card: stateValue(secondEndpoint),
+            when: hasSecondCard
           },
           setFacet(
             "show-first",
@@ -884,7 +947,8 @@ const buildCargoDraw = () => {
             "cargoOrders",
             stateValue(secondEndpoint),
             "status",
-            "offered"
+            "offered",
+            hasSecondCard
           ),
           setStateExpressions("record-terminal", [
             [
@@ -907,7 +971,14 @@ const buildCargoSelect = () => {
   const selectedFirst = compare("eq", selected, stateValue(firstEndpoint));
   const selectedSecond = compare("eq", selected, stateValue(secondEndpoint));
   const returnFirst = compare("ne", selected, stateValue(firstEndpoint));
-  const returnSecond = compare("ne", selected, stateValue(secondEndpoint));
+  const returnSecond = all(
+    {
+      op: "predicate.exists",
+      value: stateValue(secondEndpoint),
+      exists: true
+    },
+    compare("ne", selected, stateValue(secondEndpoint))
+  );
   const holderTeamId = entityValue(
     "wagons",
     currentCargoWagon(),
@@ -917,7 +988,8 @@ const buildCargoSelect = () => {
     action: action({
       id,
       label: "Выбрать груз из текущего предложения",
-      semantics: "Закрепляет выбранную физическую карту за командой, оставляет её вне оборота и возвращает вторую карту в ту же колоду.",
+      semantics:
+        "Закрепляет выбранную физическую карту за командой, оставляет её вне оборота и возвращает другую открытую карту в ту же колоду, если она была.",
       paramsSchema: cargoSelectionParamsSchema
     }),
     plan: {
@@ -1058,14 +1130,17 @@ const buildCargoSkip = () => {
       op: "predicate.exists",
       value: stateValue(firstEndpoint),
       exists: true
-    },
+    }
+  );
+  const hasSecondOpenCard = all(
+    hasOpenOffer,
     {
       op: "predicate.exists",
       value: stateValue(secondEndpoint),
       exists: true
     }
   );
-  const hasNoOfferBelowTwo = all(
+  const hasNoOfferEmptyDeck = all(
     compare(
       "eq",
       stateValue("public.cards.cargo.offer.terminalId"),
@@ -1074,16 +1149,17 @@ const buildCargoSkip = () => {
     compare("eq", stateValue(firstEndpoint), literal(null)),
     compare("eq", stateValue(secondEndpoint), literal(null)),
     compare(
-      "lt",
+      "eq",
       stateValue(cargoRemainingEndpoint, { terminalId }),
-      literal(2)
+      literal(0)
     )
   );
   return {
     action: action({
       id,
-      label: "Вернуть оба предложенных груза",
-      semantics: "Разрешает текущий серверный слот: возвращает обе открытые карты либо технически пропускает терминал, если в нём осталось меньше двух карт. Остаток колоды не уменьшается.",
+      label: "Вернуть предложенные грузы",
+      semantics:
+        "Разрешает текущий серверный слот: возвращает одну или две открытые карты либо технически пропускает терминал только при пустой колоде. Остаток колоды не уменьшается.",
       paramsSchema: cargoOfferParamsSchema
     }),
     plan: {
@@ -1136,7 +1212,7 @@ const buildCargoSkip = () => {
               },
               {
                 op: "predicate.any",
-                items: [hasOpenOffer, hasNoOfferBelowTwo]
+                items: [hasOpenOffer, hasNoOfferEmptyDeck]
               }
             ),
             errorCode: "CARGO_OFFER_UNAVAILABLE"
@@ -1157,7 +1233,7 @@ const buildCargoSkip = () => {
             deckId: terminalId,
             card: stateValue(secondEndpoint),
             destination: "discard",
-            when: hasOpenOffer
+            when: hasSecondOpenCard
           },
           setFacet(
             "hide-first",
@@ -1173,7 +1249,7 @@ const buildCargoSkip = () => {
             stateValue(secondEndpoint),
             "status",
             "hidden",
-            hasOpenOffer
+            hasSecondOpenCard
           ),
           setState("clear-offer", [
             ["public.cards.cargo.offer.terminalId", null],
@@ -1538,6 +1614,7 @@ const buildBudgetFeeNews = (news) => {
             selector: {
               collection: "teams",
               objectTypes: ["game.team"],
+              facets: { placementStatus: literal("placed") },
               attributes: {
                 coins: {
                   operator: "gt",
@@ -1587,6 +1664,676 @@ const buildBudgetFeeNews = (news) => {
                 }
               }
             ]
+          },
+          setFacet(
+            "resolve-card",
+            "newsCards",
+            literal(news.id),
+            "availability",
+            "resolved"
+          ),
+          setState("finish", [
+            ["public.news.currentCardId", null],
+            ["public.news.status", "resolved"],
+            ["public.session.phase", "maintenance"]
+          ])
+        ]
+      }
+    }
+  };
+};
+
+/** Common fail-closed boundary for the staged resolution of news №19. */
+const news19CurrentGuard = (news) => all(
+  ...normalLifecycleGuardItems(),
+  compare("eq", stateValue("public.session.phase"), literal("news")),
+  compare("eq", stateValue("public.news.currentCardId"), literal(news.id)),
+  compare(
+    "eq",
+    entityValue("newsCards", literal(news.id), "availability"),
+    literal("current")
+  )
+);
+
+/**
+ * Snapshot one team's active equipment and derive floor(total / 5).
+ *
+ * Mechanics deliberately has exact bounded iteration but no implicit array
+ * length or rounding. Two protected selections count active locomotives and
+ * wagons into a game-owned team field. Twenty-five threshold increments then
+ * express floor(total / 5) for the declared 64 + 64 asset capacities without
+ * trusting a client count or introducing a game-specific runtime operation.
+ */
+const buildNews19PrepareTeam = (news) => {
+  const id = "news.effect.19.prepare-team";
+  const teamId = paramValue("teamId");
+  const turnNumber = stateValue("public.session.turnNumber");
+  const teamEntity = { collection: "teams", entityId: teamId };
+  return {
+    action: action({
+      id,
+      label: "Новость № 19: рассчитать изъятие команды",
+      semantics:
+        "Сервер фиксирует число активных локомотивов и вагонов выбранной команды и назначает по одной изымаемой единице на каждую полную пятёрку.",
+      paramsSchema: news19TeamParamsSchema
+    }),
+    plan: {
+      transaction: {
+        steps: [
+          {
+            id: "guard",
+            kind: "assert",
+            op: "core.assert",
+            predicate: all(
+              news19CurrentGuard(news),
+              {
+                op: "predicate.entity.matches",
+                entity: teamEntity,
+                objectType: "game.team",
+                facets: { placementStatus: literal("placed") }
+              },
+              compare(
+                "ne",
+                entityValue("teams", teamId, "news19PreparedTurn"),
+                turnNumber
+              )
+            ),
+            errorCode: "NEWS_19_TEAM_PREPARE_UNAVAILABLE"
+          },
+          {
+            id: "reset-team-snapshot",
+            kind: "command",
+            op: "core.entity.attributes.patch",
+            entity: teamEntity,
+            patches: [
+              {
+                operation: "set",
+                path: ["news19PreparedTurn"],
+                value: turnNumber
+              },
+              {
+                operation: "set",
+                path: ["news19VehicleCountSnapshot"],
+                value: literal(0)
+              },
+              {
+                operation: "set",
+                path: ["news19RemovalRequired"],
+                value: literal(0)
+              },
+              {
+                operation: "set",
+                path: ["news19RemovalRemaining"],
+                value: literal(0)
+              },
+              {
+                operation: "set",
+                path: ["news19ResolvedTurn"],
+                value: literal(0)
+              }
+            ]
+          },
+          {
+            id: "active-team-locomotives",
+            kind: "query",
+            op: "core.entities.select",
+            selector: {
+              collection: "locomotives",
+              objectTypes: ["transport.locomotive"],
+              facets: { availability: literal("active") },
+              attributes: { ownerTeamId: teamId },
+              cardinality: { min: 0, max: 64 }
+            }
+          },
+          {
+            id: "count-team-locomotives",
+            kind: "command",
+            op: "core.entities.each",
+            selection: resultValue("active-team-locomotives"),
+            body: [{
+              id: "increment-team-locomotive-count",
+              kind: "command",
+              op: "core.entity.attributes.patch",
+              entity: teamEntity,
+              patches: [{
+                operation: "increment",
+                path: ["news19VehicleCountSnapshot"],
+                value: literal(1)
+              }]
+            }]
+          },
+          {
+            id: "active-team-wagons",
+            kind: "query",
+            op: "core.entities.select",
+            selector: {
+              collection: "wagons",
+              objectTypes: ["transport.wagon"],
+              facets: { availability: literal("active") },
+              attributes: { ownerTeamId: teamId },
+              cardinality: { min: 0, max: 64 }
+            }
+          },
+          {
+            id: "count-team-wagons",
+            kind: "command",
+            op: "core.entities.each",
+            selection: resultValue("active-team-wagons"),
+            body: [{
+              id: "increment-team-wagon-count",
+              kind: "command",
+              op: "core.entity.attributes.patch",
+              entity: teamEntity,
+              patches: [{
+                operation: "increment",
+                path: ["news19VehicleCountSnapshot"],
+                value: literal(1)
+              }]
+            }]
+          },
+          ...Array.from({ length: 25 }, (_, index) => {
+            const threshold = (index + 1) * 5;
+            return {
+              id: `add-quota-at-${threshold}`,
+              kind: "command",
+              op: "core.entity.attributes.patch",
+              entity: teamEntity,
+              patches: [{
+                operation: "increment",
+                path: ["news19RemovalRequired"],
+                value: literal(1)
+              }],
+              when: compare(
+                "gte",
+                entityValue("teams", teamId, "news19VehicleCountSnapshot"),
+                literal(threshold)
+              )
+            };
+          }),
+          {
+            id: "publish-team-quota",
+            kind: "command",
+            op: "core.entity.attributes.patch",
+            entity: teamEntity,
+            patches: [{
+              operation: "set",
+              path: ["news19RemovalRemaining"],
+              value: entityValue("teams", teamId, "news19RemovalRequired")
+            }]
+          },
+          {
+            id: "resolve-zero-quota-team",
+            kind: "command",
+            op: "core.entity.attributes.patch",
+            entity: teamEntity,
+            patches: [{
+              operation: "set",
+              path: ["news19ResolvedTurn"],
+              value: turnNumber
+            }],
+            when: compare(
+              "eq",
+              entityValue("teams", teamId, "news19RemovalRequired"),
+              literal(0)
+            )
+          },
+          setState("mark-resolving", [["public.news.status", "resolving"]])
+        ]
+      }
+    }
+  };
+};
+
+/** Shared team/quota checks for one facilitator-selected confiscation. */
+const news19RemovalGuard = (news, teamId) => all(
+  news19CurrentGuard(news),
+  {
+    op: "predicate.entity.matches",
+    entity: { collection: "teams", entityId: teamId },
+    objectType: "game.team",
+    facets: { placementStatus: literal("placed") },
+    attributes: {
+      news19PreparedTurn: stateValue("public.session.turnNumber")
+    }
+  },
+  compare(
+    "gt",
+    entityValue("teams", teamId, "news19RemovalRemaining"),
+    literal(0)
+  )
+);
+
+/** Permanently confiscate one locomotive selected by the facilitator. */
+const buildNews19RemoveLocomotive = (news) => {
+  const id = "news.effect.19.remove-locomotive";
+  const teamId = paramValue("teamId");
+  const locomotiveId = paramValue("locomotiveId");
+  const turnNumber = stateValue("public.session.turnNumber");
+  return {
+    action: action({
+      id,
+      label: "Новость № 19: изъять локомотив",
+      semantics:
+        "По решению команды ведущий выбирает один её активный локомотив; сервер отсоединяет состав и навсегда исключает локомотив из партии.",
+      paramsSchema: news19RemovalParamsSchema(
+        "locomotives",
+        "transport.locomotive",
+        "locomotiveId"
+      )
+    }),
+    plan: {
+      transaction: {
+        steps: [
+          {
+            id: "guard",
+            kind: "assert",
+            op: "core.assert",
+            predicate: all(
+              news19RemovalGuard(news, teamId),
+              {
+                op: "predicate.entity.matches",
+                entity: { collection: "locomotives", entityId: locomotiveId },
+                objectType: "transport.locomotive",
+                facets: { availability: literal("active") },
+                attributes: {
+                  networkId: literal("main"),
+                  ownerTeamId: teamId
+                }
+              }
+            ),
+            errorCode: "NEWS_19_LOCOMOTIVE_REMOVAL_INVALID"
+          },
+          {
+            id: "attached-wagons",
+            kind: "query",
+            op: "core.entities.select",
+            selector: {
+              collection: "wagons",
+              objectTypes: ["transport.wagon"],
+              facets: { availability: literal("active") },
+              attributes: { attachedVehicleId: locomotiveId },
+              cardinality: { min: 0, max: 64 }
+            }
+          },
+          {
+            id: "detach-wagons",
+            kind: "command",
+            op: "core.entities.each",
+            selection: resultValue("attached-wagons"),
+            body: [{
+              id: "detach-wagon",
+              kind: "command",
+              op: "relation.detach",
+              networkId: "main",
+              primary: locomotiveId,
+              related: [itemId()]
+            }]
+          },
+          {
+            id: "retire-locomotive",
+            kind: "command",
+            op: "core.entity.attributes.patch",
+            entity: { collection: "locomotives", entityId: locomotiveId },
+            patches: [
+              {
+                operation: "set",
+                path: ["actionPoints"],
+                value: literal(0)
+              },
+              {
+                operation: "set",
+                path: ["turnOrderCount"],
+                value: literal(0)
+              },
+              {
+                operation: "set",
+                path: ["movementResolvedTurn"],
+                value: turnNumber
+              },
+              {
+                operation: "set",
+                path: ["news19ConfiscatedTurn"],
+                value: turnNumber
+              }
+            ]
+          },
+          setFacet(
+            "hide-locomotive",
+            "locomotives",
+            locomotiveId,
+            "availability",
+            "sold"
+          ),
+          {
+            id: "decrement-team-quota",
+            kind: "command",
+            op: "core.entity.attributes.patch",
+            entity: { collection: "teams", entityId: teamId },
+            patches: [{
+              operation: "increment",
+              path: ["news19RemovalRemaining"],
+              value: literal(-1)
+            }]
+          },
+          {
+            id: "resolve-team-if-complete",
+            kind: "command",
+            op: "core.entity.attributes.patch",
+            entity: { collection: "teams", entityId: teamId },
+            patches: [{
+              operation: "set",
+              path: ["news19ResolvedTurn"],
+              value: turnNumber
+            }],
+            when: compare(
+              "eq",
+              entityValue("teams", teamId, "news19RemovalRemaining"),
+              literal(0)
+            )
+          },
+          {
+            id: "journal-removal",
+            kind: "command",
+            op: "core.event.emit",
+            eventType: "news.vehicle.confiscated",
+            summary: literal("По новости № 19 локомотив навсегда изъят из партии"),
+            audience: "public",
+            data: {
+              newsId: literal(news.id),
+              teamId,
+              vehicleId: locomotiveId,
+              vehicleKind: literal("locomotive"),
+              quotaRemaining: entityValue(
+                "teams",
+                teamId,
+                "news19RemovalRemaining"
+              ),
+              turnNumber
+            }
+          }
+        ]
+      }
+    }
+  };
+};
+
+/**
+ * Permanently confiscate one wagon selected by the facilitator.
+ *
+ * The author-confirmed rule leaves a carried physical card at the wagon's
+ * current terminal for any later logistics company. The immutable `fromNodeId`
+ * still proves the card's printed origin; `availableAtNodeId` records only
+ * where the released card can now be loaded. The protected deck keeps the same
+ * held card, so confiscation neither duplicates it nor returns it to rotation.
+ */
+const buildNews19RemoveWagon = (news) => {
+  const id = "news.effect.19.remove-wagon";
+  const teamId = paramValue("teamId");
+  const wagonId = paramValue("wagonId");
+  const cargoId = entityValue("wagons", wagonId, "cargoId");
+  const locomotiveId = entityValue("wagons", wagonId, "attachedVehicleId");
+  const rawCurrentNodeId = entityValue("wagons", wagonId, "nodeId");
+  // Placement guarantees an active news-phase wagon is on the board. The
+  // coalesce makes that already-guarded optional attribute a typed string for
+  // the generic patch operation.
+  const currentNodeId = coalesce(rawCurrentNodeId, literal(""));
+  const turnNumber = stateValue("public.session.turnNumber");
+  const hasCargo = {
+    op: "predicate.exists",
+    value: cargoId,
+    exists: true
+  };
+  const hasLocomotive = {
+    op: "predicate.exists",
+    value: locomotiveId,
+    exists: true
+  };
+  return {
+    action: action({
+      id,
+      label: "Новость № 19: изъять вагон",
+      semantics:
+        "По решению команды ведущий выбирает один её активный вагон; сервер отсоединяет его, оставляет груз свободным на текущем терминале и навсегда исключает вагон из партии.",
+      paramsSchema: news19RemovalParamsSchema(
+        "wagons",
+        "transport.wagon",
+        "wagonId"
+      )
+    }),
+    plan: {
+      transaction: {
+        steps: [
+          {
+            id: "guard",
+            kind: "assert",
+            op: "core.assert",
+            predicate: all(
+              news19RemovalGuard(news, teamId),
+              {
+                op: "predicate.entity.matches",
+                entity: { collection: "wagons", entityId: wagonId },
+                objectType: "transport.wagon",
+                facets: { availability: literal("active") },
+                attributes: {
+                  networkId: literal("main"),
+                  ownerTeamId: teamId
+                }
+              },
+              {
+                op: "predicate.exists",
+                value: rawCurrentNodeId,
+                exists: true
+              }
+            ),
+            errorCode: "NEWS_19_WAGON_REMOVAL_INVALID"
+          },
+          {
+            id: "detach-wagon",
+            kind: "command",
+            op: "relation.detach",
+            networkId: "main",
+            primary: locomotiveId,
+            related: [wagonId],
+            when: hasLocomotive
+          },
+          setFacet(
+            "restore-carried-cargo",
+            "cargoOrders",
+            cargoId,
+            "status",
+            "available",
+            hasCargo
+          ),
+          {
+            id: "clear-carried-cargo-relation",
+            kind: "command",
+            op: "core.entity.attributes.patch",
+            entity: { collection: "cargoOrders", entityId: cargoId },
+            patches: [
+              {
+                operation: "set",
+                path: ["carrierWagonId"],
+                value: literal(null)
+              },
+              {
+                operation: "set",
+                path: ["holderTeamId"],
+                value: literal(null)
+              },
+              {
+                operation: "set",
+                path: ["availableAtNodeId"],
+                value: currentNodeId
+              }
+            ],
+            when: hasCargo
+          },
+          {
+            id: "retire-wagon",
+            kind: "command",
+            op: "core.entity.attributes.patch",
+            entity: { collection: "wagons", entityId: wagonId },
+            patches: [
+              {
+                operation: "set",
+                path: ["cargoId"],
+                value: literal(null)
+              },
+              {
+                operation: "set",
+                path: ["formationTargetLocomotiveId"],
+                value: literal(null)
+              },
+              {
+                operation: "set",
+                path: ["cargoOfferEligibleTurn"],
+                value: literal(0)
+              },
+              {
+                operation: "set",
+                path: ["cargoOfferResolvedTurn"],
+                value: turnNumber
+              },
+              {
+                operation: "set",
+                path: ["news19ConfiscatedTurn"],
+                value: turnNumber
+              }
+            ]
+          },
+          setFacet(
+            "hide-wagon",
+            "wagons",
+            wagonId,
+            "availability",
+            "sold"
+          ),
+          {
+            id: "decrement-team-quota",
+            kind: "command",
+            op: "core.entity.attributes.patch",
+            entity: { collection: "teams", entityId: teamId },
+            patches: [{
+              operation: "increment",
+              path: ["news19RemovalRemaining"],
+              value: literal(-1)
+            }]
+          },
+          {
+            id: "resolve-team-if-complete",
+            kind: "command",
+            op: "core.entity.attributes.patch",
+            entity: { collection: "teams", entityId: teamId },
+            patches: [{
+              operation: "set",
+              path: ["news19ResolvedTurn"],
+              value: turnNumber
+            }],
+            when: compare(
+              "eq",
+              entityValue("teams", teamId, "news19RemovalRemaining"),
+              literal(0)
+            )
+          },
+          {
+            id: "journal-removal",
+            kind: "command",
+            op: "core.event.emit",
+            eventType: "news.vehicle.confiscated",
+            summary: literal("По новости № 19 вагон навсегда изъят из партии"),
+            audience: "public",
+            data: {
+              newsId: literal(news.id),
+              teamId,
+              vehicleId: wagonId,
+              vehicleKind: literal("wagon"),
+              quotaRemaining: entityValue(
+                "teams",
+                teamId,
+                "news19RemovalRemaining"
+              ),
+              turnNumber
+            }
+          }
+        ]
+      }
+    }
+  };
+};
+
+/** Resolve news №19 only after every configured team completed its exact quota. */
+const buildNews19Finish = (news) => {
+  const id = "news.effect.19.finish";
+  const turnNumber = stateValue("public.session.turnNumber");
+  return {
+    action: action({
+      id,
+      label: "Завершить изъятие по новости № 19",
+      semantics:
+        "Переходит к обслуживанию только после серверной проверки, что каждая команда рассчитана и изъяла ровно назначенное число единиц техники.",
+      paramsSchema: noParamsSchema
+    }),
+    plan: {
+      transaction: {
+        steps: [
+          {
+            id: "guard",
+            kind: "assert",
+            op: "core.assert",
+            predicate: news19CurrentGuard(news),
+            errorCode: "NEWS_19_FINISH_UNAVAILABLE"
+          },
+          {
+            id: "unprepared-teams",
+            kind: "query",
+            op: "core.entities.select",
+            selector: {
+              collection: "teams",
+              objectTypes: ["game.team"],
+              facets: { placementStatus: literal("placed") },
+              attributes: {
+                news19PreparedTurn: {
+                  operator: "ne",
+                  value: turnNumber
+                }
+              },
+              cardinality: { min: 0, max: 12 }
+            }
+          },
+          {
+            id: "unfinished-team-quotas",
+            kind: "query",
+            op: "core.entities.select",
+            selector: {
+              collection: "teams",
+              objectTypes: ["game.team"],
+              facets: { placementStatus: literal("placed") },
+              attributes: {
+                news19RemovalRemaining: {
+                  operator: "gt",
+                  value: literal(0)
+                }
+              },
+              cardinality: { min: 0, max: 12 }
+            }
+          },
+          {
+            id: "all-teams-resolved",
+            kind: "assert",
+            op: "core.assert",
+            predicate: all(
+              compare(
+                "eq",
+                resultValue("unprepared-teams", ["ids"]),
+                literal([])
+              ),
+              compare(
+                "eq",
+                resultValue("unfinished-team-quotas", ["ids"]),
+                literal([])
+              )
+            ),
+            errorCode: "NEWS_19_TEAM_QUOTAS_INCOMPLETE"
           },
           setFacet(
             "resolve-card",
@@ -2050,6 +2797,15 @@ const buildCargoObject = (record) => ({
     toNodeId: record.destinationNodeId,
     payout: record.bankPayout,
     holderTeamId: null,
+    carrierWagonId: null,
+    // The printed source never changes. This separate location moves only
+    // when a released physical card becomes available at another terminal.
+    availableAtNodeId: record.originNodeId,
+    // Settlement prices the currently carried leg from its actual pickup
+    // point while `fromNodeId` remains the immutable card provenance.
+    activeLegFromNodeId: record.originNodeId,
+    originDeparted: false,
+    originDepartureTurn: 0,
     settledRouteLength: null,
     // Cargo is charged only after a team starts holding it. Turn zero is the
     // explicit baseline used by the operating-turn maintenance workflow.
@@ -2092,6 +2848,26 @@ const ownsLifecycleAction = (candidate) =>
   lifecycleActionPrefixes.some((prefix) => candidate.id.startsWith(prefix));
 const ownsLifecyclePlan = (planId) =>
   lifecycleActionPrefixes.some((prefix) => planId.startsWith(prefix));
+
+/** Capture completion-owned availability patches from lifecycle-owned plans. */
+const captureCompletionAvailabilityPatches = (plans) => {
+  const availabilityPatches = new Map();
+  for (const [planId, plan] of Object.entries(plans)) {
+    if (!ownsLifecyclePlan(planId)) continue;
+    for (const step of plan.transaction.steps) {
+      if (step.op !== "core.state.patch") continue;
+      const patches = step.patches.filter(
+        (patch) =>
+          patch.operation === "set"
+          && patch.target?.endpoint === completionAvailabilityEndpoint
+      );
+      if (patches.length > 0) {
+        availabilityPatches.set(`${planId}\0${step.id}`, patches);
+      }
+    }
+  }
+  return availabilityPatches;
+};
 
 /**
  * Keep the older bounded technical replay aligned with the same safe set
@@ -2146,6 +2922,8 @@ const buildLifecycleAuthoring = (sourceAuthoring, intake) => {
   assertIntakeSemantics(intake);
   const authoring = structuredClone(sourceAuthoring);
   const root = authoring.root;
+  const completionAvailabilityPatches =
+    captureCompletionAvailabilityPatches(root.mechanics.plans);
   const cargoById = new Map(intake.cargoRecords.map((item) => [item.id, item]));
   const baseByTerminal = Object.fromEntries(terminalIds.map((id) => [id, []]));
   for (const cargo of intake.cargoRecords) {
@@ -2158,8 +2936,6 @@ const buildLifecycleAuthoring = (sourceAuthoring, intake) => {
 
   root.config.runtimeReady = false;
   root.config.runtimeBlockers = [
-    "remaining executable news effects 19, 28 and 29",
-    "single remaining cargo card offer policy",
     ...root.config.runtimeBlockers.filter(
       (item) =>
         item !== "executable news effects 11-34" &&
@@ -2239,7 +3015,9 @@ const buildLifecycleAuthoring = (sourceAuthoring, intake) => {
     purchasePriceOverrides: {
       wagon: null,
       locomotive: null
-    }
+    },
+    cargoDepartureBonusNewsId: null,
+    cargoDepartureBonusTerminalIds: []
   };
   root.state.public.ruleModifiers = {
     ...(root.state.public.ruleModifiers ?? {}),
@@ -2259,11 +3037,6 @@ const buildLifecycleAuthoring = (sourceAuthoring, intake) => {
     intake.newsRecords.map((item) => [item.id, buildNewsObject(item)])
   );
   root.state.secret = {
-    random: {
-      alg: "xoshiro128ss-streams-v1",
-      seed: "0000000000000000000000000000c0de",
-      counters: {}
-    },
     decks: {},
     cargoSources: Object.fromEntries(
       terminalIds.map((terminalId) => [
@@ -2326,6 +3099,17 @@ const buildLifecycleAuthoring = (sourceAuthoring, intake) => {
       turnNumber: { typeRef: "core.integer", optional: false }
     }
   };
+  types["game.news-vehicle-confiscated-event"] = {
+    kind: "record",
+    fields: {
+      newsId: { typeRef: "core.string", optional: false },
+      teamId: { typeRef: "core.string", optional: false },
+      vehicleId: { typeRef: "core.string", optional: false },
+      vehicleKind: { typeRef: "core.string", optional: false },
+      quotaRemaining: { typeRef: "core.integer", optional: false },
+      turnNumber: { typeRef: "core.integer", optional: false }
+    }
+  };
 
   const cargoFields = root.mechanics.stateModel.collections.cargoOrders.fields;
   cargoFields.id = {
@@ -2348,12 +3132,64 @@ const buildLifecycleAuthoring = (sourceAuthoring, intake) => {
     valueType: "core.optional-string",
     access: "read-write"
   };
+  cargoFields.carrierWagonId = {
+    storage: { kind: "attribute", name: "carrierWagonId" },
+    valueType: "core.optional-string",
+    access: "read-write"
+  };
+  cargoFields.availableAtNodeId = {
+    storage: { kind: "attribute", name: "availableAtNodeId" },
+    valueType: "core.string",
+    access: "read-write"
+  };
+  cargoFields.activeLegFromNodeId = {
+    storage: { kind: "attribute", name: "activeLegFromNodeId" },
+    valueType: "core.string",
+    access: "read-write"
+  };
+  cargoFields.originDeparted = {
+    storage: { kind: "attribute", name: "originDeparted" },
+    valueType: "core.boolean",
+    access: "read-write"
+  };
+  cargoFields.originDepartureTurn = {
+    storage: { kind: "attribute", name: "originDepartureTurn" },
+    valueType: "core.integer",
+    access: "read-write"
+  };
 
   const collections = root.mechanics.stateModel.collections;
+  const teamFields = collections.teams?.fields;
+  const locomotiveFields = collections.locomotives?.fields;
   const wagonFields = collections.wagons?.fields;
   const nodeFields = collections.networkNodes?.fields;
+  assert.ok(teamFields, "teams collection is required");
+  assert.ok(locomotiveFields, "locomotives collection is required");
   assert.ok(wagonFields, "wagons collection is required");
   assert.ok(nodeFields, "networkNodes collection is required");
+  for (const field of [
+    "news19PreparedTurn",
+    "news19VehicleCountSnapshot",
+    "news19RemovalRequired",
+    "news19RemovalRemaining",
+    "news19ResolvedTurn"
+  ]) {
+    teamFields[field] = {
+      storage: { kind: "attribute", name: field },
+      valueType: "core.integer",
+      access: "read-write"
+    };
+  }
+  locomotiveFields.news19ConfiscatedTurn = {
+    storage: { kind: "attribute", name: "news19ConfiscatedTurn" },
+    valueType: "core.integer",
+    access: "read-write"
+  };
+  wagonFields.news19ConfiscatedTurn = {
+    storage: { kind: "attribute", name: "news19ConfiscatedTurn" },
+    valueType: "core.integer",
+    access: "read-write"
+  };
   delete wagonFields.cargoOfferCandidateTurn;
   wagonFields.cargoOfferEligibleTurn = {
     storage: { kind: "attribute", name: "cargoOfferEligibleTurn" },
@@ -2387,6 +3223,17 @@ const buildLifecycleAuthoring = (sourceAuthoring, intake) => {
     wagon.attributes.cargoOfferEligibleTurn = 0;
     wagon.attributes.cargoOfferResolvedTurn = 0;
     wagon.attributes.cargoPriorityActiveCount = 0;
+    wagon.attributes.news19ConfiscatedTurn ??= 0;
+  }
+  for (const locomotive of Object.values(root.state.public.objects.locomotives)) {
+    locomotive.attributes.news19ConfiscatedTurn ??= 0;
+  }
+  for (const team of Object.values(root.state.public.objects.teams)) {
+    team.attributes.news19PreparedTurn ??= 0;
+    team.attributes.news19VehicleCountSnapshot ??= 0;
+    team.attributes.news19RemovalRequired ??= 0;
+    team.attributes.news19RemovalRemaining ??= 0;
+    team.attributes.news19ResolvedTurn ??= 0;
   }
   // Setup owns dynamic wagon creation. Extending every existing creation plan
   // keeps generator order idempotent without inventing a second creation path.
@@ -2397,6 +3244,17 @@ const buildLifecycleAuthoring = (sourceAuthoring, intake) => {
         step.attributes.cargoOfferEligibleTurn = literal(0);
         step.attributes.cargoOfferResolvedTurn = literal(0);
         step.attributes.cargoPriorityActiveCount = literal(0);
+        step.attributes.news19ConfiscatedTurn = literal(0);
+      }
+      if (step.op === "core.entity.create" && step.collection === "locomotives") {
+        step.attributes.news19ConfiscatedTurn = literal(0);
+      }
+      if (step.op === "core.entity.create" && step.collection === "teams") {
+        step.attributes.news19PreparedTurn = literal(0);
+        step.attributes.news19VehicleCountSnapshot = literal(0);
+        step.attributes.news19RemovalRequired = literal(0);
+        step.attributes.news19RemovalRemaining = literal(0);
+        step.attributes.news19ResolvedTurn = literal(0);
       }
     }
   }
@@ -2601,6 +3459,24 @@ const buildLifecycleAuthoring = (sourceAuthoring, intake) => {
       valueType: "core.optional-integer",
       access: "read-write"
     },
+    "public.turnEffects.cargoDepartureBonusNewsId": {
+      audienceRef: "public",
+      storage: {
+        root: "public",
+        segments: ["turnEffects", "cargoDepartureBonusNewsId"]
+      },
+      valueType: "core.optional-string",
+      access: "read-write"
+    },
+    "public.turnEffects.cargoDepartureBonusTerminalIds": {
+      audienceRef: "public",
+      storage: {
+        root: "public",
+        segments: ["turnEffects", "cargoDepartureBonusTerminalIds"]
+      },
+      valueType: "core.string-set",
+      access: "read-write"
+    },
     "public.market.basePurchasePrices.wagon": {
       audienceRef: "public",
       storage: {
@@ -2668,6 +3544,11 @@ const buildLifecycleAuthoring = (sourceAuthoring, intake) => {
     payloadType: "game.news-government-road-event",
     journalEndpoint: { endpoint: "public.log" }
   };
+  root.mechanics.stateModel.events["news.vehicle.confiscated"] = {
+    audienceRef: "public",
+    payloadType: "game.news-vehicle-confiscated-event",
+    journalEndpoint: { endpoint: "public.log" }
+  };
 
   // One initialization transaction and cargo-addition news may scan several
   // protected decks. The already accepted large turn-based budget covers that
@@ -2700,6 +3581,18 @@ const buildLifecycleAuthoring = (sourceAuthoring, intake) => {
     buildBudgetFeeNews(
       intake.newsRecords.find((item) => item.number === 16)
     ),
+    buildNews19PrepareTeam(
+      intake.newsRecords.find((item) => item.number === 19)
+    ),
+    buildNews19RemoveLocomotive(
+      intake.newsRecords.find((item) => item.number === 19)
+    ),
+    buildNews19RemoveWagon(
+      intake.newsRecords.find((item) => item.number === 19)
+    ),
+    buildNews19Finish(
+      intake.newsRecords.find((item) => item.number === 19)
+    ),
     buildFirstRoadDiscountNews(
       intake.newsRecords.find((item) => item.number === 26)
     ),
@@ -2712,6 +3605,14 @@ const buildLifecycleAuthoring = (sourceAuthoring, intake) => {
         buildScalarNewsEffect(item, scalarNewsEffectPatchesByNumber.get(item.number))
       ),
   ];
+  for (const generatedItem of generated) {
+    for (const step of generatedItem.plan.transaction.steps) {
+      const availabilityPatches = completionAvailabilityPatches.get(
+        `${generatedItem.action.id}\0${step.id}`
+      );
+      if (availabilityPatches) step.patches.push(...availabilityPatches);
+    }
+  }
   const preservedActions = root.logic.actions.filter(
     (candidate) => !ownsLifecycleAction(candidate)
   );
@@ -2874,10 +3775,10 @@ const buildLifecycleAuthoring = (sourceAuthoring, intake) => {
     executableNetworkClosureNewsNumbers: [
       ...networkClosureNewsByNumber.keys()
     ],
-    executableEconomicNewsNumbers: [14, 16, 22],
+    executableEconomicNewsNumbers: [14, 16, 19, 22, 28, 29],
     executableConstructionNewsNumbers: [26, 27],
     executableScalarNewsNumbers: [...scalarNewsEffectPatchesByNumber.keys()],
-    unresolvedRuleNewsNumbers: [19, 28, 29],
+    unresolvedRuleNewsNumbers: [],
     invariants: [
       "one-source-row-is-one-physical-card",
       "future-order-is-server-only",
@@ -2895,11 +3796,15 @@ const buildLifecycleAuthoring = (sourceAuthoring, intake) => {
       "network-objects-reopen-only-with-no-remaining-blocking-reasons",
       "news-21-current-draft-targets-only-terminals-5-and-7",
       "news-14-progressive-asset-tax-persists-until-game-end",
+      "news-19-removes-floor-total-equipment-divided-by-five",
+      "news-19-facilitator-selects-each-unit-from-the-team-decision",
+      "news-19-confiscated-equipment-never-reenters-play",
+      "news-19-cargo-stays-at-confiscated-wagon-terminal-without-owner-or-deck-return",
+      "news-28-and-29-departure-bonus-lasts-one-turn",
       "news-34-base-purchase-prices-persist-until-game-end"
     ],
     workingInterpretations: [
-      "terminal-with-fewer-than-two-cards-skips-its-current-wagon-slot",
-      "full-cargo-priority-tie-uses-deterministic-seeded-random-until-author-confirmation"
+      "full-cargo-priority-tie-uses-server-random-until-author-confirmation"
     ],
     cargoSelectionPriority: {
       status: "executable-with-two-explicit-technical-policies",
@@ -2907,7 +3812,7 @@ const buildLifecycleAuthoring = (sourceAuthoring, intake) => {
       eligibility:
         "active empty logistics-company wagon at an open numbered terminal 1-23",
       ownerPriority: ["coins-descending", "active-owned-wagon-count-descending"],
-      fullTiePolicy: "server-seeded-random:cargo-offer-order",
+      fullTiePolicy: "server-random:cargo-offer-order",
       clientAuthority: {
         prepare: [],
         draw: ["terminalId"],

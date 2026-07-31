@@ -16,12 +16,8 @@ import {
   writeEndpoint
 } from "./stateModel.ts";
 import {
-  assertSessionRandomStreamId,
-  readSessionRandomStream,
-  rollSessionDice,
-  shuffleSessionValues,
-  writeSessionRandomStream,
-  type SessionRandomStreamsState
+  assertSessionRandomPurposeId,
+  type SessionRandomProvider
 } from "../runtime/sessionRandom.ts";
 import type { JsonRecord, MechanicsExecutionContext, Step } from "./types.ts";
 
@@ -159,17 +155,13 @@ const OPERATION_HANDLERS = new Map<string, OperationHandler>([
 ]);
 
 function executeDice(step: Extract<Step, { op: "random.dice.roll" }>, context: MechanicsExecutionContext): unknown {
-  const streams = requireRandomStreams(context);
-  const random = readSessionRandomStream(streams, step.stream);
-  const rolled = rollSessionDice(random, step.dice);
-  context.random = writeSessionRandomStream(streams, step.stream, rolled.random);
+  const random = requireRandomProvider(context);
   // Preserve the established, game-facing dice result contract. `stream` and
   // the dice notation identify how the result was produced; the persisted
   // value itself remains the neutral `{ values, total, isDouble }` record used
   // by manifests and player plugins before the IR migration.
-  const result = rolled.result;
+  const result = random.rollDice(step.stream, step.dice);
   writeEndpoint(context, step.target.endpoint, result);
-  persistRandom(context);
   charge(context, "writes", 2);
   return result;
 }
@@ -201,15 +193,13 @@ function executeDeckShuffle(step: Extract<Step, { op: "deck.shuffle" }>, context
   if (sourceIds.length === 0) {
     throw new MechanicsExecutionError("MECHANICS_DECK_EMPTY", `Deck "${step.deckId}" source is empty`, step.id);
   }
-  const streams = requireRandomStreams(context);
+  const random = requireRandomProvider(context);
   charge(context, "scannedEntities", sourceIds.length);
-  const shuffled = shuffleSessionValues(readSessionRandomStream(streams, step.stream), sourceIds);
-  context.random = writeSessionRandomStream(streams, step.stream, shuffled.random);
-  // The stream becomes part of deck state so an automatic reshuffle during a
-  // later draw cannot accidentally switch to whichever random consumer ran
-  // most recently. Held items never re-enter rotation implicitly.
-  decks[step.deckId] = { order: shuffled.values, discard: [], held, stream: step.stream };
-  persistRandom(context);
+  const shuffled = random.shuffle(step.stream, sourceIds);
+  // The authored purpose id becomes part of deck state so an automatic
+  // reshuffle keeps the same declared intent. It identifies use, not a
+  // persisted generator stream. Held items never re-enter rotation implicitly.
+  decks[step.deckId] = { order: shuffled, discard: [], held, stream: step.stream };
   charge(context, "writes", 2);
   return { deckId: step.deckId, cardCount: sourceIds.length, stream: step.stream };
 }
@@ -219,17 +209,15 @@ function executeDeckDraw(step: Extract<Step, { op: "deck.draw" }>, context: Mech
   // `parseDeck(..., context, true)` enforces this persisted invariant; the explicit
   // guard also narrows the structural TypeScript type for the reshuffle path.
   if (!deck.stream) {
-    throw new MechanicsExecutionError("MECHANICS_DECK_STATE_INVALID", `Deck "${deckId}" has no pinned random stream`);
+    throw new MechanicsExecutionError("MECHANICS_DECK_STATE_INVALID", `Deck "${deckId}" has no pinned random-purpose id`);
   }
   if (deck.order.length === 0) {
     if (step.onEmpty === "fail" || deck.discard.length === 0) {
       throw new MechanicsExecutionError("MECHANICS_DECK_EMPTY", `Deck "${deckId}" is empty`, step.id);
     }
-    const streams = requireRandomStreams(context);
+    const random = requireRandomProvider(context);
     charge(context, "scannedEntities", deck.discard.length);
-    const shuffled = shuffleSessionValues(readSessionRandomStream(streams, deck.stream), deck.discard);
-    context.random = writeSessionRandomStream(streams, deck.stream, shuffled.random);
-    deck.order = shuffled.values;
+    deck.order = random.shuffle(deck.stream, deck.discard);
     deck.discard = [];
   }
   // Removing the first array item shifts the remaining bounded order.
@@ -244,7 +232,6 @@ function executeDeckDraw(step: Extract<Step, { op: "deck.draw" }>, context: Mech
     cardId,
     evaluateStateReferenceBindings(step.target, context)
   );
-  persistRandom(context);
   charge(context, "writes", 2);
   return { deckId, cardId };
 }
@@ -401,20 +388,12 @@ function requireTurn(context: MechanicsExecutionContext): JsonRecord {
   return turn;
 }
 
-function requireRandomStreams(context: MechanicsExecutionContext): SessionRandomStreamsState {
+function requireRandomProvider(context: MechanicsExecutionContext): SessionRandomProvider {
   if (context.random) return context.random;
-  const secret = isRecord(context.state.secret) ? context.state.secret : undefined;
-  if (!secret || !isRecord(secret.random)) {
-    throw new MechanicsExecutionError("MECHANICS_RANDOM_STATE_MISSING", "Runtime random state is not initialized");
-  }
-  context.random = secret.random as unknown as SessionRandomStreamsState;
-  return context.random;
-}
-
-function persistRandom(context: MechanicsExecutionContext): void {
-  if (!context.random) return;
-  if (!isRecord(context.state.secret)) context.state.secret = {};
-  (context.state.secret as JsonRecord).random = context.random;
+  throw new MechanicsExecutionError(
+    "MECHANICS_RANDOM_PROVIDER_MISSING",
+    "Runtime random provider is not initialized"
+  );
 }
 
 function requireDecks(context: MechanicsExecutionContext): JsonRecord {
@@ -497,16 +476,16 @@ function parseDeck(
     throw new MechanicsExecutionError("MECHANICS_DECK_STATE_INVALID", `Deck "${deckId}" is invalid`);
   }
   if (value.stream !== undefined && typeof value.stream !== "string") {
-    throw new MechanicsExecutionError("MECHANICS_DECK_STATE_INVALID", `Deck "${deckId}" random stream is invalid`);
+    throw new MechanicsExecutionError("MECHANICS_DECK_STATE_INVALID", `Deck "${deckId}" random-purpose id is invalid`);
   }
   if (requireStream && typeof value.stream !== "string") {
-    throw new MechanicsExecutionError("MECHANICS_DECK_STATE_INVALID", `Deck "${deckId}" has no pinned random stream`);
+    throw new MechanicsExecutionError("MECHANICS_DECK_STATE_INVALID", `Deck "${deckId}" has no pinned random-purpose id`);
   }
   if (typeof value.stream === "string") {
     try {
-      assertSessionRandomStreamId(value.stream);
+      assertSessionRandomPurposeId(value.stream);
     } catch {
-      throw new MechanicsExecutionError("MECHANICS_DECK_STATE_INVALID", `Deck "${deckId}" random stream is invalid`);
+      throw new MechanicsExecutionError("MECHANICS_DECK_STATE_INVALID", `Deck "${deckId}" random-purpose id is invalid`);
     }
   }
   const order = [...value.order] as Array<string>;

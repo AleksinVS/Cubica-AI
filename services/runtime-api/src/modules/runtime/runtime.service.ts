@@ -28,6 +28,7 @@ import {
   BoundedInMemoryCommandAdmissionController,
   type CommandAdmissionController
 } from "./commandAdmission.ts";
+import type { SessionRandomProviderInput } from "./sessionRandom.ts";
 
 type RuntimeState = Record<string, unknown>;
 
@@ -73,11 +74,14 @@ export interface RuntimeServiceTransportRoadPreviewOptions {
 
 export class RuntimeService {
   private readonly admissionController: CommandAdmissionController;
+  private readonly random?: SessionRandomProviderInput;
 
   constructor(
-    admissionController: CommandAdmissionController = new BoundedInMemoryCommandAdmissionController()
+    admissionController: CommandAdmissionController = new BoundedInMemoryCommandAdmissionController(),
+    random?: SessionRandomProviderInput
   ) {
     this.admissionController = admissionController;
+    this.random = random;
   }
 
   async dispatch(options: RuntimeServiceDispatchOptions): Promise<RuntimeServiceDispatchResult> {
@@ -88,7 +92,8 @@ export class RuntimeService {
       sessionStore: options.sessionStore,
       credentialSha256,
       input: options.input,
-      admissionController: this.admissionController
+      admissionController: this.admissionController,
+      ...(this.random === undefined ? {} : { random: this.random })
     });
     const dispatchMs = elapsedMilliseconds(dispatchStartedAt);
     let responseSnapshot = snapshot;
@@ -216,6 +221,10 @@ export class RuntimeService {
       bundle,
       actorPlayerId: resolveSessionActor(snapshot, principal),
       sessionRole: principal.role,
+      // Version 2 road planning (ADR-100) is deterministic and never consults
+      // a random provider, so the preview no longer accepts one; `this.random`
+      // is still used above for authoritative dispatch, which covers
+      // unrelated randomness such as deck and entity ordering.
       input: options.input
     });
   }

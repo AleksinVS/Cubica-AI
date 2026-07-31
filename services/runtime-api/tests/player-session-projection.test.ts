@@ -81,7 +81,7 @@ const storedState = {
     }
   },
   secret: {
-    random: { seed: "0123456789abcdeffedcba9876543210", counter: 2 }
+    internalToken: "must-not-leave-runtime"
   }
 };
 

@@ -6,6 +6,7 @@
 - **Компоненты**: Game Manifest, Game Engine, Game Catalog / Game Editor
 
 ## Оглавление
+
 - [Контекст](#контекст)
 - [Альтернативы](#альтернативы)
 - [Решение](#решение)
@@ -65,26 +66,24 @@
 В секции `meta` вводится объект `training`, описывающий обучательный контекст игры:
 
 ```json
+{
 "meta": {
-  "id": "com.cubica.antarctica",
-  "version": "1.0.0",
-  "schema_version": "1.0",
-  "min_engine_version": "0.1.0",
-  "name": "Antarctica",
+  "id": "com.example.training-game",
   "training": {
     "competencies": [
       {
-        "id": "leadership",
-        "name": "Лидерство",
-        "description": "Отработка принятия решений и влияния в условиях неопределённости."
+        "id": "competency-id",
+        "name": "Название компетенции",
+        "description": "Краткое описание обучательной цели."
       }
     ],
     "format": "single_team",
     "duration": {
-      "min_minutes": 60,
-      "max_minutes": 90
+      "min_minutes": 30,
+      "max_minutes": 60
     }
   }
+}
 }
 ```
 
@@ -107,24 +106,19 @@
 Эти поля используются:
 - Game Catalog и Game Editor — для фильтрации игр, отображения целей тренинга и планирования сессий;
 - методистами — для согласования программы обучения и тайминга;
-- Router / Game Engine — для ориентировочной настройки TTL сессий и лимитов (в будущем, без жёсткой привязки).
 
 ### 2. `assets.methodology`: методические материалы в `.md`
 
 В секции `assets` добавляется объект `methodology` со ссылками на Markdown‑файлы:
 
 ```json
+{
 "assets": {
-  "rules": "assets/rules.md",
-  "scenario": "assets/scenario.md",
-  "scripts": "assets/game.js",
-  "images": {
-    "hero_icon": "assets/img/hero.png"
-  },
   "methodology": {
-    "participants": "assets/methodology/antarctica-participants.md",
-    "facilitators": "assets/methodology/antarctica-facilitators.md"
+    "participants": "assets/methodology/participants.md",
+    "facilitators": "assets/methodology/facilitators.md"
   }
+}
 }
 ```
 
@@ -148,14 +142,6 @@
 - подгружаются Game Editor, Game Catalog или отдельным «методическим» интерфейсом;
 - могут частично включаться в промпты LLM (например, для генерации подсказок или пояснений).
 
-### Обновление схемы и спецификаций
-
-- `docs/architecture/schemas/manifest-structure.md` дополнен описанием `meta.training` и `assets.methodology`, а также примером.
-- `docs/architecture/schemas/game-manifest.schema.json` обновлён:
-  - `meta` теперь требует поля `schema_version` и `min_engine_version` (в соответствии с ADR‑008);
-  - добавлен объект `meta.training` с полями `competencies`, `format`, `duration`;
-  - добавлена секция `assets` с подпунктом `methodology.participants|facilitators`.
-
 ## Последствия
 
 Положительные:
@@ -165,7 +151,8 @@
 
 Негативные/риски:
 - Требуется дисциплина при заполнении `training` и поддержании актуальности `.md`‑файлов.
-- Появляется небольшое дополнительное поле для валидации схемы; старые манифесты без `schema_version`/`min_engine_version` нужно либо мигрировать, либо трактовать как `schema_version = "1.0"` (как описано в ADR‑008).
+- Публичная схема манифеста получает дополнительные поля и правила
+  валидации; их совместимость подчиняется политике ADR-008.
 
 ## Связанные артефакты
 

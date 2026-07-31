@@ -89,6 +89,14 @@ Agents must always:
    - ADRs must contain only project architecture decisions, constraints, rejected alternatives, and consequences.
    - ADRs must not be used as execution plans, slice trackers, next-step lists, or card-by-card migration specs.
    - Delivery-specific bounded gameplay details must go in Gameplay Slice Records under `docs/architecture/gameplay-slices/`; task execution plans and handoffs go in `docs/tasks/active/`.
+   - **Before creating an ADR, answer four questions. Any negative answer means the work is execution, not architecture:**
+     1. Whom does this bind besides the current task — another game, subsystem, or agent?
+     2. What breaks elsewhere if the decision is later changed?
+     3. If this document is deleted, what stops working?
+     4. What open choice does it leave to the PM?
+   - Write at the narrowest level that fully contains the decision: game package documentation, tool comments, or the task itself. Promoting a record to an ADR later is cheap; retracting a published ADR is expensive because it spreads through references, artifacts, and history.
+   - Never write an ADR for finished work that leaves no open choice — that is a report, not a decision.
+   - If the classification is unclear, ask the PM in one sentence before writing, not after.
 
 7. **Manage subagent lifecycle**
    - A subagent is a delegated worker process, thread, or external agent session started to perform a bounded part of the current task.
@@ -98,16 +106,21 @@ Agents must always:
 
 8. **Use subagents, plan efficient execution, and simplify final designs**
    - Там, где это оправдано, используй субагентов и распараллеливай работу.
-   - Модель и reasoning (глубину рассуждения модели) выбирай исходя из сложности и критичности задачи:
-     - `luna` с reasoning `medium`, `high` — для механической работы и выполнения тестов. Разрабатывать тесты и исправлять выявленные ошибки должны `terra`, `sol` или основной агент — в зависимости от сложности тестов и ошибок. Для выполнения тестов всегда используй субагента `luna`, кроме двух случаев: когда оправдано повышение до `terra` или `sol`; когда речь идет о единичных тестах, которые дешевле запустить без субагентов;
-     - `terra` с reasoning `medium` или `high` — для простых или очевидных задач;
-     - `sol` с reasoning `high` — для сложных, неочевидных, критичных и архитектурно значимых задач.
-   - Сравнительный визуальный анализ (систематическое сопоставление реализованного интерфейса с макетом, эталоном или снимком экрана) относится к наиболее сложным задачам: итоговый анализ должен выполнять `sol` с reasoning `high` либо более сильная доступная модель с высоким уровнем рассуждения. Более дешевой модели можно поручить только механическую подготовку материалов и измерений, но не итоговую оценку расхождений, их причин и приоритетов исправления.
+   - Перед созданием, перенаправлением или эскалацией Codex-субагента обязательно применяй навык [маршрутизации Codex-агентов](skills/C_codex-agent-routing/SKILL.md). Он определяет роли, модели, уровни глубины рассуждения, границы параллелизма и формат узкого пакета контекста.
+   - Базовая иерархия: `Sol` — решения с высокой ценой ошибки, `Terra` — основная разработка и проверка, `Luna` — узкий механический поиск. Не повышай `Luna` до `high/max` и `Terra` до `high/max`: при подтвержденной нехватке возможностей переходи на более сильный класс модели.
+   - Не запускай более двух субагентов одновременно, не давай нескольким агентам одну задачу для сравнения и не создавай отдельного агента только для выполнения известной детерминированной команды теста.
+   - Неочевидную логику и неочевидное проектирование тестов передавай `Sol high`; `Terra` может выполнять проверки и добавлять только простой регрессионный тест по уже принятому шаблону.
+   - Сравнительный визуальный анализ (систематическое сопоставление реализованного интерфейса с макетом, эталоном или снимком экрана) относится к наиболее сложным задачам: итоговый анализ должна выполнять наиболее сильная модель с reasoning `high`. Более дешевой модели можно поручить только механическую подготовку материалов и измерений, но не итоговую оценку расхождений, их причин и приоритетов исправления.
    - При подготовке исполнительской документации в `docs/tasks/` следуй подробным локальным правилам из `docs/tasks/AGENTS.md`: план должен допускать необязательное разбиение на проверяемые блоки для разных уровней моделей и глубины рассуждения.
    - На заключительном этапе планирования архитектуры или крупного исполнительского блока обязательно проверь, можно ли упростить архитектуру, реализацию или последовательность работ без потери требуемой функциональности, качества, безопасности и принятых ограничений. Зафиксируй принятые упрощения либо кратко объясни, почему дальнейшее упрощение нецелесообразно.
    - Такая проверка не разрешает самостоятельно менять согласованные архитектурные границы. Если упрощение затрагивает публичные контракты, источник истины, границы доверия и безопасности, хранение, совместимость или существенную стоимость эксплуатации, сначала согласуй решение с PM и отрази его в ADR.
    - Архитектурные решения принимает только основной агент после согласования с PM. Субагент может провести аудит, собрать варианты, оценить последствия или реализовать уже принятое решение, но не может самостоятельно утвердить новую архитектурную границу.
-   - Передавай субагенту максимально полный уже собранный контекст: точную цель, принятые решения, найденные факты, пути к нужным файлам, ограничения, ожидаемые результаты и проверки. Не заставляй субагента повторять уже выполненную основным агентом подготовительную работу.
+   - Передавай субагенту только необходимый и достаточный узкий контекст. Для встроенного субагента по умолчанию используй `fork_turns: "none"` и отдельный пакет задания; не передавай всю историю разговора через `fork_turns: "all"`. Исключение — последние 1–3 сообщения, если они содержат непосредственное решение PM, которое ещё не записано в проекте и без которого задачу нельзя выполнить правильно.
+   - Пакет задания обязан содержать: точную цель и ожидаемый результат; уже принятые решения и установленные факты; конкретные файлы, разделы или символы, которые нужно прочитать; разрешённые границы изменений и явные non-goals; формат результата; критерии приёмки и команды проверки; условия остановки и обращения к основному агенту.
+   - Не вставляй в задание полные файлы и большие журналы, если субагент может прочитать их из общей рабочей директории. Кроме обязательного ближайшего `AGENTS.md`, ограничивай самостоятельное чтение перечисленными путями и не поручай повторное исследование всего проекта. Если контекста недостаточно, субагент должен запросить точечное дополнение у основного агента, а не расширять область чтения без границ.
+   - Масштаб контекста должен соответствовать профилю: исполнителю тестов достаточно точной команды и формата отчёта; механическому исполнителю — конкретных файлов и операции; обычному разработчику — узкого контракта и принятых решений; сложному разработчику или ревьюеру — только относящихся к задаче архитектурных границ, рисков и доказательств.
+   - Требуй краткий итог без необработанных журналов: изменённые файлы или находки, результаты проверок, остаточные риски и вопросы основному агенту. Не возвращай в основной контекст промежуточные рассуждения и вывод команд целиком, если они не нужны для доказательства.
+   - Не заставляй субагента повторять уже выполненную основным агентом подготовительную работу. Основной агент сначала выделяет факты и границы, затем делегирует узкий самостоятельный результат.
    - Основной агент обязан проверить результат субагента по исходным файлам, контрактам и свежим доказательствам перед принятием или передачей пользователю.
 
 9. **Развивать платформу через конкретные игры**
@@ -147,12 +160,17 @@ Agents must always:
     - JSON Schema is the Single Source of Truth (SSOT) for data structures like Game Manifests. Validation must be performed by executing a standard validator (like AJV) against the JSON Schema, not by writing manual `if (typeof x !== 'string')` checks.
 
 14. **Scale verification to the size and risk of the change**
+    - Before running checks, classify the changed boundary and its risk; choose the narrowest direct test that can prove the changed behavior.
     - A commit by itself is not a reason to run the entire project test suite.
     - After an ordinary small or medium change, run only the focused tests for the changed behavior and the cheapest relevant static checks, such as type checking, schema validation, or `git diff --check`.
     - After a large implementation block that changes several subsystem boundaries, run an expanded cross-subsystem verification once the block is stable. Do not repeat the same expensive checks after every intermediate commit when the verified code has not changed.
     - Run the full canonical verification only at a stage boundary, before a release or final acceptance, after a high-risk change to shared contracts or infrastructure, when explicitly requested by the user, or when narrower evidence cannot establish safety.
     - If a later edit affects behavior that was already checked, rerun the narrowest check that directly covers that behavior. Reuse still-current evidence for unaffected areas.
-    - In the handoff, state which checks were run, which were intentionally not run, and what residual risk remains.
+    - Do not repeat an expensive check for unchanged code. When a check fails, retain its full local log in `.tmp/`, put only the meaningful excerpt in agent context, and retry only with a new hypothesis or a last-failed selection.
+    - Run browser E2E only when the changed risk crosses a user-facing boundary. Do not create a subagent merely to execute one known deterministic command; it is useful to delegate a bounded read-only QA package of several simple checks when it has exact commands, acceptance criteria, a short-result format, and the main agent accepts the final result.
+    - Run checks inside a delegated QA package sequentially unless ports, build outputs, temporary directories, fixtures, environment variables, and other mutable state are proven isolated. Never run full suites, builds, or E2E concurrently in one workspace; a `serial` label is not a cross-process lock.
+    - Aim for an edit-loop check under two minutes, without treating that as a hard limit for builds or E2E.
+    - In the handoff, state the command and result, what was intentionally not checked, and the residual risk.
 
 15. **Complete agent branches through user-approved integration**
     - Work committed or pushed only to an agent/feature branch is not yet integrated into the project.
@@ -199,6 +217,7 @@ Before planning anything, use these entry points:
 - [docs/tasks/AGENTS.md](/home/abc/projects/Cubica-AI/docs/tasks/AGENTS.md) - mandatory local rules for execution planning, subagent-ready decomposition, model/effort selection, and final simplification review.
 - [docs/tasks/STRATEGY.md](/home/abc/projects/Cubica-AI/docs/tasks/STRATEGY.md) - product-led development mode, strategic priorities, and rules for selecting platform work.
 - [NEXT_STEPS.md](/home/abc/projects/Cubica-AI/NEXT_STEPS.md) - current execution priorities and the next bounded slices.
+- [docs/processes/local-browser-diagnostics.md](/home/abc/projects/Cubica-AI/docs/processes/local-browser-diagnostics.md) - optional local Chrome DevTools MCP setup, its boundary with Playwright, and security restrictions.
 
 ---
 

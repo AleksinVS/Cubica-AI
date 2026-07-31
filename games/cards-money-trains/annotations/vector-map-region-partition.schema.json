@@ -1,0 +1,828 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cubica.platform/games/cards-money-trains/vector-map-region-partition.schema.json",
+  "title": "Cards, Money, Trains vector map region partition (draft)",
+  "description": "Непубликационный черновик разбиения авторской карты «Карты, деньги, поезда» на игровые области. Строится инструментом cmt_region_partition.py двумя независимыми геометрическими способами («краска» и «осевые»; способ описан в разделе «Полное разбиение на области» файла README.md этого каталога) и содержит только то, что можно доказать геометрией: контуры областей, соединения концов линий и явный реестр мест, где решение принято не однозначно. Смысловое подтверждение (какая область какой стране принадлежит, что вообще считать областью) выполняет человек, а не этот инструмент, поэтому весь документ остаётся непубликуемым до отдельного визуального рецензирования.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schemaVersion",
+    "status",
+    "publishable",
+    "warning",
+    "provenance",
+    "policy",
+    "summary",
+    "regions",
+        "emptySpaces",
+    "joins",
+    "collapsedSlivers",
+    "removedMicroHoles",
+    "doubts"
+  ],
+  "properties": {
+    "$schema": { "const": "./vector-map-region-partition.schema.json" },
+    "schemaVersion": { "const": "1.0.0" },
+    "status": {
+      "const": "draft-review-only",
+      "description": "Единственно допустимый статус этого артефакта. Любое другое значение означало бы, что кто-то попытался объявить черновик готовым к публикации в обход человека."
+    },
+    "publishable": {
+      "const": false,
+      "description": "Может быть только false. Это не обычное булево поле, а замок: пока смысловое подтверждение областей не выполнено человеком, значение true в этом артефакте является ошибкой схемы, а не решением автора отчёта."
+    },
+    "warning": { "type": "string", "minLength": 1 },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Из чего собран черновик: авторский PDF-источник и три уже принятых отчёта, каждый со своим отпечатком sha256. Если любой из этих файлов изменится, отпечаток разойдётся с записанным здесь значением, и станет видно, что черновик описывает уже не тот вход.",
+      "required": [
+        "source",
+        "rawReview",
+        "classification",
+        "countriesStations",
+        "calibration",
+        "coordinateSystem"
+      ],
+      "properties": {
+        "source": { "$ref": "#/definitions/sourceFile" },
+        "rawReview": { "$ref": "#/definitions/reportDigest" },
+        "classification": { "$ref": "#/definitions/reportDigest" },
+        "countriesStations": { "$ref": "#/definitions/reportDigest" },
+        "calibration": { "$ref": "#/definitions/calibration" },
+        "coordinateSystem": { "$ref": "#/definitions/coordinateSystem" }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Правила сборки, описанные в README.md этого каталога: какой из двух способов разбиения считается основным, а какой — только проверкой, и как трактуются соединения концов линий.",
+      "required": [
+        "decisionRecord",
+        "authoritativeMethod",
+        "verificationMethod",
+        "semanticAssignmentsConfirmed",
+        "runtimeIntegrationAllowed",
+        "flattenTolerancePx",
+        "dominantStrokeWidthPx",
+        "emptySpaceRule",
+        "sliverRule",
+        "joinClasses"
+      ],
+      "properties": {
+        "decisionRecord": { "const": "games/cards-money-trains/annotations/README.md#полное-разбиение-на-области" },
+        "authoritativeMethod": {
+          "const": "centerlines-with-ink-derived-tolerance"
+        },
+        "verificationMethod": { "const": "paint-free-space" },
+        "semanticAssignmentsConfirmed": {
+          "const": false,
+          "description": "Может быть только false: инструмент никогда не подтверждает смысл областей сам, это исключительно решение человека."
+        },
+        "runtimeIntegrationAllowed": {
+          "const": false,
+          "description": "Может быть только false: черновик не подключается к среде исполнения игры ни при каких условиях, пока это поле не изменит отдельное решение человека вне этого генератора."
+        },
+        "flattenTolerancePx": { "const": 0.25 },
+        "dominantStrokeWidthPx": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 50,
+          "description": "Измеренная (не назначенная) толщина основной линии карты в точках канонической карты; служит порогом схлопывания щелей."
+        },
+        "emptySpaceRule": { "type": "string", "minLength": 1 },
+        "sliverRule": {
+          "const": "Участок с действующей шириной меньше толщины основной линии карты присоединяется к соседу по самой длинной общей границе. Порог измерен по авторскому файлу, а не назначен."
+        },
+        "joinClasses": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["ink-overlap", "narrow-gap"],
+          "properties": {
+            "ink-overlap": {
+              "const": "Полосы краски двух линий пересекаются; допущения нет."
+            },
+            "narrow-gap": {
+              "const": "Полосы краски не пересекаются, но просвет между ними тоньше самой узкой из двух линий; это предположение."
+            }
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Сводные числа для быстрой проверки, что размер массивов ниже действительно соответствует ожиданиям. Точных констант здесь намеренно нет: пересборка из чуть изменённого, но всё ещё корректного входа не обязана давать те же самые числа, если только источники не совпали побайтово.",
+      "required": [
+        "regionCount",
+        "verificationRegionCount",
+        "exactPairCount",
+        "agreementRatio",
+        "joinCount",
+        "inkOverlapJoinCount",
+        "narrowGapJoinCount",
+        "collapsedSliverCount",
+        "unresolvedGapCount",
+        "cutEdgeCount",
+        "invalidRingCount",
+        "removedMicroHoleCount",
+        "regionsWithInteriorRingsCount",
+        "doubtCount",
+        "countryCount",
+        "stationCount",
+        "waypointCount",
+        "emptySpaceCount",
+        "regionsWithoutCountryCount",
+        "totalAreaPx2",
+        "connectedComponentCount",
+        "largestConnectedComponentSize",
+        "crossCountryAdjacencyCount"
+      ],
+      "properties": {
+        "regionCount": { "type": "integer", "minimum": 1, "maximum": 5000 },
+        "verificationRegionCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5000
+        },
+        "exactPairCount": { "type": "integer", "minimum": 0, "maximum": 5000 },
+        "agreementRatio": { "type": "number", "minimum": 0, "maximum": 1 },
+        "joinCount": { "type": "integer", "minimum": 0, "maximum": 20000 },
+        "inkOverlapJoinCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20000
+        },
+        "narrowGapJoinCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20000
+        },
+        "collapsedSliverCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5000
+        },
+        "removedMicroHoleCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5000,
+          "description": "Число ничтожных внутренних отверстий, убранных drop_micro_holes() (площадь меньше dominantStrokeWidthPx-независимого порога 25 точек в квадрате — числовой мусор от наложения почти совпавших линий, а не анклав). Обязано совпадать с длиной removedMicroHoles и с числом записей doubts[].kind == 'removed-micro-hole'."
+        },
+        "regionsWithInteriorRingsCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5000,
+          "description": "Число областей, у которых после удаления ничтожных отверстий осталось хотя бы одно внутреннее кольцо (возможный анклав, ждущий решения человека)."
+        },
+        "unresolvedGapCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20000
+        },
+        "cutEdgeCount": { "type": "integer", "minimum": 0, "maximum": 20000 },
+        "invalidRingCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20000
+        },
+        "doubtCount": { "type": "integer", "minimum": 0, "maximum": 20000 },
+        "countryCount": { "type": "integer", "minimum": 0, "maximum": 64 },
+        "stationCount": { "type": "integer", "minimum": 0, "maximum": 256 },
+        "waypointCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 256,
+          "description": "Число полустанков — промежуточных остановок на дороге, которые, в отличие от терминала (станции), не принимают грузы. Взято из vector-map.countries-stations.draft.json."
+        },
+        "emptySpaceCount": { "type": "integer", "minimum": 0 },
+        "regionsWithoutCountryCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5000
+        },
+        "totalAreaPx2": { "type": "number", "exclusiveMinimum": 0 },
+        "connectedComponentCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5000,
+          "description": "Число связных частей графа соседства областей (см. build_region_adjacency()/connected_components() в cmt_region_partition.py). Обязано быть 1: разбиение, распавшееся на несколько частей, непригодно для построения дорог между областями из разных частей, и main() останавливается раньше, чем записать такой черновик."
+        },
+        "largestConnectedComponentSize": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5000,
+          "description": "Размер наибольшей (при connectedComponentCount == 1 — единственной) связной части графа соседства."
+        },
+        "crossCountryAdjacencyCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20000,
+          "description": "Число рёбер графа соседства между областями разных стран — переходов, через которые может пройти дорога между странами."
+        }
+      }
+    },
+    "emptySpaces": {
+          "type": "array",
+          "description": "Пустые пространства карты: вода или иная незанятая площадь вне всех страновых заливок. Игровой территорией не являются и в regions не входят, но перечисляются явно, чтобы ничего не исчезало из разбиения молча.",
+          "items": { "$ref": "#/definitions/emptySpace" }
+        },
+        "regions": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 5000,
+      "items": { "$ref": "#/definitions/region" }
+    },
+    "joins": {
+      "type": "array",
+      "maxItems": 20000,
+      "items": { "$ref": "#/definitions/join" }
+    },
+    "collapsedSlivers": {
+      "type": "array",
+      "maxItems": 5000,
+      "items": { "$ref": "#/definitions/collapsedSliver" }
+    },
+    "removedMicroHoles": {
+      "type": "array",
+      "description": "Ничтожные внутренние отверстия, убранные drop_micro_holes() из областей: числовой мусор от наложения почти совпавших линий, а не анклавы. Каждая запись также присутствует в doubts как отдельная запись вида removed-micro-hole.",
+      "maxItems": 5000,
+      "items": { "$ref": "#/definitions/removedMicroHole" }
+    },
+    "doubts": {
+      "type": "array",
+      "maxItems": 20000,
+      "items": { "$ref": "#/definitions/doubt" }
+    }
+  },
+  "definitions": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "geometryFingerprint": {
+      "type": "string",
+      "description": "Отпечаток sha256 отчёта или геометрии с постоянным текстовым префиксом, как его печатает file_digest()/geometry_fingerprint() в cmt_region_partition.py.",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "regionId": {
+      "type": "string",
+      "pattern": "^map-region-[0-9]{4}$"
+    },
+    "doubtId": {
+      "type": "string",
+      "pattern": "^doubt-[0-9]{4}$"
+    },
+    "candidateId": {
+      "type": "string",
+      "description": "Идентификатор исходной обводки-кандидата границы из принятого векторного отчёта (boundary-candidate-NNNN).",
+      "pattern": "^boundary-candidate-[0-9]{4}$"
+    },
+    "countryId": {
+      "type": "string",
+      "description": "Идентификатор страны игры из каталога стран; связь заливки карты с этой записью установлена и проверена при извлечении стран.",
+      "pattern": "^cmt-country-[a-z-]+$"
+    },
+    "stationId": {
+      "type": "string",
+      "description": "Идентификатор значка станции из vector-map.countries-stations.draft.json.",
+      "pattern": "^station-icon-[0-9]{4}$"
+    },
+    "waypointId": {
+      "type": "string",
+      "description": "Идентификатор полустанка — промежуточной остановки на дороге, которая, в отличие от терминала (станции), не принимает грузы. Список полустанков хранится в vector-map.countries-stations.draft.json (поле waypoints).",
+      "pattern": "^waypoint-[0-9]{4}$"
+    },
+    "endpointName": { "enum": ["start", "end"] },
+    "confidence": { "enum": ["high", "medium", "low"] },
+    "point": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" }
+      }
+    },
+    "bounds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["minX", "minY", "maxX", "maxY"],
+      "properties": {
+        "minX": { "type": "number" },
+        "minY": { "type": "number" },
+        "maxX": { "type": "number" },
+        "maxY": { "type": "number" }
+      }
+    },
+    "coordinate": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": { "type": "number" }
+    },
+    "linearRing": {
+      "type": "array",
+      "description": "Замкнутое внешнее кольцо области: первая и последняя точка совпадают (закрытость проверяется отдельным узким тестом, а не самой схемой).",
+      "minItems": 4,
+      "maxItems": 200000,
+      "items": { "$ref": "#/definitions/coordinate" }
+    },
+    "affineMatrix": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["a", "b", "c", "d", "e", "f"],
+      "properties": {
+        "a": { "type": "number" },
+        "b": { "type": "number" },
+        "c": { "type": "number" },
+        "d": { "type": "number" },
+        "e": { "type": "number" },
+        "f": { "type": "number" }
+      }
+    },
+    "sourceFile": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Копия описания авторского PDF-первоисточника из уже принятого векторного отчёта (vector-map.review.json).",
+      "required": [
+        "file",
+        "sha256",
+        "bytes",
+        "pdfVersion",
+        "pageObject",
+        "contentsObject",
+        "contentFilter",
+        "publicLayers",
+        "illustratorPrivateDataParsed"
+      ],
+      "properties": {
+        "file": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/definitions/sha256" },
+        "bytes": { "type": "integer", "minimum": 1 },
+        "pdfVersion": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+$" },
+        "pageObject": { "type": "integer", "minimum": 1 },
+        "contentsObject": { "type": "integer", "minimum": 1 },
+        "contentFilter": { "const": "FlateDecode" },
+        "publicLayers": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["map", "terminals"],
+          "properties": {
+            "map": { "const": "MC0" },
+            "terminals": { "const": "MC2" }
+          }
+        },
+        "illustratorPrivateDataParsed": { "const": false }
+      }
+    },
+    "reportDigest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Имя файла и его отпечаток sha256 (с префиксом sha256:), как их печатает file_digest() в cmt_region_partition.py.",
+      "required": ["file", "sha256"],
+      "properties": {
+        "file": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/definitions/geometryFingerprint" }
+      }
+    },
+    "calibration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "method",
+        "pdfToCanonical",
+        "initialAxisAlignment",
+        "rmsErrorPx",
+        "meanErrorPx",
+        "maxErrorPx",
+        "acceptanceThresholdPx"
+      ],
+      "properties": {
+        "kind": { "const": "affine-least-squares" },
+        "method": {
+          "const": "23 terminal gear centers; deterministic bounding-box orientation match followed by six-parameter least-squares fit"
+        },
+        "pdfToCanonical": { "$ref": "#/definitions/affineMatrix" },
+        "initialAxisAlignment": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["scaleX", "scaleY", "offsetX", "offsetY"],
+          "properties": {
+            "scaleX": { "type": "number" },
+            "scaleY": { "type": "number" },
+            "offsetX": { "type": "number" },
+            "offsetY": { "type": "number" }
+          }
+        },
+        "rmsErrorPx": { "type": "number", "minimum": 0 },
+        "meanErrorPx": { "type": "number", "minimum": 0 },
+        "maxErrorPx": { "type": "number", "minimum": 0 },
+        "acceptanceThresholdPx": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
+    "coordinateSystem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["origin", "units", "width", "height"],
+      "properties": {
+        "origin": { "const": "top-left" },
+        "units": { "const": "design-pixel" },
+        "width": { "const": 5079 },
+        "height": { "const": 3627 }
+      }
+    },
+    "emptySpace": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Один участок карты вне всех страновых заливок: не игровая территория.",
+      "required": [
+        "id",
+        "geometryFingerprint",
+        "areaPx2",
+        "bounds",
+        "representativePoint",
+        "interpretation",
+        "foundByBothMethods",
+        "exteriorRing"
+      ],
+      "properties": {
+        "id": { "type": "string", "pattern": "^empty-space-[0-9]{4}$" },
+        "geometryFingerprint": { "$ref": "#/definitions/geometryFingerprint" },
+        "areaPx2": { "type": "number", "exclusiveMinimum": 0 },
+        "bounds": { "$ref": "#/definitions/bounds" },
+        "representativePoint": { "$ref": "#/definitions/point" },
+        "interpretation": { "type": "string", "minLength": 1 },
+        "foundByBothMethods": {
+          "type": "boolean",
+          "description": "Увидел ли этот участок и проверочный способ «осевые»: он замыкает в грань не всякое пустое пространство."
+        },
+        "exteriorRing": { "$ref": "#/definitions/linearRing" }
+      }
+    },
+    "region": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Одна игровая область черновика: устойчивый номер, геометрический отпечаток и принадлежность стране и списки станций и полустанков внутри неё.",
+      "required": [
+        "id",
+        "geometryFingerprint",
+        "areaPx2",
+        "effectiveWidthPx",
+        "bounds",
+        "representativePoint",
+        "countryId",
+        "countryName",
+        "stationIds",
+        "waypointIds",
+        "exteriorRing",
+        "interiorRings"
+      ],
+      "properties": {
+        "id": { "$ref": "#/definitions/regionId" },
+        "geometryFingerprint": { "$ref": "#/definitions/geometryFingerprint" },
+        "areaPx2": { "type": "number", "exclusiveMinimum": 0 },
+        "effectiveWidthPx": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "2 * площадь / периметр (см. effective_width() в cmt_region_partition.py). Настоящая область держится выше порога dominantStrokeWidthPx: щели тоньше порога уже схлопнуты и в этот список не попадают."
+        },
+        "bounds": { "$ref": "#/definitions/bounds" },
+        "representativePoint": { "$ref": "#/definitions/point" },
+        "countryId": {
+          "description": "Страна игры, которой принадлежит область. null означает, что внутренняя точка области не попала ни в одну авторскую заливку страны.",
+          "anyOf": [{ "$ref": "#/definitions/countryId" }, { "type": "null" }]
+        },
+        "countryName": {
+          "description": "Название страны из каталога, соответствующее countryId. null там же, где null сам countryId.",
+          "anyOf": [{ "type": "string", "minLength": 1 }, { "type": "null" }]
+        },
+        "stationIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/definitions/stationId" }
+        },
+        "waypointIds": {
+          "type": "array",
+          "description": "Полустанки внутри области — промежуточные остановки на дороге, которые, в отличие от терминала (станции), не принимают грузы. У подавляющего большинства областей список пуст; ровно у двух областей в текущем черновике по одному полустанку.",
+          "uniqueItems": true,
+          "items": { "$ref": "#/definitions/waypointId" }
+        },
+        "exteriorRing": { "$ref": "#/definitions/linearRing" },
+        "interiorRings": {
+          "type": "array",
+          "description": "Внутренние кольца области (дырки, то есть возможные анклавы), уже очищенные от ничтожных отверстий (drop_micro_holes() убирает и заносит в removedMicroHoles всё, что меньше порога). Обязательное поле у каждой области, даже когда список пуст: без него площадь и отпечаток области с настоящими дырками нельзя было бы восстановить из одного лишь exteriorRing.",
+          "maxItems": 64,
+          "items": { "$ref": "#/definitions/linearRing" }
+        }
+      }
+    },
+    "join": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Одно замыкание конца обводки на осевую линию соседа по критерию перекрытия краски (см. find_ink_joins()/apply_ink_joins()). Класс joinClass обязателен и ограничен двумя значениями — непомеченных или произвольных соединений схема не допускает.",
+      "required": [
+        "candidateId",
+        "endpoint",
+        "targetCandidateId",
+        "joinClass",
+        "distancePx",
+        "inkGapPx",
+        "halfWidthPx",
+        "targetHalfWidthPx",
+        "movedToX",
+        "movedToY"
+      ],
+      "properties": {
+        "candidateId": { "$ref": "#/definitions/candidateId" },
+        "endpoint": { "$ref": "#/definitions/endpointName" },
+        "targetCandidateId": { "$ref": "#/definitions/candidateId" },
+        "joinClass": {
+          "description": "ink-overlap — краска перекрывается, допущения нет; narrow-gap — краска не перекрывается, зазор тоньше самой узкой линии, это предположение и оно обязано быть учтено в doubts как assumed-connection.",
+          "enum": ["ink-overlap", "narrow-gap"]
+        },
+        "distancePx": { "type": "number", "minimum": 0 },
+        "inkGapPx": { "type": "number", "minimum": 0 },
+        "halfWidthPx": { "type": "number", "exclusiveMinimum": 0 },
+        "targetHalfWidthPx": { "type": "number", "exclusiveMinimum": 0 },
+        "movedToX": { "type": "number" },
+        "movedToY": { "type": "number" }
+      }
+    },
+    "collapsedSliver": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Одна щель, схлопнутая collapse_slivers(): её действующая ширина была меньше толщины основной линии карты, поэтому она присоединена к соседу вместо того, чтобы стать самостоятельной областью.",
+      "required": [
+        "areaPx2",
+        "effectiveWidthPx",
+        "atX",
+        "atY",
+        "sharedBoundaryPx",
+        "merged"
+      ],
+      "properties": {
+        "areaPx2": { "type": "number", "exclusiveMinimum": 0 },
+        "effectiveWidthPx": { "type": "number", "minimum": 0, "maximum": 50 },
+        "atX": { "type": "number" },
+        "atY": { "type": "number" },
+        "sharedBoundaryPx": { "type": "number", "minimum": 0 },
+        "merged": {
+          "type": "boolean",
+          "description": "false означает, что у щели не нашлось соседа и она сохранена как есть — территория не потеряна, но осталась самостоятельной записью."
+        }
+      }
+    },
+    "removedMicroHole": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Одно ничтожное внутреннее отверстие, убранное drop_micro_holes(): числовой мусор от наложения почти совпавших линий (площадь меньше порога 25 точек в квадрате), а не настоящий анклав.",
+      "required": ["areaPx2", "atX", "atY"],
+      "properties": {
+        "areaPx2": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 25,
+          "description": "Площадь убранного отверстия. Строго меньше порога MICRO_AREA_PX2 (25 точек в квадрате) — иначе drop_micro_holes() сохранил бы кольцо как возможный анклав вместо того, чтобы его убирать."
+        },
+        "atX": { "type": "number" },
+        "atY": { "type": "number" }
+      }
+    },
+    "doubt": {
+      "description": "Одна запись реестра мест, где решение не однозначно. Форма записи зависит от kind: у каждого вида ровно свой набор дополнительных полей, лишние поля запрещены.",
+      "oneOf": [
+        { "$ref": "#/definitions/doubtMethodsDisagreeMerged" },
+        { "$ref": "#/definitions/doubtMethodsDisagreeSplit" },
+        { "$ref": "#/definitions/doubtMethodsDisagreeUnmatched" },
+        { "$ref": "#/definitions/doubtAssumedConnection" },
+        { "$ref": "#/definitions/doubtCollapsedSliver" },
+        { "$ref": "#/definitions/doubtCountryBorderGapMerged" },
+        { "$ref": "#/definitions/doubtRemovedMicroHole" },
+        { "$ref": "#/definitions/doubtUnresolvedGap" }
+      ]
+    },
+    "doubtMethodsDisagreeMerged": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "atX",
+        "atY",
+        "chosenHypothesis",
+        "consideredAlternative",
+        "confidence",
+        "areaPx2"
+      ],
+      "properties": {
+        "id": { "$ref": "#/definitions/doubtId" },
+        "kind": { "const": "methods-disagree-merged" },
+        "atX": { "type": "number" },
+        "atY": { "type": "number" },
+        "chosenHypothesis": { "type": "string", "minLength": 1 },
+        "consideredAlternative": { "type": "string", "minLength": 1 },
+        "confidence": { "$ref": "#/definitions/confidence" },
+        "areaPx2": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
+    "doubtMethodsDisagreeSplit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "atX",
+        "atY",
+        "chosenHypothesis",
+        "consideredAlternative",
+        "confidence",
+        "areaPx2"
+      ],
+      "properties": {
+        "id": { "$ref": "#/definitions/doubtId" },
+        "kind": { "const": "methods-disagree-split" },
+        "atX": { "type": "number" },
+        "atY": { "type": "number" },
+        "chosenHypothesis": { "type": "string", "minLength": 1 },
+        "consideredAlternative": { "type": "string", "minLength": 1 },
+        "confidence": { "$ref": "#/definitions/confidence" },
+        "areaPx2": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
+    "doubtMethodsDisagreeUnmatched": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "atX",
+        "atY",
+        "chosenHypothesis",
+        "consideredAlternative",
+        "confidence",
+        "areaPx2"
+      ],
+      "properties": {
+        "id": { "$ref": "#/definitions/doubtId" },
+        "kind": { "const": "methods-disagree-unmatched" },
+        "atX": { "type": "number" },
+        "atY": { "type": "number" },
+        "chosenHypothesis": { "type": "string", "minLength": 1 },
+        "consideredAlternative": { "type": "string", "minLength": 1 },
+        "confidence": { "$ref": "#/definitions/confidence" },
+        "areaPx2": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
+    "doubtAssumedConnection": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Ровно эти записи описывают соединения класса narrow-gap из joins. Их число обязано в точности совпадать с summary.narrowGapJoinCount и с числом joins[].joinClass == 'narrow-gap' — это доказывает, что ни одно предположительное соединение не осталось непомеченным.",
+      "required": [
+        "id",
+        "kind",
+        "atX",
+        "atY",
+        "chosenHypothesis",
+        "consideredAlternative",
+        "confidence",
+        "candidateId",
+        "targetCandidateId",
+        "inkGapPx"
+      ],
+      "properties": {
+        "id": { "$ref": "#/definitions/doubtId" },
+        "kind": { "const": "assumed-connection" },
+        "atX": { "type": "number" },
+        "atY": { "type": "number" },
+        "chosenHypothesis": { "type": "string", "minLength": 1 },
+        "consideredAlternative": { "type": "string", "minLength": 1 },
+        "confidence": { "$ref": "#/definitions/confidence" },
+        "candidateId": { "$ref": "#/definitions/candidateId" },
+        "targetCandidateId": { "$ref": "#/definitions/candidateId" },
+        "inkGapPx": { "type": "number", "minimum": 0 }
+      }
+    },
+    "doubtCollapsedSliver": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "atX",
+        "atY",
+        "chosenHypothesis",
+        "consideredAlternative",
+        "confidence",
+        "areaPx2",
+        "effectiveWidthPx",
+        "merged"
+      ],
+      "properties": {
+        "id": { "$ref": "#/definitions/doubtId" },
+        "kind": { "const": "collapsed-sliver" },
+        "atX": { "type": "number" },
+        "atY": { "type": "number" },
+        "chosenHypothesis": { "type": "string", "minLength": 1 },
+        "consideredAlternative": { "type": "string", "minLength": 1 },
+        "confidence": { "$ref": "#/definitions/confidence" },
+        "areaPx2": { "type": "number", "exclusiveMinimum": 0 },
+        "effectiveWidthPx": { "type": "number", "minimum": 0, "maximum": 50 },
+        "merged": { "type": "boolean" }
+      }
+    },
+    "doubtCountryBorderGapMerged": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Щель, которая до объединения не лежала заметно (не менее 2% своей площади) ровно в одной стране: либо она заметно перекрывается сразу двумя странами (их заливки перекрываются, или щель лежит ровно между ними), либо ни с одной (зазор между двумя заливками, авторские контуры которых не сходятся точно в этом месте). Присоединение всё равно выполнено по тому же sliverRule, что и у обычной записи collapsed-sliver, но государственная граница на этом участке слегка сдвинулась, и это обязано быть видно человеку отдельно от обычных внутренних щелей.",
+      "required": [
+        "id",
+        "kind",
+        "atX",
+        "atY",
+        "chosenHypothesis",
+        "consideredAlternative",
+        "confidence",
+        "areaPx2",
+        "effectiveWidthPx",
+        "merged",
+        "touchingCountryCount",
+        "touchingCountryIds"
+      ],
+      "properties": {
+        "id": { "$ref": "#/definitions/doubtId" },
+        "kind": { "const": "country-border-gap-merged" },
+        "atX": { "type": "number" },
+        "atY": { "type": "number" },
+        "chosenHypothesis": { "type": "string", "minLength": 1 },
+        "consideredAlternative": { "type": "string", "minLength": 1 },
+        "confidence": { "$ref": "#/definitions/confidence" },
+        "areaPx2": { "type": "number", "exclusiveMinimum": 0 },
+        "effectiveWidthPx": { "type": "number", "minimum": 0, "maximum": 50 },
+        "merged": { "type": "boolean" },
+        "touchingCountryCount": {
+          "type": "integer",
+          "enum": [0, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+          "description": "0 — щель лежит вне заметного покрытия любой страны (зазор между заливками); 2 и более — щель заметно перекрывается несколькими странами разом (заливки стран перекрываются или щель лежит ровно на их общей границе). Ровно 1 сюда не попадает — такая щель считается обычной записью collapsed-sliver."
+        },
+        "touchingCountryIds": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/countryId" },
+          "uniqueItems": true,
+          "maxItems": 10
+        }
+      }
+    },
+    "doubtRemovedMicroHole": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Ровно эти записи описывают отверстия из removedMicroHoles. Их число обязано в точности совпадать с summary.removedMicroHoleCount и с длиной removedMicroHoles — ни одно убранное отверстие не должно остаться незафиксированным.",
+      "required": [
+        "id",
+        "kind",
+        "atX",
+        "atY",
+        "chosenHypothesis",
+        "consideredAlternative",
+        "confidence",
+        "areaPx2"
+      ],
+      "properties": {
+        "id": { "$ref": "#/definitions/doubtId" },
+        "kind": { "const": "removed-micro-hole" },
+        "atX": { "type": "number" },
+        "atY": { "type": "number" },
+        "chosenHypothesis": { "type": "string", "minLength": 1 },
+        "consideredAlternative": { "type": "string", "minLength": 1 },
+        "confidence": { "const": "high" },
+        "areaPx2": { "type": "number", "exclusiveMinimum": 0, "maximum": 25 }
+      }
+    },
+    "doubtUnresolvedGap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "atX",
+        "atY",
+        "chosenHypothesis",
+        "consideredAlternative",
+        "confidence",
+        "lengthPx"
+      ],
+      "properties": {
+        "id": { "$ref": "#/definitions/doubtId" },
+        "kind": { "const": "unresolved-gap" },
+        "atX": { "type": "number" },
+        "atY": { "type": "number" },
+        "chosenHypothesis": { "type": "string", "minLength": 1 },
+        "consideredAlternative": { "type": "string", "minLength": 1 },
+        "confidence": { "$ref": "#/definitions/confidence" },
+        "lengthPx": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    }
+  }
+}

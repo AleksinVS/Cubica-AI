@@ -5,20 +5,21 @@
 - **Авторы**: Codex
 - **Компоненты**: `services/runtime-api`, `apps/player-web`, `packages/contracts/*`, content pipeline
 
+## Оглавление
+
+- [Контекст](#контекст)
+- [Решение](#решение)
+- [Альтернативы](#альтернативы)
+- [Последствия](#последствия)
+- [Связанные артефакты](#связанные-артефакты)
+
 ## Контекст
 
-После ADR-017 и ADR-018 у Cubica уже есть рабочий канонический slice:
-
-- `games/antarctica/game.manifest.json` остаётся source of truth для исполнимой логики;
-- `games/antarctica/design/mockups/` остаётся source of truth для UI intent;
-- `services/runtime-api` уже умеет загружать manifest bundle для runtime;
-- `apps/player-web` уже является каноническим web delivery layer.
-
-Однако фактическая граница между content layer и player delivery layer пока остаётся неустойчивой:
-
-- `apps/player-web/src/lib/antarctica.ts` напрямую читает `games/antarctica/game.manifest.json` и `games/antarctica/design/mockups/*.design.json` через filesystem;
-- `services/runtime-api` одновременно содержит player-facing HTTP transport и content loading, но отдаёт наружу только session/action API;
-- из-за этого player-web зависит от layout репозитория и от локального доступа к `games/*`, а не от стабильного backend-контракта.
+После ADR-017 и ADR-018 runtime backend является владельцем исполнимого
+контента, а клиентское приложение — каналом доставки. Если клиент читает игровые
+пакеты или дизайн-артефакты напрямую из файловой системы, он начинает зависеть
+от структуры репозитория и формата внутреннего content bundle вместо стабильного
+player-facing API.
 
 Это создаёт несколько проблем:
 
@@ -29,9 +30,7 @@
 
 ## Решение
 
-Принять следующие правила для ближайшего канонического шага:
-
-Это решение действует сразу как текущее архитектурное правило для canonical slice, даже если кодовая миграция на новый content API ещё не завершена.
+Принять следующие правила:
 
 1. **`runtime-api` владеет загрузкой игрового контента из `games/*`.**
    - Только backend runtime читает manifest bundle и связанные design artifacts из репозитория или из будущего content storage.
@@ -63,13 +62,12 @@
 
 Trade-offs:
 
-- понадобится новый player-facing DTO и HTTP endpoint;
-- часть текущей логики разбора manifest/design metadata должна переехать из `player-web` в `runtime-api`;
-- до завершения миграции некоторое время будут сосуществовать старый filesystem path и новый content API, но новым каноническим направлением считается только API path.
+- требуется отдельный player-facing DTO и content endpoint;
+- проекция manifest/design metadata становится ответственностью backend и
+  увеличивает объём его публичного контракта.
 
 ## Связанные артефакты
 
 - `docs/architecture/adrs/017-modular-monolith-transition-and-service-extraction.md`
 - `docs/architecture/adrs/018-game-logic-source-of-truth-is-json-manifest.md`
 - `docs/architecture/PROJECT_ARCHITECTURE.md`
-- `NEXT_STEPS.md`

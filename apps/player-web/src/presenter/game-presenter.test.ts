@@ -332,7 +332,6 @@ describe("GamePresenter road preview", () => {
       polyline: [{ x: 90, y: 50 }, { x: 10, y: 50 }],
       regionSequence: ["east", "west"],
       regionSegments: 2,
-      candidateCount: 1,
       planning: {
         mode: "region-segment-minimum" as const,
         algorithmVersion: "1",

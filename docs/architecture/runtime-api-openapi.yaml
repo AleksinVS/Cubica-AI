@@ -526,7 +526,7 @@
         "tags": ["RuntimeActions"],
         "operationId": "previewTransportRoad",
         "summary": "Calculate a read-only server-owned road route for selected endpoints.",
-        "description": "The preview uses the exact requested session version and simulates any tied-route PRNG choice without persisting the next random state. POST /actions remains authoritative and recalculates the complete transaction.",
+        "description": "The preview uses the exact requested session version and never changes session state. Region road planning is deterministic (ADR-100), so the same endpoints always resolve to the same road; the later confirmation still recalculates it, since POST /actions remains authoritative for the complete transaction.",
         "x-cubica-scope": "public",
         "security": [{ "SessionBearer": [] }],
         "requestBody": {
@@ -1029,7 +1029,6 @@
           "polyline",
           "regionSequence",
           "regionSegments",
-          "candidateCount",
           "planning"
         ],
         "properties": {
@@ -1058,7 +1057,6 @@
             "items": { "type": "string", "minLength": 1 }
           },
           "regionSegments": { "type": "integer", "minimum": 1 },
-          "candidateCount": { "type": "integer", "minimum": 1 },
           "planning": {
             "type": "object",
             "required": ["mode", "algorithmVersion", "geometryVersion", "geometryHash", "boundaryPolicy"],

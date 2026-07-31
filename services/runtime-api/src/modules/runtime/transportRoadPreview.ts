@@ -3,7 +3,7 @@
  *
  * Preview validates the same immutable action, role, resource references and
  * leading Mechanics assertions as authoritative dispatch. It never executes
- * payments or graph mutation and never advances the session random stream.
+ * payments or graph mutation and never reserves a later random result.
  */
 import type {
   GameManifestTransportNetworkModel,
@@ -19,15 +19,7 @@ import { hashCanonicalJson } from "../content/canonicalJson.ts";
 import { executeMechanicsTransaction } from "../mechanics/index.ts";
 import { isRecord } from "../mechanics/stateModel.ts";
 import { RequestValidationError } from "../errors.ts";
-import {
-  chooseSessionValue,
-  readSessionRandomStream,
-  type SessionRandomStreamsState
-} from "./sessionRandom.ts";
-import {
-  prepareMinimumRegionRoadCandidates,
-  regionRoadRandomStreamId
-} from "./regionRoadPlanner.ts";
+import { planMinimumRegionRoad } from "./regionRoadPlanner.ts";
 import {
   resolveActionReferences,
   validateActionReferenceParameterSubset
@@ -144,19 +136,17 @@ function previewOrThrow(options: {
   }
   const from = objectPoint(fromNode);
   const to = objectPoint(toNode);
-  const prepared = prepareMinimumRegionRoadCandidates({
+  // Version 2 of the region road planner (ADR-100) always returns exactly one
+  // road, so there is nothing left to choose between and no random provider
+  // to consult here — unlike version 1, which could offer several equally
+  // short roads and pick one with the session random provider.
+  const road = planMinimumRegionRoad({
     model,
     from,
     to,
     excludedRegionIds: readExcludedRegionIds(snapshot.state, bundle, model)
-  });
-  const selected = prepared.candidates.length > 1
-    ? chooseSessionValue(
-        readSessionRandomStream(readRandomStreams(snapshot.state), regionRoadRandomStreamId(graphStep.networkId)),
-        prepared.candidates
-      ).value
-    : prepared.candidates[0];
-  const regionSegments = selected.regionSequence.length;
+  }).road;
+  const regionSegments = road.regionSequence.length;
   return {
     sessionId: snapshot.sessionId,
     actionId: input.actionId,
@@ -166,10 +156,9 @@ function previewOrThrow(options: {
     networkId: graphStep.networkId,
     fromNodeId,
     toNodeId,
-    polyline: structuredClone(selected.points),
-    regionSequence: [...selected.regionSequence],
+    polyline: structuredClone(road.points),
+    regionSequence: [...road.regionSequence],
     regionSegments,
-    candidateCount: prepared.candidates.length,
     planning: {
       mode: model.roadPlanning.mode,
       algorithmVersion: model.roadPlanning.algorithmVersion,
@@ -244,10 +233,4 @@ function objectPoint(object: JsonRecord): { x: number; y: number } {
   if (!isRecord(position) || typeof position.x !== "number" || !Number.isFinite(position.x) ||
       typeof position.y !== "number" || !Number.isFinite(position.y)) throw new Error("Graph position is invalid");
   return { x: position.x, y: position.y };
-}
-
-function readRandomStreams(state: RuntimeState): SessionRandomStreamsState {
-  const secret = isRecord(state.secret) ? state.secret : undefined;
-  if (!secret || !isRecord(secret.random)) throw new Error("Preview tie-breaking random state is unavailable");
-  return structuredClone(secret.random) as unknown as SessionRandomStreamsState;
 }

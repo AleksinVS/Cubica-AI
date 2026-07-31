@@ -18,7 +18,6 @@ import {
   executeMechanicsTransaction,
   MechanicsExecutionError
 } from "../src/modules/mechanics/index.ts";
-import { createSessionRandomStreamsState } from "../src/modules/runtime/sessionRandom.ts";
 
 const require = createRequire(import.meta.url);
 const { MAX_DECK_ITEMS, recommendedModuleLockForOperations } = require(
@@ -188,7 +187,7 @@ function createState(deck: {
 function execute(
   mechanics: CubicaMechanicsIRV1Alpha1,
   state: Record<string, unknown>,
-  random = undefined as ReturnType<typeof createSessionRandomStreamsState> | undefined,
+  sampleRange = undefined as ((exclusiveUpperBound: number) => number) | undefined,
   params: Record<string, unknown> = {}
 ) {
   return executeMechanicsTransaction({
@@ -197,7 +196,7 @@ function execute(
     state,
     params,
     actorContext: { sessionRole: "facilitator" },
-    ...(random ? { random } : {})
+    ...(sampleRange ? { random: { sampleRange } } : {})
   });
 }
 
@@ -703,7 +702,7 @@ test("held items never participate in shuffle or draw rotation", () => {
       held: ["d"],
       stream: "fixture.deck"
     }),
-    createSessionRandomStreamsState("0123456789abcdeffedcba9876543210")
+    () => 0
   );
   const shuffledDeck = readDeck(shuffled.candidateState);
   assert.deepEqual(shuffledDeck.held, ["d"]);

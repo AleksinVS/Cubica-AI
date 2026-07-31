@@ -26,8 +26,7 @@
 - [9. Варианты и статус](#9-варианты-и-статус)
 - [10. Архитектурные инварианты](#10-архитектурные-инварианты)
 - [11. Последствия](#11-последствия)
-- [12. Открытые вопросы](#12-открытые-вопросы)
-- [13. Источники](#13-источники)
+- [12. Источники](#12-источники)
 
 ## 1. Понимание решения
 
@@ -41,7 +40,9 @@
 
 Текущий canonical runtime уже хранит игровое состояние сессии в `state.public` и `state.secret`, а действия меняют его через manifest-declared `effects[]`.
 
-Для `Antarctica` уже есть частный случай объектного состояния: `state.public.flags.cards.<cardId>` хранит флаги `selected`, `resolved`, `locked`, `available`. Карточный текст хранится в `content.data.cards`, а `player-web` или игровой плагин собирает из контента и состояния модель для отображения.
+В существующих играх встречается частный случай объектного состояния: набор
+булевых флагов хранится отдельно от статического содержимого, а клиент или
+плагин вручную собирает модель отображения.
 
 Этого достаточно для текущих bounded slices, но недостаточно как платформа:
 
@@ -64,14 +65,15 @@
 ## 4. Классификация механики
 
 Механика является **общей**.
-Она подходит не только карточкам `Antarctica`, но и многим классам игр:
+Она подходит многим классам игр:
 
 - карточные и настольные игры;
 - квесты с предметами и локациями;
 - стратегические игры с ресурсами;
 - обучающие симуляции с задачами, документами или персонажами.
 
-Поэтому новая механика не должна добавляться как `Antarctica`-specific код в `runtime-api` или `player-web`.
+Поэтому новая механика не должна добавляться как код конкретной игры в
+`runtime-api` или `player-web`.
 Она должна развиваться как schema-defined platform capability: authoring schema, runtime JSON Schema, общие effects/guards и Presenter-level projection.
 
 ## 5. Решение
@@ -86,9 +88,11 @@
 4. UI-проекция строится в Presenter, а не в React-компоненте.
 5. Модель проектируется сразу для любых игровых объектов, а не только для карточек.
 6. Динамически создаваемые ресурсы поддерживаются через `object.create`.
-7. Per-player состояние не реализуется в первом срезе, но schema должна иметь расширяемый `scope`, чтобы позже добавить player-scoped состояние без переписывания модели.
+7. Контракт имеет явный расширяемый `scope`, чтобы player-scoped состояние не
+   требовало переписывания базовой модели.
 8. State model перечисляет допустимые значения и хранит текущее состояние, а универсальный язык механик ADR-083 выбирает объекты и описывает переходы, массовые изменения, ветвления и последовательности. Хранилище состояния не дублирует исполнитель языка, но и не ограничивает его предметными операциями.
-9. Первый implementation proof выполняется на fixture-игре. Затем выполняется полная миграция `Antarctica` без сохранения legacy dual path.
+9. Общая возможность доказывается нейтральной фикстурой; постоянный legacy dual
+   path не допускается.
 
 ## 6. Модель данных
 
@@ -146,7 +150,9 @@ Authoring-манифест описывает типы объектов, их к
 }
 ```
 
-`scope: "session"` означает, что состояние общее для всей игровой сессии. Для будущего per-player состояния reserved value может быть `player`, но первый runtime slice должен отклонять или игнорировать его как unsupported feature, пока player-scoped state не реализован.
+`scope: "session"` означает, что состояние общее для всей игровой сессии.
+Значение `player` допустимо только при наличии полного schema-first контракта и
+server-side проекции соответствующей области видимости.
 
 ### 6.2. Runtime manifest
 
@@ -294,7 +300,7 @@ Actions can depend on object state through generic guards:
   "objectState": {
     "visibility": "public",
     "collection": "cards",
-    "objectId": "1",
+    "objectId": "item-1",
     "facet": "availability",
     "value": "available"
   }
@@ -328,16 +334,16 @@ Example object view:
 
 ```json
 {
-  "objectId": "1",
+  "objectId": "item-1",
   "collection": "cards",
   "objectType": "card.basic",
-  "title": "Создать клуб изучения айсберга",
-  "summary": "Есть идея! Создать клуб изучения айсберга!",
+  "title": "Example choice",
+  "summary": "Example unresolved state",
   "visualState": "default",
   "visible": true,
   "interactive": true,
   "actions": {
-    "primary": "opening.card.1"
+    "primary": "item.resolve"
   }
 }
 ```
@@ -346,11 +352,11 @@ After `face = "back"`:
 
 ```json
 {
-  "objectId": "1",
+  "objectId": "item-1",
   "collection": "cards",
   "objectType": "card.basic",
-  "title": "Создать клуб изучения айсберга",
-  "summary": "Некоторым понравились пещеры...",
+  "title": "Example choice",
+  "summary": "Example resolved state",
   "visualState": "resolved",
   "visible": true,
   "interactive": false
@@ -366,8 +372,8 @@ They should not contain game rules such as "if face is back, use backText".
 
 Статус: rejected as target.
 
-This is the current factual model for `Antarctica`, but it is not the target architecture.
-The migration must replace it instead of keeping a permanent legacy dual path.
+Флаговая модель допустима только как миграционный вход и не является целевой
+архитектурой. Миграция не должна сохранять постоянный legacy dual path.
 
 ### 9.2. Single `stateId`
 
@@ -393,12 +399,13 @@ Plugins may still customize presentation for complex games, but the object-state
 2. Authoring-манифест является редактируемым источником, runtime-манифест является исполнимым output.
 3. JSON Schema является единственным источником истины для `objectTypes`, `objectModels`, object-state effects и object-state guards.
 4. Runtime state хранит значения состояния и runtime-created instances, а не дублирует static content без причины.
-5. Generic `runtime-api` не должен знать конкретные gameId или конкретные карточки `Antarctica`.
+5. Generic `runtime-api` не должен знать конкретные gameId или игровые объекты.
 6. UI получает производную модель отображения; UI-компоненты не должны содержать правила игровой механики.
 7. `state.public.objects` используется для player-visible состояния; `state.secret.objects` допустим для скрытых игровых фактов.
-8. First implementation proof uses a fixture game before `Antarctica` migration.
-9. `Antarctica` migration replaces `flags.cards`; permanent fallback from object state to `flags.cards` is not accepted.
-10. Per-player state is reserved through explicit scope, but not implemented until a concrete multiplayer requirement lands.
+8. Нейтральная фикстура доказывает общий контракт без предметной семантики игры.
+9. Permanent fallback from object state to game-specific flags is not accepted.
+10. Per-player state включается только через explicit scope и безопасную
+    player-facing projection.
 
 ## 11. Последствия
 
@@ -414,16 +421,10 @@ Trade-offs:
 
 - увеличится поверхность game authoring schema, runtime manifest schema и contracts package;
 - понадобится синхронизировать runtime schema, TypeScript contracts, UI schema и authoring compiler;
-- полная миграция `Antarctica` будет больше, чем точечное добавление `face` в `flags.cards`.
+- переход со старых флагов требует однократной миграции без постоянной
+  поддержки двух моделей.
 
-## 12. Открытые вопросы
-
-1. Точный wire format для `objectModels.view`: плоские ключи `facet.value` или вложенная структура.
-2. Нужно ли `object.attribute.patch` в первом fixture slice, или достаточно `object.create` и `object.state.set`.
-3. Где хранить generated object view source maps для editor preview selection.
-4. Какой минимальный fixture выбрать: карточка с `face` или ресурс с `object.create`.
-
-## 13. Источники
+## 12. Источники
 
 - JSON Schema Understanding docs: reusable definitions through `$defs`, dynamic key validation through `patternProperties` and schema composition with `oneOf`/`allOf` are suitable for validated manifest variants.
 - Ajv strict mode docs: strict schema validation should fail on unknown or ignored keywords so manifest typos do not silently pass.

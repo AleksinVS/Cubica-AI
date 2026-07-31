@@ -11,65 +11,74 @@
 
 ## Context
 
-The Cubica player-web platform was originally built for the Antarctica game. While the plugin architecture (GameConfig + GameConfigResolvers) provides a solid foundation for game-agnostic extensibility, several Antarctica-specific concepts leaked into the platform layer:
+The player platform must render games with different navigation models, metrics,
+languages and hint rules. A plugin boundary alone is insufficient if generic
+components still assume that every game has boards, a particular score field,
+fixed action strings or one locale.
 
-1. Action type strings were scattered as bare string literals
-2. `resolveBoardScreenKey` was required on all game plugins (even games without boards)
-3. `resolveScreenKey` and `resolveLayoutMode` were required (no data-driven default)
-4. The `"score"` metric had special CSS treatment based on `id === "score"`
-5. Russian strings were hardcoded in 9+ component files
-6. Metric configuration was only available via hardcoded TypeScript (`antarctica-config-data.ts`)
-7. Screen routing was only plugin-driven, with no data-driven alternative
-8. Hint fallback behavior risked becoming a generic player rule even when it represented a concrete game's story mechanic
-
-These leaks made adding a new game harder than necessary and made it difficult for AI agents to copy/modify games.
+Those assumptions make the shared player a hidden implementation of one game
+and force otherwise declarative games to provide unnecessary code.
 
 ## Decision
 
-Implement nine universality improvements:
+Adopt the following universality rules for the player platform.
 
-### P1: Optional `resolveBoardScreenKey`
-Make `resolveBoardScreenKey` optional in `GameConfigResolvers`. Games without boards can omit it; the default returns `null`. Antarctica still provides it via optional chaining (`this.resolveBoardScreenKey?.(stepIndex) ?? null`).
+### 1. Optional game-owned resolvers
 
-### P2: Data-driven screen routing
-Make `resolveScreenKey` and `resolveLayoutMode` optional in `GameConfigResolvers`. When a game omits them, the presenter delegates to the generic `screen-router.ts` module, which matches `ScreenRoutingEntry[]` from the UI manifest against runtime state. Added `screenRouting` and `metricSpecs` fields to `GamePlayerUiContent` in the contracts package.
+- Board, screen, layout and hint resolvers are optional extension points.
+- A game that can express its behavior through published manifest data does not
+  require resolver code.
+- When a resolver is present, it owns only the game-specific projection and does
+  not replace manifest or session validation.
 
-### P3: Extract config data from manifest
-Added `MetricConfigSpec` type to `@cubica/contracts-manifest`. UI manifests can now include `metric_specs` — an array of metric definitions with IDs, captions, value bindings, images, and layout variants. The `metricSpecsToFallbackMetrics()` utility converts manifest metric specs to `FallbackMetricSpec` for backward compatibility. This makes `*-config-data.ts` files optional for games that provide metrics in their UI manifest.
+### 2. Data-driven routing and presentation
 
-### P4: Constantize action types
-Added `ManifestAction` constants to `@cubica/contracts-manifest` (`SHOW_HISTORY`, `SHOW_HINT`, `DISMISS_PANEL`, `REQUEST_SERVER`, `ADVANCE`, `RESET_GAME`, `SHOW_LEFT_SIDEBAR`). All bare string literals in player-web and the Antarctica plugin were replaced with these constants.
+- Screen routing, layout mode and metric presentation are declared in the UI
+  manifest.
+- Generic defaults operate on the declarative fields and do not infer domain
+  meaning from game identifiers.
+- Visual prominence and other presentation variants are explicit properties,
+  not special treatment of a field named `score` or any other semantic ID.
 
-### P5: Remove "score" special-casing
-Removed the `id === "score"` check from `GameVariableComponent`. Added `layout?: "default" | "prominent"` prop to `GameUiGameVariableComponentProps`. The Antarctica UI manifest was updated to set `layout: "prominent"` on the score metric component. This makes the visual treatment data-driven rather than based on a specific metric ID.
+### 3. Canonical UI action vocabulary
 
-### P6: i18n string extraction
-Created `@/lib/locale/ru.ts` with all Russian strings as a typed locale object. Created `@/lib/locale/index.ts` with `useLocale()` hook and `LocaleProvider`. Updated `SafeModeRenderer`, `GamePlayer`, and `CardComponent` to use `useLocale()` instead of hardcoded strings. Adding a new locale requires only a new locale file and a provider wrapper.
+- Shared UI actions use a typed, versioned vocabulary from the public manifest
+  contract.
+- Generic components emit canonical action intent rather than scattered string
+  literals.
+- Game-specific command resolution remains inside the game plugin and must
+  resolve to an action declared by the manifest.
 
-### P7: Game scaffold template
-Created `scripts/dev/scaffold-game.js` that generates `contracts.ts`, `state-resolvers.ts`, and `register.ts` for a new game from its manifest data. The scaffold uses data-driven routing and layout by default (no `resolveScreenKey` or `resolveLayoutMode` overrides needed for simple games).
+### 4. Localization boundary
 
-### P8: Game-specific hint fallback resolver
-Added optional `resolveHintText` to `GameConfigResolvers`. Generic player components can render a default hint string, but the rule that chooses that string belongs to the concrete game plugin. Antarctica uses this hook to show the last reached info screen when no dedicated hint content exists.
+- User-facing strings in shared components come from a locale provider.
+- Shared components do not embed one language as a game rule.
+- A missing game-specific text may use a generic localized fallback; choosing a
+  narrative fallback from game state belongs to the game plugin or manifest.
 
-### P9: Plugin-optional default game path
-Added a default `GameConfigData` builder and default `GameConfig` factory for games that can be rendered from `PlayerFacingContent.ui`. If a game has no registered resolver factory, `player-web` uses manifest `screen_routing`, `metric_specs`, and explicit UI payload `actionId` values. Custom plugins remain supported for game-specific state projection and command resolution, but they are no longer required for simple games.
+### 5. Plugin-optional default path
+
+- The default player path builds its configuration from player-facing content
+  and UI-manifest data.
+- Custom plugins remain available for bounded state projection and action
+  resolution, but are not mandatory for a declarative game.
+- Tooling may scaffold a plugin, but generated file layout is not part of this
+  architecture decision.
 
 ## Consequences
 
-**Positive:**
-- Adding a new game requires fewer files (4 generated by scaffold + 2 manual)
-- No game-specific code in generic components (no `"score"` check, no hardcoded strings)
-- Screen routing can be purely data-driven via manifest `screenRouting` entries
-- All user-facing strings are in one locale file per language
-- AI agents can scaffold a game with `node scripts/dev/scaffold-game.js <gameId>`
-- Metric display configuration can come from the manifest instead of hardcoded config
-- Game-specific hint fallback rules stay in plugins instead of leaking into generic player components
+Positive:
 
-**Negative:**
-- `GamePlayerUiContent` now has two optional fields (`screenRouting`, `metricSpecs`) that older manifests won't provide — backward compatible since they default to `undefined`
-- Locale strings are currently only Russian; other languages need a new locale file + provider wrapper
-- The scaffold generates minimal `resolveGameState` implementations — games with complex state must fill in their own logic
-- Games that need custom hint fallback behavior must provide a small resolver in their plugin
-- Simple games can now be added as `games/<gameId>/game.manifest.json` plus `games/<gameId>/ui/web/ui.manifest.json`; a plugin is optional rather than mandatory
-- CI can verify game-agnostic behavior with a second manifest-driven fixture instead of relying only on Antarctica
+- Shared player components contain no game-specific branches.
+- Simple games can be delivered entirely from validated manifests.
+- Routing, metrics and visual variants are inspectable and portable.
+- Localization and game-specific narrative fallback have separate ownership.
+
+Negative:
+
+- Public UI contracts gain optional routing, metric and presentation fields.
+- Generic defaults must remain backward-compatible when those fields are absent.
+- Complex games may still require a small plugin, whose contract must be
+  versioned and tested independently.
+- A neutral manifest fixture is required to prove that shared behavior does not
+  depend on one game's data.

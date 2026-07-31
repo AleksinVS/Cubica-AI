@@ -1,0 +1,5 @@
+# Build-time geometry only. The running game and Runtime API do not import
+# Python packages. Pin both direct and transitive dependencies so rebuilding
+# the author's region polygons uses a reviewable, repeatable toolchain.
+numpy==2.5.1
+shapely==2.1.2

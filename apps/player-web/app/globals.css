@@ -1402,11 +1402,16 @@ button.button-helper-arrow:focus-visible {
   align-items: stretch;
 }
 
-/* Antarctica board-card styling (surface, min-heights, action button) was moved
-   out of platform globals into the game theme
-   (games/antarctica/assets/styles/antarctica.css) per ADR-091 / debt LEGACY-0076:
-   it targets the antarctica-authored `topbar-cards-container` class and is game
-   styling, not platform layout. Only the generic container grid above stays here. */
+/* Antarctica board-card styling (card surface, per-card sizing, action button)
+   was moved out of platform globals into the game theme
+   (games/antarctica/assets/styles/antarctica.css) per ADR-091 / debt LEGACY-0076.
+   What stays here is layout shared by every game that uses the
+   `topbar-cards-container` class — at present Antarctica and the cards-money-trains
+   mock: the container grid above, and the child min-height below.
+   Naming the game in a comment is deliberate and allowed: the boundary is about
+   what this file styles, not about which words it contains, and the reason a
+   game's styling is absent from here is worth stating where someone will look
+   for it. See scripts/ci/validate-game-agnostic.js. */
 .topbar-screen-shell .topbar-cards-container > * {
   min-height: 234px;
 }

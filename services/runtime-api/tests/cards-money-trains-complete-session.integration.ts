@@ -107,22 +107,12 @@ const transcriptPath = path.join(
   "fixtures",
   "complete-session-transcript.json"
 );
-const gameplayFixturePath = path.join(
-  repoRoot,
-  "games",
-  "cards-money-trains-mock",
-  "fixtures",
-  "mock-gameplay-data.json"
-);
 const migrationPaths = [
   path.join(repoRoot, "services", "runtime-api", "migrations", "001_game_sessions.up.sql"),
-  path.join(repoRoot, "services", "runtime-api", "migrations", "002_authenticated_command_ledger.up.sql")
+  path.join(repoRoot, "services", "runtime-api", "migrations", "002_authenticated_command_ledger.up.sql"),
+  path.join(repoRoot, "services", "runtime-api", "migrations", "003_system_schedules.up.sql")
 ];
 const databaseUrl = process.env.TEST_POSTGRES_DATABASE_URL;
-// The production API never accepts a seed from the player. This test-only
-// server seam locks the fixture's transcript while exercising the same public
-// HTTP requests and durable Mechanics events as a real session.
-const CONTROL_SEED = await readControlSeed();
 const transcript = await readTranscriptIfReady();
 const credentialsBySessionId = new Map<string, string>();
 let commandSequence = 0;
@@ -239,24 +229,11 @@ async function readTranscriptIfReady(): Promise<CompleteSessionTranscript | null
   }
 }
 
-/** Keep the HTTP acceptance run on the same named-stream root as game authoring. */
-async function readControlSeed(): Promise<string> {
-  const parsed = JSON.parse(await readFile(gameplayFixturePath, "utf8")) as {
-    decks?: { controlSeed?: unknown };
-  };
-  const seed = parsed.decks?.controlSeed;
-  if (typeof seed !== "string") {
-    assert.fail("mock gameplay fixture must declare a control seed");
-  }
-  assert.match(seed, /^[0-9a-f]{32}$/u, "mock control seed must be 128-bit lowercase hex");
-  return seed;
-}
-
 async function startApi(sessionStore: SessionStorePort<RuntimeState>): Promise<RunningApi> {
   const server = createRuntimeApiServer({
     port: 0,
     sessionStore,
-    createSessionRandomSeed: () => CONTROL_SEED
+    random: { sampleRange: () => 0 }
   });
   await server.start();
   return {

@@ -18,11 +18,10 @@
 - [8. Архитектурные инварианты](#8-архитектурные-инварианты)
 - [9. Критерии повышения в платформенный прототип](#9-критерии-повышения-в-платформенный-прототип)
 - [10. Валидация и source maps](#10-валидация-и-source-maps)
-- [11. Регулярный аудит кандидатов](#11-регулярный-аудит-кандидатов)
+- [11. Управление кандидатами](#11-управление-кандидатами)
 - [12. Отклоненная альтернатива](#12-отклоненная-альтернатива)
 - [13. Последствия](#13-последствия)
-- [14. Открытые вопросы](#14-открытые-вопросы)
-- [15. Связанные практики](#15-связанные-практики)
+- [14. Связанные практики](#14-связанные-практики)
 
 ## 1. Понимание решения
 
@@ -60,7 +59,6 @@ ADR-030 ввел authoring-прототипы как reusable definitions в `_d
 - **Детерминированный аудит** - повторяемый автоматический поиск кандидатов по структуре JSON, правилам нормализации и численным порогам без обращения к LLM.
 - **LLM-семантический аудит** - более редкая проверка, где LLM (Large Language Model, большая языковая модель) ищет смысловые повторы, которые могут не совпадать по форме JSON.
 - **Suppression** - явное подавление конкретного кандидата с причиной и сроком пересмотра, чтобы регулярный отчет не превращался в постоянный шум.
-- **PR** - Pull Request, запрос на внесение изменений в основную ветку репозитория.
 
 ## 4. Принятое решение
 
@@ -72,7 +70,10 @@ Cubica принимает поэтапную архитектуру протот
 4. Применение proposal идет только через `EditorChangeSet`, dry-run, JSON Schema validation, semantic validation, compile check и undo journal.
 5. AI-assisted designer может предлагать названия, `_semantics`, `_promptTemplate`, параметры и миграцию, но не применяет изменения напрямую.
 6. Runtime manifests не получают `_definitions`, `_type`, `_extends`, `_promptTemplate`, import metadata или source trace.
-7. Поиск кандидатов становится регулярным: быстрый детерминированный аудит работает на PR/измененных файлах, а недельный аудит объединяет полный детерминированный scan, LLM-семантический аудит и promotion backlog review.
+7. Поиск кандидатов является отдельной не изменяющей данные процедурой:
+   детерминированная проверка образует базовый контур, а LLM-анализ может
+   только предложить дополнительные кандидаты. Периодичность запуска и очередь
+   рассмотрения принадлежат процессу исполнения, а не ADR.
 
 ## 5. Вариант A: локальное извлечение прототипов
 
@@ -82,7 +83,7 @@ Cubica принимает поэтапную архитектуру протот
 
 - UI screen shells, например topbar/left-sidebar layout;
 - панели метрик и повторяющиеся metric variables;
-- типовые кнопки `requestServer`, `showHint`, `showHistory`, navigation controls;
+- типовые кнопки и navigation controls;
 - карточки с одинаковой структурой и разными текстами/action ids;
 - game actions с одинаковым handler/template/effects shape.
 
@@ -93,21 +94,21 @@ Extractor должен сравнивать normalized structure, а не сыр
 ```json
 {
   "_definitions": {
-    "ui.AntarcticaTopbarScreen": {
-      "_semantics": "Локальная оболочка topbar-экрана Antarctica.",
+    "ui.GameLocalScreen": {
+      "_semantics": "Локальная оболочка экрана конкретной игры.",
       "_promptTemplate": {
         "raw": "Опишите назначение topbar-экрана, главный контент, действия и метрики.",
         "language": "ru",
-        "appliesTo": "ui.AntarcticaTopbarScreen"
+        "appliesTo": "ui.GameLocalScreen"
       }
     }
   },
   "root": {
     "screens": [
       {
-        "_type": "ui.AntarcticaTopbarScreen",
-        "id": "i20",
-        "_label": "Экран i20",
+        "_type": "ui.GameLocalScreen",
+        "id": "example-screen",
+        "_label": "Example screen",
         "title": "..."
       }
     ]
@@ -126,17 +127,10 @@ Extractor должен сравнивать normalized structure, а не сыр
 1. **Game-level registry** - `_definitions` внутри `games/<gameId>/authoring/**`.
 2. **Platform-level catalog** - будущий authoring-only каталог общих прототипов Cubica.
 
-Platform-level catalog должен быть отдельным authoring/tooling слоем. Он не должен жить в `runtime-api`, `player-web` или runtime contracts как исполнимая логика. Возможный будущий home:
-
-```text
-packages/authoring-prototypes/
-  game/
-  ui/
-  examples/
-  tests/
-```
-
-Пока физический home не реализован, ADR фиксирует границу: platform-level prototypes являются authoring-only input для компилятора и редактора.
+Platform-level catalog является отдельным authoring/tooling слоем. Он не живёт
+в `runtime-api`, `player-web` или runtime contracts как исполнимая логика;
+platform-level prototypes являются authoring-only input для компилятора и
+редактора.
 
 Локальный прототип может расширять платформенный через `_extends`, если compiler/schema поддерживают явный импорт:
 
@@ -150,9 +144,9 @@ packages/authoring-prototypes/
     }
   ],
   "_definitions": {
-    "ui.AntarcticaMetricBar": {
+    "ui.GameLocalMetricBar": {
       "_extends": "ui.MetricBar",
-      "_semantics": "Локальная панель метрик Antarctica с предметными названиями показателей."
+      "_semantics": "Локальная панель метрик с предметными названиями игры."
     }
   }
 }
@@ -239,23 +233,13 @@ Prototype extraction proposal должен показывать:
 
 Если extraction намеренно меняет runtime output, это уже не "чистое извлечение прототипа" и должно быть оформлено как отдельная gameplay/UI migration, а не как автоматическая дедупликация.
 
-## 11. Регулярный аудит кандидатов
+## 11. Управление кандидатами
 
-Регулярный аудит принят как часть governance для ADR-050. Он не применяет изменения, не создает `_definitions` сам по себе и не повышает локальные прототипы в платформенный каталог. Его результат - candidate records, отчеты, suppression records и promotion requests.
-
-Принятая частота:
-
-| Запуск | Что выполняется | Назначение |
-| --- | --- | --- |
-| Ручной запуск в редакторе | Детерминированный аудит текущего файла или игры | Быстро показать автору локальные кандидаты и подготовить proposal. |
-| PR или push в PR-ветку | Детерминированный аудит измененных `games/*/authoring/**/*.json` | Сначала предупреждающий отчет, затем возможная мягкая блокировка только для новых кандидатов с высокой уверенностью без suppression. |
-| Недельный запуск на default branch | Полный детерминированный аудит всех authoring-файлов | Обновить backlog локальных кандидатов и найти повторы между файлами и каналами. |
-| Недельный LLM-семантический аудит | LLM проверяет compact authoring context, `_prompt`, `_semantics`, `_label`, source pointers и summaries | Найти смысловые повторы, которые структурный алгоритм мог пропустить. |
-| Недельный promotion backlog review | Ручная проверка локальных прототипов и LLM/deterministic кандидатов | Решить, какие локальные прототипы готовы к заявке на platform-level prototype. |
-
-PR-аудит не должен запускать LLM по умолчанию. Он должен быть быстрым, воспроизводимым и пригодным для CI. Недельный LLM-аудит не блокирует PR: он создает review backlog и требует последующей проверки через deterministic proposal gates.
-
-Недельный аудит запускается через CI scheduled workflow на default branch. Workflow должен также поддерживать ручной `workflow_dispatch` для перезапуска после сбоя. Редактор не является планировщиком weekly audit, но должен показывать статус последнего weekly run и предупреждать автора, если аудит отсутствует, просрочен, завершился ошибкой или прошел только частично.
+Аудит кандидатов не применяет изменения, не создаёт `_definitions` и не повышает
+локальные прототипы автоматически. Его результат — versioned candidate records,
+отчёты, явные suppression records и запросы на ручное повышение. Быстрые проверки
+должны быть детерминированными; LLM-анализ может только предложить кандидата и
+никогда не является блокирующим источником изменения.
 
 LLM-семантический аудит может предлагать:
 
@@ -275,7 +259,9 @@ LLM-семантический аудит не может:
 
 Candidate record для регулярного аудита должен иметь стабильный идентификатор, основанный на normalized shape, scope и source kind, а не на строках файла. Это позволяет отслеживать кандидата между запусками и привязывать suppression. Suppression должен содержать причину, владельца и дату пересмотра; постоянное молчаливое подавление кандидатов запрещено.
 
-Editor notification invariant: пропущенный weekly audit не блокирует редактирование, preview, save или ручное создание proposal, но должен быть видимым неблокирующим предупреждением в editor surface. Уведомление должно показывать последнее успешное время аудита, статус LLM-части, ссылку на отчет или workflow и действие для ручного перезапуска, если backend это поддерживает.
+Отсутствие периодического аудита не блокирует редактирование, preview или Save;
+оно может давать неблокирующую диагностику. Расписание и представление этой
+диагностики не являются частью ADR.
 
 ## 12. Отклоненная альтернатива
 
@@ -301,26 +287,17 @@ Editor notification invariant: пропущенный weekly audit не блок
 Риски и долг:
 
 - нужен tooling для поиска повторов, normalized comparison и proposal review;
-- нужен отдельный audit/reporting слой, чтобы PR-аудит, недельный LLM-аудит и promotion backlog не смешивались с apply-flow редактора;
-- нужен editor-facing audit status record, иначе автор не увидит пропущенный или частично выполненный недельный аудит изнутри редактора;
+- нужен отдельный контур отчётов, чтобы поиск кандидатов не смешивался с
+  применением изменений в редакторе;
+- автору нужна видимая диагностика состояния кандидата, не создающая второй
+  источник истины;
 - нужен будущий platform-level catalog и import contract;
 - source maps становятся критичнее после извлечения прототипов;
 - слишком агрессивная дедупликация может ухудшить читаемость authoring-файла;
 - LLM-семантический аудит может давать ложные совпадения; он должен оставаться источником кандидатов, а не источником изменений;
 - требуется процесс владения и версионирования платформенных прототипов.
 
-## 14. Открытые вопросы
-
-- Где физически разместить platform-level prototype catalog.
-- Какой формат `_prototypeImports` принять в JSON Schema.
-- Какие thresholds использовать для automatic duplicate detection и когда переводить PR-аудит из advisory mode в soft gate.
-- Как показывать prototype parameters в property panel без перегруза автора.
-- Нужна ли отдельная deprecation policy для platform-level prototypes.
-- Как учитывать cross-channel promotion: например, общий UI prototype для Web и Telegram или отдельные platform prototypes на канал.
-- Где хранить suppression records и weekly audit history: task artifacts, future catalog metadata или отдельный audit index.
-- Какой compact context считать достаточным для недельного LLM-семантического аудита без передачи лишнего runtime/player state.
-
-## 15. Связанные практики
+## 14. Связанные практики
 
 - JSON Schema structuring: reusable definitions and references reduce duplication in non-trivial JSON models and require stable identifiers for cross-document references. Cubica follows the same idea, but keeps authoring prototypes outside runtime manifests: <https://json-schema.org/understanding-json-schema/structuring>.
 - Storybook args: common component defaults plus per-instance overrides are a useful analogy for prototype defaults plus authoring instance parameters. Cubica adopts the pattern conceptually, not Storybook as a dependency: <https://storybook.js.org/docs/writing-stories/args>.

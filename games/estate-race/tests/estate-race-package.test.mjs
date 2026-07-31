@@ -1,9 +1,10 @@
 /**
  * End-to-end runtime proof for the first Estate Race gameplay slice.
  *
- * The replay uses a fixed runtime seed. No test-only game branch exists: the
- * same manifest actions, participant guards, reference validation and transfer
- * handler are used by the player UI.
+ * The replay injects a bounded server-random sampler through Runtime's internal
+ * test seam. No test-only game branch exists: the same manifest actions,
+ * participant guards, reference validation and transfer handler are used by
+ * the player UI.
  */
 
 import assert from "node:assert/strict";
@@ -23,9 +24,6 @@ import { InMemorySessionStore } from "../../../services/runtime-api/src/modules/
 import { initializeTurnBasedSessionState } from "../../../services/runtime-api/src/modules/session/turnBasedSessionState.ts";
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-// Under the version-pinned named `session.main` stream this seed yields two
-// consecutive [1, 1] rolls, keeping the purchase/rent scenario intentional.
-const replaySeed = "00000000000000000000000000000010";
 const testCredentialSha256 = "b".repeat(64);
 // This package proof covers gameplay semantics. Admission limits are a
 // platform boundary with their own focused HTTP/controller regression suite.
@@ -48,8 +46,7 @@ const loadManifest = async () => validateGameManifest(
 const createReplay = async (mutateState) => {
   const manifest = await loadManifest();
   const initialState = initializeTurnBasedSessionState(manifest, structuredClone(manifest.state), {
-    participantCount: 2,
-    randomSeed: replaySeed
+    participantCount: 2
   });
   mutateState?.(initialState);
   const immutableBundle = createImmutableBundleContent(manifest.meta.id, manifest);
@@ -67,7 +64,12 @@ const createReplay = async (mutateState) => {
       credentialSha256: testCredentialSha256
     }
   });
-  return { manifest, store, session: created.session };
+  return {
+    manifest,
+    store,
+    session: created.session,
+    random: { sampleRange: () => 0 }
+  };
 };
 
 /** The server, not the caller, resolves the active hot-seat participant. */
@@ -77,6 +79,7 @@ const act = async (replay, actionId, params = {}) => {
     sessionStore: replay.store,
     credentialSha256: testCredentialSha256,
     admissionController: testAdmissionController,
+    random: replay.random,
     input: {
       sessionId: replay.session.sessionId,
       expectedStateVersion: current.version.stateVersion,
@@ -98,7 +101,7 @@ const assertRejectedAction = async (dispatch, messagePattern) => {
   );
 };
 
-test("fixed replay completes first purchase and first rent", async () => {
+test("bounded sampler replay completes first purchase and first rent", async () => {
   const replay = await createReplay();
 
   await act(replay, "turn.roll");

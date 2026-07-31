@@ -262,8 +262,11 @@ export type EntityOrderTieBreak =
       kind: "canonical-id";
     }
   | {
-      kind: "seeded-random";
-      stream: Identifier;
+      kind: "server-random";
+      /**
+       * Legacy field name for a stable random-purpose identifier; it does not create or select a persisted generator stream.
+       */
+      stream: string;
     };
 /**
  * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
@@ -564,9 +567,50 @@ export type AttributePatch =
 export type DeckReference = Identifier | ParamExpression;
 /**
  * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
- * via the `definition` "randomStreamId".
+ * via the `definition` "entityScoreStep".
  */
-export type RandomStreamId = string;
+export type EntityScoreStep = {
+  id: StepId;
+  kind: "query";
+  op: "core.entities.score";
+  entities?: StateRef;
+  /**
+   * @minItems 1
+   * @maxItems 512
+   */
+  entityIds?: [ValueExpression, ...ValueExpression[]];
+  selection?: EntitySelectionResultRef;
+  baseField: Identifier;
+  /**
+   * @maxItems 64
+   */
+  relatedSources: ScoreRelatedSource[];
+  when?: Predicate;
+} & EntityScoreStep1;
+export type EntityScoreStep1 = {
+  [k: string]: unknown;
+};
+/**
+ * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
+ * via the `definition` "rankingGroup".
+ */
+export type RankingGroup = {
+  id: Identifier;
+  /**
+   * @minItems 1
+   * @maxItems 128
+   */
+  entityIds?: [ValueExpression, ...ValueExpression[]];
+  selection?: EntitySelectionResultRef;
+} & RankingGroup1;
+export type RankingGroup1 = {
+  [k: string]: unknown;
+};
+/**
+ * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
+ * via the `definition` "randomPurposeId".
+ */
+export type RandomPurposeId = string;
 /**
  * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
  * via the `definition` "jsonPropertyName".
@@ -2014,7 +2058,7 @@ export interface RandomRollStep {
   op: "random.dice.roll";
   dice: string;
   /**
-   * Stable named random stream; its counter advances independently from every other stream.
+   * Stable random-purpose identifier used for validation and audit context; no generator state is persisted.
    */
   stream: string;
   target: StateRef;
@@ -2031,7 +2075,7 @@ export interface DeckShuffleStep {
   deckId: Identifier;
   sourceCollection: Identifier;
   /**
-   * Stable named random stream pinned into deck state for later automatic reshuffles.
+   * Stable random-purpose identifier retained with deck state so automatic reshuffles keep the same declared intent; no generator state is persisted.
    */
   stream: string;
   when?: Predicate;
@@ -2189,6 +2233,10 @@ export interface GraphShortestPathStep {
   networkId: Identifier;
   fromNode: ValueExpression;
   toNode: ValueExpression;
+  /**
+   * Choose whether a valid but disconnected endpoint pair aborts the transaction or returns an explicit unreachable result.
+   */
+  onUnavailable?: "fail" | "return-unreachable";
   when?: Predicate;
 }
 /**
@@ -2255,27 +2303,6 @@ export interface SystemScheduleCancelStep {
 }
 /**
  * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
- * via the `definition` "entityScoreStep".
- */
-export interface EntityScoreStep {
-  id: StepId;
-  kind: "query";
-  op: "core.entities.score";
-  entities: StateRef;
-  /**
-   * @minItems 1
-   * @maxItems 512
-   */
-  entityIds: [ValueExpression, ...ValueExpression[]];
-  baseField: Identifier;
-  /**
-   * @maxItems 64
-   */
-  relatedSources: ScoreRelatedSource[];
-  when?: Predicate;
-}
-/**
- * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
  * via the `definition` "scoreRelatedSource".
  */
 export interface ScoreRelatedSource {
@@ -2298,18 +2325,6 @@ export interface StableRankingStep {
    */
   groups: [RankingGroup, ...RankingGroup[]];
   when?: Predicate;
-}
-/**
- * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
- * via the `definition` "rankingGroup".
- */
-export interface RankingGroup {
-  id: Identifier;
-  /**
-   * @minItems 1
-   * @maxItems 128
-   */
-  entityIds: [ValueExpression, ...ValueExpression[]];
 }
 /**
  * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema

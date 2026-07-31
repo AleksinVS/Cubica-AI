@@ -5,6 +5,8 @@ import test from "node:test";
 
 import {
   TRAIN_ATTACH_SELECTED_ACTION_ID,
+  TRAIN_MANUAL_ATTACH_ACTION_ID,
+  TRAIN_MANUAL_DETACH_ACTION_ID,
   TRAIN_WAGON_SELECT_ACTION_ID,
   TRAIN_WAGON_UNSELECT_ACTION_ID,
   isTrainWagonSelectedForCurrent,
@@ -12,10 +14,12 @@ import {
   trainWagonSelectionParams
 } from "./train-formation-selection.ts";
 
-test("uses three explicit bounded action ids and one scalar wagon parameter", () => {
+test("uses five explicit bounded action ids and one scalar wagon parameter", () => {
   assert.equal(TRAIN_WAGON_SELECT_ACTION_ID, "movement.train.wagon.select");
   assert.equal(TRAIN_WAGON_UNSELECT_ACTION_ID, "movement.train.wagon.unselect");
   assert.equal(TRAIN_ATTACH_SELECTED_ACTION_ID, "movement.train.attach.selected");
+  assert.equal(TRAIN_MANUAL_ATTACH_ACTION_ID, "movement.train.attach.manual");
+  assert.equal(TRAIN_MANUAL_DETACH_ACTION_ID, "movement.train.detach.manual");
   assert.deepEqual(trainWagonSelectionParams("wagon-public"), {
     wagonId: "wagon-public"
   });

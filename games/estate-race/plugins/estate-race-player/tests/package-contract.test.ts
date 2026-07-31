@@ -44,7 +44,10 @@ test("economy actions bind exact immutable plans to typed participant and object
   assert.equal(manifest.mechanics.apiVersion, "cubica.dev/mechanics/v1alpha1");
   assert.equal(manifest.mechanics.moduleLock["cubica.core"].moduleId, "cubica.core");
   assert.match(manifest.mechanics.moduleLock["cubica.core"].artifactHash, sha256Pattern);
-  assert.equal(manifest.mechanics.moduleLock["cubica.random"].algorithmVersions.randomStreams, "xoshiro128ss-streams-v1");
+  assert.equal(
+    manifest.mechanics.moduleLock["cubica.random"].algorithmVersions.randomProvider,
+    "server-crypto-random-v1"
+  );
   assert.deepEqual(
     [...new Set(Object.values(manifest.mechanics.plans).flatMap((plan: any) =>
       plan.transaction.steps.map((step: any) => step.op)
