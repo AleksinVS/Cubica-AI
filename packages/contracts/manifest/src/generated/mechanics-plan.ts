@@ -1208,13 +1208,15 @@ export interface ItemFieldReadExpression {
   field: Identifier;
 }
 /**
+ * Identity of the current item of a bounded iteration: either its entity identifier, or its zero-based position in that iteration. Position is meaningful because core.entities.each walks an ordered selection in the order it was given (ADR-102); over a plain, unordered selection the walk is canonical, so the position is the canonical rank.
+ *
  * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
  * via the `definition` "itemIdentityReadExpression".
  */
 export interface ItemIdentityReadExpression {
   op: "value.item";
   area: "identity";
-  field: "id";
+  field: "id" | "position";
 }
 /**
  * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
@@ -1403,7 +1405,7 @@ export interface Plan {
   };
 }
 /**
- * Execute one bounded body for every member of a prior typed selection in canonical identifier order.
+ * Execute one bounded body for every member of a prior typed selection, in the order that selection carries: the order a preceding core.entities.order established, or canonical identifier order for a plain selection that carries none (ADR-102).
  *
  * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
  * via the `definition` "entitiesEachStep".

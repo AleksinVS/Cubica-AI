@@ -673,12 +673,30 @@ const buildCargoQueuePrepare = () => {
                 },
                 direction: "descending",
                 missing: "error"
+              },
+              {
+                // Полная ничья по деньгам и числу вагонов разрешается
+                // ОЧЕРЁДНОСТЬЮ ХОДА — тем самым порядком, который разыгран
+                // один раз при подготовке партии и записан каждой команде
+                // (см. record-placement-order в build-session-setup.mjs).
+                // Второй независимый жребий здесь был бы не «честнее»: два
+                // розыгрыша не обязаны совпасть, и порядок хода перестал бы
+                // быть одной и той же величиной для разных механик.
+                source: {
+                  kind: "related-field",
+                  referenceField: "ownerTeamId",
+                  collection: "teams",
+                  field: "placementOrderKey"
+                },
+                direction: "ascending",
+                missing: "error"
               }
             ],
-            tieBreak: {
-              kind: "server-random",
-              stream: "cargo-offer-order"
-            },
+            // Остаётся только один случай полной ничьей: два вагона ОДНОЙ
+            // команды. Владелец у них тот же, поэтому очерёдность хода их не
+            // различает, и порядок берётся по идентификатору — величине
+            // объявленной и воспроизводимой, а не разыгранной заново.
+            tieBreak: { kind: "canonical-id" },
             when: hasEligibleWagons
           },
           setStateExpressions(
@@ -3803,16 +3821,18 @@ const buildLifecycleAuthoring = (sourceAuthoring, intake) => {
       "news-28-and-29-departure-bonus-lasts-one-turn",
       "news-34-base-purchase-prices-persist-until-game-end"
     ],
-    workingInterpretations: [
-      "full-cargo-priority-tie-uses-server-random-until-author-confirmation"
-    ],
+    workingInterpretations: [],
     cargoSelectionPriority: {
       status: "executable-with-two-explicit-technical-policies",
       queueSlot: "one-per-eligible-wagon",
       eligibility:
         "active empty logistics-company wagon at an open numbered terminal 1-23",
-      ownerPriority: ["coins-descending", "active-owned-wagon-count-descending"],
-      fullTiePolicy: "server-random:cargo-offer-order",
+      ownerPriority: [
+        "coins-descending",
+        "active-owned-wagon-count-descending",
+        "placement-order-ascending"
+      ],
+      fullTiePolicy: "canonical-id",
       clientAuthority: {
         prepare: [],
         draw: ["terminalId"],

@@ -680,12 +680,13 @@
       "additionalProperties": false
     },
     "itemIdentityReadExpression": {
+      "description": "Identity of the current item of a bounded iteration: either its entity identifier, or its zero-based position in that iteration. Position is meaningful because core.entities.each walks an ordered selection in the order it was given (ADR-102); over a plain, unordered selection the walk is canonical, so the position is the canonical rank.",
       "type": "object",
       "required": ["op", "area", "field"],
       "properties": {
         "op": { "const": "value.item" },
         "area": { "const": "identity" },
-        "field": { "const": "id" }
+        "field": { "enum": ["id", "position"] }
       },
       "additionalProperties": false
     },
@@ -942,7 +943,7 @@
       "additionalProperties": false
     },
     "entitiesEachStep": {
-      "description": "Execute one bounded body for every member of a prior typed selection in canonical identifier order.",
+      "description": "Execute one bounded body for every member of a prior typed selection, in the order that selection carries: the order a preceding core.entities.order established, or canonical identifier order for a plain selection that carries none (ADR-102).",
       "type": "object",
       "required": ["id", "kind", "op", "selection", "body"],
       "properties": {

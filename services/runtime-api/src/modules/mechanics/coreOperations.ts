@@ -31,6 +31,7 @@ import type {
   EntitySelection,
   JsonRecord,
   MechanicsExecutionContext,
+  MechanicsItemScope,
   Step
 } from "./types.ts";
 
@@ -67,13 +68,21 @@ export function executeCoreOperation(step: Step, context: MechanicsExecutionCont
           step.id
         );
       }
-      const ids = [...selection.ids].sort(compareCanonicalIds);
+      // An ordered selection is walked in the order it was given; a plain
+      // selection carries no order, so it is walked canonically (ADR-102).
+      // Re-sorting an ordered selection here would throw away the very order
+      // the plan had just established — and until this was fixed, that made a
+      // drawn turn order impossible to record: every other write assigns one
+      // value to the whole selection at once.
+      const ids = selection.ordered === true
+        ? [...selection.ids]
+        : [...selection.ids].sort(compareCanonicalIds);
       charge(context, "algorithmWork", canonicalIterationWorkUpperBound(ids.length));
       for (const [iterationIndex, entityId] of ids.entries()) {
         const entity = findEntity(context, selection.collectionId, entityId);
         context.executeBoundedBody(
           step.body,
-          { model, entity, id: entityId },
+          { model, entity, id: entityId, position: iterationIndex },
           // The canonical index is collision-free even when entity identifiers
           // themselves contain dots or other safe Mechanics punctuation. The
           // body result still records the affected entity where its operation
@@ -170,7 +179,7 @@ export function executeCoreOperation(step: Step, context: MechanicsExecutionCont
       const entityId = requireMechanicsIdentifier(evaluateExpression(step.entity.entityId, context), "Entity id");
       const entity = findEntity(context, step.entity.collection, entityId);
       const model = context.stateModel.collections[step.entity.collection];
-      writeEntityField(context, model, entity, "facet", step.facet, evaluateExpression(step.value, context, { model, entity, id: entityId }));
+      writeEntityField(context, model, entity, "facet", step.facet, evaluateExpression(step.value, context, entityItemScope(context, model, entity, entityId)));
       charge(context, "writes");
       return entityId;
     }
@@ -197,7 +206,7 @@ export function executeCoreOperation(step: Step, context: MechanicsExecutionCont
           const value = evaluateExpression(
             patch.value,
             context,
-            { model, entity, id: entityId }
+            entityItemScope(context, model, entity, entityId)
           );
           // Runtime parameters do not exist at publication time. Validate the
           // exact element again before comparing or retaining it.
@@ -250,7 +259,7 @@ export function executeCoreOperation(step: Step, context: MechanicsExecutionCont
         // the operation keeps runtime aligned with that single schema source.
         const value = patch.operation === "remove"
           ? undefined
-          : evaluateExpression(patch.value, context, { model, entity, id: entityId });
+          : evaluateExpression(patch.value, context, entityItemScope(context, model, entity, entityId));
         const next = patchNested(current, patch.path.slice(1), patch.operation, value);
         writeEntityField(context, model, entity, "attribute", patch.path[0], next);
         charge(context, "writes");
@@ -262,7 +271,7 @@ export function executeCoreOperation(step: Step, context: MechanicsExecutionCont
       const model = context.stateModel.collections[selection.collectionId];
       for (const entityId of [...selection.ids].sort(compareCanonicalIds)) {
         const entity = findEntity(context, selection.collectionId, entityId);
-        const item = { model, entity, id: entityId };
+        const item = entityItemScope(context, model, entity, entityId);
         for (const [field, expression] of Object.entries(step.facetValues ?? {})) {
           writeEntityField(context, model, entity, "facet", field, evaluateExpression(expression, context, item));
           charge(context, "writes");
@@ -887,6 +896,30 @@ function matchesAttributeConditions(
  * selection contract as core updates. Keeping the runtime guard here avoids
  * two subtly different definitions of a trusted selection result.
  */
+
+/**
+ * The item scope a single-entity operation evaluates its expressions in.
+ *
+ * `value.item` inside such an operation refers to the entity being written, so
+ * the scope is built around that entity. The iteration position (ADR-102) is
+ * carried over only when this IS the entity the surrounding bounded iteration
+ * is currently on — a different entity has no position in that walk, and
+ * reading one there fails closed rather than borrowing someone else's.
+ */
+function entityItemScope(
+  context: MechanicsExecutionContext,
+  model: CollectionModel,
+  entity: JsonRecord,
+  entityId: string
+): MechanicsItemScope {
+  return {
+    model,
+    entity,
+    id: entityId,
+    position: context.currentItem?.id === entityId ? context.currentItem.position : undefined
+  };
+}
+
 export function requireSelection(value: unknown, stepId: string): EntitySelection {
   if (!isRecord(value) || value.kind !== "entities" || typeof value.collectionId !== "string" ||
       !Array.isArray(value.ids) || !value.ids.every((id) => typeof id === "string") ||

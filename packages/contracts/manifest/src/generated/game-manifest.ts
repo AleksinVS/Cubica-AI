@@ -455,7 +455,7 @@ export interface GameManifestTransportRegion {
    * Outer ring of the region.
    *
    * @minItems 3
-   * @maxItems 513
+   * @maxItems 2049
    */
   polygon: [
     GameManifestCanonicalPoint,

@@ -289,7 +289,7 @@ test("construction generator is idempotent and publishes only six dynamic intent
   // The published map must be exactly the partition draft the tools produced —
   // no more, no less. Comparing against the draft instead of a literal keeps
   // this honest across map redraws (the first partition held 917 areas;
-  // cutting the impassable terrain out of it raised that to 984) while still
+  // cutting the impassable terrain out of it raised that to 982) while still
   // failing loudly whenever the compiled manifest drifts from its source.
   const partitionDraft = await readJson(
     path.join(gameRoot, "annotations", "vector-map.region-partition.draft.json")

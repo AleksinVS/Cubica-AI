@@ -37,7 +37,7 @@ test("compiled manifest exposes safe setup and server-owned movement controls", 
   // placeholder. A pinned count or id list here would only ever describe
   // today's map and go stale the moment the map is redrawn (it already did:
   // the first partition held 917 areas, and cutting the impassable terrain
-  // out of it raised that to 984). So this asserts the properties that must
+  // out of it raised that to 982). So this asserts the properties that must
   // hold of *any* published region set instead: a plausible, non-placeholder
   // size, every id following the real partition's naming convention
   // (`map-region-<4 digits>`, see build-map-regions-annotation.mjs), and the

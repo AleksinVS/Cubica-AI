@@ -49,7 +49,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from shapely import STRtree, make_valid, polygonize_full, set_precision, snap, unary_union
+from shapely import STRtree, make_valid, polygonize_full, set_precision, unary_union
 from shapely.geometry import LineString, Point, Polygon, box
 
 # Модуль прежнего конвейера лежит рядом; путь добавляется явно, чтобы скрипт
@@ -927,40 +927,196 @@ def _all_rings(polygon: Polygon) -> list[Any]:
     return [polygon.exterior, *polygon.interiors]
 
 
-def _largest_polygon_part(geometry: Any) -> Polygon | None:
-    """Наибольший по площади многоугольник результата логической операции.
 
-    Вычитание может вернуть не один многоугольник, а несколько (или вовсе
-    ничего): область распалась на куски. Здесь берётся наибольший кусок — тот
-    же выбор, что уборка наложений делала и раньше. Возврат ``None`` вместо
-    исключения оставляет решение вызывающему: он знает, чем это грозит именно
-    в его месте, и печатает понятную ошибку.
+def conform_partition_to_shared_grid(
+    records: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Одна общая посадка всего разбиения на сетку хранения координат.
+
+    ЗАЧЕМ. Черновик хранит координаты с шестью знаками после запятой — это
+    сетка с шагом 10⁻⁶ точки карты. Каждая область округляется до этой сетки
+    НЕЗАВИСИМО от соседей. Для подавляющего большинства общих границ это
+    неважно: обе стороны получают одни и те же узлы. Но там, где у одной
+    области вдоль общей границы есть вершина, а у соседа между двумя его
+    собственными узлами идёт прямая, возникает расхождение: прямая между двумя
+    узлами сетки, вообще говоря, не проходит через третий узел, поэтому чужая
+    вершина оказывается на полшага сетки ВНУТРИ соседа. Вдоль всей общей
+    границы набирается цепочка таких треугольничков — наложение площадью в
+    единицы миллионных долей точки в квадрате. На картинке его не видно ни при
+    каком увеличении, но проверка платформы считает непересечение областей
+    точно, без допуска, и такую пару отвергает.
+
+    ЧТО ДЕЛАЕТ. Ровно одно действие на всё разбиение сразу: каждая вершина,
+    отстоящая от чужой стороны не дальше одного шага сетки, ВСТАВЛЯЕТСЯ в эту
+    сторону. После этого обе стороны общей границы проходят через один и тот
+    же упорядоченный набор точек — то есть общая граница описана буквально
+    одной и той же ломаной с обеих сторон. Совпадающие координаты не могут
+    наложиться ни на каком последнем разряде, и наложению просто негде
+    возникнуть.
+
+    ЧЕМ ЭТО ЛУЧШЕ ПРЕЖНЕГО. Раньше здесь стояла починка по парам: найти
+    наложившуюся пару и вычесть наложение из одной из областей. Она лечила
+    следствие и делала это разрушительно — наложение тянется вдоль ВСЕЙ общей
+    границы, поэтому вычитание отрывало пару друг от друга целиком. Измерено
+    на этой карте: 13 пар теряли общую границу, суммарно 718 точек из 870, а
+    одна область (`map-region-0699`) оставалась островом, отчего играбельный
+    граф соседства распадался надвое. Соседство здесь не косметика: именно по
+    общей границе планировщик и проводит дорогу (ADR-100), так что оторванная
+    граница — это запрет проезда там, где земля на самом деле сплошная.
+    Посадка на сетку вершин не двигает и границ не рвёт: она только ДОБАВЛЯЕТ
+    в контур уже существующие узлы сетки.
+
+    ДОПУСК. Один шаг сетки (10⁻⁶). Расхождение такого масштаба может породить
+    только независимое округление; всё, что дальше, — настоящая подробность
+    карты, и её трогать нельзя. Поэтому больший допуск здесь не «надёжнее», а
+    просто неверен.
+
+    Возвращает измерения для отчёта: сколько вершин вставлено и у скольких
+    областей изменился контур.
     """
 
-    parts = [
-        part for part in getattr(geometry, "geoms", [geometry])
-        if isinstance(part, Polygon) and not part.is_empty
+    tolerance = COORDINATE_GRID_PX
+
+    # Кольца всех областей в одном плоском списке: (индекс записи, индекс
+    # кольца, точки замкнутого кольца). Индекс кольца 0 — внешний контур,
+    # дальше — внутренние (дырки).
+    rings: list[tuple[int, int, list[list[float]]]] = []
+    for record_index, record in enumerate(records):
+        rings.append((record_index, 0, record["exteriorRing"]))
+        for ring_index, ring in enumerate(record.get("interiorRings") or []):
+            rings.append((record_index, ring_index + 1, ring))
+
+    # Дерево по ВСЕМ сторонам разбиения сразу. Именно это и делает посадку
+    # общей: вопрос «нет ли рядом чужой стороны» задаётся один раз всему
+    # разбиению, а не отдельно каждой подозрительной паре.
+    segments: list[LineString] = []
+    segment_owner: list[tuple[int, int]] = []  # (индекс кольца в rings, номер стороны)
+    for ring_position, (_, _, points) in enumerate(rings):
+        for index in range(len(points) - 1):
+            segments.append(LineString([tuple(points[index]), tuple(points[index + 1])]))
+            segment_owner.append((ring_position, index))
+    tree = STRtree(segments)
+
+    # Вставки: кольцо -> номер стороны -> список точек, которые обязаны на ней
+    # лежать. Ключ точки — кортеж координат, чтобы одна и та же вершина от
+    # нескольких соседей не вставилась дважды.
+    insertions: dict[int, dict[int, set[tuple[float, float]]]] = {}
+    inserted_vertices = 0
+
+    for ring_position, (record_index, _, points) in enumerate(rings):
+        for point in points[:-1]:
+            vertex = Point(point[0], point[1])
+            for candidate in tree.query(vertex, predicate="dwithin", distance=tolerance):
+                candidate = int(candidate)
+                target_ring, segment_index = segment_owner[candidate]
+                if target_ring == ring_position:
+                    # Своё же кольцо: собственные вершины на собственных
+                    # сторонах — это вопрос чистки контура, а не посадки.
+                    continue
+                if rings[target_ring][0] == record_index:
+                    # Другое кольцо той же области (анклав внутри дырки):
+                    # общая граница у них есть, но она уже описана одним и тем
+                    # же контуром, поэтому вставлять нечего.
+                    continue
+                segment = segments[candidate]
+                start, end = list(segment.coords)
+                key = (point[0], point[1])
+                if key == tuple(start) or key == tuple(end):
+                    continue  # вершина уже есть у соседа — сажать нечего
+                if vertex.distance(segment) > tolerance:
+                    continue
+                insertions.setdefault(target_ring, {}).setdefault(segment_index, set()).add(key)
+
+    if not insertions:
+        return {"insertedVertexCount": 0, "changedRegionCount": 0}
+
+    changed_records: set[int] = set()
+    for ring_position, by_segment in insertions.items():
+        record_index, ring_index, points = rings[ring_position]
+        rebuilt: list[list[float]] = []
+        for index in range(len(points) - 1):
+            start = points[index]
+            rebuilt.append(start)
+            extra = by_segment.get(index)
+            if not extra:
+                continue
+            end = points[index + 1]
+            span_x = end[0] - start[0]
+            span_y = end[1] - start[1]
+            span = span_x * span_x + span_y * span_y
+            if span <= 0:
+                continue
+            # Точки ставятся в порядке движения ВДОЛЬ стороны, иначе контур
+            # завернулся бы сам на себя.
+            ordered = sorted(
+                extra,
+                key=lambda p: ((p[0] - start[0]) * span_x + (p[1] - start[1]) * span_y) / span,
+            )
+            for point in ordered:
+                rebuilt.append([point[0], point[1]])
+                inserted_vertices += 1
+        rebuilt.append(list(points[-1]))
+
+        if ring_index == 0:
+            records[record_index]["exteriorRing"] = rebuilt
+        else:
+            records[record_index]["interiorRings"][ring_index - 1] = rebuilt
+        changed_records.add(record_index)
+
+    # Поля, зависящие от геометрии, обязаны описывать то, что записано.
+    for record_index in changed_records:
+        record = records[record_index]
+        record.update(_region_geometry_fields(Polygon(
+            [tuple(p) for p in record["exteriorRing"]],
+            [[tuple(p) for p in ring] for ring in record.get("interiorRings", [])],
+        )))
+
+    return {
+        "insertedVertexCount": inserted_vertices,
+        "changedRegionCount": len(changed_records),
+    }
+
+
+def assert_no_overlapping_regions(records: list[dict[str, Any]]) -> None:
+    """Остановиться, если хоть какие-то две области делят площадь.
+
+    Проверка, а не починка — и это принципиально. После общей посадки на сетку
+    (см. `conform_partition_to_shared_grid()`) наложений быть не может по
+    построению, поэтому найденное здесь наложение означает не «шум округления,
+    который надо подтереть», а настоящую ошибку конвейера. Прежняя версия
+    этого места именно чинила, и починка молча рвала общие границы; теперь
+    неправильное состояние обязано остановить сборку и потребовать разбора.
+    """
+
+    polygons = [
+        Polygon(
+            [tuple(p) for p in record["exteriorRing"]],
+            [[tuple(p) for p in ring] for ring in record.get("interiorRings", [])],
+        )
+        for record in records
     ]
-    if not parts:
-        return None
-    return max(parts, key=lambda part: part.area)
-
-
-def _shared_boundary_length(left: Polygon, right: Polygon) -> float:
-    """Длина общей границы двух областей (по всем контурам обеих).
-
-    Ровно та величина, по которой `build_region_adjacency()` решает, соседи ли
-    две области: длина общей части их контуров. Вынесена отдельно, чтобы
-    уборка остаточных наложений могла записать в журнал, сколько общей границы
-    у пары было ДО вмешательства и сколько осталось ПОСЛЕ, — иначе
-    разрушительность лекарства осталась бы невидимой в данных.
-    """
-
-    total = 0.0
-    for left_ring in _all_rings(left):
-        for right_ring in _all_rings(right):
-            total += left_ring.intersection(right_ring).length
-    return total
+    tree = STRtree(polygons)
+    overlaps: list[str] = []
+    for index, polygon in enumerate(polygons):
+        for candidate in tree.query(polygon):
+            candidate = int(candidate)
+            if candidate <= index:
+                continue
+            shared = polygon.intersection(polygons[candidate])
+            if shared.is_empty or shared.area <= 0.0:
+                continue
+            overlaps.append(
+                f"{records[index]['id']}/{records[candidate]['id']} на "
+                f"{shared.area:.9f} точки в квадрате"
+            )
+    if overlaps:
+        raise SystemExit(
+            f"после общей посадки на сетку области всё ещё накладываются "
+            f"({len(overlaps)} пар): {'; '.join(overlaps[:10])}"
+            + (" …" if len(overlaps) > 10 else "")
+            + ". Это ошибка конвейера, а не шум округления, и требует разбора "
+            "человеком, а не тихой правки геометрии"
+        )
 
 
 def build_region_adjacency(polygons: list[Polygon]) -> list[set[int]]:
@@ -1614,7 +1770,7 @@ def build_impassable_terrain_mask(
     raster = terrain_tools.load_raster(raster_path)
 
     land_union = unary_union(real_center_polygons)
-    terrain_patches, decoration_patches, excluded_patch = terrain_tools.classify_patches(
+    terrain_patches, decoration_patches, excluded_patches = terrain_tools.classify_patches(
         raster["patches"], land_union
     )
 
@@ -1694,10 +1850,17 @@ def build_impassable_terrain_mask(
         "patchCount": len(raster["patches"]),
         "terrainPatchCount": len(terrain_patches),
         "decorationPatchCount": len(decoration_patches),
-        "excludedPatch": {
-            "areaPx2": excluded_patch["sizePx2"],
-            "centroid": excluded_patch["centroid"],
-        },
+        # Список, а не одно пятно: продюсерских решений «оставить проходимым»
+        # может быть сколько угодно, и каждое несёт своё основание текстом,
+        # чтобы решение не превратилось в необъяснимое число в коде.
+        "excludedPatches": [
+            {
+                "areaPx2": patch["sizePx2"],
+                "centroid": patch["centroid"],
+                "producerDecisionReason": patch["producerDecisionReason"],
+            }
+            for patch in excluded_patches
+        ],
         "riverCandidatePixelCount": len(river_distances),
         "riverSelectedPixelCount": len(river_pixels),
         "riverHalfStrokeWidthPx": _round(half_stroke_width),
@@ -1979,231 +2142,13 @@ def apply_impassable_terrain(
 
     final_records = [record for record in updated if record is not None]
 
-    # --- Финальная уборка: остаточные наложения на грани самой точности -----
-    #
-    # Округление координат до шести знаков применяется к каждой затронутой
-    # области НЕЗАВИСИМО (см. `_region_geometry_fields()`), а не всем
-    # разбиением сразу. Для подавляющего большинства пар это неважно: общая
-    # граница двух областей и до, и после округления остаётся одной и той же
-    # линией. Но там, где боковая (не выходившая из этой функции) сторона
-    # операции пересечения/вычитания провела границу почти вдоль СОБСТВЕННОГО
-    # (не задетого хирургией) края области-соседа, измерено, что после
-    # независимого округления обеих сторон вдоль этой границы остаётся
-    # неизмеримо узкое (доли триллионной точки в квадрате — измерено:
-    # 2,6·10⁻⁸) наложение, не видное ни на одной картинке, но обнаруживаемое
-    # строгой проверкой общего валидатора аннотации при сборке манифеста
-    # (assertRegionsDoNotOverlap в scripts/map-annotation/map-annotation.mjs).
-    # Эта проверка не покрывается сборкой черновика, поэтому убирается здесь
-    # явно, а не оставляется как скрытое расхождение между двумя шагами
-    # конвейера.
-    #
-    # Устраняется вычитанием общего наложения из ОДНОЙ из двух областей пары
-    # — не из ЛЮБОЙ, а по строгому правилу: нетронутая хирургией область
-    # (не входящая в surgery_log вовсе) НИКОГДА не меняется, потому что её
-    # geometryFingerprint обязан остаться прежним (это отдельное, более
-    # важное требование задания). Если наложение задело только что созданную
-    # ИЛИ пересчитанную область — вычитается из неё. Если наложение нашлось
-    # между ДВУМЯ новыми/пересчитанными областями, вычитается из той, чей id
-    # больше в кодовом порядке (произвольный, но детерминированный выбор:
-    # результат не зависит от того, в каком порядке STRtree вернула пару).
+    # `surgery_touched_ids` — области, которых хирургия действительно коснулась:
+    # только их контуры имеет смысл чистить от следов геометрических операций
+    # (см. drop_return_spikes/drop_collinear_vertices ниже).
     surgery_touched_ids = {
         entry["newRegionId"] for entry in surgery_log if "newRegionId" in entry
     } | rebuilt_in_place_ids
-    OVERLAP_CLEANUP_MAX_AREA_PX2 = MICRO_AREA_PX2
-    OVERLAP_SHRINK_MARGIN = 2e-6
-    OVERLAP_SNAP_TOLERANCE_PX = 1e-5
-    by_id = {record["id"]: record for record in final_records}
-    all_fixed_overlaps: list[dict[str, Any]] = []
 
-    # Цикл сходимости: округление координат до шести знаков ПОСЛЕ вычитания
-    # найденного наложения само может (на той же измеренной причине — см.
-    # докстринг `_region_geometry_fields()`) оставить новое, столь же
-    # ничтожное наложение с ДРУГИМ соседом или даже с тем же самым. Поэтому
-    # обнаружение и устранение повторяется на СВЕЖЕОКРУГЛЁННЫХ полигонах,
-    # пока проход не перестанет находить наложения (в измеренных данных этой
-    # карты сходится за один-два прохода). Предел проходов — не измеренное
-    # число, а защита от зацикливания, как и в цикле присоединения щелей выше.
-    for cleanup_pass in range(40):
-        polygons_by_id = {
-            record["id"]: Polygon(
-                [tuple(p) for p in record["exteriorRing"]],
-                [[tuple(p) for p in ring] for ring in record.get("interiorRings", [])],
-            )
-            for record in final_records
-        }
-        ordered_ids = [record["id"] for record in final_records]
-        tree = STRtree([polygons_by_id[rid] for rid in ordered_ids])
-        fixed_overlaps: list[dict[str, Any]] = []
-        for left_index, left_id in enumerate(ordered_ids):
-            left_polygon = polygons_by_id[left_id]
-            for right_index in tree.query(left_polygon):
-                right_index = int(right_index)
-                right_id = ordered_ids[right_index]
-                if right_id == left_id or right_index <= left_index:
-                    continue
-                # Достаточно, чтобы хирургия задела ХОТЯ БЫ ОДНУ сторону пары.
-                # НАЙДЕННАЯ И ИСПРАВЛЕННАЯ ОШИБКА: раньше перебор начинался
-                # только с тронутой области, и вместе с отбрасыванием пар по
-                # «второй индекс меньше первого» это исключало из проверки
-                # каждую пару «нетронутая с меньшим номером — тронутая с
-                # большим». Ровно такие пары и оставались накладываться:
-                # измерено 12 пар, найденных проверкой платформы уже после
-                # того, как эта уборка сообщила, что наложений нет.
-                if left_id not in surgery_touched_ids and right_id not in surgery_touched_ids:
-                    continue
-                right_polygon = polygons_by_id[right_id]
-                overlap = left_polygon.intersection(right_polygon)
-                if overlap.is_empty or overlap.area <= 0.0:
-                    continue
-                if overlap.area >= OVERLAP_CLEANUP_MAX_AREA_PX2:
-                    raise SystemExit(
-                        f"области {left_id} и {right_id} накладываются на "
-                        f"{overlap.area:.6f} точки в квадрате — это больше "
-                        f"порога числового шума ({OVERLAP_CLEANUP_MAX_AREA_PX2} "
-                        "точки в квадрате) и требует решения человека, а не "
-                        "тихой уборки"
-                    )
-                # Нетронутая хирургией область никогда не меняется (см.
-                # пояснение выше); между двумя тронутыми — вычитается из
-                # большего id.
-                if right_id not in surgery_touched_ids:
-                    shrink_id = left_id
-                elif left_id not in surgery_touched_ids:
-                    shrink_id = right_id
-                else:
-                    shrink_id = max(left_id, right_id)
-                keep_id = right_id if shrink_id == left_id else left_id
-                # ЧЕМ УСТРАНЯЕТСЯ НАЛОЖЕНИЕ И ПОЧЕМУ ИМЕННО ТАК
-                #
-                # НАЙДЕННАЯ И ИСПРАВЛЕННАЯ ОШИБКА: раньше из уменьшаемой
-                # области вычитался слегка раздутый сосед. Лекарство оказалось
-                # несравнимо разрушительнее болезни: измерено, что наложение —
-                # это не пятнышко в одном углу, а полоска шириной порядка
-                # 10⁻⁹ точки ВДОЛЬ ВСЕЙ общей границы пары (обе стороны
-                # округляются до одной и той же сетки независимо друг от
-                # друга, и там, где сторона легла ровно посередине между
-                # узлами сетки, они расходятся на последнем разряде). Вычитание
-                # чего-либо раздутого вдоль такой полоски отрывает у пары ВСЮ
-                # общую границу целиком. Измерено на этой карте: область
-                # `map-region-0699` после такой уборки оказалась в 2·10⁻⁶ точки
-                # от трёх своих играбельных соседей — то есть перестала быть
-                # их соседом вовсе — и осталась островом, отчего играбельный
-                # граф распадался на две части. Соседство здесь не косметика:
-                # именно по общей границе планировщик и проводит дорогу
-                # (ADR-100), так что оторванная граница — это запрет проезда
-                # там, где земля на самом деле сплошная.
-                #
-                # ЧТО ТАКОЕ ЭТО НАЛОЖЕНИЕ НА САМОМ ДЕЛЕ (измерено, а не
-                # предположено). Это не пятнышко в одном углу, а полоска
-                # толщиной порядка последнего хранимого разряда ВДОЛЬ ВСЕЙ
-                # общей границы пары. Берётся она так: у уменьшаемой области
-                # вдоль общей границы остаётся лишняя вершина — она стоит в
-                # узле сетки хранения, но САМА ГРАНИЦА соседа между двумя
-                # своими узлами идёт по прямой, а прямая между двумя узлами
-                # сетки через третий узел, вообще говоря, не проходит. Вершина
-                # оказывается на полшага сетки внутри соседа, и вдоль всей
-                # границы набирается цепочка таких же треугольничков.
-                #
-                # ПОЧЕМУ НЕЛЬЗЯ ПРОСТО ВЫЧЕСТЬ СОСЕДА. Проверено и отвергнуто
-                # измерением: простое вычитание (`shrink − keep`, без всякого
-                # раздувания) снимает наложение ТОЧНО и сохраняет общую границу
-                # во всю длину — но не переживает округления. Вычитание вводит
-                # новые узлы там, где контуры пересекаются, и эти узлы падают
-                # куда придётся, а не в узлы сетки хранения; округление до
-                # шести знаков сдвигает их обратно внутрь соседа, следующий
-                # проход вычитает снова, и так по кругу: уборка не сошлась за
-                # все 40 проходов. То же и с вычитанием в фиксированной сетке
-                # (`grid_size` у операций shapely): в сетке 10⁻⁶ полоска
-                # наложения тоньше шага и просто не существует, поэтому
-                # операция честно возвращает область без изменений, а
-                # проверка платформы, считающая в полной точности, наложение
-                # по-прежнему видит.
-                #
-                # Поэтому первый путь — `snap`: он сдвигает вершины
-                # уменьшаемой области на СОВПАДАЮЩИЕ вершины соседа, если они
-                # ближе допуска (10⁻⁵ точки — на порядок крупнее сетки
-                # хранения, чтобы захватить расхождение в последнем разряде, и
-                # на шесть порядков мельче самой мелкой настоящей подробности
-                # карты, порога `MICRO_AREA_PX2` = 25 точек в квадрате). Новых
-                # узлов он не вводит, поэтому результат остаётся в сетке и
-                # переживает округление. Срабатывает он там, где у обеих
-                # сторон вдоль границы одни и те же вершины: измерено — 5 пар
-                # из 39.
-                #
-                # Второй, последний путь — вычитание РАЗДУТОГО наложения. Он
-                # единственный разрушительный: раздувание вдоль полоски
-                # отрывает у пары ВСЮ общую границу. Измерено на этой карте, к
-                # чему это приводило, когда он был единственным: область
-                # `map-region-0699` оказалась в 2·10⁻⁶ точки от трёх своих
-                # играбельных соседей — то есть перестала быть их соседом
-                # вовсе — и осталась островом, отчего играбельный граф
-                # распадался на две части. Соседство здесь не косметика: именно
-                # по общей границе планировщик и проводит дорогу (ADR-100), так
-                # что оторванная граница — это запрет проезда там, где земля на
-                # самом деле сплошная. Путь оставлен как последняя защита, а
-                # каждая пара помечена в журнале полем `method` вместе с длиной
-                # общей границы до и после, чтобы разрушительный путь был виден
-                # в данных, а не молчал.
-                keep_polygon = polygons_by_id[keep_id]
-                shrink_polygon = polygons_by_id[shrink_id]
-                shared_before = _shared_boundary_length(shrink_polygon, keep_polygon)
-
-                def _clears_overlap(geometry: Any) -> bool:
-                    """Годится ли исправленный контур: он полигон, допустим и больше не накладывается."""
-
-                    if not isinstance(geometry, Polygon) or geometry.is_empty or not geometry.is_valid:
-                        return False
-                    residue = geometry.intersection(keep_polygon)
-                    return residue.is_empty or residue.area <= 0.0
-
-                method = "snap"
-                candidate = snap(shrink_polygon, keep_polygon, OVERLAP_SNAP_TOLERANCE_PX)
-                if not _clears_overlap(candidate):
-                    candidate = None
-                if candidate is None:
-                    method = "subtract"
-                    candidate = _largest_polygon_part(
-                        shrink_polygon.difference(overlap.buffer(OVERLAP_SHRINK_MARGIN))
-                    )
-                if candidate is None or candidate.is_empty:
-                    raise SystemExit(
-                        f"устранение наложения {left_id}/{right_id} стёрло "
-                        f"область {shrink_id} целиком — это рассогласование "
-                        "конвейера, а не измеренный шум, и требует решения "
-                        "человека"
-                    )
-
-                polygons_by_id[shrink_id] = candidate
-                fixed_overlaps.append({
-                    "shrunkRegionId": shrink_id,
-                    "keptRegionId": keep_id,
-                    "overlapAreaPx2": _round(overlap.area),
-                    "method": method,
-                    "sharedBoundaryBeforePx": _round(shared_before),
-                    "sharedBoundaryAfterPx": _round(
-                        _shared_boundary_length(candidate, keep_polygon)
-                    ),
-                })
-
-        if not fixed_overlaps:
-            break
-
-        for fix in fixed_overlaps:
-            record = by_id[fix["shrunkRegionId"]]
-            record.update(_region_geometry_fields(polygons_by_id[fix["shrunkRegionId"]]))
-        all_fixed_overlaps.extend(fixed_overlaps)
-    else:
-        raise SystemExit(
-            "уборка остаточных наложений после округления не сошлась за 40 "
-            "проходов; это рассогласование конвейера, а не медленная "
-            "сходимость, и требует разбора человеком"
-        )
-
-    if all_fixed_overlaps:
-        surgery_log.append({
-            "kind": "overlap-cleanup",
-            "fixedPairs": all_fixed_overlaps,
-        })
 
     # --- Финальная, однопроходная проверка тем же признаком, каким сторонний -
     # --- JS-валидатор общей аннотации проверяет самопересечение --------------
@@ -2224,7 +2169,7 @@ def apply_impassable_terrain(
     # действующую ширину или площадь. Исправление — структурное
     # (`make_valid(method="structure")`), в одно применение, без повторного
     # цикла: область, где эта проверка расходится с shapely, — редкое
-    # (измерено: 2 из 984 областей черновика) исключение, а не источник
+    # (измерено: 2 из 984 областей той сборки) исключение, а не источник
     # каскада новых наложений, требующего той же лестницы сходимости, что и
     # уборка выше.
     def has_nonadjacent_side_crossing(ring: list[list[float]]) -> bool:
@@ -2392,7 +2337,7 @@ def apply_impassable_terrain(
     # `exteriorRing`/`interiorRings` прямо в записи, но НЕ пересчитывали
     # `geometryFingerprint`, `areaPx2`, `bounds` и `representativePoint`. Форма
     # менялась, а её отпечаток продолжал описывать прежнюю — то есть перставал
-    # быть отпечатком того, что записано. Измерено на этой карте: у 16 из 984
+    # быть отпечатком того, что записано. Измерено на той сборке: у 16 из 984
     # областей записанный отпечаток не воспроизводился из их же собственных
     # контуров. Отпечаток — это тождество формы, по нему сверяются шаги
     # конвейера, поэтому расхождение здесь не косметика.
@@ -2422,6 +2367,19 @@ def apply_impassable_terrain(
         print(f"  очистка контуров: возвратных шипов {spikes_removed}, "
               f"вершин на прямой {collinear_removed} (ни одна вершина не сдвинута); "
               f"пересчитано отпечатков и площадей: {refreshed}")
+
+    # Общая посадка всего разбиения на сетку хранения — последний
+    # геометрический шаг, потому что любой шаг после него мог бы её нарушить.
+    # Сразу за ней — проверка, а не починка: наложений после посадки быть не
+    # может, поэтому найденное означало бы ошибку конвейера.
+    conforming = conform_partition_to_shared_grid(final_records)
+    print(
+        f"  общая посадка на сетку {COORDINATE_GRID_PX:g}: вставлено вершин "
+        f"{conforming['insertedVertexCount']} в {conforming['changedRegionCount']} "
+        "областях (ни одна вершина не сдвинута, границы не разрывались)"
+    )
+    assert_no_overlapping_regions(final_records)
+    print("  наложений областей после посадки: 0 (проверено точно, без допуска)")
 
     by_id = {record["id"]: record for record in final_records}
     js_validator_repairs: list[dict[str, Any]] = []
@@ -2882,12 +2840,12 @@ def main() -> None:
         f"местность: {terrain_diagnostics['terrainPatchCount']}, "
         f"декорация: {terrain_diagnostics['decorationPatchCount']}"
     )
-    print(
-        "исключено решением продюсера (дорога road-6-7 проходит через это пятно): "
-        f"{terrain_diagnostics['excludedPatch']['areaPx2']} px² @ "
-        f"({terrain_diagnostics['excludedPatch']['centroid']['x']:.0f}, "
-        f"{terrain_diagnostics['excludedPatch']['centroid']['y']:.0f})"
-    )
+    for excluded in terrain_diagnostics["excludedPatches"]:
+        print(
+            f"оставлено проходимым решением продюсера: {excluded['areaPx2']} px² @ "
+            f"({excluded['centroid']['x']:.0f}, {excluded['centroid']['y']:.0f}) — "
+            f"{excluded['producerDecisionReason']}"
+        )
     print(
         "признак «река против границы» (расстояние до ближайшей границы области, px): "
         f"кандидатов {terrain_diagnostics['riverCandidatePixelCount']}, "

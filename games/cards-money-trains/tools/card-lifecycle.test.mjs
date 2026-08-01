@@ -343,11 +343,24 @@ test("generator materializes every physical source row and exact remaining gap",
     manifest.content.data.cardLifecycle.status,
     "partially-confirmed-executable-draft"
   );
+  // Пусто: последнее рабочее допущение закрыто решением продюсера — полная
+  // ничья в приоритете груза разрешается очерёдностью хода, разыгранной один
+  // раз при подготовке партии, а не вторым жребием.
   assert.deepEqual(
     manifest.content.data.cardLifecycle.workingInterpretations,
+    []
+  );
+  assert.deepEqual(
+    manifest.content.data.cardLifecycle.cargoSelectionPriority.ownerPriority,
     [
-      "full-cargo-priority-tie-uses-server-random-until-author-confirmation"
+      "coins-descending",
+      "active-owned-wagon-count-descending",
+      "placement-order-ascending"
     ]
+  );
+  assert.equal(
+    manifest.content.data.cardLifecycle.cargoSelectionPriority.fullTiePolicy,
+    "canonical-id"
   );
   assert.ok(
     !manifest.config.runtimeBlockers.includes("single remaining cargo card offer policy")

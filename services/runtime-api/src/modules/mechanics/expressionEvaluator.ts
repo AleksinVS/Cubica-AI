@@ -122,11 +122,24 @@ function evaluateExpressionValue(
       }
       return value;
     }
-    case "value.item":
+    case "value.item": {
       if (!item) throw new MechanicsExecutionError("MECHANICS_ITEM_SCOPE_INVALID", "value.item requires an entity scope");
-      return expression.area === "identity"
-        ? item.id
-        : readEntityField(item.model, item.entity, expression.area, expression.field);
+      if (expression.area !== "identity") {
+        return readEntityField(item.model, item.entity, expression.area, expression.field);
+      }
+      if (expression.field !== "position") return item.id;
+      // Position exists only inside a bounded iteration (ADR-102). A
+      // single-entity write also opens an entity scope, and there the question
+      // has no answer — so it fails closed rather than answering zero, which
+      // would silently give every entity the same "first" position.
+      if (item.position === undefined) {
+        throw new MechanicsExecutionError(
+          "MECHANICS_ITEM_SCOPE_INVALID",
+          "value.item position is readable only inside a bounded entity iteration"
+        );
+      }
+      return item.position;
+    }
     case "value.coalesce":
       for (const candidate of expression.items) {
         const value = evaluateExpression(candidate, context, item, depth + 1);

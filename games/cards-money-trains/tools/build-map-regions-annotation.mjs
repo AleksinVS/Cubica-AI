@@ -76,12 +76,12 @@ const OUTPUT_PATH = path.join(annotationsDirectory, "initial-network-with-region
 // silently drifting the merged output.
 const EXPECTED_NODE_COUNT = 25;
 const EXPECTED_EDGE_COUNT = 10;
-// 917 author-confirmed regions plus 67 regions from the impassable-terrain
-// surgery (65 forbidden-terrain regions and 2 ordinary regions where cutting
+// 917 author-confirmed regions plus 65 regions from the impassable-terrain
+// surgery (63 forbidden-terrain regions and 2 ordinary regions where cutting
 // terrain at a region's own edge split its remaining land into two pieces —
 // see games/cards-money-trains/annotations/README.md, "Непроходимая местность
 // и река", and apply_impassable_terrain() in cmt_region_partition.py).
-const EXPECTED_REGION_COUNT = 984;
+const EXPECTED_REGION_COUNT = 982;
 const EXPECTED_EMPTY_SPACE_COUNT = 3;
 
 const fail = (message) => { throw new Error(message); };

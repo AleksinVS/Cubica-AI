@@ -291,8 +291,12 @@ const createTeamStep = (teamType) => ({
     // balance. Every later economy action therefore starts from a durable zero
     // principal instead of interpreting a missing field as "no debt".
     outstandingDebt: literal(0),
-    // A constant key intentionally creates one complete tie group. The named
-    // seeded stream below then supplies the reproducible random order.
+    // Starts as a constant so every team forms one complete tie group, which
+    // the single seeded draw in `order-teams` then breaks. The drawn order is
+    // written straight back into this same field by `record-placement-order`,
+    // so from the end of setup onwards this is the team's real turn position
+    // (0 goes first) and every later mechanic reads it instead of drawing
+    // again — see ADR-102 for why writing it needed a platform change.
     placementOrderKey: literal(0),
     // News №14 rebuilds these neutral scratch counters from authoritative
     // active vehicles inside maintenance completion. Setup initializes them
@@ -527,6 +531,39 @@ const buildFinalize = () => {
               kind: "server-random",
               stream: "session-setup-placement-order"
             }
+          },
+          {
+            // Разыгранная очерёдность записывается КАЖДОЙ команде как её
+            // собственное значение — это и есть очерёдность хода, а не просто
+            // список идентификаторов в состоянии подготовки.
+            //
+            // Зачем это нужно: жребий выше бросается ОДИН раз. Полные ничьи в
+            // других механиках (например, приоритет груза) разрешаются по этой
+            // же записанной очерёдности, а не вторым независимым жребием — два
+            // независимых розыгрыша не обязаны совпасть, и тогда «порядок
+            // хода» перестал бы быть одной и той же величиной для разных
+            // механик, что для игрока выглядит необъяснимо.
+            //
+            // Обход идёт по УПОРЯДОЧЕННОМУ результату и сохраняет его порядок,
+            // а `position` — номер команды в этом порядке (ADR-102).
+            id: "record-placement-order",
+            kind: "command",
+            op: "core.entities.each",
+            selection: result("order-teams"),
+            body: [{
+              id: "record-one-placement-key",
+              kind: "command",
+              op: "core.entity.attributes.patch",
+              entity: {
+                collection: "teams",
+                entityId: { op: "value.item", area: "identity", field: "id" }
+              },
+              patches: [{
+                operation: "set",
+                path: ["placementOrderKey"],
+                value: { op: "value.item", area: "identity", field: "position" }
+              }]
+            }]
           },
           {
             id: "start-placement",
@@ -1196,7 +1233,13 @@ const buildSessionSetupAuthoring = (sourceAuthoring, network) => {
       placementOrderKey: {
         storage: { kind: "attribute", name: "placementOrderKey" },
         valueType: "core.integer",
-        access: "read-only"
+        // Записывается ровно один раз за партию — шагом record-placement-order
+        // в session.setup.finalize, который переносит разыгранную очерёдность
+        // из результата упорядочивания в саму команду. До этого поле было
+        // «только для чтения» просто потому, что записать в него было нечего:
+        // выразить «каждой команде — её номер» стало возможно только с
+        // ADR-102.
+        access: "read-write"
       },
       progressiveTaxLocomotiveCount: {
         storage: {

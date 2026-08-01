@@ -107,6 +107,15 @@ export interface EntitySelection {
   kind: "entities";
   collectionId: string;
   ids: Array<string>;
+  /**
+   * True when `ids` carries a meaning-bearing order — that is, when the
+   * selection came from `core.entities.order` rather than a plain
+   * `core.entities.select`. Bounded iteration honours such an order instead of
+   * re-sorting canonically (ADR-102). Absent on a plain selection, whose id
+   * order is an artefact of how the collection happened to be stored and must
+   * never be observable.
+   */
+  ordered?: boolean;
 }
 
 /**
@@ -120,6 +129,18 @@ export interface MechanicsItemScope {
   model: CollectionModel;
   id: string;
   entity: JsonRecord;
+  /**
+   * Zero-based position of this item in the bounded iteration that opened the
+   * scope. Readable from a plan as `value.item` with area `identity` and field
+   * `position` (ADR-102) — the only way a plan can turn a drawn order into a
+   * per-entity value, because every other write assigns one value to the whole
+   * selection at once.
+   *
+   * Absent outside a bounded iteration — an entity scope also opens for a
+   * single-entity write, where "position" has no meaning. Reading it there
+   * fails closed instead of quietly answering zero.
+   */
+  position?: number;
 }
 
 export interface MechanicsExecutionInput {

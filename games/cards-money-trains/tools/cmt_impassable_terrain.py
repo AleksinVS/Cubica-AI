@@ -65,12 +65,38 @@ from shapely.ops import unary_union
 TERRAIN_INSIDE_SHARE_MIN = 0.95
 DECORATION_INSIDE_SHARE_MAX = 0.20
 
-# Решение продюсера: пятно 407 px² у (2462, 941), через которое на 19 px
-# проходит авторская дорога road-6-7, остаётся проходимым и НЕ становится
-# областью. Совпадение проверяется и по положению, и по площади, чтобы не
-# перепутать это пятно с каким-то другим, случайно попавшим рядом.
-EXCLUDED_PATCH_CENTROID = (2462.0, 941.0)
-EXCLUDED_PATCH_AREA_PX2 = 407
+# Решения продюсера: пятна, которые продюсер осмотрел и оставил ПРОХОДИМЫМИ,
+# хотя измерение отнесло их к местности. Это единственное место, где решение
+# человека перевешивает измерение, и каждое такое решение записано вместе с
+# его основанием — иначе через полгода будет не отличить осознанное решение от
+# случайно потерянного пятна.
+#
+# Пятно опознаётся по СВОИМ СОБСТВЕННЫМ признакам — положению и площади, — а не
+# по номеру получившейся из него области: номера областей присваиваются по
+# порядку и меняются при каждой пересборке разбиения, поэтому запрет «по
+# номеру» перестал бы указывать на то же самое пятно.
+PRODUCER_EXCLUDED_PATCHES = (
+    {
+        "centroid": (2462.0, 941.0),
+        "areaPx2": 407,
+        "reason": (
+            "авторская дорога road-6-7 проходит прямо через это пятно на 19 точек: "
+            "объявить его непроходимым значило бы объявить непроезжей уже "
+            "нарисованную автором дорогу"
+        ),
+    },
+    {
+        "centroid": (2300.0, 1311.0),
+        "areaPx2": 706,
+        "reason": (
+            "продюсер осмотрел предпросмотр и решил, что это пятно не является "
+            "непроходимой местностью. Государственная граница разрезает его надвое, "
+            "поэтому в сборке от 2026-07-31 оно давало сразу две области "
+            "(map-region-0945 площадью 344 px² и map-region-0947 площадью 362 px²) "
+            "в разных странах"
+        ),
+    },
+)
 EXCLUDED_PATCH_MATCH_TOLERANCE_PX = 3.0
 EXCLUDED_PATCH_AREA_TOLERANCE_PX2 = 5
 
@@ -123,8 +149,8 @@ def rows_to_polygon(rows: list[list[Any]]) -> Polygon | Any:
 def classify_patches(
     patches: list[dict[str, Any]],
     land_union: Any,
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
-    """Разделить растровые пятна на местность, декорацию и продюсерское исключение.
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
+    """Разделить растровые пятна на местность, декорацию и продюсерские исключения.
 
     `land_union` — объединение полигонов ТЕКУЩЕГО (ещё не тронутого этим
     файлом) разбиения на области: играбельная карта минус пустые пространства.
@@ -143,7 +169,9 @@ def classify_patches(
     terrain: list[dict[str, Any]] = []
     decoration: list[dict[str, Any]] = []
     ambiguous: list[dict[str, Any]] = []
-    excluded: dict[str, Any] | None = None
+    # Ключ — индекс правила в PRODUCER_EXCLUDED_PATCHES, чтобы ниже было видно,
+    # какое именно решение продюсера не нашло своего пятна.
+    excluded_by_rule: dict[int, dict[str, Any]] = {}
 
     for patch in patches:
         polygon = rows_to_polygon(patch["rows"])
@@ -157,19 +185,26 @@ def classify_patches(
             "bbox": patch["bbox"],
             "insideShare": inside_share,
         }
-        is_excluded_candidate = (
-            abs(centroid["x"] - EXCLUDED_PATCH_CENTROID[0]) <= EXCLUDED_PATCH_MATCH_TOLERANCE_PX
-            and abs(centroid["y"] - EXCLUDED_PATCH_CENTROID[1]) <= EXCLUDED_PATCH_MATCH_TOLERANCE_PX
-            and abs(patch["sizePx2"] - EXCLUDED_PATCH_AREA_PX2) <= EXCLUDED_PATCH_AREA_TOLERANCE_PX2
-        )
+        matched_rule: int | None = None
+        for rule_index, rule in enumerate(PRODUCER_EXCLUDED_PATCHES):
+            if (
+                abs(centroid["x"] - rule["centroid"][0]) <= EXCLUDED_PATCH_MATCH_TOLERANCE_PX
+                and abs(centroid["y"] - rule["centroid"][1]) <= EXCLUDED_PATCH_MATCH_TOLERANCE_PX
+                and abs(patch["sizePx2"] - rule["areaPx2"]) <= EXCLUDED_PATCH_AREA_TOLERANCE_PX2
+            ):
+                matched_rule = rule_index
+                break
         if inside_share >= TERRAIN_INSIDE_SHARE_MIN:
-            if is_excluded_candidate:
-                if excluded is not None:
+            if matched_rule is not None:
+                if matched_rule in excluded_by_rule:
+                    rule = PRODUCER_EXCLUDED_PATCHES[matched_rule]
                     raise SystemExit(
                         "найдено более одного пятна, совпадающего с продюсерским "
-                        "исключением у (2462, 941) — совпадение должно быть однозначным"
+                        f"исключением у ({rule['centroid'][0]:.0f}, {rule['centroid'][1]:.0f}) "
+                        "— совпадение должно быть однозначным"
                     )
-                excluded = record
+                record["producerDecisionReason"] = PRODUCER_EXCLUDED_PATCHES[matched_rule]["reason"]
+                excluded_by_rule[matched_rule] = record
             else:
                 terrain.append(record)
         elif inside_share <= DECORATION_INSIDE_SHARE_MAX:
@@ -189,13 +224,20 @@ def classify_patches(
             "Измеренное разделение (README) больше не подтверждается на этих данных — "
             "нужен разбор человеком, а не автоматический выбор стороны."
         )
-    if excluded is None:
+    missing = [
+        f"~{rule['areaPx2']} px² @ ({rule['centroid'][0]:.0f}, {rule['centroid'][1]:.0f})"
+        for index, rule in enumerate(PRODUCER_EXCLUDED_PATCHES)
+        if index not in excluded_by_rule
+    ]
+    if missing:
         raise SystemExit(
-            "продюсерское исключение (пятно ~407 px² у (2462, 941), пересечённое "
-            "дорогой road-6-7) не найдено среди пятен, классифицированных как местность — "
-            "проверьте измерение или решение продюсера"
+            f"продюсерские исключения не найдены среди пятен, классифицированных "
+            f"как местность: {', '.join(missing)} — проверьте измерение или решение "
+            "продюсера. Молча пропустить исключение нельзя: пятно тогда стало бы "
+            "непроходимым вопреки принятому решению"
         )
 
+    excluded = [excluded_by_rule[index] for index in range(len(PRODUCER_EXCLUDED_PATCHES))]
     return terrain, decoration, excluded
 
 

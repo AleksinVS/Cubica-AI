@@ -184,8 +184,8 @@ function hashModuleArtifact(descriptor, moduleCorpusHash, sharedKernel = undefin
 const rawDescriptors = [
   {
     moduleId: "cubica.core",
-    moduleVersion: "1.4.3",
-    behaviorVersion: "mechanics-core-v1alpha1-7",
+    moduleVersion: "1.5.0",
+    behaviorVersion: "mechanics-core-v1alpha1-8",
     dependencies: [],
     operations: [
       "core.assert",

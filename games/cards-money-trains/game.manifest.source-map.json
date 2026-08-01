@@ -2485,6 +2485,12 @@
         "pointer": "/root/mechanics/plans/session.setup.finalize/transaction/steps/3"
       }
     ],
+    "/mechanics/plans/session.setup.finalize/transaction/steps/4": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/session.setup.finalize/transaction/steps/4"
+      }
+    ],
     "/mechanics/plans/session.setup.finalize/planHash": [
       {
         "file": "games/cards-money-trains/authoring/game.authoring.json",

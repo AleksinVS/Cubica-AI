@@ -27,7 +27,7 @@
  *    road never silently "jumps" between two regions that do not touch.
  *
  * The cost of this proof is real and is not hidden: compiling the map (parsing
- * its 984 regions, validating them, and deriving the ~2 500 borders between
+ * its ~1 000 regions, validating them, and deriving the ~2 500 borders between
  * them) is measured in ADR-100 §4.4 at about 5 seconds, done once per process and
  * cached by the map's checksum afterwards. This file pays that cost itself
  * rather than assume some earlier test already warmed the cache, and reports
@@ -159,7 +159,7 @@ test("planning a road on the real author map finds one, and every stretch is hon
   const model = mainNetworkModel(manifest);
   // Not a pinned count: the map has already been redrawn once (the first
   // partition held 917 areas; cutting the impassable terrain out of it raised
-  // that to 984), and a literal here would only ever describe the map of the
+  // that to 982), and a literal here would only ever describe the map of the
   // day. What must hold of *any* published map is that it is a real partition
   // rather than a placeholder — the placeholder this replaced had 20 strips.
   assert.ok(

@@ -2007,6 +2007,10 @@ function checkStep(step, context) {
           results: bodyResults,
           pointer: bodyPointer,
           currentCollection: collection,
+          // Только внутри ограниченного обхода у элемента есть позиция
+          // (ADR-102). Одиночная запись в сущность тоже открывает область
+          // элемента, но там этот вопрос не имеет ответа.
+          insideBoundedIteration: true,
           cost: bodyCost,
           controlFlow: bodyStep.when
             ? checkPredicate(bodyStep.when, {
@@ -3581,6 +3585,22 @@ function checkExpression(expression, context, pointer) {
     case "value.item": {
       if (!context.currentCollection) fail("MECHANICS_ITEM_SCOPE_INVALID", pointer, "value.item is only valid while evaluating a collection item");
       if (expression.area === "identity") {
+        if (expression.field === "position") {
+          if (!context.insideBoundedIteration) {
+            fail(
+              "MECHANICS_ITEM_SCOPE_INVALID",
+              `${pointer}/field`,
+              "value.item position is readable only inside a bounded entity iteration"
+            );
+          }
+          return {
+            // Позиция — всегда целое неотрицательное число, поэтому объявляется
+            // именно целым: иначе её нельзя было бы записать в целочисленное
+            // поле, а именно для этого она и нужна.
+            type: { kind: "primitive", value: "integer" },
+            flow: { audience: context.currentCollection.audienceRef, integrity: "server" }
+          };
+        }
         return {
           type: { kind: "primitive", value: "string" },
           flow: { audience: context.currentCollection.audienceRef, integrity: "server" }

@@ -348,6 +348,11 @@ test("runtime orders by current, id-field related and decimal aggregate keys wit
     kind: "entities",
     collectionId: "entities",
     ids: ["alpha", "bravo", "charlie", "delta"],
+    // The whole point of this operation is the order of `ids`, and the result
+    // says so: a later bounded iteration keeps that order instead of
+    // re-sorting canonically (ADR-102). A plain `core.entities.select` result
+    // carries no such marker, because its id order is an artefact of storage.
+    ordered: true,
     tieGroups: [["alpha", "bravo"]]
   });
   assert.deepEqual(output.audit.at(-1)?.result, {

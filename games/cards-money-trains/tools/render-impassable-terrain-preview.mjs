@@ -166,10 +166,14 @@ const main = async () => {
     `промежуточного случая: ${measurement.terrainPatchCount} пятен лежат внутри ` +
     `разбиения (местность), ${measurement.decorationPatchCount} — вне его (декорация).`,
     "",
-    `Одно пятно — ${measurement.excludedPatch.areaPx2} точки в квадрате у ` +
-    `(${Math.round(measurement.excludedPatch.centroid.x)}, ${Math.round(measurement.excludedPatch.centroid.y)}) ` +
-    "— продюсер решил оставить проходимым: авторская дорога `road-6-7` идёт " +
-    "прямо через него на 19 точек. Оно НЕ входит в список ниже.",
+    `Решением продюсера оставлено ПРОХОДИМЫМИ пятен: ${measurement.excludedPatches.length}. ` +
+    "Они прошли признак «местность», но продюсер решил иначе, и в список ниже " +
+    "они не входят:",
+    "",
+    ...measurement.excludedPatches.map((patch) =>
+      `- ${patch.areaPx2} точки в квадрате у (${Math.round(patch.centroid.x)}, ` +
+      `${Math.round(patch.centroid.y)}) — ${patch.producerDecisionReason}.`
+    ),
     "",
     "## Река у двух озёр",
     "",

@@ -175,6 +175,10 @@ export function executeOrderingOperation(step: OrderStep, context: MechanicsExec
     kind: "entities",
     collectionId: selection.collectionId,
     ids,
+    // The whole point of this operation is the order of `ids`; marking it says
+    // so to every later step, and bounded iteration keeps that order instead of
+    // re-sorting canonically (ADR-102).
+    ordered: true,
     tieGroups
   };
 }

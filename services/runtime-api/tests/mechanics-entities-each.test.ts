@@ -424,8 +424,10 @@ function createState() {
           }
         }
       },
-      // Reverse insertion and rank order prove that `each` does not inherit
-      // either JavaScript object order or the preceding ordering result.
+      // Reverse insertion order relative to rank: omega is stored first but
+      // ranks 2, alpha is stored second but ranks 1. That mismatch is what
+      // proves the walk follows the ORDER RESULT (rank descending -> omega,
+      // alpha) rather than either JavaScript object order or the alphabet.
       relatedObjects: {
         omega: {
           objectType: "fixture.related",
@@ -505,7 +507,7 @@ test("authoring derives body module dependencies instead of locking only the out
   assert.ok(lowered.mechanics.moduleLock["cubica.relations"]);
 });
 
-test("runtime canonicalizes iteration and exposes only trusted item identity", () => {
+test("runtime walks an ordered selection in its order and exposes only trusted item identity", () => {
   const mechanics = createMechanics();
   const original = createState();
   const output = executeMechanicsTransaction({
@@ -540,11 +542,16 @@ test("runtime canonicalizes iteration and exposes only trusted item identity", (
       "attachEach[1].attachOne"
     ]
   );
+  // ADR-102: the plan says `order by rank descending`, so the walk must be
+  // omega (rank 2) then alpha (rank 1). Before that decision the runtime
+  // re-sorted here into alphabetical order and this same assertion read
+  // ["alpha", "omega"] — that re-sort is exactly what threw away a drawn
+  // order and made turn order impossible to record.
   assert.deepEqual(
     relationAudit.map((entry) =>
       (entry.result as { relatedIds: Array<string> }).relatedIds[0]),
-    ["alpha", "omega"],
-    "audit operation results must prove canonical entity-id order"
+    ["omega", "alpha"],
+    "audit operation results must prove the walk followed the ordering step"
   );
 });
 
@@ -741,4 +748,117 @@ test("every plan hash still changes when one region polygon coordinate changes",
     });
   }
   assert.doesNotThrow(() => checkMechanicsBundle(republished, { networkModels: mutatedNetworkModels }));
+});
+
+/**
+ * A plan that writes each item's own iteration position into its `rank`
+ * attribute. This is the shape ADR-102 exists for: the ONLY way a plan can
+ * turn an order into a per-entity value, because every other write assigns one
+ * value to the whole selection at once.
+ */
+function writePositionPlan(ordered: boolean): CubicaMechanicsIRV1Alpha1 {
+  const mechanics = createMechanics();
+  const steps: Array<CubicaMechanicsIRV1Alpha1["plans"][string]["transaction"]["steps"][number]> = [
+    selectRelatedStep(),
+    ...(ordered ? [orderRelatedStep()] : []),
+    {
+      id: "writeEach",
+      kind: "command",
+      op: "core.entities.each",
+      selection: { op: "value.result", stepId: ordered ? "ordered" : "selected" },
+      body: [{
+        id: "writeOne",
+        kind: "command",
+        op: "core.entity.attributes.patch",
+        entity: {
+          collection: "relatedObjects",
+          entityId: { op: "value.item", area: "identity", field: "id" }
+        },
+        patches: [{
+          operation: "set",
+          path: ["rank"],
+          value: { op: "value.item", area: "identity", field: "position" }
+        }]
+      }]
+    }
+  ];
+  mechanics.plans.writePositions = {
+    planHash: HASH,
+    transaction: { steps }
+  } as CubicaMechanicsIRV1Alpha1["plans"][string];
+  return finalizePlanHashes(mechanics);
+}
+
+const ranksAfterWritingPositions = (ordered: boolean): Record<string, unknown> => {
+  const mechanics = writePositionPlan(ordered);
+  const output = executeMechanicsTransaction({
+    mechanics,
+    plan: mechanics.plans.writePositions,
+    state: createState(),
+    actorContext: { sessionRole: "player" },
+    networkModels: NETWORK_MODELS
+  });
+  const related = (
+    output.candidateState.public as {
+      relatedObjects: Record<string, { attributes: { rank: unknown } }>;
+    }
+  ).relatedObjects;
+  return { alpha: related.alpha.attributes.rank, omega: related.omega.attributes.rank };
+};
+
+test("an item can read its own position, and the position follows the ordering step", () => {
+  // Ordered by rank descending, so omega (rank 2) is walked first.
+  assert.deepEqual(
+    ranksAfterWritingPositions(true),
+    { omega: 0, alpha: 1 },
+    "positions must follow the order the plan established, not the alphabet"
+  );
+});
+
+test("a plain selection carries no order, so its walk stays canonical", () => {
+  // No ordering step: the id order of a plain selection is an artefact of how
+  // the collection happened to be stored and must never be observable, so the
+  // walk is canonical and alpha comes first — even though omega is stored
+  // first and outranks it.
+  assert.deepEqual(
+    ranksAfterWritingPositions(false),
+    { alpha: 0, omega: 1 },
+    "an unordered selection must still be walked in canonical identifier order"
+  );
+});
+
+test("publication admits a position read inside an iteration and refuses one outside it", () => {
+  const inside = writePositionPlan(true);
+  const schema = validateMechanicsSchema(inside);
+  assert.equal(schema.valid, true, JSON.stringify(schema.errors));
+  assert.doesNotThrow(() => checkMechanicsBundle(inside, { networkModels: NETWORK_MODELS }));
+
+  // The same read, but in a single-entity write that no bounded iteration
+  // surrounds. There the question "which position?" has no answer, so
+  // publication must refuse it rather than let the runtime decide later.
+  const outside = createMechanics();
+  outside.plans.positionOutsideIteration = {
+    planHash: HASH,
+    transaction: {
+      steps: [{
+        id: "writeOne",
+        kind: "command",
+        op: "core.entity.attributes.patch",
+        entity: {
+          collection: "relatedObjects",
+          entityId: { op: "value.literal", value: "alpha" }
+        },
+        patches: [{
+          operation: "set",
+          path: ["rank"],
+          value: { op: "value.item", area: "identity", field: "position" }
+        }]
+      }]
+    }
+  } as CubicaMechanicsIRV1Alpha1["plans"][string];
+  const finalized = finalizePlanHashes(outside);
+  assert.throws(
+    () => checkMechanicsBundle(finalized, { networkModels: NETWORK_MODELS }),
+    /position is readable only inside a bounded entity iteration/u
+  );
 });

@@ -615,7 +615,7 @@
             "patchCount",
             "terrainPatchCount",
             "decorationPatchCount",
-            "excludedPatch",
+            "excludedPatches",
             "riverCandidatePixelCount",
             "riverSelectedPixelCount",
             "riverHalfStrokeWidthPx",
@@ -628,14 +628,19 @@
             "patchCount": { "type": "integer", "minimum": 0, "maximum": 5000 },
             "terrainPatchCount": { "type": "integer", "minimum": 0, "maximum": 5000 },
             "decorationPatchCount": { "type": "integer", "minimum": 0, "maximum": 5000 },
-            "excludedPatch": {
-              "type": "object",
-              "additionalProperties": false,
-              "description": "Пятно, которое продюсер решил оставить проходимым (дорога road-6-7 идёт прямо через него), несмотря на то, что оно прошло признак «местность».",
-              "required": ["areaPx2", "centroid"],
-              "properties": {
-                "areaPx2": { "type": "number", "exclusiveMinimum": 0 },
-                "centroid": { "$ref": "#/definitions/point" }
+            "excludedPatches": {
+              "type": "array",
+              "maxItems": 100,
+              "description": "Пятна, которые продюсер решил оставить ПРОХОДИМЫМИ, хотя измерение отнесло их к местности. Это единственное место, где решение человека перевешивает измерение, поэтому каждое пятно несёт основание решения текстом, а не только числа.",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["areaPx2", "centroid", "producerDecisionReason"],
+                "properties": {
+                  "areaPx2": { "type": "number", "exclusiveMinimum": 0 },
+                  "centroid": { "$ref": "#/definitions/point" },
+                  "producerDecisionReason": { "type": "string", "minLength": 1 }
+                }
               }
             },
             "riverCandidatePixelCount": { "type": "integer", "minimum": 0 },
@@ -673,8 +678,7 @@
     "terrainSurgeryLogEntry": {
       "oneOf": [
         { "$ref": "#/definitions/terrainSurgeryImpassableRegionEntry" },
-        { "$ref": "#/definitions/terrainSurgerySplitRegionEntry" },
-        { "$ref": "#/definitions/terrainSurgeryOverlapCleanupEntry" }
+        { "$ref": "#/definitions/terrainSurgerySplitRegionEntry" }
       ]
     },
     "terrainSurgeryImpassableRegionEntry": {
@@ -701,39 +705,6 @@
         "originalRegionId": { "$ref": "#/definitions/regionId" },
         "newRegionId": { "$ref": "#/definitions/regionId" },
         "areaPx2": { "type": "number", "exclusiveMinimum": 0 }
-      }
-    },
-    "terrainSurgeryOverlapCleanupEntry": {
-      "type": "object",
-      "additionalProperties": false,
-      "description": "Уборка неизмеримо узких наложений, остающихся после округления координат до сетки хранения (шесть знаков). Запись одна на весь проход уборки и перечисляет каждую исправленную пару вместе с тем, КАКИМ способом наложение снято и сколько общей границы у пары было до и осталось после: способ snap сшивает контуры и границу сохраняет, способ subtract вычитает раздутое наложение и границу пары отрывает целиком. Разрушительный способ обязан быть виден в данных, а не молчать, потому что оторванная общая граница — это запрет проезда там, где земля сплошная (см. apply_impassable_terrain() в ../tools/cmt_region_partition.py и ADR-100).",
-      "required": ["kind", "fixedPairs"],
-      "properties": {
-        "kind": { "const": "overlap-cleanup" },
-        "fixedPairs": {
-          "type": "array",
-          "maxItems": 5000,
-          "items": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-              "shrunkRegionId",
-              "keptRegionId",
-              "overlapAreaPx2",
-              "method",
-              "sharedBoundaryBeforePx",
-              "sharedBoundaryAfterPx"
-            ],
-            "properties": {
-              "shrunkRegionId": { "$ref": "#/definitions/regionId" },
-              "keptRegionId": { "$ref": "#/definitions/regionId" },
-              "overlapAreaPx2": { "type": "number", "minimum": 0 },
-              "method": { "enum": ["snap", "subtract"] },
-              "sharedBoundaryBeforePx": { "type": "number", "minimum": 0 },
-              "sharedBoundaryAfterPx": { "type": "number", "minimum": 0 }
-            }
-          }
-        }
       }
     },
     "join": {
