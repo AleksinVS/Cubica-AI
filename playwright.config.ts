@@ -48,10 +48,9 @@ const runtimePort = Number(process.env.E2E_RUNTIME_PORT ?? 3201);
 const playerPort = Number(process.env.E2E_PLAYER_PORT ?? 3200);
 const editorPort = Number(process.env.E2E_EDITOR_PORT ?? 3202);
 const runtimeUrl = `http://127.0.0.1:${runtimePort}`;
-// Browsers treat localhost as a potentially trustworthy local origin. Using
-// that canonical name keeps production Secure cookies enabled in E2E while
-// still binding the owned server process to the IPv4 loopback interface.
-const playerUrl = `http://localhost:${playerPort}`;
+// Editor embeds player-web in an iframe. Keep both apps on the same loopback
+// site so SameSite runtime credentials remain first-party during local E2E.
+const playerUrl = `http://127.0.0.1:${playerPort}`;
 const editorUrl = `http://127.0.0.1:${editorPort}`;
 const editorProjectRoot = playerOnly
   ? ""

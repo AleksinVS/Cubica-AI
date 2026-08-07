@@ -1,7 +1,7 @@
 # ADR-004: LLM Context Pipeline and Game Editor Role
 
-## Status
-Accepted
+**Status:** Accepted
+
 
 ## Context
 Платформа Cubica использует LLM (Large Language Model) в качестве игрового движка. Основные вызовы этого подхода:

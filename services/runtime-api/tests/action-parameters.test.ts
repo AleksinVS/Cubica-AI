@@ -10,6 +10,7 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
+import Ajv2020Lib from "ajv/dist/2020.js";
 import type { RuntimeManifestActionDefinition } from "@cubica/contracts-runtime";
 
 import { RequestValidationError } from "../src/modules/errors.ts";
@@ -78,3 +79,71 @@ test("the strict 2020-12 validator rejects every unregistered schema keyword", (
     /strict mode: unknown keyword: "x-legacy-extension"/u
   );
 });
+
+test("reference-subset validators reuse one compilation for an equivalent sorted selection", async () => {
+  type AjvPrototype = { compile: (schema: unknown) => unknown };
+  const Ajv2020 = ((Ajv2020Lib as unknown as { default?: Function }).default ??
+    Ajv2020Lib) as unknown as { prototype: AjvPrototype };
+  const originalCompile = Ajv2020.prototype.compile;
+  let compileCalls = 0;
+  Ajv2020.prototype.compile = function (schema: unknown): unknown {
+    compileCalls += 1;
+    return originalCompile.call(this, schema);
+  };
+
+  try {
+    // A query string creates an isolated module instance so this test counts
+    // only compilations caused by its calls, independent of earlier tests.
+    const moduleUrl = new URL("../src/modules/runtime/actionParameters.ts", import.meta.url);
+    moduleUrl.searchParams.set("subset-cache-test", "1");
+    const { validateActionReferenceParameterSubset } = await import(moduleUrl.href);
+    const definition = referenceSubsetAction();
+    const params = { originId: "origin", destinationId: "destination" };
+
+    assert.deepEqual(validateActionReferenceParameterSubset(
+      definition,
+      params,
+      ["originId", "destinationId"],
+      { requiredVisibility: "public" }
+    ), params);
+    assert.deepEqual(validateActionReferenceParameterSubset(
+      definition,
+      params,
+      ["destinationId", "originId"],
+      { requiredVisibility: "public" }
+    ), params);
+
+    assert.equal(
+      compileCalls,
+      1,
+      "parameter order must not cause AJV to compile the same preview contract again"
+    );
+  } finally {
+    Ajv2020.prototype.compile = originalCompile;
+  }
+});
+
+function referenceSubsetAction(): RuntimeManifestActionDefinition {
+  const reference = (collection: string) => ({
+    type: "string",
+    maxLength: 128,
+    "x-cubica-ref": {
+      kind: "object",
+      collection,
+      visibility: "public"
+    }
+  });
+  return {
+    ...actionWithoutParams,
+    actionId: "fixture.preview",
+    paramsSchema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        originId: reference("origins"),
+        destinationId: reference("destinations")
+      },
+      required: ["originId", "destinationId"]
+    }
+  } as RuntimeManifestActionDefinition;
+}

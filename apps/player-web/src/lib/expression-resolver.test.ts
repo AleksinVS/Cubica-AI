@@ -42,4 +42,24 @@ describe("turn-based expression bindings", () => {
       { public: {} }
     )).toEqual({ value: "fallback", quoted: "not set" });
   });
+
+  it("resolves adjacent complete bindings independently", () => {
+    const bindingState = { public: { first: "alpha", second: "beta", third: 3 } };
+
+    expect(resolveExpressions("{{state.public.first}} {{state.public.second}}", bindingState))
+      .toBe("alpha beta");
+    expect(resolveExpressions(
+      "{{state.public.first}}/{{state.public.second}}/{{state.public.third}}",
+      bindingState
+    )).toBe("alpha/beta/3");
+    expect(resolveExpressions(
+      "Values: {{state.public.first}} and {{state.public.second}}.",
+      bindingState
+    )).toBe("Values: alpha and beta.");
+  });
+
+  it("keeps a single complete binding unwrapped", () => {
+    const value = { id: "bound-object" };
+    expect(resolveExpressions("{{bound}}", {}, { bound: value })).toBe(value);
+  });
 });

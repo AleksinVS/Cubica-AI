@@ -1,7 +1,7 @@
 # ADR-046: AI-Driven Game Runtime Mode
 
 - **Дата**: 2026-06-11
-- **Статус**: Accepted
+**Status:** Accepted
 - **Авторы**: Codex
 - **Компоненты**: Runtime API, Player Web, Game Manifests, Agent Runtime, AI Contracts, Cubica Surface, Portal, Session State
 - **Связанные решения**: ADR-001, ADR-003, ADR-004, ADR-025, ADR-029, ADR-040, ADR-043, ADR-044, ADR-045, ADR-084

@@ -1,11 +1,10 @@
 # ADR-001: MVP и LLM-first архитектура игровых манифестов
 
-> **Статус:** Superseded by ADR-013 в части структуры манифестов.
+**Status:** Superseded by ADR-013 в части структуры манифестов.
 > Концепция LLM-first остается актуальной, но разделение на логический
 > и UI-манифесты описано в ADR-013.
 
 - **Дата**: 2025-11-20
-- **Статус**: Proposed
 - **Авторы**: проектная команда Cubica / agent-architect
 - **Компоненты**: game-player frontend (`draft/game-player-nextjs`), SDK (`SDK/*`), Router, Game Engine, формат игровых манифестов (`docs/architecture/schemas/*`, `games/*`)
 

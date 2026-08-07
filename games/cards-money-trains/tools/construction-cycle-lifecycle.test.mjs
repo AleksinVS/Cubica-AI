@@ -34,6 +34,7 @@ const admissionController = {
 };
 let commandSequence = 0;
 let manifestPromise;
+let immutableBundle;
 
 const readJson = async (filePath) =>
   JSON.parse(await readFile(filePath, "utf8"));
@@ -68,6 +69,16 @@ const loadManifest = async () => {
   })();
   return manifestPromise;
 };
+
+/**
+ * Materialize the byte-exact rules bundle once for this test file.
+ *
+ * Every fresh store still validates the supplied bundle at its trust boundary;
+ * sharing only avoids repeating deterministic cloning, canonicalization and
+ * hashing of the same 10 MB author package for every isolated session.
+ */
+const loadImmutableBundle = (manifest) =>
+  immutableBundle ??= createImmutableBundleContent(manifest.meta.id, manifest);
 
 const teamObject = (id, coins = 100) => ({
   objectType: "game.team",
@@ -116,7 +127,7 @@ const createSession = async (manifest, state) => {
     gameId: manifest.meta.id,
     sessionRole: "facilitator",
     initialState: structuredClone(state),
-    immutableBundle: createImmutableBundleContent(manifest.meta.id, manifest),
+    immutableBundle: loadImmutableBundle(manifest),
     principal: {
       principalId: "construction-cycle-test-facilitator",
       kind: "local-controller",

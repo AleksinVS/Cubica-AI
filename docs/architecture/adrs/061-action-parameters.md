@@ -1,6 +1,6 @@
 # ADR-061: Параметры действий манифеста (action parameters)
 
-- **Status**: Accepted (2026-07-06)
+**Status:** Accepted (2026-07-06)
 - **Date**: 2026-07-06
 - **Author**: AI Agent (по заказу владельца проекта)
 - **Context**: Runtime platform capabilities / manifest action contract

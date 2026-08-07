@@ -127,13 +127,17 @@
       "additionalProperties": false,
       "properties": {
         "x": {
-          "maximum": 1000000000,
-          "minimum": -1000000000,
+          "description": "Canonical geometry coordinate on the 1e-6 storage grid.",
+          "maximum": 10000000,
+          "minimum": -10000000,
+          "multipleOf": 0.000001,
           "type": "number"
         },
         "y": {
-          "maximum": 1000000000,
-          "minimum": -1000000000,
+          "description": "Canonical geometry coordinate on the 1e-6 storage grid.",
+          "maximum": 10000000,
+          "minimum": -10000000,
+          "multipleOf": 0.000001,
           "type": "number"
         }
       },
@@ -141,6 +145,50 @@
         "x",
         "y"
       ],
+      "type": "object"
+    },
+    "GameManifestCanonicalPolyline": {
+      "description": "Schema-first transport polyline. Runtime may derive intermediate points for a transaction, but every manifest-declared stored point uses the canonical coordinate contract; endpoints must match the owning graph nodes and consecutive points must differ, which semantic validation checks because JSON Schema cannot compare array entries.",
+      "items": {
+        "$ref": "#/definitions/GameManifestCanonicalPoint"
+      },
+      "maxItems": 20000,
+      "minItems": 2,
+      "type": "array"
+    },
+    "GameManifestStateScopeGeometryProjection": {
+      "additionalProperties": {},
+      "description": "Public or secret state scope whose dynamic object collections apply the shared stored-geometry contract without constraining game-specific attributes.",
+      "properties": {
+        "objects": {
+          "additionalProperties": {
+            "additionalProperties": {
+              "additionalProperties": true,
+              "properties": {
+                "attributes": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "geometry": {
+                      "additionalProperties": true,
+                      "properties": {
+                        "polyline": {
+                          "$ref": "#/definitions/GameManifestCanonicalPolyline"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  },
+                  "type": "object"
+                }
+              },
+              "type": "object"
+            },
+            "type": "object"
+          },
+          "description": "Dynamic object collections. Any stored object geometry.polyline is validated by the canonical schema regardless of collection, visibility, or game-specific object type.",
+          "type": "object"
+        }
+      },
       "type": "object"
     },
     "GameManifestTransportRegion": {
@@ -162,7 +210,7 @@
           "type": "array"
         },
         "holes": {
-          "description": "Inner rings: areas enclosed by the outer ring that do not belong to this region, such as an enclave that is a region of its own. Planning algorithm region-segment-minimum-v2 supports them: the region is split into triangles for path finding, and an inner ring needs no special case there. An enclave and the region around it share one closed border, which is one navigation crossing.",
+          "description": "Inner rings: areas enclosed by the outer ring that do not belong to this region, such as an enclave that is a region of its own. Planning algorithm region-segment-minimum-v3 supports them: the region is split into triangles for path finding, and an inner ring needs no special case there. An enclave and the region around it share one closed border, which is one navigation crossing.",
           "items": {
             "items": {
               "$ref": "#/definitions/GameManifestCanonicalPoint"
@@ -189,7 +237,7 @@
           "const": "region-segment-minimum"
         },
         "algorithmVersion": {
-          "const": "region-segment-minimum-v2"
+          "const": "region-segment-minimum-v3"
         },
         "geometryVersion": {
           "maxLength": 128,
@@ -1240,12 +1288,10 @@
       "additionalProperties": false,
       "properties": {
         "public": {
-          "additionalProperties": {},
-          "type": "object"
+          "$ref": "#/definitions/GameManifestStateScopeGeometryProjection"
         },
         "secret": {
-          "additionalProperties": {},
-          "type": "object"
+          "$ref": "#/definitions/GameManifestStateScopeGeometryProjection"
         },
         "playersTemplate": {
           "$ref": "#/definitions/GameManifestPlayersTemplate"

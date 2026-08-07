@@ -118,7 +118,9 @@ import { createDefaultCollapsedTreePointers } from "@/components/json-tree-view"
 import type { PrototypeAuditNoticeRecord } from "@/components/prototype-audit-notice";
 import type { PreviewAiIntent, PreviewPromptContext } from "@/components/preview-selection-overlay";
 import {
+  isPlayerPreviewBridgeReadyMessage,
   isPlayerPreviewEntitiesMessage,
+  isPlayerPreviewRestoreResultMessage,
   isPlayerPreviewSessionSnapshotMessage,
   mapPlayerPreviewEntitiesToAuthoringDescriptors,
   type PreviewSelectionSourceMap
@@ -215,7 +217,6 @@ import {
   positionsFromLayout,
   prototypeSemanticsFromPrompt,
   readRuntimeEventVersion,
-  readSessionIdFromPreviewUrl,
   safeUrlOrigin,
   shouldAutoApplyPreview,
   shouldOfferPreviewApply,
@@ -242,7 +243,6 @@ import type {
   EditorLayoutDocument,
   EditorLayoutDocumentBody,
   EditorPluginValidationResult,
-  EditorPreviewRollbackResponse,
   EditorSessionListResult,
   EditorSessionSummary,
   LeftSidebarPanel,
@@ -497,6 +497,21 @@ export function useEditorWorkspace() {
     previewRendererAdapterRef,
     regionSnapshotTokenRef
   } = usePreviewRuntimeState();
+  // Preview session credentials belong to player-web's HttpOnly BFF cookie.
+  // These refs coordinate iframe readiness and request/response messages
+  // without copying that credential into editor state or browser JavaScript.
+  const previewRuntimeSessionIdRef = useRef<string | undefined>(previewRuntimeSessionId);
+  const previewFrameAcceptingMessagesRef = useRef(false);
+  const previewFrameLoadWaitersRef = useRef(new Set<() => void>());
+  const previewSessionWaitersRef = useRef(new Set<(sessionId: string) => void>());
+  // Runtime event ids never rewind. This signed offset maps that durable
+  // ledger onto the editor's logical T0..Tn timeline after a restore.
+  const previewRuntimeSequenceOffsetRef = useRef(0);
+  const previewRestoreRequestsRef = useRef(new Map<string, {
+    readonly resolve: (version: { readonly stateVersion: number; readonly lastEventSequence: number }) => void;
+    readonly reject: (error: Error) => void;
+    readonly timeout: number;
+  }>());
 
   const {
     aiApplyState,
@@ -1440,6 +1455,107 @@ export function useEditorWorkspace() {
     setPendingJsonRevealPointer(undefined);
   }, [monacoApi, pendingJsonRevealPointer, rightSidebarPanel, viewModel.snapshot.locationMap]);
 
+  /** Posts a bounded snapshot request only after the player iframe owns its URL. */
+  const requestCurrentPreviewSnapshot = useCallback(() => {
+    if (previewUrl === null || !previewFrameAcceptingMessagesRef.current) {
+      return;
+    }
+    const expectedOrigin = safeUrlOrigin(previewUrl);
+    if (expectedOrigin === undefined) {
+      return;
+    }
+    previewIframeRef.current?.contentWindow?.postMessage(
+      {
+        source: "cubica-editor-web",
+        type: "requestPreviewSnapshot",
+        version: 1
+      },
+      expectedOrigin
+    );
+  }, [previewIframeRef, previewUrl]);
+
+  /** Marks the newly navigated iframe ready and closes both mounting orders. */
+  const handlePreviewFrameLoad = useCallback(() => {
+    previewFrameAcceptingMessagesRef.current = true;
+    for (const resolve of previewFrameLoadWaitersRef.current) {
+      resolve();
+    }
+    previewFrameLoadWaitersRef.current.clear();
+    requestCurrentPreviewSnapshot();
+  }, [requestCurrentPreviewSnapshot]);
+
+  function waitForPreviewFrameLoad(timeoutMs = 30_000): Promise<void> {
+    if (previewFrameAcceptingMessagesRef.current) {
+      return Promise.resolve();
+    }
+    return new Promise<void>((resolve, reject) => {
+      const done = () => {
+        window.clearTimeout(timeout);
+        previewFrameLoadWaitersRef.current.delete(done);
+        resolve();
+      };
+      const timeout = window.setTimeout(() => {
+        previewFrameLoadWaitersRef.current.delete(done);
+        reject(new Error("Player preview iframe did not finish loading."));
+      }, timeoutMs);
+      previewFrameLoadWaitersRef.current.add(done);
+    });
+  }
+
+  function waitForPreviewRuntimeSession(timeoutMs = 30_000): Promise<string> {
+    const currentSessionId = previewRuntimeSessionIdRef.current;
+    if (currentSessionId !== undefined) {
+      return Promise.resolve(currentSessionId);
+    }
+    return new Promise<string>((resolve, reject) => {
+      const done = (sessionId: string) => {
+        window.clearTimeout(timeout);
+        previewSessionWaitersRef.current.delete(done);
+        resolve(sessionId);
+      };
+      const timeout = window.setTimeout(() => {
+        previewSessionWaitersRef.current.delete(done);
+        reject(new Error("Player preview did not publish its runtime session."));
+      }, timeoutMs);
+      previewSessionWaitersRef.current.add(done);
+    });
+  }
+
+  function requestPreviewRestore(input: {
+    readonly sessionId: string;
+    readonly state: Record<string, unknown>;
+    readonly version: { readonly stateVersion: number; readonly lastEventSequence: number };
+    readonly targetEventSequence?: number;
+  }): Promise<{ readonly stateVersion: number; readonly lastEventSequence: number }> {
+    if (previewUrl === null || !previewFrameAcceptingMessagesRef.current) {
+      return Promise.reject(new Error("Player preview iframe is not ready for rollback."));
+    }
+    const expectedOrigin = safeUrlOrigin(previewUrl);
+    const frameWindow = previewIframeRef.current?.contentWindow;
+    if (expectedOrigin === undefined || frameWindow === undefined || frameWindow === null) {
+      return Promise.reject(new Error("Player preview origin is not available for rollback."));
+    }
+
+    const requestId = crypto.randomUUID();
+    return new Promise((resolve, reject) => {
+      const timeout = window.setTimeout(() => {
+        previewRestoreRequestsRef.current.delete(requestId);
+        reject(new Error("Player preview rollback timed out."));
+      }, 10_000);
+      previewRestoreRequestsRef.current.set(requestId, { resolve, reject, timeout });
+      frameWindow.postMessage(
+        {
+          source: "cubica-editor-web",
+          type: "restorePreviewSession",
+          protocolVersion: 1,
+          requestId,
+          ...input
+        },
+        expectedOrigin
+      );
+    });
+  }
+
   useEffect(() => {
     if (previewUrl === null) {
       return;
@@ -1454,6 +1570,30 @@ export function useEditorWorkspace() {
       }
 
       if (expectedOrigin !== undefined && event.origin !== expectedOrigin) {
+        return;
+      }
+
+      if (!previewFrameAcceptingMessagesRef.current) {
+        return;
+      }
+
+      if (isPlayerPreviewBridgeReadyMessage(event.data)) {
+        requestCurrentPreviewSnapshot();
+        return;
+      }
+
+      if (isPlayerPreviewRestoreResultMessage(event.data)) {
+        const pending = previewRestoreRequestsRef.current.get(event.data.requestId);
+        if (pending === undefined) {
+          return;
+        }
+        window.clearTimeout(pending.timeout);
+        previewRestoreRequestsRef.current.delete(event.data.requestId);
+        if (event.data.ok && event.data.sessionVersion !== undefined) {
+          pending.resolve(event.data.sessionVersion);
+        } else {
+          pending.reject(new Error(event.data.error ?? "Player preview rollback returned no runtime version."));
+        }
         return;
       }
 
@@ -1476,11 +1616,27 @@ export function useEditorWorkspace() {
           return;
         }
 
-        setSelectedPreviewTraceSequence(event.data.sessionVersion.lastEventSequence);
+        previewRuntimeSessionIdRef.current = event.data.sessionId;
+        for (const resolve of previewSessionWaitersRef.current) {
+          resolve(event.data.sessionId);
+        }
+        previewSessionWaitersRef.current.clear();
+        const logicalSequence = event.data.sessionVersion.lastEventSequence - previewRuntimeSequenceOffsetRef.current;
+        if (!Number.isSafeInteger(logicalSequence) || logicalSequence < 0) {
+          return;
+        }
+        const logicalMessage = {
+          ...event.data,
+          sessionVersion: {
+            ...event.data.sessionVersion,
+            lastEventSequence: logicalSequence
+          }
+        };
+        setSelectedPreviewTraceSequence(logicalSequence);
         setPreviewRuntimeSessionId(event.data.sessionId);
         setPreviewTrace((currentTrace) => {
-          const nextTrace = upsertRuntimeSnapshotInTrace(currentTrace, event.data);
-          void persistPreviewTraceSnapshot(nextTrace, event.data, editorSessionRef.current?.sessionId).catch(() => {
+          const nextTrace = upsertRuntimeSnapshotInTrace(currentTrace, logicalMessage);
+          void persistPreviewTraceSnapshot(nextTrace, logicalMessage, editorSessionRef.current?.sessionId).catch(() => {
             setStatusMessage("Preview trace persistence failed.");
           });
           return nextTrace;
@@ -1491,7 +1647,14 @@ export function useEditorWorkspace() {
 
     window.addEventListener("message", handlePreviewMessage);
     return () => window.removeEventListener("message", handlePreviewMessage);
-  }, [currentDocument.filePath, currentDocument.gameId, previewRuntimeSessionId, previewSourceMaps, previewUrl]);
+  }, [
+    currentDocument.filePath,
+    currentDocument.gameId,
+    previewRuntimeSessionId,
+    previewSourceMaps,
+    previewUrl,
+    requestCurrentPreviewSnapshot
+  ]);
 
   // Design-mode auto-apply (ADR-057 §4.8; design-spec §3.3). In "Дизайн" a valid
   // (compilable) edit applies to the preview automatically after a debounce,
@@ -1729,6 +1892,9 @@ export function useEditorWorkspace() {
   }
 
   function clearPreparedPreview() {
+    previewFrameAcceptingMessagesRef.current = false;
+    previewRuntimeSessionIdRef.current = undefined;
+    previewRuntimeSequenceOffsetRef.current = 0;
     setPreviewUrl(null);
     setPreviewRuntimeSessionId(undefined);
     setPreviewSourceMaps([]);
@@ -2068,9 +2234,10 @@ export function useEditorWorkspace() {
   /**
    * Compiles the session manifests and (re)prepares a runtime preview session on
    * the CURRENT worktree content, resetting the on-screen preview + trace to that
-   * fresh session. Returns the prepared session descriptor so callers that need
-   * the new `sessionId`/`playerUrl` (the recovery ladder) can act on it without
-   * waiting for React state to flush. Carries NO dirty/blocking guard — that is
+   * fresh session. Returns the prepared player URL; callers that need the new
+   * runtime `sessionId` wait for the origin-checked iframe snapshot because the
+   * player BFF, not editor-web, creates and authenticates that session. Carries
+   * NO dirty/blocking guard — that is
    * the caller's responsibility (`handlePreview` guards; the apply pipeline saves
    * first). On success it records the applied document version so the freshness
    * axis (editor-preview-first-ux §9.6) resets to "актуален".
@@ -2093,9 +2260,14 @@ export function useEditorWorkspace() {
       setPluginDiagnostics(pluginDiagnosticsFromWorkflowResponse(result));
 
       if (result.ready && typeof result.playerUrl === "string") {
-        const runtimeSessionId = typeof result.sessionId === "string" ? result.sessionId : readSessionIdFromPreviewUrl(result.playerUrl);
+        // The iframe creates its session through player-web's BFF. Reset the
+        // previous identity before navigation and accept only the snapshot
+        // published after the new frame reports `load`.
+        previewFrameAcceptingMessagesRef.current = false;
+        previewRuntimeSessionIdRef.current = undefined;
+        previewRuntimeSequenceOffsetRef.current = 0;
         setPreviewUrl(result.playerUrl);
-        setPreviewRuntimeSessionId(runtimeSessionId);
+        setPreviewRuntimeSessionId(undefined);
         setPreviewSourceMaps(result.sourceMaps ?? []);
         setPreviewEntities([]);
         setPreviewUnresolvedEntityCount(0);
@@ -2108,7 +2280,7 @@ export function useEditorWorkspace() {
         setPreviewPointSelectionMode(false);
         clearPreviewPointerPlayReset();
         setPreviewTrace(createPreviewPlaythroughTrace({
-          traceId: runtimeSessionId === undefined ? `preview-${Date.now()}` : `preview-${runtimeSessionId}`,
+          traceId: `preview-${Date.now()}`,
           gameId: currentDocument.gameId
         }));
         setSelectedPreviewTraceSequence(undefined);
@@ -2118,7 +2290,7 @@ export function useEditorWorkspace() {
         setEditsSincePreview(0);
         setWorkflowState("ready");
         setStatusMessage("Preview session is ready");
-        return { ready: true, sessionId: runtimeSessionId, playerUrl: result.playerUrl };
+        return { ready: true, playerUrl: result.playerUrl };
       }
 
       // Broken compile: DO NOT blank a working preview (ADR-057 §4.12; §9.6
@@ -2217,8 +2389,17 @@ export function useEditorWorkspace() {
     }
 
     const prepared = await preparePreviewSession();
-    if (!prepared.ready || prepared.sessionId === undefined || prepared.playerUrl === undefined) {
+    if (!prepared.ready || prepared.playerUrl === undefined) {
       setStatusMessage("Правки не применены — компиляция заблокирована.");
+      return;
+    }
+
+    let preparedSessionId: string;
+    try {
+      await waitForPreviewFrameLoad();
+      preparedSessionId = await waitForPreviewRuntimeSession();
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : "Новая preview-сессия не запустилась.");
       return;
     }
 
@@ -2227,13 +2408,14 @@ export function useEditorWorkspace() {
       return;
     }
 
-    await walkPreviewRecoveryLadder(preApplyTrace, targetSequence, prepared.sessionId, prepared.playerUrl);
+    await walkPreviewRecoveryLadder(preApplyTrace, targetSequence, preparedSessionId, prepared.playerUrl);
   }
 
   /**
    * Walks the recovery ladder rungs (editor-preview-first-ux §9.2) against a
    * freshly prepared session, attempting a runtime restore per restorable rung
-   * via the EXISTING preview-restore route. The first rung whose restore succeeds
+   * through the existing runtime preview-restore contract, proxied by the
+   * credential-owning player iframe. The first rung whose restore succeeds
    * wins; its plain-language message is surfaced. The terminal `restart` rung
    * leaves the fresh playthrough at its start. State compatibility is inferred
    * from the available signals (which snapshots the pre-apply trace holds and
@@ -2254,23 +2436,19 @@ export function useEditorWorkspace() {
       }
 
       setPreviewRollbackState("restoring");
+      if (!isRuntimeStateRecord(rung.snapshotState)) {
+        continue;
+      }
       try {
-        const response = await fetch("/api/editor/preview/rollback", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            gameId: currentDocument.gameId,
-            sessionId,
-            state: rung.snapshotState,
-            version: rung.version,
-            targetEventSequence: rung.sequence
-          })
+        const restoredVersion = await requestPreviewRestore({
+          sessionId,
+          state: rung.snapshotState,
+          version: rung.version,
+          targetEventSequence: rung.sequence
         });
-        const result = (await response.json().catch(() => ({}))) as EditorPreviewRollbackResponse;
-        if (!response.ok || !result.ok) {
-          continue;
-        }
+        previewRuntimeSequenceOffsetRef.current = restoredVersion.lastEventSequence - rung.sequence;
         setSelectedPreviewTraceSequence(rung.sequence);
+        previewFrameAcceptingMessagesRef.current = false;
         setPreviewUrl(addPreviewReloadNonce(playerUrl, rung.sequence));
         setPreviewRollbackState("restored");
         setStatusMessage(rung.message);
@@ -2289,7 +2467,11 @@ export function useEditorWorkspace() {
     }
 
     const plan = buildPreviewTraceRestorePlan(previewTrace, targetSequence);
-    if (plan.snapshot === undefined || plan.snapshot.eventSequence !== targetSequence) {
+    if (
+      plan.snapshot === undefined ||
+      plan.snapshot.eventSequence !== targetSequence ||
+      !isRuntimeStateRecord(plan.snapshot.state)
+    ) {
       setPreviewRollbackState("blocked");
       setStatusMessage("Preview rollback requires a runtime snapshot for the selected trace point.");
       return;
@@ -2303,21 +2485,13 @@ export function useEditorWorkspace() {
     setStatusMessage(`Restoring preview to event ${targetSequence}...`);
 
     try {
-      const response = await fetch("/api/editor/preview/rollback", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          gameId: currentDocument.gameId,
-          sessionId: previewRuntimeSessionId,
-          state: plan.snapshot.state,
-          version: runtimeVersion,
-          targetEventSequence: targetSequence
-        })
+      const restoredVersion = await requestPreviewRestore({
+        sessionId: previewRuntimeSessionId,
+        state: plan.snapshot.state,
+        version: runtimeVersion,
+        targetEventSequence: targetSequence
       });
-      const result = (await response.json().catch(() => ({}))) as EditorPreviewRollbackResponse;
-      if (!response.ok || !result.ok) {
-        throw new Error(result.error ?? `Preview rollback failed with HTTP ${response.status}.`);
-      }
+      previewRuntimeSequenceOffsetRef.current = restoredVersion.lastEventSequence - targetSequence;
 
       const truncatedTrace = truncatePreviewTrace(previewTrace, targetSequence);
       setPreviewTrace(truncatedTrace);
@@ -2331,6 +2505,7 @@ export function useEditorWorkspace() {
       setPreviewUnresolvedEntityCount(0);
       setSelectedPreviewTraceSequence(targetSequence);
       setPreviewRollbackState("restored");
+      previewFrameAcceptingMessagesRef.current = false;
       setPreviewUrl(addPreviewReloadNonce(previewUrl, targetSequence));
       setStatusMessage(`Preview restored to event ${targetSequence}; future trace was discarded.`);
     } catch (error) {
@@ -2351,6 +2526,7 @@ export function useEditorWorkspace() {
       return;
     }
 
+    previewFrameAcceptingMessagesRef.current = false;
     setPreviewUrl(addPreviewReloadNonce(previewUrl, currentPreviewTraceEvent.sequence));
     setStatusMessage(`Replaying current preview event ${currentPreviewTraceEvent.sequence}.`);
   }
@@ -2519,32 +2695,31 @@ export function useEditorWorkspace() {
     let playerUrl = previewUrl;
     if (sessionId === undefined || playerUrl === null) {
       const prepared = await preparePreviewSession();
-      if (!prepared.ready || prepared.sessionId === undefined || prepared.playerUrl === undefined) {
+      if (!prepared.ready || prepared.playerUrl === undefined) {
         setStatusMessage("Не удалось подготовить предпросмотр для фикстуры.");
         return;
       }
-      sessionId = prepared.sessionId;
       playerUrl = prepared.playerUrl;
+      try {
+        await waitForPreviewFrameLoad();
+        sessionId = await waitForPreviewRuntimeSession();
+      } catch (error) {
+        setStatusMessage(error instanceof Error ? error.message : "Preview-сессия для фикстуры не запустилась.");
+        return;
+      }
     }
 
     setPreviewRollbackState("restoring");
     setStatusMessage(`Загружаем состояние фикстуры «${fixture._label}»…`);
     try {
-      const response = await fetch("/api/editor/preview/rollback", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          gameId: currentDocument.gameId,
-          sessionId,
-          state: fixture.state,
-          version: { stateVersion: 0, lastEventSequence: 0 },
-          targetEventSequence: 0
-        })
+      const restoredVersion = await requestPreviewRestore({
+        sessionId,
+        state: fixture.state,
+        version: { stateVersion: 0, lastEventSequence: 0 },
+        targetEventSequence: 0
       });
-      const result = (await response.json().catch(() => ({}))) as EditorPreviewRollbackResponse;
-      if (!response.ok || !result.ok) {
-        throw new Error(result.error ?? `Fixture restore failed with HTTP ${response.status}.`);
-      }
+      previewRuntimeSequenceOffsetRef.current = restoredVersion.lastEventSequence;
+      previewFrameAcceptingMessagesRef.current = false;
       setPreviewUrl(addPreviewReloadNonce(playerUrl, 0));
       setPreviewRollbackState("restored");
       setStatusMessage(`Состояние фикстуры «${fixture._label}» загружено в предпросмотр.`);
@@ -4979,6 +5154,7 @@ export function useEditorWorkspace() {
     runAgentPreparePrototypeChangeSetTool,
     handleSidebarResizeStart,
     previewIframeRef,
+    handlePreviewFrameLoad,
     previewEntities,
     selectedPreviewEntityId,
     previewPointSelectionMode,
@@ -5011,6 +5187,11 @@ export function useEditorWorkspace() {
     // No UI consumes it yet; it is available on the controller for status data.
     projectionIncrementalReport
   };
+}
+
+/** Runtime preview restore accepts only an object-shaped authoritative state. */
+function isRuntimeStateRecord(value: JsonValue): value is Record<string, JsonValue> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 /**

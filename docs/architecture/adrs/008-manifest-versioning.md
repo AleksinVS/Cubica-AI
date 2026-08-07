@@ -1,7 +1,7 @@
 # ADR-008: Стратегия версионирования манифеста игры
 
 - **Дата**: 2025-11-27
-- **Статус**: Accepted
+**Status:** Accepted
 - **Авторы**: AI Agent
 - **Компоненты**: Game Engine, Game Repository, Router, SDK
 

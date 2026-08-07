@@ -29,6 +29,7 @@ import {
   executePublishedGameIntentCandidate
 } from "../src/modules/runtime/actionDispatcher.ts";
 import { dispatchRuntimeSystemAction } from "../src/modules/runtime/systemActionDispatcher.ts";
+import { processPendingSystemSchedules } from "../src/modules/runtime/systemScheduler.ts";
 import {
   createAppliedCommandReceipt,
   createDurableCommandResult,
@@ -71,6 +72,23 @@ test("false protected trigger defers without executing the target plan", async (
     assert.equal(readScore(outcome.snapshot), scoreBefore);
     const [pending] = await fixture.store.listPendingSystemSchedules(fixture.sessionId);
     assert.equal(pending?.nextOccurrence, 1);
+  } finally {
+    await fixture.store.close();
+  }
+});
+
+test("the scheduler processes one stable pending pass and does not replay a consumed occurrence", async () => {
+  const fixture = await createStoredFixture(TRUE_TRIGGER, "defer");
+  try {
+    const firstPass = await processPendingSystemSchedules(fixture.store, fixture.sessionId, 1);
+    assert.equal(firstPass.attempted, 1);
+    assert.deepEqual(firstPass.outcomes.map(({ status }) => status), ["applied"]);
+    assert.equal(firstPass.outcomes[0]?.receipt?.commandId,
+      createSystemCommandId(fixture.sessionId, SCHEDULE_ID, 1));
+
+    const secondPass = await processPendingSystemSchedules(fixture.store, fixture.sessionId, 1);
+    assert.equal(secondPass.attempted, 0);
+    assert.deepEqual(secondPass.outcomes, []);
   } finally {
     await fixture.store.close();
   }

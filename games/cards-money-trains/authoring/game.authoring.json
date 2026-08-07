@@ -4719,7 +4719,7 @@
                   "mode": "region-segment-minimum",
                   "algorithmVersion": "initial-road-straight-line-region-crossing-v1",
                   "geometryVersion": "guinea-regions-v1",
-                  "geometryHash": "sha256:b5a114b0ee3c632c3e2efee45f09c47c571e72c24d8e8fe04406ca6c5ec3fac9",
+                  "geometryHash": "sha256:9167750013718290f8b2d34042c7c401580e9c28fd060d5eb4d542698238d4d0",
                   "boundaryPolicy": "lowest-region-id",
                   "regionSequence": [
                     "map-region-0270",
@@ -4826,7 +4826,7 @@
                   "mode": "region-segment-minimum",
                   "algorithmVersion": "initial-road-straight-line-region-crossing-v1",
                   "geometryVersion": "guinea-regions-v1",
-                  "geometryHash": "sha256:b5a114b0ee3c632c3e2efee45f09c47c571e72c24d8e8fe04406ca6c5ec3fac9",
+                  "geometryHash": "sha256:9167750013718290f8b2d34042c7c401580e9c28fd060d5eb4d542698238d4d0",
                   "boundaryPolicy": "lowest-region-id",
                   "regionSequence": [
                     "map-region-0270",
@@ -4963,7 +4963,7 @@
                   "mode": "region-segment-minimum",
                   "algorithmVersion": "initial-road-straight-line-region-crossing-v1",
                   "geometryVersion": "guinea-regions-v1",
-                  "geometryHash": "sha256:b5a114b0ee3c632c3e2efee45f09c47c571e72c24d8e8fe04406ca6c5ec3fac9",
+                  "geometryHash": "sha256:9167750013718290f8b2d34042c7c401580e9c28fd060d5eb4d542698238d4d0",
                   "boundaryPolicy": "lowest-region-id",
                   "regionSequence": [
                     "map-region-0308",
@@ -5106,7 +5106,7 @@
                   "mode": "region-segment-minimum",
                   "algorithmVersion": "initial-road-straight-line-region-crossing-v1",
                   "geometryVersion": "guinea-regions-v1",
-                  "geometryHash": "sha256:b5a114b0ee3c632c3e2efee45f09c47c571e72c24d8e8fe04406ca6c5ec3fac9",
+                  "geometryHash": "sha256:9167750013718290f8b2d34042c7c401580e9c28fd060d5eb4d542698238d4d0",
                   "boundaryPolicy": "lowest-region-id",
                   "regionSequence": [
                     "map-region-0364",
@@ -5261,7 +5261,7 @@
                   "mode": "region-segment-minimum",
                   "algorithmVersion": "initial-road-straight-line-region-crossing-v1",
                   "geometryVersion": "guinea-regions-v1",
-                  "geometryHash": "sha256:b5a114b0ee3c632c3e2efee45f09c47c571e72c24d8e8fe04406ca6c5ec3fac9",
+                  "geometryHash": "sha256:9167750013718290f8b2d34042c7c401580e9c28fd060d5eb4d542698238d4d0",
                   "boundaryPolicy": "lowest-region-id",
                   "regionSequence": [
                     "map-region-0134",
@@ -5368,7 +5368,7 @@
                   "mode": "region-segment-minimum",
                   "algorithmVersion": "initial-road-straight-line-region-crossing-v1",
                   "geometryVersion": "guinea-regions-v1",
-                  "geometryHash": "sha256:b5a114b0ee3c632c3e2efee45f09c47c571e72c24d8e8fe04406ca6c5ec3fac9",
+                  "geometryHash": "sha256:9167750013718290f8b2d34042c7c401580e9c28fd060d5eb4d542698238d4d0",
                   "boundaryPolicy": "lowest-region-id",
                   "regionSequence": [
                     "map-region-0108",
@@ -5461,7 +5461,7 @@
                   "mode": "region-segment-minimum",
                   "algorithmVersion": "initial-road-straight-line-region-crossing-v1",
                   "geometryVersion": "guinea-regions-v1",
-                  "geometryHash": "sha256:b5a114b0ee3c632c3e2efee45f09c47c571e72c24d8e8fe04406ca6c5ec3fac9",
+                  "geometryHash": "sha256:9167750013718290f8b2d34042c7c401580e9c28fd060d5eb4d542698238d4d0",
                   "boundaryPolicy": "lowest-region-id",
                   "regionSequence": [
                     "map-region-0051",
@@ -5560,7 +5560,7 @@
                   "mode": "region-segment-minimum",
                   "algorithmVersion": "initial-road-straight-line-region-crossing-v1",
                   "geometryVersion": "guinea-regions-v1",
-                  "geometryHash": "sha256:b5a114b0ee3c632c3e2efee45f09c47c571e72c24d8e8fe04406ca6c5ec3fac9",
+                  "geometryHash": "sha256:9167750013718290f8b2d34042c7c401580e9c28fd060d5eb4d542698238d4d0",
                   "boundaryPolicy": "lowest-region-id",
                   "regionSequence": [
                     "map-region-0051",
@@ -5667,7 +5667,7 @@
                   "mode": "region-segment-minimum",
                   "algorithmVersion": "initial-road-straight-line-region-crossing-v1",
                   "geometryVersion": "guinea-regions-v1",
-                  "geometryHash": "sha256:b5a114b0ee3c632c3e2efee45f09c47c571e72c24d8e8fe04406ca6c5ec3fac9",
+                  "geometryHash": "sha256:9167750013718290f8b2d34042c7c401580e9c28fd060d5eb4d542698238d4d0",
                   "boundaryPolicy": "lowest-region-id",
                   "regionSequence": [
                     "map-region-0004",
@@ -5794,7 +5794,7 @@
                   "mode": "region-segment-minimum",
                   "algorithmVersion": "initial-road-straight-line-region-crossing-v1",
                   "geometryVersion": "guinea-regions-v1",
-                  "geometryHash": "sha256:b5a114b0ee3c632c3e2efee45f09c47c571e72c24d8e8fe04406ca6c5ec3fac9",
+                  "geometryHash": "sha256:9167750013718290f8b2d34042c7c401580e9c28fd060d5eb4d542698238d4d0",
                   "boundaryPolicy": "lowest-region-id",
                   "regionSequence": [
                     "map-region-0041",
@@ -420294,9 +420294,9 @@
         },
         "roadPlanning": {
           "mode": "region-segment-minimum",
-          "algorithmVersion": "region-segment-minimum-v2",
+          "algorithmVersion": "region-segment-minimum-v3",
           "geometryVersion": "guinea-regions-v1",
-          "geometryHash": "sha256:b5a114b0ee3c632c3e2efee45f09c47c571e72c24d8e8fe04406ca6c5ec3fac9",
+          "geometryHash": "sha256:9167750013718290f8b2d34042c7c401580e9c28fd060d5eb4d542698238d4d0",
           "tieBreak": "shortest-then-codepoint",
           "boundaryPolicy": "lowest-region-id",
           "excludedRegionIdsEndpoint": "public.transportNetworks.main.excludedRegionIds"

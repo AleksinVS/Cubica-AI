@@ -7,7 +7,7 @@
       "id": "agents-general",
       "path": "AGENTS.md",
       "heading": "2. General rules for agents",
-      "normalizedSha256": "ac13558c20a621f565bb11792e2552c0b8946b37a802b2ed1461bbf33307b9e9"
+      "normalizedSha256": "dce5aa25694151c4549f1fc467b3ae8832cfb0907d48c4ae884b8d61759426bb"
     },
     {
       "id": "agents-autonomous",
@@ -37,7 +37,7 @@
       "id": "adr-068-decision",
       "path": "docs/architecture/adrs/068-human-approved-autonomous-agent-workflow.md",
       "heading": "Решение",
-      "normalizedSha256": "fab4bb792608e3bd5b21f9c6ec6cf2d25b4bd123ebe4687cd1f8e4cfcebd7259"
+      "normalizedSha256": "e74ebd16049e6a9800faa72fcd336d19754f2dfe48aa82ebb9dd6f168715266c"
     },
     {
       "id": "adr-069-decision",
@@ -49,7 +49,7 @@
       "id": "task-format",
       "path": "docs/tasks/README.md",
       "heading": "5. Формат рабочей задачи",
-      "normalizedSha256": "819d557f35cb86df977bdb6f191abf1e16bc401e854b52beeb43e5ffff13bc70"
+      "normalizedSha256": "29db3111ceb4bbca0ecbf00cf5437da45a305dd297e78d5eb3bf058c6a370a15"
     },
     {
       "id": "task-hierarchy",

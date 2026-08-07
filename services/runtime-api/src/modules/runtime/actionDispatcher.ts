@@ -240,7 +240,7 @@ export async function executePublishedGameIntentCandidate(
   const plan = options.bundle.manifest.mechanics.plans[definition.binding.planRef];
   const handler = createRuntimeActionRegistry(
     options.bundle,
-    options.random ?? {}
+    options.random
   ).get(options.actionId);
   if (!plan || !handler) {
     throw new RequestValidationError(`Action "${options.actionId}" has no published Mechanics plan`);
@@ -286,7 +286,7 @@ export async function executeProtectedSystemIntentCandidate(
     throw new RequestValidationError(`Action "${options.actionId}" is not defined for the protected system path`);
   }
   const plan = options.bundle.manifest.mechanics.plans[definition.binding.planRef];
-  if (!plan || !createRuntimeActionRegistry(options.bundle, options.random ?? {}).has(options.actionId)) {
+  if (!plan || !createRuntimeActionRegistry(options.bundle, options.random).has(options.actionId)) {
     throw new RequestValidationError(`Action "${options.actionId}" has no published Mechanics plan`);
   }
 

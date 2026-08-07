@@ -1,7 +1,7 @@
 # ADR-019: Runtime API владеет загрузкой игрового контента и player-facing content API
 
 - **Дата**: 2026-03-21
-- **Статус**: Accepted
+**Status:** Accepted
 - **Авторы**: Codex
 - **Компоненты**: `services/runtime-api`, `apps/player-web`, `packages/contracts/*`, content pipeline
 

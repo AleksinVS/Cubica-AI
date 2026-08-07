@@ -697,7 +697,11 @@ export interface PlayerWebPluginBundleReference {
   target: "player-web";
   scope: PlayerWebPluginBundleScope;
   contentHash: string;
-  /** Optional Subresource Integrity-style digest for published artifacts. */
+  /**
+   * SHA-256 digest verified over fetched bytes before browser execution.
+   * Required for published artifacts; preview may omit it only because the
+   * editor artifact is session-scoped and not yet published.
+   */
   integrity?: string;
   url: string;
 }

@@ -5,11 +5,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 import playerWebConfig from "../../next.config";
 import { POST as resolvePortalRuntimeSession } from "../../app/api/portal/runtime-session/route";
+import { POST as restorePreviewRuntimeSession } from "../../app/api/runtime/sessions/[sessionId]/route";
 import {
   browserSessionResponse,
   forwardAuthenticatedRuntimeRequest,
   proxyRuntimeResponse,
   readBoundedBrowserRuntimeBody,
+  runtimeCredentialCookieIsSecure,
   runtimeCredentialCookieName
 } from "../../app/api/runtime/_shared";
 
@@ -56,6 +58,15 @@ describe("runtime BFF credential handoff", () => {
     expect(cookie).toMatch(/SameSite=strict/iu);
     expect(cookie).toContain("Path=/api/runtime");
     expect(cookie).toContain("Max-Age=2592000");
+  });
+
+  it("allows an insecure production cookie only for an explicitly enabled loopback E2E origin", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("CUBICA_ALLOW_INSECURE_LOCAL_RUNTIME_COOKIE", "1");
+
+    expect(runtimeCredentialCookieIsSecure(new Request("http://localhost:3300/api/runtime/sessions"))).toBe(false);
+    expect(runtimeCredentialCookieIsSecure(new Request("http://127.0.0.1:3300/api/runtime/sessions"))).toBe(false);
+    expect(runtimeCredentialCookieIsSecure(new Request("http://player.example.test/api/runtime/sessions"))).toBe(true);
   });
 
   it("rejects a declared body above the ingress cap before reading it", async () => {
@@ -108,6 +119,41 @@ describe("runtime BFF credential handoff", () => {
     );
 
     expect(response.status).toBe(200);
+    const upstreamInit = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    expect(new Headers(upstreamInit.headers).get("Authorization")).toBe("Bearer secret-bearer");
+  });
+
+  it("restores preview state through the active session's HttpOnly credential", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ sessionId: "session-1" }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" }
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+    const cookieName = runtimeCredentialCookieName("session-1");
+    const body = JSON.stringify({
+      state: { public: { ready: true } },
+      version: { stateVersion: 0, lastEventSequence: 0 },
+      targetEventSequence: 0,
+      reason: "editor-preview-rollback"
+    });
+    const request = new NextRequest("http://player-web.local/api/runtime/sessions/session-1", {
+      method: "POST",
+      headers: {
+        Cookie: `${cookieName}=secret-bearer`,
+        "Content-Type": "application/json"
+      },
+      body
+    });
+
+    const response = await restorePreviewRuntimeSession(request, {
+      params: Promise.resolve({ sessionId: "session-1" })
+    });
+
+    expect(response.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.objectContaining({ pathname: "/sessions/session-1/preview-restore" }),
+      expect.objectContaining({ method: "POST", body })
+    );
     const upstreamInit = fetchMock.mock.calls[0]?.[1] as RequestInit;
     expect(new Headers(upstreamInit.headers).get("Authorization")).toBe("Bearer secret-bearer");
   });

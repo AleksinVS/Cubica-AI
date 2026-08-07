@@ -7,8 +7,9 @@
  * from learning authoring-only keys.
  */
 import { existsSync } from "node:fs";
+import { randomUUID } from "node:crypto";
 import path from "node:path";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 
 import {
@@ -805,9 +806,45 @@ function hasBlockingSource(diagnostics: readonly EditorCompilerDiagnostic[], sou
   return diagnostics.some((diagnostic) => diagnostic.severity === "error" && sources.has(diagnostic.source));
 }
 
-async function writeJsonFile(filePath: string, value: unknown): Promise<void> {
-  await mkdir(path.dirname(filePath), { recursive: true });
-  await writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+interface JsonWriteOperations {
+  readonly mkdir: typeof mkdir;
+  readonly writeFile: typeof writeFile;
+  readonly rename: typeof rename;
+  readonly rm: typeof rm;
+}
+
+const jsonWriteOperations: JsonWriteOperations = { mkdir, writeFile, rename, rm };
+
+async function writeJsonFile(
+  filePath: string,
+  value: unknown,
+  operations: JsonWriteOperations = jsonWriteOperations
+): Promise<void> {
+  const directory = path.dirname(filePath);
+  const tempPath = path.join(
+    directory,
+    `.${path.basename(filePath)}.${process.pid}.${randomUUID()}.tmp`
+  );
+
+  try {
+    await operations.mkdir(directory, { recursive: true });
+    // The temporary file is in the destination directory, so rename publishes
+    // a complete JSON document atomically rather than exposing a partial write.
+    await operations.writeFile(tempPath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+    await operations.rename(tempPath, filePath);
+  } catch (error) {
+    await operations.rm(tempPath, { force: true }).catch(() => undefined);
+    throw error;
+  }
+}
+
+/** Test-only seam for proving failed writes preserve the previously published manifest. */
+export async function writeJsonFileForTests(
+  filePath: string,
+  value: unknown,
+  operations: JsonWriteOperations
+): Promise<void> {
+  await writeJsonFile(filePath, value, operations);
 }
 
 function isCompileError(error: unknown): error is {

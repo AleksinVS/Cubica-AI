@@ -1,6 +1,6 @@
 # ADR 003: Hybrid Server-Driven UI (SDUI) Schema
 
-**Status**: Accepted
+**Status:** Accepted
 **Date**: 2025-11-26
 **Context**: Game Platform "Cubica"
 

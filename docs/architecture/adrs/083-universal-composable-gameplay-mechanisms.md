@@ -1,7 +1,7 @@
 # ADR-083: Универсальные комбинируемые механизмы игрового движка
 
 - **Дата:** 2026-07-14
-- **Статус:** Accepted
+**Status:** Accepted
 - **Автор решения:** PM
 - **Компоненты:** `docs/architecture/schemas`, `packages/contracts/manifest`, `services/runtime-api`, `packages/editor-engine`, `games/*`
 - **Изменяет:** политику обобщения ADR-024 и ADR-040; уточняет ADR-041, ADR-058, ADR-071 и ADR-072

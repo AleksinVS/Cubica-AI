@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import type {
   PlayerFacingContent,
@@ -39,6 +39,7 @@ import {
 import { applyGameStylesheetLinks } from "@/lib/game-stylesheet-links";
 import type { PlayerLayoutMode } from "@/lib/player-layout-mode";
 import { createManifestActionAdapter } from "@/lib/manifest-action-adapter";
+import { restorePreviewSession } from "@/presenter/runtime-client";
 
 export type { PlayerFacingMockup as GameMockup };
 
@@ -187,12 +188,25 @@ export function GamePlayer({
       state: snapshot.state
     };
   }, [playerState]);
+  const handleEditorPreviewRestore = useCallback(async (request: {
+    readonly sessionId: string;
+    readonly state: Record<string, unknown>;
+    readonly version: { readonly stateVersion: number; readonly lastEventSequence: number };
+    readonly targetEventSequence?: number;
+  }) => {
+    const activeSessionId = presenterRef.current?.sessionSnapshot?.sessionId;
+    if (activeSessionId === undefined || request.sessionId !== activeSessionId) {
+      throw new Error("Preview restore request does not match the active player session.");
+    }
+    return restorePreviewSession(request);
+  }, []);
   useEditorPreviewBridge(rootRef, {
     enabled: editorPreviewMode,
     parentOrigin: editorPreviewParentOrigin,
     refreshSignal: `${screenKey ?? ""}:${layoutMode}:${activePanel ?? ""}:${playerState?.sessionId ?? ""}:${playerState?.log?.length ?? 0}`,
     sessionSnapshot: previewSessionSnapshot,
-    lastCompletedAction: lastCompletedPreviewAction
+    lastCompletedAction: lastCompletedPreviewAction,
+    onRestorePreviewSession: handleEditorPreviewRestore
   });
 
   useEffect(() => {

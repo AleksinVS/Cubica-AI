@@ -1,7 +1,7 @@
 # ADR-086: Многоверсионное исполнение закреплённых Mechanics-модулей
 
 - **Дата:** 2026-07-17
-- **Статус:** Accepted
+**Status:** Accepted
 - **Автор решения:** PM
 - **Компоненты:** `packages/contracts/session`, `services/runtime-api`,
   публикация и эксплуатация Mechanics-модулей

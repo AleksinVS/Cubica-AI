@@ -1,7 +1,7 @@
 # ADR-047: AI Agent Safety Remediation Gates
 
 - **Дата**: 2026-06-11
-- **Статус**: Accepted
+**Status:** Accepted
 - **Авторы**: Codex
 - **Компоненты**: Editor Web, Runtime API, Player Web, AI Contracts, Cubica Surface, Agent Runtime
 - **Связанные решения**: ADR-025, ADR-040, ADR-043, ADR-044, ADR-045, ADR-046, ADR-084

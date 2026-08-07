@@ -1,7 +1,7 @@
 # ADR-054: Game/UI Manifest Boundary And Metric Projection
 
 - **Дата**: 2026-06-16
-- **Статус**: Accepted
+**Status:** Accepted
 - **Авторы**: Codex, владелец продукта
 - **Компоненты**: game manifests, UI manifests, player-facing content API, Presenter, `games/*/plugins/*`, manifest schemas, authoring compiler
 - **Связанные решения**: ADR-001, ADR-013, ADR-019, ADR-024, ADR-025, ADR-030, ADR-041, ADR-050, ADR-053, ADR-084

@@ -1,7 +1,7 @@
 # ADR-057: Preview-First Editor UX Architecture (Unified Entity, Prompt Projection Editing, Editor Caching)
 
 - **Дата**: 2026-07-04
-- **Статус**: Accepted
+**Status:** Accepted
 - **Авторы**: AI agent, владелец продукта
 - **Компоненты**: `packages/editor-engine`, `apps/editor-web`, Manifest Authoring, UI Authoring, Editor Preview, Agent UI, `services/runtime-api` (только preview-only restore boundary)
 - **Связанные решения**: ADR-009, ADR-012, ADR-016, ADR-025, ADR-034, ADR-035, ADR-036, ADR-038, ADR-042, ADR-044, ADR-047, ADR-049, ADR-050, ADR-052, ADR-054

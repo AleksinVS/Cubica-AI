@@ -14,9 +14,9 @@
  * every choice that could be a tie is resolved by an explicit, documented
  * rule instead of by incidental engine behaviour.
  *
- * This module is intentionally self-contained (no imports from the rest of
- * the platform, no new dependencies) and unused by anything yet — a separate
- * task wires it into the planner once this piece is reviewed on its own.
+ * The region-road planner uses this deterministic implementation through the
+ * navigation-mesh layer. It stays dependency-free so the published algorithm
+ * remains reproducible across runtime hosts.
  *
  * ## Algorithm overview
  *
@@ -79,12 +79,29 @@ export interface TriangulatedPolygon {
   triangles: Array<TriangulationTriangle>;
 }
 
-// A single absolute tolerance for "are these two numbers the same" style
-// comparisons. Coordinates in this module are plain author-drawn map units,
-// not planetary-scale values, so an absolute epsilon is adequate; where a
-// comparison's sensitivity actually scales with the geometry involved (cross
-// products, in-circle determinants), `scaledEpsilon` below widens it.
-const EPSILON = 1e-9;
+import {
+  type ExactHorizontalRayIntersection,
+  type GeometryWorkMeter,
+  canonicalGeometryPoint,
+  chargeGeometryWork,
+  compareAbsoluteSlopes,
+  compareGridCoordinates,
+  compareHorizontalRayIntersections,
+  compareHorizontalRayIntersectionToPoint,
+  compareSquaredDistances,
+  horizontalRayIntersection,
+  inCircleSign,
+  orientationSign,
+  pointInOrOnRing,
+  pointOnSegment as exactPointOnSegment,
+  pointStrictlyInsideHorizontalRayTriangle,
+  pointStrictlyInsideRing,
+  pointStrictlyInsideTriangle as exactPointStrictlyInsideTriangle,
+  pointsEqual,
+  segmentsIntersect as exactSegmentsIntersect,
+  segmentsProperlyCross as exactSegmentsProperlyCross,
+  signedRingAreaSign
+} from "../geometryPredicates.ts";
 
 /**
  * Lawson-flip safety cap.
@@ -104,105 +121,26 @@ const EPSILON = 1e-9;
  */
 const lawsonFlipCap = (vertexCount: number): number => Math.max(1024, 64 * vertexCount);
 
-/**
- * Absolute-value comparisons that are sensitive to coordinate magnitude use this instead of `EPSILON`.
- *
- * Written as a fixed-arity function (up to 4 points, all but the first optional) rather than the more
- * readable `(...points) => EPSILON * Math.max(1, ...points.map(...))` it replaces. That version reads
- * better but was, by a wide margin, the single hottest function in this module on real non-convex map
- * regions (see the performance comment above `lawsonFlip` for the measured numbers): a "rest parameter"
- * plus `.map()` allocates a fresh array on *every* call, and this function is called millions of times
- * while triangulating a single large polygon. The loop below computes the exact same value --
- * `EPSILON * max(1, |x|, |y|` for every given point `)` -- with no allocation at all.
- */
-const scaledEpsilon = (
-  a: TriangulationPoint, b?: TriangulationPoint, c?: TriangulationPoint, d?: TriangulationPoint
-): number => {
-  let maxAbs = 1;
-  const ax = a.x < 0 ? -a.x : a.x;
-  const ay = a.y < 0 ? -a.y : a.y;
-  if (ax > maxAbs) maxAbs = ax;
-  if (ay > maxAbs) maxAbs = ay;
-  if (b !== undefined) {
-    const bx = b.x < 0 ? -b.x : b.x;
-    const by = b.y < 0 ? -b.y : b.y;
-    if (bx > maxAbs) maxAbs = bx;
-    if (by > maxAbs) maxAbs = by;
-  }
-  if (c !== undefined) {
-    const cx = c.x < 0 ? -c.x : c.x;
-    const cy = c.y < 0 ? -c.y : c.y;
-    if (cx > maxAbs) maxAbs = cx;
-    if (cy > maxAbs) maxAbs = cy;
-  }
-  if (d !== undefined) {
-    const dx = d.x < 0 ? -d.x : d.x;
-    const dy = d.y < 0 ? -d.y : d.y;
-    if (dx > maxAbs) maxAbs = dx;
-    if (dy > maxAbs) maxAbs = dy;
-  }
-  return EPSILON * maxAbs;
-};
+
+const chargeTriangulationWork = chargeGeometryWork;
 
 const finitePoint = (raw: TriangulationPoint, label: string): TriangulationPoint => {
-  if (!raw || typeof raw.x !== "number" || !Number.isFinite(raw.x) ||
-      typeof raw.y !== "number" || !Number.isFinite(raw.y)) {
-    throw new Error(`${label} must contain finite coordinates`);
-  }
-  // JSON.stringify and strict equality both treat -0 and 0 the same in value
-  // but not always in identity-sensitive contexts; normalising here keeps
-  // point comparisons unsurprising, mirroring the platform's other polygon
-  // code (see `regionRoadPlanner.ts`'s `finitePoint`).
-  return { x: Object.is(raw.x, -0) ? 0 : raw.x, y: Object.is(raw.y, -0) ? 0 : raw.y };
+  return canonicalGeometryPoint(raw, label);
 };
 
 const pointNearlyEquals = (left: TriangulationPoint, right: TriangulationPoint): boolean =>
-  Math.abs(left.x - right.x) <= EPSILON && Math.abs(left.y - right.y) <= EPSILON;
-
-/**
- * Twice the signed area of a polygon via the shoelace formula.
- *
- * Positive means the ring is wound counter-clockwise (CCW); negative means
- * clockwise (CW). Used both to detect degenerate (zero-area) rings and to
- * normalise winding direction.
- */
-const signedDoubleArea = (ring: ReadonlyArray<TriangulationPoint>): number => ring.reduce((sum, point, index) => {
-  const next = ring[(index + 1) % ring.length];
-  return sum + point.x * next.y - point.y * next.x;
-}, 0);
-
-/**
- * Signed area (times two) of the triangle (a, b, c).
- *
- * Positive: c is to the left of the directed line a→b (a "left turn", i.e. a
- * CCW corner). Negative: a "right turn" (a reflex/CW corner). Zero: the
- * three points are collinear. This one function underlies every orientation,
- * convexity and containment test in the module — deliberately, so there is
- * exactly one place that could get the sign convention wrong, not several.
- */
-const orientation = (a: TriangulationPoint, b: TriangulationPoint, c: TriangulationPoint): number =>
-  (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+  pointsEqual(left, right);
 
 /**
  * Whether `point` lies exactly on the closed segment `from`–`to` (inclusive
- * of the endpoints), within a magnitude-scaled tolerance.
+ * of the endpoints) under the shared grid predicate.
  *
- * `precomputedTolerance` lets a hot caller (the ear-clipping containment
- * check below) supply an already-computed `scaledEpsilon(...)` value instead
- * of this function deriving its own -- the two are required to be
- * numerically identical (same set of points, same formula, just computed
- * once per candidate instead of once per point checked against it), so
- * passing it in changes nothing about the result, only how many times the
- * (comparatively expensive) tolerance derivation runs.
+ * The fourth argument remains only for source compatibility with the former
+ * tolerance-based hot path. Structural membership intentionally ignores it.
  */
 const pointOnSegment = (
-  point: TriangulationPoint, from: TriangulationPoint, to: TriangulationPoint, precomputedTolerance?: number
-): boolean => {
-  const tolerance = precomputedTolerance ?? scaledEpsilon(point, from, to);
-  if (Math.abs(orientation(from, to, point)) > tolerance) return false;
-  return point.x >= Math.min(from.x, to.x) - tolerance && point.x <= Math.max(from.x, to.x) + tolerance &&
-    point.y >= Math.min(from.y, to.y) - tolerance && point.y <= Math.max(from.y, to.y) + tolerance;
-};
+  point: TriangulationPoint, from: TriangulationPoint, to: TriangulationPoint, _precomputedTolerance?: number
+): boolean => exactPointOnSegment(point, from, to);
 
 /**
  * Whether open segments `ab` and `cd` intersect or touch anywhere, including
@@ -212,19 +150,7 @@ const pointOnSegment = (
  */
 const segmentsIntersect = (
   a: TriangulationPoint, b: TriangulationPoint, c: TriangulationPoint, d: TriangulationPoint
-): boolean => {
-  const tolerance = scaledEpsilon(a, b, c, d);
-  const d1 = orientation(a, b, c);
-  const d2 = orientation(a, b, d);
-  const d3 = orientation(c, d, a);
-  const d4 = orientation(c, d, b);
-  if (((d1 > tolerance && d2 < -tolerance) || (d1 < -tolerance && d2 > tolerance)) &&
-      ((d3 > tolerance && d4 < -tolerance) || (d3 < -tolerance && d4 > tolerance))) return true;
-  return (Math.abs(d1) <= tolerance && pointOnSegment(c, a, b)) ||
-    (Math.abs(d2) <= tolerance && pointOnSegment(d, a, b)) ||
-    (Math.abs(d3) <= tolerance && pointOnSegment(a, c, d)) ||
-    (Math.abs(d4) <= tolerance && pointOnSegment(b, c, d));
-};
+): boolean => exactSegmentsIntersect(a, b, c, d);
 
 /**
  * Whether segments `ab` and `cd` cross at an interior point of both — that
@@ -235,38 +161,16 @@ const segmentsIntersect = (
  */
 const segmentsProperlyCross = (
   a: TriangulationPoint, b: TriangulationPoint, c: TriangulationPoint, d: TriangulationPoint
-): boolean => {
-  const tolerance = scaledEpsilon(a, b, c, d);
-  const d1 = orientation(a, b, c);
-  const d2 = orientation(a, b, d);
-  const d3 = orientation(c, d, a);
-  const d4 = orientation(c, d, b);
-  return ((d1 > tolerance && d2 < -tolerance) || (d1 < -tolerance && d2 > tolerance)) &&
-    ((d3 > tolerance && d4 < -tolerance) || (d3 < -tolerance && d4 > tolerance));
-};
+): boolean => exactSegmentsProperlyCross(a, b, c, d);
 
 /** Ray-casting point-in-polygon test; a point exactly on the boundary counts as inside. */
 const pointInOrOnPolygon = (point: TriangulationPoint, ring: ReadonlyArray<TriangulationPoint>): boolean => {
-  for (let index = 0; index < ring.length; index += 1) {
-    if (pointOnSegment(point, ring[index], ring[(index + 1) % ring.length])) return true;
-  }
-  let inside = false;
-  for (let index = 0, previous = ring.length - 1; index < ring.length; previous = index, index += 1) {
-    const current = ring[index];
-    const before = ring[previous];
-    const crosses = (current.y > point.y) !== (before.y > point.y) &&
-      point.x < ((before.x - current.x) * (point.y - current.y)) / (before.y - current.y) + current.x;
-    if (crosses) inside = !inside;
-  }
-  return inside;
+  return pointInOrOnRing(point, ring);
 };
 
 /** Like `pointInOrOnPolygon`, but a point on the boundary is explicitly excluded. */
 const pointStrictlyInsidePolygon = (point: TriangulationPoint, ring: ReadonlyArray<TriangulationPoint>): boolean => {
-  for (let index = 0; index < ring.length; index += 1) {
-    if (pointOnSegment(point, ring[index], ring[(index + 1) % ring.length])) return false;
-  }
-  return pointInOrOnPolygon(point, ring);
+  return pointStrictlyInsideRing(point, ring);
 };
 
 /**
@@ -276,31 +180,21 @@ const pointStrictlyInsidePolygon = (point: TriangulationPoint, ring: ReadonlyArr
  * ear or a bridge visibility line, both of which only care about points
  * genuinely inside the open triangle.
  */
-const pointStrictlyInsideTriangle = (
-  point: TriangulationPoint, a: TriangulationPoint, b: TriangulationPoint, c: TriangulationPoint,
-  precomputedTolerance?: number
-): boolean => {
-  // See the matching comment on `pointOnSegment` above: `precomputedTolerance`, when given, must be
-  // exactly `scaledEpsilon(point, a, b, c)` -- callers only pass it to avoid re-deriving that value
-  // once per call inside a loop that calls this function many times with the same `a`, `b`, `c`.
-  const tolerance = precomputedTolerance ?? scaledEpsilon(point, a, b, c);
-  const d1 = orientation(a, b, point);
-  const d2 = orientation(b, c, point);
-  const d3 = orientation(c, a, point);
-  if (Math.abs(d1) <= tolerance || Math.abs(d2) <= tolerance || Math.abs(d3) <= tolerance) return false;
-  const hasPositive = d1 > 0 || d2 > 0 || d3 > 0;
-  const hasNegative = d1 < 0 || d2 < 0 || d3 < 0;
-  return !(hasPositive && hasNegative);
-};
-
 /**
  * Reject a ring that is not a valid, non-self-intersecting simple polygon,
  * checking every pair of non-adjacent edges — O(n²), which is comfortably
  * fast at the documented scale (largest ring: 511 vertices, ≈130k pairs).
  */
-const assertSimpleRing = (ring: ReadonlyArray<TriangulationPoint>, label: string): void => {
+const assertSimpleRing = (
+  ring: ReadonlyArray<TriangulationPoint>,
+  label: string,
+  workMeter?: GeometryWorkMeter
+): void => {
   const n = ring.length;
   for (let first = 0; first < n; first += 1) {
+    // Reserve the complete inner scan before entering it. A throwing meter
+    // therefore stops an adversarial ring before the quadratic work occurs.
+    chargeTriangulationWork(workMeter, n - first);
     const firstNext = (first + 1) % n;
     if (pointNearlyEquals(ring[first], ring[firstNext])) {
       throw new Error(`${label} has a zero-length edge (repeated adjacent vertex)`);
@@ -329,25 +223,29 @@ const assertSimpleRing = (ring: ReadonlyArray<TriangulationPoint>, label: string
 const normalizeRing = (
   raw: ReadonlyArray<TriangulationPoint>,
   label: string,
-  desiredWinding: "ccw" | "cw"
+  desiredWinding: "ccw" | "cw",
+  workMeter?: GeometryWorkMeter
 ): Array<TriangulationPoint> => {
   if (!Array.isArray(raw) || raw.length < 3) {
     throw new Error(`${label} must have at least 3 vertices`);
   }
+  chargeTriangulationWork(workMeter, raw.length);
   const points = raw.map((point, index) => finitePoint(point, `${label} vertex ${index}`));
   for (let first = 0; first < points.length; first += 1) {
+    chargeTriangulationWork(workMeter, points.length - first - 1);
     for (let second = first + 1; second < points.length; second += 1) {
       if (pointNearlyEquals(points[first], points[second])) {
         throw new Error(`${label} has a repeated vertex (index ${first} and ${second})`);
       }
     }
   }
-  assertSimpleRing(points, label);
-  const area = signedDoubleArea(points);
-  if (Math.abs(area) <= EPSILON * Math.max(1, points.length)) {
+  assertSimpleRing(points, label, workMeter);
+  chargeTriangulationWork(workMeter, points.length);
+  const areaSign = signedRingAreaSign(points);
+  if (areaSign === 0) {
     throw new Error(`${label} has zero area`);
   }
-  const isCcw = area > 0;
+  const isCcw = areaSign > 0;
   const wantsCcw = desiredWinding === "ccw";
   return isCcw === wantsCcw ? points : [...points].reverse();
 };
@@ -360,11 +258,14 @@ const normalizeRing = (
  * ring without any single vertex leaving it.
  */
 const ringsAreDisjoint = (
-  inner: ReadonlyArray<TriangulationPoint>, outer: ReadonlyArray<TriangulationPoint>
+  inner: ReadonlyArray<TriangulationPoint>,
+  outer: ReadonlyArray<TriangulationPoint>,
+  workMeter?: GeometryWorkMeter
 ): boolean => {
   for (let i = 0; i < inner.length; i += 1) {
     const a = inner[i];
     const b = inner[(i + 1) % inner.length];
+    chargeTriangulationWork(workMeter, outer.length);
     for (let j = 0; j < outer.length; j += 1) {
       if (segmentsIntersect(a, b, outer[j], outer[(j + 1) % outer.length])) return false;
     }
@@ -374,12 +275,16 @@ const ringsAreDisjoint = (
 
 /** Every hole must sit strictly inside the outer ring and not touch or cross it. */
 const assertHoleInsideOuter = (
-  hole: ReadonlyArray<TriangulationPoint>, outer: ReadonlyArray<TriangulationPoint>, holeIndex: number
+  hole: ReadonlyArray<TriangulationPoint>,
+  outer: ReadonlyArray<TriangulationPoint>,
+  holeIndex: number,
+  workMeter?: GeometryWorkMeter
 ): void => {
-  if (!ringsAreDisjoint(hole, outer)) {
+  if (!ringsAreDisjoint(hole, outer, workMeter)) {
     throw new Error(`Hole ${holeIndex} is not strictly inside the outer ring`);
   }
   for (const point of hole) {
+    chargeTriangulationWork(workMeter, outer.length);
     if (!pointStrictlyInsidePolygon(point, outer)) {
       throw new Error(`Hole ${holeIndex} is not strictly inside the outer ring`);
     }
@@ -387,10 +292,14 @@ const assertHoleInsideOuter = (
 };
 
 /** No two holes may share any area, touch, or nest inside one another. */
-const assertHolesDisjoint = (holes: ReadonlyArray<Array<TriangulationPoint>>): void => {
+const assertHolesDisjoint = (
+  holes: ReadonlyArray<Array<TriangulationPoint>>,
+  workMeter?: GeometryWorkMeter
+): void => {
   for (let i = 0; i < holes.length; i += 1) {
     for (let j = i + 1; j < holes.length; j += 1) {
-      const disjointEdges = ringsAreDisjoint(holes[i], holes[j]);
+      const disjointEdges = ringsAreDisjoint(holes[i], holes[j], workMeter);
+      chargeTriangulationWork(workMeter, holes[i].length * holes[j].length);
       const anyVertexInside = disjointEdges && (
         holes[i].some((point) => pointStrictlyInsidePolygon(point, holes[j])) ||
         holes[j].some((point) => pointStrictlyInsidePolygon(point, holes[i]))
@@ -416,7 +325,7 @@ const isReflexAtPosition = (
   const previous = vertices[boundary[(position - 1 + n) % n]];
   const current = vertices[boundary[position]];
   const next = vertices[boundary[(position + 1) % n]];
-  return orientation(previous, current, next) < -scaledEpsilon(previous, current, next);
+  return orientationSign(previous, current, next) < 0;
 };
 
 /** Composite key identifying an undirected edge between two global vertex indices. */
@@ -449,18 +358,20 @@ const edgeKey = (u: number, v: number): string => (u < v ? `${u},${v}` : `${v},$
 const findBridge = (
   boundary: ReadonlyArray<number>,
   hole: ReadonlyArray<number>,
-  vertices: ReadonlyArray<TriangulationPoint>
+  vertices: ReadonlyArray<TriangulationPoint>,
+  workMeter?: GeometryWorkMeter
 ): { boundaryPosition: number; holeLocalStart: number } => {
   // Tie-break for the hole's rightmost vertex: largest x; then smallest y;
   // then smallest position within the hole ring. All three are cheap,
   // total, and independent of engine iteration order, so the choice is
   // reproducible regardless of how the hole was authored.
   let holeLocalStart = 0;
+  chargeTriangulationWork(workMeter, hole.length);
   for (let index = 1; index < hole.length; index += 1) {
     const candidate = vertices[hole[index]];
     const current = vertices[hole[holeLocalStart]];
-    if (candidate.x > current.x + EPSILON ||
-        (Math.abs(candidate.x - current.x) <= EPSILON && candidate.y < current.y - EPSILON)) {
+    const xOrder = compareGridCoordinates(candidate.x, current.x);
+    if (xOrder > 0 || (xOrder === 0 && compareGridCoordinates(candidate.y, current.y) < 0)) {
       holeLocalStart = index;
     }
   }
@@ -470,21 +381,23 @@ const findBridge = (
   // crossing x; then smallest boundary position (both are total orders, so
   // the result is unique and reproducible).
   let bestPosition = -1;
-  let bestX = Number.POSITIVE_INFINITY;
+  let bestIntersection: ExactHorizontalRayIntersection | undefined;
   const n = boundary.length;
+  chargeTriangulationWork(workMeter, n);
   for (let position = 0; position < n; position += 1) {
     const a = vertices[boundary[position]];
     const b = vertices[boundary[(position + 1) % n]];
-    const straddles = (a.y > m.y) !== (b.y > m.y);
-    if (!straddles) continue;
-    const crossingX = a.x + ((m.y - a.y) / (b.y - a.y)) * (b.x - a.x);
-    if (crossingX < m.x - EPSILON) continue;
-    if (crossingX < bestX - EPSILON || (Math.abs(crossingX - bestX) <= EPSILON && position < bestPosition)) {
-      bestX = crossingX;
+    const intersection = horizontalRayIntersection(m, a, b);
+    if (!intersection || compareHorizontalRayIntersectionToPoint(intersection, m) < 0) continue;
+    const comparison = bestIntersection
+      ? compareHorizontalRayIntersections(intersection, bestIntersection)
+      : -1;
+    if (comparison < 0 || (comparison === 0 && position < bestPosition)) {
+      bestIntersection = intersection;
       bestPosition = position;
     }
   }
-  if (bestPosition < 0) {
+  if (bestPosition < 0 || !bestIntersection) {
     // The hole was already proven strictly inside the outer ring, so a ray
     // cast from any of its points must cross the boundary; reaching here
     // would mean that proof and this scan disagree, which is a bug in this
@@ -493,34 +406,35 @@ const findBridge = (
   }
   const edgeStart = boundary[bestPosition];
   const edgeEnd = boundary[(bestPosition + 1) % n];
-  const intersection: TriangulationPoint = { x: bestX, y: m.y };
   const startPoint = vertices[edgeStart];
   const endPoint = vertices[edgeEnd];
-  const pPosition = startPoint.x >= endPoint.x ? bestPosition : (bestPosition + 1) % n;
+  const pPosition = compareGridCoordinates(startPoint.x, endPoint.x) >= 0
+    ? bestPosition
+    : (bestPosition + 1) % n;
   const pIndex = boundary[pPosition];
 
   // Reflex boundary vertices strictly inside triangle (m, intersection, P)
   // are candidates that might block the direct line to P.
   let visiblePosition = pPosition;
-  let bestAngle = Number.POSITIVE_INFINITY;
-  let bestDistance = Number.POSITIVE_INFINITY;
+  let bestCandidate: TriangulationPoint | undefined;
+  chargeTriangulationWork(workMeter, n);
   for (let position = 0; position < n; position += 1) {
     if (position === bestPosition || position === (bestPosition + 1) % n) continue;
     const globalIndex = boundary[position];
     const point = vertices[globalIndex];
-    if (!pointStrictlyInsideTriangle(point, m, intersection, vertices[pIndex])) continue;
+    if (!pointStrictlyInsideHorizontalRayTriangle(point, m, bestIntersection, vertices[pIndex])) continue;
     if (!isReflexAtPosition(boundary, position, vertices)) continue;
     // "Most visible" = smallest angle to the +x ray; ties broken by nearest
     // distance, then by lowest global vertex index, all total orders.
-    const angle = Math.abs(Math.atan2(point.y - m.y, point.x - m.x));
-    const distance = Math.hypot(point.x - m.x, point.y - m.y);
-    const better = angle < bestAngle - EPSILON ||
-      (Math.abs(angle - bestAngle) <= EPSILON && distance < bestDistance - EPSILON) ||
-      (Math.abs(angle - bestAngle) <= EPSILON && Math.abs(distance - bestDistance) <= EPSILON &&
-        globalIndex < boundary[visiblePosition]);
+    const slopeOrder = bestCandidate ? compareAbsoluteSlopes(m, point, bestCandidate) : -1;
+    const distanceOrder = bestCandidate && slopeOrder === 0
+      ? compareSquaredDistances(m, point, bestCandidate)
+      : 0;
+    const better = slopeOrder < 0 ||
+      (slopeOrder === 0 && distanceOrder < 0) ||
+      (slopeOrder === 0 && distanceOrder === 0 && globalIndex < boundary[visiblePosition]);
     if (better) {
-      bestAngle = angle;
-      bestDistance = distance;
+      bestCandidate = point;
       visiblePosition = position;
     }
   }
@@ -536,9 +450,10 @@ const spliceHoleIntoBoundary = (
   boundary: ReadonlyArray<number>,
   hole: ReadonlyArray<number>,
   vertices: ReadonlyArray<TriangulationPoint>,
-  constrainedEdges: Set<string>
+  constrainedEdges: Set<string>,
+  workMeter?: GeometryWorkMeter
 ): Array<number> => {
-  const { boundaryPosition, holeLocalStart } = findBridge(boundary, hole, vertices);
+  const { boundaryPosition, holeLocalStart } = findBridge(boundary, hole, vertices, workMeter);
   const bridgeTarget = boundary[boundaryPosition];
   const holeStartVertex = hole[holeLocalStart];
   constrainedEdges.add(edgeKey(bridgeTarget, holeStartVertex));
@@ -604,9 +519,12 @@ const spliceHoleIntoBoundary = (
  * already in `blocking`.
  */
 const earClip = (
-  boundary: ReadonlyArray<number>, vertices: ReadonlyArray<TriangulationPoint>
+  boundary: ReadonlyArray<number>,
+  vertices: ReadonlyArray<TriangulationPoint>,
+  workMeter?: GeometryWorkMeter
 ): Array<TriangulationTriangle> => {
   const n = boundary.length;
+  chargeTriangulationWork(workMeter, n);
   const prev = new Array<number>(n);
   const next = new Array<number>(n);
   const alive = new Array<boolean>(n).fill(true);
@@ -618,8 +536,12 @@ const earClip = (
   // (angle > 180°) or flat/collinear (angle == 180°). See the function
   // header above for why both kinds must be tracked together.
   const blocking = new Set<number>();
-  const crossAt = (position: number): number =>
-    orientation(vertices[boundary[prev[position]]], vertices[boundary[position]], vertices[boundary[next[position]]]);
+  const crossAt = (position: number): -1 | 0 | 1 =>
+    orientationSign(
+      vertices[boundary[prev[position]]],
+      vertices[boundary[position]],
+      vertices[boundary[next[position]]]
+    );
   // Vertex classification must always be read through `prev`/`next` (the
   // live linked-list neighbours), never through the static `position ± 1`
   // slots in `boundary` — those stop matching a vertex's real neighbours as
@@ -636,11 +558,8 @@ const earClip = (
   const updateVertexClass = (position: number): boolean => {
     const wasBlocking = blocking.has(position);
     const cross = crossAt(position);
-    const tolerance = scaledEpsilon(
-      vertices[boundary[prev[position]]], vertices[boundary[position]], vertices[boundary[next[position]]]
-    );
-    // Not strictly greater than tolerance => reflex or flat => blocking.
-    const isBlockingNow = cross <= tolerance;
+    // Exact non-positive orientation means reflex or flat and therefore blocks.
+    const isBlockingNow = cross <= 0;
     if (isBlockingNow) blocking.add(position);
     else blocking.delete(position);
     return wasBlocking && !isBlockingNow;
@@ -672,24 +591,9 @@ const earClip = (
     const p = vertices[boundary[prev[position]]];
     const c = vertices[boundary[position]];
     const nx = vertices[boundary[next[position]]];
-    // Base magnitude scale for this candidate's own three points, and for
-    // just (p, nx) -- the two different point sets the two containment
-    // tests below need scaled tolerances for. Computed once per candidate
-    // (not once per blocker checked against it).
-    let baseMaxAbs = 1;
-    let pnxMaxAbs = 1;
-    for (const point of [p, c, nx]) {
-      const ax = Math.abs(point.x);
-      const ay = Math.abs(point.y);
-      if (ax > baseMaxAbs) baseMaxAbs = ax;
-      if (ay > baseMaxAbs) baseMaxAbs = ay;
-    }
-    for (const point of [p, nx]) {
-      const ax = Math.abs(point.x);
-      const ay = Math.abs(point.y);
-      if (ax > pnxMaxAbs) pnxMaxAbs = ax;
-      if (ay > pnxMaxAbs) pnxMaxAbs = ay;
-    }
+    // Charge the full current blocker scan before it starts. This is the hot,
+    // input-dependent part of ear clipping and may be repeated as ears change.
+    chargeTriangulationWork(workMeter, blocking.size);
     for (const blockerPosition of blocking) {
       if (blockerPosition === position || blockerPosition === prev[position] || blockerPosition === next[position]) {
         continue;
@@ -704,17 +608,8 @@ const earClip = (
       if (blockerGlobal === boundary[position] || blockerGlobal === boundary[prev[position]] ||
           blockerGlobal === boundary[next[position]]) continue;
       const blockerPoint = vertices[blockerGlobal];
-      const bx = Math.abs(blockerPoint.x);
-      const by = Math.abs(blockerPoint.y);
-      const bMax = bx > by ? bx : by;
-      // These two tolerances are numerically identical to what
-      // `scaledEpsilon(blockerPoint, p, c, nx)` and `scaledEpsilon(blockerPoint, p, nx)`
-      // would each compute independently (same points, same max-then-scale
-      // formula, just reassociated) -- see the comments on those helpers.
-      const triTolerance = EPSILON * (baseMaxAbs > bMax ? baseMaxAbs : bMax);
-      const segTolerance = EPSILON * (pnxMaxAbs > bMax ? pnxMaxAbs : bMax);
-      if (pointStrictlyInsideTriangle(blockerPoint, p, c, nx, triTolerance) ||
-          pointOnSegment(blockerPoint, p, nx, segTolerance)) return blockerPosition;
+      if (exactPointStrictlyInsideTriangle(blockerPoint, p, c, nx) ||
+          pointOnSegment(blockerPoint, p, nx)) return blockerPosition;
     }
     return -1;
   };
@@ -893,13 +788,9 @@ const earClip = (
   // zero-area *ring*, but that is a whole-ring invariant, not a per-triangle
   // one; checking again here, rather than trusting it transitively, is what
   // "never a silent bad triangle" requires.
-  const finalArea = orientation(
+  if (orientationSign(
     vertices[finalTriangle.a], vertices[finalTriangle.b], vertices[finalTriangle.c]
-  );
-  const finalTolerance = scaledEpsilon(
-    vertices[finalTriangle.a], vertices[finalTriangle.b], vertices[finalTriangle.c]
-  );
-  if (Math.abs(finalArea) <= finalTolerance) {
+  ) === 0) {
     throw new Error(
       "Polygon triangulation produced a degenerate final triangle; the remaining boundary was collinear"
     );
@@ -912,7 +803,7 @@ const earClip = (
 const orientedTriangle = (
   a: number, b: number, c: number, vertices: ReadonlyArray<TriangulationPoint>
 ): TriangulationTriangle => {
-  const signedArea = orientation(vertices[a], vertices[b], vertices[c]);
+  const signedArea = orientationSign(vertices[a], vertices[b], vertices[c]);
   return signedArea < 0 ? { a, b: c, c: b } : { a, b, c };
 };
 
@@ -921,27 +812,6 @@ const thirdVertex = (triangle: TriangulationTriangle, u: number, v: number): num
   if (triangle.a !== u && triangle.a !== v) return triangle.a;
   if (triangle.b !== u && triangle.b !== v) return triangle.b;
   return triangle.c;
-};
-
-/**
- * In-circle determinant test (a well-known predicate from computational
- * geometry): for CCW-oriented triangle (a, b, c), a positive result means
- * `d` lies strictly inside the circle passing through a, b and c. A
- * near-zero result means the four points are (numerically) cocircular.
- */
-const inCircleDeterminant = (
-  a: TriangulationPoint, b: TriangulationPoint, c: TriangulationPoint, d: TriangulationPoint
-): number => {
-  const ax = a.x - d.x;
-  const ay = a.y - d.y;
-  const bx = b.x - d.x;
-  const by = b.y - d.y;
-  const cx = c.x - d.x;
-  const cy = c.y - d.y;
-  const aSq = ax * ax + ay * ay;
-  const bSq = bx * bx + by * by;
-  const cSq = cx * cx + cy * cy;
-  return ax * (by * cSq - bSq * cy) - ay * (bx * cSq - bSq * cx) + aSq * (bx * cy - by * cx);
 };
 
 /**
@@ -960,13 +830,12 @@ const inCircleDeterminant = (
  * take. Profiling (`node --cpu-prof`) that worst case found the true hot
  * spot was **not** primarily this function's own rebuild-per-pass loop (it
  * accounted for roughly a fifth of the time), but the ear-clipping phase's
- * repeated, allocating tolerance computations and its own O(n) full-rescan
- * pattern (see `scaledEpsilon`'s and `earClip`'s doc comments for that part
- * of the fix). Still, rebuilding all O(edges) adjacency data after each of
+ * repeated allocations and its own O(n) full-rescan pattern (see `earClip`'s
+ * doc comment for that part of the fix). Still, rebuilding all O(edges)
+ * adjacency data after each of
  * the (typically O(vertices)) flips is quadratic work this module does not
- * need. Measured after this whole rewrite (this function's incremental
- * worklist, `scaledEpsilon`'s allocation-free rewrite, and `earClip`'s
- * incremental candidate queue together), on the same 917 real regions:
+ * need. Measured after that rewrite (this function's incremental worklist
+ * and `earClip`'s incremental candidate queue together), on the same 917 real regions:
  * median 1.4ms (was 68ms), 90th percentile 3.8ms (was 395ms), worst single
  * region (511 vertices) 46ms (was 7 836ms), and the whole 917-polygon set
  * in 2.0s (was ≈209s measured directly, extrapolated ≈200s in the original
@@ -1014,17 +883,18 @@ const inCircleDeterminant = (
  * does not depend on the incidental order `adjacency` happened to record the
  * two owners in.
  *
- * Four cocircular points are exactly the tie the task calls out: the
- * in-circle determinant is treated as a violation only when it exceeds a
- * magnitude-scaled tolerance, so an exact (or near-exact) cocircular
+ * Four cocircular points are exactly the tie the task calls out: the shared
+ * bigint predicate returns zero only for an exact grid cocircularity, so that
  * configuration is left as-is — whichever diagonal ear clipping already
  * produced — rather than flipped back and forth.
  */
 const lawsonFlip = (
   initial: ReadonlyArray<TriangulationTriangle>,
   vertices: ReadonlyArray<TriangulationPoint>,
-  constrainedEdges: ReadonlySet<string>
+  constrainedEdges: ReadonlySet<string>,
+  workMeter?: GeometryWorkMeter
 ): Array<TriangulationTriangle> => {
+  chargeTriangulationWork(workMeter, initial.length);
   const triangles: Array<TriangulationTriangle | undefined> = initial.map((triangle) => ({ ...triangle }));
   const cap = lawsonFlipCap(vertices.length);
   const vertexCount = vertices.length;
@@ -1113,6 +983,9 @@ const lawsonFlip = (
   }
 
   for (;;) {
+    // A heap pop can trigger exact bigint predicates and one constant-size
+    // adjacency update. Charging first lets a small budget stop before them.
+    chargeTriangulationWork(workMeter, 1);
     const key = heapPop();
     if (key === undefined) break;
     const owners = adjacency.get(key);
@@ -1144,12 +1017,10 @@ const lawsonFlip = (
     // Orient (u, v, r) CCW before testing, since the in-circle determinant
     // assumes CCW winding; triA is already CCW by construction, but which
     // of its own vertices is "first" depends on how thirdVertex found r.
-    const ccw = orientation(uPoint, vPoint, rPoint) >= 0
+    const ccw = orientationSign(uPoint, vPoint, rPoint) >= 0
       ? { first: uPoint, second: vPoint, third: rPoint }
       : { first: vPoint, second: uPoint, third: rPoint };
-    const tolerance = scaledEpsilon(uPoint, vPoint, rPoint, sPoint) *
-      Math.max(1, Math.abs(uPoint.x) + Math.abs(uPoint.y) + Math.abs(vPoint.x) + Math.abs(vPoint.y));
-    if (inCircleDeterminant(ccw.first, ccw.second, ccw.third, sPoint) <= tolerance) continue;
+    if (inCircleSign(ccw.first, ccw.second, ccw.third, sPoint) <= 0) continue;
 
     // Perform the flip: drop the two old triangles' edge registrations,
     // install the two new triangles in the same slots, and register their
@@ -1222,14 +1093,16 @@ const addRingEdges = (ring: ReadonlyArray<number>, into: Set<string>): void => {
  */
 export const triangulatePolygon = (
   outer: ReadonlyArray<TriangulationPoint>,
-  holes?: ReadonlyArray<ReadonlyArray<TriangulationPoint>>
+  holes?: ReadonlyArray<ReadonlyArray<TriangulationPoint>>,
+  workMeter?: GeometryWorkMeter
 ): TriangulatedPolygon => {
-  const outerRing = normalizeRing(outer, "Outer ring", "ccw");
-  const holeRings = (holes ?? []).map((hole, index) => normalizeRing(hole, `Hole ${index}`, "cw"));
+  const outerRing = normalizeRing(outer, "Outer ring", "ccw", workMeter);
+  const holeRings = (holes ?? []).map((hole, index) =>
+    normalizeRing(hole, `Hole ${index}`, "cw", workMeter));
   for (let index = 0; index < holeRings.length; index += 1) {
-    assertHoleInsideOuter(holeRings[index], outerRing, index);
+    assertHoleInsideOuter(holeRings[index], outerRing, index, workMeter);
   }
-  assertHolesDisjoint(holeRings);
+  assertHolesDisjoint(holeRings, workMeter);
 
   const vertices: Array<TriangulationPoint> = [...outerRing];
   const holeGlobalIndices: Array<Array<number>> = [];
@@ -1253,27 +1126,39 @@ export const triangulatePolygon = (
   // needing to re-attempt an earlier one.
   const holeOrder = holeGlobalIndices
     .map((indices, index) => {
+      chargeTriangulationWork(workMeter, indices.length);
       let rightmost = indices[0];
       for (const candidate of indices) {
         const candidatePoint = vertices[candidate];
         const currentPoint = vertices[rightmost];
-        if (candidatePoint.x > currentPoint.x + EPSILON ||
-            (Math.abs(candidatePoint.x - currentPoint.x) <= EPSILON && candidatePoint.y < currentPoint.y - EPSILON)) {
+        const xOrder = compareGridCoordinates(candidatePoint.x, currentPoint.x);
+        if (xOrder > 0 ||
+            (xOrder === 0 && compareGridCoordinates(candidatePoint.y, currentPoint.y) < 0)) {
           rightmost = candidate;
         }
       }
       return { index, point: vertices[rightmost] };
     })
-    .sort((left, right) =>
-      right.point.x - left.point.x || left.point.y - right.point.y || left.index - right.index)
+    .sort((left, right) => {
+      const xOrder = compareGridCoordinates(right.point.x, left.point.x);
+      if (xOrder !== 0) return xOrder;
+      const yOrder = compareGridCoordinates(left.point.y, right.point.y);
+      return yOrder !== 0 ? yOrder : left.index - right.index;
+    })
     .map((entry) => entry.index);
 
   let boundary: Array<number> = outerGlobalIndices;
   for (const holeIndex of holeOrder) {
-    boundary = spliceHoleIntoBoundary(boundary, holeGlobalIndices[holeIndex], vertices, constrainedEdges);
+    boundary = spliceHoleIntoBoundary(
+      boundary,
+      holeGlobalIndices[holeIndex],
+      vertices,
+      constrainedEdges,
+      workMeter
+    );
   }
 
-  const initialTriangles = earClip(boundary, vertices);
-  const triangles = lawsonFlip(initialTriangles, vertices, constrainedEdges);
+  const initialTriangles = earClip(boundary, vertices, workMeter);
+  const triangles = lawsonFlip(initialTriangles, vertices, constrainedEdges, workMeter);
   return { vertices, triangles };
 };

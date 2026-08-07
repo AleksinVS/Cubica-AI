@@ -1,7 +1,7 @@
 # ADR-056: Manifest Contract ↔ JSON Schema Parity And Contract Testing
 
 - **Дата**: 2026-06-30
-- **Статус**: Accepted
+**Status:** Accepted
 - **Авторы**: AI agent review, владелец продукта
 - **Компоненты**: `packages/contracts/*` (manifest, runtime, session, ai), `docs/architecture/schemas/*`, authoring compiler, CI validators
 - **Связанные решения**: ADR-013, ADR-025, ADR-030, ADR-051, ADR-054

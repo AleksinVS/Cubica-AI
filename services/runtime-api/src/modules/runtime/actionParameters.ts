@@ -29,6 +29,7 @@ const ajv = new Ajv2020({ allErrors: true, strict: true });
 ajv.addKeyword({ keyword: "x-cubica-ref", schemaType: "object", valid: true });
 
 const validatorCache = new WeakMap<object, ValidateFunction>();
+const subsetValidatorCache = new WeakMap<object, Map<string, ValidateFunction>>();
 const forbiddenKeys = new Set(["__proto__", "constructor", "prototype"]);
 
 const isRecord = (value: unknown): value is JsonRecord =>
@@ -157,12 +158,23 @@ export const validateActionReferenceParameterSubset = (
       throw new RequestValidationError("Action preview params contain a forbidden property name");
     }
   }
-  const validator = compileValidator({
-    type: "object",
-    additionalProperties: false,
-    properties: selectedProperties,
-    required: uniqueNames
-  });
+  const cacheOwner = definition as object;
+  let validatorsBySelection = subsetValidatorCache.get(cacheOwner);
+  if (!validatorsBySelection) {
+    validatorsBySelection = new Map();
+    subsetValidatorCache.set(cacheOwner, validatorsBySelection);
+  }
+  const selectionKey = `${[...uniqueNames].sort().join("\u0000")}|${options.requiredVisibility ?? "any"}`;
+  let validator = validatorsBySelection.get(selectionKey);
+  if (!validator) {
+    validator = compileValidator({
+      type: "object",
+      additionalProperties: false,
+      properties: selectedProperties,
+      required: [...uniqueNames].sort()
+    });
+    validatorsBySelection.set(selectionKey, validator);
+  }
   if (!validator(params)) {
     throw new RequestValidationError(
       `Action "${definition.actionId}" preview params failed schema validation: ${formatValidationErrors(validator)}`

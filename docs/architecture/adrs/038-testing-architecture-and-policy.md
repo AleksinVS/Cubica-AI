@@ -1,7 +1,7 @@
 # ADR-038: Testing Architecture And Policy
 
 - **Дата**: 2026-05-29
-- **Статус**: Accepted
+**Status:** Accepted
 - **Авторы**: Codex
 - **Компоненты**: repository verification, `services/runtime-api`, `apps/player-web`, `apps/editor-web`, `packages/editor-engine`, `packages/contracts/*`, `games/*`, portal launch boundary
 

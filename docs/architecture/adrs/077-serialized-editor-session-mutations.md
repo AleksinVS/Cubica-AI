@@ -1,7 +1,7 @@
 # ADR-077: Сериализация изменений рабочей сессии редактора
 
 - **Дата**: 2026-07-11
-- **Статус**: Accepted
+**Status:** Accepted
 - **Авторы**: Codex
 - **Компоненты**: Editor Web, Editor Sessions, Game Repository
 - **Связанные решения**: ADR-036, ADR-042, ADR-065, ADR-075

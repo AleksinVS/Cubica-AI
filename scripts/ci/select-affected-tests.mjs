@@ -54,6 +54,10 @@ export const FULL_SUITE_IDS = Object.freeze([
   "e2e:full"
 ]);
 
+// Include deletions: a change made only of removed files must never look like
+// an empty diff and accidentally select no verification suites.
+export const GIT_DIFF_FILTER = "ACDMRTUXB";
+
 const CRITICAL_PATH_PATTERNS = [
   /(^|\/)(package\.json|package-lock\.json|npm-shrinkwrap\.json|pnpm-lock\.yaml|yarn\.lock)$/,
   /^\.github\/workflows\//,
@@ -166,17 +170,17 @@ function parseArgs(argv) {
 function changedPaths(options) {
   try {
     if (options.base) {
-      return gitLines(["diff", "--name-only", "--diff-filter=ACMRTUXB", `${options.base}...${options.head}`]);
+      return gitLines(["diff", "--name-only", `--diff-filter=${GIT_DIFF_FILTER}`, `${options.base}...${options.head}`]);
     }
 
     const workingPaths = new Set([
-      ...gitLines(["diff", "--name-only", "--diff-filter=ACMRTUXB", "HEAD"]),
-      ...gitLines(["diff", "--cached", "--name-only", "--diff-filter=ACMRTUXB"]),
+      ...gitLines(["diff", "--name-only", `--diff-filter=${GIT_DIFF_FILTER}`, "HEAD"]),
+      ...gitLines(["diff", "--cached", "--name-only", `--diff-filter=${GIT_DIFF_FILTER}`]),
       ...gitLines(["ls-files", "--others", "--exclude-standard"])
     ]);
     if (workingPaths.size > 0) return [...workingPaths];
 
-    return gitLines(["diff", "--name-only", "--diff-filter=ACMRTUXB", "HEAD~1..HEAD"]);
+    return gitLines(["diff", "--name-only", `--diff-filter=${GIT_DIFF_FILTER}`, "HEAD~1..HEAD"]);
   } catch (error) {
     // A shallow clone, missing base, or unborn repository must never narrow the
     // checks. This synthetic unknown path forces the complete fallback.

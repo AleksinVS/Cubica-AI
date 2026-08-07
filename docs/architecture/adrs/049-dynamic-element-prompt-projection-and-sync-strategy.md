@@ -1,7 +1,7 @@
 # ADR-049: Dynamic Element Prompt Projection And Sync Strategy
 
 - **Дата**: 2026-06-13
-- **Статус**: Accepted
+**Status:** Accepted
 - **Авторы**: Codex
 - **Компоненты**: Authoring manifests, UI authoring manifests, Game Editor, editor-engine, Agent UI, manifest schemas
 - **Связанные решения**: ADR-025, ADR-030, ADR-034, ADR-036, ADR-048

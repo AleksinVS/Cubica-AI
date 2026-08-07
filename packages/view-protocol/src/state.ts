@@ -83,6 +83,23 @@ const parseJsonPointer = (pointer: string): string[] => {
     .map((segment) => decodeJsonPointerSegment(segment));
 };
 
+/**
+ * Parses an RFC 6901 array-index token.
+ *
+ * `Number()` is deliberately not used directly here: it would accept values
+ * such as `"01"`, `"1e0"`, and the empty string, none of which is an array
+ * index in a JSON Pointer. Object keys remain unrestricted because JSON
+ * objects may legitimately have those names.
+ */
+const parseArrayIndex = (token: string): number | undefined => {
+  if (!/^(?:0|[1-9][0-9]*)$/u.test(token)) {
+    return undefined;
+  }
+
+  const index = Number(token);
+  return Number.isSafeInteger(index) ? index : undefined;
+};
+
 const cloneJson = (value: JsonValue): JsonValue => {
   // structuredClone — стандартный способ клонирования JSON-подобных структур в браузере/Node 18+.
   // Если он недоступен, используем JSON stringify/parse как запасной вариант.
@@ -99,8 +116,8 @@ const getByPointer = (doc: JsonValue, pointer: string): JsonValue => {
   let current: JsonValue = doc;
   for (const segment of segments) {
     if (Array.isArray(current)) {
-      const index = Number(segment);
-      if (!Number.isInteger(index) || index < 0 || index >= current.length) {
+      const index = parseArrayIndex(segment);
+      if (index === undefined || index >= current.length) {
         throw new Error(`JSON Pointer "${pointer}" is out of bounds for array`);
       }
       current = current[index] as JsonValue;
@@ -150,8 +167,8 @@ export function applyJsonPatch(target: JsonValue, operations: JsonPatchOperation
         parent.push(value);
         return;
       }
-      const index = Number(key);
-      if (!Number.isInteger(index) || index < 0 || index > parent.length) {
+      const index = parseArrayIndex(key);
+      if (index === undefined || index > parent.length) {
         throw new Error(`JSON Pointer "${pointer}" index is invalid for array`);
       }
       if (mode === "add") {
@@ -180,8 +197,8 @@ export function applyJsonPatch(target: JsonValue, operations: JsonPatchOperation
     const { parent, key } = getParentByPointer(doc, pointer);
 
     if (Array.isArray(parent)) {
-      const index = Number(key);
-      if (!Number.isInteger(index) || index < 0 || index >= parent.length) {
+      const index = parseArrayIndex(key);
+      if (index === undefined || index >= parent.length) {
         throw new Error(`JSON Pointer "${pointer}" is out of bounds for remove`);
       }
       parent.splice(index, 1);

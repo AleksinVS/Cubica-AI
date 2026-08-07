@@ -137,7 +137,7 @@
           "construction": {
             "waypointCost": 5,
             "repeatUntilExplicitFinish": true,
-            "roadGeometry": "server-planned-region-segment-minimum-v2",
+            "roadGeometry": "server-planned-region-segment-minimum-v3",
             "roadCostPerRegionSegment": 2
           }
         },
@@ -155,7 +155,7 @@
           }
         ],
         "constructionActionIntent": {
-          "status": "executable-technical-region-draft",
+          "status": "executable-author-confirmed-region-network",
           "publishable": false,
           "road": {
             "actionId": "construction.road.build",
@@ -305,18 +305,17 @@
             "news-28-and-29-departure-bonus-lasts-one-turn",
             "news-34-base-purchase-prices-persist-until-game-end"
           ],
-          "workingInterpretations": [
-            "full-cargo-priority-tie-uses-server-random-until-author-confirmation"
-          ],
+          "workingInterpretations": [],
           "cargoSelectionPriority": {
             "status": "executable-with-two-explicit-technical-policies",
             "queueSlot": "one-per-eligible-wagon",
             "eligibility": "active empty logistics-company wagon at an open numbered terminal 1-23",
             "ownerPriority": [
               "coins-descending",
-              "active-owned-wagon-count-descending"
+              "active-owned-wagon-count-descending",
+              "placement-order-ascending"
             ],
-            "fullTiePolicy": "server-random:cargo-offer-order",
+            "fullTiePolicy": "canonical-id",
             "clientAuthority": {
               "prepare": [],
               "draw": [
@@ -524,13 +523,13 @@
           "unresolvedBeforeFullTurn": []
         },
         "constructionCycle": {
-          "status": "executable-on-non-publishable-technical-regions",
+          "status": "executable-on-author-confirmed-regions",
           "publishable": false,
           "regionData": {
-            "provenance": "generated technical placeholder; not author geography",
-            "geometryVersion": "technical-placeholder-vertical-strips-v1",
-            "regionCount": 20,
-            "replaceBeforePublication": true
+            "provenance": "author-confirmed partition of the real map (annotations/initial-network-with-regions.review.json), compiled by convert-map-annotation.mjs; see ADR-100",
+            "geometryVersion": "guinea-regions-v1",
+            "regionCount": 982,
+            "replaceBeforePublication": false
           },
           "pricing": {
             "roadCoinsPerRegionSegment": 2,
@@ -11796,9 +11795,9 @@
         ],
         "roadPlanning": {
           "mode": "region-segment-minimum",
-          "algorithmVersion": "region-segment-minimum-v2",
+          "algorithmVersion": "region-segment-minimum-v3",
           "geometryVersion": "mock-regions-v1",
-          "geometryHash": "sha256:bc78952bb05177b6015bfbf461139d728c9cd40c691e30277031acec980ce5fd",
+          "geometryHash": "sha256:92f584565dfb937f5f9b93799238223ff4785c83a0b07b752442441227a5ebb8",
           "tieBreak": "shortest-then-codepoint",
           "boundaryPolicy": "lowest-region-id",
           "excludedRegionIdsEndpoint": "public.transportNetworks.main.excludedRegionIds"

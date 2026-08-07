@@ -30,6 +30,11 @@
  *   triangle to the next through a gate.
  */
 import type { GameManifestCanonicalPoint } from "@cubica/contracts-manifest";
+import {
+  type GeometryWorkMeter,
+  chargeGeometryWork,
+  orientationSign
+} from "../geometryPredicates.ts";
 
 import {
   type CanonicalRegion,
@@ -86,7 +91,8 @@ const undirectedEdgeKey = (first: Point, second: Point): string =>
  */
 const conformRing = (
   ring: ReadonlyArray<Point>,
-  borderPoints: ReadonlyArray<Point>
+  borderPoints: ReadonlyArray<Point>,
+  workMeter?: GeometryWorkMeter
 ): Array<Point> => {
   if (borderPoints.length === 0) return [...ring];
   const result: Array<Point> = [];
@@ -94,10 +100,16 @@ const conformRing = (
     const from = ring[index];
     const to = ring[(index + 1) % ring.length];
     result.push(from);
+    // Filtering scans every known border point. Sorting can inspect the
+    // survivors logarithmically; reserve that upper bound before either step.
+    const sortFactor = Math.max(1, Math.ceil(Math.log2(borderPoints.length + 1)));
+    chargeGeometryWork(workMeter, borderPoints.length * (1 + sortFactor));
     const inserted = borderPoints
       .filter((point) =>
-        pointKey(point) !== pointKey(from) &&
-        pointKey(point) !== pointKey(to) &&
+        (point.x !== from.x || point.y !== from.y) &&
+        (point.x !== to.x || point.y !== to.y) &&
+        point.x >= Math.min(from.x, to.x) && point.x <= Math.max(from.x, to.x) &&
+        point.y >= Math.min(from.y, to.y) && point.y <= Math.max(from.y, to.y) &&
         pointOnSegment(point, from, to))
       .map((point) => ({ point, along: distance(from, point) }))
       .sort((left, right) => left.along - right.along || pointCompare(left.point, right.point));
@@ -137,17 +149,17 @@ export class RegionMeshCache {
   }
 
   /** The triangles of one region, split on first use. */
-  trianglesOf(regionId: string): Array<[Point, Point, Point]> {
+  trianglesOf(regionId: string, workMeter?: GeometryWorkMeter): Array<[Point, Point, Point]> {
     const known = this.triangulated.get(regionId);
     if (known) return known;
     const region = this.regionsById.get(regionId);
     if (!region) throw new Error(`Road-planning region "${regionId}" is not declared`);
     const borderPoints = this.borderPointsByRegion.get(regionId) ?? [];
-    const rings = regionRings(region).map((ring) => conformRing(ring, borderPoints));
+    const rings = regionRings(region).map((ring) => conformRing(ring, borderPoints, workMeter));
     const [outer, ...holes] = rings;
     let split;
     try {
-      split = triangulatePolygon(outer, holes);
+      split = triangulatePolygon(outer, holes, workMeter);
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
       throw new Error(`Road-planning region "${regionId}" cannot be split into triangles: ${reason}`);
@@ -164,9 +176,7 @@ export class RegionMeshCache {
     // common — they are exactly what a neighbour's extra corners are — so this
     // has to be caught here rather than hoped against.
     for (const [a, b, c] of triangles) {
-      const doubleArea = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
-      const scale = Math.max(1, distance(a, b), distance(b, c), distance(c, a));
-      if (Math.abs(doubleArea) <= 1e-9 * scale * scale) {
+      if (orientationSign(a, b, c) === 0) {
         throw new Error(
           `Road-planning region "${regionId}" split into a triangle of zero area at `
           + `(${a.x},${a.y}) (${b.x},${b.y}) (${c.x},${c.y})`
@@ -190,7 +200,8 @@ export class RegionMeshCache {
  */
 export const buildCorridorMesh = (
   cache: RegionMeshCache,
-  regionIds: ReadonlyArray<string>
+  regionIds: ReadonlyArray<string>,
+  workMeter?: GeometryWorkMeter
 ): CorridorMesh => {
   if (regionIds.length > MAX_CORRIDOR_REGIONS) {
     throw new Error(`Road planning supports corridors of at most ${MAX_CORRIDOR_REGIONS} regions`);
@@ -199,7 +210,8 @@ export const buildCorridorMesh = (
   const trianglesByRegion = new Map<string, Array<number>>();
   for (const regionId of regionIds) {
     const indices: Array<number> = [];
-    for (const points of cache.trianglesOf(regionId)) {
+    for (const points of cache.trianglesOf(regionId, workMeter)) {
+      chargeGeometryWork(workMeter, 1);
       indices.push(triangles.length);
       triangles.push({ regionId, points });
       if (triangles.length > MAX_CORRIDOR_TRIANGLES) {
@@ -211,16 +223,20 @@ export const buildCorridorMesh = (
 
   const byEdge = new Map<string, Array<{ triangle: number; gate: [Point, Point] }>>();
   triangles.forEach((triangle, index) => {
+    chargeGeometryWork(workMeter, 3);
     for (let corner = 0; corner < 3; corner += 1) {
       const from = triangle.points[corner];
       const to = triangle.points[(corner + 1) % 3];
       const key = undirectedEdgeKey(from, to);
-      byEdge.set(key, [...(byEdge.get(key) ?? []), { triangle: index, gate: [from, to] }]);
+      const incident = byEdge.get(key);
+      if (incident) incident.push({ triangle: index, gate: [from, to] });
+      else byEdge.set(key, [{ triangle: index, gate: [from, to] }]);
     }
   });
 
   const neighbours: Array<Array<{ to: number; gate: [Point, Point] }>> = triangles.map(() => []);
   for (const [key, incident] of byEdge) {
+    chargeGeometryWork(workMeter, incident.length);
     if (incident.length === 1) continue;
     if (incident.length > 2) {
       throw new Error(`Road-planning surface has ${incident.length} triangles on edge ${key}`);
@@ -232,6 +248,8 @@ export const buildCorridorMesh = (
   // A fixed neighbour order keeps the later search reproducible without
   // depending on the order in which edges happened to be met.
   for (const list of neighbours) {
+    const sortFactor = Math.max(1, Math.ceil(Math.log2(list.length + 1)));
+    chargeGeometryWork(workMeter, list.length * sortFactor);
     list.sort((left, right) => left.to - right.to);
   }
   return { triangles, neighbours, trianglesByRegion };
@@ -240,13 +258,10 @@ export const buildCorridorMesh = (
 /** Does this triangle contain the point, border included? */
 export const triangleContains = (triangle: MeshTriangle, point: Point): boolean => {
   const [a, b, c] = triangle.points;
-  const side = (from: Point, to: Point): number =>
-    (to.x - from.x) * (point.y - from.y) - (to.y - from.y) * (point.x - from.x);
-  const first = side(a, b);
-  const second = side(b, c);
-  const third = side(c, a);
-  const tolerance = 1e-9 * Math.max(1, Math.abs(first), Math.abs(second), Math.abs(third));
-  const negative = first < -tolerance || second < -tolerance || third < -tolerance;
-  const positive = first > tolerance || second > tolerance || third > tolerance;
+  const first = orientationSign(a, b, point);
+  const second = orientationSign(b, c, point);
+  const third = orientationSign(c, a, point);
+  const negative = first < 0 || second < 0 || third < 0;
+  const positive = first > 0 || second > 0 || third > 0;
   return !(negative && positive);
 };

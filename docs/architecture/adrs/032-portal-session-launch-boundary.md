@@ -1,7 +1,7 @@
 # ADR-032: Portal Session Launch Boundary
 
 - **Дата**: 2026-05-18
-- **Статус**: Proposed
+**Status:** Proposed
 - **Авторы**: Codex
 - **Компоненты**: Portal, Runtime API, Player Web, Session, Catalog, Deployment
 

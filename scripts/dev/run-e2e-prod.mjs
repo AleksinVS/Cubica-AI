@@ -46,9 +46,10 @@ if (!supportedProfiles.has(profile)) {
 const runtimePort = Number(process.env.E2E_RUNTIME_PORT ?? 3201);
 const playerPort = Number(process.env.E2E_PLAYER_PORT ?? 3200);
 const runtimeUrl = `http://127.0.0.1:${runtimePort}`;
-// Match Playwright's browser origin. `localhost` preserves production Secure
-// cookie semantics; the actual Next.js listener remains bound to 127.0.0.1.
-const playerUrl = `http://localhost:${playerPort}`;
+// Keep editor and player on the same loopback site. Using `localhost` for the
+// iframe while the editor uses `127.0.0.1` makes SameSite runtime credentials
+// third-party cookies, so the browser correctly withholds them from actions.
+const playerUrl = `http://127.0.0.1:${playerPort}`;
 
 /** Run a command inheriting stdio and return its exit result to the caller. */
 function run(label, command, args, extraEnv = {}) {
@@ -94,7 +95,10 @@ if (profile === "full" || profile === "editor") {
 const playwrightEnv = {
   E2E_SERVER_MODE: "prod",
   E2E_PROFILE: profile,
-  E2E_PLAYER_ONLY: ["smoke", "player", "portal"].includes(profile) ? "1" : "0"
+  E2E_PLAYER_ONLY: ["smoke", "player", "portal"].includes(profile) ? "1" : "0",
+  // Production builds normally require Secure runtime cookies. Local E2E runs
+  // over plain HTTP, so player-web accepts this opt-in only for loopback hosts.
+  CUBICA_ALLOW_INSECURE_LOCAL_RUNTIME_COOKIE: "1"
 };
 const firstPass = run(
   `playwright ${profile} first pass`,

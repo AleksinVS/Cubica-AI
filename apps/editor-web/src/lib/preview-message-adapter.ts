@@ -72,6 +72,22 @@ export interface PlayerPreviewSessionSnapshotMessage {
   };
 }
 
+export interface PlayerPreviewRestoreResultMessage {
+  readonly source: "cubica-player-web";
+  readonly type: "previewRestoreResult";
+  readonly version: 1;
+  readonly requestId: string;
+  readonly ok: boolean;
+  readonly error?: string;
+  readonly sessionVersion?: PreviewSessionStateVersion;
+}
+
+export interface PlayerPreviewBridgeReadyMessage {
+  readonly source: "cubica-player-web";
+  readonly type: "previewBridgeReady";
+  readonly version: 1;
+}
+
 export interface PreviewDescriptorMappingResult {
   readonly descriptors: readonly PreviewEntityDescriptor[];
   readonly unresolved: readonly PlayerPreviewEntityMessage[];
@@ -113,6 +129,33 @@ export function isPlayerPreviewSessionSnapshotMessage(value: unknown): value is 
   }
 
   return value.gameId === undefined || typeof value.gameId === "string";
+}
+
+export function isPlayerPreviewRestoreResultMessage(value: unknown): value is PlayerPreviewRestoreResultMessage {
+  const baseIsValid = (
+    isPlainRecord(value) &&
+    value.source === "cubica-player-web" &&
+    value.type === "previewRestoreResult" &&
+    value.version === 1 &&
+    typeof value.requestId === "string" &&
+    value.requestId.length > 0 &&
+    value.requestId.length <= 128 &&
+    typeof value.ok === "boolean" &&
+    (value.error === undefined || typeof value.error === "string")
+  );
+  if (!baseIsValid) {
+    return false;
+  }
+  return value.sessionVersion === undefined || isSessionStateVersion(value.sessionVersion);
+}
+
+export function isPlayerPreviewBridgeReadyMessage(value: unknown): value is PlayerPreviewBridgeReadyMessage {
+  return (
+    isPlainRecord(value) &&
+    value.source === "cubica-player-web" &&
+    value.type === "previewBridgeReady" &&
+    value.version === 1
+  );
 }
 
 export function mapPlayerPreviewEntitiesToAuthoringDescriptors(

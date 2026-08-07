@@ -1,7 +1,7 @@
 # ADR-005: Session State Persistence Strategy
 
-## Status
-Accepted
+**Status:** Accepted
+
 
 ## Context
 Игровые сессии в Cubica строятся на LLM-first подходе. Это накладывает специфические требования:

@@ -2,7 +2,7 @@
  * The rule by which a road is planned, checked on maps small enough to work out
  * by hand.
  *
- * Version 2 promises three things and this file checks each of them separately
+ * Version 3 promises three things and this file checks each of them separately
  * (ADR-100 § 4.5):
  *
  * 1. the road crosses the smallest possible number of regions — that number is
@@ -34,7 +34,12 @@ import {
   REGION_ROAD_PLANNING_MODE,
   REGION_ROAD_TIE_BREAK
 } from "../src/modules/runtime/regionRoadGeometry.ts";
-import { planMinimumRegionRoad } from "../src/modules/runtime/regionRoadPlanner.ts";
+import {
+  compileRegionRoadPlanning,
+  planMinimumRegionRoad,
+  resetCompiledRoadPlanningCache
+} from "../src/modules/runtime/regionRoadPlanner.ts";
+import { RegionMeshCache } from "../src/modules/runtime/navigationMesh.ts";
 
 type RawRegion = { id: string; polygon: Array<{ x: number; y: number }> };
 
@@ -221,17 +226,18 @@ test("the same request twice gives the identical road", () => {
   assertPassagesStayInsideTheirRegions(model, first);
 });
 
-test("a road straight through the point where four regions meet is refused", () => {
-  // The straight line here passes exactly through the one point all four
-  // squares share, entering neither "b" nor "c". Touching a border at a single
-  // point is not a paid stretch and not a crossing either (ADR-081 § 4.2), so
-  // there is no shortest valid road along this diagonal — only ever-shorter
-  // ones. The planner says so instead of inventing an answer.
+test("a road through a four-region point pays only its positive-length owners", () => {
+  // The straight line passes through the one point all four squares share but
+  // enters neither "b" nor "c". Version 3 assigns the point itself to the
+  // lowest id while charging only regions that own a positive-length stretch.
   const model = modelOf(fourWayGrid());
-  assert.throws(
-    () => planMinimumRegionRoad({ model, from: { x: 5, y: 5 }, to: { x: 15, y: 15 } }),
-    /without entering region/u
-  );
+  const { road } = planMinimumRegionRoad({
+    model,
+    from: { x: 5, y: 5 },
+    to: { x: 15, y: 15 }
+  });
+  assert.deepEqual(road.regionSequence, ["a", "d"]);
+  assertPassagesStayInsideTheirRegions(model, road);
 });
 
 test("regions that do not connect are refused with a reason", () => {
@@ -263,4 +269,79 @@ test("a declared checksum that does not match the regions is refused", () => {
     () => planMinimumRegionRoad({ model: tampered, from: { x: 2, y: 5 }, to: { x: 18, y: 5 } }),
     /geometry hash mismatch/u
   );
+});
+
+test("a warm cache never validates a different map that copied the claimed hash", () => {
+  resetCompiledRoadPlanningCache();
+  const valid = modelOf([box("only", 0, 0, 10, 10)]);
+  compileRegionRoadPlanning(valid);
+  const altered = structuredClone(valid);
+  altered.regions[0].polygon[1] = { x: 9, y: 0 };
+  assert.throws(
+    () => compileRegionRoadPlanning(altered),
+    /geometry hash mismatch/u
+  );
+});
+
+test("a tiny cold budget fails before the first contour scan", () => {
+  resetCompiledRoadPlanningCache();
+  const valid = modelOf([box("only", 0, 0, 10, 10)]);
+  const polygon = new Proxy(valid.regions[0].polygon, {
+    get(target, property, receiver) {
+      if (typeof property === "string" && /^\d+$/u.test(property)) {
+        throw new Error("contour scan started before its work was charged");
+      }
+      return Reflect.get(target, property, receiver) as unknown;
+    }
+  });
+  const guarded = {
+    ...valid,
+    regions: [{ ...valid.regions[0], polygon }]
+  } as GameManifestTransportNetworkModel;
+  let remaining = 1;
+  assert.throws(
+    () => compileRegionRoadPlanning(guarded, {
+      charge(units) {
+        if (units > remaining) throw new Error("test geometry budget exceeded");
+        remaining -= units;
+      }
+    }),
+    /test geometry budget exceeded/u
+  );
+});
+
+test("a tiny mesh budget fails before the first cold triangulation scan", () => {
+  const [canonical] = canonicalizeRoadPlanningRegions([
+    box("only", 0, 0, 10, 10) as unknown as GameManifestTransportRegion
+  ]);
+  const source = canonical.polygon;
+  let indexedReads = 0;
+  const guardedPolygon = new Proxy(source, {
+    get(target, property, receiver) {
+      if (typeof property === "string" && /^\d+$/u.test(property)) {
+        indexedReads += 1;
+        // `RegionMeshCache` first makes one shallow conforming copy. Any
+        // subsequent indexed read belongs to triangulation itself and proves
+        // the budget hook did not get a chance to stop that expensive stage.
+        if (indexedReads > target.length) {
+          throw new Error("cold triangulation scan started before its work was charged");
+        }
+      }
+      return Reflect.get(target, property, receiver) as unknown;
+    }
+  });
+  const cache = new RegionMeshCache(
+    [{ ...canonical, polygon: guardedPolygon }],
+    []
+  );
+
+  assert.throws(
+    () => cache.trianglesOf("only", {
+      charge() {
+        throw new Error("test cold triangulation budget exceeded");
+      }
+    }),
+    /test cold triangulation budget exceeded/u
+  );
+  assert.equal(indexedReads, source.length, "only the pre-triangulation conforming copy may read the contour");
 });

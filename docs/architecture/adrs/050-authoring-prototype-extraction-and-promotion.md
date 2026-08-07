@@ -1,7 +1,7 @@
 # ADR-050: Authoring Prototype Extraction And Promotion
 
 - **Дата**: 2026-06-13
-- **Статус**: Accepted
+**Status:** Accepted
 - **Авторы**: Codex
 - **Компоненты**: Authoring manifests, UI authoring manifests, Game Editor, editor-engine, authoring compiler, manifest schemas
 - **Связанные решения**: ADR-025, ADR-030, ADR-034, ADR-036, ADR-040, ADR-048, ADR-049

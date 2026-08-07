@@ -107,7 +107,10 @@ const assertPassagesStayInsideTheirRegions = (
     for (let index = passage.fromPointIndex; index < passage.toPointIndex; index += 1) {
       const from = road.points[index];
       const to = road.points[index + 1];
-      for (let step = 0; step <= 20; step += 1) {
+      // Passage endpoints have zero length and a shared boundary point has one
+      // owner under v3; it need not belong to both adjacent paid stretches.
+      // Sample the positive-length interior of each stretch.
+      for (let step = 1; step < 20; step += 1) {
         const t = step / 20;
         const sample = { x: from.x + (to.x - from.x) * t, y: from.y + (to.y - from.y) * t };
         assert.ok(
@@ -176,7 +179,13 @@ test("planning a road on the real author map finds one, and every stretch is hon
   const to = terminalPosition(manifest, "terminal-14");
 
   const firstCallStartedAt = performance.now();
-  const { road: firstRoad } = planMinimumRegionRoad({ model, from, to });
+  let coldWorkUnits = 0;
+  const { road: firstRoad } = planMinimumRegionRoad({
+    model,
+    from,
+    to,
+    workMeter: { charge: (units) => { coldWorkUnits += units; } }
+  });
   const firstCallMilliseconds = performance.now() - firstCallStartedAt;
   // Not a tight timeout: ADR-100 §4.4 measures the first call (map compile +
   // first corridor) at up to about 520 ms on top of the ~5 s one-time parse
@@ -194,8 +203,10 @@ test("planning a road on the real author map finds one, and every stretch is hon
     "far above the ~5 s one-time compile ADR-100 §4.4 measured on an idle machine"
   );
   process.stdout.write(
-    `cards-money-trains-real-map-road-planning: first call (cold cache) took ${firstCallMilliseconds.toFixed(1)} ms\n`
+    `cards-money-trains-real-map-road-planning: first call (cold cache) took ${firstCallMilliseconds.toFixed(1)} ms, ` +
+    `${coldWorkUnits} work units\n`
   );
+  assert.ok(coldWorkUnits > 0 && coldWorkUnits < 10_000_000);
 
   assert.ok(firstRoad.regionSequence.length >= 1, "a road must cross at least one region");
   assert.ok(firstRoad.points.length >= 2, "a road must have at least a start and an end point");
@@ -209,17 +220,108 @@ test("planning a road on the real author map finds one, and every stretch is hon
   const secondFrom = terminalPosition(manifest, "terminal-4");
   const secondTo = terminalPosition(manifest, "terminal-10");
   const secondCallStartedAt = performance.now();
-  const { road: secondRoad } = planMinimumRegionRoad({ model, from: secondFrom, to: secondTo });
+  let warmWorkUnits = 0;
+  const { road: secondRoad } = planMinimumRegionRoad({
+    model,
+    from: secondFrom,
+    to: secondTo,
+    workMeter: { charge: (units) => { warmWorkUnits += units; } }
+  });
   const secondCallMilliseconds = performance.now() - secondCallStartedAt;
   process.stdout.write(
-    `cards-money-trains-real-map-road-planning: second call (warm cache) took ${secondCallMilliseconds.toFixed(1)} ms\n`
+    `cards-money-trains-real-map-road-planning: second call (warm cache) took ${secondCallMilliseconds.toFixed(1)} ms, ` +
+    `${warmWorkUnits} work units\n`
   );
   assert.ok(
     secondCallMilliseconds < firstCallMilliseconds,
     "a warm-cache call must be faster than the cold call that compiled the whole map"
   );
+  assert.ok(warmWorkUnits > 0 && warmWorkUnits < coldWorkUnits);
   assertPassagesStayInsideTheirRegions(model, secondRoad);
   assertConsecutiveRegionsAreNeighbours(model, secondRoad);
+});
+
+test("all ten author roads retain their cost, honest passages, and connected map reachability", () => {
+  const manifest = loadRealManifest();
+  const model = mainNetworkModel(manifest);
+  const compiled = compileRegionRoadPlanning(model);
+  const state = manifest.state as {
+    public: {
+      objects: {
+        networkNodes: Record<string, NetworkNode>;
+        networkEdges: Record<string, {
+          attributes: {
+            geometry: { polyline: Array<GameManifestCanonicalPoint> };
+            regionSegments: number;
+            routePlan: Pick<RegionRoadCandidate, "regionSequence" | "passages">;
+          };
+        }>;
+      };
+    };
+  };
+  const expectedCosts: Record<string, number> = {
+    "road-1-2": 3,
+    "road-1-9": 10,
+    "road-2-3-14": 7,
+    "road-3-3-14": 13,
+    "road-4-7": 7,
+    "road-5-6": 4,
+    "road-6-7": 5,
+    "road-6-waypoint-9-3-4": 5,
+    "road-8-waypoint-9-3-4": 7,
+    "road-9-waypoint-9-3-4": 9
+  };
+  assert.deepEqual(Object.keys(state.public.objects.networkEdges).sort(), Object.keys(expectedCosts).sort());
+
+  const regions = [...model.regions].sort((left, right) => left.id < right.id ? -1 : left.id > right.id ? 1 : 0);
+  for (const [edgeId, edge] of Object.entries(state.public.objects.networkEdges)) {
+    const attributes = edge.attributes;
+    const road: RegionRoadCandidate = {
+      points: attributes.geometry.polyline,
+      regionSequence: [...attributes.routePlan.regionSequence],
+      passages: attributes.routePlan.passages.map((passage) => ({ ...passage }))
+    };
+    assert.equal(attributes.regionSegments, expectedCosts[edgeId]);
+    assert.equal(road.regionSequence.length, expectedCosts[edgeId]);
+    assertPassagesStayInsideTheirRegions(model, road);
+    for (const passage of road.passages) {
+      const from = road.points[passage.fromPointIndex];
+      const to = road.points[passage.toPointIndex];
+      const midpoint = { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 };
+      const independentOwner = regions.find((region) => pointInOrOnRegion(midpoint, region));
+      assert.equal(
+        independentOwner?.id,
+        passage.regionId,
+        `${edgeId} passage owner must match an independent lowest-id membership calculation`
+      );
+    }
+  }
+
+  // The validated region adjacency must be one component, and every network
+  // node must belong to that reachable component.
+  const firstRegionId = regions[0]?.id;
+  assert.ok(firstRegionId);
+  const visited = new Set<string>([firstRegionId]);
+  const queue = [firstRegionId];
+  for (let cursor = 0; cursor < queue.length; cursor += 1) {
+    for (const neighbour of compiled.neighbours.get(queue[cursor]) ?? []) {
+      if (visited.has(neighbour)) continue;
+      visited.add(neighbour);
+      queue.push(neighbour);
+    }
+  }
+  assert.equal(visited.size, regions.length, "the region graph must remain one connected component");
+  for (const [nodeId, node] of Object.entries(state.public.objects.networkNodes)) {
+    const owner = regions.find((region) => pointInOrOnRegion(node.attributes.position, region));
+    assert.ok(owner && visited.has(owner.id), `network node ${nodeId} must be reachable through the region graph`);
+  }
+
+  const dualPoint = { x: 2449.816319, y: 903.905085 };
+  const dualMemberships = regions
+    .filter((region) => pointInOrOnRegion(dualPoint, region))
+    .map((region) => region.id);
+  assert.deepEqual(dualMemberships, ["map-region-0051", "map-region-0078"]);
+  assert.equal(dualMemberships[0], "map-region-0051", "lowest id uniquely owns the real dual point");
 });
 
 /**
@@ -242,7 +344,12 @@ const averageVertex = (
     (total, point) => ({ x: total.x + point.x, y: total.y + point.y }),
     { x: 0, y: 0 }
   );
-  return { x: sum.x / ring.length, y: sum.y / ring.length };
+  // Runtime geometry accepts only the public 1e-6 coordinate grid. The
+  // average is a test-derived point, so explicitly place it on that same grid.
+  return {
+    x: Math.round((sum.x / ring.length) * 1_000_000) / 1_000_000,
+    y: Math.round((sum.y / ring.length) * 1_000_000) / 1_000_000
+  };
 };
 
 /**

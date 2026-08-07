@@ -1,7 +1,7 @@
 # ADR-075: Долговечная история авторских версий
 
 - **Дата**: 2026-07-11
-- **Статус**: Accepted
+**Status:** Accepted
 - **Авторы**: Codex
 - **Компоненты**: Editor Web, Editor Sessions, Game Repository, Hosted Authoring Studio
 - **Связанные решения**: ADR-036, ADR-042, ADR-057, ADR-065

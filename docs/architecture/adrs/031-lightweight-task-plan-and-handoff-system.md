@@ -1,7 +1,7 @@
 # ADR-031: Lightweight Task, Plan, and Handoff System
 
 - **Дата**: 2026-05-18
-- **Статус**: Accepted
+**Status:** Accepted
 - **Авторы**: AI agent
 - **Компоненты**: `docs/tasks`, `NEXT_STEPS.md`, `docs/architecture/adrs`, `docs/architecture/gameplay-slices`, `.tmp`
 - **Уточнен**: ADR-068

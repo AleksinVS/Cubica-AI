@@ -1,7 +1,7 @@
 # ADR-080: Декларативное рабочее пространство «карта — основа»
 
 - **Дата**: 2026-07-13
-- **Статус**: Accepted
+**Status:** Accepted
 - **Подтверждение**: владелец продукта, 2026-07-13
 - **Компоненты**: UI manifest JSON Schema, authoring compiler, `packages/contracts/manifest`, `apps/player-web`, пространственные поверхности игровых модулей
 - **Связанные решения**: ADR-013, ADR-053, ADR-055, ADR-062, ADR-066, ADR-073, ADR-079

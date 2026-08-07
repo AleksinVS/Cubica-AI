@@ -1,7 +1,7 @@
 # ADR-052: In-Memory Editor Entity Projection And Optional Hints Sidecar
 
 - **Дата**: 2026-06-16
-- **Статус**: Accepted
+**Status:** Accepted
 - **Авторы**: Codex
 - **Компоненты**: `packages/editor-engine`, `apps/editor-web`, Manifest Authoring, UI Authoring, Manifest Compiler, Editor Preview, Agent UI
 - **Связанные решения**: ADR-025, ADR-030, ADR-034, ADR-036, ADR-037, ADR-048, ADR-049, ADR-050

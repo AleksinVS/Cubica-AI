@@ -1,8 +1,8 @@
 # ADR-039: Player-web Plugin Bundle Handoff
 
 - **Дата**: 2026-05-29
-- **Актуализировано**: 2026-07-13
-- **Статус**: Accepted
+- **Актуализировано**: 2026-08-06
+**Status:** Accepted
 - **Авторы**: Codex
 - **Компоненты**: Editor Web, Player Web, Runtime API, Game Projects, Plugin Validation
 - **Связанные решения**: ADR-019, ADR-026, ADR-036, ADR-037
@@ -132,6 +132,19 @@ Published metadata is generated, not hand-written runtime manifest data. Мин�
    fail closed in the browser if somehow delivered.
 8. npm dependencies remain forbidden for project-local plugins until verified dependency policy exists. The published bundle builder may include only relative plugin files and platform-provided facade imports.
 9. A static registry of concrete games is not an accepted production fallback.
+10. `integrity` is mandatory for every published bundle. Publication computes
+    `sha256-<base64>` from the exact bytes written to the immutable artifact.
+11. `player-web` fetches the bundle bytes, computes SHA-256 with the browser
+    cryptography API, compares the complete digest and imports only those same
+    verified bytes. A missing, malformed or mismatched digest fails closed
+    before module evaluation.
+12. A session-scoped preview bundle may omit `integrity` because it has not
+    passed publication yet. This is the only exception: if preview metadata
+    supplies a digest, the browser verifies it by the same rule. The exception
+    does not apply to published scope or to unknown scopes.
+13. Integrity proves that delivered bytes match publication metadata. It does
+    not make plugin code safe, does not widen the plugin API and does not change
+    the existing restriction to trusted project-local code.
 
 ## 6. Best Practices Used
 
@@ -139,7 +152,12 @@ The decision is based on the following practices:
 
 - Content-hashed JavaScript files should be treated as immutable assets. Next.js documentation describes hashed static assets as suitable for long `max-age` plus `immutable`, while files from `public` default to `max-age=0`; therefore published plugin bundles should be generated artifacts with hash URLs, not mutable public filenames.
 - Browser `import()` is asynchronous and supports module URLs; this matches the current runtime loader shape.
-- Subresource Integrity is useful for script/link/modulepreload tags, but dynamic `import()` does not give us a widely portable per-call integrity option. Therefore the baseline security check is content-addressed publishing plus server-side hash verification; optional modulepreload/import-map integrity can be added later.
+- Subresource Integrity is useful for script/link/modulepreload tags, but dynamic
+  `import()` does not give a widely portable per-call integrity option. Therefore
+  the loader performs the equivalent check explicitly: it hashes fetched bytes
+  and creates the imported module URL only from bytes that matched metadata.
+  Importing the original network URL after verification is forbidden because a
+  second fetch would recreate a time-of-check/time-of-use gap.
 - Node.js command execution for validation/publish must avoid shell command strings. Use `spawn` or `execFile` with argv arrays, timeout and `AbortSignal`.
 - The browser should receive a narrow capability object (`PlayerPluginApi`), not imports into private `player-web` modules.
 
@@ -187,6 +205,8 @@ authoring/runtime semantics с конкретным CDN или file layout.
 - `runtime-api` остается owner content-source boundary и не исполняет frontend plugin code;
 - future marketplace path получает проверяемый артефакт: browser bundle plus manifest, hash and permissions;
 - production publish получает cache-friendly immutable artifacts and can later move the same URLs behind a CDN.
+- подмена опубликованного JavaScript между metadata и браузером завершается
+  отказом до исполнения;
 
 Стоимость и риски:
 
@@ -195,6 +215,10 @@ authoring/runtime semantics с конкретным CDN или file layout.
 - published metadata and artifact storage add one more generated artifact class;
 - `apiVersion` policy becomes a publish blocker instead of an informal field;
 - optional CDN delivery requires origin allowlist, immutable URL discipline and cache invalidation only for metadata, not bundle files.
+- загрузчик обязан сначала получить весь bundle и посчитать SHA-256, поэтому
+  активация начинается только после завершения этой проверки;
+- контроль целостности не является sandbox или проверкой доверия к автору:
+  marketplace и недоверенный код по-прежнему требуют отдельной изоляции.
 
 ## 9. Связанные артефакты
 

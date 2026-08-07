@@ -1,5 +1,6 @@
 import { ANTARCTICA_GAME_CONFIG_DATA } from "@cubica/antarctica-player-plugin/config-data";
 import { activate as activateAntarcticaPlayer } from "@cubica/antarctica-player-plugin";
+import { createHash } from "node:crypto";
 import { createDefaultGameConfigData } from "@/presenter/game-config";
 import { loadPendingRuntimeCommand } from "@/presenter/command-outbox";
 import { playerPluginApi } from "@/plugins/player-plugin-api";
@@ -893,6 +894,9 @@ describe("GamePlayer S1 DOM Rendering", () => {
       target: "player-web",
       scope: "published",
       contentHash: "d".repeat(64),
+      // Published plugins must prove the exact bytes before import; keeping the
+      // digest next to this inline source makes the test exercise that boundary.
+      integrity: `sha256-${createHash("sha256").update(pluginSource, "utf8").digest("base64")}`,
       url: `data:text/javascript;base64,${Buffer.from(pluginSource, "utf8").toString("base64")}`
     };
     const content: PlayerFacingContent = {
@@ -943,7 +947,16 @@ describe("GamePlayer S1 DOM Rendering", () => {
       }
     };
 
-    (global.fetch as any).mockImplementation((url: string) => {
+    (global.fetch as any).mockImplementation((input: string | URL) => {
+      const url = input.toString();
+      if (url === bundle.url) {
+        const bytes = Uint8Array.from(Buffer.from(pluginSource, "utf8"));
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          arrayBuffer: () => Promise.resolve(bytes.buffer)
+        });
+      }
       if (url.includes("/api/runtime/sessions")) {
         return Promise.resolve({
           ok: true,

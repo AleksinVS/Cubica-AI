@@ -10,6 +10,7 @@ import { randomBytes } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import {
   readBoundedBrowserRuntimeBody,
+  runtimeCredentialCookieIsSecure,
   setRuntimeCredentialCookie
 } from "../../runtime/_shared";
 
@@ -71,13 +72,15 @@ export async function POST(request: NextRequest) {
   });
 
   if (isNonEmptyString(credential) && isNonEmptyString(sessionId)) {
-    setRuntimeCredentialCookie(response, sessionId, credential);
+    setRuntimeCredentialCookie(response, sessionId, credential, {
+      secure: runtimeCredentialCookieIsSecure(request)
+    });
   }
   if (existingDeviceToken === undefined) {
     response.cookies.set(DEVICE_TOKEN_COOKIE, deviceToken, {
       httpOnly: true,
       sameSite: "strict",
-      secure: process.env.NODE_ENV === "production",
+      secure: runtimeCredentialCookieIsSecure(request),
       path: "/api/portal"
     });
   }

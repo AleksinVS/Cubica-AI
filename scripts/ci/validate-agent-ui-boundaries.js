@@ -8,6 +8,7 @@
  */
 const fs = require("node:fs");
 const path = require("node:path");
+const { collectModuleSpecifiers } = require("./typescript-import-analysis.cjs");
 
 const repoRoot = path.resolve(__dirname, "..", "..");
 
@@ -43,8 +44,6 @@ const importRules = [
 const scannedRoots = ["apps", "packages", "services", "SDK", "games", "scripts"];
 const scannedExtensions = new Set([".cjs", ".js", ".jsx", ".mjs", ".ts", ".tsx"]);
 const ignoredDirectoryNames = new Set([".git", ".next", ".tmp", "dist", "node_modules"]);
-const importPattern =
-  /(?:import\s+(?:type\s+)?(?:[\s\S]*?\s+from\s+)?|export\s+(?:type\s+)?[\s\S]*?\s+from\s+|require\(|import\()\s*["']([^"']+)["']/gu;
 
 function relative(filePath) {
   return path.relative(repoRoot, filePath).replace(/\\/g, "/");
@@ -78,23 +77,12 @@ function walkFiles(rootDirectory) {
   return files;
 }
 
-function findImports(text) {
-  const imports = [];
-  importPattern.lastIndex = 0;
-  for (const match of text.matchAll(importPattern)) {
-    if (typeof match[1] === "string") {
-      imports.push(match[1]);
-    }
-  }
-  return imports;
-}
-
 const violations = [];
 
 for (const root of scannedRoots) {
   for (const filePath of walkFiles(path.join(repoRoot, root))) {
     const relativePath = relative(filePath);
-    const imports = findImports(fs.readFileSync(filePath, "utf8"));
+    const imports = collectModuleSpecifiers(fs.readFileSync(filePath, "utf8"), filePath);
     for (const importedModule of imports) {
       for (const rule of importRules) {
         if (rule.packagePattern.test(importedModule) && !rule.allowedFiles.has(relativePath)) {

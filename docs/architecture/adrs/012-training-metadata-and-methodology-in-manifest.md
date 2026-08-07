@@ -1,7 +1,7 @@
 # ADR-012: Обучающие метаданные и методические материалы в манифесте игры
 
 - **Дата**: 2025-12-02
-- **Статус**: Proposed
+**Status:** Proposed
 - **Авторы**: AI Agent
 - **Компоненты**: Game Manifest, Game Engine, Game Catalog / Game Editor
 

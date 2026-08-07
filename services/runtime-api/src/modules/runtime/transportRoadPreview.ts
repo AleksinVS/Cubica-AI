@@ -136,7 +136,7 @@ function previewOrThrow(options: {
   }
   const from = objectPoint(fromNode);
   const to = objectPoint(toNode);
-  // Version 2 of the region road planner (ADR-100) always returns exactly one
+  // Version 3 of the region road planner (ADR-100) always returns exactly one
   // road, so there is nothing left to choose between and no random provider
   // to consult here — unlike version 1, which could offer several equally
   // short roads and pick one with the session random provider.

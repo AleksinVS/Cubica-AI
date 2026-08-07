@@ -59,10 +59,5 @@ export type MetricSpec = {
   topbarImage: string;
 };
 
-export type RichTextProps = {
-  html: string;
-  className?: string;
-};
-
 export type { PlayerFacingMockup as GameMockup } from "@cubica/contracts-manifest";
 export type { ActionSnapshot, SessionSnapshot } from "@/lib/game-content-resolvers";

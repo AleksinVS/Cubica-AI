@@ -105,7 +105,13 @@ function collectFiles(root, predicate) {
 function buildAjv() {
   // This registry remains draft-07 only. Mechanics IR is checked by the
   // compiler's independent Ajv2020 instance before a runtime manifest exists.
-  const ajv = new Ajv({ allErrors: true, strict: true, allowUnionTypes: true, strictRequired: false });
+  const ajv = new Ajv({
+    allErrors: true,
+    strict: true,
+    allowUnionTypes: true,
+    strictRequired: false,
+    multipleOfPrecision: 5
+  });
   addFormats(ajv);
   for (const schemaFile of [
     "manifest-authoring-common.schema.json",

@@ -641,15 +641,6 @@ async function postPreviewTraceUpdate(body: {
   }
 }
 
-/** Reads the `sessionId` query parameter from a preview player URL. */
-export function readSessionIdFromPreviewUrl(value: string): string | undefined {
-  try {
-    return new URL(value).searchParams.get("sessionId") ?? undefined;
-  } catch {
-    return undefined;
-  }
-}
-
 /** Adds restore-sequence + nonce query params to force a preview iframe reload. */
 export function addPreviewReloadNonce(value: string, targetSequence: number): string {
   try {

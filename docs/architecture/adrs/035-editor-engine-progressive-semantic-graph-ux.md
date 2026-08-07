@@ -1,7 +1,7 @@
 # ADR-035: Progressive Semantic Graph UX For Editor Engine
 
 - **Дата**: 2026-05-22
-- **Статус**: Draft
+**Status:** Draft
 - **Авторы**: Codex
 - **Компоненты**: Editor Engine, Editor Web, Manifest Authoring
 - **Связанные решения**: ADR-025, ADR-030, ADR-034

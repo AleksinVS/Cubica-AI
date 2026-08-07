@@ -18,8 +18,10 @@ import {
   closedGraphRegionMembership,
   graphEdgeGeometryFingerprint,
   readEffectiveGraphPolyline,
+  ownedGraphRegionMembership,
   splitGraphPolyline
 } from "../src/modules/mechanics/graphGeometry.ts";
+import { orientationSign, signedRingAreaSign } from "../src/modules/geometryPredicates.ts";
 
 /** One closed ring of a region — its outline or one of its holes. */
 type RegionRing = GameManifestTransportRegion["polygon"];
@@ -80,6 +82,49 @@ test("explicit polygon closure is normalized and a boundary reports every touchi
     "left",
     "right"
   ]);
+  assert.deepEqual(
+    ownedGraphRegionMembership({ x: 1, y: 0.5 }, regions),
+    ["left"],
+    "the lowest canonical region id uniquely owns a shared boundary point"
+  );
+});
+
+test("exact grid predicates preserve a one-millionth turn and immutable regions reuse work", () => {
+  assert.equal(
+    orientationSign(
+      { x: 5_000_000, y: 5_000_000 },
+      { x: 5_000_001, y: 5_000_000 },
+      { x: 5_000_001, y: 5_000_000.000001 }
+    ),
+    1
+  );
+
+  const raw: ReadonlyArray<GameManifestTransportRegion> = [{
+    id: "only",
+    polygon: [{ x: 0, y: 0 }, { x: 2, y: 0 }, { x: 2, y: 2 }, { x: 0, y: 2 }]
+  }];
+  let coldWork = 0;
+  let warmWork = 0;
+  const first = canonicalizeGraphRegions(raw, { charge: (units) => { coldWork += units; } });
+  const second = canonicalizeGraphRegions(raw, { charge: (units) => { warmWork += units; } });
+  assert.strictEqual(second, first);
+  assert.ok(coldWork > warmWork);
+  assert.equal(warmWork, 1);
+});
+
+test("a long cancellation-heavy ring still receives its exact area sign", () => {
+  const base = 9_000_000;
+  const bottom = Array.from({ length: 500 }, (_, index) => ({
+    x: base + index / 1_000_000,
+    y: base
+  }));
+  const top = Array.from({ length: 500 }, (_, offset) => {
+    const index = 499 - offset;
+    return { x: base + index / 1_000_000, y: base + 0.000001 };
+  });
+  // Huge shoelace products nearly cancel while the exact strip area is only
+  // 998 integer-grid square units. The sign must reach the bigint fallback.
+  assert.equal(signedRingAreaSign([...bottom, ...top]), 1);
 });
 
 test("geometry fingerprints are key-order independent and cover every mutation input", () => {
@@ -123,6 +168,11 @@ test("coordinates, zero-length segments, and self-intersecting polygons fail clo
       error.code === "MECHANICS_GRAPH_GEOMETRY_INVALID"
   );
   assert.throws(
+    () => canonicalGraphPoint({ x: 0.0000001, y: 0 }, "point"),
+    (error) => error instanceof GraphGeometryError &&
+      error.code === "MECHANICS_GRAPH_GEOMETRY_INVALID"
+  );
+  assert.throws(
     () => readEffectiveGraphPolyline(
       { polyline: [{ x: 0, y: 0 }, { x: 0, y: 0 }] },
       { x: 0, y: 0 },
@@ -149,7 +199,7 @@ test("coordinates, zero-length segments, and self-intersecting polygons fail clo
 test("a region's hole is not part of it, but its border still belongs to both", () => {
   // A lake cut out of a region, published as its own enclave region — the shape
   // real author maps now carry. Version 1 of this geometry rejected any region
-  // with an inner ring outright; version 2 must instead answer the membership
+  // with an inner ring outright; version 3 must instead answer the membership
   // question correctly for every point around and inside the hole.
   // The contract types a ring as "at least three points", which an ordinary
   // array literal assigned to a `const` widens away; naming the type keeps the
@@ -199,7 +249,7 @@ test("a hole is held to the same ring rules as the outline it sits in", () => {
   assert.throws(
     () => canonicalizeGraphRegions([{ id: "shore", polygon: square, holes: [selfIntersecting] }]),
     (error: unknown) =>
-      error instanceof GraphGeometryError && /hole 0.*simple polygon/su.test(error.message)
+      error instanceof GraphGeometryError && /hole 0.*simple (?:polygon|contour)/su.test(error.message)
   );
   assert.throws(
     () => canonicalizeGraphRegions([

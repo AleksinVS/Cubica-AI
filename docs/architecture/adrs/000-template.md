@@ -1,7 +1,7 @@
 # ADR-<NNN>: <Короткое название решения>
 
 - **Дата**: YYYY-MM-DD
-- **Статус**: Proposed | Accepted | Rejected | Superseded
+**Status:** Proposed | Accepted | Rejected | Superseded
 - **Авторы**: <ФИО / команда>
 - **Компоненты**: <Затронутые сервисы или подсистемы>
 

@@ -14,6 +14,7 @@ export interface EditorPreviewBridgeOptions {
   readonly refreshSignal: unknown;
   readonly sessionSnapshot?: EditorPreviewSessionSnapshot;
   readonly lastCompletedAction?: EditorPreviewCompletedAction;
+  readonly onRestorePreviewSession?: (request: EditorPreviewRestoreRequest) => Promise<EditorPreviewSessionSnapshot>;
 }
 
 interface PreviewRect {
@@ -49,13 +50,42 @@ export interface EditorPreviewCompletedAction {
   readonly timestamp: string;
 }
 
+export interface EditorPreviewRestoreRequest {
+  readonly sessionId: string;
+  readonly state: Record<string, unknown>;
+  readonly version: {
+    readonly stateVersion: number;
+    readonly lastEventSequence: number;
+  };
+  readonly targetEventSequence?: number;
+}
+
 const previewSelector = "[data-preview-runtime-pointer]";
+
+interface EditorPreviewSnapshotRequestMessage {
+  readonly source: "cubica-editor-web";
+  readonly type: "requestPreviewSnapshot";
+  readonly version: 1;
+}
+
+interface EditorPreviewRestoreRequestMessage extends EditorPreviewRestoreRequest {
+  readonly source: "cubica-editor-web";
+  readonly type: "restorePreviewSession";
+  readonly protocolVersion: 1;
+  readonly requestId: string;
+}
 
 export function useEditorPreviewBridge(rootRef: RefObject<HTMLElement>, options: EditorPreviewBridgeOptions): void {
   useEffect(() => {
     if (!options.enabled || typeof window === "undefined") {
       return;
     }
+
+    const configuredParentOrigin = confirmedParentOrigin(options.parentOrigin);
+    if (configuredParentOrigin === undefined) {
+      return;
+    }
+    const parentOrigin: string = configuredParentOrigin;
 
     let frame: number | undefined;
 
@@ -72,7 +102,7 @@ export function useEditorPreviewBridge(rootRef: RefObject<HTMLElement>, options:
           version: 1,
           entities: collectPreviewEntities(root)
         },
-        options.parentOrigin ?? "*"
+        parentOrigin
       );
 
       if (options.sessionSnapshot !== undefined) {
@@ -87,7 +117,7 @@ export function useEditorPreviewBridge(rootRef: RefObject<HTMLElement>, options:
             state: options.sessionSnapshot.state,
             action: options.lastCompletedAction
           },
-          options.parentOrigin ?? "*"
+          parentOrigin
         );
       }
     }
@@ -103,6 +133,72 @@ export function useEditorPreviewBridge(rootRef: RefObject<HTMLElement>, options:
       });
     }
 
+    function handleEditorMessage(event: MessageEvent) {
+      // The request closes the iframe-load race without weakening the trust
+      // boundary: only this frame's parent at the configured exact origin may
+      // ask for the current preview snapshot to be published again.
+      if (event.source !== window.parent || event.origin !== parentOrigin) {
+        return;
+      }
+      if (isSnapshotRequest(event.data)) {
+        schedulePost();
+        return;
+      }
+      if (isRestoreRequest(event.data)) {
+        void handleRestoreRequest(event.data);
+      }
+    }
+
+    async function handleRestoreRequest(request: EditorPreviewRestoreRequestMessage) {
+      const currentSessionId = options.sessionSnapshot?.sessionId;
+      if (
+        options.onRestorePreviewSession === undefined ||
+        currentSessionId === undefined ||
+        request.sessionId !== currentSessionId
+      ) {
+        postRestoreResult(request.requestId, false, "Preview restore request does not match the active session.");
+        return;
+      }
+
+      try {
+        const restored = await options.onRestorePreviewSession({
+          sessionId: request.sessionId,
+          state: request.state,
+          version: request.version,
+          targetEventSequence: request.targetEventSequence
+        });
+        // Return the durable runtime version so the editor can translate the
+        // monotonic event ledger into its rewound, user-facing timeline.
+        postRestoreResult(request.requestId, true, undefined, restored.version);
+      } catch (error) {
+        postRestoreResult(
+          request.requestId,
+          false,
+          error instanceof Error ? error.message : "Preview restore failed."
+        );
+      }
+    }
+
+    function postRestoreResult(
+      requestId: string,
+      ok: boolean,
+      error?: string,
+      sessionVersion?: SessionStateVersion
+    ) {
+      window.parent.postMessage(
+        {
+          source: "cubica-player-web",
+          type: "previewRestoreResult",
+          version: 1,
+          requestId,
+          ok,
+          ...(error === undefined ? {} : { error }),
+          ...(sessionVersion === undefined ? {} : { sessionVersion })
+        },
+        parentOrigin
+      );
+    }
+
     schedulePost();
 
     const resizeObserver =
@@ -113,6 +209,18 @@ export function useEditorPreviewBridge(rootRef: RefObject<HTMLElement>, options:
       resizeObserver?.observe(rootRef.current);
     }
     window.addEventListener("resize", schedulePost);
+    window.addEventListener("message", handleEditorMessage);
+    // Tell the parent that the origin-checked request listener is now active.
+    // The editor still repeats its request on iframe load, so either mounting
+    // order converges without polling or wildcard targets.
+    window.parent.postMessage(
+      {
+        source: "cubica-player-web",
+        type: "previewBridgeReady",
+        version: 1
+      },
+      parentOrigin
+    );
 
     return () => {
       if (frame !== undefined) {
@@ -120,6 +228,7 @@ export function useEditorPreviewBridge(rootRef: RefObject<HTMLElement>, options:
       }
       resizeObserver?.disconnect();
       window.removeEventListener("resize", schedulePost);
+      window.removeEventListener("message", handleEditorMessage);
     };
   }, [
     rootRef,
@@ -127,8 +236,62 @@ export function useEditorPreviewBridge(rootRef: RefObject<HTMLElement>, options:
     options.parentOrigin,
     options.refreshSignal,
     options.sessionSnapshot,
-    options.lastCompletedAction
+    options.lastCompletedAction,
+    options.onRestorePreviewSession
   ]);
+}
+
+function isSnapshotRequest(value: unknown): value is EditorPreviewSnapshotRequestMessage {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return false;
+  }
+  const record = value as Record<string, unknown>;
+  return record.source === "cubica-editor-web" && record.type === "requestPreviewSnapshot" && record.version === 1;
+}
+
+function isRestoreRequest(value: unknown): value is EditorPreviewRestoreRequestMessage {
+  if (!isPlainRecord(value)) {
+    return false;
+  }
+  if (
+    value.source !== "cubica-editor-web" ||
+    value.type !== "restorePreviewSession" ||
+    value.protocolVersion !== 1 ||
+    typeof value.requestId !== "string" ||
+    value.requestId.length === 0 ||
+    value.requestId.length > 128 ||
+    typeof value.sessionId !== "string" ||
+    !isPlainRecord(value.state) ||
+    !isPlainRecord(value.version)
+  ) {
+    return false;
+  }
+  if (!isNonNegativeInteger(value.version.stateVersion) || !isNonNegativeInteger(value.version.lastEventSequence)) {
+    return false;
+  }
+  return value.targetEventSequence === undefined || isNonNegativeInteger(value.targetEventSequence);
+}
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isNonNegativeInteger(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
+}
+
+/** Returns a canonical web origin suitable for a `postMessage` target, if any. */
+function confirmedParentOrigin(value: string | undefined): string | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  try {
+    const origin = new URL(value).origin;
+    return origin === "null" ? undefined : origin;
+  } catch {
+    return undefined;
+  }
 }
 
 function collectPreviewEntities(root: HTMLElement): readonly PlayerPreviewEntityMessage[] {

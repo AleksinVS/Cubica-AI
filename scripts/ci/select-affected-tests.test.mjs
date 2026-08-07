@@ -3,7 +3,11 @@
  */
 import assert from "node:assert/strict";
 import test from "node:test";
-import { FULL_SUITE_IDS, selectAffected } from "./select-affected-tests.mjs";
+import { FULL_SUITE_IDS, GIT_DIFF_FILTER, selectAffected } from "./select-affected-tests.mjs";
+
+test("git discovery includes deleted paths", () => {
+  assert.match(GIT_DIFF_FILTER, /D/u);
+});
 
 test("selects only player checks for an isolated player implementation change", () => {
   assert.deepEqual(selectAffected(["apps/player-web/src/app/page.tsx"]), {

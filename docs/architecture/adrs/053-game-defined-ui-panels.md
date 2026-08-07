@@ -1,7 +1,7 @@
 # ADR-053: Game-Defined UI Panels
 
 - **Дата**: 2026-06-15
-- **Статус**: Accepted
+**Status:** Accepted
 - **Авторы**: Codex
 - **Компоненты**: UI manifests, game manifests, `apps/player-web`, `games/*/plugins/*`, manifest schemas, authoring compiler
 - **Связанные решения**: ADR-013, ADR-016, ADR-019, ADR-025, ADR-026, ADR-027, ADR-030, ADR-037, ADR-040, ADR-050

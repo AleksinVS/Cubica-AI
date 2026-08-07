@@ -19,8 +19,8 @@ import { evaluateExpression } from "./expressionEvaluator.ts";
 import {
   canonicalGraphPoint,
   canonicalizeGraphRegions,
-  closedGraphRegionMembership,
   graphEdgeGeometryFingerprint,
+  ownedGraphRegionMembership,
   graphPointsEqual,
   GRAPH_EDGE_POSITION_PROOF_VERSION,
   GraphGeometryError,
@@ -117,17 +117,25 @@ function inspectEdgePosition(
   const attributes = objectAttributes(edge);
   const points = geometryForStep(step.id, () =>
     readEffectiveGraphPolyline(attributes.geometry, from, to));
+  // Arc-length resolution is linear in the declared polyline. Charge before
+  // the walk so an over-budget command never receives geometry work for free.
+  charge(context, "algorithmWork", points.length);
   const split = geometryForStep(step.id, () =>
     splitGraphPolyline(points, normalizedPosition));
 
   // Polygon simplicity is checked here as a fail-closed runtime defence. The
   // semantic checker performs the same bounded validation before publication.
   const canonicalRegions = geometryForStep(step.id, () =>
-    canonicalizeGraphRegions(model.regions));
-  charge(context, "algorithmWork", graphRegionInspectionWork(model.regions) + points.length);
-  const pointRegionIds = closedGraphRegionMembership(split.point, canonicalRegions);
-  const fromRegionIds = closedGraphRegionMembership(from, canonicalRegions);
-  const toRegionIds = closedGraphRegionMembership(to, canonicalRegions);
+    canonicalizeGraphRegions(model.regions, {
+      charge: (units) => charge(context, "algorithmWork", units)
+    }));
+  // The low-level helper can still report every touching region for diagnostics.
+  // Mechanics applies the manifest's authoritative ownership rule: a boundary
+  // point belongs only to the lowest canonical region id.
+  const geometryMeter = { charge: (units: number) => charge(context, "algorithmWork", units) };
+  const pointRegionIds = ownedGraphRegionMembership(split.point, canonicalRegions, geometryMeter);
+  const fromRegionIds = ownedGraphRegionMembership(from, canonicalRegions, geometryMeter);
+  const toRegionIds = ownedGraphRegionMembership(to, canonicalRegions, geometryMeter);
   const endpointRegionIds = [...new Set([...fromRegionIds, ...toRegionIds])]
     .sort(compareCanonicalIds);
 
@@ -193,7 +201,7 @@ function planRegionRoute(
 
   const from = objectPoint(fromNode, "from node", step.id);
   const to = objectPoint(toNode, "to node", step.id);
-  // Version 2 of the region road planner (ADR-100) is deterministic: it always
+  // Version 3 of the region road planner (ADR-100) is deterministic: it always
   // returns exactly one road, not a set of equally good candidates to pick
   // from. There is therefore nothing left for the session random provider to
   // decide here, unlike deck ordering or entity ordering elsewhere in this
@@ -224,7 +232,7 @@ function planRegionRoute(
       boundaryPolicy: model.roadPlanning.boundaryPolicy,
       regionSequence: [...road.regionSequence],
       passages: structuredClone(road.passages),
-      // `tieBreak` no longer records a choice — version 2 never has more than
+      // `tieBreak` no longer records a choice — version 3 never has more than
       // one candidate to choose from (ADR-100 §4.6). The field stays because a
       // stored road must still say by which rule its shape was decided: a
       // future algorithm version could resolve geometric ties differently, and
@@ -542,15 +550,24 @@ function shortestOpenRoute(
     const toNode = requireNetworkObject(nodes, endpoints.toNodeId, networkId, "route node", stepId);
     if (!movement.traversableNodeStates.includes(objectFacets(fromNode)[model.nodeStateFacet] as GameManifestObjectFacetValue) ||
         !movement.traversableNodeStates.includes(objectFacets(toNode)[model.nodeStateFacet] as GameManifestObjectFacetValue)) continue;
-    adjacency.set(endpoints.fromNodeId, [...(adjacency.get(endpoints.fromNodeId) ?? []), { nodeId: endpoints.toNodeId, edgeId }]);
-    adjacency.set(endpoints.toNodeId, [...(adjacency.get(endpoints.toNodeId) ?? []), { nodeId: endpoints.fromNodeId, edgeId }]);
+    charge(context, "algorithmWork", 2);
+    const fromList = adjacency.get(endpoints.fromNodeId);
+    const toList = adjacency.get(endpoints.toNodeId);
+    if (fromList) fromList.push({ nodeId: endpoints.toNodeId, edgeId });
+    else adjacency.set(endpoints.fromNodeId, [{ nodeId: endpoints.toNodeId, edgeId }]);
+    if (toList) toList.push({ nodeId: endpoints.fromNodeId, edgeId });
+    else adjacency.set(endpoints.toNodeId, [{ nodeId: endpoints.fromNodeId, edgeId }]);
   }
   const queue = [origin];
+  let queueCursor = 0;
   const seen = new Set(queue);
   const previous = new Map<string, { nodeId: string; edgeId: string }>();
-  while (queue.length > 0 && !seen.has(destination)) {
-    const node = queue.shift() as string;
-    for (const next of adjacency.get(node) ?? []) {
+  while (queueCursor < queue.length && !seen.has(destination)) {
+    const node = queue[queueCursor];
+    queueCursor += 1;
+    const neighbours = adjacency.get(node) ?? [];
+    charge(context, "algorithmWork", 1 + neighbours.length);
+    for (const next of neighbours) {
       if (seen.has(next.nodeId)) continue;
       seen.add(next.nodeId);
       previous.set(next.nodeId, { nodeId: node, edgeId: next.edgeId });
@@ -779,24 +796,6 @@ function geometryForProofRevalidation<T>(
   }
 }
 
-/** Conservative deterministic cost for polygon validation plus three memberships. */
-function graphRegionInspectionWork(
-  regions: ReadonlyArray<GameManifestTransportNetworkModel["regions"][number]>
-): number {
-  return regions.reduce((sum, region) => {
-    const canonicalCount = region.polygon.length > 1 &&
-      isRecord(region.polygon[0]) &&
-      isRecord(region.polygon.at(-1)) &&
-      region.polygon[0].x === region.polygon.at(-1)?.x &&
-      region.polygon[0].y === region.polygon.at(-1)?.y
-      ? region.polygon.length - 1
-      : region.polygon.length;
-    // Simple-polygon validation is quadratic per polygon; the three linear
-    // passes classify the inspected point and both endpoint points.
-    return sum + canonicalCount * canonicalCount + canonicalCount * 3;
-  }, 0);
-}
-
 function splitStoredRoutePlan(
   rawRoutePlan: unknown,
   pointCount: number,
@@ -812,7 +811,7 @@ function splitStoredRoutePlan(
   // `tieBreak` (`policy`, `candidateCount`, `selectedCandidateIndex` — see the
   // pre-ADR-100 shape). ADR-100 §4.8 replaced version 1 outright because no
   // road was ever stored under it in a real session, so the only route plans
-  // this runtime can ever legitimately read are version 2's: `{ policy }`,
+  // this runtime can ever legitimately read are current-version plans: `{ policy }`,
   // with nothing left to describe a choice that no longer happens (§4.6).
   // Accepting the old shape here anyway would silently paper over a package
   // that could not have been produced by any version this server ever ran —

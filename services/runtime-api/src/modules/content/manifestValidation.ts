@@ -90,7 +90,13 @@ const gameManifestSchema = JSON.parse(schemaSource);
 //    cannot be re-listed locally. strictRequired is only an authoring lint; the
 //    `required` constraint is still fully enforced, so data validation is NOT
 //    weakened. Documented bounded exception in LEGACY-0016.
-const ajv = new Ajv({ allErrors: true, strict: true, allowUnionTypes: true, strictRequired: false });
+const ajv = new Ajv({
+  allErrors: true,
+  strict: true,
+  allowUnionTypes: true,
+  strictRequired: false,
+  multipleOfPrecision: 5
+});
 addFormats(ajv);
 ajvErrors(ajv);
 

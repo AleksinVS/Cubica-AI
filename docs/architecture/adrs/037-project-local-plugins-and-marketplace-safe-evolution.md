@@ -1,7 +1,7 @@
 # ADR-037: Project-Local Plugins And Marketplace-Safe Evolution
 
 - **Дата**: 2026-05-28
-- **Статус**: Accepted
+**Status:** Accepted
 - **Авторы**: Codex
 - **Компоненты**: Game Projects, Editor Web, Player Web, Runtime API, Plugin Validation, Marketplace
 - **Связанные решения**: ADR-019, ADR-026, ADR-027, ADR-030, ADR-036, ADR-039, ADR-040, ADR-084

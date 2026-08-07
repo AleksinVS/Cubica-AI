@@ -43,7 +43,10 @@ export function resolveExpressions(
   localContext?: Record<string, unknown>
 ): string | number | unknown {
   // Быстрый путь: одно выражение занимает всю строку
-  const singleMatch = text.match(/^\{\{(.+?)\}\}$/);
+  // The body must not contain another brace. The previous lazy wildcard also
+  // matched `{{a}} {{b}}` as one giant binding (`a}} {{b`), so two valid
+  // substitutions were silently resolved as a missing path.
+  const singleMatch = text.match(/^\{\{([^{}]+)\}\}$/);
   if (singleMatch) {
     return resolveExpressionValue(singleMatch[1].trim(), state, localContext) ?? "";
   }

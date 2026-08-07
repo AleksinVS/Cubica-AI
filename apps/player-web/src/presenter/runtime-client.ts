@@ -192,6 +192,37 @@ export async function resumeSession(sessionId: string): Promise<SessionSnapshot>
 }
 
 /**
+ * Restores a server-authoritative editor-preview snapshot through Player Web's
+ * credential-holding BFF. Browser code supplies state/version only; the
+ * session bearer remains in the session-scoped HttpOnly cookie.
+ */
+export async function restorePreviewSession(input: {
+  readonly sessionId: string;
+  readonly state: Record<string, unknown>;
+  readonly version: {
+    readonly stateVersion: number;
+    readonly lastEventSequence: number;
+  };
+  readonly targetEventSequence?: number;
+}): Promise<SessionSnapshot> {
+  const response = await fetch(`/api/runtime/sessions/${encodeURIComponent(input.sessionId)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify({
+      state: input.state,
+      version: input.version,
+      targetEventSequence: input.targetEventSequence,
+      reason: "editor-preview-rollback"
+    })
+  });
+  if (!response.ok) {
+    throw await readRuntimeError(response, `Failed to restore preview session: ${response.status}`);
+  }
+  return parseJson<SessionSnapshot>(response);
+}
+
+/**
  * Отправляет игровое действие в runtime-api и возвращает обновлённое состояние.
  */
 export async function dispatchAction(

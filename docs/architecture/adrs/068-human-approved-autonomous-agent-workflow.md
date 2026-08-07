@@ -1,7 +1,7 @@
 # ADR-068: Утверждаемый план и автономное агентное исполнение
 
 - **Дата**: 2026-07-10
-- **Статус**: Accepted
+**Status:** Accepted
 - **Авторы**: владелец проекта, AI agent
 - **Компоненты**: `AGENTS.md`, `CLAUDE.md`, `skills/C_codex-agent-routing`, `.codex/config.toml`, `.codex/agents`, `.codex/skills`, `docs/tasks`, `.tmp/agent-workflow`, `archive/agent-workflows`
 - **Уточняет**: ADR-031

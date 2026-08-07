@@ -1,6 +1,6 @@
 # ADR-011: Архитектура мультиплеера (Free-form с очередью событий)
 
-- **Status**: Accepted
+**Status:** Accepted
 - **Date**: 2025-11-27
 - **Author**: AI Agent
 - **Context**: Session and Multiplayer Architecture

@@ -1,7 +1,7 @@
 # ADR-036: Semantic Authoring Structure And Preview-Timeline Editor
 
 - **Дата**: 2026-05-27
-- **Статус**: Accepted
+**Status:** Accepted
 - **Авторы**: Codex
 - **Компоненты**: Manifest Authoring, Editor Engine, Editor Web, Runtime API, Player Preview, Manifest Compiler
 - **Связанные решения**: ADR-025, ADR-030, ADR-034, ADR-035, ADR-037

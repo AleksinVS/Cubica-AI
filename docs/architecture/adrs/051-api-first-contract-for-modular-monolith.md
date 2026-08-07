@@ -1,7 +1,7 @@
 # ADR-051: API First Contract For Modular Monolith
 
 - **Дата**: 2026-06-13
-- **Статус**: Accepted
+**Status:** Accepted
 - **Авторы**: Codex
 - **Компоненты**: `services/runtime-api`, `apps/player-web`, `apps/editor-web`, `packages/contracts/*`, OpenAPI contracts, CI, future Router/Game Engine/Game Repository services
 - **Связанные решения**: ADR-017, ADR-019, ADR-025, ADR-031, ADR-038, ADR-040, ADR-046

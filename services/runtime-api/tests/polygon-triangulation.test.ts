@@ -22,11 +22,21 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  compareAbsoluteSlopes,
+  compareHorizontalRayIntersections,
+  horizontalRayIntersection,
+  inCircleSign
+} from "../src/modules/geometryPredicates.ts";
+
+import {
   triangulatePolygon,
   type TriangulatedPolygon,
   type TriangulationPoint,
   type TriangulationTriangle
 } from "../src/modules/runtime/polygonTriangulation.ts";
+
+/** Fixtures model published geometry, which is stored on the schema's 1e-6 grid. */
+const gridCoordinate = (value: number): number => Math.round(value * 1_000_000) / 1_000_000;
 
 const AREA_TOLERANCE = 1e-6;
 
@@ -180,6 +190,60 @@ const unitSquare: Array<TriangulationPoint> = [
   { x: 0, y: 1 }
 ];
 
+test("exact bridge comparisons preserve grid distinctions collapsed by the old floating path", () => {
+  const origin = { x: 0, y: 0 };
+  const vertical = horizontalRayIntersection(
+    origin,
+    { x: 1, y: -1 },
+    { x: 1, y: 1 }
+  );
+  const almostVertical = horizontalRayIntersection(
+    origin,
+    { x: 1, y: -0.000001 },
+    { x: 1.000001, y: 10_000_000 }
+  );
+  assert.ok(vertical && almostVertical);
+  assert.equal(compareHorizontalRayIntersections(vertical, almostVertical), -1);
+
+  // The old Number formula rounds both crossings to the same x and its 1e-9
+  // tie band therefore lets boundary position choose the farther edge.
+  const oldCrossing = (from: TriangulationPoint, to: TriangulationPoint): number =>
+    from.x + ((origin.y - from.y) / (to.y - from.y)) * (to.x - from.x);
+  assert.equal(
+    oldCrossing({ x: 1, y: -1 }, { x: 1, y: 1 }),
+    oldCrossing({ x: 1, y: -0.000001 }, { x: 1.000001, y: 10_000_000 })
+  );
+
+  const lowerSlope = { x: 10_000_000, y: 1 };
+  const higherSlope = { x: 10_000_000, y: 1.000001 };
+  assert.equal(compareAbsoluteSlopes(origin, lowerSlope, higherSlope), -1);
+  assert.ok(
+    Math.abs(
+      Math.atan2(lowerSlope.y, lowerSlope.x) - Math.atan2(higherSlope.y, higherSlope.x)
+    ) < 1e-9,
+    "the former angular tolerance collapses two distinct exact slopes"
+  );
+});
+
+test("exact in-circle sign detects a grid perturbation hidden by the old scaled tolerance", () => {
+  const offset = 9_999_999;
+  const a = { x: offset, y: offset };
+  const b = { x: offset + 1, y: offset };
+  const c = { x: offset, y: offset + 1 };
+  const d = { x: offset + 1, y: offset + 0.999999 };
+  assert.equal(inCircleSign(a, b, c, d), 1, "d is exactly inside the circumcircle on the grid");
+
+  const oldTolerance = 1e-9 * Math.max(1, a.x, a.y, b.x, b.y, c.x, c.y, d.x, d.y) *
+    Math.max(1, Math.abs(a.x) + Math.abs(a.y) + Math.abs(b.x) + Math.abs(b.y));
+  const ax = a.x - d.x; const ay = a.y - d.y;
+  const bx = b.x - d.x; const by = b.y - d.y;
+  const cx = c.x - d.x; const cy = c.y - d.y;
+  const oldDeterminant = ax * (by * (cx * cx + cy * cy) - (bx * bx + by * by) * cy) -
+    ay * (bx * (cx * cx + cy * cy) - (bx * bx + by * by) * cx) +
+    (ax * ax + ay * ay) * (bx * cy - by * cx);
+  assert.ok(oldDeterminant > 0 && oldDeterminant <= oldTolerance);
+});
+
 test("unit square: two CCW triangles covering exactly the square's area", () => {
   const result = triangulatePolygon(unitSquare);
   assert.equal(result.vertices.length, 4);
@@ -243,7 +307,7 @@ test("511-vertex convex polygon (approximated circle): correct area and measured
   const radius = 1000;
   const circle: Array<TriangulationPoint> = Array.from({ length: n }, (_, index) => {
     const angle = (2 * Math.PI * index) / n;
-    return { x: radius * Math.cos(angle), y: radius * Math.sin(angle) };
+    return { x: gridCoordinate(radius * Math.cos(angle)), y: gridCoordinate(radius * Math.sin(angle)) };
   });
   const startedAt = Date.now();
   const result = triangulatePolygon(circle);
@@ -328,7 +392,7 @@ test("collinear boundary run (general case): 50 extra collinear vertices along o
   // extra vertices evenly spaced along it.
   const extraPointCount = 50;
   const top: Array<TriangulationPoint> = Array.from({ length: extraPointCount }, (_, index) => ({
-    x: 100 - (100 * (index + 1)) / (extraPointCount + 1),
+    x: gridCoordinate(100 - (100 * (index + 1)) / (extraPointCount + 1)),
     y: 10
   }));
   const rectangleWithLongCollinearRun: Array<TriangulationPoint> = [
@@ -363,7 +427,7 @@ test("non-convex star (300+ vertices): correct area and measured timing on a rea
   const star: Array<TriangulationPoint> = Array.from({ length: spikeCount * 2 }, (_, index) => {
     const angle = (Math.PI * index) / spikeCount;
     const radius = index % 2 === 0 ? outerRadius : innerRadius;
-    return { x: radius * Math.cos(angle), y: radius * Math.sin(angle) };
+    return { x: gridCoordinate(radius * Math.cos(angle)), y: gridCoordinate(radius * Math.sin(angle)) };
   });
   const startedAt = Date.now();
   const result = triangulatePolygon(star);

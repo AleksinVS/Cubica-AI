@@ -1,7 +1,7 @@
 # ADR-013: Текстовые якоря и разделение логического и UI-манифестов
 
 - **Дата**: 2025-12-10
-- **Статус**: Accepted (historical lineage; truth-model parts superseded by ADR-018)
+**Status:** Accepted (historical lineage; truth-model parts superseded by ADR-018)
 - **Авторы**: AI Agent (Codex), владелец репозитория
 - **Компоненты**: Game Editor, Game Repository, Game Engine, SDK/core, SDK/react-sdk, игры в `games/*`
 

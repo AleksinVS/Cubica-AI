@@ -2,13 +2,16 @@ import type {
   GameUiComponent,
   GameUiRichTextComponentProps
 } from "@cubica/contracts-manifest";
+import { sanitizeManifestRichText } from "@cubica/contracts-manifest/rich-text-sanitizer";
 import { resolveExpressions } from "@/lib/expression-resolver";
 import type { PreviewElementAttributes } from "./preview-metadata";
 
 /**
- * Рендерит richTextComponent — HTML или plain-text тело.
+ * Рендерит richTextComponent — безопасное HTML-подмножество или plain-text тело.
  *
- * Если html содержит HTML-теги, рендерит через dangerouslySetInnerHTML.
+ * HTML очищается общим с публикацией белым списком непосредственно перед
+ * вставкой. Это повторная защита после подстановки выражений, значения которых
+ * ещё не известны во время публикации манифеста.
  * Иначе оборачивает в <p>.
  * Поддерживает {{...}} выражения с разрешением против gameState и localContext.
  */
@@ -33,7 +36,11 @@ export function RichTextComponent({
   }
 
   if (normalized.includes("<")) {
-    return <div {...previewAttributes} className={cssClass} dangerouslySetInnerHTML={{ __html: normalized }} />;
+    const sanitized = sanitizeManifestRichText(normalized).trim();
+    if (!sanitized) {
+      return null;
+    }
+    return <div {...previewAttributes} className={cssClass} dangerouslySetInnerHTML={{ __html: sanitized }} />;
   }
 
   return <p {...previewAttributes} className={cssClass}>{normalized}</p>;

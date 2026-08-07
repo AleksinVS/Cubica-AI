@@ -1,7 +1,7 @@
 # ADR-041: Gameplay Object State Model
 
 - **Дата**: 2026-06-03
-- **Статус**: Accepted
+**Status:** Accepted
 - **Авторы**: Codex
 - **Компоненты**: `games/*`, `docs/architecture/schemas`, `packages/contracts/manifest`, `services/runtime-api`, `apps/player-web`, `packages/editor-engine`
 - **Связанные решения**: ADR-024, ADR-025, ADR-029, ADR-030, ADR-040, ADR-083, ADR-084

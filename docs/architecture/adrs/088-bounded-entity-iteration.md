@@ -1,7 +1,7 @@
 # ADR-088: Ограниченный атомарный обход выбранных объектов
 
 - **Дата:** 2026-07-18
-- **Статус:** Accepted
+**Status:** Accepted
 - **Автор решения:** PM
 - **Компоненты:** `docs/architecture/schemas`, `packages/contracts/manifest`,
   `scripts/manifest-tools`, `services/runtime-api`

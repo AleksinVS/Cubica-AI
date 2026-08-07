@@ -1,15 +1,3 @@
 {
-  ".": "JSON Schema contracts for runtime manifests, authoring manifests, design artifacts and related architecture data.",
-  "game-manifest.schema.json": "Canonical JSON Schema for runtime game manifests, including deterministic mechanics, object state and AI-driven execution mode declarations.",
-  "game-authoring.schema.json": "JSON Schema for editable game authoring manifests compiled into runtime game.manifest.json files.",
-  "manifest-authoring-common.schema.json": "Shared JSON Schema definitions for ADR-030 authoring manifests and source maps.",
-  "manifest-source-map.schema.json": "JSON Schema for tooling-only source map companion files generated next to runtime manifests.",
-  "state-fixture.schema.json": "JSON Schema for pinned editor state fixtures under games/<id>/authoring/fixtures/*.json (ADR-057); runtime/player never read these files.",
-  "ui-authoring.schema.json": "JSON Schema for editable UI authoring manifests compiled into channel-specific ui.manifest.json files.",
-  "external-skill-policy.schema.json": "JSON Schema профиля совместимости внешних навыков по ADR-069.",
-  "external-skill-memory.schema.json": "JSON Schema пополняемой памяти ошибок и практик адаптации внешних навыков по ADR-069.",
-  "external-skill-registry.schema.json": "JSON Schema реестра происхождения, версий, способностей и расписания обновлений внешних навыков по ADR-069.",
-  "game-assets.schema.json": "JSON Schema декларативного реестра игровых ресурсов по ADR-063: безопасные пути, типы, контроль целостности и лицензионные метаданные.",
-  "project-skill-registry.schema.json": "JSON Schema общего реестра канонических проектных навыков, их имен, происхождения и режима включения по ADR-070.",
-  "map-annotation.schema.json": "Общий schema-first контракт ручной разметки транспортной сети, областей и координат поверх изображения карты."
+  ".": "JSON Schema — декларативные источники истины контрактов Cubica."
 }

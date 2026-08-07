@@ -1,7 +1,7 @@
 # ADR 002: Abstract View Protocol (Command Pattern + Promises)
 
-## Status
-Accepted
+**Status:** Accepted
+
 
 ## Context
 We are building a game architecture where the core logic (Presenter/Model) must be decoupled from the specific UI implementation (View). The same game logic might need to drive a sophisticated WebGL frontend, a simple DOM-based interface, or a text-based Telegram bot.

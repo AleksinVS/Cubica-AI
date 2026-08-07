@@ -1,7 +1,7 @@
 # ADR-007: Hybrid Execution Model (LLM + JS Script)
 
-## Status
-Accepted
+**Status:** Accepted
+
 
 ## Context
 Изначально архитектура Cubica предполагала обработку всех игровых действий через LLM. Однако этот подход имеет недостатки:

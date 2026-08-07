@@ -1,7 +1,7 @@
 # ADR-033: Portal Runtime Session Binding
 
 - **Дата**: 2026-05-20
-- **Статус**: Accepted
+**Status:** Accepted
 - **Авторы**: Codex
 - **Компоненты**: Portal Backend, Portal Frontend, Player Web, Runtime API, Session, Admin
 

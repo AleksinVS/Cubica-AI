@@ -239,6 +239,11 @@ test("Agent Turn selects the canonical first intent regardless of manifest key i
 
     assert.equal(first.agentTurn.selectedIntent?.actionId, "agent.choice.resolve");
     assert.deepEqual(first.agentTurn.selectedIntent?.params, {});
+    assert.match(
+      first.agentTurn.turnId,
+      /^turn-\d+-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u,
+      "turn identity must use the cryptographic UUID source instead of gameplay randomness"
+    );
     assert.equal(firstPublic.metrics.turns, 1);
     assert.equal(firstPublic.choice.outcome, "accepted");
     assert.equal(firstPublic.log.length, 1);

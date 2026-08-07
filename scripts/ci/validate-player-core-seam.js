@@ -14,6 +14,7 @@
  */
 const fs = require("fs");
 const path = require("path");
+const { collectModuleSpecifiers } = require("./typescript-import-analysis.cjs");
 
 const repoRoot = path.resolve(__dirname, "..", "..");
 
@@ -51,25 +52,13 @@ function walkFiles(rootDirectory) {
   return files;
 }
 
-// Ловим статические импорты, re-export и require с запрещённым модулем.
 // Матчим точное имя модуля или его подпуть ("react", "react/jsx-runtime", "next/link").
-function findForbiddenImports(source) {
-  const importPattern = /(?:from\s+|import\s*\(\s*|require\s*\(\s*)["']([^"']+)["']/g;
-  const bareImportPattern = /(?:^|\n)\s*import\s+["']([^"']+)["']/g;
-  const found = [];
-  for (const pattern of [importPattern, bareImportPattern]) {
-    let match;
-    while ((match = pattern.exec(source)) !== null) {
-      const specifier = match[1];
-      const isForbidden = forbiddenModules.some(
-        (moduleName) => specifier === moduleName || specifier.startsWith(`${moduleName}/`)
-      );
-      if (isForbidden) {
-        found.push(specifier);
-      }
-    }
-  }
-  return found;
+function findForbiddenImports(source, filePath) {
+  return collectModuleSpecifiers(source, filePath).filter((specifier) =>
+    forbiddenModules.some(
+      (moduleName) => specifier === moduleName || specifier.startsWith(`${moduleName}/`)
+    )
+  );
 }
 
 function main() {
@@ -84,7 +73,7 @@ function main() {
     for (const filePath of walkFiles(absoluteRoot)) {
       const relativePath = path.relative(repoRoot, filePath).replace(/\\/g, "/");
       const source = fs.readFileSync(filePath, "utf8");
-      for (const specifier of findForbiddenImports(source)) {
+      for (const specifier of findForbiddenImports(source, filePath)) {
         failures.push(`${relativePath}: forbidden framework import '${specifier}'`);
       }
     }

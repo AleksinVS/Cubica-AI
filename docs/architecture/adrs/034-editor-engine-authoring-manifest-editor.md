@@ -1,7 +1,7 @@
 # ADR-034: Editor Engine For Authoring Manifest Editing
 
 - **Дата**: 2026-05-22
-- **Статус**: Draft
+**Status:** Draft
 - **Авторы**: Codex
 - **Компоненты**: Game Editor, Editor Engine, Manifest Authoring, Manifest Compiler, Player Web Preview
 - **Связанные решения**: ADR-025, ADR-030, ADR-031

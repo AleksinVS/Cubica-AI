@@ -1,7 +1,7 @@
 # ADR-018: Source of Truth для логики игры находится в JSON-манифесте
 
 - **Дата**: 2026-03-19
-- **Статус**: Proposed
+**Status:** Proposed
 - **Авторы**: проектная команда Cubica / agent-architect
 - **Компоненты**: `games/*`, `services/runtime-api`, `packages/contracts/*`, content pipeline, runtime architecture
 - **Уточнено:** ADR-083/084 разрешают закреплённое манифестом изолированное

@@ -1,6 +1,6 @@
 # ADR-030: Семантические прототипы манифестов с компиляцией
 
-- **Статус**: Draft
+**Status:** Draft
 - **Дата**: 2026-05-17
 - **Последнее уточнение**: 2026-05-21
 - **Компоненты**: `games/*`, `docs/architecture/schemas`, `packages/contracts/manifest`, `services/runtime-api`, `apps/player-web`, authoring tooling

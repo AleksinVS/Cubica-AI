@@ -181,19 +181,6 @@ export interface PlannedPrototypeExtractionProposal {
   readonly gates: readonly PrototypeExtractionGate[];
 }
 
-export interface EditorPreviewRollbackResponse {
-  readonly ok: boolean;
-  readonly error?: string;
-  readonly targetEventSequence?: number;
-  readonly session?: {
-    readonly sessionId?: string;
-    readonly version?: {
-      readonly stateVersion?: number;
-      readonly lastEventSequence?: number;
-    };
-  };
-}
-
 export interface EditorPluginValidationResult {
   readonly ok: boolean;
   readonly diagnostics: readonly RoutedEditorDiagnostic[];

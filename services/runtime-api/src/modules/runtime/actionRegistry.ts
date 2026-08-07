@@ -16,6 +16,7 @@ import type { SessionRandomProviderInput } from "./sessionRandom.ts";
 type RuntimeState = Record<string, unknown>;
 
 const SYSTEM_TRIGGER_FALSE_CODE = "SYSTEM_SCHEDULE_TRIGGER_FALSE";
+const defaultRegistryByBundle = new WeakMap<GameBundle, RuntimeActionRegistry<RuntimeState>>();
 
 const createRegistryMap = (
   bundle: GameBundle,
@@ -37,9 +38,13 @@ export function createRuntimeActionRegistry(
   bundle: GameBundle,
   protectedRandom?: SessionRandomProviderInput
 ): RuntimeActionRegistry<RuntimeState> {
+  if (protectedRandom === undefined) {
+    const cached = defaultRegistryByBundle.get(bundle);
+    if (cached) return cached;
+  }
   const registry = createRegistryMap(bundle, protectedRandom);
 
-  return {
+  const actionRegistry: RuntimeActionRegistry<RuntimeState> = {
     get(actionId: string) {
       return registry.get(actionId);
     },
@@ -50,6 +55,10 @@ export function createRuntimeActionRegistry(
       return [...registry.keys()];
     }
   };
+  if (protectedRandom === undefined) {
+    defaultRegistryByBundle.set(bundle, actionRegistry);
+  }
+  return actionRegistry;
 }
 
 export function getRegisteredActionDefinition(bundle: GameBundle, actionId: string) {

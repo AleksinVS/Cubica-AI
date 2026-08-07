@@ -1,7 +1,7 @@
 # ADR-043: CopilotKit And AG-UI Agent UI Foundation
 
 - **Дата**: 2026-06-09
-- **Статус**: Accepted
+**Status:** Accepted
 - **Авторы**: Codex
 - **Компоненты**: Editor Web, Portal, Player Web, Runtime API, Agent UI, AI Contracts, Platform Security
 - **Связанные решения**: ADR-001, ADR-002, ADR-017, ADR-019, ADR-025, ADR-030, ADR-034, ADR-036, ADR-038, ADR-040, ADR-042

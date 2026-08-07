@@ -1,6 +1,6 @@
 # ADR-091: Канал game-owned стилей (game-owned stylesheets channel)
 
-- Статус: Accepted (2026-07-19)
+**Status:** Accepted (2026-07-19)
 - Дата: 2026-07-19
 - Связанные ADR: ADR-063 (канал игровых ассетов; расширяется этим решением),
   ADR-055 (чистота рендерера), ADR-025/056 (JSON Schema — SSOT), ADR-037

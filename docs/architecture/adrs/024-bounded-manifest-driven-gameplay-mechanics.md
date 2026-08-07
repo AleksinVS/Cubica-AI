@@ -1,7 +1,7 @@
 # ADR-024: Manifest-Driven Gameplay Mechanics In Cubica
 
 - **Date**: 2026-03-21
-- **Status**: Accepted
+**Status:** Accepted
 - **Supersedes**: `ADR-020`, `ADR-021`, `ADR-022`, `ADR-023`
 - **Generalization policy amended by**: `ADR-083`
 - **Авторы**: Codex

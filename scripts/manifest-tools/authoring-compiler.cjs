@@ -9,6 +9,7 @@
  */
 
 const fs = require("node:fs");
+const { randomUUID } = require("node:crypto");
 const os = require("node:os");
 const path = require("node:path");
 const { Worker } = require("node:worker_threads");
@@ -16,8 +17,13 @@ const AjvLib = require("ajv");
 const Ajv = AjvLib.default || AjvLib;
 const addFormatsLib = require("ajv-formats");
 const addFormats = addFormatsLib.default || addFormatsLib;
+const richTextSanitizerPath = require.resolve("@cubica/contracts-manifest/rich-text-sanitizer");
+const {
+  isManifestRichTextSafe
+} = require(richTextSanitizerPath);
 const {
   COMPILE_CACHE_FORMAT_VERSION,
+  COMPILE_CACHE_SOURCE_HASH,
   hashText,
   resolveCompileCacheEnabled,
   readCacheEntry,
@@ -68,6 +74,13 @@ const MECHANICS_COMPILER_INPUT_FILES = [
   path.join(__dirname, "mechanics-checker.cjs"),
   path.join(__dirname, "mechanics-modules.cjs"),
   path.join(__dirname, "mechanics-validator.cjs")
+];
+// Semantic security policy changes must invalidate compiled UI cache entries;
+// otherwise a manifest accepted under an older whitelist could bypass the new
+// publication boundary through a stale cache hit.
+const SEMANTIC_COMPILER_INPUT_FILES = [
+  richTextSanitizerPath,
+  require.resolve("sanitize-html/package.json", { paths: [path.dirname(richTextSanitizerPath)] })
 ];
 
 // Directory for level-3 compile cache entries. Under `.tmp/` (outside Git);
@@ -146,8 +159,27 @@ function readJson(filePath) {
 }
 
 function writeJson(filePath, value) {
-  fs.mkdirSync(path.dirname(filePath), { recursive: true });
-  fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+  const directory = path.dirname(filePath);
+  const tempPath = path.join(
+    directory,
+    `.${path.basename(filePath)}.${process.pid}.${randomUUID()}.tmp`
+  );
+
+  try {
+    fs.mkdirSync(directory, { recursive: true });
+    // Keep the temporary file beside its destination: rename is atomic only
+    // within one filesystem, so readers keep seeing the previous complete JSON.
+    fs.writeFileSync(tempPath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+    fs.renameSync(tempPath, filePath);
+  } catch (error) {
+    // A failed write must not leave a partial artifact for later compiler runs.
+    try {
+      fs.unlinkSync(tempPath);
+    } catch {
+      // The write may have failed before creating the temporary file.
+    }
+    throw error;
+  }
 }
 
 function formatErrors(errors) {
@@ -170,7 +202,15 @@ function buildAjv() {
   // in a local `properties` — the property is defined at the parent or is
   // intentionally forbidden. `required` stays fully enforced; only the authoring
   // lint is relaxed. Documented bounded exception in LEGACY-0016.
-  const ajv = new Ajv({ allErrors: true, strict: true, allowUnionTypes: true, strictRequired: false });
+  const ajv = new Ajv({
+    allErrors: true,
+    strict: true,
+    allowUnionTypes: true,
+    strictRequired: false,
+    // Canonical geometry uses decimal millionths. Ajv's default integer
+    // division check has binary false negatives for fractional `multipleOf`.
+    multipleOfPrecision: 5
+  });
   addFormats(ajv);
   for (const schemaFile of COMPILER_SCHEMA_FILES) {
     const schema = readJson(path.join(schemasRoot, schemaFile));
@@ -192,21 +232,21 @@ function buildAjv() {
 const sharedAjvBySchemaHash = new Map();
 
 /**
- * Combined SHA-256 of every compiler schema file's contents, computed once and
- * memoised. Used both to key the shared Ajv and to invalidate the compile cache
- * when a validation schema changes.
+ * Combined SHA-256 of compiler schemas and semantic policy inputs. Used both
+ * to key the shared Ajv and to invalidate the compile cache when publication
+ * validation changes.
  */
-let cachedSchemasHash;
 function getSchemasHash() {
-  if (cachedSchemasHash === undefined) {
-    cachedSchemasHash = hashText(
-      [
-        ...COMPILER_SCHEMA_FILES.map((file) => path.join(schemasRoot, file)),
-        ...MECHANICS_COMPILER_INPUT_FILES
-      ].map((file) => fs.readFileSync(file, "utf8")).join("\0")
-    );
-  }
-  return cachedSchemasHash;
+  return hashFiles([
+    ...COMPILER_SCHEMA_FILES.map((file) => path.join(schemasRoot, file)),
+    ...MECHANICS_COMPILER_INPUT_FILES,
+    ...SEMANTIC_COMPILER_INPUT_FILES
+  ]);
+}
+
+/** Hash file contents in stable caller-provided order for cache-key inputs. */
+function hashFiles(filePaths) {
+  return hashText(filePaths.map((file) => fs.readFileSync(file, "utf8")).join("\0"));
 }
 
 /** Returns a process-wide reused Ajv instance (see sharedAjvBySchemaHash). */
@@ -632,6 +672,46 @@ function assertNoAuthoringKeys(value, filePath, pointer = "") {
   }
 }
 
+/**
+ * Reject unsafe rich text before a UI manifest becomes a published artifact.
+ *
+ * JSON Schema owns the component shape, while this semantic pass owns the
+ * security relationship between a richTextComponent and the shared HTML
+ * whitelist. The renderer repeats the same sanitation after resolving runtime
+ * expressions, because those values are unavailable at publication time.
+ */
+function assertPublishedRichTextSafe(value, sourceFile, mappings, pointer = "") {
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => {
+      assertPublishedRichTextSafe(item, sourceFile, mappings, joinPointer(pointer, index));
+    });
+    return;
+  }
+  if (!hasPlainObject(value)) {
+    return;
+  }
+
+  if (
+    value.type === "richTextComponent" &&
+    hasPlainObject(value.props) &&
+    typeof value.props.html === "string"
+  ) {
+    const htmlPointer = joinPointer(joinPointer(pointer, "props"), "html");
+    if (!isManifestRichTextSafe(value.props.html)) {
+      const sourcePointer = mappings[htmlPointer]?.[0]?.pointer || `/root${htmlPointer}`;
+      throw new CompileError(
+        "Rich text contains an element, attribute, or URL scheme outside the platform whitelist",
+        sourceFile,
+        sourcePointer
+      );
+    }
+  }
+
+  for (const [key, child] of Object.entries(value)) {
+    assertPublishedRichTextSafe(child, sourceFile, mappings, joinPointer(pointer, key));
+  }
+}
+
 function compileAuthoringDocument(job, authoring, ajv) {
   const schemaId = schemaIdForAuthoringJob(job, authoring);
   const validate = ajv.getSchema(schemaId);
@@ -652,6 +732,9 @@ function compileAuthoringDocument(job, authoring, ajv) {
     ? compileAuthoringV2(job, compiledRoot)
     : compiledRoot;
   assertNoAuthoringKeys(compiled.value, job.outputFile);
+  if (job.kind === "ui") {
+    assertPublishedRichTextSafe(compiled.value, job.sourceFile, compiled.mappings);
+  }
 
   // Mechanics uses JSON Schema 2020-12 and therefore must never be registered
   // in the draft-07 Ajv instance above. Structural validation runs first;
@@ -751,6 +834,7 @@ function compileAuthoringFile(job, ajv = buildAjv()) {
 function computeCacheKeyPrefix({
   formatVersion,
   compilerHash,
+  cacheModuleHash,
   schemasHash,
   sharedKernelHash,
   executionCorpusHash
@@ -759,6 +843,7 @@ function computeCacheKeyPrefix({
     [
       formatVersion,
       compilerHash,
+      cacheModuleHash,
       schemasHash,
       sharedKernelHash,
       executionCorpusHash
@@ -777,19 +862,15 @@ function computeCacheKeyPrefix({
  * fingerprints keeps the cache a pure optimization rather than a competing
  * source of generated manifests.
  */
-let cachedKeyPrefix;
 function getCacheKeyPrefix() {
-  if (cachedKeyPrefix === undefined) {
-    const compilerHash = hashText(fs.readFileSync(__filename, "utf8"));
-    cachedKeyPrefix = computeCacheKeyPrefix({
-      formatVersion: COMPILE_CACHE_FORMAT_VERSION,
-      compilerHash,
-      schemasHash: getSchemasHash(),
-      sharedKernelHash: SHARED_KERNEL_HASH,
-      executionCorpusHash: EXECUTION_CORPUS_HASH
-    });
-  }
-  return cachedKeyPrefix;
+  return computeCacheKeyPrefix({
+    formatVersion: COMPILE_CACHE_FORMAT_VERSION,
+    compilerHash: hashText(fs.readFileSync(__filename, "utf8")),
+    cacheModuleHash: COMPILE_CACHE_SOURCE_HASH,
+    schemasHash: getSchemasHash(),
+    sharedKernelHash: SHARED_KERNEL_HASH,
+    executionCorpusHash: EXECUTION_CORPUS_HASH
+  });
 }
 
 /**
@@ -2412,6 +2493,8 @@ module.exports = {
   computeJobCacheKey,
   discoverJobs,
   formatErrors,
+  getSchemasHash,
+  hashFiles,
   normalizeRuntimePointers,
   parseArgs,
   publishMechanics,
@@ -2420,5 +2503,6 @@ module.exports = {
   run,
   runCli,
   schemaIdForRuntimeJob,
-  validateRuntimeManifest
+  validateRuntimeManifest,
+  writeJson
 };

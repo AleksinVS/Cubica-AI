@@ -905,7 +905,7 @@ const loadAuthorMapNetwork = async () => {
  * traced across the real map, matched to each edge by id.
  *
  * ADR-100 §4.8 is why `algorithmVersion` below is the *tracing tool's* own
- * version and not the planner's `region-segment-minimum-v2`: measured on this
+   * version and not the planner's `region-segment-minimum-v3`: measured on this
  * map, the planner routes these same ten roads through fewer regions than the
  * author did (seven instead of thirteen on the longest one), because the
  * author drew a straight line while the planner minimises regions. A stored

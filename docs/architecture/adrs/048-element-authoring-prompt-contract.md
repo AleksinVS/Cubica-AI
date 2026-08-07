@@ -1,7 +1,7 @@
 # ADR-048: Element Authoring Prompt Contract
 
 - **Дата**: 2026-06-12
-- **Статус**: Accepted
+**Status:** Accepted
 - **Авторы**: Codex
 - **Компоненты**: Authoring manifests, UI authoring manifests, Game Editor, manifest schemas, authoring compiler, Agent UI
 - **Связанные решения**: ADR-016, ADR-025, ADR-030, ADR-034, ADR-036, ADR-043, ADR-044

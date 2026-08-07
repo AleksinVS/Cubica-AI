@@ -10,24 +10,35 @@ import type {
   GameManifestTransportRegion
 } from "@cubica/contracts-manifest";
 import { hashCanonicalJson } from "../content/canonicalJson.ts";
+import {
+  MAX_GEOMETRY_COORDINATE_MAGNITUDE,
+  canonicalGeometryPoint,
+  distance,
+  pointsEqual
+} from "../geometryPredicates.ts";
+import {
+  canonicalizeRoadPlanningRegions,
+  pointInOrOnRegion
+} from "../runtime/regionRoadGeometry.ts";
 import { compareCanonicalIds } from "./canonicalOrder.ts";
 
 export const GRAPH_GEOMETRY_EPSILON = 1e-9;
-export const GRAPH_MAX_COORDINATE_MAGNITUDE = 1_000_000_000;
+export const GRAPH_MAX_COORDINATE_MAGNITUDE = MAX_GEOMETRY_COORDINATE_MAGNITUDE;
 // The number of regions is deliberately not bounded here. Geometry work scales
 // with the total number of polygon vertices, which stays bounded below, and not
 // with how those vertices are grouped into regions: an author map of nine
 // hundred small areas is no more work than one of five hundred larger ones with
 // the same outline detail.
 export const GRAPH_MAX_VERTICES_PER_REGION = 2048;
-// Measured against the first real author map: a partition of 917 areas holds
-// 78 352 vertices. The limit sits well above it so an ordinary map passes,
+// Measured against the current real author map: a partition of 982 areas holds
+// 89 331 vertices. The limit sits well above it so an ordinary map passes,
 // while a runaway one is still stopped.
 export const GRAPH_MAX_TOTAL_REGION_VERTICES = 200_000;
 export const GRAPH_MAX_POLYLINE_POINTS = 20_000;
 
 export const GRAPH_EDGE_POSITION_ALGORITHM = "polyline-arc-length-v1" as const;
-// Version 2 differs from version 1 in exactly one respect: a region's inner
+// Version 3 retains version 2's inner-ring support and adds unique ownership
+// for authoritative boundary decisions. A region's inner
 // rings (holes) are honoured. A point strictly inside a hole is no longer a
 // member of the region around it, because the hole is not part of that region —
 // it is a separate area cut out of it (an enclave, a lake, a patch of terrain).
@@ -35,7 +46,7 @@ export const GRAPH_EDGE_POSITION_ALGORITHM = "polyline-arc-length-v1" as const;
 // have been produced under version 1 for a map that has them, and the version
 // is bumped rather than reused so a fingerprint always states which rule
 // produced it.
-export const GRAPH_REGION_MEMBERSHIP_ALGORITHM = "closed-polygon-all-memberships-v2" as const;
+export const GRAPH_REGION_MEMBERSHIP_ALGORITHM = "closed-polygon-all-memberships-v3" as const;
 export const GRAPH_GEOMETRY_FINGERPRINT_ALGORITHM = "canonical-json-sha256-v1" as const;
 export const GRAPH_CANONICAL_JSON_ALGORITHM = "utf16-key-order-v1" as const;
 export const GRAPH_EDGE_POSITION_PROOF_VERSION = "graph-edge-position-proof/v1" as const;
@@ -65,6 +76,16 @@ export interface CanonicalGraphRegion {
    */
   holes?: Array<Array<GraphPoint>>;
 }
+
+/** Optional transaction budget hook for immutable geometry work. */
+export interface GraphGeometryWorkMeter {
+  charge(units: number): void;
+}
+
+const canonicalGraphRegionsCache = new WeakMap<
+  ReadonlyArray<GameManifestTransportRegion>,
+  Array<CanonicalGraphRegion>
+>();
 
 /**
  * A deterministic geometry failure that the runtime maps to a stable public
@@ -97,10 +118,14 @@ export function canonicalGraphPoint(raw: unknown, label: string): GraphPoint {
       `${label} must contain finite bounded coordinates`
     );
   }
-  return {
-    x: Object.is(raw.x, -0) ? 0 : raw.x,
-    y: Object.is(raw.y, -0) ? 0 : raw.y
-  };
+  try {
+    return canonicalGeometryPoint({ x: raw.x, y: raw.y }, label);
+  } catch (error) {
+    throw new GraphGeometryError(
+      "MECHANICS_GRAPH_GEOMETRY_INVALID",
+      error instanceof Error ? error.message : `${label} is not on the canonical coordinate grid`
+    );
+  }
 }
 
 /**
@@ -193,10 +218,13 @@ export function splitGraphPolyline(
     }
     if (target < next || index === lengths.length - 1) {
       const localPosition = (target - traversed) / lengths[index];
-      const point = canonicalGraphPoint({
+      // This is a metric interpolation result, not stored manifest topology;
+      // it intentionally keeps full IEEE-754 precision instead of snapping to
+      // the structural 1e-6 grid.
+      const point = {
         x: points[index].x + (points[index + 1].x - points[index].x) * localPosition,
         y: points[index].y + (points[index + 1].y - points[index].y) * localPosition
-      }, "Calculated edge position");
+      };
       return {
         point,
         first: [...points.slice(0, index + 1).map((candidate) => ({ ...candidate })), point],
@@ -218,68 +246,32 @@ export function splitGraphPolyline(
  * closure and removed before the simple-polygon check.
  */
 export function canonicalizeGraphRegions(
-  rawRegions: ReadonlyArray<GameManifestTransportRegion>
+  rawRegions: ReadonlyArray<GameManifestTransportRegion>,
+  workMeter?: GraphGeometryWorkMeter
 ): Array<CanonicalGraphRegion> {
-  if (rawRegions.length < 1) {
+  const cached = canonicalGraphRegionsCache.get(rawRegions);
+  if (cached) {
+    workMeter?.charge(1);
+    return cached;
+  }
+  // Charge before immutable validation starts. The bound follows the actual
+  // rings supplied, includes holes, and is intentionally conservative so a
+  // budget rejection happens before the expensive pass rather than after it.
+  const validationWork = rawRegions.reduce((sum, region) => {
+    const rings = [region.polygon, ...(region.holes ?? [])];
+    return sum + rings.reduce((ringSum, ring) => ringSum + ring.length * ring.length + ring.length, 0);
+  }, rawRegions.length);
+  workMeter?.charge(validationWork);
+  try {
+    const canonical = canonicalizeRoadPlanningRegions(rawRegions) as Array<CanonicalGraphRegion>;
+    canonicalGraphRegionsCache.set(rawRegions, canonical);
+    return canonical;
+  } catch (error) {
     throw new GraphGeometryError(
       "MECHANICS_GRAPH_GEOMETRY_INVALID",
-      "Graph geometry requires at least one region"
+      error instanceof Error ? error.message : "Graph geometry is invalid"
     );
   }
-  const ids = new Set<string>();
-  let totalVertices = 0;
-  const regions = rawRegions.map((rawRegion) => {
-    if (typeof rawRegion.id !== "string" || rawRegion.id.length < 1 || rawRegion.id.length > 256) {
-      throw new GraphGeometryError(
-        "MECHANICS_GRAPH_GEOMETRY_INVALID",
-        "Graph region id must be a non-empty bounded string"
-      );
-    }
-    if (ids.has(rawRegion.id)) {
-      throw new GraphGeometryError(
-        "MECHANICS_GRAPH_GEOMETRY_INVALID",
-        `Graph region "${rawRegion.id}" is duplicated`
-      );
-    }
-    ids.add(rawRegion.id);
-    // One ring — the outer contour or any hole — canonicalized and checked the
-    // same way. Holes were rejected outright by version 1 of this geometry;
-    // they are now part of real published maps (a lake, an enclave, a patch of
-    // terrain the author declared impassable), so every ring of a region has to
-    // be carried through, not just its outline. Sharing this closure is what
-    // guarantees a hole cannot be held to a weaker standard than the outline.
-    const canonicalizeRing = (ring: ReadonlyArray<{ x: number; y: number }>, label: string) => {
-      let points = ring.map((point, index) =>
-        canonicalGraphPoint(point, `${label} point ${index}`));
-      if (points.length > 1 && graphPointsEqual(points[0], points.at(-1) as GraphPoint)) {
-        points = points.slice(0, -1);
-      }
-      if (points.length < 3 || points.length > GRAPH_MAX_VERTICES_PER_REGION) {
-        throw new GraphGeometryError(
-          "MECHANICS_GRAPH_GEOMETRY_INVALID",
-          `${label} must contain 3..${GRAPH_MAX_VERTICES_PER_REGION} vertices`
-        );
-      }
-      totalVertices += points.length;
-      if (totalVertices > GRAPH_MAX_TOTAL_REGION_VERTICES) {
-        throw new GraphGeometryError(
-          "MECHANICS_GRAPH_GEOMETRY_INVALID",
-          `Graph geometry supports at most ${GRAPH_MAX_TOTAL_REGION_VERTICES} region vertices`
-        );
-      }
-      assertSimplePolygon(points, label);
-      return points;
-    };
-
-    const polygon = canonicalizeRing(rawRegion.polygon, `Graph region "${rawRegion.id}"`);
-    const rawHoles = Array.isArray(rawRegion.holes) ? rawRegion.holes : [];
-    const holes = rawHoles.map((hole, index) =>
-      canonicalizeRing(hole, `Graph region "${rawRegion.id}" hole ${index}`));
-    // Omitted entirely when the region has none, so a map without holes yields
-    // byte-for-byte the same canonical value it did before holes were supported.
-    return holes.length > 0 ? { id: rawRegion.id, polygon, holes } : { id: rawRegion.id, polygon };
-  });
-  return regions.sort((left, right) => compareCanonicalIds(left.id, right.id));
 }
 
 /**
@@ -294,14 +286,28 @@ export function canonicalizeGraphRegions(
  */
 export function closedGraphRegionMembership(
   point: GraphPoint,
-  regions: ReadonlyArray<CanonicalGraphRegion>
+  regions: ReadonlyArray<CanonicalGraphRegion>,
+  workMeter?: GraphGeometryWorkMeter
 ): Array<string> {
   return regions
-    .filter((region) =>
-      pointInOrOnPolygon(point, region.polygon)
-      && !(region.holes ?? []).some((hole) => pointStrictlyInPolygon(point, hole)))
+    .filter((region) => {
+      workMeter?.charge(
+        region.polygon.length + (region.holes ?? []).reduce((sum, hole) => sum + hole.length, 0)
+      );
+      return pointInOrOnRegion(point, region as Parameters<typeof pointInOrOnRegion>[1]);
+    })
     .map((region) => region.id)
     .sort(compareCanonicalIds);
+}
+
+/** Apply the declared boundary owner after computing informative memberships. */
+export function ownedGraphRegionMembership(
+  point: GraphPoint,
+  regions: ReadonlyArray<CanonicalGraphRegion>,
+  workMeter?: GraphGeometryWorkMeter
+): Array<string> {
+  const memberships = closedGraphRegionMembership(point, regions, workMeter);
+  return memberships.length === 0 ? [] : [memberships[0]];
 }
 
 /**
@@ -340,7 +346,7 @@ export function graphEdgeGeometryFingerprint(input: {
 }
 
 export function graphPointsEqual(left: GraphPoint, right: GraphPoint): boolean {
-  return left.x === right.x && left.y === right.y;
+  return pointsEqual(left, right);
 }
 
 export function graphPointsNearlyEqual(left: GraphPoint, right: GraphPoint): boolean {
@@ -348,131 +354,12 @@ export function graphPointsNearlyEqual(left: GraphPoint, right: GraphPoint): boo
 }
 
 function assertPositiveSegment(from: GraphPoint, to: GraphPoint, label: string): void {
-  if (!(distance(from, to) > GRAPH_GEOMETRY_EPSILON)) {
+  if (graphPointsEqual(from, to)) {
     throw new GraphGeometryError(
       "MECHANICS_GRAPH_GEOMETRY_INVALID",
       `${label} must have positive length`
     );
   }
-}
-
-/**
- * Inside the ring and not on it — the test a hole needs.
- *
- * A hole's own border is shared with the region around it, exactly like the
- * border between two neighbouring regions, so a point sitting on it must stay
- * a member of both. Only a point strictly inside the hole has genuinely left
- * the surrounding region.
- */
-function pointStrictlyInPolygon(point: GraphPoint, polygon: ReadonlyArray<GraphPoint>): boolean {
-  for (let index = 0; index < polygon.length; index += 1) {
-    if (pointOnSegment(point, polygon[index], polygon[(index + 1) % polygon.length])) return false;
-  }
-  return pointInOrOnPolygon(point, polygon);
-}
-
-function pointInOrOnPolygon(point: GraphPoint, polygon: ReadonlyArray<GraphPoint>): boolean {
-  for (let index = 0; index < polygon.length; index += 1) {
-    if (pointOnSegment(point, polygon[index], polygon[(index + 1) % polygon.length])) return true;
-  }
-  let inside = false;
-  for (let index = 0, previousIndex = polygon.length - 1;
-    index < polygon.length;
-    previousIndex = index, index += 1) {
-    const current = polygon[index];
-    const previous = polygon[previousIndex];
-    const crosses = (current.y > point.y) !== (previous.y > point.y) &&
-      point.x < ((previous.x - current.x) * (point.y - current.y)) /
-        (previous.y - current.y) + current.x;
-    if (crosses) inside = !inside;
-  }
-  return inside;
-}
-
-function assertSimplePolygon(polygon: ReadonlyArray<GraphPoint>, regionId: string): void {
-  const keys = new Set<string>();
-  for (const point of polygon) {
-    const key = `${point.x},${point.y}`;
-    if (keys.has(key)) {
-      throw new GraphGeometryError(
-        "MECHANICS_GRAPH_GEOMETRY_INVALID",
-        `Graph region "${regionId}" repeats a polygon vertex`
-      );
-    }
-    keys.add(key);
-  }
-  for (let first = 0; first < polygon.length; first += 1) {
-    const firstNext = (first + 1) % polygon.length;
-    assertPositiveSegment(polygon[first], polygon[firstNext], `Graph region "${regionId}" boundary`);
-    for (let second = first + 1; second < polygon.length; second += 1) {
-      const secondNext = (second + 1) % polygon.length;
-      const adjacent = first === second || firstNext === second || secondNext === first;
-      if (!adjacent && segmentsIntersect(
-        polygon[first],
-        polygon[firstNext],
-        polygon[second],
-        polygon[secondNext]
-      )) {
-        throw new GraphGeometryError(
-          "MECHANICS_GRAPH_GEOMETRY_INVALID",
-          `Graph region "${regionId}" is not a simple polygon`
-        );
-      }
-    }
-  }
-}
-
-function pointOnSegment(point: GraphPoint, from: GraphPoint, to: GraphPoint): boolean {
-  const segment = subtract(to, from);
-  const offset = subtract(point, from);
-  const tolerance = GRAPH_GEOMETRY_EPSILON * Math.max(1, Math.hypot(segment.x, segment.y));
-  return Math.abs(cross(offset, segment)) <= tolerance &&
-    point.x >= Math.min(from.x, to.x) - GRAPH_GEOMETRY_EPSILON &&
-    point.x <= Math.max(from.x, to.x) + GRAPH_GEOMETRY_EPSILON &&
-    point.y >= Math.min(from.y, to.y) - GRAPH_GEOMETRY_EPSILON &&
-    point.y <= Math.max(from.y, to.y) + GRAPH_GEOMETRY_EPSILON;
-}
-
-function segmentsIntersect(
-  firstFrom: GraphPoint,
-  firstTo: GraphPoint,
-  secondFrom: GraphPoint,
-  secondTo: GraphPoint
-): boolean {
-  const first = orientation(firstFrom, firstTo, secondFrom);
-  const second = orientation(firstFrom, firstTo, secondTo);
-  const third = orientation(secondFrom, secondTo, firstFrom);
-  const fourth = orientation(secondFrom, secondTo, firstTo);
-  if (((first > GRAPH_GEOMETRY_EPSILON && second < -GRAPH_GEOMETRY_EPSILON) ||
-       (first < -GRAPH_GEOMETRY_EPSILON && second > GRAPH_GEOMETRY_EPSILON)) &&
-      ((third > GRAPH_GEOMETRY_EPSILON && fourth < -GRAPH_GEOMETRY_EPSILON) ||
-       (third < -GRAPH_GEOMETRY_EPSILON && fourth > GRAPH_GEOMETRY_EPSILON))) {
-    return true;
-  }
-  return (Math.abs(first) <= GRAPH_GEOMETRY_EPSILON &&
-      pointOnSegment(secondFrom, firstFrom, firstTo)) ||
-    (Math.abs(second) <= GRAPH_GEOMETRY_EPSILON &&
-      pointOnSegment(secondTo, firstFrom, firstTo)) ||
-    (Math.abs(third) <= GRAPH_GEOMETRY_EPSILON &&
-      pointOnSegment(firstFrom, secondFrom, secondTo)) ||
-    (Math.abs(fourth) <= GRAPH_GEOMETRY_EPSILON &&
-      pointOnSegment(firstTo, secondFrom, secondTo));
-}
-
-function orientation(first: GraphPoint, second: GraphPoint, third: GraphPoint): number {
-  return cross(subtract(second, first), subtract(third, first));
-}
-
-function subtract(left: GraphPoint, right: GraphPoint): GraphPoint {
-  return { x: left.x - right.x, y: left.y - right.y };
-}
-
-function cross(left: GraphPoint, right: GraphPoint): number {
-  return left.x * right.y - left.y * right.x;
-}
-
-function distance(left: GraphPoint, right: GraphPoint): number {
-  return Math.hypot(left.x - right.x, left.y - right.y);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

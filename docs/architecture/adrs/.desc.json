@@ -1,5 +1,6 @@
 {
   ".": "Architecture Decision Records: принятые, отклоненные и замененные архитектурные решения платформы.",
+  "INDEX.md": "Порождаемый сводный индекс архитектурных решений с номерами, названиями, статусами и отдельным списком решений, ожидающих рассмотрения PM.",
   "043-copilotkit-ag-ui-agent-ui-foundation.md": "ADR-043: принятие CopilotKit и AG-UI как общей основы UI ИИ-агентов для редактора и будущих помощников платформы.",
   "044-agent-ui-portability-and-protocol-boundaries.md": "ADR-044: переносимость Agent UI и протокольные границы, защищающие Cubica от жесткой привязки к CopilotKit, AG-UI и production LLM backend.",
   "045-cubica-owned-generative-ui-and-mvp-copilotkit.md": "ADR-045: Cubica-owned Generative UI direction, где CopilotKit является MVP-адаптером, а целевой слой - собственный совместимый Cubica Agent UI и Surface Protocol.",

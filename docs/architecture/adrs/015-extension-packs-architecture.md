@@ -1,6 +1,6 @@
 # ADR 015: Архитектура пакетов расширений (Extension Packs) и Гибридная модель Engine
 
-Status: Accepted
+**Status:** Accepted
 Date: 2025-12-31
 Author: Gemini Code Assist
 Deciders: @todo

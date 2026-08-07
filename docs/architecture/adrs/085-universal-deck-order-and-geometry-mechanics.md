@@ -1,7 +1,7 @@
 # ADR-085: Универсальные операции жизненного цикла колод, упорядочивания и геометрических доказательств
 
 - **Дата:** 2026-07-17
-- **Статус:** Accepted
+**Status:** Accepted
 - **Автор решения:** PM
 - **Компоненты:** `docs/architecture/schemas`, `packages/contracts/manifest`,
   `services/runtime-api`, `games/*`

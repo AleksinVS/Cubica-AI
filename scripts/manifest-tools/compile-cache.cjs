@@ -23,7 +23,7 @@
 
 const fs = require("node:fs");
 const path = require("node:path");
-const { createHash } = require("node:crypto");
+const { createHash, randomUUID } = require("node:crypto");
 
 // Bumping this version invalidates every previously written cache entry. It is
 // mixed into the key prefix so the format of the stored payload can evolve
@@ -34,6 +34,11 @@ const COMPILE_CACHE_FORMAT_VERSION = 1;
 function hashText(text) {
   return createHash("sha256").update(text).digest("hex");
 }
+
+// The cache implementation participates in cache semantics just as the main
+// compiler does. Hashing its bytes removes the former reliance on a maintainer
+// remembering to bump the format version after every behavioral change.
+const COMPILE_CACHE_SOURCE_HASH = hashText(fs.readFileSync(__filename, "utf8"));
 
 /**
  * Decides whether the compile cache is active for this run.
@@ -88,7 +93,7 @@ function readCacheEntry(cacheDir, key) {
 function writeCacheEntry(cacheDir, key, payload) {
   const tempPath = path.join(
     cacheDir,
-    `.${key}.${process.pid}.${Math.random().toString(36).slice(2)}.tmp`
+    `.${key}.${process.pid}.${randomUUID()}.tmp`
   );
   try {
     fs.mkdirSync(cacheDir, { recursive: true });
@@ -139,6 +144,7 @@ function createCompileTelemetry() {
 
 module.exports = {
   COMPILE_CACHE_FORMAT_VERSION,
+  COMPILE_CACHE_SOURCE_HASH,
   hashText,
   resolveCompileCacheEnabled,
   readCacheEntry,

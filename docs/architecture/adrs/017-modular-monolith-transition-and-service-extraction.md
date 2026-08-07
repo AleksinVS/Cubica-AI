@@ -1,7 +1,7 @@
 # ADR-017: Переход к модульному монолиту и правила будущего выделения микросервисов
 
 - **Дата**: 2026-03-19
-- **Статус**: Proposed
+**Status:** Proposed
 - **Авторы**: Codex
 - **Компоненты**: Backend, Router, Game Engine, Game Repository, Metadata DB, SDK contracts, deployment model
 

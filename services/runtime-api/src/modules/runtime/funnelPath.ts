@@ -68,6 +68,11 @@ export interface FunnelPoint {
   y: number;
 }
 
+import {
+  MAX_GEOMETRY_COORDINATE_MAGNITUDE,
+  canonicalGeometryPoint
+} from "../geometryPredicates.ts";
+
 /**
  * One gate the path must cross: the shared edge between two consecutive
  * triangles of the corridor.
@@ -96,7 +101,7 @@ const MAX_GATES = 100_000;
 // `Number.MAX_VALUE`). An overflowed intermediate would silently break both
 // exactness and reproducibility, which matters more here than in most code
 // because this module's whole reason to exist is an exact geometric answer.
-const MAX_COORDINATE_MAGNITUDE = 1_000_000_000;
+const MAX_COORDINATE_MAGNITUDE = MAX_GEOMETRY_COORDINATE_MAGNITUDE;
 
 const isFiniteCoordinate = (value: unknown): value is number =>
   typeof value === "number" && Number.isFinite(value) && Math.abs(value) <= MAX_COORDINATE_MAGNITUDE;
@@ -106,7 +111,7 @@ const assertFinitePoint = (point: FunnelPoint | undefined, label: string): Funne
   if (!point || !isFiniteCoordinate(point.x) || !isFiniteCoordinate(point.y)) {
     throw new Error(`${label} must contain finite coordinates with magnitude at most ${MAX_COORDINATE_MAGNITUDE}`);
   }
-  return { x: point.x, y: point.y };
+  return canonicalGeometryPoint(point, label);
 };
 
 /**

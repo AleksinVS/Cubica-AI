@@ -1,7 +1,7 @@
 # ADR-042: Editor Session Versioning And Lifecycle
 
 - **Дата**: 2026-06-05
-- **Статус**: Accepted
+**Status:** Accepted
 - **Авторы**: Codex
 - **Компоненты**: Editor Web, Player Web, Runtime API, Game Projects, Plugin Validation, Deployment
 - **Связанные решения**: ADR-030, ADR-036, ADR-037, ADR-039, ADR-041

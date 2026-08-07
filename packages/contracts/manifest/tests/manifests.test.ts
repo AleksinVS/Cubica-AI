@@ -83,7 +83,13 @@ function buildValidator(schemaFile: string): ValidateFunction {
   // parent level or is intentionally forbidden and cannot be re-listed locally.
   // `required` is still fully enforced; only the authoring lint is relaxed.
   // Documented bounded exception in LEGACY-0016.
-  const ajv = new Ajv({ allErrors: true, strict: true, allowUnionTypes: true, strictRequired: false });
+  const ajv = new Ajv({
+    allErrors: true,
+    strict: true,
+    allowUnionTypes: true,
+    strictRequired: false,
+    multipleOfPrecision: 5
+  });
   addFormats(ajv);
   const schema = readJson(join(schemasRoot, schemaFile)) as Record<string, unknown>;
   return ajv.compile(schema);
@@ -116,6 +122,63 @@ describe("shipped game manifests validate against game-manifest.schema.json", ()
       expect(valid).toBe(true);
     });
   }
+
+  it("executes the canonical polyline contract through stored object geometry", () => {
+    type GeometryManifest = {
+      state: {
+        public: {
+          objects: {
+            networkEdges: Record<string, {
+              attributes: { geometry: { polyline: Array<{ x: number; y: number }> } };
+            }>;
+          };
+        };
+        secret?: {
+          objects: {
+            networkEdges: Record<string, {
+              attributes: { geometry: { polyline: Array<{ x: number; y: number }> } };
+            }>;
+          };
+        };
+      };
+    };
+    const source = readJson(join(gamesRoot, "cards-money-trains", "game.manifest.json")) as GeometryManifest;
+    const edgeId = Object.keys(source.state.public.objects.networkEdges).sort()[0];
+    const point = source.state.public.objects.networkEdges[edgeId].attributes.geometry.polyline[0];
+
+    const tooShort = structuredClone(source);
+    tooShort.state.public.objects.networkEdges[edgeId].attributes.geometry.polyline = [{ ...point }];
+    expect(validateGameManifest(tooShort)).toBe(false);
+    expect(formatErrors(validateGameManifest)).toContain("/geometry/polyline");
+
+    const tooLong = structuredClone(source);
+    tooLong.state.public.objects.networkEdges[edgeId].attributes.geometry.polyline =
+      Array.from({ length: 20_001 }, () => ({ ...point }));
+    expect(validateGameManifest(tooLong)).toBe(false);
+    expect(formatErrors(validateGameManifest)).toContain("/geometry/polyline");
+
+    const offGrid = structuredClone(source);
+    offGrid.state.public.objects.networkEdges[edgeId].attributes.geometry.polyline[0].x += 0.0000001;
+    expect(validateGameManifest(offGrid)).toBe(false);
+    expect(formatErrors(validateGameManifest)).toContain("/geometry/polyline/0/x");
+
+    const secretOffGrid = structuredClone(source);
+    secretOffGrid.state.secret = {
+      objects: {
+        networkEdges: {
+          hidden: {
+            attributes: {
+              geometry: {
+                polyline: [{ x: point.x + 0.0000001, y: point.y }, { ...point }]
+              }
+            }
+          }
+        }
+      }
+    };
+    expect(validateGameManifest(secretOffGrid)).toBe(false);
+    expect(formatErrors(validateGameManifest)).toContain("/state/secret/objects/networkEdges/hidden/attributes/geometry/polyline/0/x");
+  });
 });
 
 describe("shipped UI manifests validate against ui-manifest.schema.json", () => {

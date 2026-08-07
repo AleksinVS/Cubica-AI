@@ -3,7 +3,7 @@
   "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
   "info": {
     "title": "Cubica Runtime API",
-    "version": "0.5.3",
+    "version": "0.5.4",
     "description": "Current API First contract for the `services/runtime-api` modular monolith. This file uses the JSON-compatible YAML profile so it remains a valid `.yaml` OpenAPI document while the repository can validate it with built-in Node.js JSON parsing and no extra parser dependency."
   },
   "x-cubica-contract-status": "current-implemented-contract",
@@ -274,6 +274,46 @@
               "image/webp": { "schema": { "type": "string", "format": "binary" } },
               "image/svg+xml": { "schema": { "type": "string", "format": "binary" } }
             }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/game-stylesheets/{gameId}/{stylesheetId}/{contentHash}.css": {
+      "get": {
+        "tags": ["Content"],
+        "operationId": "getGameStylesheet",
+        "summary": "Read one immutable game-owned stylesheet by verified content hash.",
+        "x-cubica-scope": "public",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/GameId"
+          },
+          {
+            "$ref": "#/components/parameters/StylesheetId"
+          },
+          {
+            "$ref": "#/components/parameters/ContentHash"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Verified CSS source with immutable cache headers.",
+            "content": {
+              "text/css": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
           },
           "404": {
             "$ref": "#/components/responses/NotFound"
@@ -690,6 +730,15 @@
         "schema": {
           "type": "string",
           "minLength": 1
+        }
+      },
+      "StylesheetId": {
+        "name": "stylesheetId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
         }
       },
       "SessionId": {

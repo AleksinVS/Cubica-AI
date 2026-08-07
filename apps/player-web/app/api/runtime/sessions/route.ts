@@ -1,4 +1,9 @@
-import { browserSessionResponse, readBoundedBrowserRuntimeBody, requestRuntime } from "../_shared";
+import {
+  browserSessionResponse,
+  readBoundedBrowserRuntimeBody,
+  requestRuntime,
+  runtimeCredentialCookieIsSecure
+} from "../_shared";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
@@ -21,5 +26,5 @@ export async function POST(request: Request) {
     },
     body
   });
-  return browserSessionResponse(upstream);
+  return browserSessionResponse(upstream, { secureCookie: runtimeCredentialCookieIsSecure(request) });
 }

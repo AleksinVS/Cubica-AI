@@ -50,6 +50,13 @@ const expectedOperations = [
   },
   {
     method: "get",
+    path: "/game-stylesheets/{gameId}/{stylesheetId}/{contentHash}.css",
+    operationId: "getGameStylesheet",
+    tag: "Content",
+    marker: "gameStylesheetMatch"
+  },
+  {
+    method: "get",
     path: "/games/{gameId}/player-content",
     operationId: "getPlayerContent",
     tag: "PlayerContent",
@@ -416,6 +423,16 @@ function validatePreciseRuntimeShapes(spec) {
   }
   if (bundle?.properties?.file !== undefined) {
     fail("LocalPlayerWebPluginBundle must use parser field filePath, not legacy file");
+  }
+
+  const stylesheetResponse = spec.paths?.["/game-stylesheets/{gameId}/{stylesheetId}/{contentHash}.css"]
+    ?.get?.responses?.["200"];
+  if (stylesheetResponse?.content?.["text/css"]?.schema?.type !== "string") {
+    fail("GET game stylesheet must document a text/css string response");
+  }
+  const stylesheetId = spec.components?.parameters?.StylesheetId;
+  if (stylesheetId?.schema?.pattern !== "^[a-z0-9][a-z0-9-]{0,63}$") {
+    fail("StylesheetId must match the runtime route's bounded identifier profile");
   }
 }
 

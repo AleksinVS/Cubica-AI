@@ -2,7 +2,7 @@
 
 - **Первоначальная дата:** 2026-07-14
 - **Расширено:** 2026-07-15
-- **Статус:** Accepted
+**Status:** Accepted
 - **Автор решения:** PM
 - **Компоненты:** `docs/architecture/schemas`, `packages/contracts/manifest`,
   `packages/contracts/session`, `services/runtime-api`, `packages/editor-engine`,

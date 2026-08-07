@@ -125,8 +125,12 @@ test.describe("editor-web session preview", { tag: "@editor" }, () => {
 
       const playerUrl = new URL(previewBody.playerUrl ?? "");
       expect(playerUrl.searchParams.get("preview")).toBe("1");
+      expect(playerUrl.searchParams.get("previewInstanceId")).toBeTruthy();
       expect(playerUrl.searchParams.get("contentSourceId")).toBe(editorSessionId);
-      expect(playerUrl.searchParams.get("sessionId")).toBeTruthy();
+      // Player Web creates the preview session through its own BFF so the
+      // one-time credential lands in an HttpOnly cookie. Editor Web must not
+      // pre-create a credential it cannot securely transfer to the iframe.
+      expect(playerUrl.searchParams.get("sessionId")).toBeNull();
 
       const contentResponse = await request.get(
         `${runtimeUrl}/games/simple-choice/player-content?contentSourceId=${editorSessionId}`
@@ -309,7 +313,8 @@ test.describe("editor-web session preview", { tag: "@editor" }, () => {
       await timelinePanel.getByRole("button", { name: /T0.*Initial runtime state/ }).click();
       await expect(traceDetails).toContainText("T0: Initial runtime state");
       const rollbackResponsePromise = page.waitForResponse((response) =>
-        response.url().endsWith("/api/editor/preview/rollback") && response.request().method() === "POST"
+        /\/api\/runtime\/sessions\/[^/]+$/u.test(new URL(response.url()).pathname) &&
+        response.request().method() === "POST"
       );
       await traceDetails.getByRole("button", { name: "Восстановить выбранное" }).click();
       const rollbackResponse = await rollbackResponsePromise;

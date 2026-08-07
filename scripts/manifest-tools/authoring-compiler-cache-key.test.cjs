@@ -10,12 +10,16 @@
  */
 
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
 const test = require("node:test");
-const { computeCacheKeyPrefix } = require("./authoring-compiler.cjs");
+const { computeCacheKeyPrefix, hashFiles } = require("./authoring-compiler.cjs");
 
 const BASE_INPUTS = Object.freeze({
   formatVersion: 1,
   compilerHash: "compiler-fingerprint",
+  cacheModuleHash: "cache-module-fingerprint-a",
   schemasHash: "schemas-fingerprint",
   sharedKernelHash: "shared-kernel-fingerprint-a",
   executionCorpusHash: "execution-corpus-fingerprint-a"
@@ -44,4 +48,29 @@ test("compile-cache prefix depends independently on both Mechanics corpus finger
     baseline,
     "changing the operation execution corpus must invalidate the compile cache"
   );
+  assert.notEqual(
+    computeCacheKeyPrefix({ ...BASE_INPUTS, cacheModuleHash: "cache-module-fingerprint-b" }),
+    baseline,
+    "changing the cache implementation must invalidate its own entries"
+  );
+});
+
+test("schema file bytes participate in the cache-key fingerprint", () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "cubica-schema-key-"));
+  const schemaCopy = path.join(directory, "game-manifest.schema.json");
+  const sourceSchema = path.join(__dirname, "..", "..", "docs", "architecture", "schemas", "game-manifest.schema.json");
+  fs.copyFileSync(sourceSchema, schemaCopy);
+
+  try {
+    const baselineSchemaHash = hashFiles([schemaCopy]);
+    fs.appendFileSync(schemaCopy, "\n", "utf8");
+    const changedSchemaHash = hashFiles([schemaCopy]);
+    assert.notEqual(changedSchemaHash, baselineSchemaHash);
+    assert.notEqual(
+      computeCacheKeyPrefix({ ...BASE_INPUTS, schemasHash: changedSchemaHash }),
+      computeCacheKeyPrefix({ ...BASE_INPUTS, schemasHash: baselineSchemaHash })
+    );
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
 });

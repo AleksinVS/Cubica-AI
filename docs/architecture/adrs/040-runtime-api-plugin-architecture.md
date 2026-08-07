@@ -1,7 +1,7 @@
 # ADR-040: Runtime-api Extension Policy And Declarative Mechanics First
 
 - **Дата**: 2026-05-30
-- **Статус**: Accepted
+**Status:** Accepted
 - **Авторы**: Codex
 - **Компоненты**: Runtime API, Game Projects, Manifest Schemas, Plugin Validation, Marketplace
 - **Связанные решения**: ADR-010, ADR-019, ADR-024, ADR-025, ADR-029, ADR-037, ADR-039

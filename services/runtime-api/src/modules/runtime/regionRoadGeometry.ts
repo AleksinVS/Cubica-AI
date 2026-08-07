@@ -34,13 +34,32 @@ import type {
   GameManifestCanonicalPoint,
   GameManifestTransportRegion
 } from "@cubica/contracts-manifest";
+import {
+  type GeometryWorkMeter,
+  MAX_GEOMETRY_COORDINATE_MAGNITUDE,
+  canonicalGeometryPoint,
+  chargeGeometryWork,
+  cross,
+  distance,
+  interpolate,
+  orientationSign,
+  pointInOrOnRing,
+  pointInOrOnQuantizedRing,
+  pointKey,
+  pointOnSegment,
+  pointStrictlyInsideRing,
+  pointStrictlyInsideQuantizedRing,
+  pointsEqual,
+  segmentsIntersect,
+  segmentsProperlyCross,
+  signedRingAreaSign,
+  subtract
+} from "../geometryPredicates.ts";
 
 export const REGION_ROAD_PLANNING_MODE = "region-segment-minimum" as const;
-export const REGION_ROAD_PLANNING_ALGORITHM = "region-segment-minimum-v2" as const;
+export const REGION_ROAD_PLANNING_ALGORITHM = "region-segment-minimum-v3" as const;
 export const REGION_ROAD_BOUNDARY_POLICY = "lowest-region-id" as const;
 export const REGION_ROAD_TIE_BREAK = "shortest-then-codepoint" as const;
-
-const EPSILON = 1e-9;
 
 /**
  * The number of regions is deliberately unbounded (ADR-081 § 4.7): cost grows
@@ -72,7 +91,6 @@ const MAX_TOTAL_VERTICES = 200_000;
 const MAX_CROSSINGS = 65_536;
 const MAX_CROSSING_VERTICES = 400_000;
 const MAX_BOUNDARY_COMPARISONS = 20_000_000;
-const MAX_COORDINATE_MAGNITUDE = 1_000_000_000;
 
 type Point = GameManifestCanonicalPoint;
 
@@ -102,77 +120,20 @@ export const codepointCompare = (left: string, right: string): number =>
 export const pointCompare = (left: Point, right: Point): number =>
   left.x === right.x ? left.y - right.y : left.x - right.x;
 export const pointEquals = (left: Point, right: Point): boolean =>
-  left.x === right.x && left.y === right.y;
+  pointsEqual(left, right);
 export const pointNearlyEquals = (left: Point, right: Point): boolean =>
-  Math.abs(left.x - right.x) <= EPSILON && Math.abs(left.y - right.y) <= EPSILON;
-export const pointKey = (point: Point): string => `${point.x},${point.y}`;
-export const subtract = (left: Point, right: Point): Point =>
-  ({ x: left.x - right.x, y: left.y - right.y });
-export const cross = (left: Point, right: Point): number => left.x * right.y - left.y * right.x;
-export const distance = (left: Point, right: Point): number =>
-  Math.hypot(left.x - right.x, left.y - right.y);
-export const interpolate = (from: Point, to: Point, t: number): Point => ({
-  x: from.x + (to.x - from.x) * t,
-  y: from.y + (to.y - from.y) * t
-});
+  pointsEqual(left, right);
+export { cross, distance, interpolate, pointInOrOnRing, pointKey, pointOnSegment, subtract };
 
 export const finitePoint = (raw: Point, label: string): Point => {
-  if (!raw || typeof raw.x !== "number" || !Number.isFinite(raw.x) ||
-      typeof raw.y !== "number" || !Number.isFinite(raw.y) ||
-      Math.abs(raw.x) > MAX_COORDINATE_MAGNITUDE || Math.abs(raw.y) > MAX_COORDINATE_MAGNITUDE) {
-    throw new Error(`${label} must contain finite bounded canonical coordinates`);
+  try {
+    return canonicalGeometryPoint(raw, label);
+  } catch {
+    throw new Error(
+      `${label} must contain canonical 1e-6-grid coordinates with magnitude at most `
+      + MAX_GEOMETRY_COORDINATE_MAGNITUDE
+    );
   }
-  // JSON.stringify normalises -0 anyway, but doing it here makes point
-  // comparison and the documented checksum input explicit rather than an
-  // accident of the engine.
-  return { x: Object.is(raw.x, -0) ? 0 : raw.x, y: Object.is(raw.y, -0) ? 0 : raw.y };
-};
-
-const signedDoubleArea = (ring: ReadonlyArray<Point>): number => ring.reduce((sum, point, index) => {
-  const next = ring[(index + 1) % ring.length];
-  return sum + point.x * next.y - point.y * next.x;
-}, 0);
-
-/**
- * Is the point on this straight piece of a border?
- *
- * The two tests are the same as before and give the same answer, but the cheap
- * one runs first. Almost every call in a real map is answered "no" by the
- * bounding box alone, and computing the length of the piece before finding that
- * out was more than half of all the work of validating a map.
- */
-export const pointOnSegment = (point: Point, from: Point, to: Point): boolean => {
-  if (point.x < (from.x < to.x ? from.x : to.x) - EPSILON) return false;
-  if (point.x > (from.x > to.x ? from.x : to.x) + EPSILON) return false;
-  if (point.y < (from.y < to.y ? from.y : to.y) - EPSILON) return false;
-  if (point.y > (from.y > to.y ? from.y : to.y) + EPSILON) return false;
-  const segment = subtract(to, from);
-  const offset = subtract(point, from);
-  const tolerance = EPSILON * Math.max(1, Math.hypot(segment.x, segment.y));
-  return Math.abs(cross(offset, segment)) <= tolerance;
-};
-
-/** Inclusive membership: a terminal may sit exactly on a border of its region. */
-export const pointInOrOnRing = (point: Point, ring: ReadonlyArray<Point>): boolean => {
-  for (let index = 0; index < ring.length; index += 1) {
-    if (pointOnSegment(point, ring[index], ring[(index + 1) % ring.length])) return true;
-  }
-  let inside = false;
-  for (let index = 0, previousIndex = ring.length - 1; index < ring.length; previousIndex = index, index += 1) {
-    const current = ring[index];
-    const previous = ring[previousIndex];
-    const crosses = (current.y > point.y) !== (previous.y > point.y) &&
-      point.x < ((previous.x - current.x) * (point.y - current.y)) / (previous.y - current.y) + current.x;
-    if (crosses) inside = !inside;
-  }
-  return inside;
-};
-
-export const pointStrictlyInsideRing = (point: Point, ring: ReadonlyArray<Point>): boolean => {
-  for (let index = 0; index < ring.length; index += 1) {
-    if (pointOnSegment(point, ring[index], ring[(index + 1) % ring.length])) return false;
-  }
-  return pointInOrOnRing(point, ring);
 };
 
 /** Every ring of a region: the outer boundary first, then each hole. */
@@ -185,8 +146,8 @@ export const regionRings = (region: CanonicalRegion): Array<ReadonlyArray<Point>
  * a border of the region, and a road is allowed to touch its own border.
  */
 export const pointInOrOnRegion = (point: Point, region: CanonicalRegion): boolean => {
-  if (!pointInOrOnRing(point, region.polygon)) return false;
-  return !(region.holes ?? []).some((hole) => pointStrictlyInsideRing(point, hole));
+  if (!pointInOrOnQuantizedRing(point, region.polygon)) return false;
+  return !(region.holes ?? []).some((hole) => pointStrictlyInsideQuantizedRing(point, hole));
 };
 
 export const pointStrictlyInsideRegion = (point: Point, region: CanonicalRegion): boolean => {
@@ -194,29 +155,7 @@ export const pointStrictlyInsideRegion = (point: Point, region: CanonicalRegion)
   return !(region.holes ?? []).some((hole) => pointInOrOnRing(point, hole));
 };
 
-const orientation = (a: Point, b: Point, c: Point): number => cross(subtract(b, a), subtract(c, a));
-
-export const segmentsIntersect = (a: Point, b: Point, c: Point, d: Point): boolean => {
-  const first = orientation(a, b, c);
-  const second = orientation(a, b, d);
-  const third = orientation(c, d, a);
-  const fourth = orientation(c, d, b);
-  if (((first > EPSILON && second < -EPSILON) || (first < -EPSILON && second > EPSILON)) &&
-      ((third > EPSILON && fourth < -EPSILON) || (third < -EPSILON && fourth > EPSILON))) return true;
-  return (Math.abs(first) <= EPSILON && pointOnSegment(c, a, b)) ||
-    (Math.abs(second) <= EPSILON && pointOnSegment(d, a, b)) ||
-    (Math.abs(third) <= EPSILON && pointOnSegment(a, c, d)) ||
-    (Math.abs(fourth) <= EPSILON && pointOnSegment(b, c, d));
-};
-
-const segmentsProperlyCross = (a: Point, b: Point, c: Point, d: Point): boolean => {
-  const first = orientation(a, b, c);
-  const second = orientation(a, b, d);
-  const third = orientation(c, d, a);
-  const fourth = orientation(c, d, b);
-  return ((first > EPSILON && second < -EPSILON) || (first < -EPSILON && second > EPSILON)) &&
-    ((third > EPSILON && fourth < -EPSILON) || (third < -EPSILON && fourth > EPSILON));
-};
+export { segmentsIntersect };
 
 /* -------------------------------------------------------------------------- */
 /* Spatial prefilter                                                          */
@@ -277,25 +216,36 @@ export const boundsOfPoints = (points: ReadonlyArray<Point>): Bounds => {
 
 const ringSidesWithBounds = (
   ring: ReadonlyArray<Point>,
-  inwardSign: 1 | -1 = 1
-): Array<BoundedSide> =>
-  ring.map((point, index) => {
+  inwardSign: 1 | -1 = 1,
+  workMeter?: GeometryWorkMeter
+): Array<BoundedSide> => {
+  chargeGeometryWork(workMeter, ring.length);
+  return ring.map((point, index) => {
     const next = ring[(index + 1) % ring.length];
     return { from: point, to: next, bounds: boundsOfPoints([point, next]), inwardSign };
   });
+};
 
 const boundsOverlapInY = (left: Bounds, right: Bounds): boolean =>
-  left.minY - EPSILON <= right.maxY && right.minY - EPSILON <= left.maxY;
+  left.minY <= right.maxY && right.minY <= left.maxY;
 
 /** Every unordered pair of items whose bounds touch, each reported once. */
-export const touchingSelfPairs = (items: ReadonlyArray<{ bounds: Bounds }>): Array<[number, number]> => {
+export const touchingSelfPairs = (
+  items: ReadonlyArray<{ bounds: Bounds }>,
+  workMeter?: GeometryWorkMeter
+): Array<[number, number]> => {
+  chargeGeometryWork(
+    workMeter,
+    items.length * Math.max(1, Math.ceil(Math.log2(items.length + 1)))
+  );
   const order = items
     .map((item, index) => ({ index, bounds: item.bounds }))
     .sort((left, right) => left.bounds.minX - right.bounds.minX || left.index - right.index);
   const pairs: Array<[number, number]> = [];
   let active: Array<{ index: number; bounds: Bounds }> = [];
   for (const item of order) {
-    active = active.filter((other) => other.bounds.maxX >= item.bounds.minX - EPSILON);
+    chargeGeometryWork(workMeter, active.length * 2);
+    active = active.filter((other) => other.bounds.maxX >= item.bounds.minX);
     for (const other of active) {
       if (!boundsOverlapInY(item.bounds, other.bounds)) continue;
       pairs.push(item.index < other.index ? [item.index, other.index] : [other.index, item.index]);
@@ -308,8 +258,14 @@ export const touchingSelfPairs = (items: ReadonlyArray<{ bounds: Bounds }>): Arr
 /** Every pair of items from two different sets whose bounds touch. */
 export const touchingCrossPairs = (
   left: ReadonlyArray<{ bounds: Bounds }>,
-  right: ReadonlyArray<{ bounds: Bounds }>
+  right: ReadonlyArray<{ bounds: Bounds }>,
+  workMeter?: GeometryWorkMeter
 ): Array<[number, number]> => {
+  const itemCount = left.length + right.length;
+  chargeGeometryWork(
+    workMeter,
+    itemCount * Math.max(1, Math.ceil(Math.log2(itemCount + 1)))
+  );
   const order = [
     ...left.map((item, index) => ({ set: 0, index, bounds: item.bounds })),
     ...right.map((item, index) => ({ set: 1, index, bounds: item.bounds }))
@@ -318,7 +274,8 @@ export const touchingCrossPairs = (
   const pairs: Array<[number, number]> = [];
   let active: Array<{ set: number; index: number; bounds: Bounds }> = [];
   for (const item of order) {
-    active = active.filter((other) => other.bounds.maxX >= item.bounds.minX - EPSILON);
+    chargeGeometryWork(workMeter, active.length * 2);
+    active = active.filter((other) => other.bounds.maxX >= item.bounds.minX);
     for (const other of active) {
       if (other.set === item.set) continue;
       if (!boundsOverlapInY(item.bounds, other.bounds)) continue;
@@ -337,12 +294,15 @@ interface PreparedRegion {
   bounds: Bounds;
 }
 
-const prepareRegions = (regions: ReadonlyArray<CanonicalRegion>): Array<PreparedRegion> =>
+const prepareRegions = (
+  regions: ReadonlyArray<CanonicalRegion>,
+  workMeter?: GeometryWorkMeter
+): Array<PreparedRegion> =>
   regions.map((region) => ({
     region,
     sides: [
-      ...ringSidesWithBounds(region.polygon, 1),
-      ...(region.holes ?? []).flatMap((hole) => ringSidesWithBounds(hole, -1))
+      ...ringSidesWithBounds(region.polygon, 1, workMeter),
+      ...(region.holes ?? []).flatMap((hole) => ringSidesWithBounds(hole, -1, workMeter))
     ],
     bounds: boundsOfPoints(region.polygon)
   }));
@@ -360,14 +320,20 @@ const prepareRegions = (regions: ReadonlyArray<CanonicalRegion>): Array<Prepared
  * sides almost never come near each other. Sides that touch only because they
  * share a vertex are neighbours in the contour and are not a self-crossing.
  */
-const assertSimpleRing = (ring: ReadonlyArray<Point>, label: string) => {
-  const sides = ringSidesWithBounds(ring);
+const assertSimpleRing = (
+  ring: ReadonlyArray<Point>,
+  label: string,
+  workMeter?: GeometryWorkMeter
+) => {
+  const sides = ringSidesWithBounds(ring, 1, workMeter);
+  chargeGeometryWork(workMeter, ring.length);
   for (let index = 0; index < ring.length; index += 1) {
     if (pointNearlyEquals(ring[index], ring[(index + 1) % ring.length])) {
       throw new Error(`${label} has a zero-length boundary edge`);
     }
   }
-  for (const [first, second] of touchingSelfPairs(sides)) {
+  for (const [first, second] of touchingSelfPairs(sides, workMeter)) {
+    chargeGeometryWork(workMeter, 1);
     const adjacent = (first + 1) % ring.length === second || (second + 1) % ring.length === first;
     if (adjacent) continue;
     if (segmentsIntersect(sides[first].from, sides[first].to, sides[second].from, sides[second].to)) {
@@ -384,7 +350,12 @@ const assertSimpleRing = (ring: ReadonlyArray<Point>, label: string) => {
  * checksum. Without them the identity of a map would depend on how it was
  * written down rather than on what it is.
  */
-const canonicalizeRing = (rawRing: ReadonlyArray<Point>, label: string): Array<Point> => {
+const canonicalizeRing = (
+  rawRing: ReadonlyArray<Point>,
+  label: string,
+  workMeter?: GeometryWorkMeter
+): Array<Point> => {
+  chargeGeometryWork(workMeter, rawRing.length);
   let ring = rawRing.map((point, index) => finitePoint(point, `${label} point ${index}`));
   if (ring.length > 1 && pointEquals(ring[0], ring[ring.length - 1])) ring = ring.slice(0, -1);
   if (ring.length < 3 || ring.length > MAX_VERTICES_PER_RING) {
@@ -397,10 +368,11 @@ const canonicalizeRing = (rawRing: ReadonlyArray<Point>, label: string): Array<P
   // can have an area of zero — the two halves of a bow tie cancel out — and
   // "this contour has no area" is a true but useless thing to tell an author
   // whose real problem is that the contour crosses itself.
-  assertSimpleRing(ring, label);
-  const area = signedDoubleArea(ring);
-  if (Math.abs(area) <= EPSILON) throw new Error(`${label} has zero area`);
-  if (area < 0) ring.reverse();
+  assertSimpleRing(ring, label, workMeter);
+  chargeGeometryWork(workMeter, ring.length * 3);
+  const areaSign = signedRingAreaSign(ring);
+  if (areaSign === 0) throw new Error(`${label} has zero area`);
+  if (areaSign < 0) ring.reverse();
   let firstIndex = 0;
   for (let index = 1; index < ring.length; index += 1) {
     if (pointCompare(ring[index], ring[firstIndex]) < 0) firstIndex = index;
@@ -414,31 +386,44 @@ const canonicalizeRing = (rawRing: ReadonlyArray<Point>, label: string): Array<P
  * two. Refusing is deliberate — a "nearly inside" hole silently repaired would
  * make a road's price unexplainable.
  */
-const assertHolesAreInside = (outer: ReadonlyArray<Point>, holes: ReadonlyArray<ReadonlyArray<Point>>, regionId: string) => {
-  const outerSides = ringSidesWithBounds(outer);
-  const prepared = holes.map((hole) => ({ hole, sides: ringSidesWithBounds(hole), bounds: boundsOfPoints(hole) }));
+const assertHolesAreInside = (
+  outer: ReadonlyArray<Point>,
+  holes: ReadonlyArray<ReadonlyArray<Point>>,
+  regionId: string,
+  workMeter?: GeometryWorkMeter
+) => {
+  const outerSides = ringSidesWithBounds(outer, 1, workMeter);
+  const prepared = holes.map((hole) => ({
+    hole,
+    sides: ringSidesWithBounds(hole, 1, workMeter),
+    bounds: boundsOfPoints(hole)
+  }));
   for (const [index, entry] of prepared.entries()) {
-    for (const [outerSide, holeSide] of touchingCrossPairs(outerSides, entry.sides)) {
+    for (const [outerSide, holeSide] of touchingCrossPairs(outerSides, entry.sides, workMeter)) {
+      chargeGeometryWork(workMeter, 1);
       const first = outerSides[outerSide];
       const second = entry.sides[holeSide];
       if (segmentsIntersect(first.from, first.to, second.from, second.to)) {
         throw new Error(`Road-planning region "${regionId}" hole ${index} touches its outer ring`);
       }
     }
+    chargeGeometryWork(workMeter, entry.hole.length * outer.length);
     if (!entry.hole.every((point) => pointStrictlyInsideRing(point, outer))) {
       throw new Error(`Road-planning region "${regionId}" hole ${index} is not strictly inside the outer ring`);
     }
   }
-  for (const [leftIndex, rightIndex] of touchingSelfPairs(prepared)) {
+  for (const [leftIndex, rightIndex] of touchingSelfPairs(prepared, workMeter)) {
     const left = prepared[leftIndex];
     const right = prepared[rightIndex];
-    for (const [leftSide, rightSide] of touchingCrossPairs(left.sides, right.sides)) {
+    for (const [leftSide, rightSide] of touchingCrossPairs(left.sides, right.sides, workMeter)) {
+      chargeGeometryWork(workMeter, 1);
       const first = left.sides[leftSide];
       const second = right.sides[rightSide];
       if (segmentsIntersect(first.from, first.to, second.from, second.to)) {
         throw new Error(`Road-planning region "${regionId}" holes ${leftIndex} and ${rightIndex} touch`);
       }
     }
+    chargeGeometryWork(workMeter, left.hole.length * right.hole.length * 2);
     if (left.hole.some((point) => pointStrictlyInsideRing(point, right.hole)) ||
         right.hole.some((point) => pointStrictlyInsideRing(point, left.hole))) {
       throw new Error(`Road-planning region "${regionId}" holes ${leftIndex} and ${rightIndex} overlap`);
@@ -446,34 +431,25 @@ const assertHolesAreInside = (outer: ReadonlyArray<Point>, holes: ReadonlyArray<
   }
 };
 
-/**
- * Small inward samples along one side, used to expose an area overlap that has
- * no proper edge crossing.
- *
- * Such an overlap is real and must be caught: one region can lie along the
- * border of another, sharing part of it, with every one of its own vertices
- * sitting exactly on that border rather than strictly inside it. No pair of
- * sides properly crosses, and no vertex is strictly inside, yet the two claim
- * the same area. A point stepped a hair inward from the side does land strictly
- * inside, which is what makes the overlap visible.
- */
-const sideInteriorProbes = (side: BoundedSide): Array<Point> => {
-  const edge = subtract(side.to, side.from);
-  const length = Math.hypot(edge.x, edge.y);
-  const inward = {
-    x: -edge.y / length * side.inwardSign,
-    y: edge.x / length * side.inwardSign
-  };
-  const offset = Math.max(1, length) * 1e-7;
-  return [0.25, 0.5, 0.75].map((t) => {
-    const boundary = interpolate(side.from, side.to, t);
-    return { x: boundary.x + inward.x * offset, y: boundary.y + inward.y * offset };
-  });
-};
-
 const boundsContain = (bounds: Bounds, point: Point): boolean =>
-  point.x >= bounds.minX - EPSILON && point.x <= bounds.maxX + EPSILON &&
-  point.y >= bounds.minY - EPSILON && point.y <= bounds.maxY + EPSILON;
+  point.x >= bounds.minX && point.x <= bounds.maxX &&
+  point.y >= bounds.minY && point.y <= bounds.maxY;
+
+/**
+ * Collinear sides whose region interiors lie on the same physical side expose
+ * an area overlap even when every vertex sits on a boundary. Comparing the
+ * side directions and ring inward signs proves that case exactly, without the
+ * former floating-point "step a little inward" probe.
+ */
+const collinearSidesFaceSameInterior = (left: BoundedSide, right: BoundedSide): boolean => {
+  if (orientationSign(left.from, left.to, right.from) !== 0 ||
+      orientationSign(left.from, left.to, right.to) !== 0) return false;
+  const leftDirection = subtract(left.to, left.from);
+  const rightDirection = subtract(right.to, right.from);
+  const sameDirection = leftDirection.x * rightDirection.x + leftDirection.y * rightDirection.y > 0;
+  const rightSignInLeftDirection = sameDirection ? right.inwardSign : -right.inwardSign;
+  return left.inwardSign === rightSignInLeftDirection;
+};
 
 /**
  * Region interiors must be disjoint: shared borders and single-point touches
@@ -481,10 +457,13 @@ const boundsContain = (bounds: Bounds, point: Point): boolean =>
  * declaring ambiguous overlapping paid areas even if it bypasses the authoring
  * converter.
  */
-const assertDisjointRegionInteriors = (regions: ReadonlyArray<CanonicalRegion>) => {
-  const prepared = prepareRegions(regions);
+const assertDisjointRegionInteriors = (
+  regions: ReadonlyArray<CanonicalRegion>,
+  workMeter?: GeometryWorkMeter
+) => {
+  const prepared = prepareRegions(regions, workMeter);
   let comparisons = 0;
-  for (const [leftIndex, rightIndex] of touchingSelfPairs(prepared)) {
+  for (const [leftIndex, rightIndex] of touchingSelfPairs(prepared, workMeter)) {
     const left = prepared[leftIndex];
     const right = prepared[rightIndex];
     const overlap = () => new Error(
@@ -495,9 +474,8 @@ const assertDisjointRegionInteriors = (regions: ReadonlyArray<CanonicalRegion>) 
     // of both regions instead — as this did before — cost fifty seconds on the
     // first real author map, because it asked an O(vertices) question of three
     // points per side of every touching pair.
-    const nearLeft = new Set<number>();
-    const nearRight = new Set<number>();
-    for (const [leftSide, rightSide] of touchingCrossPairs(left.sides, right.sides)) {
+    for (const [leftSide, rightSide] of touchingCrossPairs(left.sides, right.sides, workMeter)) {
+      chargeGeometryWork(workMeter, 1);
       comparisons += 1;
       if (comparisons > MAX_BOUNDARY_COMPARISONS) {
         throw new Error(
@@ -506,30 +484,40 @@ const assertDisjointRegionInteriors = (regions: ReadonlyArray<CanonicalRegion>) 
           + "so reaching it means the regions genuinely touch that much."
         );
       }
-      nearLeft.add(leftSide);
-      nearRight.add(rightSide);
       const first = left.sides[leftSide];
       const second = right.sides[rightSide];
       if (segmentsProperlyCross(first.from, first.to, second.from, second.to)) throw overlap();
+      if (collinearSidesFaceSameInterior(first, second) &&
+          sharedBoundary(first.from, first.to, second.from, second.to)) throw overlap();
     }
     // A vertex outside the other region's bounds cannot be inside it, and the
     // bounds test is a handful of comparisons against an O(vertices) one.
-    const vertexInside = (source: PreparedRegion, target: PreparedRegion): boolean =>
-      regionRings(source.region).some((ring) => ring.some((point) =>
-        boundsContain(target.bounds, point) && pointStrictlyInsideRegion(point, target.region)));
+    const vertexInside = (source: PreparedRegion, target: PreparedRegion): boolean => {
+      const targetVertexCount = target.sides.length;
+      for (const ring of regionRings(source.region)) {
+        chargeGeometryWork(workMeter, ring.length);
+        for (const point of ring) {
+          if (!boundsContain(target.bounds, point)) continue;
+          chargeGeometryWork(workMeter, targetVertexCount);
+          if (pointStrictlyInsideRegion(point, target.region)) return true;
+        }
+      }
+      return false;
+    };
     if (vertexInside(left, right) || vertexInside(right, left)) throw overlap();
-    const probeInside = (source: PreparedRegion, near: Set<number>, target: PreparedRegion): boolean =>
-      [...near].some((index) => sideInteriorProbes(source.sides[index]).some((point) =>
-        boundsContain(target.bounds, point) && pointStrictlyInsideRegion(point, target.region)));
-    if (probeInside(left, nearLeft, right) || probeInside(right, nearRight, left)) throw overlap();
   }
 };
 
 /** Apply the compiler's checksum-normalisation rules to every region. */
 export const canonicalizeRoadPlanningRegions = (
-  rawRegions: ReadonlyArray<GameManifestTransportRegion>
+  rawRegions: ReadonlyArray<GameManifestTransportRegion>,
+  workMeter?: GeometryWorkMeter
 ): Array<CanonicalRegion> => {
   if (rawRegions.length < 1) throw new Error("Road planning requires at least one region");
+  chargeGeometryWork(
+    workMeter,
+    rawRegions.length * Math.max(1, Math.ceil(Math.log2(rawRegions.length + 1)))
+  );
   const ids = new Set<string>();
   let totalVertices = 0;
   const regions = rawRegions.map((rawRegion) => {
@@ -543,13 +531,14 @@ export const canonicalizeRoadPlanningRegions = (
     if (rawHoles.length + 1 > MAX_RINGS_PER_REGION) {
       throw new Error(`${label} supports at most ${MAX_RINGS_PER_REGION - 1} inner rings`);
     }
-    const polygon = canonicalizeRing(rawRegion.polygon, label);
-    const holes = rawHoles.map((hole, index) => canonicalizeRing(hole, `${label} hole ${index}`));
+    const polygon = canonicalizeRing(rawRegion.polygon, label, workMeter);
+    const holes = rawHoles.map((hole, index) =>
+      canonicalizeRing(hole, `${label} hole ${index}`, workMeter));
     totalVertices += polygon.length + holes.reduce((sum, hole) => sum + hole.length, 0);
     if (totalVertices > MAX_TOTAL_VERTICES) {
       throw new Error(`Road planning supports at most ${MAX_TOTAL_VERTICES} contour vertices`);
     }
-    if (holes.length > 0) assertHolesAreInside(polygon, holes, rawRegion.id);
+    if (holes.length > 0) assertHolesAreInside(polygon, holes, rawRegion.id, workMeter);
     // Holes are ordered by their canonical first vertex so that the checksum
     // does not depend on the order in which the author listed them.
     holes.sort((left, right) => pointCompare(left[0], right[0]));
@@ -564,7 +553,7 @@ export const canonicalizeRoadPlanningRegions = (
     return region;
   });
   const sorted = regions.sort((left, right) => codepointCompare(left.id, right.id));
-  assertDisjointRegionInteriors(sorted);
+  assertDisjointRegionInteriors(sorted, workMeter);
   return sorted;
 };
 
@@ -574,10 +563,7 @@ export const canonicalizeRoadPlanningRegions = (
 
 /** The positive-length shared part of two collinear ring sides, if any. */
 const sharedBoundary = (a: Point, b: Point, c: Point, d: Point): { from: Point; to: Point } | undefined => {
-  const ab = subtract(b, a);
-  const scale = Math.max(1, distance(a, b));
-  if (Math.abs(cross(ab, subtract(c, a))) > EPSILON * scale ||
-      Math.abs(cross(ab, subtract(d, a))) > EPSILON * scale) return undefined;
+  if (orientationSign(a, b, c) !== 0 || orientationSign(a, b, d) !== 0) return undefined;
   const shared = [a, b, c, d]
     .filter((point) => pointOnSegment(point, a, b) && pointOnSegment(point, c, d))
     .filter((point, index, all) => all.findIndex((candidate) => pointNearlyEquals(candidate, point)) === index)
@@ -585,7 +571,7 @@ const sharedBoundary = (a: Point, b: Point, c: Point, d: Point): { from: Point; 
   if (shared.length < 2) return undefined;
   const from = shared[0];
   const to = shared[shared.length - 1];
-  if (distance(from, to) <= EPSILON) return undefined;
+  if (pointEquals(from, to)) return undefined;
   return { from: { ...from }, to: { ...to } };
 };
 
@@ -607,14 +593,21 @@ interface SharedPiece {
  * than a general graph problem, and a point shared by three pieces means the
  * map is not what it claims to be — it is refused rather than guessed at.
  */
-const assembleChains = (pieces: ReadonlyArray<SharedPiece>, label: string): Array<Array<Point>> => {
+const assembleChains = (
+  pieces: ReadonlyArray<SharedPiece>,
+  label: string,
+  workMeter?: GeometryWorkMeter
+): Array<Array<Point>> => {
+  chargeGeometryWork(workMeter, pieces.length * 2);
   const byEndpoint = new Map<string, Array<number>>();
   const pointByKey = new Map<string, Point>();
   pieces.forEach((piece, index) => {
     for (const endpoint of [piece.from, piece.to]) {
       const key = pointKey(endpoint);
       pointByKey.set(key, endpoint);
-      byEndpoint.set(key, [...(byEndpoint.get(key) ?? []), index]);
+      const incident = byEndpoint.get(key);
+      if (incident) incident.push(index);
+      else byEndpoint.set(key, [index]);
     }
   });
   for (const [key, incident] of byEndpoint) {
@@ -631,7 +624,9 @@ const assembleChains = (pieces: ReadonlyArray<SharedPiece>, label: string): Arra
     const points = [pointByKey.get(startKey) as Point];
     let currentKey = startKey;
     for (;;) {
-      const next = (byEndpoint.get(currentKey) ?? []).find((index) => !used[index]);
+      const incident = byEndpoint.get(currentKey) ?? [];
+      chargeGeometryWork(workMeter, incident.length);
+      const next = incident.find((index) => !used[index]);
       if (next === undefined) return points;
       used[next] = true;
       const piece = pieces[next];
@@ -690,18 +685,20 @@ const assembleChains = (pieces: ReadonlyArray<SharedPiece>, label: string): Arra
  * object key order, or on floating-point accidents of the search.
  */
 export const deriveRegionCrossings = (
-  regions: ReadonlyArray<CanonicalRegion>
+  regions: ReadonlyArray<CanonicalRegion>,
+  workMeter?: GeometryWorkMeter
 ): Array<RegionCrossing> => {
-  const prepared = prepareRegions(regions);
+  const prepared = prepareRegions(regions, workMeter);
   const crossings: Array<RegionCrossing> = [];
   let comparisons = 0;
   let crossingVertices = 0;
-  for (const [leftIndex, rightIndex] of touchingSelfPairs(prepared)) {
+  for (const [leftIndex, rightIndex] of touchingSelfPairs(prepared, workMeter)) {
     const left = prepared[leftIndex];
     const right = prepared[rightIndex];
     const pieces: Array<SharedPiece> = [];
     const seen = new Set<string>();
-    for (const [leftSide, rightSide] of touchingCrossPairs(left.sides, right.sides)) {
+    for (const [leftSide, rightSide] of touchingCrossPairs(left.sides, right.sides, workMeter)) {
+      chargeGeometryWork(workMeter, 1);
       comparisons += 1;
       if (comparisons > MAX_BOUNDARY_COMPARISONS) {
         throw new Error(
@@ -722,7 +719,7 @@ export const deriveRegionCrossings = (
     if (pieces.length === 0) continue;
     const pairIds: [string, string] = [left.region.id, right.region.id];
     const label = `Shared border of road-planning regions "${pairIds[0]}" and "${pairIds[1]}"`;
-    const chains = assembleChains(pieces, label)
+    const chains = assembleChains(pieces, label, workMeter)
       .sort((first, second) => codepointCompare(JSON.stringify(first), JSON.stringify(second)));
     chains.forEach((chain, index) => {
       crossingVertices += chain.length;

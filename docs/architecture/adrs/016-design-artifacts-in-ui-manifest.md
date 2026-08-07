@@ -1,7 +1,7 @@
 # ADR-016: Дизайн-артефакты для ИИ-агентов в UI-манифесте
 
 - **Дата**: 2026-01-17
-- **Статус**: Accepted
+**Status:** Accepted
 - **Авторы**: AI Agent (Claude)
 - **Компоненты**: Game Editor, Game Repository, SDK/viewers, UI-манифесты
 

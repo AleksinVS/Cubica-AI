@@ -1,7 +1,7 @@
 # ADR-087: Ограниченные конечные числа и типизированные вложенные проекции
 
 - **Дата:** 2026-07-17
-- **Статус:** Accepted
+**Status:** Accepted
 - **Автор решения:** PM
 - **Компоненты:** `docs/architecture/schemas`, `packages/contracts/manifest`,
   `scripts/manifest-tools`, `services/runtime-api`

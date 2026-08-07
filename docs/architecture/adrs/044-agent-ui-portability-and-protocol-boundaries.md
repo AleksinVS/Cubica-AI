@@ -1,7 +1,7 @@
 # ADR-044: Переносимость Agent UI и границы протоколов
 
 - **Дата**: 2026-06-10
-- **Статус**: Accepted
+**Status:** Accepted
 - **Авторы**: Codex
 - **Компоненты**: Editor Web, Portal, Player Web, Agent UI, AI Contracts, Platform Security
 - **Связанные решения**: ADR-025, ADR-034, ADR-036, ADR-038, ADR-040, ADR-043

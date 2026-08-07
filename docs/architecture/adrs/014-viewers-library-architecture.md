@@ -1,7 +1,7 @@
 ﻿# ADR-014: Архитектура библиотеки viewers и проверенных клиентских скриптов
 
 - **Дата**: 2025-12-19
-- **Статус**: Superseded by ADR-064 (2026-07-07)
+**Status:** Superseded by ADR-064 (2026-07-07)
 - **Авторы**: @todo
 - **Компоненты**: `SDK/viewers/`, `SDK/react-sdk/`, `games/*`, `docs/architecture/`
 

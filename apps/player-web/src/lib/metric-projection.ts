@@ -130,10 +130,9 @@ const evaluateVar = (
  * authoritative state.
  *
  * Shipped computed metrics must use ONLY these operators. That invariant is
- * enforced in CI by
- * `scripts/ci/validate-metric-jsonlogic-subset.js` (keep this list in sync with
- * the `SUPPORTED_METRIC_JSONLOGIC_OPERATORS` array in that script). Any operator
- * outside this set evaluates to `undefined` here (see the `default` branch).
+ * enforced in CI by `scripts/ci/validate-metric-jsonlogic-subset.js`, which
+ * reads this exported constant through the TypeScript syntax tree. Any
+ * operator outside this set evaluates to `undefined` here (see `default`).
  */
 export const SUPPORTED_METRIC_JSONLOGIC_OPERATORS = ["var", "+", "-", "*", "/", "min", "max"] as const;
 

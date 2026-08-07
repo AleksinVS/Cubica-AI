@@ -17,6 +17,7 @@ import {
   type CubicaAgentTurnResult,
   type CubicaJsonValue
 } from "@cubica/contracts-ai";
+import { randomUUID } from "node:crypto";
 import type {
   GameManifest,
   GameManifestAgentRuntimeConfig,
@@ -845,7 +846,7 @@ function isUnknownRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function createId(prefix: string): string {
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  return `${prefix}-${Date.now()}-${randomUUID()}`;
 }
 
 function formatDiagnostics(diagnostics: readonly { readonly pointer: string; readonly message: string }[]): string {

@@ -1,7 +1,7 @@
 # ADR-093: Design-time объявление раскладки экрана
 
 - **Дата**: 2026-07-20
-- **Статус**: Accepted
+**Status:** Accepted
 - **Авторы**: AI agent (fable), владелец продукта (PM)
 - **Компоненты**: UI manifests, UI manifest schema, authoring compiler, `apps/player-web` (screen router, presenter), `games/*/plugins/*`, game manifests
 - **Связанные решения**: ADR-013, ADR-053, ADR-054, ADR-055, ADR-074

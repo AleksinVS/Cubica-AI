@@ -148,7 +148,10 @@ export async function forwardAuthenticatedRuntimeRequest(
  * Converts a credential-bearing create-session response into a browser-safe
  * snapshot and session-scoped HttpOnly cookie.
  */
-export async function browserSessionResponse(upstream: Response): Promise<Response> {
+export async function browserSessionResponse(
+  upstream: Response,
+  options: { readonly secureCookie?: boolean } = {}
+): Promise<Response> {
   const text = await upstream.text();
   if (!upstream.ok) {
     return proxyRuntimeText(upstream, text);
@@ -175,7 +178,7 @@ export async function browserSessionResponse(upstream: Response): Promise<Respon
     status: upstream.status,
     headers: { "Cache-Control": "no-store" }
   });
-  setRuntimeCredentialCookie(response, sessionId, credential);
+  setRuntimeCredentialCookie(response, sessionId, credential, { secure: options.secureCookie });
   return response;
 }
 
@@ -183,15 +186,36 @@ export async function browserSessionResponse(upstream: Response): Promise<Respon
 export function setRuntimeCredentialCookie(
   response: NextResponse,
   sessionId: string,
-  credential: string
+  credential: string,
+  options: { readonly secure?: boolean } = {}
 ): void {
   response.cookies.set(runtimeCredentialCookieName(sessionId), credential, {
     httpOnly: true,
     sameSite: "strict",
-    secure: process.env.NODE_ENV === "production",
+    secure: options.secure ?? process.env.NODE_ENV === "production",
     path: RUNTIME_COOKIE_PATH,
     maxAge: RUNTIME_CREDENTIAL_MAX_AGE_SECONDS
   });
+}
+
+/**
+ * Keeps production credentials Secure except for an explicit loopback-only E2E
+ * opt-in. The hostname check prevents the test flag from weakening a deployed
+ * non-local origin if it is accidentally propagated outside the test runner.
+ */
+export function runtimeCredentialCookieIsSecure(request: Request): boolean {
+  if (process.env.NODE_ENV !== "production") {
+    return false;
+  }
+  if (process.env.CUBICA_ALLOW_INSECURE_LOCAL_RUNTIME_COOKIE !== "1") {
+    return true;
+  }
+  try {
+    const hostname = new URL(request.url).hostname;
+    return hostname !== "localhost" && hostname !== "127.0.0.1" && hostname !== "[::1]" && hostname !== "::1";
+  } catch {
+    return true;
+  }
 }
 
 export function proxyRuntimeResponse(upstream: Response): Promise<Response> {

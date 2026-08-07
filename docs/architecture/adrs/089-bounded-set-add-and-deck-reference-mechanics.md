@@ -1,7 +1,7 @@
 # ADR-089: Ограниченное добавление в множество и параметризованная ссылка на колоду
 
 - **Дата:** 2026-07-19
-- **Статус:** Accepted
+**Status:** Accepted
 - **Автор решения:** PM
 - **Компоненты:** `docs/architecture/schemas`, `packages/contracts/manifest`,
   `scripts/manifest-tools`, `services/runtime-api`

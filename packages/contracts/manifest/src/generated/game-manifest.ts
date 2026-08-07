@@ -124,6 +124,20 @@ export type GameManifestObjectVisibility = "public" | "secret";
  * via the `definition` "GameManifestSafeIdentifier".
  */
 export type GameManifestSafeIdentifier = string;
+/**
+ * Schema-first transport polyline. Runtime may derive intermediate points for a transaction, but every manifest-declared stored point uses the canonical coordinate contract; endpoints must match the owning graph nodes and consecutive points must differ, which semantic validation checks because JSON Schema cannot compare array entries.
+ *
+ * @minItems 2
+ * @maxItems 20000
+ *
+ * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
+ * via the `definition` "GameManifestCanonicalPolyline".
+ */
+export type GameManifestCanonicalPolyline = [
+  GameManifestCanonicalPoint,
+  GameManifestCanonicalPoint,
+  ...GameManifestCanonicalPoint[]
+];
 
 export interface GameManifestSchemaDefs {
   [k: string]: unknown;
@@ -464,7 +478,7 @@ export interface GameManifestTransportRegion {
     ...GameManifestCanonicalPoint[]
   ];
   /**
-   * Inner rings: areas enclosed by the outer ring that do not belong to this region, such as an enclave that is a region of its own. Planning algorithm region-segment-minimum-v2 supports them: the region is split into triangles for path finding, and an inner ring needs no special case there. An enclave and the region around it share one closed border, which is one navigation crossing.
+   * Inner rings: areas enclosed by the outer ring that do not belong to this region, such as an enclave that is a region of its own. Planning algorithm region-segment-minimum-v3 supports them: the region is split into triangles for path finding, and an inner ring needs no special case there. An enclave and the region around it share one closed border, which is one navigation crossing.
    *
    * @maxItems 64
    */
@@ -480,7 +494,13 @@ export interface GameManifestTransportRegion {
  * via the `definition` "GameManifestCanonicalPoint".
  */
 export interface GameManifestCanonicalPoint {
+  /**
+   * Canonical geometry coordinate on the 1e-6 storage grid.
+   */
   x: number;
+  /**
+   * Canonical geometry coordinate on the 1e-6 storage grid.
+   */
   y: number;
 }
 /**
@@ -491,7 +511,7 @@ export interface GameManifestCanonicalPoint {
  */
 export interface GameManifestTransportRoadPlanning {
   mode: "region-segment-minimum";
-  algorithmVersion: "region-segment-minimum-v2";
+  algorithmVersion: "region-segment-minimum-v3";
   geometryVersion: string;
   geometryHash: string;
   /**
@@ -577,13 +597,35 @@ export interface GameManifestTransportMovementModel {
  * via the `definition` "GameManifestState<alias-942026824-74138-74264-942026824-0-218439<string,unknown>,alias-942026824-74138-74264-942026824-0-218439<string,unknown>>".
  */
 export interface GameManifestState3Calias942026824741387426494202682402184393Cstring2Cunknown3E2Calias942026824741387426494202682402184393Cstring2Cunknown3E3E {
-  public: {
-    [k: string]: unknown;
-  };
-  secret?: {
-    [k: string]: unknown;
-  };
+  public: GameManifestStateScopeGeometryProjection;
+  secret?: GameManifestStateScopeGeometryProjection;
   playersTemplate?: GameManifestPlayersTemplate;
+}
+/**
+ * Public or secret state scope whose dynamic object collections apply the shared stored-geometry contract without constraining game-specific attributes.
+ *
+ * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
+ * via the `definition` "GameManifestStateScopeGeometryProjection".
+ */
+export interface GameManifestStateScopeGeometryProjection {
+  /**
+   * Dynamic object collections. Any stored object geometry.polyline is validated by the canonical schema regardless of collection, visibility, or game-specific object type.
+   */
+  objects?: {
+    [k: string]: {
+      [k: string]: {
+        attributes?: {
+          geometry?: {
+            polyline?: GameManifestCanonicalPolyline;
+            [k: string]: unknown;
+          };
+          [k: string]: unknown;
+        };
+        [k: string]: unknown;
+      };
+    };
+  };
+  [k: string]: unknown;
 }
 /**
  * Template expanded by runtime into state.players for every local participant.

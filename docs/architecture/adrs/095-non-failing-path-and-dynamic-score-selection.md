@@ -2,7 +2,7 @@
 
 - **Дата:** 2026-07-26
 - **Пересмотрено:** 2026-07-26
-- **Статус:** Accepted
+**Status:** Accepted
 - **Автор решения:** PM
 - **Компоненты:** `docs/architecture/schemas`, `packages/contracts/manifest`,
   `scripts/manifest-tools`, `services/runtime-api`

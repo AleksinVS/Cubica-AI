@@ -12,6 +12,7 @@ type PageProps = {
     sessionId?: string;
     contentSourceId?: string;
     editorOrigin?: string;
+    previewInstanceId?: string;
   }>;
 };
 
@@ -28,18 +29,26 @@ export default async function Page({ searchParams }: PageProps) {
     return <MissingGameIdScreen />;
   }
 
-  const previewSessionId = params?.preview === "1" && typeof params.sessionId === "string" ? params.sessionId : undefined;
-  const previewContentSourceId = previewSessionId && typeof params?.contentSourceId === "string"
+  const editorPreviewMode = params?.preview === "1";
+  // `sessionId` remains an optional compatibility input for an already-bound
+  // browser session. New editor previews intentionally omit it: Player Web must
+  // create the session through its BFF so the one-time runtime credential is
+  // captured in an HttpOnly cookie instead of being stranded in editor-web.
+  const previewSessionId = editorPreviewMode && typeof params?.sessionId === "string" ? params.sessionId : undefined;
+  const previewContentSourceId = editorPreviewMode && typeof params?.contentSourceId === "string"
     ? params.contentSourceId
     : undefined;
   const content = await loadGamePlayerContent(gameId, { contentSourceId: previewContentSourceId });
-  const editorPreviewParentOrigin = previewSessionId && typeof params?.editorOrigin === "string"
+  const editorPreviewParentOrigin = editorPreviewMode && typeof params?.editorOrigin === "string"
     ? normalizeOrigin(params.editorOrigin)
     : undefined;
-  const config = previewSessionId
+  const previewStorageScope = editorPreviewMode && typeof params?.previewInstanceId === "string"
+    ? params.previewInstanceId
+    : previewSessionId ?? previewContentSourceId ?? "temporary";
+  const config = editorPreviewMode
     ? {
         ...resolveGameConfigData(content),
-        storageKey: `cubica-preview-${gameId}-${previewSessionId}`
+        storageKey: `cubica-preview-${gameId}-${previewStorageScope}`
       }
     : resolveGameConfigData(content);
 
@@ -51,7 +60,7 @@ export default async function Page({ searchParams }: PageProps) {
       gameUi={content.ui}
       config={config}
       initialSessionId={previewSessionId}
-      editorPreviewMode={previewSessionId !== undefined}
+      editorPreviewMode={editorPreviewMode}
       editorPreviewParentOrigin={editorPreviewParentOrigin}
       playerPluginBundles={content.pluginBundles ?? []}
       contentSourceId={previewContentSourceId}

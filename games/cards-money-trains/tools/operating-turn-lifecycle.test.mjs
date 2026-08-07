@@ -53,6 +53,7 @@ const admissionController = {
 let commandSequence = 0;
 const { compileAuthoringText } = authoringCompiler;
 let generatedManifestPromise;
+let immutableBundle;
 
 const readJson = async (absolutePath) =>
   JSON.parse(await readFile(absolutePath, "utf8"));
@@ -65,6 +66,25 @@ const nextCommandId = () => {
 };
 
 /**
+ * Remove author-map geometry that no operating-turn scenario executes.
+ *
+ * The complete generated manifest is still compiled and validated first. The
+ * second compilation recalculates all plan hashes for a small, valid network
+ * fixture, so repeated Runtime dispatch keeps production trust checks without
+ * copying 982 unrelated polygons on every command. Construction lifecycle
+ * tests retain the real regions and own the route-planning assertions.
+ */
+const buildGeometryIndependentRuntimeFixture = (authoring) => {
+  const fixture = structuredClone(authoring);
+  fixture.root.networkModels.main.regions = [{
+    id: "operating-turn-fixture-region",
+    polygon: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 0, y: 1 }]
+  }];
+  delete fixture.root.networkModels.main.roadPlanning;
+  return fixture;
+};
+
+/**
  * Compile the fresh operating-turn transformation entirely in memory.
  *
  * This keeps the focused test independent from the later shared integration
@@ -73,7 +93,7 @@ const nextCommandId = () => {
 const loadManifest = async () => {
   generatedManifestPromise ??= (async () => {
     const generated = buildOperatingTurnAuthoring(await readJson(authoringPath));
-    const output = compileAuthoringText(
+    const publishedOutput = compileAuthoringText(
       {
         kind: "game",
         sourceFile: authoringPath,
@@ -86,10 +106,35 @@ const loadManifest = async () => {
       },
       JSON.stringify(generated)
     );
-    return validateGameManifest(output.manifest);
+    validateGameManifest(publishedOutput.manifest);
+
+    const fixtureOutput = compileAuthoringText(
+      {
+        kind: "game",
+        sourceFile: authoringPath,
+        outputFile: path.join(repoRoot, ".tmp", "cmt-operating-turn.fixture.json"),
+        sourceMapFile: path.join(
+          repoRoot,
+          ".tmp",
+          "cmt-operating-turn.fixture.source-map.json"
+        )
+      },
+      JSON.stringify(buildGeometryIndependentRuntimeFixture(generated))
+    );
+    return validateGameManifest(fixtureOutput.manifest);
   })();
   return generatedManifestPromise;
 };
+
+/**
+ * Materialize the byte-exact rules bundle once for this test file.
+ *
+ * Session stores remain independent and validate the bundle on every create;
+ * this cache removes only repeated cloning, canonicalization and hashing of
+ * identical immutable input.
+ */
+const loadImmutableBundle = (manifest) =>
+  immutableBundle ??= createImmutableBundleContent(manifest.meta.id, manifest);
 
 /** Create one facilitator-owned normal session from the immutable game bundle. */
 const createSession = async (manifest) => {
@@ -98,7 +143,7 @@ const createSession = async (manifest) => {
     gameId: manifest.meta.id,
     sessionRole: "facilitator",
     initialState: structuredClone(manifest.state),
-    immutableBundle: createImmutableBundleContent(manifest.meta.id, manifest),
+    immutableBundle: loadImmutableBundle(manifest),
     principal: {
       principalId: "operating-turn-test-facilitator",
       kind: "local-controller",

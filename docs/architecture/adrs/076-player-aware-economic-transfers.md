@@ -1,7 +1,7 @@
 # ADR-076: Единый контракт денежных переводов между областями состояния
 
 - **Дата:** 2026-07-11
-- **Статус:** Accepted (2026-07-11)
+**Status:** Accepted (2026-07-11)
 - **Авторы:** Codex
 - **Компоненты:** Game Manifest, Runtime API, Session State, Player Projection
 - **Связанные решения:** ADR-011, ADR-025, ADR-058, ADR-061, ADR-071, ADR-074, ADR-084

@@ -1,6 +1,6 @@
 # ADR-062: Класс игр «клиентская симуляция реального времени» и Phaser-канал доставки
 
-- **Status**: Accepted (2026-07-06)
+**Status:** Accepted (2026-07-06)
 - **Date**: 2026-07-06
 - **Author**: AI Agent (по заказу владельца проекта)
 - **Context**: Realtime simulation game class / player-web delivery channel / plugin architecture

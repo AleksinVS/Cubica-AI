@@ -224,7 +224,7 @@ test("the region graph module draws no random value at all", () => {
   // algorithm identity and the missing dependency are asserted, because either
   // one left behind would claim a capability the module no longer has.
   const graph = MODULE_REGISTRY.get("cubica.graph");
-  assert.equal(graph.algorithmVersions.regionPath, "region-segment-minimum-v2");
+  assert.equal(graph.algorithmVersions.regionPath, "region-segment-minimum-v3");
   assert.equal(graph.algorithmVersions.randomTieBreak, undefined);
   assert.deepEqual(graph.dependencies, []);
 });

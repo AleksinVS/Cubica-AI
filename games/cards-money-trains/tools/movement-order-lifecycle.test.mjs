@@ -13,6 +13,7 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
+import authoringCompiler from "../../../scripts/manifest-tools/authoring-compiler.cjs";
 import { createImmutableBundleContent } from "../../../services/runtime-api/src/modules/content/immutableBundle.ts";
 import { validateGameManifest } from "../../../services/runtime-api/src/modules/content/manifestValidation.ts";
 import { dispatchRuntimeAction } from "../../../services/runtime-api/src/modules/runtime/actionDispatcher.ts";
@@ -31,6 +32,7 @@ import {
 
 const toolsRoot = path.dirname(fileURLToPath(import.meta.url));
 const gameRoot = path.resolve(toolsRoot, "..");
+const repoRoot = path.resolve(gameRoot, "..", "..");
 const networkPath = path.join(
   gameRoot,
   "annotations",
@@ -47,6 +49,9 @@ const admissionController = {
   async assertNewCommandAdmitted() {}
 };
 let commandSequence = 0;
+let manifestPromise;
+let immutableBundle;
+const { compileAuthoringText } = authoringCompiler;
 
 const readJson = async (absolutePath) =>
   JSON.parse(await readFile(absolutePath, "utf8"));
@@ -58,9 +63,60 @@ const nextCommandId = () => {
   return `cli_${bytes.toString("base64url")}`;
 };
 
-/** Validate the compiled manifest through the same path used by Runtime. */
-const loadManifest = async () =>
-  validateGameManifest(await readJson(path.join(gameRoot, "game.manifest.json")));
+/**
+ * Remove author-map geometry that movement along existing edges never reads.
+ *
+ * The published manifest is still admitted first. Recompiling this small,
+ * valid network fixture recalculates the protected plan hashes and lets every
+ * Runtime command keep its normal bundle checks without copying 982 unrelated
+ * polygons. Author-map route planning remains covered by the construction
+ * lifecycle suite.
+ */
+const buildGeometryIndependentRuntimeFixture = (authoring) => {
+  const fixture = structuredClone(authoring);
+  fixture.root.networkModels.main.regions = [{
+    id: "movement-order-fixture-region",
+    polygon: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 0, y: 1 }]
+  }];
+  delete fixture.root.networkModels.main.roadPlanning;
+  return fixture;
+};
+
+/** Validate the compiled manifest once through the same path used by Runtime. */
+const loadManifest = async () => {
+  manifestPromise ??= (async () => {
+    validateGameManifest(
+      await readJson(path.join(gameRoot, "game.manifest.json"))
+    );
+    const fixtureOutput = compileAuthoringText(
+      {
+        kind: "game",
+        sourceFile: authoringPath,
+        outputFile: path.join(repoRoot, ".tmp", "cmt-movement-order.fixture.json"),
+        sourceMapFile: path.join(
+          repoRoot,
+          ".tmp",
+          "cmt-movement-order.fixture.source-map.json"
+        )
+      },
+      JSON.stringify(
+        buildGeometryIndependentRuntimeFixture(await readJson(authoringPath))
+      )
+    );
+    return validateGameManifest(fixtureOutput.manifest);
+  })();
+  return manifestPromise;
+};
+
+/**
+ * Materialize the byte-exact rules bundle once for this test file.
+ *
+ * Every fresh store still validates the supplied bundle at its trust boundary;
+ * sharing only avoids repeating deterministic cloning, canonicalization and
+ * hashing of the same compiled fixture for every isolated session.
+ */
+const loadImmutableBundle = (manifest) =>
+  immutableBundle ??= createImmutableBundleContent(manifest.meta.id, manifest);
 
 /** Create one facilitator-owned session from the immutable compiled bundle. */
 const createSession = async (manifest, random) => {
@@ -69,7 +125,7 @@ const createSession = async (manifest, random) => {
     gameId: manifest.meta.id,
     sessionRole: "facilitator",
     initialState: structuredClone(manifest.state),
-    immutableBundle: createImmutableBundleContent(manifest.meta.id, manifest),
+    immutableBundle: loadImmutableBundle(manifest),
     principal: {
       principalId: "movement-order-test-facilitator",
       kind: "local-controller",

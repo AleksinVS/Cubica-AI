@@ -1,6 +1,6 @@
 # ADR-079: Серверная проекция доступности действий
 
-- **Статус:** Accepted
+**Status:** Accepted
 - **Дата:** 2026-07-12
 - **Автор:** Codex по подтверждённому решению PM
 - **Компоненты:** контракты сессии, deterministic runtime, Presenter, web/Phaser delivery

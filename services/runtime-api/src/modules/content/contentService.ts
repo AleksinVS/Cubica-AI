@@ -376,15 +376,25 @@ interface PublishedPlayerWebPluginBundleMetadata {
   readonly bundles: readonly PublishedPlayerWebPluginBundle[];
 }
 
+/** Bound parsed manifest memory independently from the durable repository. */
+export const CONTENT_BUNDLE_CACHE_MAX_ENTRIES = 32;
+
 export class ContentService {
   private readonly bundleCache = new Map<string, GameBundle>();
   private readonly repository: IGameRepository;
+  private readonly localRepositoryFactory: (contentRoot: string) => IGameRepository;
   private readonly repositoriesBySourceId = new Map<string, IGameRepository>();
+  private readonly contentSourceGenerations = new Map<string, number>();
   private readonly playerWebPluginBundlesBySourceId = new Map<string, readonly LocalPlayerWebPluginBundle[]>();
   private readonly gameAssetHashCache = new Map<string, { readonly mtimeMs: number; readonly sha256: string }>();
   
-  constructor(repository: IGameRepository) {
+  constructor(
+    repository: IGameRepository,
+    localRepositoryFactory: (contentRoot: string) => IGameRepository =
+      (contentRoot) => new LocalFileGameRepository(contentRoot)
+  ) {
     this.repository = repository;
+    this.localRepositoryFactory = localRepositoryFactory;
   }
 
   /**
@@ -400,7 +410,8 @@ export class ContentService {
     contentRoot: string,
     pluginBundles: readonly LocalPlayerWebPluginBundle[] = []
   ): void {
-    this.repositoriesBySourceId.set(sourceId, new LocalFileGameRepository(contentRoot));
+    this.contentSourceGenerations.set(sourceId, this.contentSourceGeneration(sourceId) + 1);
+    this.repositoriesBySourceId.set(sourceId, this.localRepositoryFactory(contentRoot));
     this.playerWebPluginBundlesBySourceId.set(sourceId, pluginBundles);
     this.clearBundleCache(undefined, sourceId);
   }
@@ -417,14 +428,36 @@ export class ContentService {
 
   async getBundle(gameId: string, contentSourceId?: string): Promise<GameBundle> {
     const cacheKey = this.bundleCacheKey(gameId, contentSourceId);
-    const cached = this.bundleCache.get(cacheKey);
-    if (cached) {
-      return cached;
+    // Source replacement is rare and synchronous, but filesystem reads are
+    // asynchronous. Retry a bounded number of times so one response cannot mix
+    // an old manifest with mockups/plugins from the newly registered source.
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const cached = this.bundleCache.get(cacheKey);
+      if (cached) {
+        this.bundleCache.delete(cacheKey);
+        this.bundleCache.set(cacheKey, cached);
+        return cached;
+      }
+
+      const repository = this.repositoryForSource(contentSourceId);
+      const generation = this.contentSourceGeneration(contentSourceId);
+      const bundle = await loadGameBundle(gameId, repository);
+      if (
+        generation !== this.contentSourceGeneration(contentSourceId) ||
+        repository !== this.repositoryForSource(contentSourceId)
+      ) {
+        continue;
+      }
+
+      this.bundleCache.set(cacheKey, bundle);
+      while (this.bundleCache.size > CONTENT_BUNDLE_CACHE_MAX_ENTRIES) {
+        const leastRecentlyUsedKey = this.bundleCache.keys().next().value as string | undefined;
+        if (leastRecentlyUsedKey !== undefined) this.bundleCache.delete(leastRecentlyUsedKey);
+      }
+      return bundle;
     }
 
-    const bundle = await loadGameBundle(gameId, this.repositoryForSource(contentSourceId));
-    this.bundleCache.set(cacheKey, bundle);
-    return bundle;
+    throw new Error(`Content source "${contentSourceId ?? "published"}" changed repeatedly while loading "${gameId}"`);
   }
 
   async getGameManifest(gameId: string, contentSourceId?: string): Promise<GameBundle["manifest"]> {
@@ -755,7 +788,13 @@ export class ContentService {
   }
 
   private bundleCacheKey(gameId: string, contentSourceId: string | undefined): string {
-    return `${contentSourceId ?? "default"}:${gameId}`;
+    // A tuple encoding keeps the published source (`null`) distinct from every
+    // legal explicit source id, including the ordinary string "default".
+    return JSON.stringify([contentSourceId ?? null, gameId]);
+  }
+
+  private contentSourceGeneration(contentSourceId: string | undefined): number {
+    return contentSourceId === undefined ? 0 : (this.contentSourceGenerations.get(contentSourceId) ?? 0);
   }
 
   private async playerWebPluginBundleReferences(
@@ -829,12 +868,12 @@ export class ContentService {
       return hadGame ? [gameId] : [];
     }
 
-    const prefix = `${contentSourceId}:`;
     const cleared: string[] = [];
     for (const key of [...this.bundleCache.keys()]) {
-      if (key.startsWith(prefix)) {
+      const [cachedSourceId, cachedGameId] = JSON.parse(key) as [string | null, string];
+      if (cachedSourceId === contentSourceId) {
         this.bundleCache.delete(key);
-        cleared.push(key.slice(prefix.length));
+        cleared.push(cachedGameId);
       }
     }
     return cleared;

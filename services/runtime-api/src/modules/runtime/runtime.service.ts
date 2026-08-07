@@ -221,7 +221,7 @@ export class RuntimeService {
       bundle,
       actorPlayerId: resolveSessionActor(snapshot, principal),
       sessionRole: principal.role,
-      // Version 2 road planning (ADR-100) is deterministic and never consults
+      // Version 3 road planning (ADR-100) is deterministic and never consults
       // a random provider, so the preview no longer accepts one; `this.random`
       // is still used above for authoritative dispatch, which covers
       // unrelated randomness such as deck and entity ordering.

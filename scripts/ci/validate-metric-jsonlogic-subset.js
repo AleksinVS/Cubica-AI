@@ -10,16 +10,21 @@
  * silently become `undefined` in the browser. Server-side gameplay rules use
  * typed Mechanics expressions and are deliberately outside this validator.
  *
- * SUPPORTED must stay in sync with SUPPORTED_METRIC_JSONLOGIC_OPERATORS in
- * apps/player-web/src/lib/metric-projection.ts.
+ * The supported list is read from player-web through the TypeScript AST, so
+ * the evaluator itself remains the only literal source of truth.
  */
 const fs = require("node:fs");
 const path = require("node:path");
+const { collectStringArrayConstant } = require("./typescript-import-analysis.cjs");
 
 const repoRoot = path.resolve(__dirname, "..", "..");
 const gamesRoot = path.join(repoRoot, "games");
-
-const SUPPORTED = new Set(["var", "+", "-", "*", "/", "min", "max"]);
+const metricProjectionPath = path.join(repoRoot, "apps", "player-web", "src", "lib", "metric-projection.ts");
+const SUPPORTED = new Set(collectStringArrayConstant(
+  fs.readFileSync(metricProjectionPath, "utf8"),
+  metricProjectionPath,
+  "SUPPORTED_METRIC_JSONLOGIC_OPERATORS"
+));
 
 function fail(message) {
   console.error(`validate-metric-jsonlogic-subset: ${message}`);

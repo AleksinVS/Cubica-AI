@@ -261,9 +261,9 @@ const rawDescriptors = [
       "graph.shortestPath"
     ],
     algorithmVersions: {
-      regionPath: "region-segment-minimum-v2",
+      regionPath: "region-segment-minimum-v3",
       edgePosition: "polyline-arc-length-v1",
-      regionMembership: "closed-polygon-all-memberships-v2",
+      regionMembership: "closed-polygon-all-memberships-v3",
       geometryFingerprint: "canonical-json-sha256-v1"
     }
   },

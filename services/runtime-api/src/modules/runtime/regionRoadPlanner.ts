@@ -1,10 +1,11 @@
 /**
- * Authoritative road planning for declarative transport maps, version 2.
+ * Authoritative road planning for declarative transport maps, version 3.
  *
  * The rule of the game is unchanged and is the reason this module exists: a
  * road between two points crosses as few regions as possible, and that number
- * — not its length — is what a game may charge for. What changed in version 2
- * is how the line itself is found. See ADR-100.
+ * — not its length — is what a game may charge for. Version 3 keeps the
+ * navigation mesh and adds exact predicates plus unique boundary ownership.
+ * See ADR-100.
  *
  * A road is planned in three steps:
  *
@@ -33,6 +34,7 @@ import type {
   GameManifestTransportNetworkModel,
   GameManifestTransportRoadPlanning
 } from "@cubica/contracts-manifest";
+import { chargeGeometryWork } from "../geometryPredicates.ts";
 
 import {
   type CanonicalRegion,
@@ -48,6 +50,7 @@ import {
   deriveRegionCrossings,
   distance,
   finitePoint,
+  interpolate,
   pointInOrOnRegion,
   pointKey,
   pointNearlyEquals,
@@ -129,22 +132,10 @@ const chargePlannerWork = (meter: RegionRoadPlannerWorkMeter | undefined, units:
  */
 const compiledByHash = new Map<string, CompiledRegionRoadPlanning>();
 
-/** Price the immutable geometry validation before doing it. */
-const estimateCompilationWork = (model: GameManifestTransportNetworkModel): number => {
-  const totalVertices = model.regions.reduce(
-    (sum, region) => sum + region.polygon.length +
-      (region.holes ?? []).reduce((holeSum, hole) => holeSum + hole.length, 0),
-    0
-  );
-  // Validation and crossing derivation both walk the contours a bounded number
-  // of times once the spatial prefilter has removed the pairs that cannot
-  // touch, so the honest price is linear in the contour size with a constant.
-  return model.regions.length + totalVertices * 8;
-};
-
 /** Validate and compile the immutable, schema-first planning contract. */
 export const compileRegionRoadPlanning = (
-  model: GameManifestTransportNetworkModel
+  model: GameManifestTransportNetworkModel,
+  workMeter?: RegionRoadPlannerWorkMeter
 ): CompiledRegionRoadPlanning => {
   const planning = model.roadPlanning;
   if (!planning) throw new Error("Transport network did not opt in to authoritative road planning");
@@ -155,15 +146,39 @@ export const compileRegionRoadPlanning = (
     throw new Error("Transport network declares an unsupported road-planning contract");
   }
   const cached = compiledByHash.get(planning.geometryHash);
-  if (cached && isDeepStrictEqual(cached.planning, planning)) return cached;
+  if (cached && isDeepStrictEqual(cached.planning, planning)) {
+    // The published hash is an assertion, not proof. Compare the complete
+    // immutable geometry against the validated snapshot before reusing it so
+    // a second model cannot borrow an earlier model's cache entry by copying
+    // its claimed checksum.
+    chargePlannerWork(workMeter, model.regions.reduce(
+      (sum, region) => sum + region.polygon.length +
+        (region.holes ?? []).reduce((holeSum, hole) => holeSum + hole.length, 0),
+      model.regions.length
+    ));
+    if (!isDeepStrictEqual(cached.regions, model.regions)) {
+      // Continue through ordinary canonicalization and checksum verification;
+      // it will produce the precise mismatch without disturbing the valid LRU
+      // entry already held under this claimed hash.
+    } else {
+    // Refresh insertion order so the bounded map evicts the least recently
+    // used compiled geometry instead of the merely oldest inserted geometry.
+      compiledByHash.delete(planning.geometryHash);
+      compiledByHash.set(planning.geometryHash, cached);
+      return cached;
+    }
+  }
 
-  const regions = canonicalizeRoadPlanningRegions(model.regions);
+  // A cache miss is the only request that performs immutable map validation.
+  // The geometry layer charges each real scan before entering it; a linear
+  // estimate here would underprice spatial prefilters and containment scans.
+  const regions = canonicalizeRoadPlanningRegions(model.regions, workMeter);
   // Planned content is required to be compiler-canonical. Normalising silently
   // at runtime would make the advertised package checksum ambiguous.
   if (!isDeepStrictEqual(model.regions, regions)) {
     throw new Error("Road-planning regions must use compiler-canonical ordering");
   }
-  const crossings = deriveRegionCrossings(regions);
+  const crossings = deriveRegionCrossings(regions, workMeter);
   const geometryHash = computeRegionRoadPlanningHash({
     algorithmVersion: planning.algorithmVersion,
     boundaryPolicy: planning.boundaryPolicy,
@@ -256,15 +271,24 @@ const findMinimumCorridor = (options: {
   excluded: ReadonlySet<string>;
   workMeter?: RegionRoadPlannerWorkMeter;
 }): MinimumCorridor => {
-  const available = options.compiled.regions.filter((region) => !options.excluded.has(region.id));
-  const startRegions = available
-    .filter((region) => pointInOrOnRegion(options.from, region))
-    .map((region) => region.id)
-    .sort(codepointCompare);
-  const endRegions = available
-    .filter((region) => pointInOrOnRegion(options.to, region))
-    .map((region) => region.id)
-    .sort(codepointCompare);
+  const ownerOf = (point: Point): string | undefined => {
+    for (const region of options.compiled.regions) {
+      chargePlannerWork(
+        options.workMeter,
+        region.polygon.length + (region.holes ?? []).reduce((sum, hole) => sum + hole.length, 0)
+      );
+      if (pointInOrOnRegion(point, region)) return region.id;
+    }
+    return undefined;
+  };
+  // Regions are compiler-sorted by id. The first membership is therefore the
+  // unique owner required by `boundaryPolicy: lowest-region-id`; filtering
+  // exclusions afterwards prevents an excluded lowest owner from silently
+  // transferring its boundary to a higher id.
+  const startOwner = ownerOf(options.from);
+  const endOwner = ownerOf(options.to);
+  const startRegions = startOwner && !options.excluded.has(startOwner) ? [startOwner] : [];
+  const endRegions = endOwner && !options.excluded.has(endOwner) ? [endOwner] : [];
   if (startRegions.length === 0 || endRegions.length === 0) {
     throw new Error("Road endpoints must lie inside non-excluded declared regions");
   }
@@ -334,6 +358,7 @@ const findTriangleCorridor = (options: {
 
   for (;;) {
     let current = -1;
+    chargeGeometryWork(options.workMeter, queue.length);
     for (const index of queue) {
       if (settled[index]) continue;
       if (current < 0 || best[index] < best[current] - EPSILON ||
@@ -418,13 +443,17 @@ const segmentGateIntersection = (
 const describePassages = (
   path: ReadonlyArray<Point>,
   mesh: CorridorMesh,
-  corridor: ReadonlyArray<number>
+  corridor: ReadonlyArray<number>,
+  regions: ReadonlyArray<CanonicalRegion>,
+  excluded: ReadonlySet<string>,
+  workMeter?: RegionRoadPlannerWorkMeter
 ): RegionRoadCandidate => {
   const borders: Array<{ regionId: string; gate: [Point, Point] }> = [];
   for (let index = 1; index < corridor.length; index += 1) {
     const previousRegion = mesh.triangles[corridor[index - 1]].regionId;
     const region = mesh.triangles[corridor[index]].regionId;
     if (region === previousRegion) continue;
+    chargeGeometryWork(workMeter, mesh.neighbours[corridor[index - 1]].length);
     const step = mesh.neighbours[corridor[index - 1]].find((entry) => entry.to === corridor[index]);
     if (!step) throw new Error("Road corridor contains a step between triangles that do not meet");
     borders.push({ regionId: region, gate: step.gate });
@@ -436,6 +465,7 @@ const describePassages = (
   for (let index = 1; index < path.length; index += 1) {
     const from = points[points.length - 1];
     const to = path[index];
+    chargeGeometryWork(workMeter, borders.length - borderCursor);
     while (borderCursor < borders.length) {
       const meeting = segmentGateIntersection(from, to, borders[borderCursor].gate);
       if (!meeting) break;
@@ -452,34 +482,38 @@ const describePassages = (
     borderCursor += 1;
   }
 
-  const regionSequence = [mesh.triangles[corridor[0]].regionId, ...borders.map((border) => border.regionId)];
-  const passages: Array<RegionRoadPassage> = [];
-  let start = 0;
-  for (let index = 0; index < regionSequence.length; index += 1) {
-    const end = index < boundaryIndices.length ? boundaryIndices[index] : points.length - 1;
-    // A stretch of no length means the line passes exactly through the point
-    // where several regions meet, entering none of them.
-    //
-    // There is no right answer to return here, and that is why this refuses
-    // rather than picks one. Charging for the region would break the rule that
-    // touching a border at a single point is not a paid stretch (ADR-081
-    // § 4.2.2). Not charging for it would let a road join two regions that only
-    // meet at a point, which the same rule says is not a crossing at all — and
-    // would make such a road cheaper than any honest one. Bending the line just
-    // enough to really enter the region has no shortest answer either: every
-    // such line has a shorter one.
-    //
-    // The situation needs an exact coincidence of corners, and a player can
-    // always build the two roads separately instead. Failing here is safe: the
-    // caller has not changed anything yet.
-    if (end <= start) {
-      throw new Error(
-        `Road would pass through the point where regions meet without entering `
-        + `region "${regionSequence[index]}"; no shortest valid road exists there`
+  const ownerOf = (point: Point): string | undefined => {
+    for (const region of regions) {
+      // Membership is real algorithmic work, not merely the size of its final
+      // answer. Charge before each scan so a caller's budget can stop a large
+      // map while the work is happening instead of after it has completed.
+      chargePlannerWork(
+        workMeter,
+        region.polygon.length + (region.holes ?? []).reduce((sum, hole) => sum + hole.length, 0)
       );
+      if (pointInOrOnRegion(point, region)) return region.id;
     }
-    passages.push({ regionId: regionSequence[index], fromPointIndex: start, toPointIndex: end });
-    start = end;
+    return undefined;
+  };
+  const segmentOwners = points.slice(0, -1).map((from, index) => {
+    const to = points[index + 1];
+    const owner = ownerOf(interpolate(from, to, 0.5));
+    if (!owner || excluded.has(owner)) {
+      throw new Error("A payable road segment has no non-excluded owning region");
+    }
+    return owner;
+  });
+  const regionSequence: Array<string> = [];
+  const passages: Array<RegionRoadPassage> = [];
+  for (let index = 0; index < segmentOwners.length; index += 1) {
+    const owner = segmentOwners[index];
+    const current = passages.at(-1);
+    if (current?.regionId === owner) {
+      current.toPointIndex = index + 1;
+      continue;
+    }
+    regionSequence.push(owner);
+    passages.push({ regionId: owner, fromPointIndex: index, toPointIndex: index + 1 });
   }
   return { points, regionSequence, passages };
 };
@@ -491,7 +525,7 @@ const describePassages = (
 /**
  * Plan the road between two points.
  *
- * The result is a single road, not a set of equally good ones: version 2 has
+ * The result is a single road, not a set of equally good ones: version 3 has
  * nothing left to decide by chance, so there is no candidate for a caller to
  * pick from and no random stream to consult.
  */
@@ -505,8 +539,7 @@ export const planMinimumRegionRoad = (options: {
   const from = finitePoint(options.from, "Road origin");
   const to = finitePoint(options.to, "Road destination");
   if (pointNearlyEquals(from, to)) throw new Error("Road endpoints must have different positions");
-  chargePlannerWork(options.workMeter, estimateCompilationWork(options.model));
-  const compiled = compileRegionRoadPlanning(options.model);
+  const compiled = compileRegionRoadPlanning(options.model, options.workMeter);
   const excluded = new Set(options.excludedRegionIds ?? []);
   for (const regionId of excluded) {
     if (typeof regionId !== "string" || !compiled.regionsById.has(regionId)) {
@@ -517,10 +550,14 @@ export const planMinimumRegionRoad = (options: {
   const corridor = findMinimumCorridor({ compiled, from, to, excluded, workMeter: options.workMeter });
   const mesh = buildCorridorMesh(
     compiled.mesh,
-    [...corridor.depthByRegion.keys()].sort(codepointCompare)
+    [...corridor.depthByRegion.keys()].sort(codepointCompare),
+    options.workMeter
   );
-  chargePlannerWork(options.workMeter, mesh.triangles.length);
 
+  chargePlannerWork(
+    options.workMeter,
+    corridor.startRegions.length + corridor.endRegions.size + mesh.triangles.length
+  );
   const startTriangles = corridor.startRegions
     .filter((regionId) => corridor.depthByRegion.get(regionId) === 1)
     .flatMap((regionId) => mesh.trianglesByRegion.get(regionId) ?? [])
@@ -548,17 +585,20 @@ export const planMinimumRegionRoad = (options: {
 
   const gates: Array<{ a: Point; b: Point }> = [];
   for (let index = 1; index < triangleChain.length; index += 1) {
+    chargeGeometryWork(options.workMeter, mesh.neighbours[triangleChain[index - 1]].length);
     const step = mesh.neighbours[triangleChain[index - 1]].find((entry) => entry.to === triangleChain[index]);
     if (!step) throw new Error("Road corridor contains a step between triangles that do not meet");
     gates.push({ a: step.gate[0], b: step.gate[1] });
   }
   const line = funnelPath(from, to, orientGates(from, gates));
-  const road = describePassages(line, mesh, triangleChain);
-  if (road.regionSequence.length !== corridor.regionCount) {
-    throw new Error(
-      `Planned road crosses ${road.regionSequence.length} regions where the minimum is ${corridor.regionCount}`
-    );
-  }
+  const road = describePassages(
+    line,
+    mesh,
+    triangleChain,
+    compiled.regions,
+    excluded,
+    options.workMeter
+  );
   chargePlannerWork(options.workMeter, road.points.length + road.regionSequence.length);
   return { compiled, road };
 };

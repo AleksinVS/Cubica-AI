@@ -99,6 +99,8 @@ interface RunningApi {
   readonly close: () => Promise<void>;
 }
 
+type SampleRange = (exclusiveUpperBound: number) => number;
+
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const transcriptPath = path.join(
   repoRoot,
@@ -122,7 +124,7 @@ test("ordinary game id conducts the complete mock session and idempotently repla
 }, async () => {
   assert.ok(transcript);
   const store = new InMemorySessionStore<RuntimeState>();
-  const api = await startApi(store);
+  const api = await startApi(store, createCompleteSessionSampleRange());
 
   try {
     const created = await createSession(api.baseUrl, transcript.gameId);
@@ -153,9 +155,12 @@ test("the same mock session survives two new Runtime API and PostgreSQL store in
   let api: RunningApi | null = null;
   let snapshot: SessionSnapshot | null = null;
   let restartCount = 0;
+  // The scripted samples describe one complete transcript, so their cursor
+  // must survive API restarts while remaining isolated from the other test.
+  const sampleRange = createCompleteSessionSampleRange();
 
   try {
-    api = await startPersistentApi(databaseUrl);
+    api = await startPersistentApi(databaseUrl, sampleRange);
     snapshot = await createSession(api.baseUrl, transcript.gameId);
 
     for (const step of transcript.steps) {
@@ -166,7 +171,7 @@ test("the same mock session survives two new Runtime API and PostgreSQL store in
       if (step.restartAfter === true) {
         const beforeRestart = snapshot;
         await api.close();
-        api = await startPersistentApi(databaseUrl);
+        api = await startPersistentApi(databaseUrl, sampleRange);
 
         const restored = await getSession(api.baseUrl, beforeRestart.sessionId);
         assertCommittedSnapshot(restored, beforeRestart, `restart after step ${step.order} changed the public snapshot`);
@@ -229,11 +234,61 @@ async function readTranscriptIfReady(): Promise<CompleteSessionTranscript | null
   }
 }
 
-async function startApi(sessionStore: SessionStorePort<RuntimeState>): Promise<RunningApi> {
+/**
+ * Reproduce the card order authored by the complete-session transcript.
+ *
+ * The scripted prefix shuffles the initially sorted news and cargo decks into
+ * the fixture order: the news cycle starts with block-road, while the first
+ * cargo offer contains the b-f card loaded at step 9. Later calls return zero,
+ * including the news discard reshuffle that starts its next cycle with the
+ * cheap-wagons card.
+ */
+function createCompleteSessionSampleRange(): SampleRange {
+  const initialDeckSamples = [
+    // Six-card news deck.
+    { exclusiveUpperBound: 6, value: 5 },
+    { exclusiveUpperBound: 5, value: 3 },
+    { exclusiveUpperBound: 4, value: 3 },
+    { exclusiveUpperBound: 3, value: 2 },
+    { exclusiveUpperBound: 2, value: 1 },
+    // Twelve-card cargo deck; b-f is moved to the front of the first offer.
+    { exclusiveUpperBound: 12, value: 0 },
+    { exclusiveUpperBound: 11, value: 0 },
+    { exclusiveUpperBound: 10, value: 0 },
+    { exclusiveUpperBound: 9, value: 0 },
+    { exclusiveUpperBound: 8, value: 0 },
+    { exclusiveUpperBound: 7, value: 0 },
+    { exclusiveUpperBound: 6, value: 0 },
+    { exclusiveUpperBound: 5, value: 0 },
+    { exclusiveUpperBound: 4, value: 3 },
+    { exclusiveUpperBound: 3, value: 2 },
+    { exclusiveUpperBound: 2, value: 1 }
+  ] as const;
+  let sampleIndex = 0;
+
+  return (exclusiveUpperBound) => {
+    const scripted = initialDeckSamples[sampleIndex];
+    if (scripted === undefined) {
+      return 0;
+    }
+    assert.equal(
+      exclusiveUpperBound,
+      scripted.exclusiveUpperBound,
+      `complete-session random sample ${sampleIndex + 1} requested an unexpected range`
+    );
+    sampleIndex += 1;
+    return scripted.value;
+  };
+}
+
+async function startApi(
+  sessionStore: SessionStorePort<RuntimeState>,
+  sampleRange: SampleRange
+): Promise<RunningApi> {
   const server = createRuntimeApiServer({
     port: 0,
     sessionStore,
-    random: { sampleRange: () => 0 }
+    random: { sampleRange }
   });
   await server.start();
   return {
@@ -242,13 +297,13 @@ async function startApi(sessionStore: SessionStorePort<RuntimeState>): Promise<R
   };
 }
 
-async function startPersistentApi(connectionString: string): Promise<RunningApi> {
+async function startPersistentApi(connectionString: string, sampleRange: SampleRange): Promise<RunningApi> {
   const sessionStore = createSessionStoreFromEnvironment({
     SESSION_STORE: "postgresql",
     DATABASE_URL: connectionString,
     PGPOOL_MAX: "2"
   });
-  return startApi(sessionStore);
+  return startApi(sessionStore, sampleRange);
 }
 
 async function createSession(baseUrl: string, gameId: string): Promise<SessionSnapshot> {

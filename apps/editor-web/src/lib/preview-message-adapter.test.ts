@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  isPlayerPreviewBridgeReadyMessage,
   isPlayerPreviewEntitiesMessage,
+  isPlayerPreviewRestoreResultMessage,
   isPlayerPreviewSessionSnapshotMessage,
   mapGeneratedPointerToAuthoring,
   mapPlayerPreviewEntitiesToAuthoringDescriptors,
@@ -78,6 +80,35 @@ describe("preview message adapter", () => {
         state: {}
       })
     ).toBe(false);
+  });
+
+  it("accepts only versioned bridge-ready and bounded restore-result messages", () => {
+    expect(isPlayerPreviewBridgeReadyMessage({
+      source: "cubica-player-web",
+      type: "previewBridgeReady",
+      version: 1
+    })).toBe(true);
+    expect(isPlayerPreviewBridgeReadyMessage({
+      source: "cubica-player-web",
+      type: "previewBridgeReady",
+      version: 2
+    })).toBe(false);
+
+    expect(isPlayerPreviewRestoreResultMessage({
+      source: "cubica-player-web",
+      type: "previewRestoreResult",
+      version: 1,
+      requestId: "restore-1",
+      ok: true,
+      sessionVersion: { sessionId: "session-1", stateVersion: 2, lastEventSequence: 1 }
+    })).toBe(true);
+    expect(isPlayerPreviewRestoreResultMessage({
+      source: "cubica-player-web",
+      type: "previewRestoreResult",
+      version: 1,
+      requestId: "",
+      ok: true
+    })).toBe(false);
   });
 
   it("maps runtime pointers to authoring pointers through source maps", () => {
