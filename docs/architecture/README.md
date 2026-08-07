@@ -32,7 +32,7 @@
 - `testing-strategy.md`, `universality-analysis.md` — стратегия проверок и анализ универсальности;
 - `runtime-mechanics-language.md` — нормативный язык Game Intent → Mechanics IR;
 - `agent-ui-foundation.md`, `agent-ui-portability-and-risk-controls.md`, `ai-agent-safety-remediation.md`, `generative-ui-surface-protocol.md` — архитектура и безопасность интерфейсов ИИ-агентов;
-- `element-prompt-contract.md`, `product-context-system.md`, `project-knowledge-system.md` — авторские промты и контуры знаний;
+- `element-prompt-contract.md` — контракт авторских промтов; `product-context-system.md` — принятый контур продуктовых знаний с единой личностью, ролевой проекцией, явной игровой применимостью и трёхэтапным безопасным внедрением; `project-knowledge-system.md` — инженерная вики и поиск;
 - `board-game-platform-design.md`, `cards-money-trains-platform-design.md`, `flow-simulation-platform-design.md`, `rail-tycoon-mini-design.md` — проекты игровых классов и доказательных игр;
 - `editor-preview-first-ux.md`, `editor-telemetry.md`, `game-ui-mockup-flow.md` — редакторский контур;
 - `game-asset-channel-design.md` — происхождение, публикация и доставка ассетов.

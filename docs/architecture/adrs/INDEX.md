@@ -111,5 +111,5 @@ The following proposed decisions require explicit product-manager review before 
 | [ADR-098](098-author-material-intake-contract.md) | Общий контракт приёма авторских материалов игры | Draft |
 | [ADR-099](099-preview-is-a-read.md) | Предварительный расчёт — это чтение | Accepted |
 | [ADR-100](100-region-road-planning-navigation-mesh.md) | Планирование дорог по областям, версия 3 — точная геометрия на навигационной сетке | Accepted |
-| [ADR-101](101-product-context-system-boundaries.md) | Границы продуктовой системы знаний | Draft |
+| [ADR-101](101-product-context-system-boundaries.md) | Границы продуктовой системы знаний | Accepted |
 | [ADR-102](102-ordered-bounded-iteration.md) | Упорядоченный обход и позиция в нём | Accepted |
