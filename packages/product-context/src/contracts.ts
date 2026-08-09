@@ -17,7 +17,13 @@ import type {
   ImpactAssessment,
   KnowledgePage,
   KnowledgeWriteOperation,
-  SemanticReviewResult
+  SemanticReviewResult,
+  ShadowAuthorizationReceipt,
+  ConversationMessage,
+  ConversationTurn,
+  ModelGatewayRequest,
+  ModelGatewayResult,
+  ShadowContentFreeMetric
 } from './generated/product-knowledge.ts';
 
 export type ProductKnowledgeContractName =
@@ -26,7 +32,13 @@ export type ProductKnowledgeContractName =
   | 'DecisionEnvelope'
   | 'ImpactAssessment'
   | 'KnowledgeWriteOperation'
-  | 'SemanticReviewResult';
+  | 'SemanticReviewResult'
+  | 'ShadowAuthorizationReceipt'
+  | 'ConversationMessage'
+  | 'ConversationTurn'
+  | 'ModelGatewayRequest'
+  | 'ModelGatewayResult'
+  | 'ShadowContentFreeMetric';
 
 export type ProductKnowledgeContract =
   | KnowledgePage
@@ -34,7 +46,13 @@ export type ProductKnowledgeContract =
   | DecisionEnvelope
   | ImpactAssessment
   | KnowledgeWriteOperation
-  | SemanticReviewResult;
+  | SemanticReviewResult
+  | ShadowAuthorizationReceipt
+  | ConversationMessage
+  | ConversationTurn
+  | ModelGatewayRequest
+  | ModelGatewayResult
+  | ShadowContentFreeMetric;
 
 /** The fully qualified schema identifier used by all strict Ajv validators. */
 export const productKnowledgeSchemaId = productKnowledgeSchema.$id;

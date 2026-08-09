@@ -2,7 +2,7 @@
   "name": "@cubica/product-context",
   "version": "0.0.0",
   "private": true,
-  "description": "Isolated Stage 1 product-knowledge contracts, policy, Markdown/Git storage, PostgreSQL lifecycle and synthetic harness.",
+  "description": "Isolated product-knowledge contracts, Stage 1 core and non-production Stage 2 shadow foundation.",
   "type": "module",
   "main": "src/index.ts",
   "types": "src/index.ts",

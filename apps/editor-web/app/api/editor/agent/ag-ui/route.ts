@@ -8,12 +8,21 @@
  * service through CUBICA_EDITOR_AGENT_AG_UI_URL.
  */
 import { EventEncoder } from "@ag-ui/encoder";
-import { EventType, RunAgentInputSchema, type BaseEvent } from "@ag-ui/core";
+import { EventType, RunAgentInputSchema, type BaseEvent, type RunAgentInput } from "@ag-ui/core";
+import { after } from "next/server";
 
 import { EDITOR_AUTHORING_ASSISTANT_ID } from "@/lib/agent-assistant-registry";
 import { createLocalEditorAgentEvents } from "@/lib/editor-agent-local-backend";
+import {
+  buildProductContextShadowJob,
+  runProductContextShadowPostResponse,
+  type ProductContextShadowTurn
+} from "@/lib/product-context-shadow";
 
 export const runtime = "nodejs";
+// Next.js keeps `after()` work within this route budget; the shadow model call
+// is bounded to 45 seconds and cannot delay or alter the already-built reply.
+export const maxDuration = 60;
 
 const textEncoder = new TextEncoder();
 
@@ -44,7 +53,7 @@ export async function POST(request: Request) {
         } satisfies BaseEvent
       ];
 
-  return new Response(encodeEvents(encoder, events), {
+  const response = new Response(encodeEvents(encoder, events), {
     headers: {
       "cache-control": "no-cache, no-transform",
       "content-type": encoder.getContentType(),
@@ -52,6 +61,58 @@ export async function POST(request: Request) {
       "x-cubica-agent-backend-mode": "local"
     }
   });
+  if (parsed.success) {
+    const job = buildProductContextShadowJob(request.headers, extractProductContextShadowTurn(parsed.data, events));
+    if (job !== null) {
+      after(async () => {
+        try { await runProductContextShadowPostResponse(job); }
+        catch { /* Shadow is observational and must never affect or disclose the primary turn. */ }
+      });
+    }
+  }
+  return response;
+}
+
+function extractProductContextShadowTurn(input: RunAgentInput, events: readonly BaseEvent[]): ProductContextShadowTurn | null {
+  if (!validShadowId(input.threadId) || !validShadowId(input.runId)) return null;
+  let user: { id: string; content: string } | null = null;
+  for (let index = input.messages.length - 1; index >= 0; index -= 1) {
+    const message = input.messages[index];
+    if (message?.role === "user" && typeof message.content === "string" && validShadowId(message.id)) {
+      user = { id: message.id, content: message.content };
+      break;
+    }
+  }
+  if (!user) return null;
+
+  let activeId: string | null = null;
+  let activeText = "";
+  let completed: { id: string; text: string } | null = null;
+  for (const event of events) {
+    const value = event as BaseEvent & { readonly messageId?: unknown; readonly role?: unknown; readonly delta?: unknown };
+    if (event.type === EventType.TEXT_MESSAGE_START && value.role === "assistant" && typeof value.messageId === "string" && validShadowId(value.messageId)) {
+      activeId = value.messageId;
+      activeText = "";
+    } else if (event.type === EventType.TEXT_MESSAGE_CONTENT && activeId !== null && value.messageId === activeId && typeof value.delta === "string") {
+      activeText += value.delta;
+    } else if (event.type === EventType.TEXT_MESSAGE_END && activeId !== null && value.messageId === activeId) {
+      completed = { id: activeId, text: activeText };
+      activeId = null;
+      activeText = "";
+    }
+  }
+  return completed === null ? null : {
+    threadId: input.threadId,
+    runId: input.runId,
+    userMessageId: user.id,
+    assistantMessageId: completed.id,
+    userText: user.content,
+    assistantText: completed.text
+  };
+}
+
+function validShadowId(value: unknown): value is string {
+  return typeof value === "string" && /^[A-Za-z0-9._:-]{1,160}$/u.test(value);
 }
 
 function encodeEvents(encoder: EventEncoder, events: readonly BaseEvent[]): ReadableStream<Uint8Array> {

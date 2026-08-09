@@ -30,7 +30,12 @@ async function main() {
     $schema: converted.$schema,
     $id: converted.$id,
     title: "ProductKnowledgeContracts",
-    anyOf: ["KnowledgePage", "ExactPatchProposal", "DecisionEnvelope", "ImpactAssessment", "KnowledgeWriteOperation", "SemanticReviewResult"].map((name) => ({ $ref: `#/definitions/${name}` })),
+    anyOf: [
+      "KnowledgePage", "ExactPatchProposal", "DecisionEnvelope", "ImpactAssessment",
+      "KnowledgeWriteOperation", "SemanticReviewResult", "ShadowAuthorizationReceipt",
+      "ConversationMessage", "ConversationTurn", "ModelGatewayRequest", "ModelGatewayResult",
+      "ShadowContentFreeMetric"
+    ].map((name) => ({ $ref: `#/definitions/${name}` })),
     definitions: converted.$defs
   };
   const declaration = await compile(generatorSchema, "ProductKnowledgeContracts", options);

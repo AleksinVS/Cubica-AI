@@ -6,7 +6,13 @@ export type ProductKnowledgeContracts =
   | DecisionEnvelope
   | ImpactAssessment
   | KnowledgeWriteOperation
-  | SemanticReviewResult;
+  | SemanticReviewResult
+  | ShadowAuthorizationReceipt
+  | ConversationMessage
+  | ConversationTurn
+  | ModelGatewayRequest
+  | ModelGatewayResult
+  | ShadowContentFreeMetric;
 export type SchemaVersion = '1.0.0';
 export type RoleScope = 'developer' | 'facilitator' | 'global';
 export type CubicaUri = string;
@@ -109,6 +115,33 @@ export type KnowledgeWriteOperation = {
   applied_at?: string;
   payload_purged_at?: string;
   created_at: string;
+};
+export type ShadowGameUri = string;
+export type ConversationMessage = {
+  [k: string]: unknown | undefined;
+} & {
+  schema_version: SchemaVersion;
+  message_ref: CubicaUri;
+  thread_ref: CubicaUri;
+  stable_turn_key: string;
+  sequence: number;
+  actor: 'user' | 'agent';
+  revision: Sha256;
+  content_hash: Sha256;
+  byte_length: number;
+  content_base64: string | null;
+  tombstone: boolean;
+  retained_until: string;
+  created_at: string;
+  deleted_at?: string;
+};
+export type ModelGatewayResult = {
+  [k: string]: unknown | undefined;
+} & {
+  schema_version: SchemaVersion;
+  request_id: string;
+  outcome: 'proposal' | 'no_change';
+  proposal: ExactPatchProposal | null;
 };
 
 export interface KnowledgePage {
@@ -220,4 +253,91 @@ export interface SemanticReviewResult {
     | 'requires_extended_review';
   related_refs?: CubicaUri[];
   checked_at: string;
+}
+export interface ShadowAuthorizationReceipt {
+  schema_version: SchemaVersion;
+  decision: 'allow';
+  shadow_principal_ref: CubicaUri;
+  role_scope: 'developer';
+  /**
+   * @minItems 1
+   * @maxItems 1
+   */
+  applies_to: ShadowGameUri[];
+  access_policy_ref: string;
+  access_policy_revision: string;
+  retention_policy_ref: string;
+  retention_policy_revision: string;
+  external_processing_policy_ref: string;
+  external_processing_policy_revision: string;
+  authorization_revision: Sha256;
+  issued_at: string;
+  expires_at: string;
+}
+export interface ConversationTurn {
+  schema_version: SchemaVersion;
+  turn_ref: CubicaUri;
+  thread_ref: CubicaUri;
+  stable_turn_key: string;
+  user_message: ConversationMessage;
+  agent_message: ConversationMessage;
+  created_at: string;
+}
+export interface ModelGatewayRequest {
+  schema_version: SchemaVersion;
+  request_id: string;
+  authorization_revision: Sha256;
+  shadow_principal_ref: CubicaUri;
+  /**
+   * @minItems 1
+   * @maxItems 1
+   */
+  applies_to: ShadowGameUri[];
+  access_policy_ref: string;
+  access_policy_revision: string;
+  retention_policy_ref: string;
+  retention_policy_revision: string;
+  external_processing_policy_ref: string;
+  external_processing_policy_revision: string;
+  external_processing_decision: 'allow' | 'deny';
+  /**
+   * @minItems 2
+   * @maxItems 2
+   */
+  messages: ModelGatewayMessage[];
+}
+export interface ModelGatewayMessage {
+  message_ref: CubicaUri;
+  actor: 'user' | 'agent';
+  revision: Sha256;
+  content_hash: Sha256;
+  content_base64: string;
+}
+export interface ShadowContentFreeMetric {
+  schema_version: SchemaVersion;
+  metric_id: string;
+  run_id: string;
+  request_id: string | null;
+  outcome:
+    | 'success'
+    | 'no_change'
+    | 'disabled'
+    | 'policy_denied'
+    | 'authorization_changed'
+    | 'message_changed'
+    | 'message_deleted'
+    | 'retention_expired'
+    | 'gateway_timeout'
+    | 'gateway_malformed'
+    | 'gateway_oversize'
+    | 'gateway_error'
+    | 'gateway_outcome_unknown';
+  duration_ms: number;
+  input_bytes: number;
+  output_bytes: number;
+  proposal_operation_count: number;
+  authorization_revision: Sha256;
+  external_processing_policy_ref: string;
+  external_processing_policy_revision: string;
+  recorded_at: string;
 }

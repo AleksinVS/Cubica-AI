@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 /**
- * Proves that the Stage 1 product-knowledge package remains a closed harness.
+ * Proves that product-context reaches production code only through the single
+ * reviewed Stage 2 server-only shadow seam.
  *
- * Stage 1 is deliberately installable in the monorepo but must not influence
- * a deployed application, service, game, assistant registry, route or tool.
- * This check fails on both dependency-level and source-level integration so a
- * later migration has to be an explicit, reviewable change.
+ * The editor may depend on the package and its post-response integration
+ * module may import it. Every other deployable app, service, game, route, tool
+ * and source import remains forbidden, so widening the migration is always an
+ * explicit, reviewable change.
  */
 const fs = require("node:fs");
 const path = require("node:path");
@@ -14,6 +15,20 @@ const { collectModuleSpecifiers } = require("./typescript-import-analysis.cjs");
 const repoRoot = path.resolve(__dirname, "..", "..");
 const isolatedPackage = "packages/product-context";
 const isolatedPackageRoot = path.join(repoRoot, isolatedPackage);
+const allowedStage2Manifest = "apps/editor-web/package.json";
+const allowedStage2Import = "apps/editor-web/src/lib/product-context-shadow.ts";
+const allowedForwardingImport = "apps/editor-web/src/lib/product-context-shadow-forwarding.ts";
+const allowedStage2Consumers = new Set([
+  "apps/editor-web/app/api/editor/agent/ag-ui/route.ts",
+  "apps/editor-web/app/api/editor/agent/ag-ui/route.test.ts",
+  "apps/editor-web/src/lib/product-context-shadow.test.ts"
+]);
+const allowedForwardingConsumers = new Set([
+  "apps/editor-web/app/api/editor/agent/ag-ui/route.test.ts",
+  "apps/editor-web/src/lib/editor-copilot-runtime-backend.ts",
+  "apps/editor-web/src/lib/product-context-shadow.test.ts",
+  "apps/editor-web/src/lib/product-context-shadow.ts"
+]);
 const productionRoots = ["apps", "services", "games", "packages"];
 const sourceExtensions = new Set([".cjs", ".js", ".jsx", ".mjs", ".ts", ".tsx"]);
 const ignoredDirectories = new Set([".git", ".next", ".tmp", "coverage", "dist", "node_modules"]);
@@ -57,12 +72,13 @@ for (const root of productionRoots) {
       const manifest = JSON.parse(fs.readFileSync(filePath, "utf8"));
       for (const section of dependencySections) {
         for (const [dependency, version] of Object.entries(manifest[section] ?? {})) {
-          if (dependency === "@cubica/product-context") {
+          const allowedStage2Dependency = file === allowedStage2Manifest && dependency === "@cubica/product-context";
+          if (dependency === "@cubica/product-context" && !allowedStage2Dependency) {
             violations.push(`${file} declares @cubica/product-context in ${section}.`);
           }
           if (typeof version === "string" && version.startsWith("file:")) {
             const dependencyTarget = path.resolve(path.dirname(filePath), version.slice("file:".length));
-            if (isInsideIsolatedPackage(dependencyTarget)) {
+            if (isInsideIsolatedPackage(dependencyTarget) && !allowedStage2Dependency) {
               violations.push(`${file} declares a file dependency on the isolated package in ${section}.`);
             }
           }
@@ -73,8 +89,14 @@ for (const root of productionRoots) {
     if (!sourceExtensions.has(path.extname(filePath))) continue;
     const source = fs.readFileSync(filePath, "utf8");
     for (const imported of collectModuleSpecifiers(source, filePath)) {
-      if (/^@cubica\/product-context(?:\/|$)/u.test(imported)) {
+      if (/^@cubica\/product-context(?:\/|$)/u.test(imported) && file !== allowedStage2Import) {
         violations.push(`${file} imports the isolated @cubica/product-context package.`);
+      }
+      if (isStage2SeamImport(imported, filePath) && !allowedStage2Consumers.has(file)) {
+        violations.push(`${file} imports the reviewed Stage 2 shadow seam outside its route boundary.`);
+      }
+      if (isForwardingBoundaryImport(imported, filePath) && !allowedForwardingConsumers.has(file)) {
+        violations.push(`${file} imports the Portal bearer forwarding boundary outside its reviewed consumers.`);
       }
       if ((imported.startsWith(".") || path.isAbsolute(imported)) &&
           isInsideIsolatedPackage(path.resolve(path.dirname(filePath), imported))) {
@@ -89,6 +111,20 @@ for (const root of productionRoots) {
 
 function isInsideIsolatedPackage(target) {
   return target === isolatedPackageRoot || target.startsWith(`${isolatedPackageRoot}${path.sep}`);
+}
+
+function isStage2SeamImport(imported, importerPath) {
+  if (/^@\/lib\/product-context-shadow(?:\.ts)?$/u.test(imported)) return true;
+  if (!imported.startsWith(".")) return false;
+  const target = relative(path.resolve(path.dirname(importerPath), imported));
+  return target === allowedStage2Import || `${target}.ts` === allowedStage2Import;
+}
+
+function isForwardingBoundaryImport(imported, importerPath) {
+  if (/^@\/lib\/product-context-shadow-forwarding(?:\.ts)?$/u.test(imported)) return true;
+  if (!imported.startsWith(".")) return false;
+  const target = relative(path.resolve(path.dirname(importerPath), imported));
+  return target === allowedForwardingImport || `${target}.ts` === allowedForwardingImport;
 }
 
 // The isolated package may use shared contracts and architecture schemas, but
@@ -116,4 +152,4 @@ if (violations.length > 0) {
   process.exit(1);
 }
 
-console.log("validate-product-context-isolation: OK (zero production dependents, imports, routes, tools, or runtime markers)");
+console.log("validate-product-context-isolation: OK (one reviewed Stage 2 server-only seam; all other production consumers forbidden)");
