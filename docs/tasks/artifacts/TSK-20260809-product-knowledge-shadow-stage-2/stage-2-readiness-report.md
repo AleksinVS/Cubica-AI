@@ -47,18 +47,29 @@ credentials, разрешающая политика и эксплуатацио
 
 - Editor typecheck, production build и целевые route/module tests — 16/16;
 - package schema generation, typecheck и полный acceptance — 92/92;
-- PostgreSQL 17 integration — 7/7 с отдельным непривилегированным runtime
-  login, принудительным RLS и атомарными terminal result + metric;
+- PostgreSQL 17 integration — 8/8 с отдельным непривилегированным runtime
+  login, принудительным RLS, атомарными terminal result + metric, точным
+  восстановлением membership options и откатом временных grants при ошибке;
 - Portal unit tests — 16/16 и успешная Strapi build;
 - машинный контроль единственной разрешённой интеграционной точки;
 - неизменность основного SSE-ответа при успехе, ошибке и timeout shadow;
 - защита Portal bearer от подложенного Host/origin;
 - полный `verify:canonical`, включая Runtime API, Player, Editor и production
   builds, завершён успешно;
-- финальный независимый Sol high security review — ACCEPT code-ready, без
-  Critical/High/Medium блокеров;
+- три независимых Sol high security review и две волны исправлений — финальный
+  ACCEPT merge-ready для выключенного Stage 2, без Critical/High/Medium
+  блокеров;
 - миграция отдельно выполнена PostgreSQL 17 statement-by-statement в обычном
   autocommit-режиме, а не только одним составным запросом.
+
+После финального remediation дополнительно подтверждены Editor 14/14, Portal
+11/11, model gateway/coordinator 24/24 и полный пакет
+`verify:product-context` 97/97 на одноразовом PostgreSQL 17. Проверка миграции
+включает два autocommit-прогона, прежний membership с `SET FALSE` и искусственную
+ошибку внутри атомарного блока без оставшихся расширенных прав. Strapi
+production build также завершён успешно.
+Финальный `verify:canonical`, запущенный после всех исправлений, подтвердил
+общие контракты, Runtime API, Player, Editor и обе production-сборки.
 
 Реальный model gateway не проверяется без endpoint, credentials и разрешённой
 политики.
@@ -82,3 +93,7 @@ credentials, разрешающая политика и эксплуатацио
 5. запускать бесконтентную очистку чаще минимального срока хранения;
 6. выбрать одного разработчика и одну игру, затем заранее согласовать сам
    реальный прогон и его ограниченный объём.
+
+Model gateway сохраняет значение timeout по умолчанию `15s`. Верхнее значение
+`45s` нельзя использовать с текущим `maxDuration=60`: две повторные Portal
+authorization по 5 секунд и финальная запись должны иметь отдельный запас.

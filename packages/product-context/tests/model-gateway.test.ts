@@ -45,6 +45,19 @@ describe('bounded HTTP shadow model gateway', () => {
     await expect(gateway.call(request)).rejects.toMatchObject({ code: 'timeout', message: 'Shadow model gateway failed: timeout.' });
   });
 
+  it('forbids redirects so credentials and exact messages stay on the configured endpoint', async () => {
+    const fetchImpl = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      expect(init?.redirect).toBe('error');
+      throw new TypeError('redirect rejected');
+    });
+    const gateway = new HttpModelGateway({
+      endpoint: 'https://model.invalid/shadow', bearerToken: 'secret', fetchImpl: fetchImpl as typeof fetch
+    });
+
+    await expect(gateway.call(request)).rejects.toMatchObject({ code: 'transport_error' });
+    expect(fetchImpl).toHaveBeenCalledOnce();
+  });
+
   it('accepts only a canonical response bound to the request id', async () => {
     const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ schema_version: '1.0.0', request_id: request.request_id, outcome: 'no_change', proposal: null }), { status: 200 }));
     const gateway = new HttpModelGateway({ endpoint: 'https://model.invalid/shadow', bearerToken: 'secret', fetchImpl });

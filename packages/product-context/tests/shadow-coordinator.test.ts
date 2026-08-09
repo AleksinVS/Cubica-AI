@@ -3,10 +3,11 @@ import { describe, expect, it } from 'vitest';
 
 import type { AppendExactTurnInput, ClaimRunResult, ShadowCleanupResult, ShadowConversationStore, ShadowRunRecord, ShadowRunOutcome } from '../src/conversation-postgres.ts';
 import type { ModelGateway, ModelGatewayCall } from '../src/model-gateway.ts';
-import { ShadowCoordinator } from '../src/shadow-coordinator.ts';
+import { ShadowCoordinator, type ShadowAuthorizationAuthority } from '../src/shadow-coordinator.ts';
 import type { ConversationMessage, ConversationTurn, ModelGatewayResult, ShadowAuthorizationReceipt, ShadowContentFreeMetric } from '../src/generated/product-knowledge.ts';
 
 const now = new Date('2026-08-09T12:00:00Z');
+const AUTHORITY_TIMEOUT_MS = 5_000;
 const authorization = `sha256:${'a'.repeat(64)}` as const;
 const receipt: ShadowAuthorizationReceipt = {
   schema_version: '1.0.0', decision: 'allow', shadow_principal_ref: 'cubica://shadow-principal/demo',
@@ -28,7 +29,7 @@ describe('shadow coordinator security binding', () => {
 
   it('blocks changed authorization revision before the gateway', async () => {
     const store = new MemoryStore(); const gateway = new FakeGateway();
-    const coordinator = new ShadowCoordinator(store, { current: async () => ({ ...receipt, authorization_revision: `sha256:${'b'.repeat(64)}` }) }, gateway, options());
+    const coordinator = new ShadowCoordinator(store, { timeoutMs: AUTHORITY_TIMEOUT_MS, current: async () => ({ ...receipt, authorization_revision: `sha256:${'b'.repeat(64)}` }) }, gateway, options());
     await expect(coordinator.run(input())).resolves.toMatchObject({ status: 'denied', outcome: 'authorization_changed' });
     expect(gateway.calls).toBe(0);
     expect(store.turn).toBeNull();
@@ -43,7 +44,7 @@ describe('shadow coordinator security binding', () => {
       override async createRun(auth: ShadowAuthorizationReceipt, turn: ConversationTurn, retainedUntil: Date) { this.storedReceipt = auth; return super.createRun(auth, turn, retainedUntil); }
     }
     const store = new OrderedStore(); const gateway = new FakeGateway();
-    const coordinator = new ShadowCoordinator(store, { current: async () => { events.push('authorize'); return fresh; } }, gateway, options());
+    const coordinator = new ShadowCoordinator(store, { timeoutMs: AUTHORITY_TIMEOUT_MS, current: async () => { events.push('authorize'); return fresh; } }, gateway, options());
     await expect(coordinator.run(input())).resolves.toMatchObject({ status: 'completed' });
     expect(events.slice(0, 2)).toEqual(['authorize', 'append']);
     expect(store.storedReceipt?.issued_at).toBe(fresh.issued_at);
@@ -52,6 +53,7 @@ describe('shadow coordinator security binding', () => {
   it('blocks revoked authority after claim and exact reread but before the gateway', async () => {
     const store = new MemoryStore(); const gateway = new FakeGateway(); let checks = 0;
     const coordinator = new ShadowCoordinator(store, {
+      timeoutMs: AUTHORITY_TIMEOUT_MS,
       current: async () => ++checks === 1 ? receipt : { ...receipt, authorization_revision: `sha256:${'b'.repeat(64)}` }
     }, gateway, options());
     await expect(coordinator.run(input())).resolves.toMatchObject({ status: 'denied', outcome: 'authorization_changed' });
@@ -62,7 +64,7 @@ describe('shadow coordinator security binding', () => {
 
   it('drops the provider payload when authority changes after the call', async () => {
     const store = new MemoryStore(); const gateway = new FakeGateway(); let checks = 0;
-    const coordinator = new ShadowCoordinator(store, { current: async () => ++checks <= 2 ? receipt : { ...receipt, authorization_revision: `sha256:${'b'.repeat(64)}` } }, gateway, options());
+    const coordinator = new ShadowCoordinator(store, { timeoutMs: AUTHORITY_TIMEOUT_MS, current: async () => ++checks <= 2 ? receipt : { ...receipt, authorization_revision: `sha256:${'b'.repeat(64)}` } }, gateway, options());
     await expect(coordinator.run(input())).resolves.toMatchObject({ status: 'denied', outcome: 'authorization_changed' });
     expect(gateway.calls).toBe(1);
     expect(store.run).toMatchObject({ status: 'denied', result: null });
@@ -102,6 +104,60 @@ describe('shadow coordinator security binding', () => {
     expect(serialized).not.toContain('exact agent secret');
     expect(store.metrics[0]).toMatchObject({ outcome: 'no_change', input_bytes: 42, output_bytes: 17, proposal_operation_count: 0 });
   });
+
+  it('keeps a concurrent retry in progress for the full gateway timeout window', async () => {
+    const store = new MemoryStore();
+    const gateway = new DeferredGateway();
+    let currentTime = now.getTime();
+    const coordinator = new ShadowCoordinator(
+      store,
+      { timeoutMs: AUTHORITY_TIMEOUT_MS, current: async () => ({ ...receipt }) },
+      gateway,
+      { enabled: true, environment: 'test', retentionMs: 120_000, now: () => new Date(currentTime) }
+    );
+
+    const first = coordinator.run(input());
+    await gateway.started;
+    currentTime += gateway.timeoutMs + 1;
+    await expect(coordinator.run(input())).resolves.toEqual({ status: 'in_progress' });
+    expect(gateway.calls).toBe(1);
+
+    gateway.release();
+    await expect(first).resolves.toMatchObject({ status: 'completed', duplicate: false });
+  });
+
+  it('keeps a retry in progress while post-call authorization and terminalization finish', async () => {
+    const store = new MemoryStore();
+    const gateway = new FakeGateway();
+    const authority = new DeferredPostCallAuthority();
+    let currentTime = now.getTime();
+    const coordinator = new ShadowCoordinator(
+      store,
+      authority,
+      gateway,
+      { enabled: true, environment: 'test', retentionMs: 120_000, now: () => new Date(currentTime) }
+    );
+
+    const first = coordinator.run(input());
+    await authority.postCallStarted;
+    currentTime += gateway.timeoutMs + (2 * authority.timeoutMs) + 1;
+    await expect(coordinator.run(input())).resolves.toEqual({ status: 'in_progress' });
+    expect(gateway.calls).toBe(1);
+
+    authority.releasePostCall();
+    await expect(first).resolves.toMatchObject({ status: 'completed', duplicate: false });
+  });
+
+  it('rejects an explicit lease that lacks the safety margin after model timeout', () => {
+    const store = new MemoryStore();
+    const gateway = new FakeGateway();
+    expect(() => new ShadowCoordinator(
+      store,
+      { timeoutMs: AUTHORITY_TIMEOUT_MS, current: async () => ({ ...receipt }) },
+      gateway,
+      { ...options(), modelLeaseMs: gateway.timeoutMs + (2 * AUTHORITY_TIMEOUT_MS) + 4_999 }
+    )).toThrow(/both authorization checks, the full model timeout, and 5000ms terminal safety margin/u);
+  });
 });
 
 function input() {
@@ -112,16 +168,53 @@ function input() {
 }
 function options() { return { enabled: true, environment: 'test', retentionMs: 60_000, now: () => new Date(now) }; }
 function coordinatorFor(store: MemoryStore, gateway: FakeGateway) {
-  return new ShadowCoordinator(store, { current: async () => ({ ...receipt }) }, gateway, options());
+  return new ShadowCoordinator(store, { timeoutMs: AUTHORITY_TIMEOUT_MS, current: async () => ({ ...receipt }) }, gateway, options());
 }
 
 class FakeGateway implements ModelGateway {
   calls = 0;
+  readonly timeoutMs = 30_000;
   constructor(readonly maxRequestBytes = 512 * 1024) {}
   async call(request: Parameters<ModelGateway['call']>[0]): Promise<ModelGatewayCall> {
     this.calls += 1;
     return { result: { schema_version: '1.0.0', request_id: request.request_id, outcome: 'no_change', proposal: null }, inputBytes: 42, outputBytes: 17, durationMs: 3 };
   }
+}
+
+class DeferredGateway extends FakeGateway {
+  private resolveStarted!: () => void;
+  private resolveCall!: () => void;
+  readonly started = new Promise<void>((resolve) => { this.resolveStarted = resolve; });
+  private readonly released = new Promise<void>((resolve) => { this.resolveCall = resolve; });
+
+  override async call(request: Parameters<ModelGateway['call']>[0]): Promise<ModelGatewayCall> {
+    this.calls += 1;
+    this.resolveStarted();
+    await this.released;
+    return { result: { schema_version: '1.0.0', request_id: request.request_id, outcome: 'no_change', proposal: null }, inputBytes: 42, outputBytes: 17, durationMs: 3 };
+  }
+
+  release(): void { this.resolveCall(); }
+}
+
+class DeferredPostCallAuthority implements ShadowAuthorizationAuthority {
+  readonly timeoutMs = AUTHORITY_TIMEOUT_MS;
+  private calls = 0;
+  private resolveStarted!: () => void;
+  private resolvePostCall!: () => void;
+  readonly postCallStarted = new Promise<void>((resolve) => { this.resolveStarted = resolve; });
+  private readonly postCallReleased = new Promise<void>((resolve) => { this.resolvePostCall = resolve; });
+
+  async current(): Promise<ShadowAuthorizationReceipt> {
+    this.calls += 1;
+    if (this.calls === 3) {
+      this.resolveStarted();
+      await this.postCallReleased;
+    }
+    return { ...receipt };
+  }
+
+  releasePostCall(): void { this.resolvePostCall(); }
 }
 
 class MemoryStore implements ShadowConversationStore {
@@ -150,9 +243,15 @@ class MemoryStore implements ShadowConversationStore {
     this.run = { runId: 'shadowrun_demo', ownerRef: auth.shadow_principal_ref, threadRef: turn.thread_ref, stableTurnKey: turn.stable_turn_key, authorizationRevision: auth.authorization_revision, receipt: auth, userMessageRef: turn.user_message.message_ref, userMessageRevision: turn.user_message.revision, userMessageHash: turn.user_message.content_hash, agentMessageRef: turn.agent_message.message_ref, agentMessageRevision: turn.agent_message.revision, agentMessageHash: turn.agent_message.content_hash, status: 'pending', outcome: null, requestId: null, result: null, leaseExpiresAt: null, retainedUntil: retainedUntil.toISOString() };
     return this.run!;
   }
-  async claimRun(_owner: string, _run: string, requestId: string, leaseMs: number): Promise<ClaimRunResult> {
-    if (!this.run || this.run.status !== 'pending') return { kind: 'in_progress', run: this.run! };
-    this.run = { ...this.run, status: 'calling_model', requestId, leaseExpiresAt: new Date(now.getTime() + leaseMs).toISOString() };
+  async claimRun(_owner: string, _run: string, requestId: string, leaseMs: number, claimedAt = now): Promise<ClaimRunResult> {
+    if (!this.run) throw new Error('run missing');
+    if (this.run.status === 'calling_model') {
+      if (Date.parse(this.run.leaseExpiresAt!) > claimedAt.getTime()) return { kind: 'in_progress', run: this.run };
+      this.run = { ...this.run, status: 'failed', outcome: 'gateway_outcome_unknown', leaseExpiresAt: null };
+      return { kind: 'terminal', run: this.run };
+    }
+    if (this.run.status !== 'pending') return { kind: 'terminal', run: this.run };
+    this.run = { ...this.run, status: 'calling_model', requestId, leaseExpiresAt: new Date(claimedAt.getTime() + leaseMs).toISOString() };
     return { kind: 'claimed', run: this.run };
   }
   async completeRun(_owner: string, _run: string, result: ModelGatewayResult, outcome: 'success' | 'no_change', value: ShadowContentFreeMetric): Promise<ShadowRunRecord> { this.run = { ...this.run!, status: 'succeeded', result, outcome, leaseExpiresAt: null }; this.metrics.push(value); return this.run; }

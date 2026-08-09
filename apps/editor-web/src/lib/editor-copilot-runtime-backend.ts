@@ -67,8 +67,26 @@ export function getAgUiBackendReadiness(request?: NextRequest): AgUiBackendReadi
     return { ok: true, backend: undefined, authRequired: false, authConfigured: false };
   }
 
-  const configuredLocalOrigin = process.env.CUBICA_PRODUCT_CONTEXT_SHADOW_LOCAL_ORIGIN?.trim() || "http://127.0.0.1:3000";
-  const baseUrl = safeBackendOrigin(configuredLocalOrigin);
+  const shadowRequested = process.env.CUBICA_PRODUCT_CONTEXT_MODE === "shadow";
+  const trustedShadowOrigin = request !== undefined && shadowRequested
+    ? getLocalProductContextShadowOrigin(request)
+    : null;
+  if (request !== undefined && shadowRequested && trustedShadowOrigin === null) {
+    return {
+      ok: false,
+      reason: "local-origin-mismatch",
+      message: "Local AG-UI request origin does not match the configured shadow origin.",
+      mode: "local",
+      authRequired: false,
+      authConfigured: false
+    };
+  }
+  const configuredLocalOrigin = request === undefined
+    ? "http://127.0.0.1:3000"
+    : shadowRequested
+      ? trustedShadowOrigin
+      : request.nextUrl.origin;
+  const baseUrl = configuredLocalOrigin === null ? null : safeBackendOrigin(configuredLocalOrigin);
   if (baseUrl === null) {
     return {
       ok: false,
@@ -78,20 +96,6 @@ export function getAgUiBackendReadiness(request?: NextRequest): AgUiBackendReadi
       authRequired: false,
       authConfigured: false
     };
-  }
-  if (request !== undefined && process.env.CUBICA_PRODUCT_CONTEXT_MODE === "shadow") {
-    let requestOrigin: string | null = null;
-    try { requestOrigin = new URL(request.url).origin; } catch { /* fail closed below */ }
-    if (requestOrigin !== baseUrl || getLocalProductContextShadowOrigin(request) === null) {
-      return {
-        ok: false,
-        reason: "local-origin-mismatch",
-        message: "Local AG-UI request origin does not match the configured shadow origin.",
-        mode: "local",
-        authRequired: false,
-        authConfigured: false
-      };
-    }
   }
   return {
     ok: true,

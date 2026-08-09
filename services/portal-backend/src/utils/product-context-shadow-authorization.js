@@ -12,11 +12,12 @@
 const { createHash, createHmac } = require('node:crypto');
 
 const DOCUMENT_ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/u;
+const NUMERIC_ID_PATTERN = /^[1-9][0-9]{0,18}$/u;
 const ALLOWED_TIERS = new Set(['test', 'staging']);
 const RECEIPT_TTL_MS = 5 * 60 * 1000;
 
 async function authorizeProductContextShadow({ strapi, user, body, env = process.env, now = new Date() }) {
-  if (!user?.id || user.blocked === true) {
+  if (!user?.id) {
     return deny(401, 'authentication_required');
   }
 
@@ -28,28 +29,52 @@ async function authorizeProductContextShadow({ strapi, user, body, env = process
   if (!isExactGameRequest(body)) {
     return deny(400, 'invalid_request');
   }
+  if (String(user.id) !== config.portalUserId) {
+    return deny(403, 'shadow_subject_not_allowed');
+  }
+  if (body.gameDocumentId !== config.gameDocumentId) {
+    return deny(403, 'shadow_game_not_allowed');
+  }
+
+  // The authenticated principal proves only who made the request. Role and
+  // blocked state are reread from Portal storage so revocation takes effect on
+  // every receipt and cannot be supplied by the request body.
+  const portalUser = await strapi.db.query('plugin::users-permissions.user').findOne({
+    where: { id: user.id },
+    populate: { role: true },
+  });
+  if (!portalUser || String(portalUser.id) !== config.portalUserId || portalUser.blocked === true) {
+    return deny(401, 'authentication_required');
+  }
+  if (!portalUser.role || String(portalUser.role.id) !== config.developerRoleId) {
+    return deny(403, 'developer_role_required');
+  }
 
   const game = await strapi.db.query('api::game.game').findOne({
-    where: { documentId: body.gameDocumentId },
+    where: { documentId: config.gameDocumentId },
     populate: { developed_by: true },
   });
-  if (!game) {
+  if (!game || game.documentId !== config.gameDocumentId) {
     return deny(404, 'game_not_found');
   }
-  if (!game.developed_by || String(game.developed_by.id) !== String(user.id)) {
+  if (!game.developed_by || String(game.developed_by.id) !== config.portalUserId) {
     return deny(403, 'game_not_owned');
   }
 
   const issuedAt = new Date(now);
   const expiresAt = new Date(issuedAt.getTime() + RECEIPT_TTL_MS);
   const appliesTo = `cubica://game-project/${encodeURIComponent(game.documentId)}`;
-  const shadowPrincipalRef = buildShadowPrincipalRef(config.bindingKey, user.id);
+  const shadowPrincipalRef = buildShadowPrincipalRef(config.bindingKey, portalUser.id);
   const decisionBasis = {
     shadow_principal_ref: shadowPrincipalRef,
     role_scope: 'developer',
     applies_to: [appliesTo],
     access_policy_ref: 'portal-owned-game-developer-v1',
-    access_policy_revision: String(game.updatedAt || game.documentId),
+    access_policy_revision: `sha256:${sha256(canonicalJson({
+      game_updated_at: String(game.updatedAt || game.documentId),
+      portal_user_updated_at: String(portalUser.updatedAt || portalUser.id),
+      developer_role_id: config.developerRoleId,
+    }))}`,
     retention_policy_ref: 'product-context-shadow-7d-v1',
     retention_policy_revision: '1',
     external_processing_policy_ref: 'product-context-shadow-explicit-allow-v1',
@@ -88,7 +113,19 @@ function readShadowAuthorizationConfig(env) {
   if (!/^[A-Za-z0-9._:-]{1,128}$/u.test(externalProcessingRevision)) {
     return { ok: false, reason: 'external_processing_policy_unknown' };
   }
-  return { ok: true, bindingKey, externalProcessingRevision };
+  const portalUserId = env.CUBICA_PRODUCT_CONTEXT_SHADOW_PORTAL_USER_ID || '';
+  if (!NUMERIC_ID_PATTERN.test(portalUserId)) {
+    return { ok: false, reason: 'shadow_portal_user_unknown' };
+  }
+  const gameDocumentId = env.CUBICA_PRODUCT_CONTEXT_SHADOW_GAME_DOCUMENT_ID || '';
+  if (!DOCUMENT_ID_PATTERN.test(gameDocumentId)) {
+    return { ok: false, reason: 'shadow_game_unknown' };
+  }
+  const developerRoleId = env.CUBICA_PRODUCT_CONTEXT_SHADOW_DEVELOPER_ROLE_ID || '';
+  if (!NUMERIC_ID_PATTERN.test(developerRoleId)) {
+    return { ok: false, reason: 'shadow_developer_role_unknown' };
+  }
+  return { ok: true, bindingKey, externalProcessingRevision, portalUserId, gameDocumentId, developerRoleId };
 }
 
 function isExactGameRequest(body) {

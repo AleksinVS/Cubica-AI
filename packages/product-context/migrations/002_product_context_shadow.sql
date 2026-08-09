@@ -335,27 +335,42 @@ GRANT SELECT, UPDATE ON product_context_shadow.conversation_messages TO product_
 -- application receives only EXECUTE on the fixed SECURITY DEFINER function.
 GRANT SELECT, UPDATE, DELETE ON product_context_shadow.shadow_runs TO product_context_shadow_cleanup;
 
--- Preserve any pre-existing direct membership of the migration executor. The
--- temporary grant below must not revoke authority that an operator assigned
--- before this migration.
-CREATE TEMP TABLE product_context_shadow_migration_role_state
-  (had_direct_membership boolean NOT NULL);
-INSERT INTO product_context_shadow_migration_role_state (had_direct_membership)
-SELECT EXISTS (
-  SELECT 1
+-- The only temporary privilege expansion is contained in one statement. A
+-- statement-by-statement autocommit runner therefore either creates the fixed
+-- cleanup boundary and restores membership/CREATE, or rolls all of it back.
+DO $cleanup_owner$
+DECLARE
+  executor_name text := SESSION_USER;
+  had_executor_grant boolean := false;
+  executor_admin_option boolean;
+  executor_inherit_option boolean;
+  executor_set_option boolean;
+BEGIN
+  SELECT membership.admin_option, membership.inherit_option, membership.set_option
+  INTO executor_admin_option, executor_inherit_option, executor_set_option
   FROM pg_auth_members AS membership
   JOIN pg_roles AS granted_role ON granted_role.oid = membership.roleid
   JOIN pg_roles AS member_role ON member_role.oid = membership.member
+  JOIN pg_roles AS grantor_role ON grantor_role.oid = membership.grantor
   WHERE granted_role.rolname = 'product_context_shadow_cleanup'
-    AND member_role.rolname = CURRENT_USER
-);
+    AND member_role.rolname = executor_name
+    AND grantor_role.rolname = executor_name;
+  had_executor_grant := FOUND;
 
--- The migration executor receives cleanup-role membership only while defining
--- this fixed function. Schema CREATE is always removed from the NOLOGIN role.
-GRANT product_context_shadow_cleanup TO CURRENT_USER;
-GRANT CREATE ON SCHEMA product_context_shadow TO product_context_shadow_cleanup;
-SET ROLE product_context_shadow_cleanup;
+  -- PostgreSQL 17 stores one membership row per grantor. Touch only the
+  -- executor's own row and restore its exact options below; grants issued by
+  -- any other role remain byte-for-byte unchanged.
+  EXECUTE format(
+    'GRANT product_context_shadow_cleanup TO %I WITH ADMIN %s, INHERIT %s, SET TRUE GRANTED BY %I',
+    executor_name,
+    CASE WHEN executor_admin_option THEN 'TRUE' ELSE 'FALSE' END,
+    CASE WHEN executor_inherit_option THEN 'TRUE' ELSE 'FALSE' END,
+    executor_name
+  );
+  EXECUTE 'GRANT CREATE ON SCHEMA product_context_shadow TO product_context_shadow_cleanup';
+  EXECUTE 'SET LOCAL ROLE product_context_shadow_cleanup';
 
+  EXECUTE $definition$
 CREATE OR REPLACE FUNCTION product_context_shadow.cleanup_expired(p_limit integer)
 RETURNS TABLE (runs_deleted integer, messages_tombstoned integer, threads_tombstoned integer)
 LANGUAGE plpgsql
@@ -424,19 +439,28 @@ BEGIN
 
   RETURN NEXT;
 END
-$function$;
+$function$
+  $definition$;
 
-REVOKE ALL ON FUNCTION product_context_shadow.cleanup_expired(integer) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION product_context_shadow.cleanup_expired(integer)
-  TO product_context_shadow_app;
-
-RESET ROLE;
-REVOKE CREATE ON SCHEMA product_context_shadow FROM product_context_shadow_cleanup;
-DO $role_restore$
-BEGIN
-  IF NOT (SELECT had_direct_membership FROM product_context_shadow_migration_role_state LIMIT 1) THEN
-    EXECUTE format('REVOKE product_context_shadow_cleanup FROM %I', CURRENT_USER);
+  EXECUTE 'REVOKE ALL ON FUNCTION product_context_shadow.cleanup_expired(integer) FROM PUBLIC';
+  EXECUTE 'GRANT EXECUTE ON FUNCTION product_context_shadow.cleanup_expired(integer) TO product_context_shadow_app';
+  EXECUTE 'RESET ROLE';
+  EXECUTE 'REVOKE CREATE ON SCHEMA product_context_shadow FROM product_context_shadow_cleanup';
+  IF had_executor_grant THEN
+    EXECUTE format(
+      'GRANT product_context_shadow_cleanup TO %I WITH ADMIN %s, INHERIT %s, SET %s GRANTED BY %I',
+      executor_name,
+      CASE WHEN executor_admin_option THEN 'TRUE' ELSE 'FALSE' END,
+      CASE WHEN executor_inherit_option THEN 'TRUE' ELSE 'FALSE' END,
+      CASE WHEN executor_set_option THEN 'TRUE' ELSE 'FALSE' END,
+      executor_name
+    );
+  ELSE
+    EXECUTE format(
+      'REVOKE product_context_shadow_cleanup FROM %I GRANTED BY %I',
+      executor_name,
+      executor_name
+    );
   END IF;
 END
-$role_restore$;
-DROP TABLE product_context_shadow_migration_role_state;
+$cleanup_owner$;

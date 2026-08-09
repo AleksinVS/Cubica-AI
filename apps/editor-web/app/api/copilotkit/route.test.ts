@@ -50,6 +50,13 @@ describe("editor CopilotKit runtime route", () => {
     expect(getAgUiBackendReadiness()).toMatchObject({ ok: false, reason: "external-url-invalid" });
   });
 
+  it("keeps the current Editor request origin while product-context shadow is off", () => {
+    const request = new NextRequest("http://localhost:4317/api/copilotkit");
+    const readiness = getAgUiBackendReadiness(request);
+
+    expect(readiness.ok && readiness.backend?.url).toBe("http://localhost:4317/api/editor/agent/ag-ui");
+  });
+
   it("forwards the current Portal bearer and game only to the attested local backend", () => {
     vi.stubEnv("CUBICA_PRODUCT_CONTEXT_MODE", "shadow");
     vi.stubEnv("CUBICA_DEPLOYMENT_TIER", "test");
@@ -107,6 +114,35 @@ describe("editor CopilotKit runtime route", () => {
     const readiness = getAgUiBackendReadiness(trusted);
     expect(readiness.ok && readiness.backend?.url).toBe("https://editor.test/api/editor/agent/ag-ui");
     expect(getAgUiBackendHeaders("local", trusted).Authorization).toBe("Bearer portal-user-token");
+  });
+
+  it.each([
+    ["missing", undefined],
+    ["malformed", "not-a-bearer"]
+  ] as const)("keeps the main POST response identical with %s optional Portal authorization", async (_case, authorization) => {
+    vi.stubEnv("CUBICA_EDITOR_AGENT_RUNTIME", "1");
+    vi.stubEnv("CUBICA_DEPLOYMENT_TIER", "test");
+    vi.stubEnv("CUBICA_PRODUCT_CONTEXT_SHADOW_FORWARD_KEY", "f".repeat(32));
+    vi.stubEnv("CUBICA_PRODUCT_CONTEXT_SHADOW_LOCAL_ORIGIN", "https://editor.test");
+    const request = () => new NextRequest("https://editor.test/api/copilotkit", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-cubica-game-document-id": "game_doc_1",
+        ...(authorization === undefined ? {} : { Authorization: authorization })
+      },
+      body: JSON.stringify({})
+    });
+
+    const baseline = await POST(request());
+    const baselineBody = await baseline.text();
+    vi.stubEnv("CUBICA_PRODUCT_CONTEXT_MODE", "shadow");
+    const shadow = await POST(request());
+
+    expect(shadow.status).toBe(baseline.status);
+    expect([...shadow.headers.entries()]).toEqual([...baseline.headers.entries()]);
+    await expect(shadow.text()).resolves.toBe(baselineBody);
+    expect(getAgUiBackendHeaders("local", request())).not.toHaveProperty("Authorization");
   });
 
   it("rejects a hostile origin before constructing an AG-UI request", async () => {

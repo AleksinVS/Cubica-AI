@@ -14,16 +14,26 @@ const enabledEnv = {
   CUBICA_PRODUCT_CONTEXT_SHADOW_BINDING_KEY: 'a'.repeat(32),
   CUBICA_PRODUCT_CONTEXT_SHADOW_EXTERNAL_PROCESSING: 'allow',
   CUBICA_PRODUCT_CONTEXT_SHADOW_POLICY_REVISION: 'test-policy-1',
+  CUBICA_PRODUCT_CONTEXT_SHADOW_PORTAL_USER_ID: '7',
+  CUBICA_PRODUCT_CONTEXT_SHADOW_GAME_DOCUMENT_ID: 'game-1',
+  CUBICA_PRODUCT_CONTEXT_SHADOW_DEVELOPER_ROLE_ID: '2',
 };
 
-function strapiWithGame(game) {
-  return { db: { query: () => ({ findOne: async () => game }) } };
+function strapiWith({ portalUser = null, game = null } = {}) {
+  return {
+    db: {
+      query: (uid) => ({
+        findOne: async () => uid === 'plugin::users-permissions.user' ? portalUser : game,
+      }),
+    },
+  };
 }
 
 test('denies missing or blocked authenticated Portal user', async () => {
-  const missing = await authorizeProductContextShadow({ strapi: strapiWithGame(null), body: {}, env: enabledEnv });
+  const missing = await authorizeProductContextShadow({ strapi: strapiWith(), body: {}, env: enabledEnv });
   const blocked = await authorizeProductContextShadow({
-    strapi: strapiWithGame(null), user: { id: 1, blocked: true }, body: {}, env: enabledEnv,
+    strapi: strapiWith({ portalUser: { id: 7, blocked: true, role: { id: 2 } } }),
+    user: { id: 7 }, body: { gameDocumentId: 'game-1' }, env: enabledEnv,
   });
   assert.equal(missing.status, 401);
   assert.equal(blocked.status, 401);
@@ -36,10 +46,13 @@ test('fails closed unless every non-production and policy gate is explicit', asy
     { ...enabledEnv, CUBICA_PRODUCT_CONTEXT_SHADOW_BINDING_KEY: 'short' },
     { ...enabledEnv, CUBICA_PRODUCT_CONTEXT_SHADOW_EXTERNAL_PROCESSING: 'deny' },
     { ...enabledEnv, CUBICA_PRODUCT_CONTEXT_SHADOW_POLICY_REVISION: '' },
+    { ...enabledEnv, CUBICA_PRODUCT_CONTEXT_SHADOW_PORTAL_USER_ID: '' },
+    { ...enabledEnv, CUBICA_PRODUCT_CONTEXT_SHADOW_GAME_DOCUMENT_ID: '' },
+    { ...enabledEnv, CUBICA_PRODUCT_CONTEXT_SHADOW_DEVELOPER_ROLE_ID: '' },
   ];
   for (const env of variants) {
     const result = await authorizeProductContextShadow({
-      strapi: strapiWithGame(null), user: { id: 1 }, body: { gameDocumentId: 'game-1' }, env,
+      strapi: strapiWith(), user: { id: 7 }, body: { gameDocumentId: 'game-1' }, env,
     });
     assert.notEqual(result.status, 200);
   }
@@ -48,7 +61,7 @@ test('fails closed unless every non-production and policy gate is explicit', asy
 test('rejects forged identity, role and extra request fields', async () => {
   for (const extra of [{ principalId: 'victim' }, { playerId: 'victim' }, { role_scope: 'developer' }]) {
     const result = await authorizeProductContextShadow({
-      strapi: strapiWithGame(null), user: { id: 1 },
+      strapi: strapiWith(), user: { id: 7 },
       body: { gameDocumentId: 'game-1', ...extra }, env: enabledEnv,
     });
     assert.equal(result.status, 400);
@@ -57,8 +70,11 @@ test('rejects forged identity, role and extra request fields', async () => {
 
 test('denies a game not owned by the authenticated user', async () => {
   const result = await authorizeProductContextShadow({
-    strapi: strapiWithGame({ documentId: 'game-1', developed_by: { id: 2 } }),
-    user: { id: 1 }, body: { gameDocumentId: 'game-1' }, env: enabledEnv,
+    strapi: strapiWith({
+      portalUser: { id: 7, role: { id: 2 } },
+      game: { documentId: 'game-1', developed_by: { id: 8 } },
+    }),
+    user: { id: 7 }, body: { gameDocumentId: 'game-1' }, env: enabledEnv,
   });
   assert.equal(result.status, 403);
   assert.equal(result.body.reason, 'game_not_owned');
@@ -67,7 +83,10 @@ test('denies a game not owned by the authenticated user', async () => {
 test('returns a bounded receipt without raw identity or secrets for an owned game', async () => {
   const now = new Date('2026-08-09T12:00:00.000Z');
   const result = await authorizeProductContextShadow({
-    strapi: strapiWithGame({ documentId: 'game-1', updatedAt: 'rev-7', developed_by: { id: 7 } }),
+    strapi: strapiWith({
+      portalUser: { id: 7, updatedAt: 'user-rev-3', role: { id: 2 } },
+      game: { documentId: 'game-1', updatedAt: 'rev-7', developed_by: { id: 7 } },
+    }),
     user: { id: 7 }, body: { gameDocumentId: 'game-1' }, env: enabledEnv, now,
   });
   assert.equal(result.status, 200);
@@ -77,6 +96,52 @@ test('returns a bounded receipt without raw identity or secrets for an owned gam
   assert.match(result.body.authorization_revision, /^sha256:[a-f0-9]{64}$/u);
   const serialized = JSON.stringify(result.body);
   assert.doesNotMatch(serialized, /"7"|aaaaaaaa/u);
+});
+
+test('allows only the one server-configured Portal user', async () => {
+  const result = await authorizeProductContextShadow({
+    strapi: strapiWith({ portalUser: { id: 8, role: { id: 2 } } }),
+    user: { id: 8 }, body: { gameDocumentId: 'game-1' }, env: enabledEnv,
+  });
+  assert.equal(result.status, 403);
+  assert.equal(result.body.reason, 'shadow_subject_not_allowed');
+});
+
+test('allows only the one server-configured game document', async () => {
+  const result = await authorizeProductContextShadow({
+    strapi: strapiWith({ portalUser: { id: 7, role: { id: 2 } } }),
+    user: { id: 7 }, body: { gameDocumentId: 'game-2' }, env: enabledEnv,
+  });
+  assert.equal(result.status, 403);
+  assert.equal(result.body.reason, 'shadow_game_not_allowed');
+});
+
+test('denies a configured user whose authoritative role is not the developer role', async () => {
+  const result = await authorizeProductContextShadow({
+    strapi: strapiWith({ portalUser: { id: 7, role: { id: 3 } } }),
+    user: { id: 7 }, body: { gameDocumentId: 'game-1' }, env: enabledEnv,
+  });
+  assert.equal(result.status, 403);
+  assert.equal(result.body.reason, 'developer_role_required');
+});
+
+test('denies the next authorization immediately after the developer role is changed', async () => {
+  const portalUser = { id: 7, updatedAt: 'user-rev-1', role: { id: 2 } };
+  const strapi = strapiWith({
+    portalUser,
+    game: { documentId: 'game-1', updatedAt: 'game-rev-1', developed_by: { id: 7 } },
+  });
+  const first = await authorizeProductContextShadow({
+    strapi, user: { id: 7 }, body: { gameDocumentId: 'game-1' }, env: enabledEnv,
+  });
+  assert.equal(first.status, 200);
+
+  portalUser.role = { id: 3 };
+  const changed = await authorizeProductContextShadow({
+    strapi, user: { id: 7, role: { id: 2 } }, body: { gameDocumentId: 'game-1' }, env: enabledEnv,
+  });
+  assert.equal(changed.status, 403);
+  assert.equal(changed.body.reason, 'developer_role_required');
 });
 
 test('binding is deterministic per user and separates users', () => {

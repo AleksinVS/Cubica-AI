@@ -26,6 +26,7 @@ import {
 
 const ID_PATTERN = /^[A-Za-z0-9._:-]{1,160}$/u;
 const MAX_PORTAL_RESPONSE_BYTES = 64 * 1024;
+const PORTAL_AUTHORIZATION_TIMEOUT_MS = 5_000;
 
 export type ProductContextShadowReceipt = ShadowAuthorizationReceipt;
 
@@ -79,7 +80,10 @@ export async function runProductContextShadowPostResponse(
   const initial = validateProductKnowledgeContract<ShadowAuthorizationReceipt>("ShadowAuthorizationReceipt", initialCandidate);
   if (!initial.ok) return null;
 
-  const authority: ShadowAuthorizationAuthority = { current: async () => authorize(job) };
+  const authority: ShadowAuthorizationAuthority = {
+    timeoutMs: PORTAL_AUTHORIZATION_TIMEOUT_MS,
+    current: async () => authorize(job)
+  };
   const coordinator = dependencies.createCoordinator?.(job, authority) ?? createCoordinator(job, authority);
   const ids = deriveServerRefs(initial.value, job.candidate);
   return coordinator.run({
@@ -109,7 +113,7 @@ function createCoordinator(job: ProductContextShadowJob, authority: ShadowAuthor
 
 async function authorizeThroughPortal(job: ProductContextShadowJob): Promise<unknown> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 5_000);
+  const timer = setTimeout(() => controller.abort(), PORTAL_AUTHORIZATION_TIMEOUT_MS);
   timer.unref?.();
   try {
     const response = await fetch(job.config.portalUrl, {

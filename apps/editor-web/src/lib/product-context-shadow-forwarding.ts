@@ -36,7 +36,7 @@ export function getLocalProductContextShadowOrigin(
   request: Pick<Request, "headers" | "url">,
   env: NodeJS.ProcessEnv = process.env
 ): string | null {
-  if (!isShadowMode(env) || !readIdentity(request.headers) || !readForwardingKey(env)) return null;
+  if (!isShadowMode(env)) return null;
   const configured = safeLocalOrigin(env.CUBICA_PRODUCT_CONTEXT_SHADOW_LOCAL_ORIGIN);
   if (!configured) return null;
   try { return new URL(request.url).origin === configured ? configured : null; }

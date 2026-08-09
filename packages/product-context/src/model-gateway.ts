@@ -28,6 +28,8 @@ export interface ModelGatewayCall {
 export interface ModelGateway {
   /** Exact UTF-8 JSON byte ceiling, including base64 expansion and metadata. */
   readonly maxRequestBytes: number;
+  /** Hard upper bound for one provider call, used to keep the run lease safe. */
+  readonly timeoutMs: number;
   call(request: ModelGatewayRequest): Promise<ModelGatewayCall>;
 }
 
@@ -45,7 +47,7 @@ export interface HttpModelGatewayOptions {
 
 export class HttpModelGateway implements ModelGateway {
   private readonly fetchImpl: typeof fetch;
-  private readonly timeoutMs: number;
+  readonly timeoutMs: number;
   readonly maxRequestBytes: number;
   private readonly maxResponseBytes: number;
   private readonly now: () => number;
@@ -76,6 +78,7 @@ export class HttpModelGateway implements ModelGateway {
     try {
       const response = await this.fetchImpl(this.options.endpoint, {
         method: 'POST',
+        redirect: 'error',
         headers: { authorization: `Bearer ${this.options.bearerToken}`, 'content-type': 'application/json' },
         body,
         signal: controller.signal

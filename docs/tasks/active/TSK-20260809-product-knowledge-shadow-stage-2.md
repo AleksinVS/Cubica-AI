@@ -167,7 +167,7 @@ not_required
 | Portal authorization adapter | Sol high | done | Настоящая Portal-аутентификация и право разработчика без client identity |
 | Editor post-response hook и изоляция | Sol high | done | Единственная разрешённая server-only точка shadow; основной ответ неизменен |
 | Оценка и rollback | Sol high | code_ready | Метрики без содержимого, ограниченная очистка и эксплуатационный activation checklist готовы; смысловая оценка ждёт реальный gateway |
-| Независимое security review | Sol high | done | Три последовательных прохода закрыли все Critical/High/Medium замечания; итог — ACCEPT code-ready |
+| Независимое security review | Sol high | done | Три приёмочных прохода и две волны исправлений закрыли все Critical/High/Medium замечания; итог — ACCEPT merge-ready для выключенного Stage 2 |
 
 Профиль Luna в доступной среде имеет только уровень `low`, тогда как PM
 разрешил Luna только `medium/high`, поэтому Luna в этом этапе не назначается.
@@ -226,6 +226,11 @@ not_required
 5. расписание бесконтентной очистки просроченных результатов;
 6. один согласованный Portal-пользователь-разработчик и одна принадлежащая ему
    игра; bearer и тексты не записываются в task artifacts или журналы.
+
+Эксплуатационный model timeout должен оставлять запас внутри serverless budget
+для двух повторных Portal-проверок и финальной записи. Текущее значение по
+умолчанию `15s` укладывается в `maxDuration=60`; верхний допустимый конфигурацией
+предел `45s` нельзя использовать без отдельного увеличения platform budget.
 
 До выполнения этих условий проверяются fake gateway и реальная база, но
 настоящие пользовательские тексты внешней модели не передаются.
@@ -304,3 +309,25 @@ not_required
   прогон.
 - Risks: без read-only основания существующей wiki gateway не способен
   качественно предложить точечное изменение уже существующей страницы.
+
+### 2026-08-10 — основной AI agent, финальная приёмка и исправления
+
+- Changed: восстановлен исходный Editor origin при выключенном shadow; optional
+  Portal bearer отделён от доверия к origin; Portal ограничен серверным
+  allowlist одного пользователя, одной игры и developer-role; gateway запрещает
+  redirects; lease покрывает модель, обе повторные проверки прав и финализацию;
+  временные PostgreSQL 17 grants стали атомарными и сохраняют точные параметры
+  `ADMIN/INHERIT/SET` каждого grantor.
+- Evidence: целевые Editor 14/14, Portal 11/11, gateway/coordinator 24/24;
+  `verify:product-context` на одноразовом PostgreSQL 17 — 97/97, включая shadow
+  8/8, два autocommit rerun, `SET FALSE` и injected rollback; Strapi production
+  build, типовые/изоляционные проверки и финальный `verify:canonical` после
+  всех исправлений успешны.
+- Review: три независимых Sol high прохода; финальный результат — merge-ready,
+  новых или оставшихся High/Medium дефектов нет.
+- Remaining: реальный gateway, credentials, read-only основание wiki,
+  расписание cleanup и согласованный пользовательский прогон; код остаётся
+  выключенным и Stage 1 Git не подключается.
+- Risks: эксплуатационный timeout модели должен оставлять бюджет двум Portal
+  authorization по 5 секунд и terminal commit; активное чтение или Git-запись
+  требуют отдельного решения PM.

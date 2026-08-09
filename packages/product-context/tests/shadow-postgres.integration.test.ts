@@ -150,27 +150,56 @@ integration('PostgreSQL shadow conversation boundary', () => {
     expect(schemaOwner.rows[0].rolname).not.toBe(runtimeRole);
   });
 
-  it('preserves a migration executor cleanup membership that existed before a rerun', async () => {
+  it('preserves every PostgreSQL 17 membership option and grantor across autocommit reruns', async () => {
+    const executor = String((await pool.query('SELECT current_user')).rows[0].current_user);
+    const originalGrantor = `shadow_grantor_${process.pid}_${randomBytes(4).toString('hex')}`;
+    const migration = await readFile(fileURLToPath(new URL('../migrations/002_product_context_shadow.sql', import.meta.url)), 'utf8');
+    const membershipRows = async () => (await pool.query(`
+      SELECT grantor_role.rolname AS grantor, membership.admin_option,
+             membership.inherit_option, membership.set_option
+      FROM pg_auth_members AS membership
+      JOIN pg_roles AS granted_role ON granted_role.oid = membership.roleid
+      JOIN pg_roles AS member_role ON member_role.oid = membership.member
+      JOIN pg_roles AS grantor_role ON grantor_role.oid = membership.grantor
+      WHERE granted_role.rolname = 'product_context_shadow_cleanup'
+        AND member_role.rolname = $1
+      ORDER BY grantor_role.rolname
+    `, [executor])).rows;
+    await pool.query(`CREATE ROLE ${quoteIdentifier(originalGrantor)} NOLOGIN`);
+    await pool.query(`GRANT product_context_shadow_cleanup TO ${quoteIdentifier(originalGrantor)} WITH ADMIN OPTION`);
+    await pool.query(`GRANT product_context_shadow_cleanup TO ${quoteIdentifier(executor)} WITH ADMIN FALSE, INHERIT FALSE, SET FALSE GRANTED BY ${quoteIdentifier(originalGrantor)}`);
+    try {
+      const before = await membershipRows();
+      for (const statement of splitSqlStatements(migration)) await pool.query(statement);
+      for (const statement of splitSqlStatements(migration)) await pool.query(statement);
+      expect(await membershipRows()).toEqual(before);
+    } finally {
+      await pool.query(`REVOKE product_context_shadow_cleanup FROM ${quoteIdentifier(executor)} GRANTED BY ${quoteIdentifier(originalGrantor)}`);
+      await pool.query(`REVOKE product_context_shadow_cleanup FROM ${quoteIdentifier(originalGrantor)} GRANTED BY ${quoteIdentifier(executor)}`);
+      await pool.query(`DROP ROLE ${quoteIdentifier(originalGrantor)}`);
+    }
+  });
+
+  it('rolls back every temporary cleanup privilege when its autocommit statement fails', async () => {
     const executor = String((await pool.query('SELECT current_user')).rows[0].current_user);
     const migration = await readFile(fileURLToPath(new URL('../migrations/002_product_context_shadow.sql', import.meta.url)), 'utf8');
-    const membershipQuery = `
-      SELECT EXISTS (
-        SELECT 1 FROM pg_auth_members AS membership
-        JOIN pg_roles AS granted_role ON granted_role.oid = membership.roleid
-        JOIN pg_roles AS member_role ON member_role.oid = membership.member
-        WHERE granted_role.rolname = 'product_context_shadow_cleanup'
-          AND member_role.rolname = $1
-      ) AS member
-    `;
-    const hadMembership = Boolean((await pool.query(membershipQuery, [executor])).rows[0].member);
-    if (!hadMembership) await pool.query(`GRANT product_context_shadow_cleanup TO ${quoteIdentifier(executor)}`);
-    try {
-      await pool.query(migration);
-      const directMembership = await pool.query(membershipQuery, [executor]);
-      expect(Boolean(directMembership.rows[0].member)).toBe(true);
-    } finally {
-      if (!hadMembership) await pool.query(`REVOKE product_context_shadow_cleanup FROM ${quoteIdentifier(executor)}`);
-    }
+    const cleanupStatement = splitSqlStatements(migration).find((statement) => statement.includes('DO $cleanup_owner$'));
+    expect(cleanupStatement).toBeDefined();
+    const membership = async () => Boolean((await pool.query(`
+      SELECT pg_has_role($1, 'product_context_shadow_cleanup', 'MEMBER') AS member
+    `, [executor])).rows[0].member);
+    const schemaCreate = async () => Boolean((await pool.query(`
+      SELECT has_schema_privilege('product_context_shadow_cleanup', 'product_context_shadow', 'CREATE') AS allowed
+    `)).rows[0].allowed);
+    const before = { membership: await membership(), schemaCreate: await schemaCreate() };
+    expect(before.schemaCreate).toBe(false);
+
+    const failingStatement = cleanupStatement!.replace(
+      "  EXECUTE 'RESET ROLE';",
+      "  RAISE EXCEPTION 'simulated autocommit migration failure';\n  EXECUTE 'RESET ROLE';"
+    );
+    await expect(pool.query(failingStatement)).rejects.toThrow(/simulated autocommit migration failure/u);
+    expect({ membership: await membership(), schemaCreate: await schemaCreate() }).toEqual(before);
   });
 
   async function preparePending(owner: string, key: string, createdAt: Date, retainedUntil: Date) {
@@ -189,6 +218,7 @@ integration('PostgreSQL shadow conversation boundary', () => {
 
 class FakeGateway implements ModelGateway {
   readonly maxRequestBytes = 512 * 1024;
+  readonly timeoutMs = 30_000;
   calls = 0;
   async call(request: ModelGatewayRequest): Promise<ModelGatewayCall> {
     this.calls += 1;
@@ -198,7 +228,7 @@ class FakeGateway implements ModelGateway {
 
 function coordinator(store: PostgresConversationStore, owner: string, gateway: ModelGateway, now: Date, retentionMs = 60_000) {
   const auth = receipt(owner, now);
-  return new ShadowCoordinator(store, { current: async () => auth }, gateway, { enabled: true, environment: 'test', retentionMs, now: () => now });
+  return new ShadowCoordinator(store, { timeoutMs: 5_000, current: async () => auth }, gateway, { enabled: true, environment: 'test', retentionMs, now: () => now });
 }
 
 function turnInput(key: string, owner = ownerA, now = new Date()) {
@@ -228,3 +258,54 @@ function runtimePoolFor(connectionString: string, role: string, password: string
   return new Pool({ connectionString: url.toString(), max: 4 });
 }
 async function asPrincipal<T>(pool: Pool, principal: string, work: (client: PoolClient) => Promise<T>): Promise<T> { const client = await pool.connect(); try { await client.query('BEGIN'); await client.query('SET LOCAL ROLE product_context_shadow_app'); await client.query("SELECT set_config('cubica.shadow_principal_ref', $1, true)", [principal]); const result = await work(client); await client.query('COMMIT'); return result; } catch (error) { await client.query('ROLLBACK'); throw error; } finally { client.release(); } }
+
+/** Splits migration SQL exactly where an autocommit runner would commit. */
+function splitSqlStatements(sql: string): string[] {
+  const statements: string[] = [];
+  let start = 0;
+  let index = 0;
+  let quote: "'" | '"' | string | null = null;
+  let lineComment = false;
+  let blockComment = false;
+  while (index < sql.length) {
+    const current = sql[index]!;
+    const next = sql[index + 1];
+    if (lineComment) {
+      if (current === '\n') lineComment = false;
+      index += 1;
+      continue;
+    }
+    if (blockComment) {
+      if (current === '*' && next === '/') { blockComment = false; index += 2; }
+      else index += 1;
+      continue;
+    }
+    if (quote?.startsWith('$')) {
+      if (sql.startsWith(quote, index)) { index += quote.length; quote = null; }
+      else index += 1;
+      continue;
+    }
+    if (quote === "'" || quote === '"') {
+      if (current === quote && next === quote) index += 2;
+      else if (current === quote) { quote = null; index += 1; }
+      else index += 1;
+      continue;
+    }
+    if (current === '-' && next === '-') { lineComment = true; index += 2; continue; }
+    if (current === '/' && next === '*') { blockComment = true; index += 2; continue; }
+    if (current === "'" || current === '"') { quote = current; index += 1; continue; }
+    if (current === '$') {
+      const tag = sql.slice(index).match(/^\$[A-Za-z_][A-Za-z0-9_]*\$|^\$\$/u)?.[0];
+      if (tag) { quote = tag; index += tag.length; continue; }
+    }
+    if (current === ';') {
+      const statement = sql.slice(start, index + 1).trim();
+      if (statement) statements.push(statement);
+      start = index + 1;
+    }
+    index += 1;
+  }
+  const tail = sql.slice(start).trim();
+  if (tail) statements.push(tail);
+  return statements;
+}

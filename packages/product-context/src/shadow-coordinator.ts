@@ -22,6 +22,8 @@ import type {
 
 export interface ShadowAuthorizationAuthority {
   /** Must perform a fresh server-side authorization lookup; caller data is not authoritative. */
+  /** Coordinator-enforced hard bound for each lookup. */
+  readonly timeoutMs: number;
   current(previous: ShadowAuthorizationReceipt): Promise<unknown>;
 }
 
@@ -47,6 +49,7 @@ export type ShadowCoordinatorResult =
   | { readonly status: 'denied' | 'failed'; readonly runId: string | null; readonly outcome: Exclude<ShadowRunOutcome, 'success' | 'no_change' | 'disabled'> };
 
 const allowedEnvironments = new Set(['test', 'staging']);
+const MODEL_LEASE_SAFETY_MARGIN_MS = 5_000;
 
 export class ShadowCoordinator {
   private readonly now: () => Date;
@@ -58,8 +61,17 @@ export class ShadowCoordinator {
     private readonly options: ShadowCoordinatorOptions
   ) {
     if (!Number.isSafeInteger(options.retentionMs) || options.retentionMs <= 0) throw new TypeError('A positive shadow retention is required.');
-    this.modelLeaseMs = options.modelLeaseMs ?? 30_000;
-    if (!Number.isSafeInteger(this.modelLeaseMs) || this.modelLeaseMs <= 0) throw new TypeError('A positive model lease is required.');
+    if (!Number.isSafeInteger(gateway.timeoutMs) || gateway.timeoutMs <= 0) throw new TypeError('A positive model timeout is required.');
+    if (!Number.isSafeInteger(authority.timeoutMs) || authority.timeoutMs <= 0) throw new TypeError('A positive authorization timeout is required.');
+    // Once claimed, the run performs one authorization check before the model
+    // and one after it. The fixed margin covers both exact-message rereads and
+    // the atomic terminal result+metric commit around those bounded calls.
+    const minimumModelLeaseMs = gateway.timeoutMs + (2 * authority.timeoutMs) + MODEL_LEASE_SAFETY_MARGIN_MS;
+    if (!Number.isSafeInteger(minimumModelLeaseMs)) throw new TypeError('The model timeout is too large for a safe lease.');
+    this.modelLeaseMs = options.modelLeaseMs ?? minimumModelLeaseMs;
+    if (!Number.isSafeInteger(this.modelLeaseMs) || this.modelLeaseMs < minimumModelLeaseMs) {
+      throw new TypeError(`The model lease must cover both authorization checks, the full model timeout, and ${MODEL_LEASE_SAFETY_MARGIN_MS}ms terminal safety margin.`);
+    }
     this.now = options.now ?? (() => new Date());
   }
 
@@ -143,10 +155,26 @@ export class ShadowCoordinator {
 
   private async freshAuthorization(previous: ShadowAuthorizationReceipt): Promise<ShadowAuthorizationReceipt | null> {
     try {
-      const current = validatedReceipt(await this.authority.current(previous));
+      const current = validatedReceipt(await boundedAuthorityCall(
+        () => this.authority.current(previous),
+        this.authority.timeoutMs
+      ));
       return current && !isExpired(current, this.now()) && sameAuthorization(previous, current) ? current : null;
     } catch { return null; }
   }
+}
+
+function boundedAuthorityCall<T>(work: () => Promise<T>, timeoutMs: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Shadow authorization timed out.')), timeoutMs);
+    timer.unref?.();
+    Promise.resolve()
+      .then(work)
+      .then(
+        (value) => { clearTimeout(timer); resolve(value); },
+        (error: unknown) => { clearTimeout(timer); reject(error); }
+      );
+  });
 }
 
 function validatedReceipt(candidate: unknown): ShadowAuthorizationReceipt | null {
