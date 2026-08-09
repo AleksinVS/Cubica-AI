@@ -1,4 +1,5 @@
 {
   ".": "Переиспользуемые платформенные пакеты (contracts)\\n",
-  "editor-engine": "Framework-agnostic editor engine for ADR-034 authoring manifest editing: DocumentStore, graph projection, reverse projection and diagnostics helpers."
+  "editor-engine": "Framework-agnostic editor engine for ADR-034 authoring manifest editing: DocumentStore, graph projection, reverse projection and diagnostics helpers.",
+  "product-context": "Изолированное серверное ядро продуктовых знаний: проверяемые контракты, точечный Markdown/Git, процесс записи PostgreSQL и синтетический стенд без подключения к действующим приложениям."
 }

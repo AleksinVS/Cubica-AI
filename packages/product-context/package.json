@@ -1,0 +1,29 @@
+{
+  "name": "@cubica/product-context",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Isolated Stage 1 product-knowledge contracts, policy, Markdown/Git storage, PostgreSQL lifecycle and synthetic harness.",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "generate:types": "node scripts/generate-types.cjs",
+    "generate:types:check": "node scripts/generate-types.cjs --check",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:acceptance": "vitest run --fileParallelism=false"
+  },
+  "dependencies": {
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
+    "js-yaml": "^4.1.0",
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.15.5",
+    "json-schema-to-typescript": "^15.0.4",
+    "typescript": "^5.9.3",
+    "vitest": "^2.1.0"
+  },
+  "engines": { "node": ">=22.7.0" }
+}
