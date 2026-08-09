@@ -19,7 +19,7 @@ apps: # Приложения и импортированные frontend-заго
   player-web: # Универсальный game-agnostic веб-плеер платформы (Next.js): рендерит любую игру по её манифестам и published-бандлам плагинов, без game-specific кода.
     e2e: # Playwright end-to-end tests for browser-level player-web, runtime-api and portal launch binding flows.
       cards-money-trains-mock.spec.ts: file # Browser acceptance for the complete test-only facilitator session, including keyboard board access and manual finish confirmation.
-      estate-race.spec.ts: file # Focused GSR-034 browser acceptance for the Estate Race board, hotseat actor switching, first purchase and first rent.
+      estate-race.spec.ts: file # Focused GSR-039 browser acceptance for Estate Race S1: browser-created session, updated title, one production-random roll, and server-declared landing status without claiming full-state reachability.
       player-web.spec.ts: file # E2E coverage for normal Antarctica session boot, runtime action dispatch and portal launch session binding.
   portal-nextjs: directory... # Next.js портал для каталога, покупок, ссылок запуска и первого test VPS launch с Antarctica.
 archive: directory... # Архив старых документов и черновиков
