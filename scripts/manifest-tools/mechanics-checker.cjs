@@ -1315,7 +1315,12 @@ function createModel(stateModel) {
   }
   for (const [collectionId, collection] of Object.entries(stateModel.collections)) {
     const pointer = `/stateModel/collections/${escapePointer(collectionId)}`;
-    checkAudienceStorage(collection.audienceRef, collection.storage, child(pointer, "storage"));
+    checkAudienceStorage(
+      collection.audienceRef,
+      collection.storage,
+      child(pointer, "storage"),
+      collection.itemShape === "record"
+    );
     if (collection.storage.segments.some((segment) => isRecord(segment) && segment.binding !== undefined)) {
       fail(
         "MECHANICS_COLLECTION_STORAGE_BINDING_UNSUPPORTED",
@@ -1466,14 +1471,19 @@ function requireType(typeIds, typeRef, pointer) {
   if (!typeIds.has(typeRef)) fail("MECHANICS_TYPE_REF_UNKNOWN", pointer, `unknown type "${typeRef}"`);
 }
 
-function checkAudienceStorage(audience, storage, pointer) {
+function checkAudienceStorage(audience, storage, pointer, allowWholePlayersRecordMap = false) {
   const compatible = audience === "public"
     // Visibility is a logical contract, not an accidental property of the
     // physical JSON root. Public per-participant scoreboards may be stored in
     // `players/{actor}` for efficient mutation while remaining public by
-    // declaration and projection.
-    ? storage.root === "public" || (storage.root === "players" && storage.segments.some(
-      (segment) => isRecord(segment) && (segment.context === "actor" || typeof segment.binding === "string")
+    // declaration and projection. A bounded record-map collection may also
+    // describe the complete materialized participant map, but this exception
+    // is deliberately unavailable to endpoints and entity collections.
+    ? storage.root === "public" || (storage.root === "players" && (
+      (allowWholePlayersRecordMap && storage.segments.length === 0) ||
+      storage.segments.some(
+        (segment) => isRecord(segment) && (segment.context === "actor" || typeof segment.binding === "string")
+      )
     ))
     : audience === "actor"
       ? storage.root === "players" && storage.segments.some((segment) => isRecord(segment) && segment.context === "actor")
@@ -3283,7 +3293,24 @@ function domainOperationStateAudiences(step, context) {
 
 function checkSelector(selector, collection, context, pointer) {
   if (collection.itemShape === "record") {
-    fail("MECHANICS_COLLECTION_ITEM_SHAPE_MISMATCH", `${pointer}/collection`, "entity selector requires an entity collection");
+    // The public selector schema is shared with entity collections. Record-map
+    // selection deliberately admits only logical fields: object types and
+    // facets have no meaning for a closed record and must fail closed instead
+    // of being interpreted as missing physical properties.
+    if (selector.objectTypes !== undefined) {
+      fail(
+        "MECHANICS_COLLECTION_ITEM_SHAPE_MISMATCH",
+        `${pointer}/objectTypes`,
+        "record collection selectors cannot declare objectTypes"
+      );
+    }
+    if (selector.facets !== undefined) {
+      fail(
+        "MECHANICS_COLLECTION_ITEM_SHAPE_MISMATCH",
+        `${pointer}/facets`,
+        "record collection selectors cannot declare facets"
+      );
+    }
   }
   const flows = [{ audience: collection.audienceRef, integrity: "server" }];
   if (selector.objectTypes) {
@@ -3300,7 +3327,9 @@ function checkSelector(selector, collection, context, pointer) {
   }
   flows.push(...checkFieldExpressions(selector.facets, "facet", collection, context, `${pointer}/facets`, false));
   for (const [fieldId, condition] of Object.entries(selector.attributes || {})) {
-    const field = requireField(collection, fieldId, "attribute", `${pointer}/attributes/${escapePointer(fieldId)}`);
+    const field = collection.itemShape === "record"
+      ? requireCollectionField(collection, fieldId, `${pointer}/attributes/${escapePointer(fieldId)}`)
+      : requireField(collection, fieldId, "attribute", `${pointer}/attributes/${escapePointer(fieldId)}`);
     const expression = isRecord(condition) && typeof condition.operator === "string" ? condition.value : condition;
     const checked = checkExpression(expression, context, `${pointer}/attributes/${escapePointer(fieldId)}`);
     flows.push(checked.flow);

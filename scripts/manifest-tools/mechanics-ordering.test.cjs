@@ -1,5 +1,5 @@
 /**
- * Neutral publication tests for bounded entity ordering.
+ * Neutral publication tests for bounded typed-collection ordering.
  *
  * The fixture deliberately uses generic entities, owners and measurements.
  * It proves the reusable Mechanics contract without importing any rule or
@@ -190,6 +190,164 @@ test("schema and checker accept lexicographic current, id-field relation and agg
   assert.equal(checked.costs.order.scannedEntities, 52);
   assert.equal(checked.costs.order.algorithmWork, 164);
   assert.equal(checked.costs.order.resultEntities, 24);
+});
+
+test("checker budgets record-map ordering across current, related and aggregate fields", () => {
+  const mechanics = createOrderingMechanics(orderStep([
+    {
+      source: { kind: "current-field", field: "rank" },
+      direction: "ascending",
+      missing: "error"
+    },
+    {
+      source: {
+        kind: "related-field",
+        referenceField: "ownerRef",
+        collection: "owners",
+        field: "priority"
+      },
+      direction: "descending",
+      missing: "last"
+    },
+    {
+      source: {
+        kind: "related-aggregate",
+        collection: "measurements",
+        join: {
+          current: { kind: "stable-id" },
+          relatedField: "entityRef"
+        },
+        aggregate: "count"
+      },
+      direction: "descending",
+      missing: "error"
+    },
+    {
+      source: {
+        kind: "related-aggregate",
+        collection: "measurements",
+        join: {
+          current: { kind: "stable-id" },
+          relatedField: "entityRef"
+        },
+        aggregate: "sum",
+        valueField: "amount"
+      },
+      direction: "descending",
+      missing: "last"
+    }
+  ]));
+  mechanics.stateModel.collections.records = {
+    itemShape: "record",
+    audienceRef: "public",
+    storage: { root: "public", segments: ["records"] },
+    capacity: 8,
+    stableKey: "map-key",
+    fields: {
+      rank: {
+        storage: { kind: "path", path: ["rank"] },
+        valueType: "core.integer",
+        access: "read-only"
+      },
+      status: {
+        storage: { kind: "path", path: ["status"] },
+        valueType: "core.string",
+        access: "read-only"
+      },
+      ownerRef: {
+        storage: { kind: "path", path: ["ownerRef"] },
+        valueType: "core.optional-string",
+        access: "read-only"
+      }
+    }
+  };
+  const selector = mechanics.plans.order.transaction.steps[0].selector;
+  selector.collection = "records";
+  selector.attributes = {
+    status: { op: "value.literal", value: "active" }
+  };
+  finalizeMechanics(mechanics);
+
+  const schema = validateMechanicsSchema(mechanics);
+  assert.equal(schema.valid, true, JSON.stringify(schema.errors));
+  const checked = checkMechanicsBundle(mechanics);
+
+  assert.equal(checked.costs.order.scannedEntities, 84);
+  assert.equal(checked.costs.order.algorithmWork, 236);
+  assert.equal(checked.costs.order.resultEntities, 24);
+});
+
+test("checker admits only a public record-map collection over the whole players root", () => {
+  const accepted = createOrderingMechanics();
+  accepted.stateModel.collections.records = {
+    itemShape: "record",
+    audienceRef: "public",
+    storage: { root: "players", segments: [] },
+    capacity: 8,
+    stableKey: "map-key",
+    fields: {
+      rank: {
+        storage: { kind: "path", path: ["rank"] },
+        valueType: "core.integer",
+        access: "read-only"
+      }
+    }
+  };
+  finalizeMechanics(accepted);
+  assert.doesNotThrow(() => checkMechanicsBundle(accepted));
+
+  const entityCollection = createOrderingMechanics();
+  entityCollection.stateModel.collections.entities.storage = { root: "players", segments: [] };
+  finalizeMechanics(entityCollection);
+  expectSemanticCode(entityCollection, "MECHANICS_AUDIENCE_STORAGE_MISMATCH");
+
+  for (const audienceRef of ["actor", "server"]) {
+    const restricted = structuredClone(accepted);
+    restricted.stateModel.collections.records.audienceRef = audienceRef;
+    finalizeMechanics(restricted);
+    expectSemanticCode(restricted, "MECHANICS_AUDIENCE_STORAGE_MISMATCH");
+  }
+
+  const broadEndpoint = createOrderingMechanics();
+  broadEndpoint.stateModel.endpoints.players = {
+    audienceRef: "public",
+    storage: { root: "players", segments: [] },
+    valueType: "core.string",
+    access: "read-only"
+  };
+  finalizeMechanics(broadEndpoint);
+  expectSemanticCode(broadEndpoint, "MECHANICS_AUDIENCE_STORAGE_MISMATCH");
+});
+
+test("record-map selectors reject entity-only objectTypes and facets", () => {
+  for (const [fieldName, value] of [
+    ["objectTypes", ["fixture.entity"]],
+    ["facets", { active: { op: "value.literal", value: true } }]
+  ]) {
+    const mechanics = createOrderingMechanics();
+    mechanics.stateModel.collections.records = {
+      itemShape: "record",
+      audienceRef: "public",
+      storage: { root: "public", segments: ["records"] },
+      capacity: 8,
+      stableKey: "map-key",
+      fields: {
+        rank: {
+          storage: { kind: "path", path: ["rank"] },
+          valueType: "core.integer",
+          access: "read-only"
+        }
+      }
+    };
+    const selector = mechanics.plans.order.transaction.steps[0].selector;
+    selector.collection = "records";
+    selector[fieldName] = value;
+    finalizeMechanics(mechanics);
+
+    const schema = validateMechanicsSchema(mechanics);
+    assert.equal(schema.valid, true, JSON.stringify(schema.errors));
+    expectSemanticCode(mechanics, "MECHANICS_COLLECTION_ITEM_SHAPE_MISMATCH");
+  }
 });
 
 test("ordering aggregate shape is closed and distinguishes count from numeric aggregates", () => {

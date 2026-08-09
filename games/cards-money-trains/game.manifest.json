@@ -1040,7 +1040,7 @@
         "planRef": "cargo.load"
       },
       "invocation": "external",
-      "definitionHash": "sha256:e6c3c85137786c9cfdf6cb07787686d7ac8a3820e6d9a023d52484c11700ee3a"
+      "definitionHash": "sha256:81d12f0e5ec58f5e8b069a6f5852fceeab540667e230cdaa6a26b743eb6dfd3b"
     },
     "cargo.phase.finish": {
       "capabilityFamily": "runtime.server",
@@ -1059,7 +1059,7 @@
         "planRef": "cargo.phase.finish"
       },
       "invocation": "external",
-      "definitionHash": "sha256:85fe2bf9275a14138a19b4de1352fcf26178d1c23a628ad63fcc745c0b51ad8f"
+      "definitionHash": "sha256:52754e08c1f79d46c303ce3974abb08510c4bea358d862868ebd724c6ffa0250"
     },
     "settlement.cargo.deliver": {
       "capabilityFamily": "runtime.server",
@@ -1095,7 +1095,7 @@
         "planRef": "settlement.cargo.deliver"
       },
       "invocation": "external",
-      "definitionHash": "sha256:e0ac7b79b584ea43120cee574aa9a3573b854bdef92c7e32fcbe70a2c86249e3"
+      "definitionHash": "sha256:3c3462da5d1fea578fc6f6ba1bc5879f383447b5bf98d7c87866163a955062c7"
     },
     "settlement.phase.finish": {
       "capabilityFamily": "runtime.server",
@@ -1114,7 +1114,7 @@
         "planRef": "settlement.phase.finish"
       },
       "invocation": "external",
-      "definitionHash": "sha256:18c48bc3f841e49ef688d9138fbb6efbc42400f130b678f33bfd54827196d730"
+      "definitionHash": "sha256:3be8ba4027b8b60d94752a8679de4ee9f5788f0cb738befabc0ea664bbbad752"
     },
     "technical.news.apply.24": {
       "capabilityFamily": "runtime.server",
@@ -1134,7 +1134,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:e19c5afed0a8f24209450ebc605a0493d4c7a8d5dbd065d3699714b548a454ab"
+      "definitionHash": "sha256:9b5c7ac839bfab78120111cc7c8d3791c25d590cbd595c58aad1348c95708b91"
     },
     "technical.news.apply.11": {
       "capabilityFamily": "runtime.server",
@@ -1154,7 +1154,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:0e9bc41773c7b3f45fc246130afa70fe29aeaf5e2f8e3f99038cb432f5b8acf7"
+      "definitionHash": "sha256:2af20405eb5d4d008a455b380211e36f769a7dfd6f6c5b70dffc0a1df4b56c9c"
     },
     "technical.cargo.load": {
       "capabilityFamily": "runtime.server",
@@ -1203,7 +1203,7 @@
         "planRef": "technical.cargo.load"
       },
       "invocation": "external",
-      "definitionHash": "sha256:d9c2757e33314ac4794a442fa7813b2fd1a5a22d444d73934dfc34b1ccd43be3"
+      "definitionHash": "sha256:759cda867ada567f97d7c1bb1c3a3d6289da9a461e29a45ab3206a2878fd64ff"
     },
     "technical.operations.attach": {
       "capabilityFamily": "runtime.server",
@@ -1253,7 +1253,7 @@
         "planRef": "technical.operations.attach"
       },
       "invocation": "external",
-      "definitionHash": "sha256:5772437d773cc77f50eef61582a86117883e48c27c0781834b05612f7201fe4f"
+      "definitionHash": "sha256:f1cdc8860e2de0d5c9f2391fc32cac5ea1373a04fe59191328cbedcc413b1491"
     },
     "technical.operations.move": {
       "capabilityFamily": "runtime.server",
@@ -1303,7 +1303,7 @@
         "planRef": "technical.operations.move"
       },
       "invocation": "external",
-      "definitionHash": "sha256:505fae05ae278c42a11403654b7cab5a1210ea0eaf93bd310acdde6972e0f6e3"
+      "definitionHash": "sha256:0181dd5aafe2cbeeb90b5949e9ded728dd7b1731779083c098fe5b33aab64348"
     },
     "technical.cargo.deliver": {
       "capabilityFamily": "runtime.server",
@@ -1352,7 +1352,7 @@
         "planRef": "technical.cargo.deliver"
       },
       "invocation": "external",
-      "definitionHash": "sha256:0899f7442d5d41b7c5c1a5761bba1f98bbca961d5c3320b41fa1a78e7e2a0419"
+      "definitionHash": "sha256:89f5efaf12d87a0c9690a1fd912fec9990b64d4c093e75f930260037bd23f391"
     },
     "session.finish.request": {
       "capabilityFamily": "runtime.server",
@@ -1372,7 +1372,7 @@
         "planRef": "session.finish.request"
       },
       "invocation": "external",
-      "definitionHash": "sha256:b3e549d3147f00d667deff3af8eae94d30ef5cfa5a4aaa05952b57764e433ce4"
+      "definitionHash": "sha256:5ca6a68beaaaf8de910b026797a9d4c2a4dfe4539c648cb6ec1ded8ae162deef"
     },
     "session.finish.cancel": {
       "capabilityFamily": "runtime.server",
@@ -1392,7 +1392,7 @@
         "planRef": "session.finish.cancel"
       },
       "invocation": "external",
-      "definitionHash": "sha256:dd7f37e2bd8bee24b041a37b777cf652e764bf0a1aa8d33155186ca395097bd9"
+      "definitionHash": "sha256:527276c8ee27d3531f968576945d4860803f2d5d975e3277b5f01cf2963e432e"
     },
     "session.finish.confirm": {
       "capabilityFamily": "runtime.server",
@@ -1412,7 +1412,7 @@
         "planRef": "session.finish.confirm"
       },
       "invocation": "external",
-      "definitionHash": "sha256:785bb20612fa50c2245959e596cd8c818d11082e740c5d722acc9dfb96d44062"
+      "definitionHash": "sha256:8418093b081bfe8c446171a4923ceeb8179a340412f9507caa82e5e5e40d3118"
     },
     "methodology.pause.first.start": {
       "capabilityFamily": "runtime.server",
@@ -1432,7 +1432,7 @@
         "planRef": "methodology.pause.first.start"
       },
       "invocation": "external",
-      "definitionHash": "sha256:ba05d87388aca1fb6dcef4ca1dc7da6c40f000e9a0c26af7e60cda1116ec820b"
+      "definitionHash": "sha256:8f5dae71f2f2066fefc6e42b113ca1bd17724338e8d57f094f772ddaf4eb5bd9"
     },
     "methodology.pause.first.defer": {
       "capabilityFamily": "runtime.server",
@@ -1452,7 +1452,7 @@
         "planRef": "methodology.pause.first.defer"
       },
       "invocation": "external",
-      "definitionHash": "sha256:ab5950fcd3d3acf5419084451bef1b394198b8d4c1411fa343be4daa23d59a3f"
+      "definitionHash": "sha256:2367b33d37a0da6504433de1447d76362c013b8d58a0bfe0b05e43892799430b"
     },
     "methodology.pause.first.complete": {
       "capabilityFamily": "runtime.server",
@@ -1472,7 +1472,7 @@
         "planRef": "methodology.pause.first.complete"
       },
       "invocation": "external",
-      "definitionHash": "sha256:3367576725698395ae1b60bbd08706c97c659cce51b5dabf01ac6c07bbb754ac"
+      "definitionHash": "sha256:91ce462f871b6d4c79306d2335c5fec8b2f15cca73325232f5376031b898883b"
     },
     "methodology.pause.second.start": {
       "capabilityFamily": "runtime.server",
@@ -1492,7 +1492,7 @@
         "planRef": "methodology.pause.second.start"
       },
       "invocation": "external",
-      "definitionHash": "sha256:8a02117eccd5232c669712a3f4f20c5b085c254642d6b82cb457fb3ec1355b46"
+      "definitionHash": "sha256:76e5d9804f495131297ea8186896923b2e30b4de8aee84e104de79e97ae32534"
     },
     "methodology.pause.second.defer": {
       "capabilityFamily": "runtime.server",
@@ -1512,7 +1512,7 @@
         "planRef": "methodology.pause.second.defer"
       },
       "invocation": "external",
-      "definitionHash": "sha256:f161153120d4acb3123adabb39ff973f68ac985e906e0c90746b2d04d8284495"
+      "definitionHash": "sha256:2bf8d6165b3a41d2d2aadecf13c63f186327d71dc9dfdea56e7044652df6c1a7"
     },
     "methodology.pause.second.complete": {
       "capabilityFamily": "runtime.server",
@@ -1532,7 +1532,7 @@
         "planRef": "methodology.pause.second.complete"
       },
       "invocation": "external",
-      "definitionHash": "sha256:4a627ec9c8ef9139f801914beea8ec873ea46b89b8a923cbf2c767b33415ca10"
+      "definitionHash": "sha256:38ef009f4e62df3222714adf09fe7b2a8ec80e339a29afb34765f9d84c8af857"
     },
     "session.setup.team.add.logistics-company": {
       "capabilityFamily": "runtime.server",
@@ -1580,7 +1580,7 @@
         "planRef": "session.setup.team.add.logistics-company"
       },
       "invocation": "external",
-      "definitionHash": "sha256:d3dc0e83f77a492945954d325a03c7274e9f857a5176442308b660ccbb23c4cc"
+      "definitionHash": "sha256:6d5f0a6f8eba4db394967ee97b11d4f7df9299ab7367b89cf412064209e44dd2"
     },
     "session.setup.team.add.locomotive-guild": {
       "capabilityFamily": "runtime.server",
@@ -1628,7 +1628,7 @@
         "planRef": "session.setup.team.add.locomotive-guild"
       },
       "invocation": "external",
-      "definitionHash": "sha256:e40b5ceba9e1fc46ad16efcfa7d994c72d2a8ff7855d3e4e93fc507ae9a882b7"
+      "definitionHash": "sha256:5acfbce8ee1dc5f3cd2a4d7d8dc3658b51c40667d08cba12272d2c9d1011430f"
     },
     "session.setup.finalize": {
       "capabilityFamily": "runtime.server",
@@ -1648,7 +1648,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:97ec0610cbb1c855833e09e4e1e2ae9e17d115800206aadac96701b79bc9a3b4"
+      "definitionHash": "sha256:030747d888bda4550853e5538073d3b499368dc6bf1abffd59ae36f7e80f7ca2"
     },
     "session.setup.place.wagon": {
       "capabilityFamily": "runtime.server",
@@ -1698,7 +1698,7 @@
         "planRef": "session.setup.place.wagon"
       },
       "invocation": "external",
-      "definitionHash": "sha256:455597a11c899bcebd1d616738ffe9d4c33b54666e44b53db5476b343c4e3d4e"
+      "definitionHash": "sha256:e5e91f8052168b258c9cc9f6df3b11af9237869f8eb3c83f70e19069756ad472"
     },
     "session.setup.place.locomotive": {
       "capabilityFamily": "runtime.server",
@@ -1748,7 +1748,7 @@
         "planRef": "session.setup.place.locomotive"
       },
       "invocation": "external",
-      "definitionHash": "sha256:a38e370da4b52cbd01ba2f77e5f62ec18a2398c3b828e2ae730e065b736404bc"
+      "definitionHash": "sha256:366ec50ba07a3a22479e5380c25e3f8b5b6fef14288be649e55cea50844cb8d7"
     },
     "facilitator.economy.adjust.credit": {
       "capabilityFamily": "runtime.server",
@@ -1789,7 +1789,7 @@
         "planRef": "facilitator.economy.adjust.credit"
       },
       "invocation": "external",
-      "definitionHash": "sha256:9c1562db7f0c5301565ae1a3f2d91c74573fa3f4d780542be7d1b31a41755e1e"
+      "definitionHash": "sha256:154aae71389a080f4b6d7a4bd147bc91317685533ceddf865dd10e0afe6ecb7a"
     },
     "facilitator.economy.adjust.debit": {
       "capabilityFamily": "runtime.server",
@@ -1830,7 +1830,7 @@
         "planRef": "facilitator.economy.adjust.debit"
       },
       "invocation": "external",
-      "definitionHash": "sha256:4f9de7a91a94fda5846f5c8f7b5e7641091fae1dbf9d3077fac2b05a605567d7"
+      "definitionHash": "sha256:724abbccef6786a478b4602dce7f285407870763a056b10d90bd094600d865d3"
     },
     "facilitator.economy.loan.issue": {
       "capabilityFamily": "runtime.server",
@@ -1871,7 +1871,7 @@
         "planRef": "facilitator.economy.loan.issue"
       },
       "invocation": "external",
-      "definitionHash": "sha256:727d92ba8cba9fb6699d541420e0ddf654636f58ef51701bcffe60e96c56c826"
+      "definitionHash": "sha256:7c99dea9a49b2bcc970e05be8ebd5e87548df724b44a27b983afcd760af113a7"
     },
     "facilitator.economy.loan.repay": {
       "capabilityFamily": "runtime.server",
@@ -1912,7 +1912,7 @@
         "planRef": "facilitator.economy.loan.repay"
       },
       "invocation": "external",
-      "definitionHash": "sha256:8839986a942405971be167c88099af14b0d3574ee497dcf1f178a607d7b93c25"
+      "definitionHash": "sha256:74283d9fe000de1d4f5fccbe39bc12608dfbb844c98b9db4349f7cdc62551c02"
     },
     "facilitator.economy.team.exclude": {
       "capabilityFamily": "runtime.server",
@@ -1947,7 +1947,7 @@
         "planRef": "facilitator.economy.team.exclude"
       },
       "invocation": "external",
-      "definitionHash": "sha256:53907475f3aab608a1b9a0d854cc7fb07c995cd2f51c1b491ebf252d3d54736a"
+      "definitionHash": "sha256:782be899a3474ae53899e24390a3b0798087edf0c525ce3ce73505e77a5d4b8b"
     },
     "session.play.start": {
       "capabilityFamily": "runtime.server",
@@ -1967,7 +1967,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:b90bd6f8586cef3cc1666924845e66c45ce318f65c169a305a8a9049906305cb"
+      "definitionHash": "sha256:f3cf4f216816252649cd9d0213933be9382cd125bac308ef147b8eb89e8b8746"
     },
     "maintenance.pay.locomotive": {
       "capabilityFamily": "runtime.server",
@@ -2002,7 +2002,7 @@
         "planRef": "maintenance.pay.locomotive"
       },
       "invocation": "external",
-      "definitionHash": "sha256:5355fa83eef92804c4f70908d0f14b262bc03a8ec2c907b09188d11f20654097"
+      "definitionHash": "sha256:81fc8262aa84698954d48c648d6f16ba502d556827263ac85cbb0a9108d769c2"
     },
     "maintenance.pay.wagon": {
       "capabilityFamily": "runtime.server",
@@ -2037,7 +2037,7 @@
         "planRef": "maintenance.pay.wagon"
       },
       "invocation": "external",
-      "definitionHash": "sha256:6e50b3e838ad1e362f14607d8ffe97112dcf0517f50bbaed210eb3a518d6cc7f"
+      "definitionHash": "sha256:2febc9664cc9dc18613a974d338c3ef6fa40be9acc17fbf091a44217a1a3888c"
     },
     "maintenance.pay.held-cargo": {
       "capabilityFamily": "runtime.server",
@@ -2072,7 +2072,7 @@
         "planRef": "maintenance.pay.held-cargo"
       },
       "invocation": "external",
-      "definitionHash": "sha256:6a6c416ad814fbea20cb0bb78794dcbea38a6e1c772e065e2a2b2b53e2c46ab9"
+      "definitionHash": "sha256:e420d0a0da157fe08d8afc1959932f8b0e11b203e6e7bde9628706fad470e180"
     },
     "maintenance.phase.finish": {
       "capabilityFamily": "runtime.server",
@@ -2092,7 +2092,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:b1474705fc83a7dc1c9b41db3e076194cbd73bc94edc6a43bf1abaca0d367eb3"
+      "definitionHash": "sha256:d19681d0bcb9fc7f5a0d7d0a7507042378877077a83ef62ec7b9e99dc800a660"
     },
     "market.purchase.wagon": {
       "capabilityFamily": "runtime.server",
@@ -2141,7 +2141,7 @@
         "planRef": "market.purchase.wagon"
       },
       "invocation": "external",
-      "definitionHash": "sha256:5365a821ce6945e849c85a40b2963605180a95b68996097085ae1cfa6fc7072d"
+      "definitionHash": "sha256:14ea83dc860ec1732ef20b91e16cd99545d54ece70eeba21a681234348197cf0"
     },
     "market.purchase.locomotive": {
       "capabilityFamily": "runtime.server",
@@ -2190,7 +2190,7 @@
         "planRef": "market.purchase.locomotive"
       },
       "invocation": "external",
-      "definitionHash": "sha256:35e62d90ed698f3c5631a2a045cb6dff75fcf1eb2e91635876993aaf5e2b86d8"
+      "definitionHash": "sha256:dbe17409a1024d5f165cc6035dd51a7b992a89bb0a97382837a20375f2e986e3"
     },
     "market.sell.wagon": {
       "capabilityFamily": "runtime.server",
@@ -2225,7 +2225,7 @@
         "planRef": "market.sell.wagon"
       },
       "invocation": "external",
-      "definitionHash": "sha256:f18baf35a2ab3a864d05b416aefc2aacf9b44cc59a6a11c70e2964a8d0c3b9b9"
+      "definitionHash": "sha256:04d8629c29be1ae2eecfb5efdac2dea8f505affc8af6834ade66dd8647af66c0"
     },
     "market.sell.locomotive": {
       "capabilityFamily": "runtime.server",
@@ -2260,7 +2260,7 @@
         "planRef": "market.sell.locomotive"
       },
       "invocation": "external",
-      "definitionHash": "sha256:e41240ecd481e2b1009030df2951601bd1efe4e689bb947facc70f353832f642"
+      "definitionHash": "sha256:a987a730773ad6c2e21b7cf3030d2f2df02116c6e46bf1f61502f91cc8b49ce0"
     },
     "market.phase.finish": {
       "capabilityFamily": "runtime.server",
@@ -2280,7 +2280,7 @@
         "planRef": "market.phase.finish"
       },
       "invocation": "external",
-      "definitionHash": "sha256:7596f24e5050a523c1229973fae8ac6f022dbcd5ce9e7124f2c2acd88b99ec19"
+      "definitionHash": "sha256:47bcc7fe5e3446156bc140991e42b9074120389912cb86c1c6cd0f08e54ef5b0"
     },
     "reporting.phase.finish": {
       "capabilityFamily": "runtime.server",
@@ -2300,7 +2300,7 @@
         "planRef": "reporting.phase.finish"
       },
       "invocation": "external",
-      "definitionHash": "sha256:169c31670ec7b61f34103934d22239c708dbff4c516b2b5fc9bf454bd74057de"
+      "definitionHash": "sha256:44ef8ad066205cecaf4cefd4e1cf22156f47d3ebc7b38ad065a05004c947bac9"
     },
     "movement.order.prepare": {
       "capabilityFamily": "runtime.server",
@@ -2320,7 +2320,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:5fbe801232147936db6dc4c5bcaee0a4d7f1de21cde764f0adb85c81649ff7bf"
+      "definitionHash": "sha256:b16b357e13d400f6411bbeff9bfdf833265f4765740f2445f07b043b8ea8b5dd"
     },
     "movement.locomotive.traverse": {
       "capabilityFamily": "runtime.server",
@@ -2356,7 +2356,7 @@
         "planRef": "movement.locomotive.traverse"
       },
       "invocation": "external",
-      "definitionHash": "sha256:54bcdf81813c82678712bc955194adddd4df0fde8b92b04dcc9c5680feece633"
+      "definitionHash": "sha256:84e09e3097246ad2a5666145fc36771e0631da50eb93b8c78766371aa75ad7a2"
     },
     "movement.train.wagon.select": {
       "capabilityFamily": "runtime.server",
@@ -2392,7 +2392,7 @@
         "planRef": "movement.train.wagon.select"
       },
       "invocation": "external",
-      "definitionHash": "sha256:067deef2d55fb5d1fcca560932ff1630cf23ac75b21f6df3bcb2c9792bf40e1d"
+      "definitionHash": "sha256:c8e331b8d7adbab41925b895ad989238a5451e53d4f826287df0269e409bc0d6"
     },
     "movement.train.wagon.unselect": {
       "capabilityFamily": "runtime.server",
@@ -2428,7 +2428,7 @@
         "planRef": "movement.train.wagon.unselect"
       },
       "invocation": "external",
-      "definitionHash": "sha256:318acf3f388ac0c23e7ca447b8e92927b21be0835b10e21dbfc9a68144a44c26"
+      "definitionHash": "sha256:30577a65f879a67a751a501c176f98b4df11dfd569234ae54eab22e7f9f03a27"
     },
     "movement.train.attach.selected": {
       "capabilityFamily": "runtime.server",
@@ -2448,7 +2448,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:56c8ca49a7a5c40f979f16963a1621c0ce8f39a6ac2ca8122f06775b03a8dc8e"
+      "definitionHash": "sha256:8b714b6dfb3b7632fa74ed5b810ed161faa005affc83419ed9c7589cf7e5b3f9"
     },
     "movement.train.attach.manual": {
       "capabilityFamily": "runtime.server",
@@ -2484,7 +2484,7 @@
         "planRef": "movement.train.attach.manual"
       },
       "invocation": "external",
-      "definitionHash": "sha256:685f769c75857a2678b8ad1a89891bed3fbad131f4a9b76bb351d69903c2179b"
+      "definitionHash": "sha256:293c8bc2a832e0b345675fb2f3ec784a55dc7b87aff2fb3c02cea0865667fc93"
     },
     "movement.train.detach.manual": {
       "capabilityFamily": "runtime.server",
@@ -2520,7 +2520,7 @@
         "planRef": "movement.train.detach.manual"
       },
       "invocation": "external",
-      "definitionHash": "sha256:2c92f37b22efe0544deb5912973e204a076c1d16e96e521a77e81efce3461086"
+      "definitionHash": "sha256:ec3655a40edd2f56bf69119b94fcc17bf5809966598f4a34e659222f12f5e216"
     },
     "movement.locomotive.skip": {
       "capabilityFamily": "runtime.server",
@@ -2540,7 +2540,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:d564326349d008a99f1e347a6f50b08cabe618d06c651e3212a7f3b3810eaa0e"
+      "definitionHash": "sha256:e812e1618031ff11c30802425ba814ae9f836280fc02194e2c5143eb0d83a3c7"
     },
     "cards.lifecycle.initialize": {
       "capabilityFamily": "runtime.server",
@@ -2560,7 +2560,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:21a7f1a070d6e3d2aa147df406012c08079556124587cc9de471c318f3ef98ed"
+      "definitionHash": "sha256:7f603b181606e5b243050e2ca8a83e50d1ba292cab191997965d1aed1cfc4a1b"
     },
     "cargo.queue.prepare": {
       "capabilityFamily": "runtime.server",
@@ -2579,7 +2579,7 @@
         "planRef": "cargo.queue.prepare"
       },
       "invocation": "external",
-      "definitionHash": "sha256:20616abbd8f31967aefe14b60ab5a598873a006e65a56dab32e5f63c57fa55a0"
+      "definitionHash": "sha256:051e8ba48bbc9436382cbac0473af2415d6d8d2e2522eeb670cb8f0fa4e4fa72"
     },
     "cargo.offer.draw": {
       "capabilityFamily": "runtime.server",
@@ -2631,7 +2631,7 @@
         "planRef": "cargo.offer.draw"
       },
       "invocation": "external",
-      "definitionHash": "sha256:ded463ec10456ce0254aa4c723b52c2882a47f0f66734564f95154a25f643d12"
+      "definitionHash": "sha256:98bcf50eb4764d6cde54288f503b2b5c178e40eb724ffdd9c6c0c239ff20bb95"
     },
     "cargo.offer.select": {
       "capabilityFamily": "runtime.server",
@@ -2696,7 +2696,7 @@
         "planRef": "cargo.offer.select"
       },
       "invocation": "external",
-      "definitionHash": "sha256:5c20e02c35b10257ce85f62a6f9483591dea7b0e15c24b0baf073dd8330c408f"
+      "definitionHash": "sha256:97e99a74cc622c9f6b6801ac4078d7843cbbb7454f45677c81be3cdf962670d3"
     },
     "cargo.offer.skip": {
       "capabilityFamily": "runtime.server",
@@ -2748,7 +2748,7 @@
         "planRef": "cargo.offer.skip"
       },
       "invocation": "external",
-      "definitionHash": "sha256:1c770af5eb1b7bc393c3efd99cf0cc4b798af971e4b761efaeb66a3bb70d54e5"
+      "definitionHash": "sha256:20900c10b3d8ed2036c19343b4f8fcfcaa3df45f7b6ae08c4e67681c35b737fd"
     },
     "news.lifecycle.first-turn.skip": {
       "capabilityFamily": "runtime.server",
@@ -2768,7 +2768,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:374345ec866120fc3972f58f8526f59af7b2b34d269bac309f85d3f1226229c3"
+      "definitionHash": "sha256:890ffc9e84eb0aceb8431c80e350e36f8c95798629a77b20330abe8269d40985"
     },
     "news.lifecycle.draw": {
       "capabilityFamily": "runtime.server",
@@ -2788,7 +2788,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:27f25cda0d89f232735fb3e99315ff57d927d938bcb2adb831d99c65d01622d3"
+      "definitionHash": "sha256:8e78dd7a67c8b0f205fbcd49c728d901bfafbfa4b90f61f23971868636ea94d8"
     },
     "news.lifecycle.stagnation": {
       "capabilityFamily": "runtime.server",
@@ -2808,7 +2808,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:bdad640884b9e36511105c2bca7e4d3625fdac85b3619591776089d4c96619f8"
+      "definitionHash": "sha256:8bcf83090c8f98b1399f004e54cd3c2ca6a6a29c500e6b154b1abb32e1ee5956"
     },
     "news.cargo-addition.apply.01": {
       "capabilityFamily": "runtime.server",
@@ -2828,7 +2828,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:4b7f9e3d2f194f0e8e72edb4fb0315900376cc5e774d718278b66b5748491880"
+      "definitionHash": "sha256:2105cd98ee661322f9315e52a21e8cfbe310a310415513723f2a10dd0e29d689"
     },
     "news.cargo-addition.apply.02": {
       "capabilityFamily": "runtime.server",
@@ -2848,7 +2848,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:6a2b947f749ea93ce3887186f8dfd1e1375c7829ad45d49656ca7518f4600846"
+      "definitionHash": "sha256:98cf5ea3ce7688c2637d8651c6de8ba49d3021036857cff830d5fd80373da17e"
     },
     "news.cargo-addition.apply.03": {
       "capabilityFamily": "runtime.server",
@@ -2868,7 +2868,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:8ef2c8d66a83b74dd84723d43433911a24c334954c439b12a7fdd63dc7ab7559"
+      "definitionHash": "sha256:2a78f09c2c0a54f8f354e7f5f4a9d08f1b0e2899e14d9ba8e6d06bc34065d351"
     },
     "news.cargo-addition.apply.04": {
       "capabilityFamily": "runtime.server",
@@ -2888,7 +2888,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:e8a942447a5187b0fb4391ef9d2a72aeaf4fd559727472eb36ab067b82fa9673"
+      "definitionHash": "sha256:5df8ef4d051842c889c6232885fe8606cf92749a228d41a20d2bd60ec39a4249"
     },
     "news.cargo-addition.apply.05": {
       "capabilityFamily": "runtime.server",
@@ -2908,7 +2908,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:3de046a31c9525995dd5cf5e676bc76d1dc436aff3daf3f12d48dde79471cf49"
+      "definitionHash": "sha256:02dae8f4df810f98a43f53f0c73a11d90280dd9e2079fde126a475dc8ff81c17"
     },
     "news.cargo-addition.apply.06": {
       "capabilityFamily": "runtime.server",
@@ -2928,7 +2928,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:56f05b73d5a0b659a4be575a0324aa9b2b3ba1715d92c22cb70f10ee59ada97b"
+      "definitionHash": "sha256:3ea6ade0e336174b0f32d9d68b67a5db217af9a1e2aca0667d079c1c588865a0"
     },
     "news.cargo-addition.apply.07": {
       "capabilityFamily": "runtime.server",
@@ -2948,7 +2948,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:7a8b193843798eaade3ca6bdc6ae869d29bc68b0f1577487849dd2bba83833cb"
+      "definitionHash": "sha256:deb6fd9f0413cd5dc2abf81e8f9a6fb2abc88bc797c64cfbfacc51b5d2a8a654"
     },
     "news.cargo-addition.apply.08": {
       "capabilityFamily": "runtime.server",
@@ -2968,7 +2968,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:9dd731dbe2c3691f0e412744f7e4aef2991ed4822cf036cbb8ff4902a2115b2c"
+      "definitionHash": "sha256:4b615b9c3925b7293b79066f061d7d8ba8acc69ca5e779832dfd587aff1a8a83"
     },
     "news.cargo-addition.apply.09": {
       "capabilityFamily": "runtime.server",
@@ -2988,7 +2988,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:2769626381db60c94aa779e1a3455992a43af0c96c9504a7d74eb3cc5363874a"
+      "definitionHash": "sha256:d789a80d7f07eb2b0b78a73fcbeb33e4c5f36c5d1694d93aa452711164cf550a"
     },
     "news.cargo-addition.apply.10": {
       "capabilityFamily": "runtime.server",
@@ -3008,7 +3008,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:324fa37cd9d5b9e2e57fdadaa80e51f0d327ca642df540655cd324c6c6b21641"
+      "definitionHash": "sha256:1720e26d659d96c86c29af2b8ef36f680ba62deb1e9260e35f515d57c93baed9"
     },
     "news.effect.apply.11": {
       "capabilityFamily": "runtime.server",
@@ -3027,7 +3027,7 @@
         "planRef": "news.effect.apply.11"
       },
       "invocation": "external",
-      "definitionHash": "sha256:e7b7756c24c7a1243c7cc654b2ef89b4f42b0f317b1671689687a3c7d827a52d"
+      "definitionHash": "sha256:2c04c13e1d5c9a52f72bb21869679b0b4886b4e173d86d8060e5ff3d8b25134f"
     },
     "news.effect.apply.12": {
       "capabilityFamily": "runtime.server",
@@ -3046,7 +3046,7 @@
         "planRef": "news.effect.apply.12"
       },
       "invocation": "external",
-      "definitionHash": "sha256:d73830be60be86ca4fe44ac2702447cb0e72e99c177a81a4c2c8d43021ff54b1"
+      "definitionHash": "sha256:eddf8c84230b4333e4b073912bc0b6282603f6ca4dd9a0c2c9746aa6c3678e2e"
     },
     "news.effect.apply.13": {
       "capabilityFamily": "runtime.server",
@@ -3065,7 +3065,7 @@
         "planRef": "news.effect.apply.13"
       },
       "invocation": "external",
-      "definitionHash": "sha256:684aaab46e9fcbb1d209cf6e22a72d677756f8bc4ec9e0701e1aba8a08044a60"
+      "definitionHash": "sha256:32ec3812076b3dbca867118ed580c0f4b785269d8a8636c7848e9aa987952a59"
     },
     "news.effect.apply.15": {
       "capabilityFamily": "runtime.server",
@@ -3084,7 +3084,7 @@
         "planRef": "news.effect.apply.15"
       },
       "invocation": "external",
-      "definitionHash": "sha256:ce9d5acfeb1252ad00c69ed7fc74f84594b45de82ae92c07c371637cbd29ecfe"
+      "definitionHash": "sha256:3b1bfdbeca14e6856cb29c7c78a72a442ef3035c5e2f53d164d15e67418a1755"
     },
     "news.effect.apply.17": {
       "capabilityFamily": "runtime.server",
@@ -3103,7 +3103,7 @@
         "planRef": "news.effect.apply.17"
       },
       "invocation": "external",
-      "definitionHash": "sha256:cd6a90be19ad03b98c096606160794a753d2efb3f797d26e6915b81fffed47b5"
+      "definitionHash": "sha256:c5f4b35858566277d36ff26274be1f0a0062eea303ddcd9a548a5b0197a44df0"
     },
     "news.effect.apply.18": {
       "capabilityFamily": "runtime.server",
@@ -3122,7 +3122,7 @@
         "planRef": "news.effect.apply.18"
       },
       "invocation": "external",
-      "definitionHash": "sha256:cc930508be7611d22d33297121a64fd9126601a0c7101813e7dbe924806e506e"
+      "definitionHash": "sha256:5340e000d470918fc633390c70a77cff36bc3126eb5099db3b206e582382bf66"
     },
     "news.effect.apply.20": {
       "capabilityFamily": "runtime.server",
@@ -3141,7 +3141,7 @@
         "planRef": "news.effect.apply.20"
       },
       "invocation": "external",
-      "definitionHash": "sha256:d21a64eb87277c009351397147728b3f42a141141cd097fdf21940b05d07ccd9"
+      "definitionHash": "sha256:dd799a160a33bf78e4f7955a9dac2be5608c5a81988d73362a0e19e67754265e"
     },
     "news.effect.apply.21": {
       "capabilityFamily": "runtime.server",
@@ -3160,7 +3160,7 @@
         "planRef": "news.effect.apply.21"
       },
       "invocation": "external",
-      "definitionHash": "sha256:05f19bd8e0821ddb5372f6d4a035ce614896bb310af8cb3204e5d5f88d53f898"
+      "definitionHash": "sha256:100711d6407d02207d3b2e51b41033ed32bfe4ac0e2150cb8f502723571adbf4"
     },
     "news.effect.apply.14": {
       "capabilityFamily": "runtime.server",
@@ -3179,7 +3179,7 @@
         "planRef": "news.effect.apply.14"
       },
       "invocation": "external",
-      "definitionHash": "sha256:73b612506e8d88a289341fcd0c6154dc36d511c3d5c24a517874515f56910130"
+      "definitionHash": "sha256:6881f72f0265ca7cd4b06520a3a19f198cc1192763e6d17bd10e28e987a24713"
     },
     "news.effect.apply.16": {
       "capabilityFamily": "runtime.server",
@@ -3198,7 +3198,7 @@
         "planRef": "news.effect.apply.16"
       },
       "invocation": "external",
-      "definitionHash": "sha256:da8942d016de834e587bbd658591418f75c29af4adeec5a87ac8c33461b20886"
+      "definitionHash": "sha256:ee9df4647efad70e4e025da2e252d630c32a439e9165740d7a210bf9c8d9e4d4"
     },
     "news.effect.19.prepare-team": {
       "capabilityFamily": "runtime.server",
@@ -3233,7 +3233,7 @@
         "planRef": "news.effect.19.prepare-team"
       },
       "invocation": "external",
-      "definitionHash": "sha256:7b1c64dddba366cddeef6be219b961bdcf840882354fb93b5b4697a0e76d07b8"
+      "definitionHash": "sha256:b3fad4ff00372e18b507be8a90eff7c33728d66117cb2a0fc5300b631cc11407"
     },
     "news.effect.19.remove-locomotive": {
       "capabilityFamily": "runtime.server",
@@ -3282,7 +3282,7 @@
         "planRef": "news.effect.19.remove-locomotive"
       },
       "invocation": "external",
-      "definitionHash": "sha256:e240b89e0e49bd08e5dea208d5c1b2b58e992fd2defb7cb730697604632371dd"
+      "definitionHash": "sha256:e5a407bc7050440aca3026751b542372e93a41209a8d35b065f893bfeaa1f74b"
     },
     "news.effect.19.remove-wagon": {
       "capabilityFamily": "runtime.server",
@@ -3331,7 +3331,7 @@
         "planRef": "news.effect.19.remove-wagon"
       },
       "invocation": "external",
-      "definitionHash": "sha256:c962606c0247daa96414005ab340546107107dabe5c1bc57e7d1d981c64a5c18"
+      "definitionHash": "sha256:1c867afa21f06f90dc15614e147424583da45ef7f740aa6f1833131e1839bf56"
     },
     "news.effect.19.finish": {
       "capabilityFamily": "runtime.server",
@@ -3350,7 +3350,7 @@
         "planRef": "news.effect.19.finish"
       },
       "invocation": "external",
-      "definitionHash": "sha256:0c94422debc67a174b6b88f1e9de281a3a1d4343d64c05bd817dcd0e4957ef4c"
+      "definitionHash": "sha256:6ffd0c504b06480e3ad0280affc3d68e12a23bb3977f062fdf1dafe1309ffc78"
     },
     "news.effect.apply.26": {
       "capabilityFamily": "runtime.server",
@@ -3369,7 +3369,7 @@
         "planRef": "news.effect.apply.26"
       },
       "invocation": "external",
-      "definitionHash": "sha256:aa5c6b569b3561258c157d3e0bc8877530835c11b00d0d06a07ef7ef57671c46"
+      "definitionHash": "sha256:ce92e92176d57bb9ea9db8a7383fdb4372339f74fe94f2692ac7ee8e0b77f710"
     },
     "news.effect.apply.27": {
       "capabilityFamily": "runtime.server",
@@ -3388,7 +3388,7 @@
         "planRef": "news.effect.apply.27"
       },
       "invocation": "external",
-      "definitionHash": "sha256:79939b32d695d94967baa42788fefebddd992487170e5f90b9679447c72482c8"
+      "definitionHash": "sha256:e05772a9e1aa5b7d30306527f07349a4ada45f98dcbdccccd45344fe28795d36"
     },
     "news.effect.apply.22": {
       "capabilityFamily": "runtime.server",
@@ -3407,7 +3407,7 @@
         "planRef": "news.effect.apply.22"
       },
       "invocation": "external",
-      "definitionHash": "sha256:5f5f9280dd6fc4f0769b620e8ac77e43cc9f02b482e31d471699b7352e9d3f00"
+      "definitionHash": "sha256:210fc578b7990edcb942254b92fe06d95ce658542b0c543e0c5e97bb45820e09"
     },
     "news.effect.apply.23": {
       "capabilityFamily": "runtime.server",
@@ -3426,7 +3426,7 @@
         "planRef": "news.effect.apply.23"
       },
       "invocation": "external",
-      "definitionHash": "sha256:48459ebf66b38953a85960930c152f0f0dcf0b1303e844365b40bb97d36638dd"
+      "definitionHash": "sha256:d9d52781bb562609c65b99e0d43c554d14d2b46cd67e7dbb1cae66f5c153c4d6"
     },
     "news.effect.apply.24": {
       "capabilityFamily": "runtime.server",
@@ -3445,7 +3445,7 @@
         "planRef": "news.effect.apply.24"
       },
       "invocation": "external",
-      "definitionHash": "sha256:261a649b78d2740176a1a77f523329cdf6ae88493fdac95f42a7f913b78aae14"
+      "definitionHash": "sha256:a757956818f05030a83ee84bbf4e47ce3226f17bf70044e770faf8d047445989"
     },
     "news.effect.apply.25": {
       "capabilityFamily": "runtime.server",
@@ -3464,7 +3464,7 @@
         "planRef": "news.effect.apply.25"
       },
       "invocation": "external",
-      "definitionHash": "sha256:83035d1ee83c0fd7f5dd6d8b5d8769f752815b44819690595f2a5f9c64d47d7e"
+      "definitionHash": "sha256:7b34ec48216f1980fa2cc1147444f5e9cb5841e80651478dcb1c0a8411f483e8"
     },
     "news.effect.apply.28": {
       "capabilityFamily": "runtime.server",
@@ -3483,7 +3483,7 @@
         "planRef": "news.effect.apply.28"
       },
       "invocation": "external",
-      "definitionHash": "sha256:863bedc6735a5d092b325545bd70edc0d93dbdeb464fe7b6b422f8a65920a7b0"
+      "definitionHash": "sha256:040624aed5467ee6d2ff4fe71f633719f64910bde1e1c4213c7efec191cf7d10"
     },
     "news.effect.apply.29": {
       "capabilityFamily": "runtime.server",
@@ -3502,7 +3502,7 @@
         "planRef": "news.effect.apply.29"
       },
       "invocation": "external",
-      "definitionHash": "sha256:8721448a88425a2c9b38bc5bb60cd3345a03b178e7741816e5194eb77c2baa87"
+      "definitionHash": "sha256:e31bf891fce0b961b1b8412276aa44950ec409c4e189ff7450ccb7522d0bee69"
     },
     "news.effect.apply.30": {
       "capabilityFamily": "runtime.server",
@@ -3521,7 +3521,7 @@
         "planRef": "news.effect.apply.30"
       },
       "invocation": "external",
-      "definitionHash": "sha256:3f6cb6a4e84cee8aa48de2f4b99c0704386ce766c6d5e650e5dee75491879adc"
+      "definitionHash": "sha256:df46190e0508ef48663ca0c46b085500d28ce324d4f7b555e913cfafb00325eb"
     },
     "news.effect.apply.31": {
       "capabilityFamily": "runtime.server",
@@ -3540,7 +3540,7 @@
         "planRef": "news.effect.apply.31"
       },
       "invocation": "external",
-      "definitionHash": "sha256:f2165588f4d624d57cef8e3ad27e9b9320b5689eaba465d57179b62bf30b16d3"
+      "definitionHash": "sha256:d7d1ba72c17297b196b1bb8267f83b7dcb68a42e570b3beffa348c4438207bc7"
     },
     "news.effect.apply.32": {
       "capabilityFamily": "runtime.server",
@@ -3559,7 +3559,7 @@
         "planRef": "news.effect.apply.32"
       },
       "invocation": "external",
-      "definitionHash": "sha256:ec74c397c05d1e666cc223de25318ac6b67ffce2055c4a66b4a5e9715cb4f70f"
+      "definitionHash": "sha256:3988a39b39384d9a77522737aad5bf1342b41a07c192ca204ca9de3827357698"
     },
     "news.effect.apply.33": {
       "capabilityFamily": "runtime.server",
@@ -3578,7 +3578,7 @@
         "planRef": "news.effect.apply.33"
       },
       "invocation": "external",
-      "definitionHash": "sha256:36a9ddfe6c78b2247c8507c65daf6ac3af883bedbb09972bcbe8b419ee4b187d"
+      "definitionHash": "sha256:e076c96e0bc023fc9061ccc52fdcf62abd9f5a5b0af9705f4085d64e5af78484"
     },
     "news.effect.apply.34": {
       "capabilityFamily": "runtime.server",
@@ -3597,7 +3597,7 @@
         "planRef": "news.effect.apply.34"
       },
       "invocation": "external",
-      "definitionHash": "sha256:6b8f0ccace327609af63ae14abcc4216d52c537a774d79fb0b3bff61682fda83"
+      "definitionHash": "sha256:cabdabfc68f4e4e2ef66c5739bc07e503c17fdc6e6357f87fb39a6d3d04e7406"
     },
     "construction.contribution.set": {
       "capabilityFamily": "runtime.server",
@@ -3638,7 +3638,7 @@
         "planRef": "construction.contribution.set"
       },
       "invocation": "external",
-      "definitionHash": "sha256:4052aafc27ec70cfe1e7ba45d9c9a175a1a981d2168775c9d1be47255f1ec48b"
+      "definitionHash": "sha256:a99e98cf69ba6e624d4da64b3d60443a5f86bebbc8418c73cfe6ecf78ec83626"
     },
     "construction.mode.road": {
       "capabilityFamily": "runtime.server",
@@ -3658,7 +3658,7 @@
         "planRef": "construction.mode.road"
       },
       "invocation": "external",
-      "definitionHash": "sha256:35471c5a812fc535e01ad02ff4d68dcc26932be833f589ba397f124fa51c241f"
+      "definitionHash": "sha256:37322918a75312166f5cb6b061d01c6f3079d133c00a6efb6ead87338c051562"
     },
     "construction.mode.waypoint": {
       "capabilityFamily": "runtime.server",
@@ -3678,7 +3678,7 @@
         "planRef": "construction.mode.waypoint"
       },
       "invocation": "external",
-      "definitionHash": "sha256:b6b69953ba9f38107df3f16f40298afe035daf26c1b68911f83907f93a9172c3"
+      "definitionHash": "sha256:da182e7ed43fb953113bb53007ac9bf34145f2b7a076f0d386d3443dd132e071"
     },
     "construction.road.build": {
       "capabilityFamily": "runtime.server",
@@ -3730,7 +3730,7 @@
         "planRef": "construction.road.build"
       },
       "invocation": "external",
-      "definitionHash": "sha256:f426421f25593833e3f47400c7866eaf4b0c81ed1c3d03a8e7110cde6e5b7619"
+      "definitionHash": "sha256:7a96435afdcdfa5b8897306cd4de57d359ac10a33f76cc49e769d4b9e7afbd8c"
     },
     "construction.waypoint.build": {
       "capabilityFamily": "runtime.server",
@@ -3772,7 +3772,7 @@
         "planRef": "construction.waypoint.build"
       },
       "invocation": "external",
-      "definitionHash": "sha256:3f837be2fe7eb7d7231070e890f0c70fb35d44a8d23ceee89ce217ec99859b90"
+      "definitionHash": "sha256:3cdbc440a000264edb07ed0770de5d146ef911ac580fc52d0c90f184a936cccd"
     },
     "construction.phase.finish": {
       "capabilityFamily": "runtime.server",
@@ -3792,7 +3792,7 @@
         "planRef": "construction.phase.finish"
       },
       "invocation": "external",
-      "definitionHash": "sha256:5eed066ff7b70da51e98ec49a14b337da50eecfabff6eda6a39f634a39151738"
+      "definitionHash": "sha256:fe8f513606580c646f26e21abb0fb6e76df287481f2a1339cfc1d4c44c4f1dde"
     }
   },
   "state": {
@@ -11380,21 +11380,21 @@
     "moduleLock": {
       "cubica.core": {
         "moduleId": "cubica.core",
-        "moduleVersion": "1.5.0",
-        "artifactHash": "sha256:0065bc8cbb8c8c732db316306899bd479f027403c6baa14ce6d69980bbc2417a"
+        "moduleVersion": "1.6.0",
+        "artifactHash": "sha256:201e2615cecd392f6b60a9064609dd2325a0957613cdd6bfdb360717dbfad529"
       },
       "cubica.random": {
         "moduleId": "cubica.random",
-        "moduleVersion": "1.1.0",
-        "artifactHash": "sha256:9eca705021658ba8cf6cfd34b84364f28acf008ab54c6588729d08befce12d10",
+        "moduleVersion": "1.1.1",
+        "artifactHash": "sha256:82874667a23abfc02646dfa3d414e9568ce3d55d3d82db6488d7bf770d523968",
         "algorithmVersions": {
           "randomProvider": "server-crypto-random-v1"
         }
       },
       "cubica.ordering": {
         "moduleId": "cubica.ordering",
-        "moduleVersion": "1.2.0",
-        "artifactHash": "sha256:cf917bc7a194795681d479b8154d363e1299fb8d4103b08362a8df2a28a43b20",
+        "moduleVersion": "1.3.0",
+        "artifactHash": "sha256:27491a4d2c549952333a4a125358b2126b5345938aef7f62f3d098d3403e865c",
         "algorithmVersions": {
           "ordering": "lexicographic-bounded-v1",
           "tieBreak": "canonical-groups-server-crypto-random-v1"
@@ -11402,16 +11402,16 @@
       },
       "cubica.deck": {
         "moduleId": "cubica.deck",
-        "moduleVersion": "1.3.0",
-        "artifactHash": "sha256:f0c2c85018625d43262646e4c725a9e6b729bf477b1495a53761f61a60207b7f",
+        "moduleVersion": "1.3.1",
+        "artifactHash": "sha256:343beb3c52d4228b26204ecfb3ff44d2791488ad4524ae1d9af570deb3217cff",
         "algorithmVersions": {
           "shuffle": "fisher-yates-server-crypto-random-v1"
         }
       },
       "cubica.graph": {
         "moduleId": "cubica.graph",
-        "moduleVersion": "2.4.0",
-        "artifactHash": "sha256:04aee4076c66b07187addf69df5cd4e4b993faff4316a326d1b90d98898c2d82",
+        "moduleVersion": "2.4.1",
+        "artifactHash": "sha256:eb1326573fe028b0bad7ce0e0d8375d10800221df6ad47a8083bf992e7b406f5",
         "algorithmVersions": {
           "regionPath": "region-segment-minimum-v3",
           "edgePosition": "polyline-arc-length-v1",
@@ -11421,8 +11421,8 @@
       },
       "cubica.relations": {
         "moduleId": "cubica.relations",
-        "moduleVersion": "1.0.5",
-        "artifactHash": "sha256:0b7cacfa993d254b4b4e002cbf79bad6885788d45d49c616a560fea530459dc2"
+        "moduleVersion": "1.0.6",
+        "artifactHash": "sha256:602a32f2b8b01c8e4ef1b623fbf2d815e2bf5a37708906accbfcec05ae460bc9"
       }
     },
     "stateModel": {
@@ -15242,7 +15242,7 @@
     },
     "plans": {
       "cargo.load": {
-        "planHash": "sha256:c96965d1f2b1d7c6f82500f95cbe10898e2939ab04402d9fe649d9bf313e5cf2",
+        "planHash": "sha256:ba267f87ab4d829209fc3623fcb1264553b4ceaf9816093e7ce53e3529c273f1",
         "transaction": {
           "steps": [
             {
@@ -15726,7 +15726,7 @@
         }
       },
       "cargo.phase.finish": {
-        "planHash": "sha256:8f8690696405159a07fb2496382ac4e7bf57aad68ce09aea07ed3031bc0141de",
+        "planHash": "sha256:4795847093158a2afa06262a19121d0086dfa739a68fbf710963d79d1b783f62",
         "transaction": {
           "steps": [
             {
@@ -15960,7 +15960,7 @@
         }
       },
       "settlement.cargo.deliver": {
-        "planHash": "sha256:e87793c02f6d88e9efbc06581a25c7115bd58c5a36eb0647bcb43ecf63730943",
+        "planHash": "sha256:d38f2eb007142c4bab240cb7a9ad51ac2c414663a575c73d9b19949e58caf187",
         "transaction": {
           "steps": [
             {
@@ -17089,7 +17089,7 @@
         }
       },
       "settlement.phase.finish": {
-        "planHash": "sha256:73cd0926c4e0366c9a5542c7a185ebe3c6719cbb4abcac20c6b331c080e98e06",
+        "planHash": "sha256:2bcd5bd7342fcd3ca2fb2326f4458237080da3115d5f93201dcea5a94a8fa925",
         "transaction": {
           "steps": [
             {
@@ -17195,7 +17195,7 @@
         }
       },
       "technical.news.apply.24": {
-        "planHash": "sha256:80a24c8a75f1324866b7e9a3aad3d6d494d2ec44e0e70995c02ac901e00e8226",
+        "planHash": "sha256:b3b2a65e039d99737d9d73347b2d9b1b0add9a2d373a3eca3fcd46f17df8ca1a",
         "transaction": {
           "steps": [
             {
@@ -17292,7 +17292,7 @@
         }
       },
       "technical.news.apply.11": {
-        "planHash": "sha256:dac70d8fddf4fd799e7f7b33a1fe6816a6c6ca930cfe76c81fab1de4a5e7934d",
+        "planHash": "sha256:06659dc49dda7c3bbdf0a92c3083c32d6fdb06a0fd18aa577cc64b7a5b057105",
         "transaction": {
           "steps": [
             {
@@ -17420,7 +17420,7 @@
         }
       },
       "technical.cargo.load": {
-        "planHash": "sha256:cccd34c972cfa60cf256a415986a1e79e2a5f2ae03b3f4da817499dcafbcd965",
+        "planHash": "sha256:ec6bec3293d0480cd9eda374a7abe64602eebb5f78798e161b8d1657083f2589",
         "transaction": {
           "steps": [
             {
@@ -17842,7 +17842,7 @@
         }
       },
       "technical.operations.attach": {
-        "planHash": "sha256:8987a46c0accd63e054351abcf192506ca80f9671649588aeb423b22e9837135",
+        "planHash": "sha256:b01b012919976b677ee7be18277f040c934c1bf8d41b68fce7dfc3215c38606d",
         "transaction": {
           "steps": [
             {
@@ -17953,7 +17953,7 @@
         }
       },
       "technical.operations.move": {
-        "planHash": "sha256:6cbc0ea9113f31a002ab0962e50ae2a24ec3be7df5994c1e11691f3e5379a879",
+        "planHash": "sha256:5d7130619bb192da55c0be7346e031b1126d6232c39ebee93c07a772e92d1199",
         "transaction": {
           "steps": [
             {
@@ -18062,7 +18062,7 @@
         }
       },
       "technical.cargo.deliver": {
-        "planHash": "sha256:abfec61dfb8978db77baac91569e4c0bf6f3e4ba09f603fa322073a97b3a7571",
+        "planHash": "sha256:dfd44cf685642014e9754df03c5aeaf3cde24572291fbeebc8d65a89ed39926f",
         "transaction": {
           "steps": [
             {
@@ -18862,7 +18862,7 @@
         }
       },
       "session.finish.request": {
-        "planHash": "sha256:d517c5e164ec1360234fd2bf0f7766595e40f4ce14eb8b17468a814b8c2d5107",
+        "planHash": "sha256:ad0f33cf5a3f536e9a844c809402d6f6450005d6035599291d9a664a0316d94e",
         "transaction": {
           "steps": [
             {
@@ -18987,7 +18987,7 @@
         }
       },
       "session.finish.cancel": {
-        "planHash": "sha256:27c8ad097f9ef443efeea76839013c47c860da1ce0cdad8791b80ddd186e2d46",
+        "planHash": "sha256:4d0ae49a2932c8cecdb75aace17cdaea83df9247cdbcb14bf80bbaaffa282c6e",
         "transaction": {
           "steps": [
             {
@@ -19098,7 +19098,7 @@
         }
       },
       "session.finish.confirm": {
-        "planHash": "sha256:6736cdfdeb3bc29f4facbcb9b7cf0421f4539c482f7991596065f92ee1786952",
+        "planHash": "sha256:367f405c96ca2d0afa0f0e21acda9a06dd9137f57e9aa0d61a598894ba4a92ff",
         "transaction": {
           "steps": [
             {
@@ -19590,7 +19590,7 @@
         }
       },
       "methodology.pause.first.start": {
-        "planHash": "sha256:699f092071504ea0ebf245d80f38379516b88050f8a526de941df90c9fe7f3db",
+        "planHash": "sha256:d61af10e55b18ca8c44f3c4e62bfa850eaa66aace5259ecbeae12abeef177269",
         "transaction": {
           "steps": [
             {
@@ -19758,7 +19758,7 @@
         }
       },
       "methodology.pause.first.defer": {
-        "planHash": "sha256:b5450afd637af916072508b04950238a92f9aa7050b020dfff67c570f792fa24",
+        "planHash": "sha256:1a2ef57897e4e9ac8953bd2c4f9f0ee3bef58bc34907d2b98a03d5f2c6ba5d52",
         "transaction": {
           "steps": [
             {
@@ -19926,7 +19926,7 @@
         }
       },
       "methodology.pause.first.complete": {
-        "planHash": "sha256:5927cf4806f41c3bc7face036743e4c0006bbc1c29cde633c9aadaf8fd663cdb",
+        "planHash": "sha256:59273eb10cedf9495049fee64588241eecf1a0ef6839ca0a86da85ea442f04e0",
         "transaction": {
           "steps": [
             {
@@ -20108,7 +20108,7 @@
         }
       },
       "methodology.pause.second.start": {
-        "planHash": "sha256:3511fea20101842a935760151e748e55131293d1146acb5ed0ab68e9be5f0d08",
+        "planHash": "sha256:ae44dbd0d365834bc9bc9f65ab0a9176adc4642bed9605b09034edff81e44ccc",
         "transaction": {
           "steps": [
             {
@@ -20290,7 +20290,7 @@
         }
       },
       "methodology.pause.second.defer": {
-        "planHash": "sha256:3fee5d239d90e4d7d19b2ced0eb45e3639b471b1cd8ac4cc0546cc0790bdb6d6",
+        "planHash": "sha256:8bd1a0b91dabe24cf5b017504a6a72dae748627957842f29a8b5443e6fe8706b",
         "transaction": {
           "steps": [
             {
@@ -20472,7 +20472,7 @@
         }
       },
       "methodology.pause.second.complete": {
-        "planHash": "sha256:d134901e2677962498ac9cb92a3c52b661cd891214d4a682c14cbcdd4d878936",
+        "planHash": "sha256:f5f5c97ddd6123afc5a8b18d4a21abab4ccd4198953470baf3a40960e3478c89",
         "transaction": {
           "steps": [
             {
@@ -20654,7 +20654,7 @@
         }
       },
       "session.setup.team.add.logistics-company": {
-        "planHash": "sha256:0c1a4be9bc80ca2bb9b16377635eac8730e46526c4c49ef720d4fa236faa4271",
+        "planHash": "sha256:e7a81627c522468066a1d5a52f4dbf1dd86447a75f10b34d163cd4efaf6f0907",
         "transaction": {
           "steps": [
             {
@@ -21079,7 +21079,7 @@
         }
       },
       "session.setup.team.add.locomotive-guild": {
-        "planHash": "sha256:95bff2e809fe838ccd1efb9c2e5a9a5df09bae32f56ec4a44883afa8f6616969",
+        "planHash": "sha256:ce20cda254bd6fe8a6b50882182b7b60694f2e43f87c3df9b616986d540efa92",
         "transaction": {
           "steps": [
             {
@@ -21376,7 +21376,7 @@
         }
       },
       "session.setup.finalize": {
-        "planHash": "sha256:f765061f423712310c462b17d4f794e3601760ac9f726f2de5bc42df68224721",
+        "planHash": "sha256:f41bae7a00929419f9cfb6c7d29e04c8acb1cbfa07c224cfa8437bf0589a1f14",
         "transaction": {
           "steps": [
             {
@@ -21991,7 +21991,7 @@
         }
       },
       "session.setup.place.wagon": {
-        "planHash": "sha256:a5eb18c609060e16f5416f0b17d162e4bb59049b05b46184154a80420cb5a874",
+        "planHash": "sha256:1ef82ca7828ab4bfc1c2b58a45c6443454816745011abe461916ceb2f60e290c",
         "transaction": {
           "steps": [
             {
@@ -22513,7 +22513,7 @@
         }
       },
       "session.setup.place.locomotive": {
-        "planHash": "sha256:18ee2e5442ce68efd4257456e6a864141e7aa626cf32d370ce13308539715f34",
+        "planHash": "sha256:d63982aa5b3a0463a2494094e7d5730b7f5532f346e9bdd619a1cdda6aa11255",
         "transaction": {
           "steps": [
             {
@@ -23076,7 +23076,7 @@
         }
       },
       "facilitator.economy.adjust.credit": {
-        "planHash": "sha256:189a7155836e2d2cb2e15d42c37f8617906fcd84c4060eb047ed28c8128108a8",
+        "planHash": "sha256:d5ce3f8134d0c54d481a42c727ff8ddf8fa754f32c6d85f6f58429d16918324d",
         "transaction": {
           "steps": [
             {
@@ -23236,7 +23236,7 @@
         }
       },
       "facilitator.economy.adjust.debit": {
-        "planHash": "sha256:0ebc54910010637df476777c2d5328b5783e88a94e4bee851199ae7ff82d14f2",
+        "planHash": "sha256:8c071b556cbed2bc30218f5ef3c328b80e9ce525788eefde1c868aa8cd51775f",
         "transaction": {
           "steps": [
             {
@@ -23396,7 +23396,7 @@
         }
       },
       "facilitator.economy.loan.issue": {
-        "planHash": "sha256:7d6e9941cd83a2ab03b9fa38da5b5876173182d316565fd97aec3497712f5b08",
+        "planHash": "sha256:49692a8759be313b12c2ae55c970fed58c9db2216544cc18604fb9281e3c6233",
         "transaction": {
           "steps": [
             {
@@ -23574,7 +23574,7 @@
         }
       },
       "facilitator.economy.loan.repay": {
-        "planHash": "sha256:510bb65d780f249a358bb60e24a9b07616cad99b670b6a0095f473aab8360272",
+        "planHash": "sha256:df2f2dedfecd5f21896796b680951f07258477991114d56b2d76aab2394f97fa",
         "transaction": {
           "steps": [
             {
@@ -23785,7 +23785,7 @@
         }
       },
       "facilitator.economy.team.exclude": {
-        "planHash": "sha256:9bfb76ba3c0edb10e26169f51697d00a80dafb7da1d0000aabb7a1183ef8d3fa",
+        "planHash": "sha256:836cb290c7daa31cb4d9ac83649200856d3ace4ead37113eb707a6b5028843f8",
         "transaction": {
           "steps": [
             {
@@ -24960,7 +24960,7 @@
         }
       },
       "session.play.start": {
-        "planHash": "sha256:c6bf1b5b048de413c964fc5a9fd7ed3cfbcbf1bac228304910d0aef412b3628d",
+        "planHash": "sha256:846a6e0c0b1e2691e6930c7d3c31a4661afacfe824b0df7bc10efa2c8b72b6c3",
         "transaction": {
           "steps": [
             {
@@ -25136,7 +25136,7 @@
         }
       },
       "maintenance.pay.locomotive": {
-        "planHash": "sha256:61ca8f042d8d7b22407243def110af7ddf29e8accb15184ed4852a3cfa8fe36b",
+        "planHash": "sha256:24874f14c0f9eaa0978772aeb99231dd9ceff6bdd3b9c8eb50c06e014167d8b1",
         "transaction": {
           "steps": [
             {
@@ -25438,7 +25438,7 @@
         }
       },
       "maintenance.pay.wagon": {
-        "planHash": "sha256:d80584ffbcca4593ebcf4cbfee49337f17df97cb2513c882b6f33ce60e792202",
+        "planHash": "sha256:710903592b0d7e36dbec9e4813c5427a6e4516d755860533d4db51d08dae868e",
         "transaction": {
           "steps": [
             {
@@ -25740,7 +25740,7 @@
         }
       },
       "maintenance.pay.held-cargo": {
-        "planHash": "sha256:7acc6046d3404d3b6e9f051e2088573f4a4ff9bf72eca89ad5a706a2014a078a",
+        "planHash": "sha256:b1773a692ace56a13fae47e8e588a032b680e505acedc8366c1af5d0baac79ed",
         "transaction": {
           "steps": [
             {
@@ -26091,7 +26091,7 @@
         }
       },
       "maintenance.phase.finish": {
-        "planHash": "sha256:f4746593960b40b98669dfe6880cf88052146f89706f528f2e84075db973448d",
+        "planHash": "sha256:de85617eea8418db20d3ebcc151bca30d5bd105e1a92844014121f213bb7825a",
         "transaction": {
           "steps": [
             {
@@ -27010,7 +27010,7 @@
         }
       },
       "market.purchase.wagon": {
-        "planHash": "sha256:b1b302c491e26d68e7ef68de58b413beca1f3ccadf002f38b9bf1c061c2cd006",
+        "planHash": "sha256:2b45841c6e9b7808a7948c9600b7361da03128228db0ee680953480721a06113",
         "transaction": {
           "steps": [
             {
@@ -27317,7 +27317,7 @@
         }
       },
       "market.purchase.locomotive": {
-        "planHash": "sha256:48bf45e75c79e58b22860988628f32a348f686974f3d0d8d42d07d41e02b68c9",
+        "planHash": "sha256:747d8895f34eaa2466e071a640860e5df42206ce4c137204a9cc47c3199ec051",
         "transaction": {
           "steps": [
             {
@@ -27631,7 +27631,7 @@
         }
       },
       "market.sell.wagon": {
-        "planHash": "sha256:6196b563c68895ee749f8a077107d3ec9fdd5ef4c05d45b1749e93d038695f2d",
+        "planHash": "sha256:5ac7d5878b10eddfed9e2c738afb99c57816baf1e785daa9e64a8660275ab447",
         "transaction": {
           "steps": [
             {
@@ -27896,7 +27896,7 @@
         }
       },
       "market.sell.locomotive": {
-        "planHash": "sha256:e9a20dde72a6ff46474f001f0b5d399d8003e41a7cd89920a842e958cc15d7c8",
+        "planHash": "sha256:b7d38b84e42e88bb3b4579efc8e41c07b4240fffff83274f34f2ac423498739c",
         "transaction": {
           "steps": [
             {
@@ -28207,7 +28207,7 @@
         }
       },
       "market.phase.finish": {
-        "planHash": "sha256:ee517faf339828051200dfea97d6175fd0ab407d07d4c5a2b7600c72f8c61ef1",
+        "planHash": "sha256:424fada073e383b30c880cae7d77fdde0c4ed50835d6c614dd1e89791bc261c2",
         "transaction": {
           "steps": [
             {
@@ -28307,7 +28307,7 @@
         }
       },
       "reporting.phase.finish": {
-        "planHash": "sha256:0a8113c6b6fbc24ae45d45b764f0543faffe9523be796d9673ab4d960d69f1e4",
+        "planHash": "sha256:f1da28e0ee4163a428181fd8477a03daf8618cddb12e82faede8cd4e0a4d0fdf",
         "transaction": {
           "steps": [
             {
@@ -28653,7 +28653,7 @@
         }
       },
       "movement.order.prepare": {
-        "planHash": "sha256:dadd996c3b775a3508e35c840d0e47b42222a5d67982e334d0c030aa1ca30613",
+        "planHash": "sha256:d9bab24efabaa12deeeddd8f692ae6bfb8367d31eabf4121e68363e2a9146e8f",
         "transaction": {
           "steps": [
             {
@@ -28914,7 +28914,7 @@
         }
       },
       "movement.locomotive.traverse": {
-        "planHash": "sha256:e8635b51c38a9e312a96054e65f4dace96f75271604035a716c4037a1c3090b1",
+        "planHash": "sha256:53b7ff6932ad906e3ab46d16e0d4e9d43bc857e6f2cdc12e91ea0c5a462f8929",
         "transaction": {
           "steps": [
             {
@@ -37404,7 +37404,7 @@
         }
       },
       "movement.train.wagon.select": {
-        "planHash": "sha256:7ff05d968fd8b541347db94eba0f8f82c85adc9bee93ee5b87e40a9117212ec8",
+        "planHash": "sha256:279275654b1dba01b2679c1894113b1dc5c7a8d7f10a42ec3db2a8e2d59978ff",
         "transaction": {
           "steps": [
             {
@@ -37635,7 +37635,7 @@
         }
       },
       "movement.train.wagon.unselect": {
-        "planHash": "sha256:13bebf047d172aa3f98a09e595af7216b49344d4af7c0c3419815c9d597e84f0",
+        "planHash": "sha256:e14c9c24085a23992ad382a2f06496e9731ea61dfb66794f8df22554485896ec",
         "transaction": {
           "steps": [
             {
@@ -37834,7 +37834,7 @@
         }
       },
       "movement.train.attach.selected": {
-        "planHash": "sha256:56112780104ab0158704e952e4b0f6d475539bd39950a52297421f0a3d0c36b4",
+        "planHash": "sha256:d16a805efb57f34dcaf5498ef9252a5bfd2887f9e98c99612a65f5a6d2fda958",
         "transaction": {
           "steps": [
             {
@@ -38263,7 +38263,7 @@
         }
       },
       "movement.train.attach.manual": {
-        "planHash": "sha256:5775b48f61a6b1f32df35c0b8327ff7db42b208ec883c926aa59f7bd86f09432",
+        "planHash": "sha256:e0ca9d25456073c5514764e0eda87c91e33836d4e89641c0e0b4024d7de84ea8",
         "transaction": {
           "steps": [
             {
@@ -38678,7 +38678,7 @@
         }
       },
       "movement.train.detach.manual": {
-        "planHash": "sha256:08f65fed4f1ef87c8c8951ed2a00cbe03f5b0ceda01568da8de661c35e0a0469",
+        "planHash": "sha256:34e360650a00bbdc384b50183aea6a4f0b539467bece115546a5fcd8cb442948",
         "transaction": {
           "steps": [
             {
@@ -39452,7 +39452,7 @@
         }
       },
       "movement.locomotive.skip": {
-        "planHash": "sha256:c687c7488447956d5c6ae0e3638af1659338cd3b0a5b92b0494ca807db296d70",
+        "planHash": "sha256:fcf786c60ea0ff2e95f87d94f38b6511d6be4089f40916d50a0089dcfcc705ae",
         "transaction": {
           "steps": [
             {
@@ -39877,7 +39877,7 @@
         }
       },
       "cards.lifecycle.initialize": {
-        "planHash": "sha256:6fae3e0c98f93c995aea9fa563628b9fd82cb7122d82f560ff82424303379636",
+        "planHash": "sha256:44c101c459e357d4602dad28d568b16a9d72a35b13d0a62c14e4a3bd974d0536",
         "transaction": {
           "steps": [
             {
@@ -40156,7 +40156,7 @@
         }
       },
       "cargo.queue.prepare": {
-        "planHash": "sha256:4b5ba24f2000a583af8e3f672dc8d3661e336d1b7f1ceeb30394df709c1659af",
+        "planHash": "sha256:7b349f3c83930bdd2c65b193e4fd00f5d3b961a8105553d05d77c96aaa89ea09",
         "transaction": {
           "steps": [
             {
@@ -43207,7 +43207,7 @@
         }
       },
       "cargo.offer.draw": {
-        "planHash": "sha256:0bfe8421e3bb84d8f0e97820e05e9f7d2565d444c31dfd3752e1a1c9f9027d9f",
+        "planHash": "sha256:d1a3e9f803424aa98190e412c77496c3545009606b670e146aa8f2584046e363",
         "transaction": {
           "steps": [
             {
@@ -43650,7 +43650,7 @@
         }
       },
       "cargo.offer.select": {
-        "planHash": "sha256:08f37f08dcd3532e7c035fcdc36634564ea9c49689ef0e17b582e6bc8bfab639",
+        "planHash": "sha256:e2fbba3bb29d573e4c0fb9ae110fa3d1060efa3af3849096423f00b4b9518ea4",
         "transaction": {
           "steps": [
             {
@@ -44336,7 +44336,7 @@
         }
       },
       "cargo.offer.skip": {
-        "planHash": "sha256:d6d6e3b337d5a1a5f853e291a038c527b52e4ddc2d65a01d6ce7041da79fb7bf",
+        "planHash": "sha256:dfb221456d5d93b6f92a9323d2cda916606cbb725c75d09a4c4e5bd5e2f49f68",
         "transaction": {
           "steps": [
             {
@@ -45048,7 +45048,7 @@
         }
       },
       "news.lifecycle.first-turn.skip": {
-        "planHash": "sha256:0db7d3f730619895878325bfb4fef3d97f1ac4c728c2245f00902df494614958",
+        "planHash": "sha256:a86c12f041a38d95b691c00619bc03856d8f2d636f37097fccbc72c54ece7721",
         "transaction": {
           "steps": [
             {
@@ -45187,7 +45187,7 @@
         }
       },
       "news.lifecycle.draw": {
-        "planHash": "sha256:527e4a386e9a135a58a82bc2e6d79d2544d7d1df27c4b6bacfb831e94931d3c3",
+        "planHash": "sha256:a3fedd619e31beae13e978ebd11f4bc4b802afd5e91274e828069b2b0a6fc077",
         "transaction": {
           "steps": [
             {
@@ -45675,7 +45675,7 @@
         }
       },
       "news.lifecycle.stagnation": {
-        "planHash": "sha256:eabb733f2752ae99befbe20ebb3cf54ec90d2ef65508a243ad7f01fd90d3495a",
+        "planHash": "sha256:f75736a1df4a2c0ea926c348181af269d3fe1783ec95f343dac8a141ae58ba72",
         "transaction": {
           "steps": [
             {
@@ -46142,7 +46142,7 @@
         }
       },
       "news.cargo-addition.apply.01": {
-        "planHash": "sha256:2952f06930b642b36af2f57c9999b68c2fc1e5f5d749fd87120008ee349ce650",
+        "planHash": "sha256:21d5c6e490a6789d04e2acbb7946ac5d7f4b9e539a8ecd9b67f6d5e852832fe8",
         "transaction": {
           "steps": [
             {
@@ -46385,7 +46385,7 @@
         }
       },
       "news.cargo-addition.apply.02": {
-        "planHash": "sha256:340da9cd7bd69b00a576df2c02667fb879c8ed55a6e80d9d379ff1680e6176a8",
+        "planHash": "sha256:649cb39a2fb0e4541ddfad76d85f4cf00143f77646d4e9e8cc8f2e1f552b2bae",
         "transaction": {
           "steps": [
             {
@@ -46628,7 +46628,7 @@
         }
       },
       "news.cargo-addition.apply.03": {
-        "planHash": "sha256:21b16b4f6dd95d9c758aa5629a7d5959778c43e44948d1ab856bc86580f36d3f",
+        "planHash": "sha256:2a15703d8fb4fefd685fb9b5c047d79f5ef42fd5f69bf5a60f3ecc871859bbc5",
         "transaction": {
           "steps": [
             {
@@ -46859,7 +46859,7 @@
         }
       },
       "news.cargo-addition.apply.04": {
-        "planHash": "sha256:32a892853995401d0fbdb973c1e30c85417bce0eb89343e8924710da4311a831",
+        "planHash": "sha256:52bbb8491df605d743bb977c377ee00f50eb865cfcb37ec8ee83553d06325cd7",
         "transaction": {
           "steps": [
             {
@@ -47102,7 +47102,7 @@
         }
       },
       "news.cargo-addition.apply.05": {
-        "planHash": "sha256:9dadb819faf98d41c8998ab4ed7bce3aca96e9ce03d97fe1b431425f7b2d44d9",
+        "planHash": "sha256:c969093296506109d0fae916e5e88f2a9e2e87cfcae897f315d2703aa3b4b124",
         "transaction": {
           "steps": [
             {
@@ -47357,7 +47357,7 @@
         }
       },
       "news.cargo-addition.apply.06": {
-        "planHash": "sha256:e88dadc1293c2cc223068e81c02b146d478bd62e0aec80fbbd45bc8e96c85c8c",
+        "planHash": "sha256:b3d1e5a61a89e3bcb54fdc465a45a13b78152cfaec2dd34218408290be5c908b",
         "transaction": {
           "steps": [
             {
@@ -47864,7 +47864,7 @@
         }
       },
       "news.cargo-addition.apply.07": {
-        "planHash": "sha256:003f8f1ddef8ca8e25b798f87f85b21bc033fad7e510ff660f2d53fcf11aeacc",
+        "planHash": "sha256:d3c7d4575bc8cb57e96f082945b17ba615530dbbb894af648a903143a105a2c8",
         "transaction": {
           "steps": [
             {
@@ -48321,7 +48321,7 @@
         }
       },
       "news.cargo-addition.apply.08": {
-        "planHash": "sha256:9feb867c8594e21d20c66a023a48e8e1c1b1736d4d23d79d9e16d17f23514bc8",
+        "planHash": "sha256:a8c0552bb4ab8b1a962e648b358dc4e3dad0a2381f488ab45ba008feeb8ad71f",
         "transaction": {
           "steps": [
             {
@@ -48578,7 +48578,7 @@
         }
       },
       "news.cargo-addition.apply.09": {
-        "planHash": "sha256:111662647eff418690c8eff88c16436438fdad00d88c8b02784ff5156532decf",
+        "planHash": "sha256:f29a1af0b922e1fe105bf213fbf512b24ddf0ab682e0633702df4a20bd0a1ef3",
         "transaction": {
           "steps": [
             {
@@ -48835,7 +48835,7 @@
         }
       },
       "news.cargo-addition.apply.10": {
-        "planHash": "sha256:c975f25f5973f920112aecdd43e2a13b2d962c7590745544f46105002f206cc9",
+        "planHash": "sha256:cd6ec0ce86ce5ab06a7c16a0ec2c13235773978379e0c135a71d8ee9106734cb",
         "transaction": {
           "steps": [
             {
@@ -49054,7 +49054,7 @@
         }
       },
       "news.effect.apply.11": {
-        "planHash": "sha256:621cdaf1bc2484a321839fc9ec926d78ceb8cf4e55228b1bcec75890599274a0",
+        "planHash": "sha256:6f39edc686c6aceffc61cad6c34400ad8dbba8c768ca70f57c363fa3938ccf26",
         "transaction": {
           "steps": [
             {
@@ -49295,7 +49295,7 @@
         }
       },
       "news.effect.apply.12": {
-        "planHash": "sha256:6ec73116dfad8cf2638b5599a2281f4a61baf9f913e179cbaf8e21fea9b9546f",
+        "planHash": "sha256:d13aa5da991cf305ca06416b5884f3ef6ae679236b10beb7e044fb180a11882d",
         "transaction": {
           "steps": [
             {
@@ -49536,7 +49536,7 @@
         }
       },
       "news.effect.apply.13": {
-        "planHash": "sha256:941c9b35908f520126649fe8ae6fb4357dce73b1a6e0cbab8045c351d57e1d1f",
+        "planHash": "sha256:db4b5c0664dc977fff75501db1e587d9148eb31b46bfe000fec07440a20607df",
         "transaction": {
           "steps": [
             {
@@ -49777,7 +49777,7 @@
         }
       },
       "news.effect.apply.15": {
-        "planHash": "sha256:bf7e64d789e3ca1e6eeae023c1c64936b4e76f0fd3f653e91e8cb029eed9a58b",
+        "planHash": "sha256:98eea35108d9d07bb5bb7c3b9bf88b3a426872cabc10fa2ddc20f361099e9eb1",
         "transaction": {
           "steps": [
             {
@@ -50018,7 +50018,7 @@
         }
       },
       "news.effect.apply.17": {
-        "planHash": "sha256:d56f4760bd7a1f5e4cc5a3181eff1bccf86f4666918a16e4cd31e0bb63cdfd9e",
+        "planHash": "sha256:3f3f4a3cb7f0913edebb2b2d581747bd8e31b5335d77dafff936e07a480671bc",
         "transaction": {
           "steps": [
             {
@@ -50259,7 +50259,7 @@
         }
       },
       "news.effect.apply.18": {
-        "planHash": "sha256:6aab0c0fc800d5a2ab74792785bfb11b0de942627a20287934292470f04d47b2",
+        "planHash": "sha256:8b6cbdcfd4382aff6839c27652874687005e7f5b4c5118c0240abc36aacb87e8",
         "transaction": {
           "steps": [
             {
@@ -50500,7 +50500,7 @@
         }
       },
       "news.effect.apply.20": {
-        "planHash": "sha256:7de4f0531b23673a76aa95031ed766bb629676cdfe659a6be80a2577ae7d4dfe",
+        "planHash": "sha256:ccf18a1ad5645475ce240e0146cf872bdf32a585fd2c9874531ae939496c0681",
         "transaction": {
           "steps": [
             {
@@ -50741,7 +50741,7 @@
         }
       },
       "news.effect.apply.21": {
-        "planHash": "sha256:ccbebbdb3a223d05eb854a66d04ee21df5e4b504b0a1d579cb501eb9ed1112c4",
+        "planHash": "sha256:0c92a1786bbb58caef6e45af2f4aa65691f8511816797ef9c855b206fb812157",
         "transaction": {
           "steps": [
             {
@@ -51042,7 +51042,7 @@
         }
       },
       "news.effect.apply.14": {
-        "planHash": "sha256:afd884e126c7dc34be5468c059769db34c5a985bb86832a989dfd959c4ee08b2",
+        "planHash": "sha256:22c79f5c7ef9473bb9feda24c54acae84ea60c30cc2caaad49e35ecfb40d35a1",
         "transaction": {
           "steps": [
             {
@@ -51243,7 +51243,7 @@
         }
       },
       "news.effect.apply.16": {
-        "planHash": "sha256:5700527bc14456148b0d8dc364f00c324660f6eff3c08bdd5c1e5995392a463c",
+        "planHash": "sha256:b65db1c9b8858f3edd1ab4cb8edc921a995005dceedade968c1e11997937bbf3",
         "transaction": {
           "steps": [
             {
@@ -51508,7 +51508,7 @@
         }
       },
       "news.effect.19.prepare-team": {
-        "planHash": "sha256:6d36d9d93d0b32da557a51ce831706b8607576a70640deb890f5fe430a5c3169",
+        "planHash": "sha256:6961f455694ac50b52c3f1c61fbcda86b0dee466820657269da21ce3ef8e511b",
         "transaction": {
           "steps": [
             {
@@ -53002,7 +53002,7 @@
         }
       },
       "news.effect.19.remove-locomotive": {
-        "planHash": "sha256:b2bd341d1965a5f388e0e44c93ae59542695cc051b97f4b6f373f05c426b2e99",
+        "planHash": "sha256:7e9131d769b2e9adc167fc9dbbe605135026cf08031e0ec2a44b71742b2fd63b",
         "transaction": {
           "steps": [
             {
@@ -53421,7 +53421,7 @@
         }
       },
       "news.effect.19.remove-wagon": {
-        "planHash": "sha256:80dda3e641d5653b288c01cb7877d42606b5c7daed7f99a6994fcb8126373001",
+        "planHash": "sha256:53070ae8781bc6e26312859e1cb96f06c980b8d8cc56cd70b487d26a78f4942a",
         "transaction": {
           "steps": [
             {
@@ -53969,7 +53969,7 @@
         }
       },
       "news.effect.19.finish": {
-        "planHash": "sha256:b0b58d6ade8a709810cc4c131acf1f3639fec270e15bbf7d529c34c4b263320e",
+        "planHash": "sha256:99105ec0654c6ded397039e73128449e76adf0b0f02598a0974dcb3e41a92b12",
         "transaction": {
           "steps": [
             {
@@ -54229,7 +54229,7 @@
         }
       },
       "news.effect.apply.26": {
-        "planHash": "sha256:376fc644371a36ab135b1ff59b082bc23b38ffad67726220134c8a344668ae32",
+        "planHash": "sha256:9937aeb87855d5b1909433c6383db157aa1c9758025843d80b37cc49467f055e",
         "transaction": {
           "steps": [
             {
@@ -54403,7 +54403,7 @@
         }
       },
       "news.effect.apply.27": {
-        "planHash": "sha256:2012d3c8568320969c4318b3fbd3d46c7926521a04c5462986778f57c5b26d60",
+        "planHash": "sha256:6146f6a57319250dadab4d509ff8834cc7fe40708982a7b523c320381e8a8031",
         "transaction": {
           "steps": [
             {
@@ -55285,7 +55285,7 @@
         }
       },
       "news.effect.apply.22": {
-        "planHash": "sha256:e96eb4c3adb865f8c79b13da46d72f10294102bad30b619ee100ebdbf083c804",
+        "planHash": "sha256:b2549566875d7c8fa61f139e75142c3e56ddbc63e98fcd6544f6b96e3a568ec4",
         "transaction": {
           "steps": [
             {
@@ -55459,7 +55459,7 @@
         }
       },
       "news.effect.apply.23": {
-        "planHash": "sha256:257aceda0ddff562a7f15e67d0ec92876c01c4463ef441113a061dfc35d90503",
+        "planHash": "sha256:048acfe8fe748e2f4d9876835dbaab2d24efb2d7b2df2353399b7f7c2c31e27a",
         "transaction": {
           "steps": [
             {
@@ -55633,7 +55633,7 @@
         }
       },
       "news.effect.apply.24": {
-        "planHash": "sha256:dbbb246830ff430cf419d5023ce1797aa4c0f2598d8d6da3b93b969c9a1f29f2",
+        "planHash": "sha256:7259fac2c5e593f7fd9391cd60f8ea17023bcb902dd59dba95ef2f82c88f6afb",
         "transaction": {
           "steps": [
             {
@@ -55807,7 +55807,7 @@
         }
       },
       "news.effect.apply.25": {
-        "planHash": "sha256:bfa3a66eb7defbfea5647bf27ef66bc0731e3d8cad5a6fb3a299c9be8606026f",
+        "planHash": "sha256:543c13612533ddbc5c4746b935c9b1dd0697f87e4d53e3abacd2538923b5d9ef",
         "transaction": {
           "steps": [
             {
@@ -55981,7 +55981,7 @@
         }
       },
       "news.effect.apply.28": {
-        "planHash": "sha256:9caa639f7ea5280937606f8fb068f1fd4a612499cb9435923a3388b663217a48",
+        "planHash": "sha256:eb77f65be33882e6281308a3e3660f77ba6d62b58db240d999ef3e94e8156094",
         "transaction": {
           "steps": [
             {
@@ -56168,7 +56168,7 @@
         }
       },
       "news.effect.apply.29": {
-        "planHash": "sha256:0c53c7e4efa0c3260e908c67cd601e4144f6a350c496eeb0a90e1efba6ba60b1",
+        "planHash": "sha256:9e7432b2e0c2c4d7cdf486786ab30eeff9dad6bbc3ca3cd9239a50601de30169",
         "transaction": {
           "steps": [
             {
@@ -56355,7 +56355,7 @@
         }
       },
       "news.effect.apply.30": {
-        "planHash": "sha256:c6b771200611a708f02efea91e1d446d240e43e1e2042669b2acc6e9e336c8e0",
+        "planHash": "sha256:19d6f4decd3cb3b8a31cdde83a01a5bbe381b66515b5096bd2ebd567d2649596",
         "transaction": {
           "steps": [
             {
@@ -56529,7 +56529,7 @@
         }
       },
       "news.effect.apply.31": {
-        "planHash": "sha256:cb078e87a40d1c252aab251a2f5ca9fc0dd2337fd0d5cf1a6e8c0f2b8a9de0a4",
+        "planHash": "sha256:5db140c1b6824a16733c58b0d3f47fda444c5c0878167638622fcd324a578111",
         "transaction": {
           "steps": [
             {
@@ -56703,7 +56703,7 @@
         }
       },
       "news.effect.apply.32": {
-        "planHash": "sha256:d37bc948258c4de57b37aaddb6195d4586de39daf910d8278e5e88f3a1dd7c3f",
+        "planHash": "sha256:603ba0e3a46d99cf414539b7ce7d5c9faa475b4cd5f9d6d06eee9e2563b87ef2",
         "transaction": {
           "steps": [
             {
@@ -56877,7 +56877,7 @@
         }
       },
       "news.effect.apply.33": {
-        "planHash": "sha256:f90c19fffaa6a806a18f768afc4d251b5f89a3e2f5a784a25c69bb1ba0435830",
+        "planHash": "sha256:59324b48eea130fd442d149601016e7d3a832dfe34051f1ab9c42d76e1a3394b",
         "transaction": {
           "steps": [
             {
@@ -57051,7 +57051,7 @@
         }
       },
       "news.effect.apply.34": {
-        "planHash": "sha256:36853678fc026267a180c3383db60294738e0f5211bfcd229ec61dddf14717fb",
+        "planHash": "sha256:8664b5630e2c5413a79b4642f1b9733f7c6e8d7dafb51aa3c666b74b671fd425",
         "transaction": {
           "steps": [
             {
@@ -57235,7 +57235,7 @@
         }
       },
       "construction.contribution.set": {
-        "planHash": "sha256:e23e9c5392eee56186b2b9ecf5a79a86a2f970c0bdedf9c866180ce101e73315",
+        "planHash": "sha256:99a3726a0dd88dd0e7f7a4f9bb6778d7e3cf384722e6cdb865120080a1050bcb",
         "transaction": {
           "steps": [
             {
@@ -57422,7 +57422,7 @@
         }
       },
       "construction.mode.road": {
-        "planHash": "sha256:36bfc12ebaa02328c2877e14d4ec7e9860a5a38023cc687e42b33077df18d025",
+        "planHash": "sha256:3152d4b251d076b326e8c6177eeb1a531d72897a9ba7bc1c7427ab04d4b4150c",
         "transaction": {
           "steps": [
             {
@@ -57499,7 +57499,7 @@
         }
       },
       "construction.mode.waypoint": {
-        "planHash": "sha256:7eb6fc33939e85c3aad696c2cce94c4e85b9716f65355a013892511460aaa490",
+        "planHash": "sha256:43985b965e23d9d45f8ff3dbbf3204c6a4d43fe559e91073434d862b196511e5",
         "transaction": {
           "steps": [
             {
@@ -57576,7 +57576,7 @@
         }
       },
       "construction.road.build": {
-        "planHash": "sha256:59975c5bf22fe66fecd966a61146e0d03c25f7b4a58d8fe538a54e8c1540cc61",
+        "planHash": "sha256:c5929432d131ccfe292575aa65621b349c00c8b33bca2ae3c180a22331bb81fc",
         "transaction": {
           "steps": [
             {
@@ -58391,7 +58391,7 @@
         }
       },
       "construction.waypoint.build": {
-        "planHash": "sha256:62e4443bec1679d5d9622f94b44a7784950dfd5b5c5674d7b3c9957f6e80b5cb",
+        "planHash": "sha256:f103409e466845ebe48c08e2b33a289f9ca881f91f140874eb7ef3bbebf625a5",
         "transaction": {
           "steps": [
             {
@@ -58957,7 +58957,7 @@
         }
       },
       "construction.phase.finish": {
-        "planHash": "sha256:4178055fc753323b503662c9b9e5fa5dc9cc3f9dbc1295496401febc4d18f1c3",
+        "planHash": "sha256:76ad3172f876462b045c51e2f6596cfa17190010d60286c6d038016ef8456f1c",
         "transaction": {
           "steps": [
             {
