@@ -12,6 +12,7 @@ import {
   HttpModelGateway,
   PostgresConversationStore,
   ShadowCoordinator,
+  safeShadowDatabaseUrl,
   validateProductKnowledgeContract,
   type ShadowAuthorizationReceipt,
   type ShadowAuthorizationAuthority,
@@ -150,7 +151,7 @@ function deriveServerRefs(receipt: ShadowAuthorizationReceipt, candidate: Produc
 
 function readConfig(env: NodeJS.ProcessEnv): ShadowConfig | null {
   const portalBase = safeHttpUrl(env.CUBICA_PORTAL_API_URL);
-  const databaseUrl = safePostgresUrl(env.CUBICA_PRODUCT_CONTEXT_SHADOW_DATABASE_URL);
+  const databaseUrl = safeShadowDatabaseUrl(env.CUBICA_PRODUCT_CONTEXT_SHADOW_DATABASE_URL);
   const modelGatewayUrl = safeHttpUrl(env.CUBICA_PRODUCT_CONTEXT_SHADOW_MODEL_GATEWAY_URL);
   const modelGatewayToken = env.CUBICA_PRODUCT_CONTEXT_SHADOW_MODEL_GATEWAY_TOKEN ?? "";
   const retentionMs = boundedInteger(env.CUBICA_PRODUCT_CONTEXT_SHADOW_RETENTION_MS, 1, 7 * 24 * 60 * 60 * 1000);
@@ -169,15 +170,6 @@ function safeHttpUrl(value: string | undefined): string | null {
     const url = new URL(value ?? "");
     const loopback = ["127.0.0.1", "localhost", "::1"].includes(url.hostname);
     return url.protocol === "https:" || (url.protocol === "http:" && loopback) ? url.toString() : null;
-  } catch { return null; }
-}
-function safePostgresUrl(value: string | undefined): string | null {
-  try {
-    const url = new URL(value ?? "");
-    if (url.protocol !== "postgres:" && url.protocol !== "postgresql:") return null;
-    const loopback = ["127.0.0.1", "localhost", "::1"].includes(url.hostname);
-    const authenticatedTls = url.searchParams.get("sslmode") === "verify-full";
-    return !url.hash && (loopback || authenticatedTls) ? url.toString() : null;
   } catch { return null; }
 }
 function boundedInteger(value: string | undefined, min: number, max: number): number | null {

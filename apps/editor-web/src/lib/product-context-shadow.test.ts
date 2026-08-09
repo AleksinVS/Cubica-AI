@@ -71,6 +71,10 @@ describe("product-context shadow post-response job", () => {
       ...env,
       CUBICA_PRODUCT_CONTEXT_SHADOW_DATABASE_URL: "postgresql://db.internal/shadow?sslmode=verify-full"
     })).not.toBeNull();
+    expect(buildProductContextShadowJob(new Headers(forwarded), candidate(), {
+      ...env,
+      CUBICA_PRODUCT_CONTEXT_SHADOW_DATABASE_URL: "postgresql://db.internal/shadow?sslmode=verify-full&host=attacker.example"
+    })).toBeNull();
   });
 
   it("does not log content or credentials when authorization fails", async () => {

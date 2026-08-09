@@ -105,15 +105,20 @@ export function generateKnowledgeIndex(pages: ReadonlyMap<string, Uint8Array>): 
   return encoder.encode(`${lines.join('\n')}\n`);
 }
 
-/** Builds an ephemeral index for a role; denied pages contribute no identifier, title or diagnostic. */
-export function projectKnowledgeIndex(pages: ReadonlyMap<string, Uint8Array>, context: KnowledgePolicyContext): Uint8Array {
+/** Filters before returning bytes; denied pages leak no identifier, title or diagnostic. */
+export function projectKnowledgePages(pages: ReadonlyMap<string, Uint8Array>, context: KnowledgePolicyContext): Map<string, Uint8Array> {
   const allowed = new Map<string, Uint8Array>();
-  for (const [path, bytes] of pages) {
+  for (const [path, bytes] of [...pages].sort(([left], [right]) => codeUnitCompare(left, right))) {
     if (path === 'index.md') continue;
     const page = parseKnowledgePage(bytes);
-    if (evaluateKnowledgePageRead(page, context).allowed) allowed.set(path, bytes);
+    if (evaluateKnowledgePageRead(page, context).allowed) allowed.set(path, new Uint8Array(bytes));
   }
-  return generateKnowledgeIndex(allowed);
+  return allowed;
+}
+
+/** Builds an ephemeral index for a role; denied pages contribute no metadata. */
+export function projectKnowledgeIndex(pages: ReadonlyMap<string, Uint8Array>, context: KnowledgePolicyContext): Uint8Array {
+  return generateKnowledgeIndex(projectKnowledgePages(pages, context));
 }
 
 function escapeMarkdown(value: string): string { return value.replace(/[\\\[\]\n\r]/g, (character) => character === '\n' || character === '\r' ? ' ' : `\\${character}`); }

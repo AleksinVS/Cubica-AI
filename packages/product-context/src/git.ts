@@ -27,14 +27,103 @@ export interface GitPatchPreview {
 interface BuiltPreview extends GitPatchPreview { readonly pages: Map<string, Uint8Array>; }
 interface GitReceipt { readonly commit: string; readonly operationId: string; readonly patchHash: string; }
 export class ManagedKnowledgeGitError extends Error {}
+export class ReadOnlyKnowledgeGitLimitError extends ManagedKnowledgeGitError {}
+
+export interface ReadOnlyKnowledgeGitLimits {
+  readonly maxObjects: number;
+  readonly maxBlobBytes: number;
+  readonly maxTotalBytes: number;
+}
+
+export interface ReadOnlyKnowledgeGitSnapshot {
+  readonly commit: string;
+  readonly pages: ReadonlyMap<string, Uint8Array>;
+}
+
+/**
+ * Read-only view of one trusted bare repository.
+ *
+ * The class deliberately exposes no ref, object, config or maintenance write.
+ * It is the Stage 2 grounding boundary: a model gateway may inspect the exact
+ * canonical snapshot without acquiring the Stage 1 mutation capability.
+ */
+export class ReadOnlyKnowledgeGit {
+  private constructor(private readonly directory: FileHandle) {}
+
+  static async open(repository: string): Promise<ReadOnlyKnowledgeGit> {
+    assertCanonicalRepositoryPath(repository);
+    const directory = await openStableDirectory(repository);
+    const store = new ReadOnlyKnowledgeGit(directory);
+    try {
+      let bare = false;
+      try { bare = store.run(['rev-parse', '--is-bare-repository']).trim() === 'true'; }
+      catch { /* normalized below so repository internals do not cross the boundary */ }
+      if (!bare) {
+        throw new ManagedKnowledgeGitError('Knowledge repository must be bare.');
+      }
+      store.head();
+      return store;
+    } catch (error) {
+      await directory.close();
+      throw error;
+    }
+  }
+
+  head(): string { return this.run(['rev-parse', '--verify', REF]).trim(); }
+
+  async close(): Promise<void> { await this.directory.close(); }
+
+  /**
+   * Reads the current trusted ref only. Git-reported sizes are checked before
+   * any blob is loaded, so forbidden pages cannot bypass the raw corpus cap.
+   */
+  readHeadSnapshot(limits: ReadOnlyKnowledgeGitLimits): ReadOnlyKnowledgeGitSnapshot {
+    assertReadOnlyLimits(limits);
+    const commit = this.head();
+    assertCommit(commit);
+    const entries = this.runBytes(['ls-tree', '-r', '-l', '-z', commit]);
+    const records = entries.toString('utf8').split('\0').filter(Boolean);
+    if (records.length > limits.maxObjects) throw new ReadOnlyKnowledgeGitLimitError('Trusted tree exceeds the read-only object bound.');
+    const planned: Array<{ path: string; hash: string; size: number }> = [];
+    let totalBytes = 0;
+    for (const record of records) {
+      const match = /^(\d+) blob ([0-9a-f]{40})\s+(\d+)\t(.+)$/u.exec(record);
+      if (!match || match[1] !== '100644' || !isPagePath(match[4])) throw new ManagedKnowledgeGitError('Trusted tree contains a forbidden entry.');
+      const size = Number(match[3]);
+      if (!Number.isSafeInteger(size) || size < 0 || size > limits.maxBlobBytes) {
+        throw new ReadOnlyKnowledgeGitLimitError('Trusted tree exceeds the read-only blob bound.');
+      }
+      totalBytes += size;
+      if (!Number.isSafeInteger(totalBytes) || totalBytes > limits.maxTotalBytes) {
+        throw new ReadOnlyKnowledgeGitLimitError('Trusted tree exceeds the read-only byte bound.');
+      }
+      planned.push({ path: match[4], hash: match[2], size });
+    }
+    const pages = new Map<string, Uint8Array>();
+    for (const entry of planned) {
+      const bytes = this.runBytes(['cat-file', 'blob', entry.hash]);
+      if (bytes.byteLength !== entry.size) throw new ManagedKnowledgeGitError('Trusted blob size changed during the read.');
+      pages.set(entry.path, bytes);
+    }
+    if (!pages.has('index.md')) throw new ManagedKnowledgeGitError('Trusted tree has no canonical index.');
+    for (const [path, bytes] of pages) if (path !== 'index.md') parseKnowledgePage(bytes);
+    return { commit, pages };
+  }
+
+  private run(args: string[], input?: Uint8Array): string { return this.runBytes(args, input).toString('utf8'); }
+  private runBytes(args: string[], input?: Uint8Array): Buffer {
+    const result = spawnSync(GIT_EXECUTABLE, ['--git-dir', '/proc/self/fd/3', ...args], { input, encoding: null, shell: false, env: cleanGitEnvironment(), stdio: ['pipe', 'pipe', 'pipe', this.directory.fd], maxBuffer: 16 * 1024 * 1024 });
+    if (result.error || result.status !== 0) throw new ManagedKnowledgeGitError((result.stderr?.toString() || result.error?.message || 'Git command failed').trim());
+    return result.stdout;
+  }
+}
 
 export class ManagedKnowledgeGit {
   private constructor(private readonly directory: FileHandle) {}
 
   /** Creates one non-symlinked bare repository and its canonical empty index. */
   static async init(repository: string): Promise<ManagedKnowledgeGit> {
-    if (!isAbsolute(repository)) throw new ManagedKnowledgeGitError('Repository path must be absolute.');
-    if (resolve(repository) !== repository) throw new ManagedKnowledgeGitError('Repository path must be canonical.');
+    assertCanonicalRepositoryPath(repository);
     await mkdir(repository, { recursive: true, mode: 0o700 });
     const directory = await openStableDirectory(repository);
     const store = new ManagedKnowledgeGit(directory);
@@ -58,6 +147,7 @@ export class ManagedKnowledgeGit {
 
   /** Reads only the trusted current tree and rejects anything but ordinary Markdown blobs. */
   readPages(commit = this.head()): Map<string, Uint8Array> {
+    assertCommit(commit);
     const entries = this.runBytes(['ls-tree', '-r', '-z', commit]);
     const pages = new Map<string, Uint8Array>();
     for (const record of entries.toString('utf8').split('\0').filter(Boolean)) {
@@ -207,7 +297,19 @@ export class ManagedKnowledgeGit {
   }
 }
 
-function cleanGitEnvironment(): NodeJS.ProcessEnv { return { PATH: '/usr/bin:/bin', HOME: '/dev/null', XDG_CONFIG_HOME: '/dev/null', GIT_CONFIG_NOSYSTEM: '1', GIT_NO_REPLACE_OBJECTS: '1', GIT_AUTHOR_NAME: 'Cubica Knowledge', GIT_AUTHOR_EMAIL: 'knowledge@cubica.invalid', GIT_COMMITTER_NAME: 'Cubica Knowledge', GIT_COMMITTER_EMAIL: 'knowledge@cubica.invalid', GIT_CONFIG_COUNT: '1', GIT_CONFIG_KEY_0: 'core.hooksPath', GIT_CONFIG_VALUE_0: '/dev/null' }; }
+function cleanGitEnvironment(): NodeJS.ProcessEnv { return { NODE_ENV: 'production', PATH: '/usr/bin:/bin', HOME: '/dev/null', XDG_CONFIG_HOME: '/dev/null', GIT_CONFIG_NOSYSTEM: '1', GIT_NO_REPLACE_OBJECTS: '1', GIT_AUTHOR_NAME: 'Cubica Knowledge', GIT_AUTHOR_EMAIL: 'knowledge@cubica.invalid', GIT_COMMITTER_NAME: 'Cubica Knowledge', GIT_COMMITTER_EMAIL: 'knowledge@cubica.invalid', GIT_CONFIG_COUNT: '1', GIT_CONFIG_KEY_0: 'core.hooksPath', GIT_CONFIG_VALUE_0: '/dev/null' }; }
+function assertCanonicalRepositoryPath(repository: string): void {
+  if (!isAbsolute(repository)) throw new ManagedKnowledgeGitError('Repository path must be absolute.');
+  if (resolve(repository) !== repository) throw new ManagedKnowledgeGitError('Repository path must be canonical.');
+}
+function assertCommit(commit: string): void {
+  if (!/^[0-9a-f]{40}$/u.test(commit)) throw new ManagedKnowledgeGitError('Knowledge commit must be an exact SHA-1 object ID.');
+}
+function assertReadOnlyLimits(limits: ReadOnlyKnowledgeGitLimits): void {
+  for (const value of [limits.maxObjects, limits.maxBlobBytes, limits.maxTotalBytes]) {
+    if (!Number.isSafeInteger(value) || value < 1) throw new ManagedKnowledgeGitError('Read-only Git limits must be positive integers.');
+  }
+}
 function assertReceiptInput(operationId: string, patchHash: string): void {
   if (!/^op_[A-Za-z0-9_-]+$/.test(operationId)) throw new ManagedKnowledgeGitError('Operation ID has an invalid format.');
   if (!/^sha256:[a-f0-9]{64}$/.test(patchHash)) throw new ManagedKnowledgeGitError('Patch hash has an invalid format.');
