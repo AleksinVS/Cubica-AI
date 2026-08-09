@@ -72,6 +72,7 @@ docs: # Архитектура, задачи, планирование
     .gitkeep: file # Служебный файл сохранения каталога в Git.
     agent-ui-foundation.md: file # Проектная архитектура UI ИИ-агентов на CopilotKit/AG-UI: границы, контекст, инструменты, безопасность и future assistant surfaces.
     agent-ui-portability-and-risk-controls.md: file # Проектные правила переносимости Agent UI, контроля рисков и предотвращения узких мест вокруг CopilotKit, AG-UI и production LLM backend.
+    AGENTS.md: file # Локальные правила классификации архитектурных решений, жизненного цикла ADR и синхронизации канонического обзора.
     ai-agent-safety-remediation.md: file # Проектная документация по исправлению review findings миграции Cubica Surface и AI-driven runtime: approval envelope, Agent Turn acceptance, capability gates, channel policies and production backend auth.
     board-game-platform-design.md: file # Проектные возможности платформы для настольных и пошаговых игр.
     cards-money-trains-platform-design.md: file # Нормативный архитектурный дизайн игры «Карты, деньги, поезда»: границы платформы и игры, состояние, фазы, транспортная сеть, интерфейс, надежность и последовательность поставки.
@@ -175,7 +176,7 @@ draft: # Черновые материалы, эксперименты и про
     Начальная транспортная сеть.png: file # Растровая карта 5079x3627 с нанесённой начальной транспортной сетью. Источник поставляемого игрового фона assets/images/guinea-map.webp; sha256 и подтверждённые права зафиксированы в games/cards-money-trains/asset-provenance.json.
     Описания стран Гвинеи 1 стол.docx: file # Авторские описания стран Гвинеи для первого стола. Первоисточник страновых текстов и стартовых условий.
     Описания стран Гвинеи 1 стол.pdf: file # PDF-версия авторских описаний стран.
-games: # Пакеты игр и связанные ресурсы 
+games: # Пакеты игр и связанные ресурсы
   ai-driven-choice: # Minimal AI-driven fixture used to prove the runtime Agent Turn path without game-specific runtime branches.
     authoring: # Editable ADR-030 authoring manifests for the ai-driven-choice fixture. Runtime manifests are generated from these files and should not be edited directly.
       game.authoring.json: file # Authoring source for the generated ai-driven-choice game manifest.
@@ -218,12 +219,14 @@ games: # Пакеты игр и связанные ресурсы
       game.authoring.json: file # Authoring source for the generated simple-choice game manifest.
     published: directory... # Неизменяемые, адресуемые по содержимому генераты игры simple-choice: game-owned таблицы стилей (ADR-091) и их реестр game-stylesheets.json. Правятся только конвейером публикации.
     ui: directory... # Generated channel-specific UI manifests for the simple-choice fixture (compiled from authoring/ui, do not edit by hand).
+  AGENTS.md: file # Локальные правила разделения общих и игровых механик, декларативного пути и изолированных расширений игр.
 packages: # Переиспользуемые платформенные пакеты (contracts) 
-  contracts: # Слой общих контрактов между сервисами 
+  contracts: # Слой общих контрактов между сервисами
     ai: directory... # AI task, result, Cubica Surface, Agent Turn, execution-mode and Agent UI boundary contracts owned by Cubica rather than CopilotKit or AG-UI.
     manifest: directory... # Порождаемые из JSON Schema контракты игровых, UI и authoring-манифестов.
     runtime: directory... # Контракты команд, результатов и публичной границы игрового runtime.
     session: directory... # Контракты сессий, участников, событий, квитанций и постоянного состояния.
+    AGENTS.md: file # Локальные правила декларативных публичных контрактов, генерации производных типов и проверки совместимости.
   editor-engine: directory... # Framework-agnostic editor engine package for ADR-034 authoring manifest editing. It owns JSON document state, neutral graph projection, reverse projection intents, and deterministic diagnostics helpers.
   view-protocol: directory... # Framework-agnostic package with the Abstract View Protocol contracts (ADR-002: Presenter -> View commands) and JSON state patch utilities (RFC 7396 Merge Patch, RFC 6902 JSON Patch). Seed of the future extracted player core per ADR-064.
 scripts: # Скрипты разработки и индексирования 
@@ -232,6 +235,8 @@ scripts: # Скрипты разработки и индексирования
     profile-command.mjs: file # Compact timing wrapper for local and CI verification commands; writes sanitized duration and exit metadata without command arguments or environment values.
     select-affected-tests.mjs: file # Fail-closed changed-path selector for local verification and observational CI summaries; unknown or critical paths expand to the full safe suite.
     select-affected-tests.test.mjs: file # Deterministic regression tests for affected-test mapping, path normalization and full-fallback safety.
+    validate-agent-instructions.mjs: file # Validates active AGENTS instruction chains, byte budgets, local links, override precedence and generated CLAUDE.md parity.
+    validate-agent-instructions.test.mjs: file # Isolated regression tests for agent instruction discovery, budgets, links and compatibility-copy drift.
     validate-agent-ui-boundaries.js: file # Node.js validator for ADR-044 Agent UI import boundaries: CopilotKit and AG-UI imports are allowed only in approved adapter files.
     validate-legacy.js: file # Node.js validator for legacy debt rows, stub register consistency, stub marker governance and .desc.json parsing.
     validate-legacy.ps1: file # PowerShell wrapper that delegates legacy/stub validation to the cross-platform Node.js validator.
@@ -261,7 +266,8 @@ services: # Сервисы и инфраструктура
   metadata-db: directory... # Заготовка будущего сервиса метаданных и аналитики игровых сессий.
   portal-backend: # Strapi backend портала для каталога, заказов, покупок, платежной заглушки и launch-session API.
     test: directory... # Focused backend tests that can run without a Strapi database; currently covers pure portal launch-session rule helpers.
-  runtime-api: directory... # Целевой единый deployable backend (модульный монолит) 
+  runtime-api: # Целевой единый deployable backend (модульный монолит)
+    AGENTS.md: file # Локальные правила game-agnostic runtime, schema-first валидации и нейтральных Mechanics IR операций.
 skill-candidates: # Неактивный каталог точных снимков внешних навыков: только референсы и исходный материал для управляемой адаптации, без автоматического обнаружения агентами.
   agent-skills: # Неактивные кандидаты из репозитория addyosmani/agent-skills.
     frontend-ui-engineering: directory... # Точный неактивный снимок внешнего навыка frontend-ui-engineering и необходимой ему справки по доступности.
@@ -272,7 +278,7 @@ skill-candidates: # Неактивный каталог точных снимк�
   superpowers: # Неактивные кандидаты из репозитория obra/superpowers.
     brainstorming: directory... # Точный неактивный снимок brainstorming, сохранённый для заимствования отдельных практик без импорта методологии Superpowers.
 skills: # Единый канонический каталог проектных навыков для всех агентов; Codex использует только символические ссылки из .codex/skills/.
-  C_codex-agent-routing: # Внутренний навык маршрутизации Codex-субагентов по сложности, цене ошибки и достаточному контексту.
+  C_codex-agent-routing: # Внутренний навык маршрутизации Codex-субагентов по сложности, цене ошибки и достаточному контексту, включая сильную модель для итогового визуального сравнения.
     agents: directory... # Метаданные отображения внутреннего навыка маршрутизации в интерфейсах Codex.
     scripts: directory... # Детерминированная проверка проектной конфигурации и профилей маршрутизации Codex.
   C_cubica: directory... # Явно включаемый пользователем проектный навык автономной разработки Cubica по ADR-068: утверждаемый общий TSK-план, оркестрация субагентов и приемка результата.

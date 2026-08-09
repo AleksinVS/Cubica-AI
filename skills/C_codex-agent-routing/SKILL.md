@@ -60,6 +60,17 @@ Luna low -> Terra low/medium -> Sol medium -> Sol high
 Escalate only with a concrete blocker, failed criterion, risky uncertainty, or
 evidence that the current profile is insufficient.
 
+### Comparative visual analysis
+
+A systematic final comparison of an implemented interface with a mockup,
+reference, or screenshot is a high-error-cost assessment. Route the final
+judgment of differences, causes, and fix priorities to Sol high: use
+`critical-reviewer-high` for read-only assessment or `builder_complex` when the
+same bounded task also owns non-obvious implementation or test design.
+
+Luna or Terra may collect screenshots, dimensions, colors, and other mechanical
+evidence, but must not make the final comparative assessment.
+
 ## Choose the workflow
 
 ### Small task

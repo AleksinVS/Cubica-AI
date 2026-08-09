@@ -1,3 +1,4 @@
 {
-  ".": "Целевой единый deployable backend (модульный монолит)\\n"
+  ".": "Целевой единый deployable backend (модульный монолит)",
+  "AGENTS.md": "Локальные правила game-agnostic runtime, schema-first валидации и нейтральных Mechanics IR операций."
 }
