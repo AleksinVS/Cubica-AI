@@ -12,7 +12,12 @@ const page = {
 
 describe('product knowledge JSON Schema', () => {
   it('compiles and rejects incomplete fixtures for every named contract root', () => {
-    for (const name of ['KnowledgePage', 'ExactPatchProposal', 'DecisionEnvelope', 'ImpactAssessment', 'KnowledgeWriteOperation', 'SemanticReviewResult'] as const) {
+    for (const name of [
+      'KnowledgePage', 'ExactPatchProposal', 'DecisionEnvelope', 'ImpactAssessment',
+      'KnowledgeWriteOperation', 'SemanticReviewResult', 'ShadowAuthorizationReceipt',
+      'ConversationMessage', 'ConversationTurn', 'ModelGatewayRequest',
+      'ModelGatewayResult', 'ShadowContentFreeMetric'
+    ] as const) {
       expect(validateProductKnowledgeContract(name, {}).ok).toBe(false);
     }
   });
