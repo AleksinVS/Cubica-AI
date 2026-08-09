@@ -1,10 +1,10 @@
 {
   "meta": {
     "id": "estate-race.ui.web",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "schema_version": "1.0",
     "game_id": "estate-race",
-    "game_manifest_version": "0.1.0",
+    "game_manifest_version": "0.2.0",
     "channel": "web",
     "author": "Cubica"
   },
@@ -53,17 +53,10 @@
             },
             "children": [
               {
-                "id": "table.player-one",
+                "id": "table.players-summary",
                 "type": "richTextComponent",
                 "props": {
-                  "html": "<h2>Игрок 1</h2><p>{{game.state.players.p1.metrics.cash}} монет · клетка {{game.state.players.p1.metrics.position}}</p>"
-                }
-              },
-              {
-                "id": "table.player-two",
-                "type": "richTextComponent",
-                "props": {
-                  "html": "<h2>Игрок 2</h2><p>{{game.state.players.p2.metrics.cash}} монет · клетка {{game.state.players.p2.metrics.position}}</p>"
+                  "html": "<h2>Локальная партия: 2–6 участников</h2><p>Активен {{game.state.public.turn.activePlayerId}}. Балансы, позиции и активный участник показаны непосредственно на поле.</p>"
                 }
               }
             ]

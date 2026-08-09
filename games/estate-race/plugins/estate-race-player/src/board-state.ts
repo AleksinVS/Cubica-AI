@@ -12,13 +12,26 @@ export interface EstateCellView {
   readonly index: number;
   readonly label: string;
   readonly shortLabel: string;
-  readonly kind: "start" | "estate" | "landmark";
+  readonly kind:
+    | "start"
+    | "estate"
+    | "transit"
+    | "utility"
+    | "event"
+    | "fund"
+    | "tax"
+    | "neutral"
+    | "jail"
+    | "go-to-jail";
+  readonly group: string | null;
   readonly x: number;
   readonly y: number;
   readonly width: number;
   readonly height: number;
   readonly price: number | null;
   readonly rent: number | null;
+  readonly rentScale: readonly number[];
+  readonly taxAmount: number | null;
   readonly ownerPlayerId: string | null;
 }
 
@@ -71,21 +84,29 @@ const readCells = (publicState: JsonRecord): EstateCellView[] => {
   return Object.entries(cells).flatMap(([id, raw]) => {
     if (!isRecord(raw)) return [];
     const attributes = isRecord(raw.attributes) ? raw.attributes : {};
-    const kind: EstateCellView["kind"] = attributes.kind === "start" || attributes.kind === "estate" || attributes.kind === "landmark"
-      ? attributes.kind
-      : "landmark";
+    const supportedKinds = new Set<EstateCellView["kind"]>([
+      "start", "estate", "transit", "utility", "event", "fund", "tax", "neutral", "jail", "go-to-jail"
+    ]);
+    const kind = typeof attributes.kind === "string" && supportedKinds.has(attributes.kind as EstateCellView["kind"])
+      ? attributes.kind as EstateCellView["kind"]
+      : "neutral";
     return [{
       id,
       index: finiteNumber(attributes.index),
       label: text(attributes.label, id),
       shortLabel: text(attributes.shortLabel, text(attributes.label, id)),
       kind,
+      group: typeof attributes.group === "string" ? attributes.group : null,
       x: finiteNumber(attributes.x),
       y: finiteNumber(attributes.y),
       width: finiteNumber(attributes.width, 220),
       height: finiteNumber(attributes.height, 140),
       price: typeof attributes.price === "number" ? attributes.price : null,
       rent: typeof attributes.rent === "number" ? attributes.rent : null,
+      rentScale: Array.isArray(attributes.rentScale)
+        ? attributes.rentScale.filter((value): value is number => typeof value === "number" && Number.isFinite(value))
+        : [],
+      taxAmount: typeof attributes.taxAmount === "number" ? attributes.taxAmount : null,
       ownerPlayerId: typeof attributes.ownerPlayerId === "string" ? attributes.ownerPlayerId : null
     }];
   }).sort((left, right) => left.index - right.index);

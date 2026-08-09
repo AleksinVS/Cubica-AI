@@ -22,17 +22,24 @@ import {
 
 const DESIGN_WIDTH = 1400;
 const DESIGN_HEIGHT = 1000;
-const PLAYER_COLORS = [0x245f52, 0xb56f3c];
+const PLAYER_COLORS = [0x245f52, 0xb56f3c, 0x735b87, 0x3c6f91, 0x9b7332, 0x934c54];
 
 const phaseLabel: Readonly<Record<string, string>> = {
   roll: "бросок",
   acquire: "покупка",
   rent: "рента",
+  resolve: "эффект клетки",
+  blocked: "следующий срез",
   finish: "завершение"
 };
 
 const errorText = (error: unknown) =>
   error instanceof Error ? error.message : "Действие отклонено сервером";
+
+const tokenPosition = (cell: EstateCellView, playerIndex: number) => ({
+  x: cell.x - 32 + (playerIndex % 3) * 32,
+  y: cell.y + cell.height / 2 - 18 - Math.floor(playerIndex / 3) * 28
+});
 
 /** Build a scene solely from platform-injected Phaser. */
 export const createEstateRaceScene: PhaserSceneFactory = (
@@ -153,7 +160,15 @@ export const createEstateRaceScene: PhaserSceneFactory = (
       initial: boolean
     ) {
       const estate = cell.kind === "estate";
-      const fill = estate ? 0xf2e5ca : cell.kind === "start" ? 0xb9d2c2 : 0xded7c5;
+      const fill = estate
+        ? 0xf2e5ca
+        : cell.kind === "start"
+          ? 0xb9d2c2
+          : cell.kind === "tax" || cell.kind === "go-to-jail"
+            ? 0xd9b5a7
+            : cell.kind === "event" || cell.kind === "fund"
+              ? 0xc8d4df
+              : 0xded7c5;
       graphics.fillStyle(fill, 1);
       graphics.lineStyle(estate ? 4 : 2, estate ? 0xb56f3c : 0x6f8178, 0.95);
       graphics.fillRoundedRect(cell.x - cell.width / 2, cell.y - cell.height / 2, cell.width, cell.height, 12);
@@ -163,16 +178,18 @@ export const createEstateRaceScene: PhaserSceneFactory = (
         color: "#183a34",
         align: "center",
         fontFamily: "Georgia, serif",
-        fontSize: estate ? "22px" : "19px",
+        fontSize: estate ? "13px" : "12px",
         fontStyle: estate ? "bold" : "normal",
         wordWrap: { width: cell.width - 24 }
       }).setOrigin(0.5);
 
-      const detail = estate ? `${cell.price} · рента ${cell.rent}` : `клетка ${cell.index}`;
+      const detail = estate || cell.kind === "transit" || cell.kind === "utility"
+        ? `${cell.price ?? "—"} · рента ${cell.rent ?? "—"}`
+        : cell.kind === "tax" ? `сбор ${cell.taxAmount ?? "—"}` : `клетка ${cell.index}`;
       this.add.text(cell.x, cell.y + 20, detail, {
         color: "#65716c",
         fontFamily: "Arial, sans-serif",
-        fontSize: "15px"
+        fontSize: "10px"
       }).setOrigin(0.5);
 
       if (cell.ownerPlayerId) {
@@ -198,10 +215,11 @@ export const createEstateRaceScene: PhaserSceneFactory = (
       projection.players.forEach((player, index) => {
         const cell = projection.cells.find((item) => item.index === player.position);
         if (!cell) return;
+        const currentTokenPosition = tokenPosition(cell, index);
         const token = this.add.circle(
-          cell.x - 30 + index * 60,
-          cell.y + cell.height / 2 - 32,
-          player.active ? 17 : 14,
+          currentTokenPosition.x,
+          currentTokenPosition.y,
+          player.active ? 12 : 10,
           PLAYER_COLORS[index] ?? PLAYER_COLORS[0],
           1
         ).setStrokeStyle(4, 0xfff7e4, 1);
@@ -209,7 +227,8 @@ export const createEstateRaceScene: PhaserSceneFactory = (
         const previousPlayer = previousProjection?.players.find((item) => item.id === player.id);
         const previousCell = previousProjection?.cells.find((item) => item.index === previousPlayer?.position);
         if (!initial && previousPlayer && previousCell && previousPlayer.position !== player.position) {
-          token.setPosition(previousCell.x - 30 + index * 60, previousCell.y + previousCell.height / 2 - 32);
+          const previousTokenPosition = tokenPosition(previousCell, index);
+          token.setPosition(previousTokenPosition.x, previousTokenPosition.y);
           const stepCount = (player.position - previousPlayer.position + projection.cells.length) % projection.cells.length;
           const track = Array.from({ length: stepCount }, (_, step) =>
             projection.cells.find((item) =>
@@ -220,8 +239,8 @@ export const createEstateRaceScene: PhaserSceneFactory = (
             targets: token,
             // Tweening through every crossed cell keeps the token on the
             // cyclic track instead of cutting diagonally across the board.
-            x: track.map((item) => item.x - 30 + index * 60),
-            y: track.map((item) => item.y + item.height / 2 - 32),
+            x: track.map((item) => tokenPosition(item, index).x),
+            y: track.map((item) => tokenPosition(item, index).y),
             duration: Math.max(360, track.length * 130),
             interpolation: "linear",
             ease: "Cubic.InOut"
@@ -232,11 +251,12 @@ export const createEstateRaceScene: PhaserSceneFactory = (
 
     private drawStatus(projection: EstateBoardProjection) {
       projection.players.forEach((player, index) => {
-        const x = index === 0 ? 420 : 940;
+        const spacing = 1100 / Math.max(1, projection.players.length - 1);
+        const x = projection.players.length === 1 ? 700 : 150 + index * spacing;
         this.add.text(x, 975, `${player.label}${player.active ? " · ходит" : ""}   ${player.cash} монет`, {
           color: player.active ? "#fff4d8" : "#b9c7c2",
           fontFamily: "Arial, sans-serif",
-          fontSize: player.active ? "22px" : "19px",
+          fontSize: player.active ? "16px" : "14px",
           fontStyle: player.active ? "bold" : "normal"
         }).setOrigin(0.5, 1);
       });

@@ -1,6 +1,7 @@
 /** Package-level invariants for original content and the bounded first slice. */
 
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
@@ -11,30 +12,72 @@ const sha256Pattern = /^sha256:[0-9a-f]{64}$/u;
 const planSteps = (manifest: Record<string, any>, actionId: string) =>
   manifest.mechanics.plans[actionId].transaction.steps as Array<Record<string, any>>;
 
-test("manifest owns a twelve-cell original board and exactly two hotseat participants", () => {
+const stableJson = (value: unknown): string => {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  if (value !== null && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    return `{${Object.keys(record).sort().map((key) =>
+      `${JSON.stringify(key)}:${stableJson(record[key])}`
+    ).join(",")}}`;
+  }
+  return JSON.stringify(value);
+};
+
+test("manifest owns a classified forty-cell original board for two to six hotseat participants", () => {
   const manifest = readJson("../../../game.manifest.json");
   const config = manifest.config as Record<string, any>;
+  const actions = manifest.actions as Record<string, any>;
+  const rules = (manifest.content as Record<string, any>).data.rules;
   const state = manifest.state as Record<string, any>;
   const cells = state.public.objects.boardCells as Record<string, any>;
 
-  assert.deepEqual(config.players, { min: 2, max: 2 });
+  assert.deepEqual(config.players, { min: 2, max: 6 });
   assert.equal(config.settings.mode, "local-hotseat");
-  assert.equal(Object.keys(cells).length, 12);
+  assert.equal(Object.keys(cells).length, 40);
   assert.deepEqual(Object.values(cells).map((cell) => cell.attributes.index),
-    Array.from({ length: 12 }, (_, index) => index));
-  assert.deepEqual(state.playersTemplate.metrics, { cash: 900, position: 0 });
+    Array.from({ length: 40 }, (_, index) => index));
+  assert.deepEqual(state.playersTemplate.metrics, { cash: 1200, position: 0 });
+
+  const kinds = Object.values(cells).map((cell) => cell.attributes.kind);
+  assert.deepEqual([...new Set(kinds)].sort(), [
+    "estate", "event", "fund", "go-to-jail", "jail", "neutral", "start", "tax", "transit", "utility"
+  ]);
+  assert.equal(kinds.filter((kind) => kind === "estate").length, 22);
+  assert.equal(kinds.filter((kind) => kind === "transit").length, 4);
+  assert.equal(kinds.filter((kind) => kind === "utility").length, 2);
+  assert.equal(kinds.filter((kind) => kind === "tax").length, 2);
+  for (const cell of Object.values(cells) as Array<Record<string, any>>) {
+    if (["estate", "transit", "utility"].includes(cell.attributes.kind)) {
+      assert.equal(typeof cell.attributes.group, "string");
+      assert.equal(typeof cell.attributes.price, "number");
+      assert.ok(Array.isArray(cell.attributes.rentScale));
+    }
+  }
+
+  const actionIds = Object.keys(actions).sort();
+  assert.deepEqual(actionIds.filter((id) => id.startsWith("property.buy.")), [
+    "property.buy.cell-02", "property.buy.cell-05", "property.buy.cell-08", "property.buy.cell-11"
+  ]);
+  assert.equal(actionIds.some((id) => /(?:event|fund|card|deck)/u.test(id)), false);
+
+  const datasetHash = createHash("sha256")
+    .update(stableJson({ rules, boardCells: cells }))
+    .digest("hex");
+  assert.equal(datasetHash, "60046e5696519cfa766ab111205dcb96e01a0e9a6d56bc5328662b18e3da73a8");
 });
 
 test("economy actions bind exact immutable plans to typed participant and object references", () => {
   const manifest = readJson("../../../game.manifest.json") as Record<string, any>;
   const actions = manifest.actions;
-  const buy = actions["property.buy.cell-02"];
-  const rent = actions["property.rent.cell-02"];
   const buySteps = planSteps(manifest, "property.buy.cell-02");
   const rentSteps = planSteps(manifest, "property.rent.cell-02");
   const buyTransfer = buySteps.find((step) => step.op === "core.resource.transfer");
   const rentTransfer = rentSteps.find((step) => step.op === "core.resource.transfer");
   const ownerWrite = buySteps.find((step) => step.op === "core.entity.attributes.patch");
+
+  assert.ok(buyTransfer);
+  assert.ok(rentTransfer);
+  assert.ok(ownerWrite);
 
   for (const [actionId, action] of Object.entries(actions) as Array<[string, Record<string, any>]>) {
     assert.deepEqual(action.binding, { kind: "mechanics-plan", planRef: actionId });
@@ -118,6 +161,9 @@ test("turn completion is an explicit typed composition with no legacy shortcuts"
     step.patches.some((patch: any) => patch.target.endpoint === "public.turn.activePlayerId")
   );
   const serializedManifest = JSON.stringify(manifest);
+
+  assert.ok(nextParticipant);
+  assert.ok(turnPatch);
 
   // Elimination is not implemented by this game slice. Publishing a broad
   // collection over every player's state would claim visibility and fields

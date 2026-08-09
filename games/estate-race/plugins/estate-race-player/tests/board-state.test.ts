@@ -30,12 +30,14 @@ test("projects cells, participants, roll and only runtime-declared actions", () 
                 label: "Медная улица",
                 shortLabel: "Медная",
                 kind: "estate",
+                group: "coral",
                 x: 100,
                 y: 200,
                 width: 240,
                 height: 140,
                 price: 160,
                 rent: 24,
+                rentScale: [24, 48, 132, 310, 500, 700],
                 ownerPlayerId: "p1"
               }
             }
@@ -53,9 +55,28 @@ test("projects cells, participants, roll and only runtime-declared actions", () 
   assert.equal(projection.turnNumber, 4);
   assert.equal(projection.lastRoll?.total, 5);
   assert.equal(projection.cells[0]?.ownerPlayerId, "p1");
+  assert.equal(projection.cells[0]?.group, "coral");
+  assert.deepEqual(projection.cells[0]?.rentScale, [24, 48, 132, 310, 500, 700]);
   assert.equal(projection.players[1]?.active, true);
   assert.equal(projection.availableActions[0]?.actionId, "property.rent.cell-05");
   assert.deepEqual(projection.availableActions[0]?.params, { cellId: "cell-05" });
+});
+
+test("projects all six hotseat participants without assuming fixed player ids", () => {
+  const players = Object.fromEntries(Array.from({ length: 6 }, (_, index) => [
+    `seat-${index + 1}`,
+    { metrics: { cash: 1200 - index * 10, position: index } }
+  ]));
+  const projection = projectEstateRaceSession({
+    state: {
+      public: { turn: { activePlayerId: "seat-6", phase: "roll", turnNumber: 8 } },
+      players
+    }
+  });
+
+  assert.equal(projection.players.length, 6);
+  assert.equal(projection.players[5]?.id, "seat-6");
+  assert.equal(projection.players[5]?.active, true);
 });
 
 test("does not invent legal actions or expose malformed state", () => {

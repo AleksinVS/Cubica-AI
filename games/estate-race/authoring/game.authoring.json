@@ -6,12 +6,12 @@
   "root": {
     "_type": "game.Game",
     "_label": "Estate Race · прототип",
-    "_semantics": "Локальная экономическая игра о маршруте по авторскому двенадцатиклеточному городу, покупке участка и первой ренте.",
+    "_semantics": "Локальная экономическая игра для 2–6 участников на полном авторском сорокаклеточном маршруте.",
     "meta": {
       "id": "estate-race",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "name": "Estate Race · прототип",
-      "description": "Локальная экономическая игра о маршруте по авторскому двенадцатиклеточному городу, покупке участка и первой ренте.",
+      "description": "Локальная экономическая игра для 2–6 участников на полном авторском сорокаклеточном маршруте.",
       "author": "Cubica",
       "schemaVersion": "1.3",
       "minEngineVersion": "0.1.0",
@@ -25,7 +25,7 @@
     "config": {
       "players": {
         "min": 2,
-        "max": 2
+        "max": 6
       },
       "settings": {
         "mode": "local-hotseat",
@@ -44,10 +44,10 @@
     "content": {
       "data": {
         "rules": {
-          "boardSize": 12,
+          "boardSize": 40,
           "dice": "2d6",
-          "startingCash": 900,
-          "lapReward": 80,
+          "startingCash": 1200,
+          "lapReward": 120,
           "ownership": "one-player-per-estate",
           "debtAllowed": false
         },
@@ -69,7 +69,14 @@
             "values": [
               "start",
               "estate",
-              "landmark"
+              "transit",
+              "utility",
+              "event",
+              "fund",
+              "tax",
+              "neutral",
+              "jail",
+              "go-to-jail"
             ]
           }
         },
@@ -86,10 +93,45 @@
               "interactive": true,
               "visualState": "estate"
             },
-            "category.landmark": {
+            "category.transit": {
               "visible": true,
               "interactive": false,
-              "visualState": "landmark"
+              "visualState": "transit"
+            },
+            "category.utility": {
+              "visible": true,
+              "interactive": false,
+              "visualState": "utility"
+            },
+            "category.event": {
+              "visible": true,
+              "interactive": false,
+              "visualState": "event"
+            },
+            "category.fund": {
+              "visible": true,
+              "interactive": false,
+              "visualState": "fund"
+            },
+            "category.tax": {
+              "visible": true,
+              "interactive": false,
+              "visualState": "tax"
+            },
+            "category.neutral": {
+              "visible": true,
+              "interactive": false,
+              "visualState": "neutral"
+            },
+            "category.jail": {
+              "visible": true,
+              "interactive": false,
+              "visualState": "jail"
+            },
+            "category.go-to-jail": {
+              "visible": true,
+              "interactive": false,
+              "visualState": "go-to-jail"
             }
           }
         }
@@ -101,7 +143,7 @@
     "state": {
       "playersTemplate": {
         "metrics": {
-          "cash": 900,
+          "cash": 1200,
           "position": 0
         },
         "flags": {},
@@ -118,7 +160,7 @@
           "screen_id": "table"
         },
         "board": {
-          "size": 12,
+          "size": 40,
           "lastRoll": null,
           "availableActions": [
             {
@@ -140,28 +182,39 @@
                 "index": 0,
                 "label": "Стартовый причал",
                 "shortLabel": "Старт",
-                "x": 150,
-                "y": 820,
-                "width": 245,
-                "height": 150,
+                "x": 120,
+                "y": 880,
+                "width": 150,
+                "height": 120,
                 "kind": "start"
               }
             },
             "cell-01": {
               "objectType": "estate.cell",
               "facets": {
-                "category": "landmark"
+                "category": "estate"
               },
               "attributes": {
                 "id": "cell-01",
                 "index": 1,
-                "label": "Площадь компаса",
-                "shortLabel": "Компас",
-                "x": 415,
-                "y": 820,
-                "width": 245,
-                "height": 150,
-                "kind": "landmark"
+                "label": "Янтарный переулок",
+                "shortLabel": "Янтарный",
+                "x": 236,
+                "y": 880,
+                "width": 108,
+                "height": 120,
+                "kind": "estate",
+                "group": "amber",
+                "price": 90,
+                "rentScale": [
+                  8,
+                  24,
+                  70,
+                  180,
+                  320,
+                  470
+                ],
+                "rent": 8
               }
             },
             "cell-02": {
@@ -174,47 +227,57 @@
                 "index": 2,
                 "label": "Липовая аллея",
                 "shortLabel": "Липовая",
-                "x": 680,
-                "y": 820,
-                "width": 245,
-                "height": 150,
+                "x": 352,
+                "y": 880,
+                "width": 108,
+                "height": 120,
                 "kind": "estate",
+                "group": "amber",
                 "price": 120,
+                "rentScale": [
+                  18,
+                  36,
+                  96,
+                  230,
+                  390,
+                  560
+                ],
                 "rent": 18
               }
             },
             "cell-03": {
               "objectType": "estate.cell",
               "facets": {
-                "category": "landmark"
+                "category": "event"
               },
               "attributes": {
                 "id": "cell-03",
                 "index": 3,
-                "label": "Сад фонарей",
-                "shortLabel": "Фонари",
-                "x": 945,
-                "y": 820,
-                "width": 245,
-                "height": 150,
-                "kind": "landmark"
+                "label": "Развилка курьера",
+                "shortLabel": "Курьер",
+                "x": 468,
+                "y": 880,
+                "width": 108,
+                "height": 120,
+                "kind": "event"
               }
             },
             "cell-04": {
               "objectType": "estate.cell",
               "facets": {
-                "category": "landmark"
+                "category": "tax"
               },
               "attributes": {
                 "id": "cell-04",
                 "index": 4,
-                "label": "Восточные ворота",
-                "shortLabel": "Ворота",
-                "x": 1210,
-                "y": 820,
-                "width": 245,
-                "height": 150,
-                "kind": "landmark"
+                "label": "Городское содержание",
+                "shortLabel": "Содержание",
+                "x": 584,
+                "y": 880,
+                "width": 108,
+                "height": 120,
+                "kind": "tax",
+                "taxAmount": 70
               }
             },
             "cell-05": {
@@ -227,47 +290,65 @@
                 "index": 5,
                 "label": "Медная улица",
                 "shortLabel": "Медная",
-                "x": 1210,
-                "y": 540,
-                "width": 245,
-                "height": 150,
+                "x": 700,
+                "y": 880,
+                "width": 108,
+                "height": 120,
                 "kind": "estate",
+                "group": "coral",
                 "price": 160,
+                "rentScale": [
+                  24,
+                  48,
+                  132,
+                  310,
+                  500,
+                  700
+                ],
                 "rent": 24
               }
             },
             "cell-06": {
               "objectType": "estate.cell",
               "facets": {
-                "category": "landmark"
+                "category": "transit"
               },
               "attributes": {
                 "id": "cell-06",
                 "index": 6,
-                "label": "Часовая башня",
-                "shortLabel": "Башня",
-                "x": 1210,
-                "y": 260,
-                "width": 245,
-                "height": 150,
-                "kind": "landmark"
+                "label": "Восточная линия",
+                "shortLabel": "Восточная",
+                "x": 816,
+                "y": 880,
+                "width": 108,
+                "height": 120,
+                "kind": "transit",
+                "group": "transit",
+                "price": 210,
+                "rentScale": [
+                  26,
+                  52,
+                  104,
+                  208
+                ],
+                "rent": 26
               }
             },
             "cell-07": {
               "objectType": "estate.cell",
               "facets": {
-                "category": "landmark"
+                "category": "fund"
               },
               "attributes": {
                 "id": "cell-07",
                 "index": 7,
-                "label": "Северный круг",
-                "shortLabel": "Круг",
-                "x": 945,
-                "y": 120,
-                "width": 245,
-                "height": 150,
-                "kind": "landmark"
+                "label": "Фонд соседей",
+                "shortLabel": "Фонд",
+                "x": 932,
+                "y": 880,
+                "width": 108,
+                "height": 120,
+                "kind": "fund"
               }
             },
             "cell-08": {
@@ -280,47 +361,67 @@
                 "index": 8,
                 "label": "Тихая набережная",
                 "shortLabel": "Набережная",
-                "x": 680,
-                "y": 120,
-                "width": 245,
-                "height": 150,
+                "x": 1048,
+                "y": 880,
+                "width": 108,
+                "height": 120,
                 "kind": "estate",
+                "group": "coral",
                 "price": 200,
+                "rentScale": [
+                  30,
+                  60,
+                  168,
+                  380,
+                  610,
+                  840
+                ],
                 "rent": 30
               }
             },
             "cell-09": {
               "objectType": "estate.cell",
               "facets": {
-                "category": "landmark"
+                "category": "estate"
               },
               "attributes": {
                 "id": "cell-09",
                 "index": 9,
-                "label": "Двор ветров",
-                "shortLabel": "Ветры",
-                "x": 415,
-                "y": 120,
-                "width": 245,
-                "height": 150,
-                "kind": "landmark"
+                "label": "Площадь часов",
+                "shortLabel": "Часы",
+                "x": 1164,
+                "y": 880,
+                "width": 108,
+                "height": 120,
+                "kind": "estate",
+                "group": "coral",
+                "price": 220,
+                "rentScale": [
+                  34,
+                  68,
+                  190,
+                  420,
+                  660,
+                  900
+                ],
+                "rent": 34
               }
             },
             "cell-10": {
               "objectType": "estate.cell",
               "facets": {
-                "category": "landmark"
+                "category": "jail"
               },
               "attributes": {
                 "id": "cell-10",
                 "index": 10,
-                "label": "Западный мост",
-                "shortLabel": "Мост",
-                "x": 150,
-                "y": 120,
-                "width": 245,
-                "height": 150,
-                "kind": "landmark"
+                "label": "Сторожевой двор",
+                "shortLabel": "Визит",
+                "x": 1280,
+                "y": 880,
+                "width": 150,
+                "height": 120,
+                "kind": "jail"
               }
             },
             "cell-11": {
@@ -333,13 +434,716 @@
                 "index": 11,
                 "label": "Оранжерейный проезд",
                 "shortLabel": "Оранжерея",
-                "x": 150,
-                "y": 470,
-                "width": 245,
-                "height": 150,
+                "x": 1280,
+                "y": 804,
+                "width": 150,
+                "height": 70,
                 "kind": "estate",
+                "group": "gold",
                 "price": 240,
+                "rentScale": [
+                  36,
+                  72,
+                  210,
+                  460,
+                  720,
+                  980
+                ],
                 "rent": 36
+              }
+            },
+            "cell-12": {
+              "objectType": "estate.cell",
+              "facets": {
+                "category": "utility"
+              },
+              "attributes": {
+                "id": "cell-12",
+                "index": 12,
+                "label": "Городские резервуары",
+                "shortLabel": "Резервуары",
+                "x": 1280,
+                "y": 728,
+                "width": 150,
+                "height": 70,
+                "kind": "utility",
+                "group": "utility",
+                "price": 180,
+                "rentScale": [
+                  5,
+                  12
+                ],
+                "rent": 5
+              }
+            },
+            "cell-13": {
+              "objectType": "estate.cell",
+              "facets": {
+                "category": "estate"
+              },
+              "attributes": {
+                "id": "cell-13",
+                "index": 13,
+                "label": "Бумажный квартал",
+                "shortLabel": "Бумажный",
+                "x": 1280,
+                "y": 652,
+                "width": 150,
+                "height": 70,
+                "kind": "estate",
+                "group": "gold",
+                "price": 260,
+                "rentScale": [
+                  38,
+                  76,
+                  220,
+                  490,
+                  760,
+                  1020
+                ],
+                "rent": 38
+              }
+            },
+            "cell-14": {
+              "objectType": "estate.cell",
+              "facets": {
+                "category": "estate"
+              },
+              "attributes": {
+                "id": "cell-14",
+                "index": 14,
+                "label": "Улица мастерских",
+                "shortLabel": "Мастерские",
+                "x": 1280,
+                "y": 576,
+                "width": 150,
+                "height": 70,
+                "kind": "estate",
+                "group": "gold",
+                "price": 280,
+                "rentScale": [
+                  40,
+                  80,
+                  230,
+                  520,
+                  800,
+                  1080
+                ],
+                "rent": 40
+              }
+            },
+            "cell-15": {
+              "objectType": "estate.cell",
+              "facets": {
+                "category": "transit"
+              },
+              "attributes": {
+                "id": "cell-15",
+                "index": 15,
+                "label": "Северная линия",
+                "shortLabel": "Северная",
+                "x": 1280,
+                "y": 500,
+                "width": 150,
+                "height": 70,
+                "kind": "transit",
+                "group": "transit",
+                "price": 210,
+                "rentScale": [
+                  26,
+                  52,
+                  104,
+                  208
+                ],
+                "rent": 26
+              }
+            },
+            "cell-16": {
+              "objectType": "estate.cell",
+              "facets": {
+                "category": "estate"
+              },
+              "attributes": {
+                "id": "cell-16",
+                "index": 16,
+                "label": "Кленовый бульвар",
+                "shortLabel": "Кленовый",
+                "x": 1280,
+                "y": 424,
+                "width": 150,
+                "height": 70,
+                "kind": "estate",
+                "group": "moss",
+                "price": 300,
+                "rentScale": [
+                  42,
+                  84,
+                  250,
+                  560,
+                  850,
+                  1140
+                ],
+                "rent": 42
+              }
+            },
+            "cell-17": {
+              "objectType": "estate.cell",
+              "facets": {
+                "category": "event"
+              },
+              "attributes": {
+                "id": "cell-17",
+                "index": 17,
+                "label": "Весть с верфи",
+                "shortLabel": "Весть",
+                "x": 1280,
+                "y": 348,
+                "width": 150,
+                "height": 70,
+                "kind": "event"
+              }
+            },
+            "cell-18": {
+              "objectType": "estate.cell",
+              "facets": {
+                "category": "estate"
+              },
+              "attributes": {
+                "id": "cell-18",
+                "index": 18,
+                "label": "Переулок фонарей",
+                "shortLabel": "Фонари",
+                "x": 1280,
+                "y": 272,
+                "width": 150,
+                "height": 70,
+                "kind": "estate",
+                "group": "moss",
+                "price": 320,
+                "rentScale": [
+                  45,
+                  90,
+                  270,
+                  600,
+                  900,
+                  1200
+                ],
+                "rent": 45
+              }
+            },
+            "cell-19": {
+              "objectType": "estate.cell",
+              "facets": {
+                "category": "estate"
+              },
+              "attributes": {
+                "id": "cell-19",
+                "index": 19,
+                "label": "Садовая дуга",
+                "shortLabel": "Садовая",
+                "x": 1280,
+                "y": 196,
+                "width": 150,
+                "height": 70,
+                "kind": "estate",
+                "group": "moss",
+                "price": 340,
+                "rentScale": [
+                  48,
+                  96,
+                  285,
+                  630,
+                  940,
+                  1260
+                ],
+                "rent": 48
+              }
+            },
+            "cell-20": {
+              "objectType": "estate.cell",
+              "facets": {
+                "category": "neutral"
+              },
+              "attributes": {
+                "id": "cell-20",
+                "index": 20,
+                "label": "Парк тихого часа",
+                "shortLabel": "Парк",
+                "x": 1280,
+                "y": 120,
+                "width": 150,
+                "height": 120,
+                "kind": "neutral"
+              }
+            },
+            "cell-21": {
+              "objectType": "estate.cell",
+              "facets": {
+                "category": "estate"
+              },
+              "attributes": {
+                "id": "cell-21",
+                "index": 21,
+                "label": "Керамический ряд",
+                "shortLabel": "Керамика",
+                "x": 1164,
+                "y": 120,
+                "width": 108,
+                "height": 120,
+                "kind": "estate",
+                "group": "azure",
+                "price": 360,
+                "rentScale": [
+                  50,
+                  100,
+                  300,
+                  660,
+                  980,
+                  1320
+                ],
+                "rent": 50
+              }
+            },
+            "cell-22": {
+              "objectType": "estate.cell",
+              "facets": {
+                "category": "event"
+              },
+              "attributes": {
+                "id": "cell-22",
+                "index": 22,
+                "label": "Городская почта",
+                "shortLabel": "Почта",
+                "x": 1048,
+                "y": 120,
+                "width": 108,
+                "height": 120,
+                "kind": "event"
+              }
+            },
+            "cell-23": {
+              "objectType": "estate.cell",
+              "facets": {
+                "category": "estate"
+              },
+              "attributes": {
+                "id": "cell-23",
+                "index": 23,
+                "label": "Мостовая арок",
+                "shortLabel": "Арки",
+                "x": 932,
+                "y": 120,
+                "width": 108,
+                "height": 120,
+                "kind": "estate",
+                "group": "azure",
+                "price": 380,
+                "rentScale": [
+                  52,
+                  104,
+                  315,
+                  690,
+                  1020,
+                  1380
+                ],
+                "rent": 52
+              }
+            },
+            "cell-24": {
+              "objectType": "estate.cell",
+              "facets": {
+                "category": "estate"
+              },
+              "attributes": {
+                "id": "cell-24",
+                "index": 24,
+                "label": "Лазурная площадь",
+                "shortLabel": "Лазурная",
+                "x": 816,
+                "y": 120,
+                "width": 108,
+                "height": 120,
+                "kind": "estate",
+                "group": "azure",
+                "price": 400,
+                "rentScale": [
+                  55,
+                  110,
+                  330,
+                  720,
+                  1060,
+                  1440
+                ],
+                "rent": 55
+              }
+            },
+            "cell-25": {
+              "objectType": "estate.cell",
+              "facets": {
+                "category": "transit"
+              },
+              "attributes": {
+                "id": "cell-25",
+                "index": 25,
+                "label": "Западная линия",
+                "shortLabel": "Западная",
+                "x": 700,
+                "y": 120,
+                "width": 108,
+                "height": 120,
+                "kind": "transit",
+                "group": "transit",
+                "price": 210,
+                "rentScale": [
+                  26,
+                  52,
+                  104,
+                  208
+                ],
+                "rent": 26
+              }
+            },
+            "cell-26": {
+              "objectType": "estate.cell",
+              "facets": {
+                "category": "estate"
+              },
+              "attributes": {
+                "id": "cell-26",
+                "index": 26,
+                "label": "Проспект мозаик",
+                "shortLabel": "Мозаики",
+                "x": 584,
+                "y": 120,
+                "width": 108,
+                "height": 120,
+                "kind": "estate",
+                "group": "plum",
+                "price": 420,
+                "rentScale": [
+                  58,
+                  116,
+                  350,
+                  760,
+                  1120,
+                  1510
+                ],
+                "rent": 58
+              }
+            },
+            "cell-27": {
+              "objectType": "estate.cell",
+              "facets": {
+                "category": "estate"
+              },
+              "attributes": {
+                "id": "cell-27",
+                "index": 27,
+                "label": "Театральный спуск",
+                "shortLabel": "Театр",
+                "x": 468,
+                "y": 120,
+                "width": 108,
+                "height": 120,
+                "kind": "estate",
+                "group": "plum",
+                "price": 440,
+                "rentScale": [
+                  60,
+                  120,
+                  365,
+                  790,
+                  1160,
+                  1570
+                ],
+                "rent": 60
+              }
+            },
+            "cell-28": {
+              "objectType": "estate.cell",
+              "facets": {
+                "category": "utility"
+              },
+              "attributes": {
+                "id": "cell-28",
+                "index": 28,
+                "label": "Энергетическая башня",
+                "shortLabel": "Энергия",
+                "x": 352,
+                "y": 120,
+                "width": 108,
+                "height": 120,
+                "kind": "utility",
+                "group": "utility",
+                "price": 180,
+                "rentScale": [
+                  5,
+                  12
+                ],
+                "rent": 5
+              }
+            },
+            "cell-29": {
+              "objectType": "estate.cell",
+              "facets": {
+                "category": "estate"
+              },
+              "attributes": {
+                "id": "cell-29",
+                "index": 29,
+                "label": "Сиреневый двор",
+                "shortLabel": "Сиреневый",
+                "x": 236,
+                "y": 120,
+                "width": 108,
+                "height": 120,
+                "kind": "estate",
+                "group": "plum",
+                "price": 460,
+                "rentScale": [
+                  64,
+                  128,
+                  385,
+                  830,
+                  1220,
+                  1640
+                ],
+                "rent": 64
+              }
+            },
+            "cell-30": {
+              "objectType": "estate.cell",
+              "facets": {
+                "category": "go-to-jail"
+              },
+              "attributes": {
+                "id": "cell-30",
+                "index": 30,
+                "label": "Дозорная башня",
+                "shortLabel": "Под стражу",
+                "x": 120,
+                "y": 120,
+                "width": 150,
+                "height": 120,
+                "kind": "go-to-jail"
+              }
+            },
+            "cell-31": {
+              "objectType": "estate.cell",
+              "facets": {
+                "category": "estate"
+              },
+              "attributes": {
+                "id": "cell-31",
+                "index": 31,
+                "label": "Улица ветров",
+                "shortLabel": "Ветры",
+                "x": 120,
+                "y": 196,
+                "width": 150,
+                "height": 70,
+                "kind": "estate",
+                "group": "copper",
+                "price": 480,
+                "rentScale": [
+                  66,
+                  132,
+                  400,
+                  860,
+                  1260,
+                  1700
+                ],
+                "rent": 66
+              }
+            },
+            "cell-32": {
+              "objectType": "estate.cell",
+              "facets": {
+                "category": "estate"
+              },
+              "attributes": {
+                "id": "cell-32",
+                "index": 32,
+                "label": "Высокий причал",
+                "shortLabel": "Причал",
+                "x": 120,
+                "y": 272,
+                "width": 150,
+                "height": 70,
+                "kind": "estate",
+                "group": "copper",
+                "price": 500,
+                "rentScale": [
+                  70,
+                  140,
+                  420,
+                  900,
+                  1320,
+                  1780
+                ],
+                "rent": 70
+              }
+            },
+            "cell-33": {
+              "objectType": "estate.cell",
+              "facets": {
+                "category": "fund"
+              },
+              "attributes": {
+                "id": "cell-33",
+                "index": 33,
+                "label": "Касса взаимопомощи",
+                "shortLabel": "Касса",
+                "x": 120,
+                "y": 348,
+                "width": 150,
+                "height": 70,
+                "kind": "fund"
+              }
+            },
+            "cell-34": {
+              "objectType": "estate.cell",
+              "facets": {
+                "category": "estate"
+              },
+              "attributes": {
+                "id": "cell-34",
+                "index": 34,
+                "label": "Рыночная галерея",
+                "shortLabel": "Галерея",
+                "x": 120,
+                "y": 424,
+                "width": 150,
+                "height": 70,
+                "kind": "estate",
+                "group": "copper",
+                "price": 520,
+                "rentScale": [
+                  74,
+                  148,
+                  440,
+                  940,
+                  1380,
+                  1860
+                ],
+                "rent": 74
+              }
+            },
+            "cell-35": {
+              "objectType": "estate.cell",
+              "facets": {
+                "category": "transit"
+              },
+              "attributes": {
+                "id": "cell-35",
+                "index": 35,
+                "label": "Кольцевая линия",
+                "shortLabel": "Кольцевая",
+                "x": 120,
+                "y": 500,
+                "width": 150,
+                "height": 70,
+                "kind": "transit",
+                "group": "transit",
+                "price": 210,
+                "rentScale": [
+                  26,
+                  52,
+                  104,
+                  208
+                ],
+                "rent": 26
+              }
+            },
+            "cell-36": {
+              "objectType": "estate.cell",
+              "facets": {
+                "category": "event"
+              },
+              "attributes": {
+                "id": "cell-36",
+                "index": 36,
+                "label": "Сигнал маяка",
+                "shortLabel": "Маяк",
+                "x": 120,
+                "y": 576,
+                "width": 150,
+                "height": 70,
+                "kind": "event"
+              }
+            },
+            "cell-37": {
+              "objectType": "estate.cell",
+              "facets": {
+                "category": "estate"
+              },
+              "attributes": {
+                "id": "cell-37",
+                "index": 37,
+                "label": "Нефритовый проспект",
+                "shortLabel": "Нефритовый",
+                "x": 120,
+                "y": 652,
+                "width": 150,
+                "height": 70,
+                "kind": "estate",
+                "group": "jade",
+                "price": 560,
+                "rentScale": [
+                  80,
+                  160,
+                  480,
+                  1020,
+                  1500,
+                  2020
+                ],
+                "rent": 80
+              }
+            },
+            "cell-38": {
+              "objectType": "estate.cell",
+              "facets": {
+                "category": "tax"
+              },
+              "attributes": {
+                "id": "cell-38",
+                "index": 38,
+                "label": "Сбор за благоустройство",
+                "shortLabel": "Благоустройство",
+                "x": 120,
+                "y": 728,
+                "width": 150,
+                "height": 70,
+                "kind": "tax",
+                "taxAmount": 110
+              }
+            },
+            "cell-39": {
+              "objectType": "estate.cell",
+              "facets": {
+                "category": "estate"
+              },
+              "attributes": {
+                "id": "cell-39",
+                "index": 39,
+                "label": "Панорамная терраса",
+                "shortLabel": "Панорама",
+                "x": 120,
+                "y": 804,
+                "width": 150,
+                "height": 70,
+                "kind": "estate",
+                "group": "jade",
+                "price": 620,
+                "rentScale": [
+                  90,
+                  180,
+                  540,
+                  1140,
+                  1680,
+                  2260
+                ],
+                "rent": 90
               }
             }
           }
@@ -977,6 +1781,11 @@
             "maxDepth": 32,
             "maxNodes": 32768,
             "maxUtf8Bytes": 262144
+          },
+          "game.rent-scale": {
+            "kind": "list",
+            "itemType": "core.integer",
+            "maxItems": 6
           }
         },
         "endpoints": {
@@ -1358,6 +2167,30 @@
                 },
                 "valueType": "core.string",
                 "access": "read-write"
+              },
+              "group": {
+                "storage": {
+                  "kind": "attribute",
+                  "name": "group"
+                },
+                "valueType": "core.string",
+                "access": "read-only"
+              },
+              "rentScale": {
+                "storage": {
+                  "kind": "attribute",
+                  "name": "rentScale"
+                },
+                "valueType": "game.rent-scale",
+                "access": "read-only"
+              },
+              "taxAmount": {
+                "storage": {
+                  "kind": "attribute",
+                  "name": "taxAmount"
+                },
+                "valueType": "core.integer",
+                "access": "read-only"
               }
             }
           }
@@ -1502,7 +2335,7 @@
                         },
                         {
                           "op": "value.literal",
-                          "value": 12
+                          "value": 40
                         }
                       ]
                     }
@@ -1523,7 +2356,7 @@
                 },
                 "delta": {
                   "op": "value.literal",
-                  "value": 80
+                  "value": 120
                 },
                 "when": {
                   "op": "predicate.compare",
@@ -3115,7 +3948,7 @@
                             }
                           },
                           "right": {
-                        "op": "value.actor"
+                            "op": "value.actor"
                           }
                         }
                       ]
@@ -3268,7 +4101,7 @@
                             }
                           },
                           "right": {
-                        "op": "value.actor"
+                            "op": "value.actor"
                           }
                         }
                       ]
@@ -3421,7 +4254,7 @@
                             }
                           },
                           "right": {
-                        "op": "value.actor"
+                            "op": "value.actor"
                           }
                         }
                       ]
@@ -3574,7 +4407,7 @@
                             }
                           },
                           "right": {
-                        "op": "value.actor"
+                            "op": "value.actor"
                           }
                         }
                       ]

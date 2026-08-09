@@ -112,7 +112,7 @@ test("bounded sampler replay completes first purchase and first rent", async () 
 
   await act(replay, "property.buy.cell-02", { cellId: "cell-02" });
   current = await replay.store.getSession(replay.session.sessionId);
-  assert.equal(current.state.players.p1.metrics.cash, 780);
+  assert.equal(current.state.players.p1.metrics.cash, 1080);
   assert.equal(current.state.public.objects.boardCells["cell-02"].attributes.ownerPlayerId, "p1");
 
   const finishedFirstTurn = await act(replay, "turn.finish");
@@ -129,8 +129,8 @@ test("bounded sampler replay completes first purchase and first rent", async () 
 
   await act(replay, "property.rent.cell-02", { cellId: "cell-02" });
   current = await replay.store.getSession(replay.session.sessionId);
-  assert.equal(current.state.players.p1.metrics.cash, 798);
-  assert.equal(current.state.players.p2.metrics.cash, 882);
+  assert.equal(current.state.players.p1.metrics.cash, 1098);
+  assert.equal(current.state.players.p2.metrics.cash, 1182);
   assert.equal(current.state.public.turn.phase, "finish");
   assert.ok(current.state.public.log.some((entry) => entry.data?.kind === "purchase"));
   assert.ok(current.state.public.log.some((entry) => entry.data?.kind === "rent"));
