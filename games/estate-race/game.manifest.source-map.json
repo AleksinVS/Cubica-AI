@@ -261,6 +261,24 @@
         "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/22"
       }
     ],
+    "/mechanics/plans/turn.roll/transaction/steps/23": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/23"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/24": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/24"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/25": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/25"
+      }
+    ],
     "/mechanics/plans/turn.roll/planHash": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
@@ -661,6 +679,12 @@
       {
         "file": "games/estate-race/authoring/game.authoring.json",
         "pointer": "/root/mechanics/plans/turn.finish/transaction/steps/4"
+      }
+    ],
+    "/mechanics/plans/turn.finish/transaction/steps/5": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.finish/transaction/steps/5"
       }
     ],
     "/mechanics/plans/turn.finish/planHash": [

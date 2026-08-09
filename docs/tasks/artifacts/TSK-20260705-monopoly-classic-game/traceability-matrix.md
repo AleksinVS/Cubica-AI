@@ -25,14 +25,13 @@
 | Платформа не содержит ветки `estate-race` и предметных идентификаторов | S0 | общий Mechanics IR/dispatcher; план чистоты платформы | только game-owned bindings | проверка поставщика и запрет id в core | реализовано |
 | DOM-путь остаётся доступным без Phaser | S1 (GSR-034) | публичная проекция и поставщик модуля; те же `actionId` | обычные DOM-кнопки | тест кнопок без созданного Phaser handle | реализовано |
 | Поле содержит 40 оригинальных клеток с типом, индексом, группой и ценовыми шкалами; пакет принимает 2–6 участников | S1 (GSR-037, фундамент) | `boardCells`, `config.players`, board size/reward; authoring → manifest | полное поле, типы клеток и проекция до шести произвольных participant id | manifest authoring, 40 уникальных индексов/10 типов, границы 2/6, plugin projection | реализовано как фундамент; landing-сценарии ниже ещё открыты |
+| Первый/второй дубль сохраняют дополнительный бросок, третий заключает, обычный бросок сбрасывает цепочку | S1 (GSR-038) | `consecutiveDoubles`, `extraRollPending`, `players.*.flags.inJail`; `turn.roll/finish`; typed conditional plans | серверные фаза и доступность действия; клиент не вычисляет дубль | replay покупки/ренты/нейтральной клетки, third-double без круга, exact retry и jailed-roll rejection | реализовано |
 
 ## Запланировано после S0
 
 | Правило | Срез | Состояние / Game Intent / план | UI | Проверка | Статус |
 |---|---|---|---|---|---|
 | Старт, налоги, нейтральные клетки, посещение/отправка в тюрьму проходят через dispatcher | S1 | `turn.phase`, `players.*.metrics`; `turn.roll` → landing plans; только активированные типы | landing panel и next action | positive/negative fixtures по каждому активированному типу | запланировано |
-| Порядок 2–6 участников выбирается сервером один раз и используется дальше | S1 | `state.players`, `turn.order`; `session.start`; bounded actor plan | список участников и порядок хода | фикстуры 2 и 6 участников, replay порядка | запланировано |
-| Дубли, повтор хода, третий дубль и прохождение старта имеют точные переходы | S1 | `turn.phase`, position/cash; `turn.roll` и `turn.next`; landing plan | объяснение результата и следующего действия | boundary fixtures для 0/1/2/3 дублей и старта | запланировано |
 | Отказ от покупки создаёт обязательный последовательный аукцион | S2 | auction state, `activePlayerId` + `resumePlayerId`; `property.auction.*`; общий actor plan | панель ставки, pass и завершения | bid/pass, чужой ход, сумма/баланс, победитель и retry | запланировано |
 | Рента различается для групп, станций и коммунальных объектов | S2 | owner/group/type metrics; `property.pay-rent`; formula plan | карточка собственности и объяснение формулы | neutral fixtures всех типов и отрицательный баланс | запланировано |
 | Две скрытые колоды дают оригинальный эффект, discard и повторное перемешивание | S3 | deck/discard state; `deck.draw/resolve`; bounded deck plan | карточка и журнал эффекта | replay recorded randomness, exhaustion и reshuffle | запланировано |
@@ -57,6 +56,7 @@
 |---|---|---|---|---|---|
 | P-01: окончательные публичные названия, тексты, цены и таблицы ренты | S0 → S1/S3/S7/S10 | source-of-truth content package ещё не утверждён; менять schema/runtime нельзя | публикационный текст и брендинг не утверждаются | PM выбирает оригинальный пакет либо отдельно подтверждённые права | заблокировано: P-01 pending |
 | Нормативная публикация S1 и случайный playthrough до S2/S3 | S1 | оригинальные данные допустимы только во внутреннем непубликуемом срезе; `session.start/turn.*` | production/catalog UI не объявляется готовым | content/provenance gate после P-01 | заблокировано: P-01 pending |
+| Случайный начальный порядок 2–6 фактических участников | S1 | `state.players` — record-map; `core.entities.select` допускает выбор, но `core.entities.order` отвергает record-shaped selection | порядок не объявляется случайным | нужен neutral entity/record conformance proof и exact-retry setup после решения PM | заблокировано: публичная семантика общей операции |
 | Сетевая партия | S8 | зависит от ADR-059 participants/join, персональной доставки и reconnect, не меняет game manifest | network UI не активируется | platform task + PostgreSQL/concurrency/browser checks | заблокировано: внешняя платформа |
 | ИИ-места | S9 | зависит от participants и actor-scoped availability из ADR-060; отдельную ветку runtime создавать нельзя | AI seat UI не активируется | adversarial projection/fallback checks после S8 prerequisites | заблокировано: внешняя платформа |
 | Каталог и полное закрытие | S10 | зависит от P-01, S6/S7, `LEGACY-0072` и `LEGACY-0068`; source of truth не расширяется | каталог не публикуется | milestone H/N/A и product/rights acceptance | заблокировано: зависимости |

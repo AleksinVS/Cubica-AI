@@ -146,7 +146,9 @@
           "cash": 1200,
           "position": 0
         },
-        "flags": {},
+        "flags": {
+          "inJail": false
+        },
         "objects": {},
         "status": "active",
         "visibility": {
@@ -162,6 +164,8 @@
         "board": {
           "size": 40,
           "lastRoll": null,
+          "consecutiveDoubles": 0,
+          "extraRollPending": false,
           "availableActions": [
             {
               "id": "roll",
@@ -1737,6 +1741,10 @@
             "kind": "option",
             "itemType": "core.integer"
           },
+          "core.optional-boolean": {
+            "kind": "option",
+            "itemType": "core.boolean"
+          },
           "game.public-board-action-params-record.15": {
             "kind": "record",
             "fields": {
@@ -1827,6 +1835,58 @@
               ]
             },
             "valueType": "core.optional-integer",
+            "access": "read-write"
+          },
+          "public.board.lastRoll.isDouble": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "board",
+                "lastRoll",
+                "isDouble"
+              ]
+            },
+            "valueType": "core.optional-boolean",
+            "access": "read-write"
+          },
+          "public.board.consecutiveDoubles": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "board",
+                "consecutiveDoubles"
+              ]
+            },
+            "valueType": "core.integer",
+            "access": "read-write"
+          },
+          "public.board.extraRollPending": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "board",
+                "extraRollPending"
+              ]
+            },
+            "valueType": "core.boolean",
+            "access": "read-write"
+          },
+          "actor.flags.inJail": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "players",
+              "segments": [
+                {
+                  "context": "actor"
+                },
+                "flags",
+                "inJail"
+              ]
+            },
+            "valueType": "core.boolean",
             "access": "read-write"
           },
           "participant.metrics.cash": {
@@ -2288,6 +2348,20 @@
                         "op": "value.literal",
                         "value": "roll"
                       }
+                    },
+                    {
+                      "op": "predicate.compare",
+                      "operator": "eq",
+                      "left": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "actor.flags.inJail"
+                        }
+                      },
+                      "right": {
+                        "op": "value.literal",
+                        "value": false
+                      }
                     }
                   ]
                 },
@@ -2301,6 +2375,88 @@
                 "stream": "session.main",
                 "target": {
                   "endpoint": "public.board.lastRoll"
+                }
+              },
+              {
+                "id": "s002-double-chain",
+                "kind": "command",
+                "op": "core.state.patch",
+                "patches": [
+                  {
+                    "operation": "increment",
+                    "target": {
+                      "endpoint": "public.board.consecutiveDoubles"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": 1
+                    }
+                  },
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.board.extraRollPending"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": true
+                    }
+                  }
+                ],
+                "when": {
+                  "op": "predicate.compare",
+                  "operator": "eq",
+                  "left": {
+                    "op": "value.state",
+                    "ref": {
+                      "endpoint": "public.board.lastRoll.isDouble"
+                    }
+                  },
+                  "right": {
+                    "op": "value.literal",
+                    "value": true
+                  }
+                }
+              },
+              {
+                "id": "s002-normal-chain",
+                "kind": "command",
+                "op": "core.state.patch",
+                "patches": [
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.board.consecutiveDoubles"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": 0
+                    }
+                  },
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.board.extraRollPending"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": false
+                    }
+                  }
+                ],
+                "when": {
+                  "op": "predicate.compare",
+                  "operator": "eq",
+                  "left": {
+                    "op": "value.state",
+                    "ref": {
+                      "endpoint": "public.board.lastRoll.isDouble"
+                    }
+                  },
+                  "right": {
+                    "op": "value.literal",
+                    "value": false
+                  }
                 }
               },
               {
@@ -2340,7 +2496,21 @@
                       ]
                     }
                   }
-                ]
+                ],
+                "when": {
+                  "op": "predicate.compare",
+                  "operator": "ne",
+                  "left": {
+                    "op": "value.state",
+                    "ref": {
+                      "endpoint": "public.board.consecutiveDoubles"
+                    }
+                  },
+                  "right": {
+                    "op": "value.literal",
+                    "value": 3
+                  }
+                }
               },
               {
                 "id": "s004",
@@ -2359,19 +2529,99 @@
                   "value": 120
                 },
                 "when": {
+                  "op": "predicate.all",
+                  "items": [
+                    {
+                      "op": "predicate.compare",
+                      "operator": "ne",
+                      "left": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "public.board.consecutiveDoubles"
+                        }
+                      },
+                      "right": {
+                        "op": "value.literal",
+                        "value": 3
+                      }
+                    },
+                    {
+                      "op": "predicate.compare",
+                      "operator": "lt",
+                      "left": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "actor.metrics.position"
+                        }
+                      },
+                      "right": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "public.board.lastRoll.total"
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s004-third-double-jail",
+                "kind": "command",
+                "op": "core.state.patch",
+                "patches": [
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "actor.metrics.position"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": 10
+                    }
+                  },
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "actor.flags.inJail"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": true
+                    }
+                  },
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.board.consecutiveDoubles"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": 0
+                    }
+                  },
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.board.extraRollPending"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": false
+                    }
+                  }
+                ],
+                "when": {
                   "op": "predicate.compare",
-                  "operator": "lt",
+                  "operator": "eq",
                   "left": {
                     "op": "value.state",
                     "ref": {
-                      "endpoint": "actor.metrics.position"
+                      "endpoint": "public.board.consecutiveDoubles"
                     }
                   },
                   "right": {
-                    "op": "value.state",
-                    "ref": {
-                      "endpoint": "public.board.lastRoll.total"
-                    }
+                    "op": "value.literal",
+                    "value": 3
                   }
                 }
               },
@@ -4579,7 +4829,62 @@
                       "value": "roll"
                     }
                   }
-                ]
+                ],
+                "when": {
+                  "op": "predicate.compare",
+                  "operator": "eq",
+                  "left": {
+                    "op": "value.state",
+                    "ref": {
+                      "endpoint": "public.board.extraRollPending"
+                    }
+                  },
+                  "right": {
+                    "op": "value.literal",
+                    "value": false
+                  }
+                }
+              },
+              {
+                "id": "s003-extra-roll-state",
+                "kind": "command",
+                "op": "core.state.patch",
+                "patches": [
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.turn.phase"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": "roll"
+                    }
+                  },
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.board.extraRollPending"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": false
+                    }
+                  }
+                ],
+                "when": {
+                  "op": "predicate.compare",
+                  "operator": "eq",
+                  "left": {
+                    "op": "value.state",
+                    "ref": {
+                      "endpoint": "public.board.extraRollPending"
+                    }
+                  },
+                  "right": {
+                    "op": "value.literal",
+                    "value": true
+                  }
+                }
               },
               {
                 "id": "s004-actions",
@@ -4611,7 +4916,7 @@
                 "eventType": "turn.finish.event.4",
                 "summary": {
                   "op": "value.literal",
-                  "value": "Ход передан следующему участнику."
+                  "value": "Участник готов к следующему броску."
                 },
                 "audience": "public",
                 "data": {

@@ -138,7 +138,9 @@
         "cash": 1200,
         "position": 0
       },
-      "flags": {},
+      "flags": {
+        "inJail": false
+      },
       "objects": {},
       "status": "active",
       "visibility": {
@@ -154,6 +156,8 @@
       "board": {
         "size": 40,
         "lastRoll": null,
+        "consecutiveDoubles": 0,
+        "extraRollPending": false,
         "availableActions": [
           {
             "id": "roll",
@@ -1166,7 +1170,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:732da0f2d1d055ba4ac0e7bbb81a0b29c80ddee423c35e020c6743be2a5ac306"
+      "definitionHash": "sha256:a892eca345f57d0ab3bcb9f57b26a8a7334328d76bb9a926af4cc1e41526d4a6"
     },
     "property.buy.cell-02": {
       "capabilityFamily": "runtime.server",
@@ -1204,7 +1208,7 @@
         "planRef": "property.buy.cell-02"
       },
       "invocation": "external",
-      "definitionHash": "sha256:243ac52ac5c3a3baae8628714a6a1609899e165f31ec6f5e5e6499e146db8250"
+      "definitionHash": "sha256:6c85702b8e7b7d0de54e540f5ccf3ed024b295314bd0f525970040833940fe13"
     },
     "property.buy.cell-05": {
       "capabilityFamily": "runtime.server",
@@ -1242,7 +1246,7 @@
         "planRef": "property.buy.cell-05"
       },
       "invocation": "external",
-      "definitionHash": "sha256:482778fde7bb0ba4592244ec0200ae34963babc7d61a4976fea58493a16f7d9f"
+      "definitionHash": "sha256:ead11dcdadac977a6c0d88269e10627c83ef6cb27a0a151bee269a2cb897b686"
     },
     "property.buy.cell-08": {
       "capabilityFamily": "runtime.server",
@@ -1280,7 +1284,7 @@
         "planRef": "property.buy.cell-08"
       },
       "invocation": "external",
-      "definitionHash": "sha256:d8bdb6233968878fd7d2aba350160201e1853e699831376f12c3ee2d4b5a9ab3"
+      "definitionHash": "sha256:7edfaa5b870794d5ac46f1c81ec8401d099d20142a90f42292c96101b6271abd"
     },
     "property.buy.cell-11": {
       "capabilityFamily": "runtime.server",
@@ -1318,7 +1322,7 @@
         "planRef": "property.buy.cell-11"
       },
       "invocation": "external",
-      "definitionHash": "sha256:e6b9b857a252b0278ee71ddf5274ef980084da737908f893327d6f63542ae4a4"
+      "definitionHash": "sha256:19d8e052b2cb827c9bfefab5cee31f38a53a8911ef0d854b78d066bb8bcfcadc"
     },
     "property.rent.cell-02": {
       "capabilityFamily": "runtime.server",
@@ -1356,7 +1360,7 @@
         "planRef": "property.rent.cell-02"
       },
       "invocation": "external",
-      "definitionHash": "sha256:97b455e8d1b23d319779019de76f056461bf3a15708575aa19b3561a655e9f6e"
+      "definitionHash": "sha256:ff6bb81a525d64f2f7558327e967c08650f5f2acc61f26c6c3c6f8fb0ead864f"
     },
     "property.rent.cell-05": {
       "capabilityFamily": "runtime.server",
@@ -1394,7 +1398,7 @@
         "planRef": "property.rent.cell-05"
       },
       "invocation": "external",
-      "definitionHash": "sha256:7ef1bb2b01d2cff08516079376e1b7cfb207ae5c08e500f687b11ac5aa6c9224"
+      "definitionHash": "sha256:d2abce725790037cda172ec4a90cd67c4d0dedaa61ca98f9bcf26bc3500faefa"
     },
     "property.rent.cell-08": {
       "capabilityFamily": "runtime.server",
@@ -1432,7 +1436,7 @@
         "planRef": "property.rent.cell-08"
       },
       "invocation": "external",
-      "definitionHash": "sha256:f845022a42a7e2786d350ab7659e3d5fa4f1c9dc04cb3060d5a64e7d146bdff3"
+      "definitionHash": "sha256:cbccb0bd633027bb8049447d8c7733ccae5ed95a8e7906e2d40ed82e1af17e53"
     },
     "property.rent.cell-11": {
       "capabilityFamily": "runtime.server",
@@ -1470,7 +1474,7 @@
         "planRef": "property.rent.cell-11"
       },
       "invocation": "external",
-      "definitionHash": "sha256:fa3ee781e9aacd4ab61885c841f924ccabc5062de44dbc44ee5d6d80b9d2c1c8"
+      "definitionHash": "sha256:2f3c35fe0a3f0b63c5fe8f764305205048901c37869fc836956874f5a05f353f"
     },
     "turn.finish": {
       "capabilityFamily": "runtime.server",
@@ -1490,7 +1494,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:e421d7c801bc11b5c8b1067bc092077c9f16a1e9b6dba0e63af016277cef0f39"
+      "definitionHash": "sha256:765ec8c54cc6e2d0e40244dbb38c96e0cee6dcfdebd50c8fb001633e17e4f39b"
     }
   },
   "mechanics": {
@@ -1699,6 +1703,10 @@
           "kind": "option",
           "itemType": "core.integer"
         },
+        "core.optional-boolean": {
+          "kind": "option",
+          "itemType": "core.boolean"
+        },
         "game.public-board-action-params-record.15": {
           "kind": "record",
           "fields": {
@@ -1789,6 +1797,58 @@
             ]
           },
           "valueType": "core.optional-integer",
+          "access": "read-write"
+        },
+        "public.board.lastRoll.isDouble": {
+          "audienceRef": "public",
+          "storage": {
+            "root": "public",
+            "segments": [
+              "board",
+              "lastRoll",
+              "isDouble"
+            ]
+          },
+          "valueType": "core.optional-boolean",
+          "access": "read-write"
+        },
+        "public.board.consecutiveDoubles": {
+          "audienceRef": "public",
+          "storage": {
+            "root": "public",
+            "segments": [
+              "board",
+              "consecutiveDoubles"
+            ]
+          },
+          "valueType": "core.integer",
+          "access": "read-write"
+        },
+        "public.board.extraRollPending": {
+          "audienceRef": "public",
+          "storage": {
+            "root": "public",
+            "segments": [
+              "board",
+              "extraRollPending"
+            ]
+          },
+          "valueType": "core.boolean",
+          "access": "read-write"
+        },
+        "actor.flags.inJail": {
+          "audienceRef": "public",
+          "storage": {
+            "root": "players",
+            "segments": [
+              {
+                "context": "actor"
+              },
+              "flags",
+              "inJail"
+            ]
+          },
+          "valueType": "core.boolean",
           "access": "read-write"
         },
         "participant.metrics.cash": {
@@ -2232,7 +2292,7 @@
     },
     "plans": {
       "turn.roll": {
-        "planHash": "sha256:4f9a779faa73f18fdc4962ab27f1c5d1b05e5292b9d5f64aeca78ab3d23b8dea",
+        "planHash": "sha256:bd23b35163c324f746893ad9901a6c99ddcfc26e75656b050c7ff884933fe30e",
         "transaction": {
           "steps": [
             {
@@ -2251,6 +2311,20 @@
                       "op": "value.literal",
                       "value": "roll"
                     }
+                  },
+                  {
+                    "op": "predicate.compare",
+                    "operator": "eq",
+                    "left": {
+                      "op": "value.state",
+                      "ref": {
+                        "endpoint": "actor.flags.inJail"
+                      }
+                    },
+                    "right": {
+                      "op": "value.literal",
+                      "value": false
+                    }
                   }
                 ]
               },
@@ -2264,6 +2338,88 @@
               "stream": "session.main",
               "target": {
                 "endpoint": "public.board.lastRoll"
+              }
+            },
+            {
+              "id": "s002-double-chain",
+              "kind": "command",
+              "op": "core.state.patch",
+              "patches": [
+                {
+                  "operation": "increment",
+                  "target": {
+                    "endpoint": "public.board.consecutiveDoubles"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": 1
+                  }
+                },
+                {
+                  "operation": "set",
+                  "target": {
+                    "endpoint": "public.board.extraRollPending"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": true
+                  }
+                }
+              ],
+              "when": {
+                "op": "predicate.compare",
+                "operator": "eq",
+                "left": {
+                  "op": "value.state",
+                  "ref": {
+                    "endpoint": "public.board.lastRoll.isDouble"
+                  }
+                },
+                "right": {
+                  "op": "value.literal",
+                  "value": true
+                }
+              }
+            },
+            {
+              "id": "s002-normal-chain",
+              "kind": "command",
+              "op": "core.state.patch",
+              "patches": [
+                {
+                  "operation": "set",
+                  "target": {
+                    "endpoint": "public.board.consecutiveDoubles"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": 0
+                  }
+                },
+                {
+                  "operation": "set",
+                  "target": {
+                    "endpoint": "public.board.extraRollPending"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": false
+                  }
+                }
+              ],
+              "when": {
+                "op": "predicate.compare",
+                "operator": "eq",
+                "left": {
+                  "op": "value.state",
+                  "ref": {
+                    "endpoint": "public.board.lastRoll.isDouble"
+                  }
+                },
+                "right": {
+                  "op": "value.literal",
+                  "value": false
+                }
               }
             },
             {
@@ -2303,7 +2459,21 @@
                     ]
                   }
                 }
-              ]
+              ],
+              "when": {
+                "op": "predicate.compare",
+                "operator": "ne",
+                "left": {
+                  "op": "value.state",
+                  "ref": {
+                    "endpoint": "public.board.consecutiveDoubles"
+                  }
+                },
+                "right": {
+                  "op": "value.literal",
+                  "value": 3
+                }
+              }
             },
             {
               "id": "s004",
@@ -2322,19 +2492,99 @@
                 "value": 120
               },
               "when": {
+                "op": "predicate.all",
+                "items": [
+                  {
+                    "op": "predicate.compare",
+                    "operator": "ne",
+                    "left": {
+                      "op": "value.state",
+                      "ref": {
+                        "endpoint": "public.board.consecutiveDoubles"
+                      }
+                    },
+                    "right": {
+                      "op": "value.literal",
+                      "value": 3
+                    }
+                  },
+                  {
+                    "op": "predicate.compare",
+                    "operator": "lt",
+                    "left": {
+                      "op": "value.state",
+                      "ref": {
+                        "endpoint": "actor.metrics.position"
+                      }
+                    },
+                    "right": {
+                      "op": "value.state",
+                      "ref": {
+                        "endpoint": "public.board.lastRoll.total"
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "id": "s004-third-double-jail",
+              "kind": "command",
+              "op": "core.state.patch",
+              "patches": [
+                {
+                  "operation": "set",
+                  "target": {
+                    "endpoint": "actor.metrics.position"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": 10
+                  }
+                },
+                {
+                  "operation": "set",
+                  "target": {
+                    "endpoint": "actor.flags.inJail"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": true
+                  }
+                },
+                {
+                  "operation": "set",
+                  "target": {
+                    "endpoint": "public.board.consecutiveDoubles"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": 0
+                  }
+                },
+                {
+                  "operation": "set",
+                  "target": {
+                    "endpoint": "public.board.extraRollPending"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": false
+                  }
+                }
+              ],
+              "when": {
                 "op": "predicate.compare",
-                "operator": "lt",
+                "operator": "eq",
                 "left": {
                   "op": "value.state",
                   "ref": {
-                    "endpoint": "actor.metrics.position"
+                    "endpoint": "public.board.consecutiveDoubles"
                   }
                 },
                 "right": {
-                  "op": "value.state",
-                  "ref": {
-                    "endpoint": "public.board.lastRoll.total"
-                  }
+                  "op": "value.literal",
+                  "value": 3
                 }
               }
             },
@@ -3247,7 +3497,7 @@
         }
       },
       "property.buy.cell-02": {
-        "planHash": "sha256:b34efa2d66f594d4b14a7f6e094e8cfc9127bb792be5cd3d77b0e8429344787e",
+        "planHash": "sha256:608e4dadbe98ce1647073ee5cd870735e35dabfb976dcbf96f818cc0c44bc548",
         "transaction": {
           "steps": [
             {
@@ -3400,7 +3650,7 @@
         }
       },
       "property.buy.cell-05": {
-        "planHash": "sha256:73a196743b89c0aed0dc268a4266432c6384c8aa1a36ff8b83966ee0d6a1e584",
+        "planHash": "sha256:23433ef4e0a5983dc98883ee578c20f8b3fb04dfa8b3321503bb7e7cf1e809a8",
         "transaction": {
           "steps": [
             {
@@ -3553,7 +3803,7 @@
         }
       },
       "property.buy.cell-08": {
-        "planHash": "sha256:18ac92f289a14c7e5897e894e450a948db495887346276934cae88531988bed2",
+        "planHash": "sha256:ed3151f8d0cb1928d1beed8a22e23c3316838b383fc7d1eaaa346e51bb59c25f",
         "transaction": {
           "steps": [
             {
@@ -3706,7 +3956,7 @@
         }
       },
       "property.buy.cell-11": {
-        "planHash": "sha256:8300b5342b7d0f8f27a523fedcfb9957d7c2db2c13addf5994f71f8a37260ab8",
+        "planHash": "sha256:e91c5c973af545f30ceb9928f480b1ff830283b31510c234c10e6eb6427ac842",
         "transaction": {
           "steps": [
             {
@@ -3859,7 +4109,7 @@
         }
       },
       "property.rent.cell-02": {
-        "planHash": "sha256:fae89c610114ffd25daa9f7f8fde8d4773a7e576f8f36f36d74b36c735bcd060",
+        "planHash": "sha256:5f6c102cb507605e348a0444aa2c7b4ce004fb5a422984e912014ee804aecad8",
         "transaction": {
           "steps": [
             {
@@ -4013,7 +4263,7 @@
         }
       },
       "property.rent.cell-05": {
-        "planHash": "sha256:7a188784b5dc883575adb3c29f1235ac35c2fe58d22404eb9febd40eae8714df",
+        "planHash": "sha256:04f6beee9f20de7b71a10737a81b37a1ab6c0f80c87ee0d40d6af7cac423a4c6",
         "transaction": {
           "steps": [
             {
@@ -4167,7 +4417,7 @@
         }
       },
       "property.rent.cell-08": {
-        "planHash": "sha256:fbfe1b56838a77ac2ba7dbb7ee0275cb3e3e9694fb80899c33723a27ac100ef6",
+        "planHash": "sha256:6d0bf90ab864ab34bdc83ebc6866a6bbb243bcdd8f36794fb7aca1dce822cabb",
         "transaction": {
           "steps": [
             {
@@ -4321,7 +4571,7 @@
         }
       },
       "property.rent.cell-11": {
-        "planHash": "sha256:82001a0eba6e6198098d0c44d6eb7f7a4c64e31b0ac89b6f453f892df162baa0",
+        "planHash": "sha256:ae10d9199a882918cf49b642e0b4a0ce6bb0e221fff14148b9d82f264f53fa36",
         "transaction": {
           "steps": [
             {
@@ -4475,7 +4725,7 @@
         }
       },
       "turn.finish": {
-        "planHash": "sha256:fba4d490d556c271deb1e216b705a7216c5dcf35624331c51d2678e574b564d5",
+        "planHash": "sha256:25e3909968c58d149370a2ef205bb847d8d578004e9a12da1d776e90c8eaf184",
         "transaction": {
           "steps": [
             {
@@ -4551,7 +4801,62 @@
                     "value": "roll"
                   }
                 }
-              ]
+              ],
+              "when": {
+                "op": "predicate.compare",
+                "operator": "eq",
+                "left": {
+                  "op": "value.state",
+                  "ref": {
+                    "endpoint": "public.board.extraRollPending"
+                  }
+                },
+                "right": {
+                  "op": "value.literal",
+                  "value": false
+                }
+              }
+            },
+            {
+              "id": "s003-extra-roll-state",
+              "kind": "command",
+              "op": "core.state.patch",
+              "patches": [
+                {
+                  "operation": "set",
+                  "target": {
+                    "endpoint": "public.turn.phase"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": "roll"
+                  }
+                },
+                {
+                  "operation": "set",
+                  "target": {
+                    "endpoint": "public.board.extraRollPending"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": false
+                  }
+                }
+              ],
+              "when": {
+                "op": "predicate.compare",
+                "operator": "eq",
+                "left": {
+                  "op": "value.state",
+                  "ref": {
+                    "endpoint": "public.board.extraRollPending"
+                  }
+                },
+                "right": {
+                  "op": "value.literal",
+                  "value": true
+                }
+              }
             },
             {
               "id": "s004-actions",
@@ -4583,7 +4888,7 @@
               "eventType": "turn.finish.event.4",
               "summary": {
                 "op": "value.literal",
-                "value": "Ход передан следующему участнику."
+                "value": "Участник готов к следующему броску."
               },
               "audience": "public",
               "data": {
