@@ -97,6 +97,7 @@ test("economy actions bind exact immutable plans to typed participant and object
     ))].sort(),
     [
       "core.assert",
+      "core.entities.select",
       "core.entity.attributes.patch",
       "core.event.emit",
       "core.number.add",

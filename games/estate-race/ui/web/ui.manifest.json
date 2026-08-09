@@ -20,7 +20,7 @@
   ],
   "screens": {
     "table": {
-      "title": "Estate Race · прототип",
+      "title": "Estate Race · внутренний срез S1",
       "layout_mode": "topbar",
       "root": {
         "id": "table.root",
@@ -40,7 +40,7 @@
                 "id": "table.title",
                 "type": "richTextComponent",
                 "props": {
-                  "html": "<h1>Estate Race · прототип</h1><p>Ход {{game.state.public.turn.turnNumber}} · активен {{game.state.public.turn.activePlayerId}} · этап {{game.state.public.turn.phase}}</p>"
+                  "html": "<h1>Estate Race · внутренний срез S1</h1><p>Ход {{game.state.public.turn.turnNumber}} · активен {{game.state.public.turn.activePlayerId}} · этап {{game.state.public.turn.phase}}</p><p>Tax, blocked и заключение отображаются из подтверждённой публичной сессии; доступные действия объявляет сервер.</p>"
                 }
               }
             ]
@@ -56,7 +56,7 @@
                 "id": "table.players-summary",
                 "type": "richTextComponent",
                 "props": {
-                  "html": "<h2>Локальная партия: 2–6 участников</h2><p>Активен {{game.state.public.turn.activePlayerId}}. Балансы, позиции и активный участник показаны непосредственно на поле.</p>"
+                  "html": "<h2>Локальная партия: 2–6 участников</h2><p>Активен {{game.state.public.turn.activePlayerId}}. Балансы, позиции и статус заключения показаны непосредственно из публичной проекции.</p>"
                 }
               }
             ]

@@ -37,6 +37,8 @@
           "roll",
           "acquire",
           "rent",
+          "tax",
+          "blocked",
           "finish"
         ]
       }
@@ -1187,6 +1189,7 @@
                 "property.rent.cell-05",
                 "property.rent.cell-08",
                 "property.rent.cell-11",
+                "tax.pay",
                 "turn.finish"
               ]
             }
@@ -1533,6 +1536,22 @@
           }
         },
         {
+          "id": "tax.pay",
+          "_type": "game.Action",
+          "_label": "Оплатить налог",
+          "_semantics": "Игровое действие tax.pay.",
+          "capabilityFamily": "runtime.server",
+          "capability": "tax.pay",
+          "displayName": "Оплатить налог",
+          "allowedSessionRoles": [
+            "player"
+          ],
+          "binding": {
+            "kind": "mechanics-plan",
+            "planRef": "tax.pay"
+          }
+        },
+        {
           "id": "turn.finish",
           "_type": "game.Action",
           "_label": "Завершить ход",
@@ -1572,6 +1591,8 @@
               "roll",
               "acquire",
               "rent",
+              "tax",
+              "blocked",
               "finish"
             ]
           },
@@ -2656,6 +2677,631 @@
                     }
                   }
                 ]
+              },
+              {
+                "id": "s006-landing-cell",
+                "kind": "query",
+                "op": "core.entities.select",
+                "selector": {
+                  "collection": "boardCells",
+                  "objectTypes": [
+                    "estate.cell"
+                  ],
+                  "attributes": {
+                    "index": {
+                      "op": "value.state",
+                      "ref": {
+                        "endpoint": "actor.metrics.position"
+                      }
+                    }
+                  },
+                  "cardinality": {
+                    "min": 1,
+                    "max": 1
+                  }
+                },
+                "when": {
+                  "op": "predicate.compare",
+                  "operator": "eq",
+                  "left": {
+                    "op": "value.state",
+                    "ref": {
+                      "endpoint": "actor.flags.inJail"
+                    }
+                  },
+                  "right": {
+                    "op": "value.literal",
+                    "value": false
+                  }
+                }
+              },
+              {
+                "id": "s006-blocked-phase",
+                "kind": "command",
+                "op": "turn.phase.select",
+                "phase": {
+                  "op": "value.literal",
+                  "value": "blocked"
+                },
+                "when": {
+                  "op": "predicate.exists",
+                  "value": {
+                    "op": "value.result",
+                    "stepId": "s006-landing-cell",
+                    "path": [
+                      "ids",
+                      "0"
+                    ]
+                  },
+                  "exists": true
+                }
+              },
+              {
+                "id": "s006-blocked-actions",
+                "kind": "command",
+                "op": "core.state.patch",
+                "patches": [
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.board.availableActions"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": []
+                    }
+                  }
+                ],
+                "when": {
+                  "op": "predicate.exists",
+                  "value": {
+                    "op": "value.result",
+                    "stepId": "s006-landing-cell",
+                    "path": [
+                      "ids",
+                      "0"
+                    ]
+                  },
+                  "exists": true
+                }
+              },
+              {
+                "id": "s006-passive-phase",
+                "kind": "command",
+                "op": "turn.phase.select",
+                "phase": {
+                  "op": "value.literal",
+                  "value": "finish"
+                },
+                "when": {
+                  "op": "predicate.all",
+                  "items": [
+                    {
+                      "op": "predicate.exists",
+                      "value": {
+                        "op": "value.result",
+                        "stepId": "s006-landing-cell",
+                        "path": [
+                          "ids",
+                          "0"
+                        ]
+                      },
+                      "exists": true
+                    },
+                    {
+                      "op": "predicate.any",
+                      "items": [
+                        {
+                          "op": "predicate.entity.matches",
+                          "entity": {
+                            "collection": "boardCells",
+                            "entityId": {
+                              "op": "value.result",
+                              "stepId": "s006-landing-cell",
+                              "path": [
+                                "ids",
+                                "0"
+                              ]
+                            }
+                          },
+                          "attributes": {
+                            "kind": {
+                              "op": "value.literal",
+                              "value": "start"
+                            }
+                          }
+                        },
+                        {
+                          "op": "predicate.entity.matches",
+                          "entity": {
+                            "collection": "boardCells",
+                            "entityId": {
+                              "op": "value.result",
+                              "stepId": "s006-landing-cell",
+                              "path": [
+                                "ids",
+                                "0"
+                              ]
+                            }
+                          },
+                          "attributes": {
+                            "kind": {
+                              "op": "value.literal",
+                              "value": "neutral"
+                            }
+                          }
+                        },
+                        {
+                          "op": "predicate.entity.matches",
+                          "entity": {
+                            "collection": "boardCells",
+                            "entityId": {
+                              "op": "value.result",
+                              "stepId": "s006-landing-cell",
+                              "path": [
+                                "ids",
+                                "0"
+                              ]
+                            }
+                          },
+                          "attributes": {
+                            "kind": {
+                              "op": "value.literal",
+                              "value": "jail"
+                            }
+                          }
+                        },
+                        {
+                          "op": "predicate.entity.matches",
+                          "entity": {
+                            "collection": "boardCells",
+                            "entityId": {
+                              "op": "value.result",
+                              "stepId": "s006-landing-cell",
+                              "path": [
+                                "ids",
+                                "0"
+                              ]
+                            }
+                          },
+                          "attributes": {
+                            "kind": {
+                              "op": "value.literal",
+                              "value": "estate"
+                            },
+                            "ownerPlayerId": {
+                              "op": "value.actor"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s006-passive-actions",
+                "kind": "command",
+                "op": "core.state.patch",
+                "patches": [
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.board.availableActions"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": [
+                        {
+                          "id": "finish",
+                          "label": "Завершить ход",
+                          "actionId": "turn.finish"
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "when": {
+                  "op": "predicate.all",
+                  "items": [
+                    {
+                      "op": "predicate.exists",
+                      "value": {
+                        "op": "value.result",
+                        "stepId": "s006-landing-cell",
+                        "path": [
+                          "ids",
+                          "0"
+                        ]
+                      },
+                      "exists": true
+                    },
+                    {
+                      "op": "predicate.any",
+                      "items": [
+                        {
+                          "op": "predicate.entity.matches",
+                          "entity": {
+                            "collection": "boardCells",
+                            "entityId": {
+                              "op": "value.result",
+                              "stepId": "s006-landing-cell",
+                              "path": [
+                                "ids",
+                                "0"
+                              ]
+                            }
+                          },
+                          "attributes": {
+                            "kind": {
+                              "op": "value.literal",
+                              "value": "start"
+                            }
+                          }
+                        },
+                        {
+                          "op": "predicate.entity.matches",
+                          "entity": {
+                            "collection": "boardCells",
+                            "entityId": {
+                              "op": "value.result",
+                              "stepId": "s006-landing-cell",
+                              "path": [
+                                "ids",
+                                "0"
+                              ]
+                            }
+                          },
+                          "attributes": {
+                            "kind": {
+                              "op": "value.literal",
+                              "value": "neutral"
+                            }
+                          }
+                        },
+                        {
+                          "op": "predicate.entity.matches",
+                          "entity": {
+                            "collection": "boardCells",
+                            "entityId": {
+                              "op": "value.result",
+                              "stepId": "s006-landing-cell",
+                              "path": [
+                                "ids",
+                                "0"
+                              ]
+                            }
+                          },
+                          "attributes": {
+                            "kind": {
+                              "op": "value.literal",
+                              "value": "jail"
+                            }
+                          }
+                        },
+                        {
+                          "op": "predicate.entity.matches",
+                          "entity": {
+                            "collection": "boardCells",
+                            "entityId": {
+                              "op": "value.result",
+                              "stepId": "s006-landing-cell",
+                              "path": [
+                                "ids",
+                                "0"
+                              ]
+                            }
+                          },
+                          "attributes": {
+                            "kind": {
+                              "op": "value.literal",
+                              "value": "estate"
+                            },
+                            "ownerPlayerId": {
+                              "op": "value.actor"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s006-tax-phase",
+                "kind": "command",
+                "op": "turn.phase.select",
+                "phase": {
+                  "op": "value.literal",
+                  "value": "tax"
+                },
+                "when": {
+                  "op": "predicate.all",
+                  "items": [
+                    {
+                      "op": "predicate.exists",
+                      "value": {
+                        "op": "value.result",
+                        "stepId": "s006-landing-cell",
+                        "path": [
+                          "ids",
+                          "0"
+                        ]
+                      },
+                      "exists": true
+                    },
+                    {
+                      "op": "predicate.entity.matches",
+                      "entity": {
+                        "collection": "boardCells",
+                        "entityId": {
+                          "op": "value.result",
+                          "stepId": "s006-landing-cell",
+                          "path": [
+                            "ids",
+                            "0"
+                          ]
+                        }
+                      },
+                      "attributes": {
+                        "kind": {
+                          "op": "value.literal",
+                          "value": "tax"
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s006-tax-actions",
+                "kind": "command",
+                "op": "core.state.patch",
+                "patches": [
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.board.availableActions"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": [
+                        {
+                          "id": "pay-tax",
+                          "label": "Оплатить налог",
+                          "actionId": "tax.pay"
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "when": {
+                  "op": "predicate.all",
+                  "items": [
+                    {
+                      "op": "predicate.exists",
+                      "value": {
+                        "op": "value.result",
+                        "stepId": "s006-landing-cell",
+                        "path": [
+                          "ids",
+                          "0"
+                        ]
+                      },
+                      "exists": true
+                    },
+                    {
+                      "op": "predicate.entity.matches",
+                      "entity": {
+                        "collection": "boardCells",
+                        "entityId": {
+                          "op": "value.result",
+                          "stepId": "s006-landing-cell",
+                          "path": [
+                            "ids",
+                            "0"
+                          ]
+                        }
+                      },
+                      "attributes": {
+                        "kind": {
+                          "op": "value.literal",
+                          "value": "tax"
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s006-go-to-jail-state",
+                "kind": "command",
+                "op": "core.state.patch",
+                "patches": [
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "actor.metrics.position"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": 10
+                    }
+                  },
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "actor.flags.inJail"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": true
+                    }
+                  },
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.board.consecutiveDoubles"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": 0
+                    }
+                  },
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.board.extraRollPending"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": false
+                    }
+                  }
+                ],
+                "when": {
+                  "op": "predicate.all",
+                  "items": [
+                    {
+                      "op": "predicate.exists",
+                      "value": {
+                        "op": "value.result",
+                        "stepId": "s006-landing-cell",
+                        "path": [
+                          "ids",
+                          "0"
+                        ]
+                      },
+                      "exists": true
+                    },
+                    {
+                      "op": "predicate.entity.matches",
+                      "entity": {
+                        "collection": "boardCells",
+                        "entityId": {
+                          "op": "value.result",
+                          "stepId": "s006-landing-cell",
+                          "path": [
+                            "ids",
+                            "0"
+                          ]
+                        }
+                      },
+                      "attributes": {
+                        "kind": {
+                          "op": "value.literal",
+                          "value": "go-to-jail"
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s006-go-to-jail-phase",
+                "kind": "command",
+                "op": "turn.phase.select",
+                "phase": {
+                  "op": "value.literal",
+                  "value": "finish"
+                },
+                "when": {
+                  "op": "predicate.all",
+                  "items": [
+                    {
+                      "op": "predicate.exists",
+                      "value": {
+                        "op": "value.result",
+                        "stepId": "s006-landing-cell",
+                        "path": [
+                          "ids",
+                          "0"
+                        ]
+                      },
+                      "exists": true
+                    },
+                    {
+                      "op": "predicate.entity.matches",
+                      "entity": {
+                        "collection": "boardCells",
+                        "entityId": {
+                          "op": "value.result",
+                          "stepId": "s006-landing-cell",
+                          "path": [
+                            "ids",
+                            "0"
+                          ]
+                        }
+                      },
+                      "attributes": {
+                        "kind": {
+                          "op": "value.literal",
+                          "value": "go-to-jail"
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s006-go-to-jail-actions",
+                "kind": "command",
+                "op": "core.state.patch",
+                "patches": [
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.board.availableActions"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": [
+                        {
+                          "id": "finish",
+                          "label": "Завершить ход",
+                          "actionId": "turn.finish"
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "when": {
+                  "op": "predicate.all",
+                  "items": [
+                    {
+                      "op": "predicate.exists",
+                      "value": {
+                        "op": "value.result",
+                        "stepId": "s006-landing-cell",
+                        "path": [
+                          "ids",
+                          "0"
+                        ]
+                      },
+                      "exists": true
+                    },
+                    {
+                      "op": "predicate.entity.matches",
+                      "entity": {
+                        "collection": "boardCells",
+                        "entityId": {
+                          "op": "value.result",
+                          "stepId": "s006-landing-cell",
+                          "path": [
+                            "ids",
+                            "0"
+                          ]
+                        }
+                      },
+                      "attributes": {
+                        "kind": {
+                          "op": "value.literal",
+                          "value": "go-to-jail"
+                        }
+                      }
+                    }
+                  ]
+                }
               },
               {
                 "id": "s007",
@@ -4749,6 +5395,127 @@
                     "value": "rent"
                   }
                 }
+              }
+            ]
+          }
+        },
+        "tax.pay": {
+          "transaction": {
+            "steps": [
+              {
+                "id": "s001-precondition",
+                "kind": "assert",
+                "op": "core.assert",
+                "predicate": {
+                  "op": "predicate.all",
+                  "items": [
+                    {
+                      "op": "predicate.actor.active"
+                    },
+                    {
+                      "op": "predicate.turn.phase",
+                      "phase": {
+                        "op": "value.literal",
+                        "value": "tax"
+                      }
+                    }
+                  ]
+                },
+                "errorCode": "ACTION_PRECONDITION_FAILED"
+              },
+              {
+                "id": "s002-tax-cell",
+                "kind": "query",
+                "op": "core.entities.select",
+                "selector": {
+                  "collection": "boardCells",
+                  "objectTypes": [
+                    "estate.cell"
+                  ],
+                  "attributes": {
+                    "index": {
+                      "op": "value.state",
+                      "ref": {
+                        "endpoint": "actor.metrics.position"
+                      }
+                    },
+                    "kind": {
+                      "op": "value.literal",
+                      "value": "tax"
+                    }
+                  },
+                  "cardinality": {
+                    "min": 1,
+                    "max": 1
+                  }
+                }
+              },
+              {
+                "id": "s003-transfer",
+                "kind": "command",
+                "op": "core.resource.transfer",
+                "from": {
+                  "kind": "state",
+                  "target": {
+                    "endpoint": "participant.metrics.cash",
+                    "bindings": {
+                      "participantId": {
+                        "op": "value.actor"
+                      }
+                    }
+                  }
+                },
+                "to": {
+                  "kind": "bank"
+                },
+                "amount": {
+                  "op": "value.entity",
+                  "entity": {
+                    "collection": "boardCells",
+                    "entityId": {
+                      "op": "value.result",
+                      "stepId": "s002-tax-cell",
+                      "path": [
+                        "ids",
+                        "0"
+                      ]
+                    }
+                  },
+                  "field": "taxAmount"
+                },
+                "onInsufficient": "fail"
+              },
+              {
+                "id": "s004-phase",
+                "kind": "command",
+                "op": "turn.phase.select",
+                "phase": {
+                  "op": "value.literal",
+                  "value": "finish"
+                }
+              },
+              {
+                "id": "s005-actions",
+                "kind": "command",
+                "op": "core.state.patch",
+                "patches": [
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.board.availableActions"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": [
+                        {
+                          "id": "finish",
+                          "label": "Завершить ход",
+                          "actionId": "turn.finish"
+                        }
+                      ]
+                    }
+                  }
+                ]
               }
             ]
           }

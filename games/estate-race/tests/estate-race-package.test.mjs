@@ -161,8 +161,21 @@ test("compiled gameplay contains no legacy actor, resource or turn shortcuts", a
   const manifest = await loadManifest();
   const serializedManifest = JSON.stringify(manifest);
   const turnSteps = manifest.mechanics.plans["turn.finish"].transaction.steps;
+  const rollSteps = manifest.mechanics.plans["turn.roll"].transaction.steps;
+  const taxSteps = manifest.mechanics.plans["tax.pay"].transaction.steps;
+  const landingSelection = rollSteps.find((step) => step.id === "s006-landing-cell");
+  const taxTransfer = taxSteps.find((step) => step.op === "core.resource.transfer");
 
   assert.ok(turnSteps.some((step) => step.op === "core.sequence.next"));
+  assert.equal(landingSelection.op, "core.entities.select");
+  assert.equal(landingSelection.selector.collection, "boardCells");
+  assert.deepEqual(landingSelection.selector.attributes.index, {
+    op: "value.state",
+    ref: { endpoint: "actor.metrics.position" }
+  });
+  assert.equal(taxTransfer.to.kind, "bank");
+  assert.equal(taxTransfer.amount.op, "value.entity");
+  assert.equal(taxTransfer.amount.field, "taxAmount");
   assert.doesNotMatch(serializedManifest, /"op":"turn\.advance"/u);
   assert.doesNotMatch(serializedManifest, /"kind":"player-metric"/u);
   assert.doesNotMatch(serializedManifest, /"op":"value\.param","name":"actor"/u);
@@ -254,8 +267,8 @@ test("rent resolution also preserves the pending extra roll", async () => {
 
 test("a normal roll resets the double chain and passes the turn after landing", async () => {
   const replay = await createReplay((state) => {
-    state.players.p1.metrics.position = 30;
-  }, { samples: [0, 0, 0, 1] });
+    state.players.p1.metrics.position = 8;
+  }, { samples: [0, 0, 3, 5] });
 
   await act(replay, "turn.roll");
   await act(replay, "turn.finish");
@@ -265,7 +278,7 @@ test("a normal roll resets the double chain and passes the turn after landing", 
 
   await act(replay, "turn.roll");
   current = await replay.store.getSession(replay.session.sessionId);
-  assert.deepEqual(current.state.public.board.lastRoll.values, [1, 2]);
+  assert.deepEqual(current.state.public.board.lastRoll.values, [4, 6]);
   assert.equal(current.state.public.board.consecutiveDoubles, 0);
   assert.equal(current.state.public.board.extraRollPending, false);
   await act(replay, "turn.finish");
@@ -276,15 +289,15 @@ test("a normal roll resets the double chain and passes the turn after landing", 
 
 test("the third consecutive double jails the actor and blocks a later roll before randomness", async () => {
   const replay = await createReplay((state) => {
-    state.players.p1.metrics.position = 33;
-  }, { samples: [0, 0, 1, 1, 2, 2, 0, 1] });
+    state.players.p1.metrics.position = 8;
+  }, { samples: [0, 0, 4, 4, 2, 2, 3, 5] });
 
   await act(replay, "turn.roll");
   await act(replay, "turn.finish");
   await act(replay, "turn.roll");
   await act(replay, "turn.finish");
   let current = await replay.store.getSession(replay.session.sessionId);
-  assert.equal(current.state.players.p1.metrics.position, 39);
+  assert.equal(current.state.players.p1.metrics.position, 20);
   assert.equal(current.state.public.board.consecutiveDoubles, 2);
 
   await act(replay, "turn.roll");
@@ -308,7 +321,7 @@ test("the third consecutive double jails the actor and blocks a later roll befor
 
   await act(replay, "turn.roll");
   current = await replay.store.getSession(replay.session.sessionId);
-  assert.deepEqual(current.state.public.board.lastRoll.values, [1, 2]);
+  assert.deepEqual(current.state.public.board.lastRoll.values, [4, 6]);
   assert.equal(current.state.public.turn.phase, "finish");
   await act(replay, "turn.finish");
   current = await replay.store.getSession(replay.session.sessionId);
@@ -344,6 +357,136 @@ test("visiting the jail cell does not mark the participant as imprisoned", async
   const current = await replay.store.getSession(replay.session.sessionId);
   assert.equal(current.state.players.p1.metrics.position, 10);
   assert.equal(current.state.players.p1.flags.inJail, false);
+  assert.equal(current.state.public.turn.phase, "finish");
+  assert.equal(current.state.public.board.extraRollPending, true);
+  assert.deepEqual(current.state.public.board.availableActions, [{
+    id: "finish",
+    label: "Завершить ход",
+    actionId: "turn.finish"
+  }]);
+});
+
+test("start reward and a second double tax are resolved from the selected cell", async () => {
+  const replay = await createReplay((state) => {
+    state.players.p1.metrics.position = 36;
+  }, { samples: [1, 1, 1, 1] });
+
+  await act(replay, "turn.roll");
+  let current = await replay.store.getSession(replay.session.sessionId);
+  assert.equal(current.state.players.p1.metrics.position, 0);
+  assert.equal(current.state.players.p1.metrics.cash, 1320);
+  assert.equal(current.state.public.turn.phase, "finish");
+  assert.equal(current.state.public.board.consecutiveDoubles, 1);
+  assert.equal(current.state.public.board.extraRollPending, true);
+
+  const continued = await act(replay, "turn.finish");
+  assert.equal(continued.actorPlayerId, "p1");
+  await act(replay, "turn.roll");
+  current = await replay.store.getSession(replay.session.sessionId);
+  assert.equal(current.state.players.p1.metrics.position, 4);
+  assert.equal(current.state.public.turn.phase, "tax");
+  assert.equal(current.state.public.board.consecutiveDoubles, 2);
+  assert.equal(current.state.public.board.extraRollPending, true);
+  assert.deepEqual(current.state.public.board.availableActions, [{
+    id: "pay-tax",
+    label: "Оплатить налог",
+    actionId: "tax.pay"
+  }]);
+
+  await act(replay, "tax.pay");
+  current = await replay.store.getSession(replay.session.sessionId);
+  assert.equal(current.state.players.p1.metrics.cash, 1250);
+  assert.equal(current.state.public.turn.phase, "finish");
+  assert.equal(current.state.public.board.extraRollPending, true);
+});
+
+test("the second authored tax amount transfers atomically and insufficient cash keeps the tax state", async () => {
+  const paidReplay = await createReplay((state) => {
+    state.players.p1.metrics.position = 32;
+  }, { samples: [2, 2] });
+
+  await act(paidReplay, "turn.roll");
+  let current = await paidReplay.store.getSession(paidReplay.session.sessionId);
+  assert.equal(current.state.players.p1.metrics.position, 38);
+  assert.equal(current.state.public.turn.phase, "tax");
+  assert.deepEqual(current.state.public.board.availableActions, [{
+    id: "pay-tax",
+    label: "Оплатить налог",
+    actionId: "tax.pay"
+  }]);
+  await act(paidReplay, "tax.pay");
+  current = await paidReplay.store.getSession(paidReplay.session.sessionId);
+  assert.equal(current.state.players.p1.metrics.cash, 1090);
+  assert.equal(current.state.public.turn.phase, "finish");
+
+  const poorReplay = await createReplay((state) => {
+    state.players.p1.metrics.position = 32;
+    state.players.p1.metrics.cash = 109;
+  }, { samples: [2, 2] });
+  await act(poorReplay, "turn.roll");
+  const beforeTax = structuredClone(await poorReplay.store.getSession(poorReplay.session.sessionId));
+  await assertRejectedAction(act(poorReplay, "tax.pay"), /MECHANICS_RESOURCE_INSUFFICIENT/);
+  const afterTax = await poorReplay.store.getSession(poorReplay.session.sessionId);
+  assert.deepEqual(afterTax.state, beforeTax.state);
+  assert.equal(afterTax.version.stateVersion, beforeTax.version.stateVersion);
+  assert.equal(afterTax.state.public.turn.phase, "tax");
+  assert.equal(afterTax.state.players.p1.metrics.cash, 109);
+});
+
+test("neutral landing finishes while go-to-jail cancels a pending extra roll", async () => {
+  const neutralReplay = await createReplay((state) => {
+    state.players.p1.metrics.position = 17;
+  }, { samples: [0, 1] });
+  await act(neutralReplay, "turn.roll");
+  let current = await neutralReplay.store.getSession(neutralReplay.session.sessionId);
+  assert.equal(current.state.players.p1.metrics.position, 20);
+  assert.equal(current.state.public.turn.phase, "finish");
+  assert.equal(current.state.public.board.extraRollPending, false);
+
+  const jailReplay = await createReplay((state) => {
+    state.players.p1.metrics.position = 28;
+  }, { samples: [0, 0] });
+  await act(jailReplay, "turn.roll");
+  current = await jailReplay.store.getSession(jailReplay.session.sessionId);
+  assert.equal(current.state.players.p1.metrics.position, 10);
+  assert.equal(current.state.players.p1.flags.inJail, true);
+  assert.equal(current.state.public.board.consecutiveDoubles, 0);
+  assert.equal(current.state.public.board.extraRollPending, false);
+  assert.equal(current.state.public.turn.phase, "finish");
+  assert.deepEqual(current.state.public.board.availableActions, [{
+    id: "finish",
+    label: "Завершить ход",
+    actionId: "turn.finish"
+  }]);
+});
+
+test("every not-yet-activated cell kind enters an explicit blocked phase", async () => {
+  const manifest = await loadManifest();
+  const activatedCellIds = new Set(["cell-02", "cell-05", "cell-08", "cell-11"]);
+  const blockedKinds = new Set(["estate", "transit", "utility", "event", "fund"]);
+  const blockedCells = Object.values(manifest.state.public.objects.boardCells)
+    .filter((cell) => blockedKinds.has(cell.attributes.kind) && !activatedCellIds.has(cell.attributes.id));
+
+  assert.equal(blockedCells.length, 30);
+  for (const [cellIndex, cell] of blockedCells.entries()) {
+    const targetIndex = cell.attributes.index;
+    const replay = await createReplay((state) => {
+      state.players.p1.metrics.position = (targetIndex + 37) % 40;
+    }, { samples: [0, 1] });
+    await act(replay, "turn.roll");
+    const current = await replay.store.getSession(replay.session.sessionId);
+    assert.equal(current.state.players.p1.metrics.position, targetIndex, cell.attributes.id);
+    assert.equal(current.state.public.turn.activePlayerId, "p1", cell.attributes.id);
+    assert.equal(current.state.public.turn.phase, "blocked", cell.attributes.id);
+    assert.deepEqual(current.state.public.board.availableActions, [], cell.attributes.id);
+    if (cellIndex === 0) {
+      const beforeFinish = structuredClone(current);
+      await assertRejectedAction(act(replay, "turn.finish"), /ACTION_PRECONDITION_FAILED/);
+      const afterFinish = await replay.store.getSession(replay.session.sessionId);
+      assert.deepEqual(afterFinish.state, beforeFinish.state);
+      assert.equal(afterFinish.version.stateVersion, beforeFinish.version.stateVersion);
+    }
+  }
 });
 
 test("a principal scoped to another actor cannot execute the active turn", async () => {

@@ -41,6 +41,8 @@ export interface EstatePlayerView {
   readonly cash: number;
   readonly position: number;
   readonly active: boolean;
+  /** Public server flag; the client only presents the authoritative status. */
+  readonly inJail: boolean;
 }
 
 export interface EstateActionView {
@@ -122,7 +124,8 @@ const readPlayers = (state: JsonRecord, activePlayerId: string | null): EstatePl
       label: `Игрок ${index + 1}`,
       cash: finiteNumber(metrics.cash),
       position: finiteNumber(metrics.position),
-      active: id === activePlayerId
+      active: id === activePlayerId,
+      inJail: isRecord(raw.flags) && raw.flags.inJail === true
     }];
   });
 };

@@ -31,7 +31,7 @@
 
 | Правило | Срез | Состояние / Game Intent / план | UI | Проверка | Статус |
 |---|---|---|---|---|---|
-| Старт, налоги, нейтральные клетки, посещение/отправка в тюрьму проходят через dispatcher | S1 | `turn.phase`, `players.*.metrics`; `turn.roll` → landing plans; только активированные типы | landing panel и next action | positive/negative fixtures по каждому активированному типу | запланировано |
+| Старт, налоги, нейтральные клетки, посещение/отправка в тюрьму проходят через dispatcher | S1 (GSR-039) | `turn.phase`, `players.*.metrics`; `turn.roll` → типизированный выбор `boardCells`; только активированные типы | серверные `tax.pay`/`turn.finish`, явная `blocked`-фаза и статус заключения | replay обоих налогов, недостатка денег, стартовой/нейтральной/тюремных клеток и всех 30 ещё не активированных клеток; plugin projection | реализовано; браузерный сценарий S1 остаётся открытым |
 | Отказ от покупки создаёт обязательный последовательный аукцион | S2 | auction state, `activePlayerId` + `resumePlayerId`; `property.auction.*`; общий actor plan | панель ставки, pass и завершения | bid/pass, чужой ход, сумма/баланс, победитель и retry | запланировано |
 | Рента различается для групп, станций и коммунальных объектов | S2 | owner/group/type metrics; `property.pay-rent`; formula plan | карточка собственности и объяснение формулы | neutral fixtures всех типов и отрицательный баланс | запланировано |
 | Две скрытые колоды дают оригинальный эффект, discard и повторное перемешивание | S3 | deck/discard state; `deck.draw/resolve`; bounded deck plan | карточка и журнал эффекта | replay recorded randomness, exhaustion и reshuffle | запланировано |

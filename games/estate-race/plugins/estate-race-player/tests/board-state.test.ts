@@ -45,8 +45,8 @@ test("projects cells, participants, roll and only runtime-declared actions", () 
         }
       },
       players: {
-        p1: { metrics: { cash: 764, position: 5 } },
-        p2: { metrics: { cash: 900, position: 5 } }
+        p1: { metrics: { cash: 764, position: 5 }, flags: { inJail: true } },
+        p2: { metrics: { cash: 900, position: 5 }, flags: { inJail: false } }
       }
     }
   });
@@ -58,8 +58,61 @@ test("projects cells, participants, roll and only runtime-declared actions", () 
   assert.equal(projection.cells[0]?.group, "coral");
   assert.deepEqual(projection.cells[0]?.rentScale, [24, 48, 132, 310, 500, 700]);
   assert.equal(projection.players[1]?.active, true);
+  assert.equal(projection.players[0]?.inJail, true);
+  assert.equal(projection.players[1]?.inJail, false);
   assert.equal(projection.availableActions[0]?.actionId, "property.rent.cell-05");
   assert.deepEqual(projection.availableActions[0]?.params, { cellId: "cell-05" });
+});
+
+test("keeps tax as a server-declared action without client parameters", () => {
+  const projection = projectEstateRaceSession({
+    state: {
+      public: {
+        turn: { phase: "tax" },
+        board: { availableActions: [{ id: "tax", label: "Оплатить налог", actionId: "tax.pay" }] }
+      }
+    }
+  });
+
+  assert.equal(projection.phase, "tax");
+  assert.deepEqual(projection.availableActions, [{
+    id: "tax",
+    label: "Оплатить налог",
+    description: undefined,
+    actionId: "tax.pay",
+    params: undefined,
+    disabled: false
+  }]);
+});
+
+test("projects blocked phase as actionless server state", () => {
+  const projection = projectEstateRaceSession({
+    state: { public: { turn: { phase: "blocked" }, board: { availableActions: [] } } }
+  });
+
+  assert.equal(projection.phase, "blocked");
+  assert.deepEqual(projection.availableActions, []);
+});
+
+test("keeps a jailed roll disabled from canonical action availability", () => {
+  const actions = provideEstateRaceAccessibleBoardActions({
+    actionAvailability: [{ actionId: "turn.roll", status: "unavailable", reasonCode: "state_condition_failed" }],
+    state: {
+      public: {
+        turn: { phase: "roll" },
+        board: { availableActions: [{ id: "roll", label: "Бросить кости", actionId: "turn.roll" }] }
+      },
+      players: { p1: { flags: { inJail: true } } }
+    }
+  } as unknown as Parameters<typeof provideEstateRaceAccessibleBoardActions>[0]);
+
+  assert.deepEqual(actions, [{
+    id: "roll",
+    label: "Бросить кости",
+    description: "Действие недоступно в текущем состоянии игры.",
+    actionId: "turn.roll",
+    disabled: true
+  }]);
 });
 
 test("projects all six hotseat participants without assuming fixed player ids", () => {

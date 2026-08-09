@@ -139,7 +139,8 @@ const readPlayers = (state, activePlayerId) => {
                 label: `Игрок ${index + 1}`,
                 cash: finiteNumber(metrics.cash),
                 position: finiteNumber(metrics.position),
-                active: id === activePlayerId
+                active: id === activePlayerId,
+                inJail: isRecord(raw.flags) && raw.flags.inJail === true
             }];
     });
 };
@@ -227,6 +228,7 @@ const phaseLabel = {
     roll: "бросок",
     acquire: "покупка",
     rent: "рента",
+    tax: "налог",
     resolve: "эффект клетки",
     blocked: "следующий срез",
     finish: "завершение"
@@ -318,6 +320,15 @@ const createEstateRaceScene = (context) => {
                     color: "#66746d",
                     fontFamily: "Georgia, serif",
                     fontSize: "24px"
+                }).setOrigin(0.5);
+            }
+            if (projection.phase === "blocked") {
+                this.add.text(680, 535, "Эта клетка ещё не активирована в текущем срезе игры. Действий нет.", {
+                    color: "#8d3d36",
+                    align: "center",
+                    wordWrap: { width: 540 },
+                    fontFamily: "Arial, sans-serif",
+                    fontSize: "20px"
                 }).setOrigin(0.5);
             }
             const action = projection.availableActions.find((item) => !item.disabled);
@@ -416,7 +427,7 @@ const createEstateRaceScene = (context) => {
             projection.players.forEach((player, index) => {
                 const spacing = 1100 / Math.max(1, projection.players.length - 1);
                 const x = projection.players.length === 1 ? 700 : 150 + index * spacing;
-                this.add.text(x, 975, `${player.label}${player.active ? " · ходит" : ""}   ${player.cash} монет`, {
+                this.add.text(x, 975, `${player.label}${player.active ? " · ходит" : ""}${player.inJail ? " · в тюрьме" : ""}   ${player.cash} монет`, {
                     color: player.active ? "#fff4d8" : "#b9c7c2",
                     fontFamily: "Arial, sans-serif",
                     fontSize: player.active ? "16px" : "14px",

@@ -6,8 +6,8 @@
   "_definitions": {},
   "root": {
     "_type": "ui.Manifest",
-    "_label": "Web-интерфейс: Estate Race · прототип",
-    "_semantics": "Корневая сущность UI authoring v2.",
+    "_label": "Web-интерфейс: Estate Race · внутренний срез S1",
+    "_semantics": "Внутренний UI-срез S1: поле отображает authoritative session, а действия объявляет сервер; полный S1 этим экраном не заявляется.",
     "meta": {
       "id": "estate-race.ui.web",
       "version": "0.2.0",
@@ -31,9 +31,9 @@
       {
         "id": "table",
         "_type": "ui.Screen",
-        "_label": "Экран table: Estate Race · прототип",
-        "_semantics": "Экран UI-манифеста table.",
-        "title": "Estate Race · прототип",
+        "_label": "Экран table: Estate Race · внутренний срез S1",
+        "_semantics": "Экран UI-манифеста table для внутреннего среза: tax, blocked и jail только показывают публичное состояние и server-owned actions.",
+        "title": "Estate Race · внутренний срез S1",
         "layout_mode": "topbar",
         "root": {
           "_type": "ui.Component",
@@ -57,12 +57,12 @@
               "children": [
                 {
                   "_type": "ui.Component",
-                  "_label": "Estate Race · прототип Ход · активен · этап",
+                  "_label": "Estate Race · внутренний срез Ход · активен · этап",
                   "_semantics": "UI-компонент типа richTextComponent.",
                   "id": "table.title",
                   "type": "richTextComponent",
                   "props": {
-                    "html": "<h1>Estate Race · прототип</h1><p>Ход {{game.state.public.turn.turnNumber}} · активен {{game.state.public.turn.activePlayerId}} · этап {{game.state.public.turn.phase}}</p>"
+                    "html": "<h1>Estate Race · внутренний срез S1</h1><p>Ход {{game.state.public.turn.turnNumber}} · активен {{game.state.public.turn.activePlayerId}} · этап {{game.state.public.turn.phase}}</p><p>Tax, blocked и заключение отображаются из подтверждённой публичной сессии; доступные действия объявляет сервер.</p>"
                   }
                 }
               ]
@@ -84,7 +84,7 @@
               "id": "table.players-summary",
               "type": "richTextComponent",
               "props": {
-                "html": "<h2>Локальная партия: 2–6 участников</h2><p>Активен {{game.state.public.turn.activePlayerId}}. Балансы, позиции и активный участник показаны непосредственно на поле.</p>"
+                "html": "<h2>Локальная партия: 2–6 участников</h2><p>Активен {{game.state.public.turn.activePlayerId}}. Балансы, позиции и статус заключения показаны непосредственно из публичной проекции.</p>"
               }
             }
               ]

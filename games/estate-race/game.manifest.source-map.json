@@ -99,10 +99,16 @@
         "pointer": "/root/logic/actions/8"
       }
     ],
-    "/actions/turn.finish": [
+    "/actions/tax.pay": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
         "pointer": "/root/logic/actions/9"
+      }
+    ],
+    "/actions/turn.finish": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/10"
       }
     ],
     "/actions": [
@@ -277,6 +283,66 @@
       {
         "file": "games/estate-race/authoring/game.authoring.json",
         "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/25"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/26": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/26"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/27": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/27"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/28": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/28"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/29": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/29"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/30": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/30"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/31": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/31"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/32": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/32"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/33": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/33"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/34": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/34"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/35": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/35"
       }
     ],
     "/mechanics/plans/turn.roll/planHash": [
@@ -645,6 +711,48 @@
         "pointer": "/root/mechanics/plans/property.rent.cell-11"
       }
     ],
+    "/mechanics/plans/tax.pay/transaction/steps": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/tax.pay/transaction/steps"
+      }
+    ],
+    "/mechanics/plans/tax.pay/transaction/steps/0": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/tax.pay/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/tax.pay/transaction/steps/1": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/tax.pay/transaction/steps/1"
+      }
+    ],
+    "/mechanics/plans/tax.pay/transaction/steps/2": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/tax.pay/transaction/steps/2"
+      }
+    ],
+    "/mechanics/plans/tax.pay/transaction/steps/3": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/tax.pay/transaction/steps/3"
+      }
+    ],
+    "/mechanics/plans/tax.pay/transaction/steps/4": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/tax.pay/transaction/steps/4"
+      }
+    ],
+    "/mechanics/plans/tax.pay/planHash": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/tax.pay"
+      }
+    ],
     "/mechanics/plans/turn.finish/transaction/steps": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
@@ -703,6 +811,7 @@
     "/actions/property.rent.cell-05",
     "/actions/property.rent.cell-08",
     "/actions/property.rent.cell-11",
+    "/actions/tax.pay",
     "/actions/turn.finish",
     "/actions/turn.roll",
     "/config",
