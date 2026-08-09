@@ -12,7 +12,8 @@
     "packages/contracts/manifest",
     "packages/contracts/session",
     "packages/contracts/runtime",
-    "packages/contracts/ai"
+    "packages/contracts/ai",
+    "packages/product-context"
   ],
   "scripts": {
     "bootstrap": "npm install --workspaces",
@@ -62,6 +63,10 @@
     "verify:contracts-runtime": "npm test --workspace @cubica/contracts-runtime",
     "verify:contracts-session": "npm test --workspace @cubica/contracts-session",
     "verify:contracts-ai": "npm run typecheck --workspace @cubica/contracts-ai && npm test --workspace @cubica/contracts-ai",
+    "verify:contracts-knowledge": "npm run generate:types:check --workspace @cubica/product-context && npm run typecheck --workspace @cubica/product-context && npm run test --workspace @cubica/product-context -- --run contracts policy",
+    "verify:product-context": "node -e \"if (!process.env.TEST_PRODUCT_CONTEXT_DATABASE_URL) { console.error('TEST_PRODUCT_CONTEXT_DATABASE_URL is required for the Stage 1 acceptance suite.'); process.exit(1) }\" && npm run generate:types:check --workspace @cubica/product-context && npm run typecheck --workspace @cubica/product-context && npm run test:acceptance --workspace @cubica/product-context",
+    "verify:product-context-isolation": "node scripts/ci/validate-product-context-isolation.js",
+    "run:product-context-stage1": "node_modules/.bin/vite-node scripts/run-isolated-stage1.ts",
     "verify:editor-engine": "npm run typecheck --workspace @cubica/editor-engine && npm test --workspace @cubica/editor-engine",
     "verify:editor-web": "npm run typecheck --workspace @cubica/editor-web && npm run build --workspace @cubica/editor-web",
     "verify:canonical": "npm run verify:node-runtime && npm run verify:legacy && npm run verify:codex-agent-routing && npm run verify:external-skills && npm run verify:manifest-authoring && npm run verify:contracts-schema-parity && npm run verify:contracts-manifest && npm run verify:contracts-runtime && npm run verify:contracts-session && npm run verify:game-agnostic && npm run verify:player-core-seam && npm run verify:metric-jsonlogic-subset && npm run verify:game-assets && npm run verify:game-stylesheets && npm run verify:api-contracts && npm run verify:contracts-ai && npm run verify:agent-ui-boundaries && npm run verify:runtime-api && npm run verify:player-web && npm test --workspace @cubica/view-protocol && npm run verify:editor-engine && npm run verify:editor-web",

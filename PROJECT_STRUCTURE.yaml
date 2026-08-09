@@ -148,7 +148,6 @@ docs: # Архитектура, задачи, планирование
       TSK-20260726-source-materials-governance.md: file # Место хранения авторских первоисточников игр: каталог draft непригоден для промышленной среды, требуется архитектурное решение.
       TSK-20260727-author-material-intake-contract.md: file # Проработка общего контракта приёма авторских материалов игры: границы шага машины и шага человека, состав переиспользуемых инструментов.
       TSK-20260730-test-execution-optimization.md: file # План ускорения локальных и CI-проверок за счёт устранения повторной работы, ступенчатого запуска, профильного E2E и консервативного выбора затронутой области без снижения обязательных гарантий.
-      TSK-20260801-cmt-mock-session-availability.md: file # Разбор единственного постоянного падения полной макетной партии: доступность действия ожидается сценарием, но не выдаётся runtime.
       TSK-20260801-cmt-test-suite-cost.md: file # Стоимость и устойчивость наборов проверок игры «Карты, деньги, поезда»: измеренная цена, устранение повторной работы и проверка на закреплённую случайность.
       TSK-20260803-portal-access-control.md: file # Восстановление контроля доступа в черновом контуре портала: проверка владельца заказа, закрытие свободной смены статуса, права ролей на стандартные маршруты и гигиена браузерного кода.
       TSK-20260806-product-knowledge-shadow-stage-1.md: file # План изолированной проверки ядра продуктовой системы знаний на синтетических данных без подключения к действующим помощникам; настоящий теневой запуск и включение остаются отдельными этапами.
@@ -225,6 +224,8 @@ packages: # Переиспользуемые платформенные паке
     runtime: directory... # Контракты команд, результатов и публичной границы игрового runtime.
     session: directory... # Контракты сессий, участников, событий, квитанций и постоянного состояния.
   editor-engine: directory... # Framework-agnostic editor engine package for ADR-034 authoring manifest editing. It owns JSON document state, neutral graph projection, reverse projection intents, and deterministic diagnostics helpers.
+  product-context: # Isolated server-only Stage 1 product-knowledge core: schema-backed contracts, policy, exact Markdown/Git changes, PostgreSQL operation lifecycle and a synthetic harness. It is deliberately not imported by deployed Cubica applications.
+    migrations: directory... # Явные миграции изолированной PostgreSQL-схемы продуктовых знаний Stage 1, включая минимальные права роли, RLS и ограничения жизненного цикла операций.
   view-protocol: directory... # Framework-agnostic package with the Abstract View Protocol contracts (ADR-002: Presenter -> View commands) and JSON state patch utilities (RFC 7396 Merge Patch, RFC 6902 JSON Patch). Seed of the future extracted player core per ADR-064.
 scripts: # Скрипты разработки и индексирования 
   asset-provenance: directory... # Общая проверка реестра происхождения игры: сверяет реестр с платформенной схемой docs/architecture/schemas/asset-provenance.schema.json и подтверждает, что пути, размеры и отпечатки записей совпадают с файлами на диске. Инструмент не привязан к конкретной игре: она указывается ключом --game.

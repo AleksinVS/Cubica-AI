@@ -1,0 +1,207 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cubica.ai/schemas/product-knowledge/product-knowledge.schema.json",
+  "title": "ProductKnowledgeContracts",
+  "description": "Canonical JSON Schema contracts for the isolated Stage 1 product-knowledge core.",
+  "oneOf": [
+    { "$ref": "#/$defs/KnowledgePage" },
+    { "$ref": "#/$defs/ExactPatchProposal" },
+    { "$ref": "#/$defs/DecisionEnvelope" },
+    { "$ref": "#/$defs/ImpactAssessment" },
+    { "$ref": "#/$defs/KnowledgeWriteOperation" },
+    { "$ref": "#/$defs/SemanticReviewResult" }
+  ],
+  "$defs": {
+    "SchemaVersion": { "type": "string", "const": "1.0.0" },
+    "CubicaUri": { "type": "string", "pattern": "^cubica://[a-z][a-z0-9-]*(?:/[A-Za-z0-9._~-]+)+$" },
+    "AppliesToUri": { "type": "string", "anyOf": [
+      { "pattern": "^cubica://game-project/[A-Za-z0-9._~-]+$" },
+      { "pattern": "^cubica://published-game/[A-Za-z0-9._~-]+/version/[A-Za-z0-9._~-]+$" },
+      { "const": "cubica://scope/all-user-games" }
+    ] },
+    "Sha256": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "RoleScope": { "type": "string", "enum": ["developer", "facilitator", "global"] },
+    "SourceRef": {
+      "type": "object", "additionalProperties": false,
+      "required": ["ref", "use"],
+      "properties": {
+        "ref": { "$ref": "#/$defs/CubicaUri" },
+        "use": { "type": "string", "enum": ["evidence", "wording", "context", "confirmation"] }
+      }
+    },
+    "DependencyRef": {
+      "type": "object", "additionalProperties": false,
+      "required": ["ref", "relation", "content_hash"],
+      "properties": {
+        "ref": { "$ref": "#/$defs/CubicaUri" },
+        "relation": { "type": "string", "const": "derives_from" },
+        "content_hash": { "$ref": "#/$defs/Sha256" }
+      }
+    },
+    "KnowledgePage": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "type", "title", "description", "timestamp", "cubica_id", "role_scope", "source_refs", "applies_to", "body"],
+      "properties": {
+        "schema_version": { "$ref": "#/$defs/SchemaVersion" },
+        "type": { "type": "string", "enum": ["decision", "preference", "constraint", "note"] },
+        "title": { "type": "string", "minLength": 1, "maxLength": 240 },
+        "description": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "cubica_id": { "type": "string", "pattern": "^knw_[A-Za-z0-9_-]+$" },
+        "role_scope": { "$ref": "#/$defs/RoleScope" },
+        "subject_key": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "source_refs": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/SourceRef" } },
+        "applies_to": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/AppliesToUri" } },
+        "depends_on": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/DependencyRef" } },
+        "state": { "type": "string", "enum": ["active", "disputed"], "default": "active" },
+        "body": { "type": "string", "minLength": 1 }
+      }
+    },
+    "ExactPatchOperation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "path", "reason", "source_refs"],
+      "properties": {
+        "kind": { "type": "string", "enum": ["replace_exact", "insert_before_exact", "insert_after_exact", "delete_exact", "create_file"] },
+        "path": { "type": "string", "pattern": "^(?!/)(?!.*//)(?!.*(?:^|/)\\.)(?!.*(?:^|/)index\\.md$)[A-Za-z0-9_-]+(?:/[A-Za-z0-9_.-]+)*\\.md$" },
+        "base_file_hash": { "$ref": "#/$defs/Sha256" },
+        "old_text": { "type": "string" },
+        "old_text_hash": { "$ref": "#/$defs/Sha256" },
+        "new_text": { "type": "string" },
+        "expected_matches": { "type": "integer", "const": 1 },
+        "reason": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "source_refs": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/SourceRef" } }
+      },
+      "allOf": [
+        { "if": { "properties": { "kind": { "const": "create_file" } }, "required": ["kind"] }, "then": { "properties": { "new_text": {} }, "required": ["new_text"], "not": { "anyOf": [{ "properties": { "old_text": {} }, "required": ["old_text"] }, { "properties": { "old_text_hash": {} }, "required": ["old_text_hash"] }, { "properties": { "expected_matches": {} }, "required": ["expected_matches"] }, { "properties": { "base_file_hash": {} }, "required": ["base_file_hash"] }] } }, "else": { "properties": { "base_file_hash": {}, "old_text": {}, "old_text_hash": {}, "expected_matches": {} }, "required": ["base_file_hash", "old_text", "old_text_hash", "expected_matches"] } },
+        { "if": { "properties": { "kind": { "enum": ["replace_exact", "insert_before_exact", "insert_after_exact"] } }, "required": ["kind"] }, "then": { "required": ["new_text"] } },
+        { "if": { "properties": { "kind": { "const": "delete_exact" } }, "required": ["kind"] }, "then": { "not": { "properties": { "new_text": {} }, "required": ["new_text"] } } }
+      ]
+    },
+    "ExactPatchProposal": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "proposal_id", "base_commit", "patch_hash", "operations", "source_refs", "applies_to"],
+      "properties": {
+        "schema_version": { "$ref": "#/$defs/SchemaVersion" },
+        "proposal_id": { "type": "string", "pattern": "^prop_[A-Za-z0-9_-]+$" },
+        "base_commit": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+        "patch_hash": { "$ref": "#/$defs/Sha256", "description": "SHA-256 of cubica-product-context-patch/v1 followed by a newline and the recursively key-sorted UTF-8 JSON proposal with only this self-referential patch_hash field omitted." },
+        "operations": { "type": "array", "minItems": 1, "maxItems": 20, "items": { "$ref": "#/$defs/ExactPatchOperation" } },
+        "source_refs": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/SourceRef" } },
+        "applies_to": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/AppliesToUri" } }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "operations": { "type": "array", "contains": { "type": "object", "properties": { "kind": { "const": "create_file" } }, "required": ["kind"] } } }, "required": ["operations"] },
+          "then": { "properties": { "operations": { "type": "array", "maxItems": 1 } } }
+        }
+      ]
+    },
+    "ReadSetEntry": {
+      "type": "object", "additionalProperties": false,
+      "required": ["ref", "kind", "purpose", "revision", "content_hash"],
+      "properties": {
+        "ref": { "$ref": "#/$defs/CubicaUri" },
+        "kind": { "type": "string", "enum": ["page", "message", "domain_version", "policy", "impact_query"] },
+        "purpose": { "type": "string", "enum": ["target", "decision_basis", "constraint", "navigation", "semantic_candidate"] },
+        "revision": { "type": "string", "minLength": 1 },
+        "content_hash": { "$ref": "#/$defs/Sha256" }
+      }
+    },
+    "DecisionEnvelope": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "envelope_id", "space_id", "principal_ref", "role_scope", "target_ref", "applies_to", "read_set", "policy_decisions", "impact_hash", "created_at"],
+      "properties": {
+        "schema_version": { "$ref": "#/$defs/SchemaVersion" },
+        "envelope_id": { "type": "string", "pattern": "^env_[A-Za-z0-9_-]+$" },
+        "space_id": { "type": "string", "pattern": "^space_[A-Za-z0-9_-]+$" },
+        "principal_ref": { "$ref": "#/$defs/CubicaUri" },
+        "role_scope": { "$ref": "#/$defs/RoleScope" },
+        "target_ref": { "$ref": "#/$defs/CubicaUri" },
+        "applies_to": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/AppliesToUri" } },
+        "read_set": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/ReadSetEntry" } },
+        "policy_decisions": { "type": "object", "additionalProperties": false, "required": ["access", "retention", "external_processing"], "properties": { "access": { "type": "object", "additionalProperties": false, "required": ["decision", "version"], "properties": { "decision": { "type": "string", "enum": ["allow", "deny"] }, "version": { "type": "string", "minLength": 1 } } }, "retention": { "type": "object", "additionalProperties": false, "required": ["decision", "version"], "properties": { "decision": { "type": "string", "enum": ["allow", "deny"] }, "version": { "type": "string", "minLength": 1 } } }, "external_processing": { "type": "object", "additionalProperties": false, "required": ["decision", "version"], "properties": { "decision": { "type": "string", "enum": ["allow", "deny"] }, "version": { "type": "string", "minLength": 1 } } } } },
+        "impact_hash": { "$ref": "#/$defs/Sha256", "description": "SHA-256 of cubica-product-context-impact/v1 followed by a newline and recursively key-sorted UTF-8 JSON payload." },
+        "created_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "ImpactAssessment": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "assessment_id", "query", "outcome", "result_hash", "checked_at"],
+      "properties": {
+        "schema_version": { "$ref": "#/$defs/SchemaVersion" },
+        "assessment_id": { "type": "string", "pattern": "^impact_[A-Za-z0-9_-]+$" },
+        "query": { "type": "object", "additionalProperties": false, "required": ["kind", "version", "inputs", "candidates"], "properties": { "kind": { "type": "string", "enum": ["subject_key", "references", "literal_search", "dependencies"] }, "version": { "type": "string", "minLength": 1 }, "inputs": { "type": "object", "additionalProperties": true }, "candidates": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["ref", "revision"], "properties": { "ref": { "$ref": "#/$defs/CubicaUri" }, "revision": { "type": "string", "minLength": 1 } } } } } },
+        "outcome": { "type": "string", "enum": ["clear", "review_required", "conflict"] },
+        "result_hash": { "$ref": "#/$defs/Sha256", "description": "SHA-256 of cubica-product-context-impact/v1 followed by a newline and recursively key-sorted UTF-8 JSON payload." },
+        "affected_refs": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/CubicaUri" } },
+        "checked_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "KnowledgeWriteOperation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "operation_id", "space_id", "creator_ref", "idempotency_key", "proposal_id", "patch_hash", "status", "status_reason", "decision_envelope_id", "attempt_count", "created_at"],
+      "properties": {
+        "schema_version": { "$ref": "#/$defs/SchemaVersion" },
+        "operation_id": { "type": "string", "pattern": "^op_[A-Za-z0-9_-]+$" },
+        "space_id": { "type": "string", "pattern": "^space_[A-Za-z0-9_-]+$" },
+        "creator_ref": { "$ref": "#/$defs/CubicaUri" },
+        "idempotency_key": { "type": "string", "minLength": 16, "maxLength": 200 },
+        "proposal_id": { "type": "string", "pattern": "^prop_[A-Za-z0-9_-]+$" },
+        "patch_hash": { "anyOf": [{ "$ref": "#/$defs/Sha256" }, { "type": "null" }] },
+        "status": { "type": "string", "enum": ["pending_confirmation", "rejected", "expired", "ready", "applying", "applied", "failed", "conflict"] },
+        "status_reason": { "type": "string", "enum": ["awaiting_confirmation", "explicitly_rejected", "confirmation_expired", "ready_to_apply", "lease_expired", "temporary_storage_failure", "base_revision_changed", "read_set_changed", "impact_changed", "authorization_changed", "policy_changed", "requires_extended_review", "invalid_payload", "secret_detected", "git_ref_conflict", "applied", "payload_purged"] },
+        "decision_envelope_id": { "type": "string", "pattern": "^env_[A-Za-z0-9_-]+$" },
+        "decision_envelope": { "anyOf": [{ "$ref": "#/$defs/DecisionEnvelope" }, { "type": "null" }] },
+        "patch_payload": { "anyOf": [{ "$ref": "#/$defs/ExactPatchProposal" }, { "type": "null" }] },
+        "source_refs": { "anyOf": [{ "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/SourceRef" } }, { "type": "null" }] },
+        "confirmation": { "anyOf": [{ "type": "object", "additionalProperties": false, "required": ["operation_id", "patch_hash", "principal_ref", "method", "confirmed_at"], "properties": { "operation_id": { "type": "string", "pattern": "^op_[A-Za-z0-9_-]+$" }, "patch_hash": { "$ref": "#/$defs/Sha256" }, "principal_ref": { "$ref": "#/$defs/CubicaUri" }, "method": { "type": "string", "enum": ["exact_command", "user_confirmation", "domain_action"] }, "confirmed_at": { "type": "string", "format": "date-time" } } }, { "type": "null" }] },
+        "confirmed_patch_hash": { "anyOf": [{ "$ref": "#/$defs/Sha256" }, { "type": "null" }] },
+        "commit_sha": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+        "attempt_count": { "type": "integer", "minimum": 0 },
+        "lease_owner": { "type": ["string", "null"], "minLength": 1 },
+        "lease_expires_at": { "type": "string", "format": "date-time" },
+        "next_retry_at": { "type": "string", "format": "date-time" },
+        "last_error_at": { "type": "string", "format": "date-time" },
+        "last_error_code": { "type": "string", "enum": ["storage_unavailable", "git_ref_conflict", "invalid_payload", "authorization_changed", "policy_changed"] },
+        "applied_at": { "type": "string", "format": "date-time" },
+        "payload_purged_at": { "type": "string", "format": "date-time" },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "allOf": [
+        { "if": { "properties": { "status": { "const": "pending_confirmation" } }, "required": ["status"] }, "then": { "properties": { "status_reason": { "const": "awaiting_confirmation" }, "confirmation": { "type": "null" }, "confirmed_patch_hash": { "type": "null" } }, "required": ["status_reason"] } },
+        { "if": { "properties": { "status": { "const": "ready" } }, "required": ["status"] }, "then": { "properties": { "status_reason": { "enum": ["ready_to_apply", "lease_expired", "temporary_storage_failure"] }, "confirmation": { "not": { "type": "null" } }, "confirmed_patch_hash": { "$ref": "#/$defs/Sha256" } }, "required": ["status_reason", "confirmation", "confirmed_patch_hash"] } },
+        { "if": { "properties": { "status": { "const": "applying" } }, "required": ["status"] }, "then": { "properties": { "status_reason": { "const": "ready_to_apply" }, "confirmation": { "not": { "type": "null" } }, "confirmed_patch_hash": { "$ref": "#/$defs/Sha256" }, "lease_owner": { "type": "string", "minLength": 1 }, "lease_expires_at": {} }, "required": ["status_reason", "confirmation", "confirmed_patch_hash", "lease_owner", "lease_expires_at"] }, "else": { "not": { "anyOf": [{ "properties": { "lease_expires_at": {} }, "required": ["lease_expires_at"] }, { "properties": { "lease_owner": { "type": "string" } }, "required": ["lease_owner"] }] } } },
+        { "if": { "properties": { "status": { "const": "rejected" } }, "required": ["status"] }, "then": { "properties": { "status_reason": { "const": "explicitly_rejected" }, "payload_purged_at": {} }, "required": ["status_reason", "payload_purged_at"] } },
+        { "if": { "properties": { "status": { "const": "expired" } }, "required": ["status"] }, "then": { "properties": { "status_reason": { "const": "confirmation_expired" }, "payload_purged_at": {} }, "required": ["status_reason", "payload_purged_at"] } },
+        { "if": { "properties": { "status": { "const": "conflict" } }, "required": ["status"] }, "then": { "properties": { "status_reason": { "enum": ["base_revision_changed", "read_set_changed", "impact_changed", "authorization_changed", "policy_changed", "requires_extended_review", "git_ref_conflict"] } }, "required": ["status_reason"] } },
+        { "if": { "properties": { "status_reason": { "const": "temporary_storage_failure" } }, "required": ["status_reason"] }, "then": { "properties": { "last_error_at": {}, "last_error_code": { "const": "storage_unavailable" } }, "required": ["last_error_at", "last_error_code"] } },
+        {
+          "if": { "properties": { "status": { "const": "failed" } }, "required": ["status"] },
+          "then": {
+            "properties": { "status_reason": { "enum": ["invalid_payload", "secret_detected"] }, "last_error_at": {}, "last_error_code": {} },
+            "required": ["status_reason", "last_error_at", "last_error_code"],
+            "not": { "properties": { "next_retry_at": {} }, "required": ["next_retry_at"] }
+          }
+        },
+        { "if": { "properties": { "status": { "const": "applied" } }, "required": ["status"] }, "then": { "properties": { "status_reason": { "enum": ["applied", "payload_purged"] }, "commit_sha": {}, "applied_at": {} }, "required": ["status_reason", "commit_sha", "applied_at"] }, "else": { "not": { "anyOf": [{ "properties": { "commit_sha": {} }, "required": ["commit_sha"] }, { "properties": { "applied_at": {} }, "required": ["applied_at"] }] } } },
+        { "if": { "allOf": [{ "properties": { "status": { "const": "applied" } }, "required": ["status"] }, { "not": { "properties": { "payload_purged_at": {} }, "required": ["payload_purged_at"] } }] }, "then": { "properties": { "status_reason": { "const": "applied" } }, "required": ["status_reason"] } },
+        { "if": { "properties": { "status": { "enum": ["applied", "rejected", "expired", "conflict", "failed"] } }, "required": ["status"] }, "then": { "not": { "properties": { "next_retry_at": {} }, "required": ["next_retry_at"] } } },
+        { "if": { "properties": { "payload_purged_at": { "type": "string" } }, "required": ["payload_purged_at"] }, "then": { "properties": { "status": { "enum": ["applied", "rejected", "expired"] }, "status_reason": { "enum": ["payload_purged", "explicitly_rejected", "confirmation_expired"] }, "decision_envelope": { "type": "null" }, "patch_payload": { "type": "null" }, "source_refs": { "type": "null" }, "confirmation": { "type": "null" }, "patch_hash": { "type": "null" }, "confirmed_patch_hash": { "type": "null" } }, "required": ["decision_envelope", "patch_payload", "source_refs", "confirmation", "patch_hash", "confirmed_patch_hash"] }, "else": { "properties": { "decision_envelope": { "not": { "type": "null" } }, "patch_payload": { "not": { "type": "null" } }, "source_refs": { "not": { "type": "null" } }, "patch_hash": { "$ref": "#/$defs/Sha256" } }, "required": ["decision_envelope", "patch_payload", "source_refs"] } }
+      ]
+    },
+    "SemanticReviewResult": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "review_id", "operation_id", "patch_hash", "impact_hash", "outcome", "checked_at"],
+      "properties": {
+        "schema_version": { "$ref": "#/$defs/SchemaVersion" },
+        "review_id": { "type": "string", "pattern": "^review_[A-Za-z0-9_-]+$" },
+        "operation_id": { "type": "string", "pattern": "^op_[A-Za-z0-9_-]+$" },
+        "patch_hash": { "$ref": "#/$defs/Sha256" },
+        "impact_hash": { "$ref": "#/$defs/Sha256" },
+        "outcome": { "type": "string", "enum": ["no_issue", "duplicate", "contradiction", "scope_overlap", "dependent_page_may_be_stale", "requires_extended_review"] },
+        "related_refs": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/CubicaUri" } },
+        "checked_at": { "type": "string", "format": "date-time" }
+      }
+    }
+  }
+}
