@@ -1,4 +1,4 @@
-/** Package-level invariants for original content and the bounded first slice. */
+/** Package-level invariants for original content and the completed S1 slice. */
 
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
@@ -97,6 +97,7 @@ test("economy actions bind exact immutable plans to typed participant and object
     ))].sort(),
     [
       "core.assert",
+      "core.entities.order",
       "core.entities.select",
       "core.entity.attributes.patch",
       "core.event.emit",
@@ -166,10 +167,22 @@ test("turn completion is an explicit typed composition with no legacy shortcuts"
   assert.ok(nextParticipant);
   assert.ok(turnPatch);
 
-  // Elimination is not implemented by this game slice. Publishing a broad
-  // collection over every player's state would claim visibility and fields
-  // that the game never exposes or mutates, so turn rotation uses only the
-  // declared public order until a real elimination capability exists.
+  const setupSteps = planSteps(manifest, "session.setup.finalize");
+  const participantCollection = stateModel.collections.players;
+
+  assert.deepEqual(participantCollection.storage, { root: "players", segments: [] });
+  assert.equal(participantCollection.itemShape, "record");
+  assert.equal(participantCollection.capacity, 6);
+  assert.deepEqual(Object.keys(participantCollection.fields).sort(), [
+    "cash", "inJail", "objects", "position", "status"
+  ]);
+  assert.ok(setupSteps.some((step) => step.op === "core.entities.select"));
+  assert.ok(setupSteps.some((step) => step.op === "core.entities.order"));
+  assert.ok(setupSteps.every((step) => step.op !== "core.entities.each"));
+
+  // Elimination is not implemented by this game slice. Later rotation uses
+  // only the setup result stored in public.turn.order until a real elimination
+  // capability exists.
   assert.equal(Object.hasOwn(stateModel.collections, "participants"), false);
   assert.equal(Object.hasOwn(nextParticipant, "exclude"), false);
   assert.deepEqual(turnPatch.patches, [

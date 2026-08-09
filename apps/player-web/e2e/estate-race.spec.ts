@@ -1,8 +1,9 @@
 /**
- * Browser acceptance for the Estate Race internal S1 slice (GSR-039).
+ * Browser acceptance for the completed Estate Race S1 slice (GSR-040).
  *
  * The browser creates one normal authenticated player session and performs one
- * production-random roll. The assertion follows the state and actions returned
+ * production-random setup followed by one production-random roll. The
+ * assertion follows the state and actions returned
  * by Runtime API; it never predicts a destination, forces dice, or invents a
  * continuation for the intentionally blocked cells. Purchase/rent and the
  * complete tax/jail route remain covered by server/package proofs until the
@@ -19,7 +20,7 @@ const GAME_ID = "estate-race";
 const FIELD_LABEL = "Игровое поле Estate Race";
 const BOARD_PLUGIN_READY_TIMEOUT_MS = 30_000;
 
-type EstatePhase = "roll" | "acquire" | "rent" | "tax" | "blocked" | "finish";
+type EstatePhase = "setup" | "roll" | "acquire" | "rent" | "tax" | "blocked" | "finish";
 
 type RuntimeSnapshot = {
   sessionId: string;
@@ -38,7 +39,8 @@ type RuntimeSnapshot = {
       [key: string]: unknown;
     };
     public: {
-      turn: { activePlayerId: string; phase: EstatePhase; turnNumber: number };
+      setupComplete: boolean;
+      turn: { activePlayerId: string; order: string[]; phase: EstatePhase; turnNumber: number };
       board: {
         lastRoll?: { values: number[]; total: number; isDouble: boolean } | null;
         availableActions: Array<{
@@ -57,7 +59,7 @@ type BrowserActionResult = {
 };
 
 test.describe("Estate Race S1", { tag: "@player" }, () => {
-  test("creates the authenticated board session and presents one server-owned random landing", async ({ page }) => {
+  test("finalizes random participant order and presents one server-owned random landing", async ({ page }) => {
     // Includes a cold two-service startup while keeping one browser-created
     // session and its HttpOnly credential for the whole acceptance path.
     test.setTimeout(120_000);
@@ -72,14 +74,31 @@ test.describe("Estate Race S1", { tag: "@player" }, () => {
     await expect(page.locator(".game-player-root")).toBeVisible();
     await expect(page.locator(".loading-state")).toHaveCount(0);
     await expect(page.getByRole("heading", {
-      name: "Estate Race · внутренний срез S1",
+      name: "Estate Race · S1",
       level: 1
     })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Локальная партия: 2–6 участников", level: 2 })).toBeVisible();
     await expect(board(page)).toBeVisible();
     await expect(board(page).getByTestId("interactive-board-canvas-host")).toBeVisible();
-    await expect(board(page).getByRole("button", { name: "Бросить кости" }))
+    await expect(board(page).getByRole("button", { name: "Определить порядок" }))
       .toBeVisible({ timeout: BOARD_PLUGIN_READY_TIMEOUT_MS });
+
+    const participantIds = Object.keys(browserSession.state.players);
+    expect(participantIds).toHaveLength(2);
+    expect(browserSession.state.public.setupComplete).toBe(false);
+    expect(browserSession.state.public.turn.phase).toBe("setup");
+
+    const setup = await clickBoardAction(page, "Определить порядок");
+    expect(setup.requestBody).not.toHaveProperty("playerId");
+    expect(setup.requestBody.actionId).toBe("session.setup.finalize");
+    expect(setup.requestBody.commandId).toMatch(/^cli_[A-Za-z0-9_-]{22}$/u);
+    expect(setup.snapshot.state.public.setupComplete).toBe(true);
+    expect(setup.snapshot.state.public.turn.phase).toBe("roll");
+    expect([...setup.snapshot.state.public.turn.order].sort()).toEqual([...participantIds].sort());
+    expect(setup.snapshot.state.public.turn.activePlayerId)
+      .toBe(setup.snapshot.state.public.turn.order[0]);
+
+    await expect(board(page).getByRole("button", { name: "Бросить кости" })).toBeVisible();
 
     const roll = await clickBoardAction(page, "Бросить кости");
     const { snapshot } = roll;
@@ -88,7 +107,7 @@ test.describe("Estate Race S1", { tag: "@player" }, () => {
     expect(roll.requestBody.commandId).toMatch(/^cli_[A-Za-z0-9_-]{22}$/u);
     const activePlayer = snapshot.state.players[snapshot.state.public.turn.activePlayerId];
     expect(activePlayer).toBeDefined();
-    expect(snapshot.state.public.turn.activePlayerId).toBe("p1");
+    expect(snapshot.state.public.turn.activePlayerId).toBe(setup.snapshot.state.public.turn.order[0]);
     expect(snapshot.state.public.board.lastRoll?.values).toHaveLength(2);
     expect(snapshot.state.public.board.lastRoll?.total).toBeGreaterThanOrEqual(2);
     expect(snapshot.state.public.board.lastRoll?.total).toBeLessThanOrEqual(12);

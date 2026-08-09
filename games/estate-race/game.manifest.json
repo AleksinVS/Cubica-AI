@@ -26,6 +26,7 @@
     "sessionMode": "standard",
     "turnModel": {
       "phases": [
+        "setup",
         "roll",
         "acquire",
         "rent",
@@ -151,6 +152,7 @@
       }
     },
     "public": {
+      "setupComplete": false,
       "timeline": {
         "screenId": "table",
         "screen_id": "table"
@@ -162,9 +164,9 @@
         "extraRollPending": false,
         "availableActions": [
           {
-            "id": "roll",
-            "label": "Бросить кости",
-            "actionId": "turn.roll"
+            "id": "setup-finalize",
+            "label": "Определить порядок",
+            "actionId": "session.setup.finalize"
           }
         ]
       },
@@ -1154,6 +1156,26 @@
     "secret": {}
   },
   "actions": {
+    "session.setup.finalize": {
+      "capabilityFamily": "runtime.server",
+      "capability": "session.setup.finalize",
+      "displayName": "Определить начальный порядок",
+      "allowedSessionRoles": [
+        "player"
+      ],
+      "binding": {
+        "kind": "mechanics-plan",
+        "planRef": "session.setup.finalize"
+      },
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {},
+        "required": []
+      },
+      "invocation": "external",
+      "definitionHash": "sha256:59f49ab7e0bb7f1a525815a7224664813b5906180d7e8564d5607de62a52b3af"
+    },
     "turn.roll": {
       "capabilityFamily": "runtime.server",
       "capability": "turn.roll",
@@ -1172,7 +1194,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:c56e330ad0c6633e0302028bda245bfa443ca5809c761efcc8371a61fb3110ce"
+      "definitionHash": "sha256:16cc0a7895ee4c62650de8260a27729f532815d7b92c2226b50da81d3057f52d"
     },
     "property.buy.cell-02": {
       "capabilityFamily": "runtime.server",
@@ -1210,7 +1232,7 @@
         "planRef": "property.buy.cell-02"
       },
       "invocation": "external",
-      "definitionHash": "sha256:3e93a9f61835904cda9a0c4f7963c2b5aae7e4c4ba241423eefa4749f550e91a"
+      "definitionHash": "sha256:cbfb776116d0e02dafd5db9b8c71a25bc11ae1dfd76f6fe743e8a75236b31c39"
     },
     "property.buy.cell-05": {
       "capabilityFamily": "runtime.server",
@@ -1248,7 +1270,7 @@
         "planRef": "property.buy.cell-05"
       },
       "invocation": "external",
-      "definitionHash": "sha256:7189d5cf769298a33122bc1ac65634b4f34fac837e15ddb9f32e6bd73e1641eb"
+      "definitionHash": "sha256:a86dafa260594ddfec81f8c76501de689e8bcb62c47987c2f1ecefd3c5864ab5"
     },
     "property.buy.cell-08": {
       "capabilityFamily": "runtime.server",
@@ -1286,7 +1308,7 @@
         "planRef": "property.buy.cell-08"
       },
       "invocation": "external",
-      "definitionHash": "sha256:09bd126471f4ce29acf485ba877db428617f451a77b4736f8e1fd8567a056004"
+      "definitionHash": "sha256:2172afc6861193c0d0e246125a484af60c34cbb6901950dab91d62c12daff3e2"
     },
     "property.buy.cell-11": {
       "capabilityFamily": "runtime.server",
@@ -1324,7 +1346,7 @@
         "planRef": "property.buy.cell-11"
       },
       "invocation": "external",
-      "definitionHash": "sha256:eb5324ea69e4bfb626ab7a9a7bcf13a7c874e7190cef91003da5d1281a495218"
+      "definitionHash": "sha256:37d8df33a4f877501a242db4831cdeb546a7f824f05b3f174e943533c8a61cf1"
     },
     "property.rent.cell-02": {
       "capabilityFamily": "runtime.server",
@@ -1362,7 +1384,7 @@
         "planRef": "property.rent.cell-02"
       },
       "invocation": "external",
-      "definitionHash": "sha256:452f0a19d24dc628b45a4f96dd88d62ab0807540ab8fa813375572feeef889b7"
+      "definitionHash": "sha256:81299bd6f3cc199bd52ed7f482a3e145672916554452d701ae3009f5ce88f659"
     },
     "property.rent.cell-05": {
       "capabilityFamily": "runtime.server",
@@ -1400,7 +1422,7 @@
         "planRef": "property.rent.cell-05"
       },
       "invocation": "external",
-      "definitionHash": "sha256:ade040ca8c24b3613497a831114ed929e514150b0c03842068311e016b5fe9fe"
+      "definitionHash": "sha256:126fb2d70d944ae1a27d909f1dc9c5b60e50180d5365bbef8221013fc5f3c6ad"
     },
     "property.rent.cell-08": {
       "capabilityFamily": "runtime.server",
@@ -1438,7 +1460,7 @@
         "planRef": "property.rent.cell-08"
       },
       "invocation": "external",
-      "definitionHash": "sha256:2b1fb6151ab949d5dd45c077315d6716b1f9a1a2ad54c569b6b24550e28823e3"
+      "definitionHash": "sha256:ede1a29b6732d0545925016c53faa805073d2d7a0e091e840b9b321b0dc2b2d4"
     },
     "property.rent.cell-11": {
       "capabilityFamily": "runtime.server",
@@ -1476,7 +1498,7 @@
         "planRef": "property.rent.cell-11"
       },
       "invocation": "external",
-      "definitionHash": "sha256:d52060d672a467fb4a7d9deb9146416a97624ec567ae81ab1e1e90ea71e16e67"
+      "definitionHash": "sha256:31bcdec55f17845d1c3a82b9a891b2c9ee91df4808f55d8f2b927853cb81013f"
     },
     "tax.pay": {
       "capabilityFamily": "runtime.server",
@@ -1496,7 +1518,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:b10dea1bed90d1aaf250902bf0a36b5a34981a4f7f3d8eab87c53c67ea6857bf"
+      "definitionHash": "sha256:390ce7bb4c425ed78c7b6dbb24dba0a2056a0eea944d560524d3033a4e4bf6af"
     },
     "turn.finish": {
       "capabilityFamily": "runtime.server",
@@ -1516,7 +1538,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:3e3d174e5d2d325b2c8ed9acf1019b381348bea353bce19a7f5fd90c00f2901e"
+      "definitionHash": "sha256:c093e5f7c1142fc7edbb97029629dc461acc87effeffc52a20890308a30bb96f"
     }
   },
   "mechanics": {
@@ -1525,15 +1547,24 @@
     "moduleLock": {
       "cubica.core": {
         "moduleId": "cubica.core",
-        "moduleVersion": "1.5.0",
-        "artifactHash": "sha256:0065bc8cbb8c8c732db316306899bd479f027403c6baa14ce6d69980bbc2417a"
+        "moduleVersion": "1.6.0",
+        "artifactHash": "sha256:201e2615cecd392f6b60a9064609dd2325a0957613cdd6bfdb360717dbfad529"
       },
       "cubica.random": {
         "moduleId": "cubica.random",
-        "moduleVersion": "1.1.0",
-        "artifactHash": "sha256:9eca705021658ba8cf6cfd34b84364f28acf008ab54c6588729d08befce12d10",
+        "moduleVersion": "1.1.1",
+        "artifactHash": "sha256:82874667a23abfc02646dfa3d414e9568ce3d55d3d82db6488d7bf770d523968",
         "algorithmVersions": {
           "randomProvider": "server-crypto-random-v1"
+        }
+      },
+      "cubica.ordering": {
+        "moduleId": "cubica.ordering",
+        "moduleVersion": "1.3.0",
+        "artifactHash": "sha256:27491a4d2c549952333a4a125358b2126b5345938aef7f62f3d098d3403e865c",
+        "algorithmVersions": {
+          "ordering": "lexicographic-bounded-v1",
+          "tieBreak": "canonical-groups-server-crypto-random-v1"
         }
       }
     },
@@ -1548,11 +1579,12 @@
         "game.participant-order": {
           "kind": "list",
           "itemType": "core.string",
-          "maxItems": 64
+          "maxItems": 6
         },
         "game.turn-phase": {
           "kind": "enum",
           "values": [
+            "setup",
             "roll",
             "acquire",
             "rent",
@@ -1900,7 +1932,18 @@
             ]
           },
           "valueType": "game.participant-order",
-          "access": "read-only"
+          "access": "read-write"
+        },
+        "public.setupComplete": {
+          "audienceRef": "public",
+          "storage": {
+            "root": "public",
+            "segments": [
+              "setupComplete"
+            ]
+          },
+          "valueType": "core.boolean",
+          "access": "read-write"
         },
         "public.turn.activePlayerId": {
           "audienceRef": "public",
@@ -2095,6 +2138,71 @@
         }
       },
       "collections": {
+        "players": {
+          "itemShape": "record",
+          "audienceRef": "public",
+          "storage": {
+            "root": "players",
+            "segments": []
+          },
+          "capacity": 6,
+          "stableKey": "map-key",
+          "fields": {
+            "cash": {
+              "storage": {
+                "kind": "path",
+                "path": [
+                  "metrics",
+                  "cash"
+                ]
+              },
+              "valueType": "core.integer",
+              "access": "read-only"
+            },
+            "position": {
+              "storage": {
+                "kind": "path",
+                "path": [
+                  "metrics",
+                  "position"
+                ]
+              },
+              "valueType": "core.integer",
+              "access": "read-only"
+            },
+            "inJail": {
+              "storage": {
+                "kind": "path",
+                "path": [
+                  "flags",
+                  "inJail"
+                ]
+              },
+              "valueType": "core.boolean",
+              "access": "read-only"
+            },
+            "objects": {
+              "storage": {
+                "kind": "path",
+                "path": [
+                  "objects"
+                ]
+              },
+              "valueType": "core.player-projection-json",
+              "access": "read-only"
+            },
+            "status": {
+              "storage": {
+                "kind": "path",
+                "path": [
+                  "status"
+                ]
+              },
+              "valueType": "core.string",
+              "access": "read-only"
+            }
+          }
+        },
         "boardCells": {
           "audienceRef": "public",
           "storage": {
@@ -2315,8 +2423,158 @@
       }
     },
     "plans": {
+      "session.setup.finalize": {
+        "planHash": "sha256:dc63d5119ac6c11603f63c79871e1516743a2f48c938987ceede5757f7b33a47",
+        "transaction": {
+          "steps": [
+            {
+              "id": "s001-setup-once",
+              "kind": "assert",
+              "op": "core.assert",
+              "predicate": {
+                "op": "predicate.all",
+                "items": [
+                  {
+                    "op": "predicate.turn.phase",
+                    "phase": {
+                      "op": "value.literal",
+                      "value": "setup"
+                    }
+                  },
+                  {
+                    "op": "predicate.compare",
+                    "operator": "eq",
+                    "left": {
+                      "op": "value.state",
+                      "ref": {
+                        "endpoint": "public.setupComplete"
+                      }
+                    },
+                    "right": {
+                      "op": "value.literal",
+                      "value": false
+                    }
+                  }
+                ]
+              },
+              "errorCode": "SESSION_SETUP_ALREADY_FINALIZED"
+            },
+            {
+              "id": "s002-active-players",
+              "kind": "query",
+              "op": "core.entities.select",
+              "selector": {
+                "collection": "players",
+                "attributes": {
+                  "status": {
+                    "op": "value.literal",
+                    "value": "active"
+                  }
+                },
+                "cardinality": {
+                  "min": 2,
+                  "max": 6
+                }
+              }
+            },
+            {
+              "id": "s003-random-order",
+              "kind": "command",
+              "op": "core.entities.order",
+              "selection": {
+                "op": "value.result",
+                "stepId": "s002-active-players"
+              },
+              "keys": [
+                {
+                  "source": {
+                    "kind": "current-field",
+                    "field": "status"
+                  },
+                  "direction": "ascending",
+                  "missing": "error"
+                }
+              ],
+              "tieBreak": {
+                "kind": "server-random",
+                "stream": "estate-race.setup.participant-order"
+              }
+            },
+            {
+              "id": "s004-publish-setup",
+              "kind": "command",
+              "op": "core.state.patch",
+              "patches": [
+                {
+                  "operation": "set",
+                  "target": {
+                    "endpoint": "public.turn.order"
+                  },
+                  "value": {
+                    "op": "value.result",
+                    "stepId": "s003-random-order",
+                    "path": [
+                      "ids"
+                    ]
+                  }
+                },
+                {
+                  "operation": "set",
+                  "target": {
+                    "endpoint": "public.turn.activePlayerId"
+                  },
+                  "value": {
+                    "op": "value.result",
+                    "stepId": "s003-random-order",
+                    "path": [
+                      "ids",
+                      "0"
+                    ]
+                  }
+                },
+                {
+                  "operation": "set",
+                  "target": {
+                    "endpoint": "public.turn.phase"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": "roll"
+                  }
+                },
+                {
+                  "operation": "set",
+                  "target": {
+                    "endpoint": "public.setupComplete"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": true
+                  }
+                },
+                {
+                  "operation": "set",
+                  "target": {
+                    "endpoint": "public.board.availableActions"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": [
+                      {
+                        "id": "roll",
+                        "label": "Бросить кости",
+                        "actionId": "turn.roll"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
       "turn.roll": {
-        "planHash": "sha256:02be056f3f9c5fb6371824af6c429466afbdbc1b4e2175c853996702a85072a0",
+        "planHash": "sha256:1f84761a7f60726a0a2119ed8e6af05518d78acca71020b5bec47e7ea41e7220",
         "transaction": {
           "steps": [
             {
@@ -4146,7 +4404,7 @@
         }
       },
       "property.buy.cell-02": {
-        "planHash": "sha256:d88b514b4dd898d8f0681474e28a55e411aeeb1fcb317918079873f4733f6ad0",
+        "planHash": "sha256:fa78eef6d90cb9361c314cde3d62c6711f832a2a19bd3fc213403cfa541325ea",
         "transaction": {
           "steps": [
             {
@@ -4299,7 +4557,7 @@
         }
       },
       "property.buy.cell-05": {
-        "planHash": "sha256:5d55c677bc2bc7faee96ba65cfea2e69749b0929228da243c77972561be6a43d",
+        "planHash": "sha256:625be9f86462cbb4751ed39bab4b4de5f0c986387b9fa273eb5df4de2754ae64",
         "transaction": {
           "steps": [
             {
@@ -4452,7 +4710,7 @@
         }
       },
       "property.buy.cell-08": {
-        "planHash": "sha256:d96cf3f3abe9048368c99866772827a3dc8d3434c5213254c26617126e6b7ce0",
+        "planHash": "sha256:3b4c687c0aa2a5c2d9b34640c13eafd148fd69aea3d88eabfd059166b930551f",
         "transaction": {
           "steps": [
             {
@@ -4605,7 +4863,7 @@
         }
       },
       "property.buy.cell-11": {
-        "planHash": "sha256:1f286df87fa7fbc2efe2201ff7d09dd13c32e5d3b4a79506f510ebb6d5d395a0",
+        "planHash": "sha256:810529cef0055df69e2d76a89e29791abc9a62aec4eb72ca1d7edbdb2f32ec1b",
         "transaction": {
           "steps": [
             {
@@ -4758,7 +5016,7 @@
         }
       },
       "property.rent.cell-02": {
-        "planHash": "sha256:9e35e35ff7151f398871cdeba70255377f0cb160a17a5359dd883750d293b1a4",
+        "planHash": "sha256:55251295afb7fca0574de62c2e0cd008637f88e20a954fe5c0246d8a3e6dcd5d",
         "transaction": {
           "steps": [
             {
@@ -4912,7 +5170,7 @@
         }
       },
       "property.rent.cell-05": {
-        "planHash": "sha256:158992b4c4768ea76913582f4dbefd87e8b7addc9e9dc432f46fc369d015ddb3",
+        "planHash": "sha256:d9c9e50a5f6ce980de1470aa0d96cf2e4e3bf82e746d1d42729b34e0ddd280a9",
         "transaction": {
           "steps": [
             {
@@ -5066,7 +5324,7 @@
         }
       },
       "property.rent.cell-08": {
-        "planHash": "sha256:8e2878912e54d8ad6f8bc426632165ac12fd4b45d93dae3c607a7676b7511adc",
+        "planHash": "sha256:dd7fff05ebb41fac75377ec10e8a0020201063cd8d87c621e7232a7ff35e084c",
         "transaction": {
           "steps": [
             {
@@ -5220,7 +5478,7 @@
         }
       },
       "property.rent.cell-11": {
-        "planHash": "sha256:ec0f70970159d910df2c40db938a3d4dd7d41c327b0711160421ad61372abc08",
+        "planHash": "sha256:3ff3750844ecbad09d533850d6e6a05b6f2c5b7365313c8efbbc714559e86aef",
         "transaction": {
           "steps": [
             {
@@ -5374,7 +5632,7 @@
         }
       },
       "tax.pay": {
-        "planHash": "sha256:8c324e529ac107e2cb4ccefc1d1d0ab6cd094f92c96beea44754ec33c009c380",
+        "planHash": "sha256:40b45232d21b5bb555ee9bc2d9d3e89ddd769003a692cf515f8e8687a1bb35c1",
         "transaction": {
           "steps": [
             {
@@ -5496,7 +5754,7 @@
         }
       },
       "turn.finish": {
-        "planHash": "sha256:b3915af65a233601a3d35dabd4c4acdadfb52d55f94e4a1dac614d50d45d1b81",
+        "planHash": "sha256:d6716f8b114429d62ea880653becee601b14aca93313247738b23a38607f5a3d",
         "transaction": {
           "steps": [
             {

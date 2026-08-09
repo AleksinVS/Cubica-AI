@@ -1,5 +1,5 @@
 /**
- * End-to-end runtime proof for the first Estate Race gameplay slice.
+ * End-to-end runtime proof for the completed Estate Race S1 gameplay slice.
  *
  * The replay injects a bounded server-random sampler through Runtime's internal
  * test seam. No test-only game branch exists: the same manifest actions,
@@ -47,7 +47,12 @@ const loadManifest = async () => validateGameManifest(
 const createReplay = async (mutateState, {
   participantCount = 2,
   samples = [0, 3, 0, 3],
-  actorScope = { kind: "all-session-actors" }
+  actorScope = { kind: "all-session-actors" },
+  autoSetup = true,
+  setupSamples = Array.from(
+    { length: participantCount - 1 },
+    (_, index) => participantCount - index - 1
+  )
 } = {}) => {
   const manifest = await loadManifest();
   const initialState = initializeTurnBasedSessionState(manifest, structuredClone(manifest.state), {
@@ -69,8 +74,10 @@ const createReplay = async (mutateState, {
       credentialSha256: testCredentialSha256
     }
   });
-  let randomCallCount = 0;
-  return {
+  const randomSamples = autoSetup ? [...setupSamples, ...samples] : samples;
+  let totalRandomCallCount = 0;
+  let randomCallBaseline = 0;
+  const replay = {
     manifest,
     bundle: {
       gameId: manifest.meta.id,
@@ -81,16 +88,25 @@ const createReplay = async (mutateState, {
     session: created.session,
     random: {
       sampleRange: () => {
-        const sample = samples[randomCallCount];
+        const sample = randomSamples[totalRandomCallCount];
         assert.notEqual(sample, undefined, "the bounded replay must provide every server sample");
-        randomCallCount += 1;
+        totalRandomCallCount += 1;
         return sample;
       }
     },
     get randomCallCount() {
-      return randomCallCount;
+      return totalRandomCallCount - randomCallBaseline;
+    },
+    get totalRandomCallCount() {
+      return totalRandomCallCount;
     }
   };
+  if (autoSetup) {
+    const setup = await act(replay, "session.setup.finalize");
+    assert.equal(setup.result.ok, true);
+    randomCallBaseline = totalRandomCallCount;
+  }
+  return replay;
 };
 
 /** The server, not the caller, resolves the active hot-seat participant. */
@@ -122,24 +138,90 @@ const assertRejectedAction = async (dispatch, messagePattern) => {
   );
 };
 
+test("setup randomizes the exact 2/6 participant set once and is receipt-idempotent", async () => {
+  for (const participantCount of [2, 6]) {
+    const replay = await createReplay(undefined, {
+      participantCount,
+      autoSetup: false,
+      samples: Array.from({ length: participantCount - 1 }, () => 0)
+    });
+    const before = await replay.store.getSession(replay.session.sessionId);
+    const participantIds = Object.keys(before.state.players);
+    assert.equal(before.state.public.turn.phase, "setup");
+    assert.equal(before.state.public.setupComplete, false);
+    assert.deepEqual(before.state.public.board.availableActions, [{
+      id: "setup-finalize",
+      label: "Определить порядок",
+      actionId: "session.setup.finalize"
+    }]);
+
+    const commandId = createTestCommandId();
+    const first = await act(replay, "session.setup.finalize", {}, {
+      commandId,
+      expectedStateVersion: before.version.stateVersion
+    });
+    assert.equal(first.result.ok, true);
+    assert.equal(replay.totalRandomCallCount, participantCount - 1);
+
+    const configured = await replay.store.getSession(replay.session.sessionId);
+    assert.equal(configured.state.public.setupComplete, true);
+    assert.equal(configured.state.public.turn.phase, "roll");
+    assert.equal(configured.state.public.turn.order.length, participantCount);
+    assert.deepEqual([...configured.state.public.turn.order].sort(), [...participantIds].sort());
+    assert.equal(
+      configured.state.public.turn.activePlayerId,
+      configured.state.public.turn.order[0]
+    );
+    assert.deepEqual(configured.state.public.board.availableActions, [{
+      id: "roll",
+      label: "Бросить кости",
+      actionId: "turn.roll"
+    }]);
+
+    const retried = await act(replay, "session.setup.finalize", {}, {
+      commandId,
+      expectedStateVersion: before.version.stateVersion
+    });
+    assert.deepEqual(retried.receipt, first.receipt);
+    assert.equal(replay.totalRandomCallCount, participantCount - 1);
+
+    const beforeFreshSetup = structuredClone(configured);
+    await assertRejectedAction(
+      act(replay, "session.setup.finalize"),
+      /SESSION_SETUP_ALREADY_FINALIZED/
+    );
+    const afterFreshSetup = await replay.store.getSession(replay.session.sessionId);
+    assert.equal(replay.totalRandomCallCount, participantCount - 1);
+    assert.deepEqual(afterFreshSetup.state, beforeFreshSetup.state);
+    assert.equal(afterFreshSetup.version.stateVersion, beforeFreshSetup.version.stateVersion);
+  }
+});
+
 test("bounded sampler replay completes first purchase and first rent", async () => {
-  const replay = await createReplay();
+  const replay = await createReplay(undefined, { setupSamples: [0] });
+
+  let current = await replay.store.getSession(replay.session.sessionId);
+  assert.equal(current.state.public.turn.activePlayerId, "p2");
+  assert.deepEqual(current.state.public.turn.order, ["p2", "p1"]);
+  assert.equal(current.state.players.p1.metrics.position, 0);
+  assert.equal(current.state.players.p2.metrics.position, 0);
 
   await act(replay, "turn.roll");
-  let current = await replay.store.getSession(replay.session.sessionId);
+  current = await replay.store.getSession(replay.session.sessionId);
   assert.deepEqual(current.state.public.board.lastRoll.values, [1, 4]);
-  assert.equal(current.state.players.p1.metrics.position, 5);
+  assert.equal(current.state.players.p1.metrics.position, 0);
+  assert.equal(current.state.players.p2.metrics.position, 5);
   assert.equal(current.state.public.turn.phase, "acquire");
 
   await act(replay, "property.buy.cell-05", { cellId: "cell-05" });
   current = await replay.store.getSession(replay.session.sessionId);
-  assert.equal(current.state.players.p1.metrics.cash, 1040);
-  assert.equal(current.state.public.objects.boardCells["cell-05"].attributes.ownerPlayerId, "p1");
+  assert.equal(current.state.players.p2.metrics.cash, 1040);
+  assert.equal(current.state.public.objects.boardCells["cell-05"].attributes.ownerPlayerId, "p2");
 
   const finishedFirstTurn = await act(replay, "turn.finish");
   assert.equal(
     finishedFirstTurn.actorPlayerId,
-    "p2",
+    "p1",
     "the successful response must project the actor selected by the explicit turn plan"
   );
   await act(replay, "turn.roll");
@@ -150,8 +232,8 @@ test("bounded sampler replay completes first purchase and first rent", async () 
 
   await act(replay, "property.rent.cell-05", { cellId: "cell-05" });
   current = await replay.store.getSession(replay.session.sessionId);
-  assert.equal(current.state.players.p1.metrics.cash, 1064);
-  assert.equal(current.state.players.p2.metrics.cash, 1176);
+  assert.equal(current.state.players.p1.metrics.cash, 1176);
+  assert.equal(current.state.players.p2.metrics.cash, 1064);
   assert.equal(current.state.public.turn.phase, "finish");
   assert.ok(current.state.public.log.some((entry) => entry.data?.kind === "purchase"));
   assert.ok(current.state.public.log.some((entry) => entry.data?.kind === "rent"));
@@ -161,12 +243,16 @@ test("compiled gameplay contains no legacy actor, resource or turn shortcuts", a
   const manifest = await loadManifest();
   const serializedManifest = JSON.stringify(manifest);
   const turnSteps = manifest.mechanics.plans["turn.finish"].transaction.steps;
+  const setupSteps = manifest.mechanics.plans["session.setup.finalize"].transaction.steps;
   const rollSteps = manifest.mechanics.plans["turn.roll"].transaction.steps;
   const taxSteps = manifest.mechanics.plans["tax.pay"].transaction.steps;
   const landingSelection = rollSteps.find((step) => step.id === "s006-landing-cell");
   const taxTransfer = taxSteps.find((step) => step.op === "core.resource.transfer");
 
   assert.ok(turnSteps.some((step) => step.op === "core.sequence.next"));
+  assert.ok(setupSteps.some((step) => step.op === "core.entities.select"));
+  assert.ok(setupSteps.some((step) => step.op === "core.entities.order"));
+  assert.ok(setupSteps.every((step) => step.op !== "core.entities.each"));
   assert.equal(landingSelection.op, "core.entities.select");
   assert.equal(landingSelection.selector.collection, "boardCells");
   assert.deepEqual(landingSelection.selector.attributes.index, {
@@ -490,8 +576,13 @@ test("every not-yet-activated cell kind enters an explicit blocked phase", async
 });
 
 test("a principal scoped to another actor cannot execute the active turn", async () => {
-  const replay = await createReplay(undefined, {
-    actorScope: { kind: "listed-actors", actorIds: ["p2"] }
+  const replay = await createReplay((state) => {
+    state.public.setupComplete = true;
+    state.public.turn.phase = "roll";
+    state.public.board.availableActions = [{ id: "roll", label: "Бросить кости", actionId: "turn.roll" }];
+  }, {
+    actorScope: { kind: "listed-actors", actorIds: ["p2"] },
+    autoSetup: false
   });
   const before = structuredClone(await replay.store.getSession(replay.session.sessionId));
 

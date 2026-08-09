@@ -778,12 +778,28 @@ test("POST /actions exact retry of a random command does not sample again", asyn
       gameId: "estate-race"
     });
     assert.equal(created.response.status, 201, JSON.stringify(created.body));
+    const setup = await randomRequest<ActionResponse>(
+      "/actions",
+      {
+        sessionId: created.body.sessionId,
+        actionId: "session.setup.finalize",
+        commandId: nextCommandId(),
+        expectedStateVersion: created.body.version.stateVersion,
+        params: {}
+      },
+      created.body.credential
+    );
+    assert.equal(setup.response.status, 200, JSON.stringify(setup.body));
+    assert.equal(setup.body.receipt.status, "applied");
+    const setupSampleCalls = sampleCalls;
+    assert.equal(setupSampleCalls, 1);
+
     const commandId = nextCommandId();
     const command = {
       sessionId: created.body.sessionId,
       actionId: "turn.roll",
       commandId,
-      expectedStateVersion: created.body.version.stateVersion,
+      expectedStateVersion: setup.body.version.stateVersion,
       params: {}
     };
 
@@ -793,7 +809,8 @@ test("POST /actions exact retry of a random command does not sample again", asyn
       created.body.credential
     );
     assert.equal(accepted.response.status, 200, JSON.stringify(accepted.body));
-    assert.equal(sampleCalls, 2);
+    assert.equal(accepted.body.receipt.status, "applied");
+    assert.equal(sampleCalls, setupSampleCalls + 2);
     assert.deepEqual((accepted.body.state as any).public.board.lastRoll.values, [1, 1]);
 
     const repeated = await randomRequest<ActionResponse>(
@@ -804,7 +821,8 @@ test("POST /actions exact retry of a random command does not sample again", asyn
     assert.equal(repeated.response.status, 200, JSON.stringify(repeated.body));
     assert.deepEqual(repeated.body.receipt, accepted.body.receipt);
     assert.deepEqual(repeated.body.state, accepted.body.state);
-    assert.equal(sampleCalls, 2);
+    assert.deepEqual(repeated.body.version, accepted.body.version);
+    assert.equal(sampleCalls, setupSampleCalls + 2);
   } finally {
     await randomApi.close();
   }

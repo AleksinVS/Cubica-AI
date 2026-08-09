@@ -8,10 +8,10 @@
       "apiVersion": "2.0",
       "target": "player-web",
       "scope": "published",
-      "contentHash": "d9fcfaf4f216ca60083e5818bd9a4a7908e2c2dca01e909decaef85804eedab4",
-      "integrity": "sha256-2fz69PIWymAIPlgYvZpKeQjiwtygHpCd7K74WATu2rQ=",
-      "filePath": "published/estate-race-player.d9fcfaf4f216ca60083e5818bd9a4a7908e2c2dca01e909decaef85804eedab4.mjs",
-      "url": "/published-plugin-bundles/estate-race/estate-race-player/d9fcfaf4f216ca60083e5818bd9a4a7908e2c2dca01e909decaef85804eedab4.mjs"
+      "contentHash": "f3f5704eede52684fac5654d07994c68082674a80af30b51bb571cde5f4b0409",
+      "integrity": "sha256-8/VwTu3lJoT6xWVNB5lMaAgmdKgK8wtRu1cc3l9LBAk=",
+      "filePath": "published/estate-race-player.f3f5704eede52684fac5654d07994c68082674a80af30b51bb571cde5f4b0409.mjs",
+      "url": "/published-plugin-bundles/estate-race/estate-race-player/f3f5704eede52684fac5654d07994c68082674a80af30b51bb571cde5f4b0409.mjs"
     }
   ]
 }

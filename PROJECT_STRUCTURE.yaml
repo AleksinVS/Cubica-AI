@@ -19,7 +19,7 @@ apps: # Приложения и импортированные frontend-заго
   player-web: # Универсальный game-agnostic веб-плеер платформы (Next.js): рендерит любую игру по её манифестам и published-бандлам плагинов, без game-specific кода.
     e2e: # Playwright end-to-end tests for browser-level player-web, runtime-api and portal launch binding flows.
       cards-money-trains-mock.spec.ts: file # Browser acceptance for the complete test-only facilitator session, including keyboard board access and manual finish confirmation.
-      estate-race.spec.ts: file # Focused GSR-039 browser acceptance for Estate Race S1: browser-created session, updated title, one production-random roll, and server-declared landing status without claiming full-state reachability.
+      estate-race.spec.ts: file # GSR-040 browser acceptance for Estate Race S1: browser-created session, server-random participant setup through the normal DOM, then one production-random roll and server-declared landing status.
       player-web.spec.ts: file # E2E coverage for normal Antarctica session boot, runtime action dispatch and portal launch session binding.
   portal-nextjs: directory... # Next.js портал для каталога, покупок, ссылок запуска и первого test VPS launch с Antarctica.
 archive: directory... # Архив старых документов и черновиков
@@ -62,7 +62,8 @@ docs: # Архитектура, задачи, планирование
       INDEX.md: file # Порождаемый сводный индекс архитектурных решений с номерами, названиями, статусами и отдельным списком решений, ожидающих рассмотрения PM.
     backend: directory... # Архитектурные материалы серверных компонентов и их операционных границ.
     engine: directory... # Подробные материалы универсального игрового движка и исполнения механик.
-    gameplay-slices: directory... # Записи ограниченных игровых срезов с правилами, состоянием, интерфейсом и проверками конкретной поставки.
+    gameplay-slices: # Записи ограниченных игровых срезов с правилами, состоянием, интерфейсом и проверками конкретной поставки.
+      040-estate-race-random-initial-order.md: file # Завершение Estate Race S1: одноразовый серверный жребий точных 2–6 участников через типизированную record-map коллекцию.
     metadata: directory... # Архитектура метаданных, аналитики и связанных событий.
     processes: directory... # Процессы сопровождения архитектуры и принятия технических решений.
     protocols: directory... # Межкомпонентные протоколы и форматы обмена платформы.

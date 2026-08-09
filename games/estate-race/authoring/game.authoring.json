@@ -34,6 +34,7 @@
       "sessionMode": "standard",
       "turnModel": {
         "phases": [
+          "setup",
           "roll",
           "acquire",
           "rent",
@@ -159,6 +160,7 @@
         }
       },
       "public": {
+        "setupComplete": false,
         "timeline": {
           "screenId": "table",
           "screen_id": "table"
@@ -170,9 +172,9 @@
           "extraRollPending": false,
           "availableActions": [
             {
-              "id": "roll",
-              "label": "Бросить кости",
-              "actionId": "turn.roll"
+              "id": "setup-finalize",
+              "label": "Определить порядок",
+              "actionId": "session.setup.finalize"
             }
           ]
         },
@@ -1180,6 +1182,7 @@
               "_semantics": "Начальный шаг, восстановленный из runtime state.",
               "screenId": "start",
               "actionIds": [
+                "session.setup.finalize",
                 "turn.roll",
                 "property.buy.cell-02",
                 "property.buy.cell-05",
@@ -1199,6 +1202,22 @@
       "systems": [],
       "rules": [],
       "actions": [
+        {
+          "id": "session.setup.finalize",
+          "_type": "game.Action",
+          "_label": "Определить начальный порядок",
+          "_semantics": "Однократное серверное действие случайно определяет порядок всех фактических активных участников.",
+          "capabilityFamily": "runtime.server",
+          "capability": "session.setup.finalize",
+          "displayName": "Определить начальный порядок",
+          "allowedSessionRoles": [
+            "player"
+          ],
+          "binding": {
+            "kind": "mechanics-plan",
+            "planRef": "session.setup.finalize"
+          }
+        },
         {
           "id": "turn.roll",
           "_type": "game.Action",
@@ -1583,11 +1602,12 @@
           "game.participant-order": {
             "kind": "list",
             "itemType": "core.string",
-            "maxItems": 64
+            "maxItems": 6
           },
           "game.turn-phase": {
             "kind": "enum",
             "values": [
+              "setup",
               "roll",
               "acquire",
               "rent",
@@ -1935,7 +1955,18 @@
               ]
             },
             "valueType": "game.participant-order",
-            "access": "read-only"
+            "access": "read-write"
+          },
+          "public.setupComplete": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "setupComplete"
+              ]
+            },
+            "valueType": "core.boolean",
+            "access": "read-write"
           },
           "public.turn.activePlayerId": {
             "audienceRef": "public",
@@ -2130,6 +2161,71 @@
           }
         },
         "collections": {
+          "players": {
+            "itemShape": "record",
+            "audienceRef": "public",
+            "storage": {
+              "root": "players",
+              "segments": []
+            },
+            "capacity": 6,
+            "stableKey": "map-key",
+            "fields": {
+              "cash": {
+                "storage": {
+                  "kind": "path",
+                  "path": [
+                    "metrics",
+                    "cash"
+                  ]
+                },
+                "valueType": "core.integer",
+                "access": "read-only"
+              },
+              "position": {
+                "storage": {
+                  "kind": "path",
+                  "path": [
+                    "metrics",
+                    "position"
+                  ]
+                },
+                "valueType": "core.integer",
+                "access": "read-only"
+              },
+              "inJail": {
+                "storage": {
+                  "kind": "path",
+                  "path": [
+                    "flags",
+                    "inJail"
+                  ]
+                },
+                "valueType": "core.boolean",
+                "access": "read-only"
+              },
+              "objects": {
+                "storage": {
+                  "kind": "path",
+                  "path": [
+                    "objects"
+                  ]
+                },
+                "valueType": "core.player-projection-json",
+                "access": "read-only"
+              },
+              "status": {
+                "storage": {
+                  "kind": "path",
+                  "path": [
+                    "status"
+                  ]
+                },
+                "valueType": "core.string",
+                "access": "read-only"
+              }
+            }
+          },
           "boardCells": {
             "audienceRef": "public",
             "storage": {
@@ -2350,6 +2446,155 @@
         }
       },
       "plans": {
+        "session.setup.finalize": {
+          "transaction": {
+            "steps": [
+              {
+                "id": "s001-setup-once",
+                "kind": "assert",
+                "op": "core.assert",
+                "predicate": {
+                  "op": "predicate.all",
+                  "items": [
+                    {
+                      "op": "predicate.turn.phase",
+                      "phase": {
+                        "op": "value.literal",
+                        "value": "setup"
+                      }
+                    },
+                    {
+                      "op": "predicate.compare",
+                      "operator": "eq",
+                      "left": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "public.setupComplete"
+                        }
+                      },
+                      "right": {
+                        "op": "value.literal",
+                        "value": false
+                      }
+                    }
+                  ]
+                },
+                "errorCode": "SESSION_SETUP_ALREADY_FINALIZED"
+              },
+              {
+                "id": "s002-active-players",
+                "kind": "query",
+                "op": "core.entities.select",
+                "selector": {
+                  "collection": "players",
+                  "attributes": {
+                    "status": {
+                      "op": "value.literal",
+                      "value": "active"
+                    }
+                  },
+                  "cardinality": {
+                    "min": 2,
+                    "max": 6
+                  }
+                }
+              },
+              {
+                "id": "s003-random-order",
+                "kind": "command",
+                "op": "core.entities.order",
+                "selection": {
+                  "op": "value.result",
+                  "stepId": "s002-active-players"
+                },
+                "keys": [
+                  {
+                    "source": {
+                      "kind": "current-field",
+                      "field": "status"
+                    },
+                    "direction": "ascending",
+                    "missing": "error"
+                  }
+                ],
+                "tieBreak": {
+                  "kind": "server-random",
+                  "stream": "estate-race.setup.participant-order"
+                }
+              },
+              {
+                "id": "s004-publish-setup",
+                "kind": "command",
+                "op": "core.state.patch",
+                "patches": [
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.turn.order"
+                    },
+                    "value": {
+                      "op": "value.result",
+                      "stepId": "s003-random-order",
+                      "path": [
+                        "ids"
+                      ]
+                    }
+                  },
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.turn.activePlayerId"
+                    },
+                    "value": {
+                      "op": "value.result",
+                      "stepId": "s003-random-order",
+                      "path": [
+                        "ids",
+                        "0"
+                      ]
+                    }
+                  },
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.turn.phase"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": "roll"
+                    }
+                  },
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.setupComplete"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": true
+                    }
+                  },
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.board.availableActions"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": [
+                        {
+                          "id": "roll",
+                          "label": "Бросить кости",
+                          "actionId": "turn.roll"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        },
         "turn.roll": {
           "transaction": {
             "steps": [

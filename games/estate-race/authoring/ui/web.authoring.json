@@ -6,8 +6,8 @@
   "_definitions": {},
   "root": {
     "_type": "ui.Manifest",
-    "_label": "Web-интерфейс: Estate Race · внутренний срез S1",
-    "_semantics": "Внутренний UI-срез S1: поле отображает authoritative session, а действия объявляет сервер; полный S1 этим экраном не заявляется.",
+    "_label": "Web-интерфейс: Estate Race · S1",
+    "_semantics": "UI завершённого S1: поле отображает подтверждённую сессию, а настройку порядка и действия хода объявляет сервер.",
     "meta": {
       "id": "estate-race.ui.web",
       "version": "0.2.0",
@@ -31,9 +31,9 @@
       {
         "id": "table",
         "_type": "ui.Screen",
-        "_label": "Экран table: Estate Race · внутренний срез S1",
-        "_semantics": "Экран UI-манифеста table для внутреннего среза: tax, blocked и jail только показывают публичное состояние и server-owned actions.",
-        "title": "Estate Race · внутренний срез S1",
+        "_label": "Экран table: Estate Race · S1",
+        "_semantics": "Экран UI-манифеста table: setup, tax, blocked и jail только показывают публичное состояние и объявленные сервером действия.",
+        "title": "Estate Race · S1",
         "layout_mode": "topbar",
         "root": {
           "_type": "ui.Component",
@@ -57,12 +57,12 @@
               "children": [
                 {
                   "_type": "ui.Component",
-                  "_label": "Estate Race · внутренний срез Ход · активен · этап",
+                  "_label": "Estate Race · S1 Ход · активен · этап",
                   "_semantics": "UI-компонент типа richTextComponent.",
                   "id": "table.title",
                   "type": "richTextComponent",
                   "props": {
-                    "html": "<h1>Estate Race · внутренний срез S1</h1><p>Ход {{game.state.public.turn.turnNumber}} · активен {{game.state.public.turn.activePlayerId}} · этап {{game.state.public.turn.phase}}</p><p>Tax, blocked и заключение отображаются из подтверждённой публичной сессии; доступные действия объявляет сервер.</p>"
+                    "html": "<h1>Estate Race · S1</h1><p>Ход {{game.state.public.turn.turnNumber}} · активен {{game.state.public.turn.activePlayerId}} · этап {{game.state.public.turn.phase}}</p><p>Начальный порядок, налог, blocked-состояние и заключение отображаются из подтверждённой публичной сессии; доступные действия объявляет сервер.</p>"
                   }
                 }
               ]

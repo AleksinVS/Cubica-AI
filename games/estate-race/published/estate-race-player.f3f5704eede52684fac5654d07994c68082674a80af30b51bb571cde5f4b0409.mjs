@@ -225,6 +225,7 @@ const DESIGN_WIDTH = 1400;
 const DESIGN_HEIGHT = 1000;
 const PLAYER_COLORS = [0x245f52, 0xb56f3c, 0x735b87, 0x3c6f91, 0x9b7332, 0x934c54];
 const phaseLabel = {
+    setup: "определение порядка",
     roll: "бросок",
     acquire: "покупка",
     rent: "рента",

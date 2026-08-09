@@ -85,6 +85,30 @@ test("keeps tax as a server-declared action without client parameters", () => {
   }]);
 });
 
+test("presents setup as the server-declared first action without client parameters", () => {
+  const actions = provideEstateRaceAccessibleBoardActions({
+    state: {
+      public: {
+        turn: { phase: "setup" },
+        board: {
+          availableActions: [{
+            id: "setup-finalize",
+            label: "Определить порядок",
+            actionId: "session.setup.finalize"
+          }]
+        }
+      }
+    }
+  } as unknown as Parameters<typeof provideEstateRaceAccessibleBoardActions>[0]);
+
+  assert.deepEqual(actions, [{
+    id: "setup-finalize",
+    label: "Определить порядок",
+    actionId: "session.setup.finalize",
+    disabled: false
+  }]);
+});
+
 test("projects blocked phase as actionless server state", () => {
   const projection = projectEstateRaceSession({
     state: { public: { turn: { phase: "blocked" }, board: { availableActions: [] } } }
