@@ -88,16 +88,8 @@ export class HttpModelGateway implements ModelGateway {
       let candidate: unknown;
       try { candidate = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(output)); }
       catch { throw new ModelGatewayError('malformed_output'); }
-      const validated = validateProductKnowledgeContract<ModelGatewayResult>('ModelGatewayResult', candidate);
-      if (!validated.ok || validated.value.request_id !== request.request_id ||
-          (validated.value.proposal !== null &&
-            (!verifyExactPatchProposalHash(validated.value.proposal) ||
-             validated.value.proposal.applies_to.length !== 1 ||
-             validated.value.proposal.applies_to[0] !== request.applies_to[0] ||
-             !proposalSourcesMatchRequest(validated.value.proposal, request)))) {
-        throw new ModelGatewayError('malformed_output');
-      }
-      return { result: validated.value, inputBytes: body.byteLength, outputBytes: output.byteLength, durationMs: Math.max(0, Math.round(this.now() - started)) };
+      const validated = validateModelGatewayResult(request, candidate);
+      return { result: validated, inputBytes: body.byteLength, outputBytes: output.byteLength, durationMs: Math.max(0, Math.round(this.now() - started)) };
     } catch (error) {
       if (error instanceof ModelGatewayError) throw error;
       if (controller.signal.aborted || (error instanceof Error && error.name === 'AbortError')) throw new ModelGatewayError('timeout');
@@ -106,6 +98,24 @@ export class HttpModelGateway implements ModelGateway {
       clearTimeout(timer);
     }
   }
+}
+
+/**
+ * Applies the provider-neutral result invariants after canonical schema
+ * validation. Keeping this check shared prevents a provider adapter from
+ * weakening request, scope, hash, or conversation-source binding.
+ */
+export function validateModelGatewayResult(request: ModelGatewayRequest, candidate: unknown): ModelGatewayResult {
+  const validated = validateProductKnowledgeContract<ModelGatewayResult>('ModelGatewayResult', candidate);
+  if (!validated.ok || validated.value.request_id !== request.request_id ||
+      (validated.value.proposal !== null &&
+        (!verifyExactPatchProposalHash(validated.value.proposal) ||
+         validated.value.proposal.applies_to.length !== 1 ||
+         validated.value.proposal.applies_to[0] !== request.applies_to[0] ||
+         !proposalSourcesMatchRequest(validated.value.proposal, request)))) {
+    throw new ModelGatewayError('malformed_output');
+  }
+  return validated.value;
 }
 
 function proposalSourcesMatchRequest(proposal: NonNullable<ModelGatewayResult['proposal']>, request: ModelGatewayRequest): boolean {

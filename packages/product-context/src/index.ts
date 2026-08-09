@@ -7,4 +7,5 @@ export * from './shadow-cleanup.ts';
 export * from './shadow-coordinator.ts';
 export * from './shadow-database-url.ts';
 export * from './shadow-grounding.ts';
+export * from './zai-coding-plan-model-gateway.ts';
 export type * from './generated/product-knowledge.ts';

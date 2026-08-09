@@ -8,15 +8,20 @@
  * outcomes to the caller and never affect the primary AG-UI response.
  */
 import { createHash } from "node:crypto";
+import { isAbsolute } from "node:path";
 import {
-  HttpModelGateway,
   PostgresConversationStore,
   ShadowCoordinator,
+  hasSecretLikeText,
   safeShadowDatabaseUrl,
   validateProductKnowledgeContract,
+  ZAI_CODING_PLAN_ENDPOINT,
+  ZAI_CODING_PLAN_MODEL,
+  ZaiCodingPlanModelGateway,
   type ShadowAuthorizationReceipt,
   type ShadowAuthorizationAuthority,
-  type ShadowCoordinatorResult
+  type ShadowCoordinatorResult,
+  type ZaiCodingPlanRequestBinding
 } from "@cubica/product-context";
 import { Pool } from "pg";
 
@@ -34,8 +39,9 @@ export type ProductContextShadowReceipt = ShadowAuthorizationReceipt;
 interface ShadowConfig {
   readonly portalUrl: string;
   readonly databaseUrl: string;
-  readonly modelGatewayUrl: string;
-  readonly modelGatewayToken: string;
+  readonly knowledgeRepository: string;
+  readonly zaiApiKey: string;
+  readonly deploymentTier: string;
   readonly retentionMs: number;
   readonly modelTimeoutMs: number;
   readonly maxModelRequestBytes: number;
@@ -59,7 +65,12 @@ export interface ProductContextShadowJob {
 
 export interface ProductContextShadowDependencies {
   readonly authorize?: (job: ProductContextShadowJob) => Promise<unknown>;
-  readonly createCoordinator?: (job: ProductContextShadowJob, authority: ShadowAuthorizationAuthority) => Pick<ShadowCoordinator, "run">;
+  readonly createCoordinator?: (
+    job: ProductContextShadowJob,
+    authority: ShadowAuthorizationAuthority,
+    receipt: ShadowAuthorizationReceipt,
+    requestBinding: ZaiCodingPlanRequestBinding
+  ) => Pick<ShadowCoordinator, "run"> | Promise<Pick<ShadowCoordinator, "run">>;
 }
 
 export function buildProductContextShadowJob(
@@ -76,6 +87,9 @@ export async function runProductContextShadowPostResponse(
   job: ProductContextShadowJob,
   dependencies: ProductContextShadowDependencies = {}
 ): Promise<ShadowCoordinatorResult | null> {
+  // Conversation secrets are rejected before Portal authorization or Git
+  // preload, so neither external fetch nor repository content can be reached.
+  if (hasSecretLikeText(job.candidate.userText) || hasSecretLikeText(job.candidate.assistantText)) return null;
   const authorize = dependencies.authorize ?? authorizeThroughPortal;
   const initialCandidate = await authorize(job);
   const initial = validateProductKnowledgeContract<ShadowAuthorizationReceipt>("ShadowAuthorizationReceipt", initialCandidate);
@@ -85,7 +99,9 @@ export async function runProductContextShadowPostResponse(
     timeoutMs: PORTAL_AUTHORIZATION_TIMEOUT_MS,
     current: async () => authorize(job)
   };
-  const coordinator = dependencies.createCoordinator?.(job, authority) ?? createCoordinator(job, authority);
+  const requestBinding = requestBindingFromReceipt(initial.value);
+  const coordinator = await (dependencies.createCoordinator?.(job, authority, initial.value, requestBinding) ??
+    createCoordinator(job, authority, initial.value, requestBinding));
   const ids = deriveServerRefs(initial.value, job.candidate);
   return coordinator.run({
     authorizationReceipt: initial.value,
@@ -96,20 +112,51 @@ export async function runProductContextShadowPostResponse(
   });
 }
 
-function createCoordinator(job: ProductContextShadowJob, authority: ShadowAuthorizationAuthority): ShadowCoordinator {
+async function createCoordinator(
+  job: ProductContextShadowJob,
+  authority: ShadowAuthorizationAuthority,
+  receipt: ShadowAuthorizationReceipt,
+  requestBinding: ZaiCodingPlanRequestBinding
+): Promise<ShadowCoordinator> {
   const pool = getPool(job.config.databaseUrl);
+  // Git preload deliberately finishes before ShadowCoordinator acquires its
+  // model lease; gateway.timeoutMs bounds only the later provider call.
+  const gateway = await ZaiCodingPlanModelGateway.open({
+    apiKey: job.config.zaiApiKey,
+    timeoutMs: job.config.modelTimeoutMs,
+    maxRequestBytes: job.config.maxModelRequestBytes,
+    maxResponseBytes: job.config.maxModelResponseBytes,
+    requestBinding,
+    grounding: {
+      repository: job.config.knowledgeRepository,
+      expectedPrincipalRef: receipt.shadow_principal_ref,
+      expectedGameRef: receipt.applies_to[0]!,
+      accessPolicyRef: receipt.access_policy_ref,
+      accessPolicyRevision: receipt.access_policy_revision,
+      externalProcessingPolicyRef: receipt.external_processing_policy_ref,
+      externalProcessingPolicyRevision: receipt.external_processing_policy_revision
+    }
+  });
   return new ShadowCoordinator(
     new PostgresConversationStore(pool),
     authority,
-    new HttpModelGateway({
-      endpoint: job.config.modelGatewayUrl,
-      bearerToken: job.config.modelGatewayToken,
-      timeoutMs: job.config.modelTimeoutMs,
-      maxRequestBytes: job.config.maxModelRequestBytes,
-      maxResponseBytes: job.config.maxModelResponseBytes
-    }),
-    { enabled: true, environment: process.env.CUBICA_DEPLOYMENT_TIER ?? "", retentionMs: job.config.retentionMs }
+    gateway,
+    { enabled: true, environment: job.config.deploymentTier, retentionMs: job.config.retentionMs }
   );
+}
+
+function requestBindingFromReceipt(receipt: ShadowAuthorizationReceipt): ZaiCodingPlanRequestBinding {
+  return Object.freeze({
+    authorizationRevision: receipt.authorization_revision,
+    shadowPrincipalRef: receipt.shadow_principal_ref,
+    gameRef: receipt.applies_to[0]!,
+    accessPolicyRef: receipt.access_policy_ref,
+    accessPolicyRevision: receipt.access_policy_revision,
+    retentionPolicyRef: receipt.retention_policy_ref,
+    retentionPolicyRevision: receipt.retention_policy_revision,
+    externalProcessingPolicyRef: receipt.external_processing_policy_ref,
+    externalProcessingPolicyRevision: receipt.external_processing_policy_revision
+  });
 }
 
 async function authorizeThroughPortal(job: ProductContextShadowJob): Promise<unknown> {
@@ -152,13 +199,21 @@ function deriveServerRefs(receipt: ShadowAuthorizationReceipt, candidate: Produc
 function readConfig(env: NodeJS.ProcessEnv): ShadowConfig | null {
   const portalBase = safeHttpUrl(env.CUBICA_PORTAL_API_URL);
   const databaseUrl = safeShadowDatabaseUrl(env.CUBICA_PRODUCT_CONTEXT_SHADOW_DATABASE_URL);
-  const modelGatewayUrl = safeHttpUrl(env.CUBICA_PRODUCT_CONTEXT_SHADOW_MODEL_GATEWAY_URL);
-  const modelGatewayToken = env.CUBICA_PRODUCT_CONTEXT_SHADOW_MODEL_GATEWAY_TOKEN ?? "";
+  const enabled = env.CUBICA_PRODUCT_CONTEXT_SHADOW_ZAI_CODING_PLAN_ENABLED === "true";
+  const knowledgeRepository = env.CUBICA_PRODUCT_CONTEXT_SHADOW_KNOWLEDGE_REPOSITORY ?? "";
+  const zaiApiKey = env.PKS_KEY ?? "";
+  const zaiBaseUrl = env.PKS_BASE_URL ?? "";
+  const zaiModel = env.PKS_MODEL ?? "";
   const retentionMs = boundedInteger(env.CUBICA_PRODUCT_CONTEXT_SHADOW_RETENTION_MS, 1, 7 * 24 * 60 * 60 * 1000);
-  if (!portalBase || !databaseUrl || !modelGatewayUrl || !modelGatewayToken || retentionMs === null) return null;
+  const deploymentTier = env.CUBICA_DEPLOYMENT_TIER ?? "";
+  let endpointMatches = false;
+  try { endpointMatches = new URL("chat/completions", zaiBaseUrl).toString() === ZAI_CODING_PLAN_ENDPOINT; }
+  catch { endpointMatches = false; }
+  if (!portalBase || !databaseUrl || !enabled || !isAbsolute(knowledgeRepository) || !zaiApiKey ||
+      !endpointMatches || zaiModel !== ZAI_CODING_PLAN_MODEL || retentionMs === null) return null;
   return {
     portalUrl: new URL("/api/product-context/shadow-authorization", portalBase).toString(),
-    databaseUrl, modelGatewayUrl, modelGatewayToken, retentionMs,
+    databaseUrl, knowledgeRepository, zaiApiKey, deploymentTier, retentionMs,
     modelTimeoutMs: boundedInteger(env.CUBICA_PRODUCT_CONTEXT_SHADOW_MODEL_TIMEOUT_MS, 1, 45_000) ?? 15_000,
     maxModelRequestBytes: boundedInteger(env.CUBICA_PRODUCT_CONTEXT_SHADOW_MODEL_MAX_REQUEST_BYTES, 1, 1024 * 1024) ?? 512 * 1024,
     maxModelResponseBytes: boundedInteger(env.CUBICA_PRODUCT_CONTEXT_SHADOW_MODEL_MAX_RESPONSE_BYTES, 1, 1024 * 1024) ?? 512 * 1024
