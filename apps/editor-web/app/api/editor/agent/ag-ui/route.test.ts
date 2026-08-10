@@ -81,7 +81,10 @@ function enableShadowEnv(): void {
   vi.stubEnv("CUBICA_PRODUCT_CONTEXT_SHADOW_FORWARD_KEY", "f".repeat(32)); vi.stubEnv("CUBICA_PRODUCT_CONTEXT_SHADOW_LOCAL_ORIGIN", "https://editor.test");
   vi.stubEnv("CUBICA_PORTAL_API_URL", "http://localhost:1337");
   vi.stubEnv("CUBICA_PRODUCT_CONTEXT_SHADOW_DATABASE_URL", "postgres://localhost/shadow");
-  vi.stubEnv("CUBICA_PRODUCT_CONTEXT_SHADOW_MODEL_GATEWAY_URL", "https://model.example.test/shadow");
-  vi.stubEnv("CUBICA_PRODUCT_CONTEXT_SHADOW_MODEL_GATEWAY_TOKEN", "model-token");
+  vi.stubEnv("CUBICA_PRODUCT_CONTEXT_SHADOW_ZAI_CODING_PLAN_ENABLED", "true");
+  vi.stubEnv("CUBICA_PRODUCT_CONTEXT_SHADOW_KNOWLEDGE_REPOSITORY", "/srv/cubica/knowledge");
+  vi.stubEnv("PKS_KEY", "zai-key");
+  vi.stubEnv("PKS_BASE_URL", "https://api.z.ai/api/coding/paas/v4/");
+  vi.stubEnv("PKS_MODEL", "glm-4.7");
   vi.stubEnv("CUBICA_PRODUCT_CONTEXT_SHADOW_RETENTION_MS", "60000");
 }

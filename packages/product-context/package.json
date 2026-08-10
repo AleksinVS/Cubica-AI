@@ -9,6 +9,7 @@
   "scripts": {
     "generate:types": "node scripts/generate-types.cjs",
     "generate:types:check": "node scripts/generate-types.cjs --check",
+    "cleanup:shadow": "node --experimental-strip-types scripts/cleanup-shadow.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:acceptance": "vitest run --fileParallelism=false"

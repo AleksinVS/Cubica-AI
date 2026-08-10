@@ -1,7 +1,7 @@
 /** Unit evidence for byte-local page operations and safe Markdown projections. */
 import { describe, expect, it } from 'vitest';
 import type { ExactPatchOperation } from '../src/generated/product-knowledge.ts';
-import { applyExactOperation, generateKnowledgeIndex, knowledgeBodyHash, MarkdownPageError, parseKnowledgePage, projectKnowledgeIndex, sha256Bytes } from '../src/markdown.ts';
+import { applyExactOperation, generateKnowledgeIndex, knowledgeBodyHash, MarkdownPageError, parseKnowledgePage, projectKnowledgeIndex, projectKnowledgePages, sha256Bytes } from '../src/markdown.ts';
 
 const encoder = new TextEncoder();
 const hash = (text: string) => sha256Bytes(encoder.encode(text));
@@ -46,7 +46,10 @@ describe('Markdown knowledge pages', () => {
     const publicPage = encoder.encode(page('public', { title: 'Visible', description: 'Visible description', cubica_id: 'knw_visible', role_scope: 'facilitator' }));
     const pages = new Map([['z/private.md', encoder.encode(page())], ['a/visible.md', publicPage]]);
     expect(generateKnowledgeIndex(pages)).toEqual(generateKnowledgeIndex(new Map([...pages].reverse())));
-    const projection = new TextDecoder().decode(projectKnowledgeIndex(pages, { role: 'facilitator', knownAppliesTo: new Set(['cubica://game-project/demo']), currentAppliesTo: new Set(['cubica://game-project/demo']), allUserGamesConfirmed: false, globalConfirmed: false }));
+    const context = { role: 'facilitator', knownAppliesTo: new Set(['cubica://game-project/demo']), currentAppliesTo: new Set(['cubica://game-project/demo']), allUserGamesConfirmed: false, globalConfirmed: false } as const;
+    const projectedPages = projectKnowledgePages(pages, context);
+    const projection = new TextDecoder().decode(projectKnowledgeIndex(pages, context));
+    expect([...projectedPages.keys()]).toEqual(['a/visible.md']);
     expect(projection).toContain('Visible');
     expect(projection).not.toContain('Private title');
     expect(projection).not.toContain('knw_private');
