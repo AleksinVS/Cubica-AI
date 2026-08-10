@@ -1,4 +1,4 @@
-# Матрица трассировки Estate Race (S0–S1)
+# Матрица трассировки Estate Race (S0–S2)
 
 Матрица является исполнительным срезом полного плана S0–S10 и не создаёт
 отдельную очередь. Источником порядка и критериев служит [полный
@@ -28,13 +28,13 @@
 | Первый/второй дубль сохраняют дополнительный бросок, третий заключает, обычный бросок сбрасывает цепочку | S1 (GSR-038) | `consecutiveDoubles`, `extraRollPending`, `players.*.flags.inJail`; `turn.roll/finish`; typed conditional plans | серверные фаза и доступность действия; клиент не вычисляет дубль | replay покупки/ренты/нейтральной клетки, third-double без круга, exact retry и jailed-roll rejection | реализовано |
 | Старт, налоги, нейтральные клетки, посещение/отправка в тюрьму проходят через dispatcher | S1 (GSR-039) | `turn.phase`, `players.*.metrics`; `turn.roll` → типизированный выбор `boardCells`; только активированные типы | серверные `tax.pay`/`turn.finish`, явная `blocked`-фаза и статус заключения | replay обоих налогов, недостатка денег, стартовой/нейтральной/тюремных клеток и всех 30 ещё не активированных клеток; plugin projection | реализовано |
 | Однократный setup случайно упорядочивает точные 2–6 фактических участников | S1 (GSR-040) | bounded record-map `state.players`; `session.setup.finalize` → select/order → атомарный `public.turn` | DOM-кнопка setup и display-only фаза; запрос без `playerId` | replay 2/6, permutation, exact retry без RNG, новый command reject до RNG; browser setup → реальный roll | реализовано; S1 завершён |
+| Отказ от покупки создаёт обязательный последовательный аукцион | S2 (GSR-041) | auction state, `activePlayerId` + `resumePlayerId`; `property.auction.*`; общий actor plan | панель ставки, pass и завершения | replay 2/6, круговая ротация, чужой ход, сумма/баланс, победитель не `p1`, exact retry и production browser flow | реализовано |
+| Рента различается для групп, линий и коммунальных объектов | S2 (GSR-041) | owner/group/kind metrics; `property.rent`; typed formula plan | карточка собственности и объяснение суммы из серверной проекции | все группы, линии 1–4, коммунальные 1–2 и отрицательный баланс | реализовано; S2 завершён |
 
 ## Запланировано после S0
 
 | Правило | Срез | Состояние / Game Intent / план | UI | Проверка | Статус |
 |---|---|---|---|---|---|
-| Отказ от покупки создаёт обязательный последовательный аукцион | S2 | auction state, `activePlayerId` + `resumePlayerId`; `property.auction.*`; общий actor plan | панель ставки, pass и завершения | bid/pass, чужой ход, сумма/баланс, победитель и retry | запланировано |
-| Рента различается для групп, станций и коммунальных объектов | S2 | owner/group/type metrics; `property.pay-rent`; formula plan | карточка собственности и объяснение формулы | neutral fixtures всех типов и отрицательный баланс | запланировано |
 | Две скрытые колоды дают оригинальный эффект, discard и повторное перемешивание | S3 | deck/discard state; `deck.draw/resolve`; bounded deck plan | карточка и журнал эффекта | replay recorded randomness, exhaustion и reshuffle | запланировано |
 | Удерживаемая карта выхода извлекается и возвращается в колоду | S3 | `held` card; `deck.extract/return`; accepted deck operations | панель удерживаемой карты | три цикла draw/hold/return, закрытый порядок игроку и ИИ | запланировано |
 | Тюрьма имеет оплату, дубль и предел попыток выхода | S3 | jail phase/attempts; `jail.pay`, `turn.roll`, `turn.next`; jail chain | состояние тюрьмы и доступные способы выхода | все три ветви и правильная terminal phase | запланировано |

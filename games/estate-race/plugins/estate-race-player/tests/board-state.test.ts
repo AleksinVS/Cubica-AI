@@ -3,7 +3,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { provideEstateRaceAccessibleBoardActions } from "../src/accessible-actions.ts";
+import {
+  ESTATE_AUCTION_BID_MAX,
+  isStructurallyValidEstateAuctionBid,
+  provideEstateRaceAccessibleBoardActions
+} from "../src/accessible-actions.ts";
 import { projectEstateRaceSession } from "../src/board-state.ts";
 import { activate } from "../src/index.ts";
 
@@ -85,6 +89,54 @@ test("keeps tax as a server-declared action without client parameters", () => {
   }]);
 });
 
+test("projects the complete server-owned auction state without deriving a bid threshold", () => {
+  const projection = projectEstateRaceSession({
+    state: {
+      public: {
+        turn: { activePlayerId: "p2", phase: "auction", turnNumber: 5 },
+        auction: {
+          resumePlayerId: "p1",
+          cellId: "cell-05",
+          currentBid: 40,
+          minimumIncrement: 10,
+          leaderPlayerId: "p2"
+        },
+        board: {
+          availableActions: [
+            { id: "auction-bid", label: "Сделать ставку", actionId: "property.auction.bid" },
+            { id: "auction-pass", label: "Пас", actionId: "property.auction.pass" }
+          ]
+        }
+      }
+    }
+  });
+
+  assert.deepEqual(projection.auction, {
+    resumePlayerId: "p1",
+    cellId: "cell-05",
+    currentBid: 40,
+    minimumIncrement: 10,
+    minimumNextBid: null,
+    leaderPlayerId: "p2"
+  });
+  assert.deepEqual(projection.availableActions.map(({ actionId }) => actionId), [
+    "property.auction.bid",
+    "property.auction.pass"
+  ]);
+});
+
+test("keeps a server-declared next-bid value display-only when present", () => {
+  const projection = projectEstateRaceSession({
+    state: {
+      public: {
+        auction: { currentBid: 40, minimumIncrement: 10, minimumNextBid: 75 }
+      }
+    }
+  });
+
+  assert.equal(projection.auction.minimumNextBid, 75);
+});
+
 test("presents setup as the server-declared first action without client parameters", () => {
   const actions = provideEstateRaceAccessibleBoardActions({
     state: {
@@ -137,6 +189,64 @@ test("keeps a jailed roll disabled from canonical action availability", () => {
     actionId: "turn.roll",
     disabled: true
   }]);
+});
+
+test("keeps an unavailable auction bid disabled while exposing only the amount field", () => {
+  const actions = provideEstateRaceAccessibleBoardActions({
+    actionAvailability: [{
+      actionId: "property.auction.bid",
+      status: "unavailable",
+      reasonCode: "state_condition_failed"
+    }],
+    state: {
+      public: {
+        turn: { phase: "auction" },
+        auction: { currentBid: 40, minimumIncrement: 10 },
+        board: {
+          availableActions: [{
+            id: "auction-bid",
+            label: "Сделать ставку",
+            actionId: "property.auction.bid",
+            params: { cellId: "must-not-be-forwarded", amount: 999 }
+          }]
+        }
+      }
+    }
+  } as unknown as Parameters<typeof provideEstateRaceAccessibleBoardActions>[0]);
+
+  assert.equal(actions[0]?.disabled, true);
+  assert.deepEqual(actions[0]?.params, undefined);
+  assert.deepEqual(actions[0]?.fields, [{
+    name: "amount",
+    label: "Сумма ставки",
+    kind: "number",
+    required: true,
+    min: 0,
+    max: Number.MAX_SAFE_INTEGER,
+    step: 1
+  }]);
+});
+
+test("validates only the bid JSON-schema boundary in the client", () => {
+  assert.equal(isStructurallyValidEstateAuctionBid(0), true);
+  assert.equal(isStructurallyValidEstateAuctionBid(ESTATE_AUCTION_BID_MAX), true);
+  assert.equal(isStructurallyValidEstateAuctionBid(-1), false);
+  assert.equal(isStructurallyValidEstateAuctionBid(10.5), false);
+  assert.equal(isStructurallyValidEstateAuctionBid(ESTATE_AUCTION_BID_MAX + 1), false);
+  assert.equal(isStructurallyValidEstateAuctionBid("50"), false);
+});
+
+test("does not invent auction, buy, rent or decline actions absent from the public snapshot", () => {
+  const actions = provideEstateRaceAccessibleBoardActions({
+    state: {
+      public: {
+        turn: { phase: "auction" },
+        board: { availableActions: [{ id: "pass", label: "Пас", actionId: "property.auction.pass" }] }
+      }
+    }
+  } as unknown as Parameters<typeof provideEstateRaceAccessibleBoardActions>[0]);
+
+  assert.deepEqual(actions.map(({ actionId }) => actionId), ["property.auction.pass"]);
 });
 
 test("projects all six hotseat participants without assuming fixed player ids", () => {

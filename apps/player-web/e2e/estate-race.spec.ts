@@ -1,13 +1,14 @@
 /**
- * Browser acceptance for the completed Estate Race S1 slice (GSR-040).
+ * Browser acceptance for the Estate Race S2 display and bounded action slice
+ * (GSR-041).
  *
  * The browser creates one normal authenticated player session and performs one
  * production-random setup followed by one production-random roll. The
  * assertion follows the state and actions returned
  * by Runtime API; it never predicts a destination, forces dice, or invents a
- * continuation for the intentionally blocked cells. Purchase/rent and the
- * complete tax/jail route remain covered by server/package proofs until the
- * browser has a deterministic, public way to reach those states.
+ * continuation for the intentionally blocked cells. If production randomness
+ * lands on a free object, the normal DOM flow covers decline → bid → pass;
+ * replay remains responsible for deterministic coverage of rare destinations.
  */
 
 import {
@@ -20,7 +21,7 @@ const GAME_ID = "estate-race";
 const FIELD_LABEL = "Игровое поле Estate Race";
 const BOARD_PLUGIN_READY_TIMEOUT_MS = 30_000;
 
-type EstatePhase = "setup" | "roll" | "acquire" | "rent" | "tax" | "blocked" | "finish";
+type EstatePhase = "setup" | "roll" | "acquire" | "rent" | "tax" | "blocked" | "finish" | "auction";
 
 type RuntimeSnapshot = {
   sessionId: string;
@@ -47,7 +48,15 @@ type RuntimeSnapshot = {
           actionId: string;
           label?: string;
           params?: Record<string, unknown>;
+          disabled?: boolean;
         }>;
+      };
+      auction: {
+        resumePlayerId: string;
+        cellId: string;
+        currentBid: number;
+        minimumIncrement: number;
+        leaderPlayerId: string;
       };
     };
   };
@@ -58,7 +67,7 @@ type BrowserActionResult = {
   snapshot: RuntimeSnapshot;
 };
 
-test.describe("Estate Race S1", { tag: "@player" }, () => {
+test.describe("Estate Race S2", { tag: "@player" }, () => {
   test("finalizes random participant order and presents one server-owned random landing", async ({ page }) => {
     // Includes a cold two-service startup while keeping one browser-created
     // session and its HttpOnly credential for the whole acceptance path.
@@ -74,7 +83,7 @@ test.describe("Estate Race S1", { tag: "@player" }, () => {
     await expect(page.locator(".game-player-root")).toBeVisible();
     await expect(page.locator(".loading-state")).toHaveCount(0);
     await expect(page.getByRole("heading", {
-      name: "Estate Race · S1",
+      name: "Estate Race · S2",
       level: 1
     })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Локальная партия: 2–6 участников", level: 2 })).toBeVisible();
@@ -121,6 +130,50 @@ test.describe("Estate Race S1", { tag: "@player" }, () => {
     )).toBeVisible();
 
     const availableActionIds = snapshot.state.public.board.availableActions.map((action) => action.actionId);
+
+    // Use only the normal server-declared actions when randomness happens to
+    // land on an unowned object. No dice or eligibility state is forced here.
+    if (
+      snapshot.state.public.turn.phase === "acquire"
+      && availableActionIds.includes("property.decline")
+    ) {
+      const decline = await clickBoardAction(page, "Отказаться");
+      expect(decline.requestBody.params).toEqual({});
+      expect(decline.snapshot.state.public.turn.phase).toBe("auction");
+      expect(decline.snapshot.state.public.auction.cellId).not.toBe("");
+      expect(decline.snapshot.state.public.auction.resumePlayerId).toBe(
+        snapshot.state.public.turn.activePlayerId
+      );
+      expect(decline.snapshot.state.public.auction.currentBid).toBe(0);
+      expect(decline.snapshot.state.public.auction.minimumIncrement).toBeGreaterThan(0);
+      expect(decline.snapshot.state.public.board.availableActions.map((action) => action.actionId))
+        .toEqual(expect.arrayContaining(["property.auction.bid", "property.auction.pass"]));
+
+      // At the zero-bid start the authoritatively published increment is the
+      // only amount supplied by this bounded smoke path.
+      const bid = await submitAuctionBid(page, decline.snapshot.state.public.auction.minimumIncrement);
+      expect(bid.requestBody.params).toEqual({
+        amount: decline.snapshot.state.public.auction.minimumIncrement
+      });
+      expect(bid.snapshot.state.public.turn.phase).toBe("auction");
+      expect(bid.snapshot.state.public.auction.currentBid).toBe(
+        decline.snapshot.state.public.auction.minimumIncrement
+      );
+      expect(bid.snapshot.state.public.auction.leaderPlayerId).not.toBe("");
+
+      const pass = await clickBoardAction(page, "Пас");
+      expect(pass.requestBody.params).toEqual({});
+      expect(pass.snapshot.state.public.turn.phase).toBe("finish");
+      expect(pass.snapshot.state.public.auction).toEqual({
+        resumePlayerId: "",
+        cellId: "",
+        currentBid: 0,
+        minimumIncrement: decline.snapshot.state.public.auction.minimumIncrement,
+        leaderPlayerId: ""
+      });
+      return;
+    }
+
     if (snapshot.state.public.turn.phase === "blocked") {
       expect(availableActionIds).toEqual([]);
       await expect(board(page).getByRole("button")).toHaveCount(0);
@@ -131,8 +184,8 @@ test.describe("Estate Race S1", { tag: "@player" }, () => {
       expect(availableActionIds).toContain("tax.pay");
       await expect(board(page).getByRole("button", { name: "Оплатить налог" })).toBeVisible();
     } else if (snapshot.state.public.turn.phase === "acquire") {
-      expect(availableActionIds.some((actionId) => actionId.startsWith("property.buy."))).toBe(true);
-      await expect(board(page).getByRole("button", { name: "Купить участок" })).toBeVisible();
+      expect(availableActionIds).toContain("property.buy");
+      await expect(board(page).getByRole("button", { name: "Купить объект" })).toBeVisible();
     } else if (snapshot.state.public.turn.phase === "finish") {
       expect(availableActionIds).toContain("turn.finish");
       await expect(board(page).getByRole("button", { name: "Завершить ход" })).toBeVisible();
@@ -165,6 +218,31 @@ async function clickBoardAction(page: Page, label: string): Promise<BrowserActio
   ).toBe("applied");
   expectPlayerSnapshotHasNoPlatformSecrets(snapshot);
 
+  return {
+    requestBody: runtimeRequest.postDataJSON() as Record<string, unknown>,
+    snapshot
+  };
+}
+
+async function submitAuctionBid(page: Page, amount: number): Promise<BrowserActionResult> {
+  const actionRequest = page.waitForRequest((request) =>
+    request.url().endsWith("/api/runtime/actions") && request.method() === "POST"
+  );
+  const actionResponse = page.waitForResponse((response) =>
+    response.url().endsWith("/api/runtime/actions") && response.request().method() === "POST"
+  );
+
+  const form = board(page).getByRole("form", { name: "Сделать ставку" });
+  await form.getByRole("spinbutton", { name: "Сумма ставки" }).fill(String(amount));
+  await form.getByRole("button", { name: "Сделать ставку" }).click();
+  const [runtimeRequest, runtimeResponse] = await Promise.all([actionRequest, actionResponse]);
+  expect(runtimeResponse.status()).toBe(200);
+  const snapshot = await runtimeResponse.json() as RuntimeSnapshot;
+  expect(
+    snapshot.receipt?.status,
+    `Сделать ставку отклонено: ${snapshot.receipt?.rejectionCode ?? "unknown reason"}`
+  ).toBe("applied");
+  expectPlayerSnapshotHasNoPlatformSecrets(snapshot);
   return {
     requestBody: runtimeRequest.postDataJSON() as Record<string, unknown>,
     snapshot

@@ -20,7 +20,7 @@
   ],
   "screens": {
     "table": {
-      "title": "Estate Race · S1",
+      "title": "Estate Race · S2",
       "layout_mode": "topbar",
       "root": {
         "id": "table.root",
@@ -40,10 +40,18 @@
                 "id": "table.title",
                 "type": "richTextComponent",
                 "props": {
-                  "html": "<h1>Estate Race · S1</h1><p>Ход {{game.state.public.turn.turnNumber}} · активен {{game.state.public.turn.activePlayerId}} · этап {{game.state.public.turn.phase}}</p><p>Начальный порядок, налог, blocked-состояние и заключение отображаются из подтверждённой публичной сессии; доступные действия объявляет сервер.</p>"
+                  "html": "<h1>Estate Race · S2</h1><p>Ход {{game.state.public.turn.turnNumber}} · активен {{game.state.public.turn.activePlayerId}} · этап {{game.state.public.turn.phase}}</p><p>Покупка, рента и аукцион отображаются из подтверждённой публичной проекции; доступные действия и их доступность объявляет сервер.</p>"
                 }
               }
             ]
+          },
+          {
+            "id": "table.auction-status",
+            "type": "richTextComponent",
+            "props": {
+              "cssClass": "board-game-auction",
+              "html": "<h2>Аукцион</h2><p>Объект {{game.state.public.auction.cellId}} · текущая ставка {{game.state.public.auction.currentBid}} · минимальный шаг {{game.state.public.auction.minimumIncrement}}</p><p>Лидер {{game.state.public.auction.leaderPlayerId}} · восстановление хода {{game.state.public.auction.resumePlayerId}}</p>"
+            }
           },
           {
             "id": "table.players",

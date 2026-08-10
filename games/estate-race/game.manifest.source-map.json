@@ -57,64 +57,46 @@
         "pointer": "/root/logic/actions/1"
       }
     ],
-    "/actions/property.buy.cell-02": [
+    "/actions/property.buy": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
         "pointer": "/root/logic/actions/2"
       }
     ],
-    "/actions/property.buy.cell-05": [
+    "/actions/property.decline": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
         "pointer": "/root/logic/actions/3"
       }
     ],
-    "/actions/property.buy.cell-08": [
+    "/actions/property.rent": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
         "pointer": "/root/logic/actions/4"
       }
     ],
-    "/actions/property.buy.cell-11": [
+    "/actions/property.auction.bid": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
         "pointer": "/root/logic/actions/5"
       }
     ],
-    "/actions/property.rent.cell-02": [
+    "/actions/property.auction.pass": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
         "pointer": "/root/logic/actions/6"
       }
     ],
-    "/actions/property.rent.cell-05": [
+    "/actions/tax.pay": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
         "pointer": "/root/logic/actions/7"
       }
     ],
-    "/actions/property.rent.cell-08": [
-      {
-        "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/8"
-      }
-    ],
-    "/actions/property.rent.cell-11": [
-      {
-        "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/9"
-      }
-    ],
-    "/actions/tax.pay": [
-      {
-        "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/10"
-      }
-    ],
     "/actions/turn.finish": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/11"
+        "pointer": "/root/logic/actions/8"
       }
     ],
     "/actions": [
@@ -327,430 +309,464 @@
         "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/25"
       }
     ],
-    "/mechanics/plans/turn.roll/transaction/steps/26": [
-      {
-        "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/26"
-      }
-    ],
-    "/mechanics/plans/turn.roll/transaction/steps/27": [
-      {
-        "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/27"
-      }
-    ],
-    "/mechanics/plans/turn.roll/transaction/steps/28": [
-      {
-        "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/28"
-      }
-    ],
-    "/mechanics/plans/turn.roll/transaction/steps/29": [
-      {
-        "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/29"
-      }
-    ],
-    "/mechanics/plans/turn.roll/transaction/steps/30": [
-      {
-        "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/30"
-      }
-    ],
-    "/mechanics/plans/turn.roll/transaction/steps/31": [
-      {
-        "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/31"
-      }
-    ],
-    "/mechanics/plans/turn.roll/transaction/steps/32": [
-      {
-        "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/32"
-      }
-    ],
-    "/mechanics/plans/turn.roll/transaction/steps/33": [
-      {
-        "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/33"
-      }
-    ],
-    "/mechanics/plans/turn.roll/transaction/steps/34": [
-      {
-        "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/34"
-      }
-    ],
-    "/mechanics/plans/turn.roll/transaction/steps/35": [
-      {
-        "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/35"
-      }
-    ],
     "/mechanics/plans/turn.roll/planHash": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
         "pointer": "/root/mechanics/plans/turn.roll"
       }
     ],
-    "/mechanics/plans/property.buy.cell-02/transaction/steps": [
+    "/mechanics/plans/property.buy/transaction/steps": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.buy.cell-02/transaction/steps"
+        "pointer": "/root/mechanics/plans/property.buy/transaction/steps"
       }
     ],
-    "/mechanics/plans/property.buy.cell-02/transaction/steps/0": [
+    "/mechanics/plans/property.buy/transaction/steps/0": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.buy.cell-02/transaction/steps/0"
+        "pointer": "/root/mechanics/plans/property.buy/transaction/steps/0"
       }
     ],
-    "/mechanics/plans/property.buy.cell-02/transaction/steps/1": [
+    "/mechanics/plans/property.buy/transaction/steps/1": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.buy.cell-02/transaction/steps/1"
+        "pointer": "/root/mechanics/plans/property.buy/transaction/steps/1"
       }
     ],
-    "/mechanics/plans/property.buy.cell-02/transaction/steps/2": [
+    "/mechanics/plans/property.buy/transaction/steps/2": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.buy.cell-02/transaction/steps/2"
+        "pointer": "/root/mechanics/plans/property.buy/transaction/steps/2"
       }
     ],
-    "/mechanics/plans/property.buy.cell-02/transaction/steps/3": [
+    "/mechanics/plans/property.buy/transaction/steps/3": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.buy.cell-02/transaction/steps/3"
+        "pointer": "/root/mechanics/plans/property.buy/transaction/steps/3"
       }
     ],
-    "/mechanics/plans/property.buy.cell-02/transaction/steps/4": [
+    "/mechanics/plans/property.buy/transaction/steps/4": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.buy.cell-02/transaction/steps/4"
+        "pointer": "/root/mechanics/plans/property.buy/transaction/steps/4"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.finish-resolution/steps/0"
       }
     ],
-    "/mechanics/plans/property.buy.cell-02/transaction/steps/5": [
+    "/mechanics/plans/property.buy/transaction/steps/5": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.buy.cell-02/transaction/steps/5"
+        "pointer": "/root/mechanics/plans/property.buy/transaction/steps/4"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.finish-resolution/steps/1"
       }
     ],
-    "/mechanics/plans/property.buy.cell-02/planHash": [
+    "/mechanics/plans/property.buy/transaction/steps/6": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.buy.cell-02"
+        "pointer": "/root/mechanics/plans/property.buy/transaction/steps/5"
       }
     ],
-    "/mechanics/plans/property.buy.cell-05/transaction/steps": [
+    "/mechanics/plans/property.buy/planHash": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.buy.cell-05/transaction/steps"
+        "pointer": "/root/mechanics/plans/property.buy"
       }
     ],
-    "/mechanics/plans/property.buy.cell-05/transaction/steps/0": [
+    "/mechanics/plans/property.decline/transaction/steps": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.buy.cell-05/transaction/steps/0"
+        "pointer": "/root/mechanics/plans/property.decline/transaction/steps"
       }
     ],
-    "/mechanics/plans/property.buy.cell-05/transaction/steps/1": [
+    "/mechanics/plans/property.decline/transaction/steps/0": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.buy.cell-05/transaction/steps/1"
+        "pointer": "/root/mechanics/plans/property.decline/transaction/steps/0"
       }
     ],
-    "/mechanics/plans/property.buy.cell-05/transaction/steps/2": [
+    "/mechanics/plans/property.decline/transaction/steps/1": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.buy.cell-05/transaction/steps/2"
+        "pointer": "/root/mechanics/plans/property.decline/transaction/steps/1"
       }
     ],
-    "/mechanics/plans/property.buy.cell-05/transaction/steps/3": [
+    "/mechanics/plans/property.decline/transaction/steps/2": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.buy.cell-05/transaction/steps/3"
+        "pointer": "/root/mechanics/plans/property.decline/transaction/steps/2"
       }
     ],
-    "/mechanics/plans/property.buy.cell-05/transaction/steps/4": [
+    "/mechanics/plans/property.decline/transaction/steps/3": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.buy.cell-05/transaction/steps/4"
+        "pointer": "/root/mechanics/plans/property.decline/transaction/steps/3"
       }
     ],
-    "/mechanics/plans/property.buy.cell-05/transaction/steps/5": [
+    "/mechanics/plans/property.decline/transaction/steps/4": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.buy.cell-05/transaction/steps/5"
+        "pointer": "/root/mechanics/plans/property.decline/transaction/steps/4"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.set-bidder-statuses/steps/0"
       }
     ],
-    "/mechanics/plans/property.buy.cell-05/planHash": [
+    "/mechanics/plans/property.decline/transaction/steps/5": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.buy.cell-05"
+        "pointer": "/root/mechanics/plans/property.decline/transaction/steps/4"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.set-bidder-statuses/steps/1"
       }
     ],
-    "/mechanics/plans/property.buy.cell-08/transaction/steps": [
+    "/mechanics/plans/property.decline/transaction/steps/6": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.buy.cell-08/transaction/steps"
+        "pointer": "/root/mechanics/plans/property.decline/transaction/steps/5"
       }
     ],
-    "/mechanics/plans/property.buy.cell-08/transaction/steps/0": [
+    "/mechanics/plans/property.decline/transaction/steps/7": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.buy.cell-08/transaction/steps/0"
+        "pointer": "/root/mechanics/plans/property.decline/transaction/steps/6"
       }
     ],
-    "/mechanics/plans/property.buy.cell-08/transaction/steps/1": [
+    "/mechanics/plans/property.decline/transaction/steps/8": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.buy.cell-08/transaction/steps/1"
+        "pointer": "/root/mechanics/plans/property.decline/transaction/steps/7"
       }
     ],
-    "/mechanics/plans/property.buy.cell-08/transaction/steps/2": [
+    "/mechanics/plans/property.decline/planHash": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.buy.cell-08/transaction/steps/2"
+        "pointer": "/root/mechanics/plans/property.decline"
       }
     ],
-    "/mechanics/plans/property.buy.cell-08/transaction/steps/3": [
+    "/mechanics/plans/property.rent/transaction/steps": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.buy.cell-08/transaction/steps/3"
+        "pointer": "/root/mechanics/plans/property.rent/transaction/steps"
       }
     ],
-    "/mechanics/plans/property.buy.cell-08/transaction/steps/4": [
+    "/mechanics/plans/property.rent/transaction/steps/0": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.buy.cell-08/transaction/steps/4"
+        "pointer": "/root/mechanics/plans/property.rent/transaction/steps/0"
       }
     ],
-    "/mechanics/plans/property.buy.cell-08/transaction/steps/5": [
+    "/mechanics/plans/property.rent/transaction/steps/1": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.buy.cell-08/transaction/steps/5"
+        "pointer": "/root/mechanics/plans/property.rent/transaction/steps/1"
       }
     ],
-    "/mechanics/plans/property.buy.cell-08/planHash": [
+    "/mechanics/plans/property.rent/transaction/steps/2": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.buy.cell-08"
+        "pointer": "/root/mechanics/plans/property.rent/transaction/steps/2"
       }
     ],
-    "/mechanics/plans/property.buy.cell-11/transaction/steps": [
+    "/mechanics/plans/property.rent/transaction/steps/3": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.buy.cell-11/transaction/steps"
+        "pointer": "/root/mechanics/plans/property.rent/transaction/steps/3"
       }
     ],
-    "/mechanics/plans/property.buy.cell-11/transaction/steps/0": [
+    "/mechanics/plans/property.rent/transaction/steps/4": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.buy.cell-11/transaction/steps/0"
+        "pointer": "/root/mechanics/plans/property.rent/transaction/steps/4"
       }
     ],
-    "/mechanics/plans/property.buy.cell-11/transaction/steps/1": [
+    "/mechanics/plans/property.rent/transaction/steps/5": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.buy.cell-11/transaction/steps/1"
+        "pointer": "/root/mechanics/plans/property.rent/transaction/steps/5"
       }
     ],
-    "/mechanics/plans/property.buy.cell-11/transaction/steps/2": [
+    "/mechanics/plans/property.rent/transaction/steps/6": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.buy.cell-11/transaction/steps/2"
+        "pointer": "/root/mechanics/plans/property.rent/transaction/steps/6"
       }
     ],
-    "/mechanics/plans/property.buy.cell-11/transaction/steps/3": [
+    "/mechanics/plans/property.rent/transaction/steps/7": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.buy.cell-11/transaction/steps/3"
+        "pointer": "/root/mechanics/plans/property.rent/transaction/steps/7"
       }
     ],
-    "/mechanics/plans/property.buy.cell-11/transaction/steps/4": [
+    "/mechanics/plans/property.rent/transaction/steps/8": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.buy.cell-11/transaction/steps/4"
+        "pointer": "/root/mechanics/plans/property.rent/transaction/steps/8"
       }
     ],
-    "/mechanics/plans/property.buy.cell-11/transaction/steps/5": [
+    "/mechanics/plans/property.rent/transaction/steps/9": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.buy.cell-11/transaction/steps/5"
+        "pointer": "/root/mechanics/plans/property.rent/transaction/steps/9"
       }
     ],
-    "/mechanics/plans/property.buy.cell-11/planHash": [
+    "/mechanics/plans/property.rent/transaction/steps/10": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.buy.cell-11"
+        "pointer": "/root/mechanics/plans/property.rent/transaction/steps/10"
       }
     ],
-    "/mechanics/plans/property.rent.cell-02/transaction/steps": [
+    "/mechanics/plans/property.rent/transaction/steps/11": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.rent.cell-02/transaction/steps"
+        "pointer": "/root/mechanics/plans/property.rent/transaction/steps/11"
       }
     ],
-    "/mechanics/plans/property.rent.cell-02/transaction/steps/0": [
+    "/mechanics/plans/property.rent/transaction/steps/12": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.rent.cell-02/transaction/steps/0"
+        "pointer": "/root/mechanics/plans/property.rent/transaction/steps/12"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.finish-resolution/steps/0"
       }
     ],
-    "/mechanics/plans/property.rent.cell-02/transaction/steps/1": [
+    "/mechanics/plans/property.rent/transaction/steps/13": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.rent.cell-02/transaction/steps/1"
+        "pointer": "/root/mechanics/plans/property.rent/transaction/steps/12"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.finish-resolution/steps/1"
       }
     ],
-    "/mechanics/plans/property.rent.cell-02/transaction/steps/2": [
+    "/mechanics/plans/property.rent/transaction/steps/14": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.rent.cell-02/transaction/steps/2"
+        "pointer": "/root/mechanics/plans/property.rent/transaction/steps/13"
       }
     ],
-    "/mechanics/plans/property.rent.cell-02/transaction/steps/3": [
+    "/mechanics/plans/property.rent/planHash": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.rent.cell-02/transaction/steps/3"
+        "pointer": "/root/mechanics/plans/property.rent"
       }
     ],
-    "/mechanics/plans/property.rent.cell-02/transaction/steps/4": [
+    "/mechanics/plans/property.auction.bid/transaction/steps": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.rent.cell-02/transaction/steps/4"
+        "pointer": "/root/mechanics/plans/property.auction.bid/transaction/steps"
       }
     ],
-    "/mechanics/plans/property.rent.cell-02/planHash": [
+    "/mechanics/plans/property.auction.bid/transaction/steps/0": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.rent.cell-02"
+        "pointer": "/root/mechanics/plans/property.auction.bid/transaction/steps/0"
       }
     ],
-    "/mechanics/plans/property.rent.cell-05/transaction/steps": [
+    "/mechanics/plans/property.auction.bid/transaction/steps/1": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.rent.cell-05/transaction/steps"
+        "pointer": "/root/mechanics/plans/property.auction.bid/transaction/steps/1"
       }
     ],
-    "/mechanics/plans/property.rent.cell-05/transaction/steps/0": [
+    "/mechanics/plans/property.auction.bid/transaction/steps/2": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.rent.cell-05/transaction/steps/0"
+        "pointer": "/root/mechanics/plans/property.auction.bid/transaction/steps/2"
       }
     ],
-    "/mechanics/plans/property.rent.cell-05/transaction/steps/1": [
+    "/mechanics/plans/property.auction.bid/transaction/steps/3": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.rent.cell-05/transaction/steps/1"
+        "pointer": "/root/mechanics/plans/property.auction.bid/transaction/steps/3"
       }
     ],
-    "/mechanics/plans/property.rent.cell-05/transaction/steps/2": [
+    "/mechanics/plans/property.auction.bid/transaction/steps/4": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.rent.cell-05/transaction/steps/2"
+        "pointer": "/root/mechanics/plans/property.auction.bid/transaction/steps/4"
       }
     ],
-    "/mechanics/plans/property.rent.cell-05/transaction/steps/3": [
+    "/mechanics/plans/property.auction.bid/transaction/steps/5": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.rent.cell-05/transaction/steps/3"
+        "pointer": "/root/mechanics/plans/property.auction.bid/transaction/steps/5"
       }
     ],
-    "/mechanics/plans/property.rent.cell-05/transaction/steps/4": [
+    "/mechanics/plans/property.auction.bid/transaction/steps/6": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.rent.cell-05/transaction/steps/4"
+        "pointer": "/root/mechanics/plans/property.auction.bid/transaction/steps/6"
       }
     ],
-    "/mechanics/plans/property.rent.cell-05/planHash": [
+    "/mechanics/plans/property.auction.bid/transaction/steps/7": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.rent.cell-05"
+        "pointer": "/root/mechanics/plans/property.auction.bid/transaction/steps/7"
       }
     ],
-    "/mechanics/plans/property.rent.cell-08/transaction/steps": [
+    "/mechanics/plans/property.auction.bid/transaction/steps/8": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.rent.cell-08/transaction/steps"
+        "pointer": "/root/mechanics/plans/property.auction.bid/transaction/steps/8"
       }
     ],
-    "/mechanics/plans/property.rent.cell-08/transaction/steps/0": [
+    "/mechanics/plans/property.auction.bid/transaction/steps/9": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.rent.cell-08/transaction/steps/0"
+        "pointer": "/root/mechanics/plans/property.auction.bid/transaction/steps/9"
       }
     ],
-    "/mechanics/plans/property.rent.cell-08/transaction/steps/1": [
+    "/mechanics/plans/property.auction.bid/transaction/steps/10": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.rent.cell-08/transaction/steps/1"
+        "pointer": "/root/mechanics/plans/property.auction.bid/transaction/steps/10"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.set-bidder-statuses/steps/0"
       }
     ],
-    "/mechanics/plans/property.rent.cell-08/transaction/steps/2": [
+    "/mechanics/plans/property.auction.bid/transaction/steps/11": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.rent.cell-08/transaction/steps/2"
+        "pointer": "/root/mechanics/plans/property.auction.bid/transaction/steps/10"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.set-bidder-statuses/steps/1"
       }
     ],
-    "/mechanics/plans/property.rent.cell-08/transaction/steps/3": [
+    "/mechanics/plans/property.auction.bid/transaction/steps/12": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.rent.cell-08/transaction/steps/3"
+        "pointer": "/root/mechanics/plans/property.auction.bid/transaction/steps/11"
       }
     ],
-    "/mechanics/plans/property.rent.cell-08/transaction/steps/4": [
+    "/mechanics/plans/property.auction.bid/transaction/steps/13": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.rent.cell-08/transaction/steps/4"
+        "pointer": "/root/mechanics/plans/property.auction.bid/transaction/steps/12"
       }
     ],
-    "/mechanics/plans/property.rent.cell-08/planHash": [
+    "/mechanics/plans/property.auction.bid/planHash": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.rent.cell-08"
+        "pointer": "/root/mechanics/plans/property.auction.bid"
       }
     ],
-    "/mechanics/plans/property.rent.cell-11/transaction/steps": [
+    "/mechanics/plans/property.auction.pass/transaction/steps": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.rent.cell-11/transaction/steps"
+        "pointer": "/root/mechanics/plans/property.auction.pass/transaction/steps"
       }
     ],
-    "/mechanics/plans/property.rent.cell-11/transaction/steps/0": [
+    "/mechanics/plans/property.auction.pass/transaction/steps/0": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.rent.cell-11/transaction/steps/0"
+        "pointer": "/root/mechanics/plans/property.auction.pass/transaction/steps/0"
       }
     ],
-    "/mechanics/plans/property.rent.cell-11/transaction/steps/1": [
+    "/mechanics/plans/property.auction.pass/transaction/steps/1": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.rent.cell-11/transaction/steps/1"
+        "pointer": "/root/mechanics/plans/property.auction.pass/transaction/steps/1"
       }
     ],
-    "/mechanics/plans/property.rent.cell-11/transaction/steps/2": [
+    "/mechanics/plans/property.auction.pass/transaction/steps/2": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.rent.cell-11/transaction/steps/2"
+        "pointer": "/root/mechanics/plans/property.auction.pass/transaction/steps/2"
       }
     ],
-    "/mechanics/plans/property.rent.cell-11/transaction/steps/3": [
+    "/mechanics/plans/property.auction.pass/transaction/steps/3": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.rent.cell-11/transaction/steps/3"
+        "pointer": "/root/mechanics/plans/property.auction.pass/transaction/steps/3"
       }
     ],
-    "/mechanics/plans/property.rent.cell-11/transaction/steps/4": [
+    "/mechanics/plans/property.auction.pass/transaction/steps/4": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.rent.cell-11/transaction/steps/4"
+        "pointer": "/root/mechanics/plans/property.auction.pass/transaction/steps/4"
       }
     ],
-    "/mechanics/plans/property.rent.cell-11/planHash": [
+    "/mechanics/plans/property.auction.pass/transaction/steps/5": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/property.rent.cell-11"
+        "pointer": "/root/mechanics/plans/property.auction.pass/transaction/steps/5"
+      }
+    ],
+    "/mechanics/plans/property.auction.pass/transaction/steps/6": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/property.auction.pass/transaction/steps/6"
+      }
+    ],
+    "/mechanics/plans/property.auction.pass/transaction/steps/7": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/property.auction.pass/transaction/steps/7"
+      }
+    ],
+    "/mechanics/plans/property.auction.pass/transaction/steps/8": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/property.auction.pass/transaction/steps/8"
+      }
+    ],
+    "/mechanics/plans/property.auction.pass/transaction/steps/9": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/property.auction.pass/transaction/steps/9"
+      }
+    ],
+    "/mechanics/plans/property.auction.pass/transaction/steps/10": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/property.auction.pass/transaction/steps/10"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.set-bidder-statuses/steps/0"
+      }
+    ],
+    "/mechanics/plans/property.auction.pass/transaction/steps/11": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/property.auction.pass/transaction/steps/10"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.set-bidder-statuses/steps/1"
+      }
+    ],
+    "/mechanics/plans/property.auction.pass/transaction/steps/12": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/property.auction.pass/transaction/steps/11"
+      }
+    ],
+    "/mechanics/plans/property.auction.pass/transaction/steps/13": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/property.auction.pass/transaction/steps/12"
+      }
+    ],
+    "/mechanics/plans/property.auction.pass/planHash": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/property.auction.pass"
       }
     ],
     "/mechanics/plans/tax.pay/transaction/steps": [
@@ -845,14 +861,11 @@
     ]
   },
   "verbatimSubtrees": [
-    "/actions/property.buy.cell-02",
-    "/actions/property.buy.cell-05",
-    "/actions/property.buy.cell-08",
-    "/actions/property.buy.cell-11",
-    "/actions/property.rent.cell-02",
-    "/actions/property.rent.cell-05",
-    "/actions/property.rent.cell-08",
-    "/actions/property.rent.cell-11",
+    "/actions/property.auction.bid",
+    "/actions/property.auction.pass",
+    "/actions/property.buy",
+    "/actions/property.decline",
+    "/actions/property.rent",
     "/actions/session.setup.finalize",
     "/actions/tax.pay",
     "/actions/turn.finish",

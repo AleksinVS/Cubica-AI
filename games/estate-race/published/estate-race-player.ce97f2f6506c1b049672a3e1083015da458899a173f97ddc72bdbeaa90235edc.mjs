@@ -60,15 +60,34 @@ __pluginDefine("src/accessible-actions.ts", (exports, module) => {
  * host render keyboard controls even when the visual engine is unavailable.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.provideEstateRaceAccessibleBoardActions = void 0;
+exports.provideEstateRaceAccessibleBoardActions = exports.isStructurallyValidEstateAuctionBid = exports.ESTATE_AUCTION_BID_MAX = void 0;
 const board_state_ts_1 = __pluginRequire("src/board-state.ts");
+exports.ESTATE_AUCTION_BID_MAX = Number.MAX_SAFE_INTEGER;
+/** Structural input guard only; server rules decide whether a bid is legal. */
+const isStructurallyValidEstateAuctionBid = (value) => typeof value === "number"
+    && Number.isSafeInteger(value)
+    && value >= 0
+    && value <= exports.ESTATE_AUCTION_BID_MAX;
+exports.isStructurallyValidEstateAuctionBid = isStructurallyValidEstateAuctionBid;
+const auctionBidFields = [{
+        name: "amount",
+        label: "Сумма ставки",
+        kind: "number",
+        required: true,
+        min: 0,
+        max: exports.ESTATE_AUCTION_BID_MAX,
+        step: 1
+    }];
 /** Copy one server-declared action into the public host contribution shape. */
 const toAccessibleAction = (action) => ({
     id: action.id,
     label: action.label,
     actionId: action.actionId,
     ...(action.description === undefined ? {} : { description: action.description }),
-    ...(action.params === undefined ? {} : { params: { ...action.params } }),
+    ...(action.actionId === "property.auction.bid"
+        ? {}
+        : action.params === undefined ? {} : { params: { ...action.params } }),
+    ...(action.actionId === "property.auction.bid" ? { fields: auctionBidFields } : {}),
     ...(action.disabled === undefined ? {} : { disabled: action.disabled })
 });
 /**
@@ -94,6 +113,7 @@ exports.projectEstateRaceSession = projectEstateRaceSession;
 const isRecord = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
 const finiteNumber = (value, fallback = 0) => typeof value === "number" && Number.isFinite(value) ? value : fallback;
 const text = (value, fallback) => typeof value === "string" && value.trim().length > 0 ? value : fallback;
+const optionalText = (value) => typeof value === "string" && value.trim().length > 0 ? value : null;
 const readCells = (publicState) => {
     const objects = isRecord(publicState.objects) ? publicState.objects : {};
     const cells = isRecord(objects.boardCells) ? objects.boardCells : {};
@@ -189,6 +209,21 @@ const readRoll = (board) => {
     const total = finiteNumber(board.lastRoll.total, values.reduce((sum, value) => sum + value, 0));
     return { values, total, isDouble: board.lastRoll.isDouble === true };
 };
+const readAuction = (publicState) => {
+    const auction = isRecord(publicState.auction) ? publicState.auction : {};
+    return {
+        resumePlayerId: optionalText(auction.resumePlayerId),
+        cellId: optionalText(auction.cellId),
+        currentBid: finiteNumber(auction.currentBid),
+        minimumIncrement: finiteNumber(auction.minimumIncrement),
+        // Do not derive a minimum from currentBid/minimumIncrement. The runtime
+        // remains the only authority for a next-bid threshold.
+        minimumNextBid: typeof auction.minimumNextBid === "number" && Number.isFinite(auction.minimumNextBid)
+            ? auction.minimumNextBid
+            : null,
+        leaderPlayerId: optionalText(auction.leaderPlayerId)
+    };
+};
 /** Convert a player-facing session snapshot to deterministic drawing data. */
 function projectEstateRaceSession(session) {
     const state = isRecord(session.state) ? session.state : {};
@@ -203,7 +238,8 @@ function projectEstateRaceSession(session) {
         activePlayerId,
         phase: text(turn.phase, "setup"),
         turnNumber: finiteNumber(turn.turnNumber),
-        lastRoll: readRoll(board)
+        lastRoll: readRoll(board),
+        auction: readAuction(publicState)
     };
 }
 
@@ -232,7 +268,8 @@ const phaseLabel = {
     tax: "налог",
     resolve: "эффект клетки",
     blocked: "следующий срез",
-    finish: "завершение"
+    finish: "завершение",
+    auction: "аукцион"
 };
 const errorText = (error) => error instanceof Error ? error.message : "Действие отклонено сервером";
 const tokenPosition = (cell, playerIndex) => ({
@@ -306,7 +343,10 @@ const createEstateRaceScene = (context) => {
                 fontFamily: "Arial, sans-serif",
                 fontSize: "22px"
             }).setOrigin(0.5);
-            if (projection.lastRoll) {
+            if (projection.phase === "auction") {
+                this.drawAuctionSummary(projection);
+            }
+            else if (projection.lastRoll) {
                 const dice = projection.lastRoll.values.map((value) => `[ ${value} ]`).join("   ");
                 this.add.text(680, 485, `${dice}\nсумма ${projection.lastRoll.total}`, {
                     color: "#173a34",
@@ -332,9 +372,34 @@ const createEstateRaceScene = (context) => {
                     fontSize: "20px"
                 }).setOrigin(0.5);
             }
-            const action = projection.availableActions.find((item) => !item.disabled);
+            // A bid requires the numeric DOM form. Never dispatch an empty bid from
+            // the canvas; the server remains the authority for the submitted amount.
+            const action = projection.availableActions.find((item) => !item.disabled && item.actionId !== "property.auction.bid");
             if (action)
                 this.drawPrimaryAction(action);
+        }
+        drawAuctionSummary(projection) {
+            const auction = projection.auction;
+            const auctionCell = auction.cellId === null
+                ? null
+                : projection.cells.find((cell) => cell.id === auction.cellId);
+            const minimumNextBid = auction.minimumNextBid === null ? "—" : auction.minimumNextBid;
+            const lines = [
+                `Аукцион · ${auctionCell?.shortLabel ?? auction.cellId ?? "объект не объявлен"}`,
+                `Текущая ставка: ${auction.currentBid}`,
+                `Минимальная следующая ставка: ${minimumNextBid}`,
+                `Минимальный шаг: ${auction.minimumIncrement}`,
+                `Лидер: ${auction.leaderPlayerId ?? "нет"}`,
+                `Ход вернётся: ${auction.resumePlayerId ?? "не объявлено"}`
+            ];
+            this.add.text(680, 485, lines.join("\n"), {
+                color: "#173a34",
+                align: "center",
+                fontFamily: "Arial, sans-serif",
+                fontSize: "21px",
+                lineSpacing: 7,
+                wordWrap: { width: 600 }
+            }).setOrigin(0.5);
         }
         drawPrimaryAction(action) {
             const button = this.add.rectangle(680, 595, 360, 68, 0x245f52, 1)
@@ -362,7 +427,8 @@ const createEstateRaceScene = (context) => {
                             ? 0xc8d4df
                             : 0xded7c5;
             graphics.fillStyle(fill, 1);
-            graphics.lineStyle(estate ? 4 : 2, estate ? 0xb56f3c : 0x6f8178, 0.95);
+            const auctionCell = projection.phase === "auction" && projection.auction.cellId === cell.id;
+            graphics.lineStyle(auctionCell ? 6 : estate ? 4 : 2, auctionCell ? 0x245f52 : estate ? 0xb56f3c : 0x6f8178, 0.95);
             graphics.fillRoundedRect(cell.x - cell.width / 2, cell.y - cell.height / 2, cell.width, cell.height, 12);
             graphics.strokeRoundedRect(cell.x - cell.width / 2, cell.y - cell.height / 2, cell.width, cell.height, 12);
             this.add.text(cell.x, cell.y - 30, cell.shortLabel, {

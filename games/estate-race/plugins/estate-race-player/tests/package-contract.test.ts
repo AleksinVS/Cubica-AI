@@ -1,4 +1,4 @@
-/** Package-level invariants for original content and the completed S1 slice. */
+/** Package-level invariants for original content and the active S2 slice. */
 
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
@@ -55,8 +55,12 @@ test("manifest owns a classified forty-cell original board for two to six hotsea
   }
 
   const actionIds = Object.keys(actions).sort();
-  assert.deepEqual(actionIds.filter((id) => id.startsWith("property.buy.")), [
-    "property.buy.cell-02", "property.buy.cell-05", "property.buy.cell-08", "property.buy.cell-11"
+  assert.deepEqual(actionIds.filter((id) => id.startsWith("property.")).sort(), [
+    "property.auction.bid",
+    "property.auction.pass",
+    "property.buy",
+    "property.decline",
+    "property.rent"
   ]);
   assert.equal(actionIds.some((id) => /(?:event|fund|card|deck)/u.test(id)), false);
 
@@ -69,8 +73,8 @@ test("manifest owns a classified forty-cell original board for two to six hotsea
 test("economy actions bind exact immutable plans to typed participant and object references", () => {
   const manifest = readJson("../../../game.manifest.json") as Record<string, any>;
   const actions = manifest.actions;
-  const buySteps = planSteps(manifest, "property.buy.cell-02");
-  const rentSteps = planSteps(manifest, "property.rent.cell-02");
+  const buySteps = planSteps(manifest, "property.buy");
+  const rentSteps = planSteps(manifest, "property.rent");
   const buyTransfer = buySteps.find((step) => step.op === "core.resource.transfer");
   const rentTransfer = rentSteps.find((step) => step.op === "core.resource.transfer");
   const ownerWrite = buySteps.find((step) => step.op === "core.entity.attributes.patch");
@@ -97,6 +101,7 @@ test("economy actions bind exact immutable plans to typed participant and object
     ))].sort(),
     [
       "core.assert",
+      "core.entities.each",
       "core.entities.order",
       "core.entities.select",
       "core.entity.attributes.patch",
@@ -112,7 +117,7 @@ test("economy actions bind exact immutable plans to typed participant and object
 
   assert.deepEqual(ownerWrite.entity, {
     collection: "boardCells",
-    entityId: { op: "value.param", name: "cellId" }
+    entityId: { op: "value.result", stepId: "landing-cell", path: ["ids", "0"] }
   });
   assert.equal(manifest.mechanics.stateModel.collections.boardCells.fields.ownerPlayerId.valueType, "core.string");
   assert.deepEqual(manifest.mechanics.stateModel.endpoints["participant.metrics.cash"].storage, {
@@ -138,19 +143,19 @@ test("economy actions bind exact immutable plans to typed participant and object
       endpoint: "participant.metrics.cash",
       bindings: {
         participantId: {
-          op: "value.state",
-          ref: { endpoint: "public.objects.boardCells.cell-02.attributes.ownerPlayerId" }
+          op: "value.entity",
+          entity: {
+            collection: "boardCells",
+            entityId: { op: "value.result", stepId: "landing-cell", path: ["ids", "0"] }
+          },
+          field: "ownerPlayerId"
         }
       }
     }
   });
-  assert.deepEqual(
-    manifest.mechanics.stateModel.endpoints["public.objects.boardCells.cell-02.attributes.ownerPlayerId"].storage,
-    {
-      root: "public",
-      segments: ["objects", "boardCells", "cell-02", "attributes", "ownerPlayerId"]
-    }
-  );
+  assert.equal(manifest.mechanics.stateModel.collections.boardCells.fields.price.valueType, "core.integer");
+  assert.equal(manifest.mechanics.stateModel.collections.boardCells.fields.rent.valueType, "core.integer");
+  assert.equal(manifest.mechanics.stateModel.collections.boardCells.fields.rentScale.valueType, "game.rent-scale");
 });
 
 test("turn completion is an explicit typed composition with no legacy shortcuts", () => {
@@ -174,7 +179,7 @@ test("turn completion is an explicit typed composition with no legacy shortcuts"
   assert.equal(participantCollection.itemShape, "record");
   assert.equal(participantCollection.capacity, 6);
   assert.deepEqual(Object.keys(participantCollection.fields).sort(), [
-    "cash", "inJail", "objects", "position", "status"
+    "bidderStatus", "cash", "inJail", "position", "status"
   ]);
   assert.ok(setupSteps.some((step) => step.op === "core.entities.select"));
   assert.ok(setupSteps.some((step) => step.op === "core.entities.order"));

@@ -54,6 +54,17 @@ export interface EstateActionView {
   readonly disabled?: boolean;
 }
 
+export interface EstateAuctionView {
+  /** Public auction state is display-only; an empty id means no active value. */
+  readonly resumePlayerId: string | null;
+  readonly cellId: string | null;
+  readonly currentBid: number;
+  readonly minimumIncrement: number;
+  /** Optional only when the server explicitly publishes this value. */
+  readonly minimumNextBid: number | null;
+  readonly leaderPlayerId: string | null;
+}
+
 export interface EstateBoardProjection {
   readonly cells: readonly EstateCellView[];
   readonly players: readonly EstatePlayerView[];
@@ -62,6 +73,7 @@ export interface EstateBoardProjection {
   readonly phase: string;
   readonly turnNumber: number;
   readonly lastRoll: Readonly<{ values: readonly number[]; total: number; isDouble: boolean }> | null;
+  readonly auction: EstateAuctionView;
 }
 
 type JsonRecord = Record<string, unknown>;
@@ -79,6 +91,9 @@ const finiteNumber = (value: unknown, fallback = 0): number =>
 
 const text = (value: unknown, fallback: string): string =>
   typeof value === "string" && value.trim().length > 0 ? value : fallback;
+
+const optionalText = (value: unknown): string | null =>
+  typeof value === "string" && value.trim().length > 0 ? value : null;
 
 const readCells = (publicState: JsonRecord): EstateCellView[] => {
   const objects = isRecord(publicState.objects) ? publicState.objects : {};
@@ -178,6 +193,22 @@ const readRoll = (board: JsonRecord): EstateBoardProjection["lastRoll"] => {
   return { values, total, isDouble: board.lastRoll.isDouble === true };
 };
 
+const readAuction = (publicState: JsonRecord): EstateAuctionView => {
+  const auction = isRecord(publicState.auction) ? publicState.auction : {};
+  return {
+    resumePlayerId: optionalText(auction.resumePlayerId),
+    cellId: optionalText(auction.cellId),
+    currentBid: finiteNumber(auction.currentBid),
+    minimumIncrement: finiteNumber(auction.minimumIncrement),
+    // Do not derive a minimum from currentBid/minimumIncrement. The runtime
+    // remains the only authority for a next-bid threshold.
+    minimumNextBid: typeof auction.minimumNextBid === "number" && Number.isFinite(auction.minimumNextBid)
+      ? auction.minimumNextBid
+      : null,
+    leaderPlayerId: optionalText(auction.leaderPlayerId)
+  };
+};
+
 /** Convert a player-facing session snapshot to deterministic drawing data. */
 export function projectEstateRaceSession(
   session: { state?: unknown; actionAvailability?: unknown }
@@ -194,6 +225,7 @@ export function projectEstateRaceSession(
     activePlayerId,
     phase: text(turn.phase, "setup"),
     turnNumber: finiteNumber(turn.turnNumber),
-    lastRoll: readRoll(board)
+    lastRoll: readRoll(board),
+    auction: readAuction(publicState)
   };
 }

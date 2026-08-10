@@ -6,8 +6,8 @@
   "_definitions": {},
   "root": {
     "_type": "ui.Manifest",
-    "_label": "Web-интерфейс: Estate Race · S1",
-    "_semantics": "UI завершённого S1: поле отображает подтверждённую сессию, а настройку порядка и действия хода объявляет сервер.",
+    "_label": "Web-интерфейс: Estate Race · S2",
+    "_semantics": "UI S2: поле отображает подтверждённую сессию, публичное состояние аукциона и серверно объявленные действия.",
     "meta": {
       "id": "estate-race.ui.web",
       "version": "0.2.0",
@@ -31,9 +31,9 @@
       {
         "id": "table",
         "_type": "ui.Screen",
-        "_label": "Экран table: Estate Race · S1",
-        "_semantics": "Экран UI-манифеста table: setup, tax, blocked и jail только показывают публичное состояние и объявленные сервером действия.",
-        "title": "Estate Race · S1",
+        "_label": "Экран table: Estate Race · S2",
+        "_semantics": "Экран UI-манифеста table: setup, auction, tax, blocked и jail только показывают публичное состояние и объявленные сервером действия.",
+        "title": "Estate Race · S2",
         "layout_mode": "topbar",
         "root": {
           "_type": "ui.Component",
@@ -57,15 +57,26 @@
               "children": [
                 {
                   "_type": "ui.Component",
-                  "_label": "Estate Race · S1 Ход · активен · этап",
+                  "_label": "Estate Race · S2 Ход · активен · этап",
                   "_semantics": "UI-компонент типа richTextComponent.",
                   "id": "table.title",
                   "type": "richTextComponent",
                   "props": {
-                    "html": "<h1>Estate Race · S1</h1><p>Ход {{game.state.public.turn.turnNumber}} · активен {{game.state.public.turn.activePlayerId}} · этап {{game.state.public.turn.phase}}</p><p>Начальный порядок, налог, blocked-состояние и заключение отображаются из подтверждённой публичной сессии; доступные действия объявляет сервер.</p>"
+                    "html": "<h1>Estate Race · S2</h1><p>Ход {{game.state.public.turn.turnNumber}} · активен {{game.state.public.turn.activePlayerId}} · этап {{game.state.public.turn.phase}}</p><p>Покупка, рента и аукцион отображаются из подтверждённой публичной проекции; доступные действия и их доступность объявляет сервер.</p>"
                   }
                 }
               ]
+            },
+            {
+              "_type": "ui.Component",
+              "_label": "Публичное состояние аукциона",
+              "_semantics": "Показывает только server-owned public.auction: объект, текущую ставку, объявленный шаг, лидера и участника восстановления хода.",
+              "id": "table.auction-status",
+              "type": "richTextComponent",
+              "props": {
+                "cssClass": "board-game-auction",
+                "html": "<h2>Аукцион</h2><p>Объект {{game.state.public.auction.cellId}} · текущая ставка {{game.state.public.auction.currentBid}} · минимальный шаг {{game.state.public.auction.minimumIncrement}}</p><p>Лидер {{game.state.public.auction.leaderPlayerId}} · восстановление хода {{game.state.public.auction.resumePlayerId}}</p>"
+              }
             },
             {
               "_type": "ui.Component",

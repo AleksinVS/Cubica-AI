@@ -32,7 +32,8 @@ const phaseLabel: Readonly<Record<string, string>> = {
   tax: "налог",
   resolve: "эффект клетки",
   blocked: "следующий срез",
-  finish: "завершение"
+  finish: "завершение",
+  auction: "аукцион"
 };
 
 const errorText = (error: unknown) =>
@@ -119,7 +120,9 @@ export const createEstateRaceScene: PhaserSceneFactory = (
         fontSize: "22px"
       }).setOrigin(0.5);
 
-      if (projection.lastRoll) {
+      if (projection.phase === "auction") {
+        this.drawAuctionSummary(projection);
+      } else if (projection.lastRoll) {
         const dice = projection.lastRoll.values.map((value) => `[ ${value} ]`).join("   ");
         this.add.text(680, 485, `${dice}\nсумма ${projection.lastRoll.total}`, {
           color: "#173a34",
@@ -146,8 +149,36 @@ export const createEstateRaceScene: PhaserSceneFactory = (
         }).setOrigin(0.5);
       }
 
-      const action = projection.availableActions.find((item) => !item.disabled);
+      // A bid requires the numeric DOM form. Never dispatch an empty bid from
+      // the canvas; the server remains the authority for the submitted amount.
+      const action = projection.availableActions.find((item) =>
+        !item.disabled && item.actionId !== "property.auction.bid"
+      );
       if (action) this.drawPrimaryAction(action);
+    }
+
+    private drawAuctionSummary(projection: EstateBoardProjection) {
+      const auction = projection.auction;
+      const auctionCell = auction.cellId === null
+        ? null
+        : projection.cells.find((cell) => cell.id === auction.cellId);
+      const minimumNextBid = auction.minimumNextBid === null ? "—" : auction.minimumNextBid;
+      const lines = [
+        `Аукцион · ${auctionCell?.shortLabel ?? auction.cellId ?? "объект не объявлен"}`,
+        `Текущая ставка: ${auction.currentBid}`,
+        `Минимальная следующая ставка: ${minimumNextBid}`,
+        `Минимальный шаг: ${auction.minimumIncrement}`,
+        `Лидер: ${auction.leaderPlayerId ?? "нет"}`,
+        `Ход вернётся: ${auction.resumePlayerId ?? "не объявлено"}`
+      ];
+      this.add.text(680, 485, lines.join("\n"), {
+        color: "#173a34",
+        align: "center",
+        fontFamily: "Arial, sans-serif",
+        fontSize: "21px",
+        lineSpacing: 7,
+        wordWrap: { width: 600 }
+      }).setOrigin(0.5);
     }
 
     private drawPrimaryAction(action: EstateActionView) {
@@ -182,7 +213,12 @@ export const createEstateRaceScene: PhaserSceneFactory = (
               ? 0xc8d4df
               : 0xded7c5;
       graphics.fillStyle(fill, 1);
-      graphics.lineStyle(estate ? 4 : 2, estate ? 0xb56f3c : 0x6f8178, 0.95);
+      const auctionCell = projection.phase === "auction" && projection.auction.cellId === cell.id;
+      graphics.lineStyle(
+        auctionCell ? 6 : estate ? 4 : 2,
+        auctionCell ? 0x245f52 : estate ? 0xb56f3c : 0x6f8178,
+        0.95
+      );
       graphics.fillRoundedRect(cell.x - cell.width / 2, cell.y - cell.height / 2, cell.width, cell.height, 12);
       graphics.strokeRoundedRect(cell.x - cell.width / 2, cell.y - cell.height / 2, cell.width, cell.height, 12);
 

@@ -13,6 +13,25 @@ import type {
 
 import { projectEstateRaceSession } from "./board-state.ts";
 
+export const ESTATE_AUCTION_BID_MAX = Number.MAX_SAFE_INTEGER;
+
+/** Structural input guard only; server rules decide whether a bid is legal. */
+export const isStructurallyValidEstateAuctionBid = (value: unknown): value is number =>
+  typeof value === "number"
+  && Number.isSafeInteger(value)
+  && value >= 0
+  && value <= ESTATE_AUCTION_BID_MAX;
+
+const auctionBidFields = [{
+  name: "amount",
+  label: "Сумма ставки",
+  kind: "number" as const,
+  required: true,
+  min: 0,
+  max: ESTATE_AUCTION_BID_MAX,
+  step: 1
+}];
+
 /** Copy one server-declared action into the public host contribution shape. */
 const toAccessibleAction = (
   action: ReturnType<typeof projectEstateRaceSession>["availableActions"][number]
@@ -21,7 +40,10 @@ const toAccessibleAction = (
   label: action.label,
   actionId: action.actionId,
   ...(action.description === undefined ? {} : { description: action.description }),
-  ...(action.params === undefined ? {} : { params: { ...action.params } }),
+  ...(action.actionId === "property.auction.bid"
+    ? {}
+    : action.params === undefined ? {} : { params: { ...action.params } }),
+  ...(action.actionId === "property.auction.bid" ? { fields: auctionBidFields } : {}),
   ...(action.disabled === undefined ? {} : { disabled: action.disabled })
 });
 
