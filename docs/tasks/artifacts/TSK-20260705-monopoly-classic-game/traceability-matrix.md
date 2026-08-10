@@ -35,9 +35,9 @@
 
 | Правило | Срез | Состояние / Game Intent / план | UI | Проверка | Статус |
 |---|---|---|---|---|---|
-| Две скрытые колоды дают оригинальный эффект, discard и повторное перемешивание | S3 | deck/discard state; `deck.draw/resolve`; bounded deck plan | карточка и журнал эффекта | replay recorded randomness, exhaustion и reshuffle | запланировано |
-| Удерживаемая карта выхода извлекается и возвращается в колоду | S3 | `held` card; `deck.extract/return`; accepted deck operations | панель удерживаемой карты | три цикла draw/hold/return, закрытый порядок игроку и ИИ | запланировано |
-| Тюрьма имеет оплату, дубль и предел попыток выхода | S3 | jail phase/attempts; `jail.pay`, `turn.roll`, `turn.next`; jail chain | состояние тюрьмы и доступные способы выхода | все три ветви и правильная terminal phase | запланировано |
+| Две скрытые колоды дают оригинальный эффект, discard и повторное перемешивание | S3 (GSR-042) | deck/discard state; `deck.draw/resolve`; bounded deck plan | карточка и журнал эффекта | replay recorded randomness, exhaustion и reshuffle | заблокировано: actor-private leaf decision |
+| Удерживаемая карта выхода извлекается и возвращается в колоду | S3 (GSR-042) | `held` card; `deck.extract/return`; accepted deck operations | панель удерживаемой карты | три цикла draw/hold/return, закрытый порядок игроку и ИИ | заблокировано: actor-private leaf decision |
+| Тюрьма имеет оплату, дубль и предел попыток выхода | S3 (GSR-042) | jail phase/attempts; `jail.pay`, `jail.roll`, `turn.next`; jail chain | состояние тюрьмы и доступные способы выхода | все три ветви и правильная terminal phase | заблокировано: actor-private leaf decision |
 | Строительство/продажа равномерны и ограничены запасом банка 32/12 | S4 | improvement inventory, group/building metrics; `property.build/sell`; bounded inventory plan | панель застройки и доступные действия | дефицит, равномерность, атомарный отказ, 32/12 fixture | запланировано |
 | Отель заменяет четыре дома, обратный разбор и продажа используют согласованную долю | S4 | building level/inventory; `property.build/sell`; transition plan | ступень ренты и подтверждение продажи | все уровни туда/обратно и точные суммы | запланировано |
 | Залог запрещён улучшенной группе; заложенный объект исключается из ренты | S4 | mortgage state; `property.mortgage/redeem`, `property.pay-rent`; invariant plan | панель залога/выкупа | positive/negative mortgage fixtures и рента | запланировано |

@@ -215,7 +215,8 @@ npx playwright test apps/player-web/e2e/estate-race.spec.ts --project=chromium
 | Целевой browser flow S1 | done | Обычная браузерная сессия нажимает setup через DOM без `playerId`, принимает серверную перестановку и затем выполняет production-random бросок независимо от победителя жребия. |
 | S1 | done | Технический срез завершён GSR-040; P-01 остаётся отдельным воротом финального содержания и каталога. |
 | GSR-041: аукцион и рента без застройки | done | Все 28 покупаемых объектов используют game-owned автомат торгов и серверные формулы ренты; production browser flow и replay S2 приняты без изменения платформы. |
-| Полная классическая партия | in_progress | S2 завершён; следующий milestone — S3: колоды и полный цикл тюрьмы. |
+| GSR-042: скрытые колоды и полный цикл тюрьмы | blocked | Требуется решение PM по узкому actor-private листу внутри публичной `state.players` record-map; финальное содержание отдельно остаётся за P-01. |
+| Полная классическая партия | in_progress | S3 остановлен на границе приватности; после решения и GSR-042 следующий milestone — S4: дома, отели, залог и дефицит банка. |
 
 ## Artifacts
 
@@ -225,6 +226,7 @@ npx playwright test apps/player-web/e2e/estate-race.spec.ts --project=chromium
 - `docs/architecture/gameplay-slices/039-estate-race-landing-dispatcher.md` — серверный выбор клетки, налоги, тюремные углы и явная граница ещё не активированных типов.
 - `docs/architecture/gameplay-slices/040-estate-race-random-initial-order.md` — одноразовый серверный жребий точных участников и завершение S1.
 - `docs/architecture/gameplay-slices/041-estate-race-auction-and-rent.md` — завершённая граница S2: последовательный аукцион и полная рента без застройки.
+- `docs/architecture/gameplay-slices/042-estate-race-decks-and-jail.md` — заблокированная граница S3: скрытые колоды, удерживаемая карта и полный цикл тюрьмы.
 - `docs/tasks/artifacts/TSK-20260705-monopoly-classic-game/product-specification.md` — продуктовый сценарий и интерфейс.
 - `docs/tasks/artifacts/TSK-20260705-monopoly-classic-game/rules-and-rights-provenance.md` — источники и границы прав.
 - `docs/tasks/artifacts/TSK-20260705-monopoly-classic-game/traceability-matrix.md` — связь требований с реализацией и тестами.
@@ -359,3 +361,18 @@ npx playwright test apps/player-web/e2e/estate-race.spec.ts --project=chromium
   победителем не `p1` и удаление прежних пообъектных событий. Production E2E
   прошёл 1/1 на настоящем серверном броске. Следующий milestone — S3; P-01
   остаётся отдельным продуктовым воротом.
+- 2026-08-10: активирован GSR-042. Sol high архитектурный проход подтвердил,
+  что две скрытые колоды, динамический dispatcher по типу эффекта,
+  draw/discard/reshuffle, удерживаемая карта и все три выхода из тюрьмы
+  выражаются действующими deck/state/select/transfer/random операциями. Новая
+  общая операция или ADR не нужны. P-01 не мешает механической реализации на
+  оригинальных технических данных, но продолжает блокировать окончательные
+  тексты, числа, ресурсы и публичную продуктовую приёмку S3.
+- 2026-08-10: минимальный compiler proof GSR-042 остановлен на
+  `MECHANICS_STORAGE_AUDIENCE_OVERLAP`: actor-private ID удерживаемой карты
+  нельзя объявить под whole-root публичной `state.players` record-map. Sol high
+  security review подтвердил, что checker-only исключение недостаточно:
+  закрытая record-map runtime-валидация также должна отдельно исключать и
+  типизировать приватный лист. Это меняет trust-boundary ADR-084 и исполняемый
+  корпус, поэтому требует решения PM; публичное поле, теневая server-копия и
+  game-specific обход отвергнуты.
