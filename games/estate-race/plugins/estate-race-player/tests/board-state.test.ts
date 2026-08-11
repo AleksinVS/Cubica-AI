@@ -144,6 +144,64 @@ test("keeps a server-declared next-bid value display-only when present", () => {
   assert.equal(projection.auction.minimumNextBid, 75);
 });
 
+test("projects S4 buildings, bank, window, auction and public request slots", () => {
+  const projection = projectEstateRaceSession({
+    state: {
+      public: {
+        bankBuildings: { housesAvailable: 30, hotelsAvailable: 11 },
+        buildingWindow: { resumePlayerId: "p2", unitKind: "house" },
+        buildingAuction: { currentBid: 75, minimumIncrement: 10, leaderPlayerId: "p1" },
+        objects: { boardCells: {
+          "cell-01": { attributes: {
+            index: 1, kind: "estate", label: "A", improvementTier: 5, mortgaged: true
+          } }
+        } }
+      },
+      players: {
+        p1: { objects: { bidderStatus: "leading", buildingRequestCellId: "cell-01", buildingRequestUnitKind: "hotel" } },
+        p2: { objects: { bidderStatus: "passed" } }
+      },
+      secret: { players: { p1: { buildingRequestCellId: "secret-cell" } } }
+    }
+  });
+
+  assert.deepEqual(projection.bankBuildings, { housesAvailable: 30, hotelsAvailable: 11 });
+  assert.deepEqual(projection.buildingWindow, { resumePlayerId: "p2", unitKind: "house" });
+  assert.deepEqual(projection.buildingAuction, {
+    resumePlayerId: null,
+    cellId: null,
+    currentBid: 75,
+    minimumIncrement: 10,
+    minimumNextBid: null,
+    leaderPlayerId: "p1"
+  });
+  assert.equal(projection.cells[0]?.improvementTier, 5);
+  assert.equal(projection.cells[0]?.mortgaged, true);
+  assert.equal(projection.players[0]?.bidderStatus, "leading");
+  assert.equal(projection.players[0]?.buildingRequestCellId, "cell-01");
+  assert.equal(projection.players[1]?.buildingRequestCellId, null);
+  assert.equal("secret" in projection, false);
+});
+
+test("fails closed for malformed S4 projection values", () => {
+  const projection = projectEstateRaceSession({
+    state: {
+      public: {
+        bankBuildings: { housesAvailable: "32", hotelsAvailable: -1 },
+        buildingWindow: { resumePlayerId: 7, unitKind: {} },
+        buildingAuction: { currentBid: Infinity, minimumIncrement: "10", leaderPlayerId: [] },
+        objects: { boardCells: { bad: { attributes: { index: 0, improvementTier: 9, mortgaged: "yes" } } } }
+      }
+    }
+  });
+
+  assert.deepEqual(projection.bankBuildings, { housesAvailable: 0, hotelsAvailable: 0 });
+  assert.deepEqual(projection.buildingWindow, { resumePlayerId: null, unitKind: null });
+  assert.equal(projection.buildingAuction.currentBid, 0);
+  assert.equal(projection.cells[0]?.improvementTier, 0);
+  assert.equal(projection.cells[0]?.mortgaged, false);
+});
+
 test("presents setup as the server-declared first action without client parameters", () => {
   const actions = provideEstateRaceAccessibleBoardActions({
     state: {
@@ -281,6 +339,120 @@ test("keeps an unavailable auction bid disabled while exposing only the amount f
     max: Number.MAX_SAFE_INTEGER,
     step: 1
   }]);
+});
+
+test("projects S4 building window, request and shortage-bid forms without forwarding params", () => {
+  const actions = provideEstateRaceAccessibleBoardActions({
+    actionAvailability: [{
+      actionId: "property.build.auction.bid",
+      status: "available"
+    }],
+    state: {
+      public: {
+        turn: { activePlayerId: "p2", phase: "buildingWindow" },
+        board: {
+          availableActions: [
+            {
+              id: "building-open",
+              label: "Открыть окно застройки",
+              actionId: "property.build",
+              params: { unitKind: "hotel" }
+            },
+            {
+              id: "building-request",
+              label: "Подать заявку",
+              actionId: "property.build.request",
+              params: { cellId: "server-must-not-bypass-form" }
+            },
+            {
+              id: "building-bid",
+              label: "Сделать ставку",
+              actionId: "property.build.auction.bid",
+              params: { amount: 999 }
+            },
+            {
+              id: "building-pass",
+              label: "Пас",
+              actionId: "property.build.auction.pass"
+            },
+            {
+              id: "building-sell",
+              label: "Продать строение",
+              actionId: "property.sell",
+              params: { cellId: "server-must-not-bypass-form" }
+            },
+            {
+              id: "building-mortgage",
+              label: "Заложить объект",
+              actionId: "property.mortgage"
+            },
+            {
+              id: "building-redeem",
+              label: "Выкупить объект",
+              actionId: "property.redeem"
+            }
+          ]
+        }
+      }
+    }
+  } as unknown as Parameters<typeof provideEstateRaceAccessibleBoardActions>[0]);
+
+  assert.deepEqual(actions.map(({ actionId }) => actionId), [
+    "property.build",
+    "property.build.request",
+    "property.build.auction.bid",
+    "property.build.auction.pass",
+    "property.sell",
+    "property.mortgage",
+    "property.redeem"
+  ]);
+  assert.deepEqual(actions[0]?.params, undefined);
+  assert.deepEqual(actions[0]?.fields, [{
+    name: "unitKind",
+    label: "Тип строения",
+    kind: "select",
+    required: true,
+    options: [
+      { value: "house", label: "Дом" },
+      { value: "hotel", label: "Отель" }
+    ]
+  }]);
+  assert.deepEqual(actions[1]?.params, undefined);
+  assert.deepEqual(actions[1]?.fields, [{
+    name: "cellId",
+    label: "Идентификатор участка",
+    kind: "text",
+    required: true,
+    minLength: 1,
+    maxLength: 128
+  }]);
+  assert.deepEqual(actions[2]?.params, undefined);
+  assert.deepEqual(actions[2]?.fields, [{
+    name: "amount",
+    label: "Сумма ставки",
+    kind: "number",
+    required: true,
+    min: 0,
+    max: Number.MAX_SAFE_INTEGER,
+    step: 1
+  }]);
+  assert.deepEqual(actions[3], {
+    id: "building-pass",
+    label: "Пас",
+    actionId: "property.build.auction.pass",
+    disabled: false
+  });
+  for (const action of actions.slice(4)) {
+    assert.deepEqual(action.params, undefined);
+    assert.deepEqual(action.fields, [{
+      name: "cellId",
+      label: "Идентификатор участка",
+      kind: "text",
+      required: true,
+      minLength: 1,
+      maxLength: 128
+    }]);
+  }
 });
 
 test("validates only the bid JSON-schema boundary in the client", () => {

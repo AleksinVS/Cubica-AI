@@ -78,16 +78,45 @@ const auctionBidFields = [{
         max: exports.ESTATE_AUCTION_BID_MAX,
         step: 1
     }];
+const buildingUnitKindFields = [{
+        name: "unitKind",
+        label: "Тип строения",
+        kind: "select",
+        required: true,
+        options: [
+            { value: "house", label: "Дом" },
+            { value: "hotel", label: "Отель" }
+        ]
+    }];
+const buildingRequestFields = [{
+        name: "cellId",
+        label: "Идентификатор участка",
+        kind: "text",
+        required: true,
+        minLength: 1,
+        maxLength: 128
+    }];
+const parameterFormFields = {
+    "property.auction.bid": auctionBidFields,
+    "property.build": buildingUnitKindFields,
+    "property.build.request": buildingRequestFields,
+    "property.build.auction.bid": auctionBidFields,
+    "property.sell": buildingRequestFields,
+    "property.mortgage": buildingRequestFields,
+    "property.redeem": buildingRequestFields
+};
 /** Copy one server-declared action into the public host contribution shape. */
 const toAccessibleAction = (action) => ({
     id: action.id,
     label: action.label,
     actionId: action.actionId,
     ...(action.description === undefined ? {} : { description: action.description }),
-    ...(action.actionId === "property.auction.bid"
+    ...(parameterFormFields[action.actionId] === undefined && action.params !== undefined
+        ? { params: { ...action.params } }
+        : {}),
+    ...(parameterFormFields[action.actionId] === undefined
         ? {}
-        : action.params === undefined ? {} : { params: { ...action.params } }),
-    ...(action.actionId === "property.auction.bid" ? { fields: auctionBidFields } : {}),
+        : { fields: parameterFormFields[action.actionId] }),
     ...(action.disabled === undefined ? {} : { disabled: action.disabled })
 });
 /**
@@ -115,6 +144,8 @@ const isRecord = (value) => value !== null && typeof value === "object" && !Arra
 const finiteNumber = (value, fallback = 0) => typeof value === "number" && Number.isFinite(value) ? value : fallback;
 const text = (value, fallback) => typeof value === "string" && value.trim().length > 0 ? value : fallback;
 const optionalText = (value) => typeof value === "string" && value.trim().length > 0 ? value : null;
+const improvementTier = (value) => typeof value === "number" && Number.isSafeInteger(value) && value >= 0 && value <= 5 ? value : 0;
+const bankCount = (value, maximum) => typeof value === "number" && Number.isSafeInteger(value) && value >= 0 && value <= maximum ? value : 0;
 const readCells = (publicState) => {
     const objects = isRecord(publicState.objects) ? publicState.objects : {};
     const cells = isRecord(objects.boardCells) ? objects.boardCells : {};
@@ -144,6 +175,8 @@ const readCells = (publicState) => {
                 rentScale: Array.isArray(attributes.rentScale)
                     ? attributes.rentScale.filter((value) => typeof value === "number" && Number.isFinite(value))
                     : [],
+                improvementTier: improvementTier(attributes.improvementTier),
+                mortgaged: attributes.mortgaged === true,
                 taxAmount: typeof attributes.taxAmount === "number" ? attributes.taxAmount : null,
                 ownerPlayerId: typeof attributes.ownerPlayerId === "string" ? attributes.ownerPlayerId : null
             }];
@@ -156,6 +189,7 @@ const readPlayers = (state, activePlayerId) => {
             return [];
         const metrics = isRecord(raw.metrics) ? raw.metrics : {};
         const objects = isRecord(raw.objects) ? raw.objects : {};
+        const flags = isRecord(raw.flags) ? raw.flags : {};
         return [{
                 id,
                 label: `Игрок ${index + 1}`,
@@ -164,7 +198,10 @@ const readPlayers = (state, activePlayerId) => {
                 active: id === activePlayerId,
                 inJail: isRecord(raw.flags) && raw.flags.inJail === true,
                 jailAttempts: finiteNumber(metrics.jailAttempts),
-                heldExitCardId: optionalText(objects.heldExitCardId)
+                heldExitCardId: optionalText(objects.heldExitCardId),
+                bidderStatus: optionalText(objects.bidderStatus) ?? optionalText(flags.bidderStatus),
+                buildingRequestCellId: optionalText(objects.buildingRequestCellId),
+                buildingRequestUnitKind: optionalText(objects.buildingRequestUnitKind)
             }];
     });
 };
@@ -228,6 +265,20 @@ const readAuction = (publicState) => {
         leaderPlayerId: optionalText(auction.leaderPlayerId)
     };
 };
+const readBuildingBank = (publicState) => {
+    const bank = isRecord(publicState.bankBuildings) ? publicState.bankBuildings : {};
+    return {
+        housesAvailable: bankCount(bank.housesAvailable, 32),
+        hotelsAvailable: bankCount(bank.hotelsAvailable, 12)
+    };
+};
+const readBuildingWindow = (publicState) => {
+    const window = isRecord(publicState.buildingWindow) ? publicState.buildingWindow : {};
+    return {
+        resumePlayerId: optionalText(window.resumePlayerId),
+        unitKind: optionalText(window.unitKind)
+    };
+};
 /**
  * Build the shortest display-only route between two confirmed positions.
  * Snapshots do not carry movement direction, so choosing the shorter arc
@@ -263,7 +314,20 @@ function projectEstateRaceSession(session) {
         turnNumber: finiteNumber(turn.turnNumber),
         lastRoll: readRoll(board),
         lastCardId: optionalText(board.lastCardId),
-        auction: readAuction(publicState)
+        auction: readAuction(publicState),
+        bankBuildings: readBuildingBank(publicState),
+        buildingWindow: readBuildingWindow(publicState),
+        buildingAuction: (() => {
+            const auction = isRecord(publicState.buildingAuction) ? publicState.buildingAuction : {};
+            return {
+                resumePlayerId: null,
+                cellId: null,
+                currentBid: finiteNumber(auction.currentBid),
+                minimumIncrement: finiteNumber(auction.minimumIncrement),
+                minimumNextBid: null,
+                leaderPlayerId: optionalText(auction.leaderPlayerId)
+            };
+        })()
     };
 }
 
@@ -294,6 +358,8 @@ const phaseLabel = {
     blocked: "следующий срез",
     finish: "завершение",
     auction: "аукцион",
+    buildingWindow: "окно заявок",
+    buildingAuction: "аукцион строений",
     jail: "тюрьма"
 };
 const errorText = (error) => error instanceof Error ? error.message : "Действие отклонено сервером";
@@ -301,6 +367,12 @@ const tokenPosition = (cell, playerIndex) => ({
     x: cell.x - 32 + (playerIndex % 3) * 32,
     y: cell.y + cell.height / 2 - 18 - Math.floor(playerIndex / 3) * 28
 });
+// These commands require a DOM form to collect declared parameters. The
+// canvas must not guess a cell or unit kind and must never submit an empty
+// request that the server would reject.
+const canvasCanDispatch = (action) => action.actionId !== "property.build.request"
+    && action.actionId !== "property.auction.bid"
+    && action.actionId !== "property.build.auction.bid";
 /** Build a scene solely from platform-injected Phaser. */
 const createEstateRaceScene = (context) => {
     const Phaser = context.Phaser;
@@ -368,7 +440,18 @@ const createEstateRaceScene = (context) => {
                 fontFamily: "Arial, sans-serif",
                 fontSize: "22px"
             }).setOrigin(0.5);
-            if (projection.phase === "auction") {
+            this.add.text(680, 455, `Банк строений · дома ${projection.bankBuildings.housesAvailable}/32 · отели ${projection.bankBuildings.hotelsAvailable}/12`, {
+                color: "#495c55",
+                fontFamily: "Arial, sans-serif",
+                fontSize: "17px"
+            }).setOrigin(0.5);
+            if (projection.phase === "buildingWindow") {
+                this.drawBuildingWindowSummary(projection);
+            }
+            else if (projection.phase === "buildingAuction") {
+                this.drawBuildingAuctionSummary(projection);
+            }
+            else if (projection.phase === "auction") {
                 this.drawAuctionSummary(projection);
             }
             else if (projection.lastRoll) {
@@ -402,7 +485,7 @@ const createEstateRaceScene = (context) => {
             }
             // A bid requires the numeric DOM form. Never dispatch an empty bid from
             // the canvas; the server remains the authority for the submitted amount.
-            const action = projection.availableActions.find((item) => !item.disabled && item.actionId !== "property.auction.bid");
+            const action = projection.availableActions.find((item) => !item.disabled && canvasCanDispatch(item));
             if (action)
                 this.drawPrimaryAction(action);
         }
@@ -427,6 +510,34 @@ const createEstateRaceScene = (context) => {
                 fontSize: "21px",
                 lineSpacing: 7,
                 wordWrap: { width: 600 }
+            }).setOrigin(0.5);
+        }
+        drawBuildingWindowSummary(projection) {
+            const window = projection.buildingWindow;
+            this.add.text(680, 505, [
+                `Окно заявок · ${window.unitKind ?? "тип не объявлен"}`,
+                `Продолжит ход: ${window.resumePlayerId ?? "не объявлено"}`
+            ].join("\n"), {
+                color: "#173a34",
+                align: "center",
+                fontFamily: "Arial, sans-serif",
+                fontSize: "21px",
+                lineSpacing: 7
+            }).setOrigin(0.5);
+        }
+        drawBuildingAuctionSummary(projection) {
+            const auction = projection.buildingAuction;
+            this.add.text(680, 505, [
+                "Аукцион строений",
+                `Текущая ставка: ${auction.currentBid}`,
+                `Минимальный шаг: ${auction.minimumIncrement}`,
+                `Лидер: ${auction.leaderPlayerId ?? "нет"}`
+            ].join("\n"), {
+                color: "#173a34",
+                align: "center",
+                fontFamily: "Arial, sans-serif",
+                fontSize: "21px",
+                lineSpacing: 7
             }).setOrigin(0.5);
         }
         drawCardAndJailSummary(projection) {
@@ -498,6 +609,27 @@ const createEstateRaceScene = (context) => {
                 fontFamily: "Arial, sans-serif",
                 fontSize: "10px"
             }).setOrigin(0.5);
+            if (estate && cell.improvementTier > 0) {
+                const marker = cell.improvementTier === 5
+                    ? "★ ОТЕЛЬ"
+                    : `${"■".repeat(cell.improvementTier)} ДОМА`;
+                this.add.text(cell.x, cell.y + 42, marker, {
+                    color: cell.improvementTier === 5 ? "#8d3d36" : "#245f52",
+                    fontFamily: "Arial, sans-serif",
+                    fontSize: "11px",
+                    fontStyle: "bold"
+                }).setOrigin(0.5);
+            }
+            if (cell.mortgaged) {
+                this.add.text(cell.x, cell.y - cell.height / 2 + 12, "ЗАЛОЖЕНО", {
+                    color: "#8d3d36",
+                    backgroundColor: "#fff1e4",
+                    fontFamily: "Arial, sans-serif",
+                    fontSize: "10px",
+                    fontStyle: "bold",
+                    padding: { x: 5, y: 3 }
+                }).setOrigin(0.5);
+            }
             if (cell.ownerPlayerId) {
                 const ownerIndex = projection.players.findIndex((player) => player.id === cell.ownerPlayerId);
                 const ribbon = this.add.rectangle(cell.x, cell.y + cell.height / 2 - 12, cell.width - 22, 18, PLAYER_COLORS[Math.max(0, ownerIndex)] ?? PLAYER_COLORS[0], 1);
@@ -508,7 +640,7 @@ const createEstateRaceScene = (context) => {
                 }
             }
             const cellAction = projection.availableActions.find((action) => action.params?.cellId === cell.id);
-            if (cellAction && !cellAction.disabled) {
+            if (cellAction && !cellAction.disabled && canvasCanDispatch(cellAction)) {
                 const hit = this.add.zone(cell.x, cell.y, cell.width, cell.height)
                     .setInteractive({ useHandCursor: true });
                 hit.on("pointerdown", () => this.dispatchAction(cellAction));

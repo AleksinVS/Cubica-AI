@@ -30,7 +30,7 @@ const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "
 const require = createRequire(import.meta.url);
 const { compileAuthoringText } = require("../../../scripts/manifest-tools/authoring-compiler.cjs");
 const testCredentialSha256 = "b".repeat(64);
-const setupDeckSamples = Array(9).fill(0);
+const setupDeckSamples = Array(10).fill(0);
 // This package proof covers gameplay semantics. Admission limits are a
 // platform boundary with their own focused HTTP/controller regression suite.
 const testAdmissionController = {
@@ -153,6 +153,689 @@ const assertRejectedAction = async (dispatch, messagePattern) => {
     messagePattern
   );
 };
+
+const s4Property = (state, cellId) => state.public.objects.boardCells[cellId];
+const s4GroupIds = (state, cellId) => {
+  const group = s4Property(state, cellId).attributes.group;
+  return Object.values(state.public.objects.boardCells)
+    .filter((cell) => cell.attributes.kind === "estate" && cell.attributes.group === group)
+    .map((cell) => cell.attributes.id);
+};
+const s4SetOwner = (state, cellIds, ownerPlayerId) => {
+  for (const cellId of cellIds) s4Property(state, cellId).attributes.ownerPlayerId = ownerPlayerId;
+};
+const s4SetTier = (state, cellId, improvementTier) => {
+  s4Property(state, cellId).attributes.improvementTier = improvementTier;
+};
+const s4Bank = (state) => state.public.bankBuildings;
+const s4BuildingCounts = (state, ownerPlayerId) => Object.values(state.public.objects.boardCells)
+  .filter((cell) => cell.attributes.kind === "estate")
+  .filter((cell) => ownerPlayerId === undefined || cell.attributes.ownerPlayerId === ownerPlayerId)
+  .reduce((counts, cell) => {
+    const tier = cell.attributes.improvementTier ?? 0;
+    if (tier === 5) counts.hotels += 1;
+    else counts.houses += tier;
+    return counts;
+  }, { houses: 0, hotels: 0 });
+const s4Conservation = (state) => {
+  const deployed = s4BuildingCounts(state);
+  assert.equal(s4Bank(state).housesAvailable + deployed.houses, 32);
+  assert.equal(s4Bank(state).hotelsAvailable + deployed.hotels, 12);
+};
+const s4ReconcileInventory = (state) => {
+  const deployed = s4BuildingCounts(state);
+  assert.ok(deployed.houses <= 32, "fixture cannot deploy more than 32 houses");
+  assert.ok(deployed.hotels <= 12, "fixture cannot deploy more than 12 hotels");
+  s4Bank(state).housesAvailable = 32 - deployed.houses;
+  s4Bank(state).hotelsAvailable = 12 - deployed.hotels;
+  s4Conservation(state);
+};
+const s4SetOwnedGroupTier = (state, cellId, ownerPlayerId, improvementTier) => {
+  const groupIds = s4GroupIds(state, cellId);
+  s4SetOwner(state, groupIds, ownerPlayerId);
+  for (const id of groupIds) s4SetTier(state, id, improvementTier);
+  return groupIds;
+};
+const s4ConfigureHouseStock = (state, housesAvailable, requests) => {
+  const estateCells = Object.values(state.public.objects.boardCells)
+    .filter((cell) => cell.attributes.kind === "estate");
+  const groups = [...new Set(estateCells.map((cell) => cell.attributes.group))]
+    .map((group) => estateCells.filter((cell) => cell.attributes.group === group));
+  const requestByGroup = new Map(requests.map(({ cellId, playerId }) => [
+    s4Property(state, cellId).attributes.group,
+    { cellId, playerId }
+  ]));
+
+  for (const groupCells of groups) {
+    const request = requestByGroup.get(groupCells[0].attributes.group);
+    const ownerPlayerId = request?.playerId ?? "p1";
+    for (const cell of groupCells) {
+      cell.attributes.ownerPlayerId = ownerPlayerId;
+      cell.attributes.improvementTier = 0;
+    }
+    if (request) {
+      assert.equal(groupCells[0].attributes.id, request.cellId, "request target must remain the minimum-tier cell");
+      state.players[ownerPlayerId].metrics.cash = 10_000;
+    }
+  }
+
+  let housesToDeploy = 32 - housesAvailable;
+  for (const groupCells of groups) {
+    if (housesToDeploy === 0) break;
+    const hasRequest = requestByGroup.has(groupCells[0].attributes.group);
+    const capacity = groupCells.length * 4 - (hasRequest ? 1 : 0);
+    const deployed = Math.min(housesToDeploy, capacity);
+    const baseTier = Math.floor(deployed / groupCells.length);
+    const raisedCells = deployed % groupCells.length;
+    for (const [index, cell] of groupCells.entries()) {
+      cell.attributes.improvementTier = baseTier + (index >= groupCells.length - raisedCells ? 1 : 0);
+    }
+    housesToDeploy -= deployed;
+  }
+  assert.equal(housesToDeploy, 0, "fixture must deploy the exact physical house stock");
+  s4ReconcileInventory(state);
+  assert.equal(s4Bank(state).housesAvailable, housesAvailable);
+};
+const s4PrepareOwnedGroup = (state, { cellId = "cell-01", owner = "p1", tier = 0 } = {}) => {
+  const groupIds = s4SetOwnedGroupTier(state, cellId, owner, tier);
+  state.players[owner].metrics.cash = 10_000;
+  state.public.turn.phase = "finish";
+  state.public.turn.activePlayerId = owner;
+  state.public.board.availableActions = [];
+  s4ReconcileInventory(state);
+  return groupIds;
+};
+const s4Snapshot = async (replay) => structuredClone(
+  await replay.store.getSession(replay.session.sessionId)
+);
+const s4AssertUnchanged = async (replay, before) => {
+  const after = await replay.store.getSession(replay.session.sessionId);
+  assert.deepEqual(after.state, before.state);
+  assert.equal(after.version.stateVersion, before.version.stateVersion);
+};
+
+/** Complete a non-shortage request window while retaining exact actor order. */
+const s4PassRemainingWindow = async (replay) => {
+  for (let guard = 0; guard < 12; guard += 1) {
+    const current = await replay.store.getSession(replay.session.sessionId);
+    if (current.state.public.turn.phase !== "buildingWindow") return current;
+    await act(replay, "property.build.pass");
+  }
+  assert.fail("buildingWindow did not terminate within the participant bound");
+};
+
+const s4PassBuildingAuction = async (replay) => {
+  for (let guard = 0; guard < 24; guard += 1) {
+    const current = await replay.store.getSession(replay.session.sessionId);
+    if (current.state.public.turn.phase !== "buildingAuction") return current;
+    await act(replay, "property.build.auction.pass");
+  }
+  assert.fail("buildingAuction did not terminate within the lot and participant bound");
+};
+
+test("S4 manifest declares the building state, exact request slot, and mutation catalog", async () => {
+  const manifest = await loadManifest();
+  assert.deepEqual(
+    Object.keys(manifest.actions).filter((id) => id.startsWith("property.")),
+    [
+      "property.buy",
+      "property.decline",
+      "property.rent",
+      "property.auction.bid",
+      "property.auction.pass",
+      "property.build",
+      "property.build.request",
+      "property.build.pass",
+      "property.build.auction.bid",
+      "property.build.auction.pass",
+      "property.sell",
+      "property.mortgage",
+      "property.redeem"
+    ]
+  );
+  assert.deepEqual(manifest.state.public.bankBuildings, {
+    housesAvailable: 32,
+    hotelsAvailable: 12
+  });
+  assert.deepEqual(manifest.state.public.buildingWindow, {
+    resumePlayerId: "",
+    unitKind: ""
+  });
+  assert.deepEqual(manifest.state.public.buildingAuction, {
+    currentBid: 0,
+    minimumIncrement: 10,
+    leaderPlayerId: ""
+  });
+  assert.equal(manifest.state.playersTemplate.objects.buildingRequestCellId, "");
+  assert.equal(manifest.state.playersTemplate.objects.buildingRequestUnitKind, "");
+  const estateCells = Object.values(manifest.state.public.objects.boardCells)
+    .filter((cell) => cell.attributes.kind === "estate");
+  assert.ok(estateCells.length > 0);
+  assert.ok(estateCells.every((cell) => Array.isArray(cell.attributes.rentScale)));
+  assert.ok(estateCells.every((cell) => cell.attributes.improvementTier === 0));
+});
+
+test("S4 builds and sells every tier with exact 32/12 conservation, including 4↔5", async () => {
+  const cellId = "cell-01";
+  for (const improvementTier of [1, 2, 3, 4, 5]) {
+    const previousTier = improvementTier - 1;
+    const replay = await createPhaseReplay((state) => {
+      s4PrepareOwnedGroup(state, { cellId, tier: previousTier });
+    }, { phase: "finish" });
+    const before = await s4Snapshot(replay);
+    const unitKind = improvementTier === 5 ? "hotel" : "house";
+    const opened = await act(replay, "property.build", { unitKind });
+    assert.equal(opened.result.ok, true, JSON.stringify(opened.result));
+    await s4PassRemainingWindow(replay);
+    let current = await replay.store.getSession(replay.session.sessionId);
+    assert.equal(s4Property(current.state, cellId).attributes.improvementTier, improvementTier);
+    assert.equal(
+      s4Property(current.state, cellId).attributes.rent,
+      s4Property(current.state, cellId).attributes.rentScale[improvementTier]
+    );
+    s4Conservation(current.state);
+    assert.equal(
+      current.state.players.p1.metrics.cash,
+      before.state.players.p1.metrics.cash - s4Property(before.state, cellId).attributes.buildCost
+    );
+
+    const sold = await act(replay, "property.sell", { cellId });
+    assert.equal(sold.result.ok, true, JSON.stringify(sold.result));
+    current = await replay.store.getSession(replay.session.sessionId);
+    assert.equal(s4Property(current.state, cellId).attributes.improvementTier, previousTier);
+    assert.equal(
+      s4Property(current.state, cellId).attributes.rent,
+      s4Property(current.state, cellId).attributes.rentScale[previousTier]
+    );
+    s4Conservation(current.state);
+    assert.equal(
+      current.state.players.p1.metrics.cash,
+      before.state.players.p1.metrics.cash
+        - s4Property(before.state, cellId).attributes.buildCost
+        + s4Property(before.state, cellId).attributes.sellValue
+    );
+  }
+});
+
+test("S4 build/sell success and every atomic rejection preserve state and inventory", async () => {
+  const positive = await createPhaseReplay((state) => s4PrepareOwnedGroup(state), {
+    phase: "finish"
+  });
+  const firstBuild = await act(positive, "property.build", { unitKind: "house" });
+  assert.equal(firstBuild.result.ok, true, JSON.stringify(firstBuild.result));
+  await s4PassRemainingWindow(positive);
+  let current = await positive.store.getSession(positive.session.sessionId);
+  assert.equal(s4Property(current.state, "cell-01").attributes.improvementTier, 1);
+  const positiveSell = await act(positive, "property.sell", { cellId: "cell-01" });
+  assert.equal(positiveSell.result.ok, true, JSON.stringify(positiveSell.result));
+  current = await positive.store.getSession(positive.session.sessionId);
+  assert.equal(s4Property(current.state, "cell-01").attributes.improvementTier, 0);
+  s4Conservation(current.state);
+
+  const cases = [
+    {
+      name: "not-full-group",
+      mutate: (state) => {
+        s4SetOwner(state, ["cell-01"], "p1");
+        state.players.p1.metrics.cash = 10_000;
+        state.public.turn.phase = "finish";
+        state.public.turn.activePlayerId = "p1";
+      },
+      action: "property.build",
+      params: { unitKind: "house" },
+      error: /ACTION_PRECONDITION_FAILED/
+    },
+    {
+      name: "uneven-group",
+      mutate: (state) => {
+        s4PrepareOwnedGroup(state);
+        s4SetTier(state, "cell-01", 1);
+        s4ReconcileInventory(state);
+      },
+      action: "property.build",
+      params: { unitKind: "house" },
+      error: /ACTION_PRECONDITION_FAILED/
+    },
+    {
+      name: "insufficient-cash",
+      mutate: (state) => {
+        s4PrepareOwnedGroup(state);
+        state.players.p1.metrics.cash = 0;
+      },
+      action: "property.build",
+      params: { unitKind: "house" },
+      error: /MECHANICS_RESOURCE_INSUFFICIENT/
+    },
+    {
+      name: "house-stock",
+      mutate: (state) => {
+        s4PrepareOwnedGroup(state);
+        s4ConfigureHouseStock(state, 0, [{ cellId: "cell-01", playerId: "p1" }]);
+      },
+      action: "property.build",
+      params: { unitKind: "house" },
+      error: /MECHANICS_RESOURCE_INSUFFICIENT/
+    },
+    {
+      name: "sell-not-max-tier",
+      mutate: (state) => {
+        s4PrepareOwnedGroup(state);
+        s4SetTier(state, "cell-01", 1);
+        s4SetTier(state, "cell-02", 2);
+        s4ReconcileInventory(state);
+      },
+      action: "property.sell",
+      params: { cellId: "cell-01" },
+      error: /ACTION_PRECONDITION_FAILED/
+    }
+  ];
+  for (const rejected of cases) {
+    const replay = await createPhaseReplay(rejected.mutate, { phase: "finish" });
+    const before = await s4Snapshot(replay);
+    await assertRejectedAction(act(replay, rejected.action, rejected.params), rejected.error);
+    await s4AssertUnchanged(replay, before);
+    assert.equal(replay.randomCallCount, 0, `${rejected.name}: no server randomness`);
+  }
+});
+
+test("S4 rejects wrong actor, stale phase, mortgage/build conflicts, and stale ownership atomically", async () => {
+  const cases = [
+    {
+      name: "wrong-actor",
+      actorScope: { kind: "listed-actors", actorIds: ["p2"] },
+      mutate: (state) => s4PrepareOwnedGroup(state),
+      action: "property.build",
+      params: { unitKind: "house" },
+      error: /not allowed to perform this operation/
+    },
+    {
+      name: "stale-phase",
+      mutate: (state) => {
+        s4PrepareOwnedGroup(state);
+        state.public.turn.phase = "roll";
+      },
+      action: "property.build",
+      params: { unitKind: "house" },
+      error: /ACTION_PRECONDITION_FAILED/
+    },
+    {
+      name: "mortgaged-group",
+      mutate: (state) => {
+        s4PrepareOwnedGroup(state);
+        s4Property(state, "cell-01").attributes.mortgaged = true;
+      },
+      action: "property.build",
+      params: { unitKind: "house" },
+      error: /ACTION_PRECONDITION_FAILED/
+    },
+    {
+      name: "wrong-ownership",
+      mutate: (state) => {
+        s4PrepareOwnedGroup(state);
+        s4Property(state, "cell-01").attributes.ownerPlayerId = "p2";
+      },
+      action: "property.build",
+      params: { unitKind: "house" },
+      error: /ACTION_PRECONDITION_FAILED/
+    },
+    {
+      name: "stale-request-cell",
+      mutate: (state) => {
+        s4PrepareOwnedGroup(state);
+        state.public.turn.phase = "buildingWindow";
+        state.public.turn.activePlayerId = "p1";
+        state.public.buildingWindow = { resumePlayerId: "p1", unitKind: "house" };
+        state.players.p1.objects.buildingRequestCellId = "cell-02";
+        state.players.p1.objects.buildingRequestUnitKind = "house";
+      },
+      action: "property.build.request",
+      params: { cellId: "cell-01" },
+      error: /ACTION_PRECONDITION_FAILED/
+    }
+  ];
+  for (const rejected of cases) {
+    const replay = await createPhaseReplay(rejected.mutate, {
+      phase: rejected.name === "stale-phase" ? "roll" : "finish",
+      actorScope: rejected.actorScope
+    });
+    const before = await s4Snapshot(replay);
+    if (rejected.name === "wrong-actor") {
+      await assert.rejects(act(replay, rejected.action, rejected.params), rejected.error);
+    } else {
+      await assertRejectedAction(act(replay, rejected.action, rejected.params), rejected.error);
+    }
+    await s4AssertUnchanged(replay, before);
+  }
+});
+
+test("S4 mortgage/redeem is exact and mortgaged estate, transit, and utility pay no rent", async () => {
+  for (const cellId of ["cell-01", "cell-06", "cell-12"]) {
+    const replay = await createPhaseReplay((state) => {
+      const cell = s4Property(state, cellId);
+      cell.attributes.ownerPlayerId = "p1";
+      cell.attributes.mortgaged = false;
+      state.players.p1.metrics.cash = 10_000;
+      state.players.p2.metrics.cash = 10_000;
+      state.players.p2.metrics.position = cell.attributes.index;
+      state.public.turn.phase = "finish";
+      state.public.turn.activePlayerId = "p1";
+    }, { phase: "finish" });
+    const beforeMortgage = await s4Snapshot(replay);
+    const mortgaged = await act(replay, "property.mortgage", { cellId });
+    assert.equal(mortgaged.result.ok, true, `${cellId}: ${JSON.stringify(mortgaged.result)}`);
+    let current = await replay.store.getSession(replay.session.sessionId);
+    assert.equal(s4Property(current.state, cellId).attributes.mortgaged, true);
+    assert.ok(current.state.players.p1.metrics.cash > beforeMortgage.state.players.p1.metrics.cash);
+    const cashAfterMortgage = current.state.players.p1.metrics.cash;
+    state: {
+      current.state.public.turn.phase = "rent";
+      current.state.public.turn.activePlayerId = "p2";
+      current.state.public.board.lastRoll = { values: [3, 4], total: 7, isDouble: false };
+      current.version.stateVersion += 1;
+      current.updatedAt = new Date();
+      await replay.store.updateSession(current, {
+        expectedStateVersion: (await s4Snapshot(replay)).version.stateVersion
+      });
+    }
+    await act(replay, "property.rent");
+    current = await replay.store.getSession(replay.session.sessionId);
+    assert.equal(current.state.players.p2.metrics.cash, 10_000);
+    assert.equal(current.state.players.p1.metrics.cash, cashAfterMortgage);
+    current.state.public.turn.phase = "finish";
+    current.state.public.turn.activePlayerId = "p1";
+    current.version.stateVersion += 1;
+    current.updatedAt = new Date();
+    await replay.store.updateSession(current, {
+      expectedStateVersion: (await s4Snapshot(replay)).version.stateVersion
+    });
+    const redeemed = await act(replay, "property.redeem", { cellId });
+    assert.equal(redeemed.result.ok, true, `${cellId}: ${JSON.stringify(redeemed.result)}`);
+    current = await replay.store.getSession(replay.session.sessionId);
+    assert.equal(s4Property(current.state, cellId).attributes.mortgaged, false);
+    assert.ok(current.state.players.p1.metrics.cash < cashAfterMortgage);
+  }
+});
+
+test("S4 monopoly doubles tier0 rent and uses exact rent1..5 with updated cell rent", async () => {
+  for (const improvementTier of [0, 1, 2, 3, 4, 5]) {
+    const replay = await createPhaseReplay((state) => {
+      s4SetOwnedGroupTier(state, "cell-01", "p2", improvementTier);
+      s4ReconcileInventory(state);
+      state.players.p1.metrics.position = s4Property(state, "cell-01").attributes.index;
+      state.public.turn.phase = "rent";
+      state.public.turn.activePlayerId = "p1";
+      state.public.board.lastRoll = { values: [3, 4], total: 7, isDouble: false };
+    }, { phase: "rent" });
+    await act(replay, "property.rent");
+    const current = await replay.store.getSession(replay.session.sessionId);
+    const cell = s4Property(current.state, "cell-01");
+    const expectedRent = cell.attributes.rentScale[improvementTier] * (improvementTier === 0 ? 2 : 1);
+    assert.equal(cell.attributes.rent, cell.attributes.rentScale[improvementTier]);
+    assert.equal(current.state.players.p1.metrics.cash, 1200 - expectedRent);
+    assert.equal(current.state.players.p2.metrics.cash, 1200 + expectedRent);
+    s4Conservation(current.state);
+  }
+});
+
+test("S4 building-assessment covers mixed, zero, insufficient rollback, and exact-retry charging", async () => {
+  const assessment = async (cash, withBuildings = true) => {
+    let expectedCharge;
+    const replay = await createPhaseReplay((state) => {
+      const groupIds = s4GroupIds(state, "cell-01");
+      s4SetOwner(state, groupIds, "p1");
+      s4SetTier(state, groupIds[0], withBuildings ? 5 : 0);
+      s4SetTier(state, groupIds[1], withBuildings ? 4 : 0);
+      s4ReconcileInventory(state);
+      state.players.p1.metrics.cash = cash;
+      state.players.p1.metrics.position = 4;
+      installDecks(state, { fundOrder: orderedDeck(fundCardIds, "fund-assessment") });
+      state.public.turn.phase = "roll";
+      state.public.board.availableActions = [{ id: "roll", label: "Бросить кости", actionId: "turn.roll" }];
+    }, { phase: "roll", samples: [0, 1] });
+    const manifest = await loadManifest();
+    const card = Object.values(manifest.state.public.objects.fundCards)
+      .find((item) => item.attributes.effectKind === "building-assessment");
+    assert.ok(card, "authoring must declare building-assessment");
+    const before = await s4Snapshot(replay);
+    const buildings = s4BuildingCounts(before.state, "p1");
+    expectedCharge = (card.attributes.houseFee * buildings.houses)
+      + (card.attributes.hotelFee * buildings.hotels);
+    const commandId = createTestCommandId();
+    const first = await act(replay, "turn.roll", {}, {
+      commandId, expectedStateVersion: before.version.stateVersion
+    });
+    if (cash < expectedCharge) {
+      assert.equal(first.result.ok, false);
+      assert.match(first.result.error?.code ?? "", /MECHANICS_RESOURCE_INSUFFICIENT/);
+      await s4AssertUnchanged(replay, before);
+    } else {
+      assert.equal(first.result.ok, true, JSON.stringify(first.result));
+      const retried = await act(replay, "turn.roll", {}, {
+        commandId, expectedStateVersion: before.version.stateVersion
+      });
+      assert.deepEqual(retried.receipt, first.receipt);
+      const current = await replay.store.getSession(replay.session.sessionId);
+      assert.equal(current.state.players.p1.metrics.cash, cash - expectedCharge);
+      assert.equal(current.state.public.board.lastCardId, card.attributes.id);
+      s4Conservation(current.state);
+    }
+    return expectedCharge;
+  };
+  const expected = await assessment(10_000);
+  await assessment(expected - 1);
+  await assessment(0, false);
+});
+
+test("S4 building windows cover 2/6 actors, demand <, =, > stock, exact 2/6 stock, lots, winners, pass, resume, and extra roll", async () => {
+  const targetCellIds = ["cell-01", "cell-05", "cell-11", "cell-16", "cell-21", "cell-26"];
+  for (const participantCount of [2, 6]) {
+    for (const available of [participantCount - 1, participantCount, participantCount + 1]) {
+      const requests = targetCellIds.slice(0, participantCount).map((cellId, index) => ({
+        cellId,
+        playerId: `p${index + 1}`
+      }));
+      const replay = await createPhaseReplay((state) => {
+        s4ConfigureHouseStock(state, available, requests);
+        state.public.turn.phase = "finish";
+        state.public.turn.activePlayerId = "p1";
+        state.public.board.availableActions = [];
+        state.public.board.extraRollPending = true;
+      }, { participantCount, phase: "finish" });
+      const before = await s4Snapshot(replay);
+      const first = await act(replay, "property.build", { unitKind: "house" });
+      assert.equal(first.result.ok, true, JSON.stringify(first.result));
+      let current = await replay.store.getSession(replay.session.sessionId);
+      assert.equal(current.state.public.buildingWindow.unitKind, "house");
+      assert.equal(current.state.public.buildingWindow.resumePlayerId, "p1");
+      assert.equal(current.state.players.p1.objects.buildingRequestCellId, "cell-01");
+      assert.equal(current.state.players.p1.objects.buildingRequestUnitKind, "house");
+      for (let index = 1; index < participantCount; index += 1) {
+        const requested = await act(replay, "property.build.request", {
+          cellId: targetCellIds[index]
+        });
+        assert.equal(requested.result.ok, true, JSON.stringify(requested.result));
+      }
+      current = await replay.store.getSession(replay.session.sessionId);
+      assert.equal(
+        current.state.public.turn.phase,
+        available < participantCount ? "buildingAuction" : "finish",
+        JSON.stringify({
+          available,
+          participantCount,
+          bank: current.state.public.bankBuildings,
+          requests: Object.fromEntries(Object.entries(current.state.players).map(([id, player]) => [
+            id,
+            {
+              cellId: player.objects.buildingRequestCellId,
+              unitKind: player.objects.buildingRequestUnitKind,
+              bidderStatus: player.flags.bidderStatus
+            }
+          ])),
+          tiers: Object.fromEntries(requests.map(({ cellId }) => [
+            cellId,
+            s4Property(current.state, cellId).attributes.improvementTier
+          ]))
+        })
+      );
+      if (available < participantCount) current = await s4PassBuildingAuction(replay);
+
+      assert.equal(current.state.public.turn.phase, "finish");
+      for (const { cellId } of requests) {
+        const expectedTier = s4Property(before.state, cellId).attributes.improvementTier
+          + (available < participantCount ? 0 : 1);
+        assert.equal(s4Property(current.state, cellId).attributes.improvementTier, expectedTier);
+      }
+      assert.equal(
+        s4Bank(current.state).housesAvailable,
+        available < participantCount ? available : available - participantCount
+      );
+      s4Conservation(current.state);
+      assert.equal(current.state.public.board.extraRollPending, true);
+      assert.equal(current.state.public.turn.activePlayerId, "p1");
+      assert.deepEqual(current.state.public.board.availableActions, [{
+        id: "finish",
+        label: "Завершить ход",
+        actionId: "turn.finish"
+      }]);
+      assert.deepEqual(current.state.public.buildingWindow, { resumePlayerId: "", unitKind: "" });
+      assert.deepEqual(current.state.public.buildingAuction, {
+        currentBid: 0,
+        minimumIncrement: 10,
+        leaderPlayerId: ""
+      });
+      assert.ok(Object.values(current.state.players).every((player) =>
+        player.objects.buildingRequestCellId === "" && player.objects.buildingRequestUnitKind === ""
+      ));
+    }
+  }
+});
+
+test("S4 every build/request/pass/sell/mortgage/redeem mutation is exact-retry idempotent", async () => {
+  const replay = await createPhaseReplay((state) => {
+    s4PrepareOwnedGroup(state);
+    s4SetOwnedGroupTier(state, "cell-05", "p2", 0);
+    state.players.p2.metrics.cash = 10_000;
+    s4ReconcileInventory(state);
+  }, { participantCount: 3, phase: "finish" });
+  const mutations = [
+    ["property.build", { unitKind: "house" }],
+    ["property.build.request", { cellId: "cell-05" }],
+    ["property.build.pass", {}],
+    ["property.sell", { cellId: "cell-01" }],
+    ["property.mortgage", { cellId: "cell-01" }],
+    ["property.redeem", { cellId: "cell-01" }]
+  ];
+  for (const [actionId, params] of mutations) {
+    const before = await s4Snapshot(replay);
+    const commandId = createTestCommandId();
+    const first = await act(replay, actionId, params, {
+      commandId, expectedStateVersion: before.version.stateVersion
+    });
+    assert.equal(first.result.ok, true, `${actionId}: ${JSON.stringify(first.result)}`);
+    const retry = await act(replay, actionId, params, {
+      commandId, expectedStateVersion: before.version.stateVersion
+    });
+    assert.deepEqual(retry.receipt, first.receipt, actionId);
+  }
+});
+
+test("S4 shortage auction resolves sequential lots with different winners, exact retry, and all-pass", async () => {
+  const requests = [
+    { cellId: "cell-01", playerId: "p1" },
+    { cellId: "cell-05", playerId: "p2" },
+    { cellId: "cell-11", playerId: "p3" }
+  ];
+  const replay = await createPhaseReplay((state) => {
+    s4ConfigureHouseStock(state, 2, requests);
+    state.public.turn.phase = "buildingAuction";
+    state.public.turn.activePlayerId = "p2";
+    state.public.buildingWindow = { resumePlayerId: "p1", unitKind: "house" };
+    state.public.buildingAuction = { currentBid: 0, minimumIncrement: 10, leaderPlayerId: "" };
+    for (const { cellId, playerId } of requests) {
+      state.players[playerId].objects.buildingRequestCellId = cellId;
+      state.players[playerId].objects.buildingRequestUnitKind = "house";
+    }
+  }, { participantCount: 3, phase: "buildingAuction" });
+  const beforeBid = await s4Snapshot(replay);
+  const bidCommandId = createTestCommandId();
+  const firstBid = await act(replay, "property.build.auction.bid", { amount: 20 }, {
+    commandId: bidCommandId,
+    expectedStateVersion: beforeBid.version.stateVersion
+  });
+  assert.equal(firstBid.result.ok, true, JSON.stringify(firstBid.result));
+  const retriedBid = await act(replay, "property.build.auction.bid", { amount: 20 }, {
+    commandId: bidCommandId,
+    expectedStateVersion: beforeBid.version.stateVersion
+  });
+  assert.deepEqual(retriedBid.receipt, firstBid.receipt);
+  await act(replay, "property.build.auction.bid", { amount: 40 });
+  await act(replay, "property.build.auction.bid", { amount: 60 });
+  await act(replay, "property.build.auction.pass");
+  await act(replay, "property.build.auction.pass");
+  let current = await replay.store.getSession(replay.session.sessionId);
+  assert.equal(
+    s4Property(current.state, "cell-01").attributes.improvementTier,
+    s4Property(beforeBid.state, "cell-01").attributes.improvementTier + 1
+  );
+  assert.equal(current.state.public.bankBuildings.housesAvailable, 1);
+  assert.equal(current.state.public.buildingAuction.currentBid, 0);
+  assert.equal(current.state.public.turn.phase, "buildingAuction");
+  assert.equal(current.state.players.p1.objects.buildingRequestCellId, "");
+  assert.equal(current.state.players.p2.objects.buildingRequestCellId, "cell-05");
+  assert.equal(current.state.players.p3.objects.buildingRequestCellId, "cell-11");
+
+  await act(replay, "property.build.auction.bid", { amount: 30 });
+  await act(replay, "property.build.auction.bid", { amount: 50 });
+  await act(replay, "property.build.auction.pass");
+  current = await replay.store.getSession(replay.session.sessionId);
+  assert.equal(
+    s4Property(current.state, "cell-05").attributes.improvementTier,
+    s4Property(beforeBid.state, "cell-05").attributes.improvementTier
+  );
+  assert.equal(
+    s4Property(current.state, "cell-11").attributes.improvementTier,
+    s4Property(beforeBid.state, "cell-11").attributes.improvementTier + 1
+  );
+  assert.equal(current.state.public.bankBuildings.housesAvailable, 0);
+  assert.equal(current.state.public.turn.phase, "finish");
+  assert.equal(current.state.public.turn.activePlayerId, "p1");
+  assert.equal(current.state.players.p1.metrics.cash, 10_000 - 60);
+  assert.equal(current.state.players.p2.metrics.cash, 10_000);
+  assert.equal(current.state.players.p3.metrics.cash, 10_000 - 50);
+  assert.ok(Object.values(current.state.players).every((player) =>
+    player.objects.buildingRequestCellId === "" && player.objects.buildingRequestUnitKind === ""
+  ));
+  s4Conservation(current.state);
+
+  const allPass = await createPhaseReplay((state) => {
+    const passRequests = requests.slice(0, 2);
+    s4ConfigureHouseStock(state, 1, passRequests);
+    state.public.turn.phase = "buildingAuction";
+    state.public.turn.activePlayerId = "p1";
+    state.public.buildingWindow = { resumePlayerId: "p1", unitKind: "house" };
+    state.public.buildingAuction = { currentBid: 0, minimumIncrement: 10, leaderPlayerId: "" };
+    for (const { cellId, playerId } of passRequests) {
+      state.players[playerId].objects.buildingRequestCellId = cellId;
+      state.players[playerId].objects.buildingRequestUnitKind = "house";
+    }
+  }, { phase: "buildingAuction" });
+  const beforeAllPass = await s4Snapshot(allPass);
+  await act(allPass, "property.build.auction.pass");
+  await act(allPass, "property.build.auction.pass");
+  current = await allPass.store.getSession(allPass.session.sessionId);
+  assert.equal(current.state.public.bankBuildings.housesAvailable, 1);
+  assert.equal(
+    s4Property(current.state, "cell-01").attributes.improvementTier,
+    s4Property(beforeAllPass.state, "cell-01").attributes.improvementTier
+  );
+  assert.equal(
+    s4Property(current.state, "cell-05").attributes.improvementTier,
+    s4Property(beforeAllPass.state, "cell-05").attributes.improvementTier
+  );
+  assert.equal(current.state.public.turn.phase, "finish");
+  assert.equal(current.state.public.turn.activePlayerId, "p1");
+  s4Conservation(current.state);
+});
 
 const createPhaseReplay = async (mutateState, {
   participantCount = 2,
@@ -610,7 +1293,8 @@ const fundCardIds = [
   "fund-pay-each",
   "fund-collect-each",
   "fund-start",
-  "fund-message"
+  "fund-message",
+  "fund-assessment"
 ];
 
 const installDecks = (state, {
@@ -706,6 +1390,10 @@ test("both hidden decks dispatch every neutral card effect and continue the auth
       assert.equal(state.public.turn.phase, "finish");
     } },
     { deck: "fund", cardId: "fund-message", participantCount: 2, assertState: (state) => {
+      assert.equal(state.public.turn.phase, "finish");
+    } },
+    { deck: "fund", cardId: "fund-assessment", participantCount: 2, assertState: (state) => {
+      assert.equal(state.players.p1.metrics.cash, 1200);
       assert.equal(state.public.turn.phase, "finish");
     } }
   ];
@@ -1317,7 +2005,15 @@ test("all 28 purchasable cells share generic actions and an own landing requires
     "property.decline",
     "property.rent",
     "property.auction.bid",
-    "property.auction.pass"
+    "property.auction.pass",
+    "property.build",
+    "property.build.request",
+    "property.build.pass",
+    "property.build.auction.bid",
+    "property.build.auction.pass",
+    "property.sell",
+    "property.mortgage",
+    "property.redeem"
   ]);
   assert.ok(purchasable.every((cell) => cell.attributes.buildings === undefined));
 

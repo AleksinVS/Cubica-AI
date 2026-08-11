@@ -35,6 +35,8 @@ const phaseLabel: Readonly<Record<string, string>> = {
   blocked: "следующий срез",
   finish: "завершение",
   auction: "аукцион",
+  buildingWindow: "окно заявок",
+  buildingAuction: "аукцион строений",
   jail: "тюрьма"
 };
 
@@ -45,6 +47,14 @@ const tokenPosition = (cell: EstateCellView, playerIndex: number) => ({
   x: cell.x - 32 + (playerIndex % 3) * 32,
   y: cell.y + cell.height / 2 - 18 - Math.floor(playerIndex / 3) * 28
 });
+
+// These commands require a DOM form to collect declared parameters. The
+// canvas must not guess a cell or unit kind and must never submit an empty
+// request that the server would reject.
+const canvasCanDispatch = (action: EstateActionView): boolean =>
+  action.actionId !== "property.build.request"
+  && action.actionId !== "property.auction.bid"
+  && action.actionId !== "property.build.auction.bid";
 
 /** Build a scene solely from platform-injected Phaser. */
 export const createEstateRaceScene: PhaserSceneFactory = (
@@ -122,7 +132,18 @@ export const createEstateRaceScene: PhaserSceneFactory = (
         fontSize: "22px"
       }).setOrigin(0.5);
 
-      if (projection.phase === "auction") {
+      this.add.text(680, 455,
+        `Банк строений · дома ${projection.bankBuildings.housesAvailable}/32 · отели ${projection.bankBuildings.hotelsAvailable}/12`, {
+          color: "#495c55",
+          fontFamily: "Arial, sans-serif",
+          fontSize: "17px"
+        }).setOrigin(0.5);
+
+      if (projection.phase === "buildingWindow") {
+        this.drawBuildingWindowSummary(projection);
+      } else if (projection.phase === "buildingAuction") {
+        this.drawBuildingAuctionSummary(projection);
+      } else if (projection.phase === "auction") {
         this.drawAuctionSummary(projection);
       } else if (projection.lastRoll) {
         const dice = projection.lastRoll.values.map((value) => `[ ${value} ]`).join("   ");
@@ -158,7 +179,7 @@ export const createEstateRaceScene: PhaserSceneFactory = (
       // A bid requires the numeric DOM form. Never dispatch an empty bid from
       // the canvas; the server remains the authority for the submitted amount.
       const action = projection.availableActions.find((item) =>
-        !item.disabled && item.actionId !== "property.auction.bid"
+        !item.disabled && canvasCanDispatch(item)
       );
       if (action) this.drawPrimaryAction(action);
     }
@@ -184,6 +205,36 @@ export const createEstateRaceScene: PhaserSceneFactory = (
         fontSize: "21px",
         lineSpacing: 7,
         wordWrap: { width: 600 }
+      }).setOrigin(0.5);
+    }
+
+    private drawBuildingWindowSummary(projection: EstateBoardProjection) {
+      const window = projection.buildingWindow;
+      this.add.text(680, 505, [
+        `Окно заявок · ${window.unitKind ?? "тип не объявлен"}`,
+        `Продолжит ход: ${window.resumePlayerId ?? "не объявлено"}`
+      ].join("\n"), {
+        color: "#173a34",
+        align: "center",
+        fontFamily: "Arial, sans-serif",
+        fontSize: "21px",
+        lineSpacing: 7
+      }).setOrigin(0.5);
+    }
+
+    private drawBuildingAuctionSummary(projection: EstateBoardProjection) {
+      const auction = projection.buildingAuction;
+      this.add.text(680, 505, [
+        "Аукцион строений",
+        `Текущая ставка: ${auction.currentBid}`,
+        `Минимальный шаг: ${auction.minimumIncrement}`,
+        `Лидер: ${auction.leaderPlayerId ?? "нет"}`
+      ].join("\n"), {
+        color: "#173a34",
+        align: "center",
+        fontFamily: "Arial, sans-serif",
+        fontSize: "21px",
+        lineSpacing: 7
       }).setOrigin(0.5);
     }
 
@@ -269,6 +320,28 @@ export const createEstateRaceScene: PhaserSceneFactory = (
         fontSize: "10px"
       }).setOrigin(0.5);
 
+      if (estate && cell.improvementTier > 0) {
+        const marker = cell.improvementTier === 5
+          ? "★ ОТЕЛЬ"
+          : `${"■".repeat(cell.improvementTier)} ДОМА`;
+        this.add.text(cell.x, cell.y + 42, marker, {
+          color: cell.improvementTier === 5 ? "#8d3d36" : "#245f52",
+          fontFamily: "Arial, sans-serif",
+          fontSize: "11px",
+          fontStyle: "bold"
+        }).setOrigin(0.5);
+      }
+      if (cell.mortgaged) {
+        this.add.text(cell.x, cell.y - cell.height / 2 + 12, "ЗАЛОЖЕНО", {
+          color: "#8d3d36",
+          backgroundColor: "#fff1e4",
+          fontFamily: "Arial, sans-serif",
+          fontSize: "10px",
+          fontStyle: "bold",
+          padding: { x: 5, y: 3 }
+        }).setOrigin(0.5);
+      }
+
       if (cell.ownerPlayerId) {
         const ownerIndex = projection.players.findIndex((player) => player.id === cell.ownerPlayerId);
         const ribbon = this.add.rectangle(cell.x, cell.y + cell.height / 2 - 12, cell.width - 22, 18,
@@ -281,7 +354,7 @@ export const createEstateRaceScene: PhaserSceneFactory = (
       }
 
       const cellAction = projection.availableActions.find((action) => action.params?.cellId === cell.id);
-      if (cellAction && !cellAction.disabled) {
+      if (cellAction && !cellAction.disabled && canvasCanDispatch(cellAction)) {
         const hit = this.add.zone(cell.x, cell.y, cell.width, cell.height)
           .setInteractive({ useHandCursor: true });
         hit.on("pointerdown", () => this.dispatchAction(cellAction));

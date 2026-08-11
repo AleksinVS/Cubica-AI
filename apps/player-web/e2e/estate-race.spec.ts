@@ -1,14 +1,15 @@
 /**
- * Browser acceptance for the Estate Race S3 display and bounded action slice
- * (GSR-042).
+ * Browser acceptance for the Estate Race S4 display and bounded action slice
+ * (GSR-043).
  *
  * The browser creates one normal authenticated player session and performs one
  * production-random setup followed by one production-random roll. The
  * assertion follows the state and actions returned by Runtime API; it never
  * predicts a destination, forces dice, or derives card/jail state in the
  * client. If production randomness lands on a free object, the normal DOM flow
- * still covers decline → bid → pass. A second isolated preview proves the S3
- * card path for every possible production dice result.
+ * still covers decline → bid → pass. Isolated previews prove the S4 card and
+ * building parameter paths. The card preview still covers every possible
+ * production dice result.
  */
 
 import { createHash, randomUUID } from "node:crypto";
@@ -78,6 +79,11 @@ type RuntimeSnapshot = {
           disabled?: boolean;
         }>;
       };
+      bankBuildings: {
+        housesAvailable: number;
+        hotelsAvailable: number;
+      };
+      objects?: Record<string, unknown>;
       auction: {
         resumePlayerId: string;
         cellId: string;
@@ -126,7 +132,7 @@ test.afterAll(() => {
   }
 });
 
-test.describe("Estate Race S3", { tag: "@player" }, () => {
+test.describe("Estate Race S4", { tag: "@player" }, () => {
   test("finalizes random participant order and presents one server-owned random landing", async ({ page }) => {
     // Includes a cold two-service startup while keeping one browser-created
     // session and its HttpOnly credential for the whole acceptance path.
@@ -142,7 +148,7 @@ test.describe("Estate Race S3", { tag: "@player" }, () => {
     await expect(page.locator(".game-player-root")).toBeVisible();
     await expect(page.locator(".loading-state")).toHaveCount(0);
     await expect(page.getByRole("heading", {
-      name: "Estate Race · S3",
+      name: "Estate Race · S4",
       level: 1
     })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Локальная партия: 2–6 участников", level: 2 })).toBeVisible();
@@ -304,6 +310,118 @@ test.describe("Estate Race S3", { tag: "@player" }, () => {
     await expect(page.getByText(`Последний открытый результат: ${TECHNICAL_CARD_ID}`)).toBeVisible();
     await expect(board(page).getByRole("button", { name: "Завершить ход" })).toBeVisible();
   });
+
+  test("submits building window and shortage auction parameters through DOM forms", async ({ page }) => {
+    test.setTimeout(120_000);
+    const source = materializeBuildingActionsPreview();
+    const initial = await openPreviewSession(page, source, "Открыть окно застройки");
+    expectPlayerSnapshotHasNoPlatformSecrets(initial);
+
+    const opened = await submitBoardFormAction(page, "Открыть окно застройки", "Тип строения", "house");
+    expect(opened.requestBody).toMatchObject({
+      actionId: "property.build",
+      params: { unitKind: "house" }
+    });
+    expect(opened.snapshot.state.public.turn.phase).toBe("buildingWindow");
+
+    const requested = await submitBoardFormAction(
+      page,
+      "Подать заявку",
+      "Идентификатор участка",
+      "cell-05"
+    );
+    expect(requested.requestBody).toMatchObject({
+      actionId: "property.build.request",
+      params: { cellId: "cell-05" }
+    });
+    expect(requested.snapshot.state.public.turn.phase).toBe("buildingAuction");
+    expect(requested.snapshot.state.public.board.availableActions.map((action) => action.actionId))
+      .toEqual(expect.arrayContaining([
+        "property.build.auction.bid",
+        "property.build.auction.pass"
+      ]));
+
+    const bid = await submitBoardFormAction(page, "Сделать ставку", "Сумма ставки", "10");
+    expect(bid.requestBody).toMatchObject({
+      actionId: "property.build.auction.bid",
+      params: { amount: 10 }
+    });
+    expect(bid.snapshot.state.public.turn.phase).toBe("buildingAuction");
+
+    const pass = await clickBoardAction(page, "Пас");
+    expect(pass.requestBody).toMatchObject({
+      actionId: "property.build.auction.pass",
+      params: {}
+    });
+    expect(pass.snapshot.state.public.turn.phase).toBe("finish");
+  });
+
+  test("submits sell and mortgage/redeem cell parameters through DOM forms", async ({ page }) => {
+    test.setTimeout(120_000);
+    const source = materializeSellMortgagePreview();
+    const initial = await openPreviewSession(page, source, "Продать строение");
+    const sellCellBefore = readEstateCell(initial, "cell-01");
+    const mortgageCellBefore = readEstateCell(initial, "cell-11");
+    const cashBeforeSell = initial.state.players.p1?.metrics.cash;
+    expect(cashBeforeSell).toBeDefined();
+    expect(sellCellBefore.improvementTier).toBe(1);
+    expect(sellCellBefore.mortgaged).toBe(false);
+    expect(mortgageCellBefore.improvementTier).toBe(0);
+    expect(mortgageCellBefore.mortgaged).toBe(false);
+
+    const sold = await submitBoardFormAction(
+      page,
+      "Продать строение",
+      "Идентификатор участка",
+      "cell-01"
+    );
+    expect(sold.requestBody).toMatchObject({
+      actionId: "property.sell",
+      params: { cellId: "cell-01" }
+    });
+    expect(readEstateCell(sold.snapshot, "cell-01").improvementTier)
+      .toBe(sellCellBefore.improvementTier - 1);
+    expect(sold.snapshot.state.players.p1?.metrics.cash)
+      .toBe((cashBeforeSell as number) + Number(sellCellBefore.sellValue));
+    expect(sold.snapshot.state.public.bankBuildings.housesAvailable)
+      .toBe(initial.state.public.bankBuildings.housesAvailable + 1);
+    expect(sold.snapshot.state.public.bankBuildings.hotelsAvailable)
+      .toBe(initial.state.public.bankBuildings.hotelsAvailable);
+
+    const cashBeforeMortgage = sold.snapshot.state.players.p1?.metrics.cash;
+    const mortgaged = await submitBoardFormAction(
+      page,
+      "Заложить объект",
+      "Идентификатор участка",
+      "cell-11"
+    );
+    expect(mortgaged.requestBody).toMatchObject({
+      actionId: "property.mortgage",
+      params: { cellId: "cell-11" }
+    });
+    expect(readEstateCell(mortgaged.snapshot, "cell-11").mortgaged).toBe(true);
+    expect(mortgaged.snapshot.state.players.p1?.metrics.cash)
+      .toBe((cashBeforeMortgage as number) + Number(mortgageCellBefore.mortgageValue));
+    expect(mortgaged.snapshot.state.public.bankBuildings)
+      .toEqual(sold.snapshot.state.public.bankBuildings);
+
+    const cashBeforeRedeem = mortgaged.snapshot.state.players.p1?.metrics.cash;
+    const redeemed = await submitBoardFormAction(
+      page,
+      "Выкупить объект",
+      "Идентификатор участка",
+      "cell-11"
+    );
+    expect(redeemed.requestBody).toMatchObject({
+      actionId: "property.redeem",
+      params: { cellId: "cell-11" }
+    });
+    expect(readEstateCell(redeemed.snapshot, "cell-11").mortgaged).toBe(false);
+    expect(redeemed.snapshot.state.players.p1?.metrics.cash)
+      .toBe((cashBeforeRedeem as number) - Number(mortgageCellBefore.redeemCost));
+    expect(redeemed.snapshot.state.public.bankBuildings)
+      .toEqual(sold.snapshot.state.public.bankBuildings);
+  });
 });
 
 /**
@@ -413,8 +531,166 @@ function materializeTechnicalCardPreview(): PreviewSource {
   };
 }
 
+/**
+ * Materialize a deterministic S4 building preview without changing the game
+ * package. Two complete owned groups let the normal mechanics plans open a
+ * building window and accept a second actor's request; one available house
+ * then makes the next step a shortage auction.
+ */
+function materializeBuildingActionsPreview(): PreviewSource {
+  const sourceManifest = readJson<JsonRecord>(path.join(SOURCE_GAME_ROOT, "game.manifest.json"));
+  const previewManifest = structuredClone(sourceManifest);
+  const config = requireRecord(previewManifest.config, "preview.config");
+  const turnModel = requireRecord(config.turnModel, "preview.config.turnModel");
+  const phases = Array.isArray(turnModel.phases) ? turnModel.phases : [];
+  turnModel.phases = ["finish", ...phases.filter((phase) => phase !== "finish")];
+
+  const state = requireRecord(previewManifest.state, "preview.state");
+  const publicState = requireRecord(state.public, "preview.state.public");
+  publicState.setupComplete = true;
+  publicState.bankBuildings = { housesAvailable: 1, hotelsAvailable: 12 };
+  const board = requireRecord(publicState.board, "preview.state.public.board");
+  board.availableActions = [{
+    id: "building-open",
+    label: "Открыть окно застройки",
+    actionId: "property.build"
+  }];
+
+  const objects = requireRecord(publicState.objects, "preview.state.public.objects");
+  const boardCells = requireRecord(objects.boardCells, "preview.state.public.objects.boardCells");
+  for (const [cellId, ownerPlayerId] of [
+    ["cell-01", "p1"], ["cell-02", "p1"],
+    ["cell-05", "p2"], ["cell-08", "p2"], ["cell-09", "p2"]
+  ] as const) {
+    const cell = requireRecord(boardCells[cellId], `preview board cell ${cellId}`);
+    const attributes = requireRecord(cell.attributes, `preview board cell ${cellId}.attributes`);
+    attributes.ownerPlayerId = ownerPlayerId;
+    attributes.improvementTier = 0;
+    attributes.mortgaged = false;
+  }
+  // Keep the physical S4 inventory coherent: the three groups below deploy
+  // 12 + 12 + 7 houses, leaving exactly one of the declared 32 in the bank.
+  for (const [cellId, ownerPlayerId, tier] of [
+    ["cell-11", "p1", 4], ["cell-13", "p1", 4], ["cell-14", "p1", 4],
+    ["cell-16", "p1", 4], ["cell-18", "p1", 4], ["cell-19", "p1", 4],
+    ["cell-21", "p1", 2], ["cell-23", "p1", 2], ["cell-24", "p1", 3]
+  ] as const) {
+    const cell = requireRecord(boardCells[cellId], `preview board cell ${cellId}`);
+    const attributes = requireRecord(cell.attributes, `preview board cell ${cellId}.attributes`);
+    attributes.ownerPlayerId = ownerPlayerId;
+    attributes.improvementTier = tier;
+    attributes.mortgaged = false;
+  }
+
+  return materializePreviewSource(previewManifest, "estate-s4-buildings");
+}
+
+/** Materialize a coherent one-house sale plus mortgage/redeem DOM preview. */
+function materializeSellMortgagePreview(): PreviewSource {
+  const sourceManifest = readJson<JsonRecord>(path.join(SOURCE_GAME_ROOT, "game.manifest.json"));
+  const previewManifest = structuredClone(sourceManifest);
+  const config = requireRecord(previewManifest.config, "preview.config");
+  const turnModel = requireRecord(config.turnModel, "preview.config.turnModel");
+  const phases = Array.isArray(turnModel.phases) ? turnModel.phases : [];
+  turnModel.phases = ["finish", ...phases.filter((phase) => phase !== "finish")];
+
+  const state = requireRecord(previewManifest.state, "preview.state");
+  const publicState = requireRecord(state.public, "preview.state.public");
+  publicState.setupComplete = true;
+  publicState.bankBuildings = { housesAvailable: 30, hotelsAvailable: 12 };
+  const board = requireRecord(publicState.board, "preview.state.public.board");
+  board.availableActions = [
+    { id: "building-sell", label: "Продать строение", actionId: "property.sell" },
+    { id: "property-mortgage", label: "Заложить объект", actionId: "property.mortgage" },
+    { id: "property-redeem", label: "Выкупить объект", actionId: "property.redeem" }
+  ];
+
+  const objects = requireRecord(publicState.objects, "preview.state.public.objects");
+  const boardCells = requireRecord(objects.boardCells, "preview.state.public.objects.boardCells");
+  for (const [cellId, tier, ownerPlayerId] of [
+    ["cell-01", 1, "p1"],
+    ["cell-02", 1, "p1"],
+    ["cell-11", 0, "p1"]
+  ] as const) {
+    const cell = requireRecord(boardCells[cellId], `preview board cell ${cellId}`);
+    const attributes = requireRecord(cell.attributes, `preview board cell ${cellId}.attributes`);
+    attributes.ownerPlayerId = ownerPlayerId;
+    attributes.improvementTier = tier;
+    attributes.mortgaged = false;
+    if (tier === 1) attributes.rent = attributes.rent1;
+  }
+
+  return materializePreviewSource(previewManifest, "estate-s4-sell-redeem");
+}
+
+/** Copy one temporary manifest and the verified published player bundle. */
+function materializePreviewSource(
+  previewManifest: JsonRecord,
+  sourcePrefix: string
+): PreviewSource {
+  const pluginMetadata = readJson<{ readonly bundles: readonly PublishedPluginBundle[] }>(
+    path.join(SOURCE_GAME_ROOT, "published", "player-web-plugin-bundles.json")
+  );
+  const publishedBundle = pluginMetadata.bundles.find((candidate) =>
+    candidate.gameId === GAME_ID &&
+    candidate.target === "player-web" &&
+    candidate.scope === "published"
+  );
+  if (!publishedBundle) {
+    throw new Error("Published Estate Race player plugin bundle was not found.");
+  }
+  const sourceBundlePath = path.join(SOURCE_GAME_ROOT, publishedBundle.filePath);
+  const sourceBytes = readFileSync(sourceBundlePath);
+  const actualHash = createHash("sha256").update(sourceBytes).digest("hex");
+  if (actualHash !== publishedBundle.contentHash) {
+    throw new Error("Published Estate Race player plugin bundle is stale.");
+  }
+
+  const contentSourceId = `${sourcePrefix}-${randomUUID().replaceAll("-", "").slice(0, 12)}`;
+  const contentRoot = path.join(PREVIEW_ROOT, contentSourceId);
+  const targetGameRoot = path.join(contentRoot, "games", GAME_ID);
+  const targetUiRoot = path.join(targetGameRoot, "ui", "web");
+  const targetBundleRoot = path.join(contentRoot, "preview-plugin-bundles");
+  mkdirSync(targetUiRoot, { recursive: true });
+  mkdirSync(targetBundleRoot, { recursive: true });
+  temporaryRoots.add(contentRoot);
+
+  writeFileSync(
+    path.join(targetGameRoot, "game.manifest.json"),
+    `${JSON.stringify(previewManifest, null, 2)}\n`,
+    "utf8"
+  );
+  copyFileSync(
+    path.join(SOURCE_GAME_ROOT, "ui", "web", "ui.manifest.json"),
+    path.join(targetUiRoot, "ui.manifest.json")
+  );
+  const targetBundlePath = path.join(
+    targetBundleRoot,
+    `${publishedBundle.pluginId}.${publishedBundle.contentHash}.mjs`
+  );
+  copyFileSync(sourceBundlePath, targetBundlePath);
+
+  return {
+    contentRoot,
+    contentSourceId,
+    pluginBundles: [{
+      pluginId: publishedBundle.pluginId,
+      gameId: publishedBundle.gameId,
+      apiVersion: publishedBundle.apiVersion,
+      target: "player-web",
+      scope: "preview",
+      contentHash: publishedBundle.contentHash,
+      filePath: toPosixPath(path.relative(contentRoot, targetBundlePath))
+    }]
+  };
+}
+
 /** Register one isolated source and create its session through Player Web. */
-async function openPreviewSession(page: Page, source: PreviewSource): Promise<RuntimeSnapshot> {
+async function openPreviewSession(
+  page: Page,
+  source: PreviewSource,
+  initialActionLabel = "Определить порядок"
+): Promise<RuntimeSnapshot> {
   const reload = await page.request.post(`${RUNTIME_URL}/content/reload`, {
     data: {
       gameId: GAME_ID,
@@ -445,8 +721,8 @@ async function openPreviewSession(page: Page, source: PreviewSource): Promise<Ru
   );
   await expect(page.locator(".game-player-root")).toBeVisible();
   await expect(page.locator(".loading-state")).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: "Estate Race · S3", level: 1 })).toBeVisible();
-  await expect(board(page).getByRole("button", { name: "Определить порядок" }))
+  await expect(page.getByRole("heading", { name: "Estate Race · S4", level: 1 })).toBeVisible();
+  await expect(board(page).getByRole("button", { name: initialActionLabel }))
     .toBeVisible({ timeout: BOARD_PLUGIN_READY_TIMEOUT_MS });
   return snapshot;
 }
@@ -458,6 +734,7 @@ const waitForSessionCreation = (page: Page) => page.waitForResponse((response) =
 );
 
 async function clickBoardAction(page: Page, label: string): Promise<BrowserActionResult> {
+  const previousRoundTrip = await boardRoundTripMarker(page);
   const actionRequest = page.waitForRequest((request) =>
     request.url().endsWith("/api/runtime/actions") && request.method() === "POST"
   );
@@ -468,6 +745,7 @@ async function clickBoardAction(page: Page, label: string): Promise<BrowserActio
   await board(page).getByRole("button", { name: label }).click();
   const [runtimeRequest, runtimeResponse] = await Promise.all([actionRequest, actionResponse]);
   expect(runtimeResponse.status()).toBe(200);
+  await expectBoardRoundTrip(page, previousRoundTrip);
 
   const snapshot = await runtimeResponse.json() as RuntimeSnapshot;
   expect(
@@ -484,7 +762,45 @@ async function clickBoardAction(page: Page, label: string): Promise<BrowserActio
   };
 }
 
+async function submitBoardFormAction(
+  page: Page,
+  actionLabel: string,
+  fieldLabel: string,
+  value: string
+): Promise<BrowserActionResult> {
+  const previousRoundTrip = await boardRoundTripMarker(page);
+  const actionRequest = page.waitForRequest((request) =>
+    request.url().endsWith("/api/runtime/actions") && request.method() === "POST"
+  );
+  const actionResponse = page.waitForResponse((response) =>
+    response.url().endsWith("/api/runtime/actions") && response.request().method() === "POST"
+  );
+
+  const form = board(page).getByRole("form", { name: actionLabel });
+  const field = form.getByLabel(fieldLabel);
+  if (await field.evaluate((element) => element.tagName === "SELECT")) {
+    await field.selectOption(value);
+  } else {
+    await field.fill(value);
+  }
+  await form.getByRole("button", { name: actionLabel }).click();
+  const [runtimeRequest, runtimeResponse] = await Promise.all([actionRequest, actionResponse]);
+  expect(runtimeResponse.status()).toBe(200);
+  await expectBoardRoundTrip(page, previousRoundTrip);
+
+  const snapshot = await runtimeResponse.json() as RuntimeSnapshot;
+  expect(
+    snapshot.receipt?.status,
+    `${actionLabel} was rejected: ${snapshot.receipt?.rejectionCode ?? "unknown reason"}`
+  ).toBe("applied");
+  expectPlayerSnapshotHasNoPlatformSecrets(snapshot);
+  const requestBody = runtimeRequest.postDataJSON() as Record<string, unknown>;
+  expect(JSON.stringify(requestBody)).not.toMatch(/random|deck|cardId|credential/iu);
+  return { requestBody, snapshot };
+}
+
 async function submitAuctionBid(page: Page, amount: number): Promise<BrowserActionResult> {
+  const previousRoundTrip = await boardRoundTripMarker(page);
   const actionRequest = page.waitForRequest((request) =>
     request.url().endsWith("/api/runtime/actions") && request.method() === "POST"
   );
@@ -497,6 +813,7 @@ async function submitAuctionBid(page: Page, amount: number): Promise<BrowserActi
   await form.getByRole("button", { name: "Сделать ставку" }).click();
   const [runtimeRequest, runtimeResponse] = await Promise.all([actionRequest, actionResponse]);
   expect(runtimeResponse.status()).toBe(200);
+  await expectBoardRoundTrip(page, previousRoundTrip);
   const snapshot = await runtimeResponse.json() as RuntimeSnapshot;
   expect(
     snapshot.receipt?.status,
@@ -511,10 +828,30 @@ async function submitAuctionBid(page: Page, amount: number): Promise<BrowserActi
   };
 }
 
+const boardRoundTripMarker = (page: Page) => board(page)
+  .getByTestId("interactive-board-canvas-host")
+  .getAttribute("data-last-action-round-trip-ms", { timeout: 1_000 })
+  .catch(() => null);
+
+async function expectBoardRoundTrip(page: Page, previousMarker: string | null): Promise<void> {
+  await expect.poll(() => boardRoundTripMarker(page), {
+    message: "board DOM did not apply the authoritative action snapshot",
+    timeout: 30_000
+  }).not.toBe(previousMarker);
+}
+
 /** The player HTTP boundary must never reveal deterministic random/deck internals. */
 function expectPlayerSnapshotHasNoPlatformSecrets(snapshot: RuntimeSnapshot): void {
   expect(snapshot.state.secret?.random).toBeUndefined();
   expect(snapshot.state.secret?.decks).toBeUndefined();
+}
+
+function readEstateCell(snapshot: RuntimeSnapshot, cellId: string): JsonRecord {
+  const publicState = snapshot.state.public as unknown as JsonRecord;
+  const objects = requireRecord(publicState.objects, "snapshot.state.public.objects");
+  const boardCells = requireRecord(objects.boardCells, "snapshot.state.public.objects.boardCells");
+  const cell = requireRecord(boardCells[cellId], `snapshot board cell ${cellId}`);
+  return requireRecord(cell.attributes, `snapshot board cell ${cellId}.attributes`);
 }
 
 function readJson<T>(absolutePath: string): T {

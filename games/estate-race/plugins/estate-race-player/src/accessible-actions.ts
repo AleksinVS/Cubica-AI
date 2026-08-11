@@ -32,6 +32,44 @@ const auctionBidFields = [{
   step: 1
 }];
 
+const buildingUnitKindFields = [{
+  name: "unitKind",
+  label: "Тип строения",
+  kind: "select" as const,
+  required: true,
+  options: [
+    { value: "house", label: "Дом" },
+    { value: "hotel", label: "Отель" }
+  ]
+}];
+
+const buildingRequestFields = [{
+  name: "cellId",
+  label: "Идентификатор участка",
+  kind: "text" as const,
+  required: true,
+  minLength: 1,
+  maxLength: 128
+}];
+
+/**
+ * Parameter forms are the only way these actions can be submitted from the
+ * ordinary DOM path. Their server-projected `params` are intentionally not
+ * forwarded: the form supplies the declared scalar and Runtime validates it
+ * against the published action schema and current state.
+ */
+type ParameterFormFields = NonNullable<AccessibleBoardAction["fields"]>;
+
+const parameterFormFields: Readonly<Record<string, ParameterFormFields>> = {
+  "property.auction.bid": auctionBidFields,
+  "property.build": buildingUnitKindFields,
+  "property.build.request": buildingRequestFields,
+  "property.build.auction.bid": auctionBidFields,
+  "property.sell": buildingRequestFields,
+  "property.mortgage": buildingRequestFields,
+  "property.redeem": buildingRequestFields
+};
+
 /** Copy one server-declared action into the public host contribution shape. */
 const toAccessibleAction = (
   action: ReturnType<typeof projectEstateRaceSession>["availableActions"][number]
@@ -40,10 +78,12 @@ const toAccessibleAction = (
   label: action.label,
   actionId: action.actionId,
   ...(action.description === undefined ? {} : { description: action.description }),
-  ...(action.actionId === "property.auction.bid"
+  ...(parameterFormFields[action.actionId] === undefined && action.params !== undefined
+    ? { params: { ...action.params } }
+    : {}),
+  ...(parameterFormFields[action.actionId] === undefined
     ? {}
-    : action.params === undefined ? {} : { params: { ...action.params } }),
-  ...(action.actionId === "property.auction.bid" ? { fields: auctionBidFields } : {}),
+    : { fields: parameterFormFields[action.actionId] }),
   ...(action.disabled === undefined ? {} : { disabled: action.disabled })
 });
 

@@ -31,6 +31,9 @@ export interface EstateCellView {
   readonly price: number | null;
   readonly rent: number | null;
   readonly rentScale: readonly number[];
+  /** Server-owned S4 representation: 1..4 houses, 5 one hotel. */
+  readonly improvementTier: number;
+  readonly mortgaged: boolean;
   readonly taxAmount: number | null;
   readonly ownerPlayerId: string | null;
 }
@@ -46,6 +49,10 @@ export interface EstatePlayerView {
   readonly jailAttempts: number;
   /** Present only in the authenticated owner's actor projection. */
   readonly heldExitCardId: string | null;
+  /** Public participant projection; absent when the endpoint is not exposed. */
+  readonly bidderStatus: string | null;
+  readonly buildingRequestCellId: string | null;
+  readonly buildingRequestUnitKind: string | null;
 }
 
 export interface EstateActionView {
@@ -68,6 +75,16 @@ export interface EstateAuctionView {
   readonly leaderPlayerId: string | null;
 }
 
+export interface EstateBuildingBankView {
+  readonly housesAvailable: number;
+  readonly hotelsAvailable: number;
+}
+
+export interface EstateBuildingWindowView {
+  readonly resumePlayerId: string | null;
+  readonly unitKind: string | null;
+}
+
 export interface EstateBoardProjection {
   readonly cells: readonly EstateCellView[];
   readonly players: readonly EstatePlayerView[];
@@ -79,6 +96,9 @@ export interface EstateBoardProjection {
   /** Public result of the latest resolved draw; never used to infer ownership. */
   readonly lastCardId: string | null;
   readonly auction: EstateAuctionView;
+  readonly bankBuildings: EstateBuildingBankView;
+  readonly buildingWindow: EstateBuildingWindowView;
+  readonly buildingAuction: EstateAuctionView;
 }
 
 type JsonRecord = Record<string, unknown>;
@@ -99,6 +119,12 @@ const text = (value: unknown, fallback: string): string =>
 
 const optionalText = (value: unknown): string | null =>
   typeof value === "string" && value.trim().length > 0 ? value : null;
+
+const improvementTier = (value: unknown): number =>
+  typeof value === "number" && Number.isSafeInteger(value) && value >= 0 && value <= 5 ? value : 0;
+
+const bankCount = (value: unknown, maximum: number): number =>
+  typeof value === "number" && Number.isSafeInteger(value) && value >= 0 && value <= maximum ? value : 0;
 
 const readCells = (publicState: JsonRecord): EstateCellView[] => {
   const objects = isRecord(publicState.objects) ? publicState.objects : {};
@@ -128,6 +154,8 @@ const readCells = (publicState: JsonRecord): EstateCellView[] => {
       rentScale: Array.isArray(attributes.rentScale)
         ? attributes.rentScale.filter((value): value is number => typeof value === "number" && Number.isFinite(value))
         : [],
+      improvementTier: improvementTier(attributes.improvementTier),
+      mortgaged: attributes.mortgaged === true,
       taxAmount: typeof attributes.taxAmount === "number" ? attributes.taxAmount : null,
       ownerPlayerId: typeof attributes.ownerPlayerId === "string" ? attributes.ownerPlayerId : null
     }];
@@ -140,6 +168,7 @@ const readPlayers = (state: JsonRecord, activePlayerId: string | null): EstatePl
     if (!isRecord(raw)) return [];
     const metrics = isRecord(raw.metrics) ? raw.metrics : {};
     const objects = isRecord(raw.objects) ? raw.objects : {};
+    const flags = isRecord(raw.flags) ? raw.flags : {};
     return [{
       id,
       label: `Игрок ${index + 1}`,
@@ -148,7 +177,10 @@ const readPlayers = (state: JsonRecord, activePlayerId: string | null): EstatePl
       active: id === activePlayerId,
       inJail: isRecord(raw.flags) && raw.flags.inJail === true,
       jailAttempts: finiteNumber(metrics.jailAttempts),
-      heldExitCardId: optionalText(objects.heldExitCardId)
+      heldExitCardId: optionalText(objects.heldExitCardId),
+      bidderStatus: optionalText(objects.bidderStatus) ?? optionalText(flags.bidderStatus),
+      buildingRequestCellId: optionalText(objects.buildingRequestCellId),
+      buildingRequestUnitKind: optionalText(objects.buildingRequestUnitKind)
     }];
   });
 };
@@ -217,6 +249,22 @@ const readAuction = (publicState: JsonRecord): EstateAuctionView => {
   };
 };
 
+const readBuildingBank = (publicState: JsonRecord): EstateBuildingBankView => {
+  const bank = isRecord(publicState.bankBuildings) ? publicState.bankBuildings : {};
+  return {
+    housesAvailable: bankCount(bank.housesAvailable, 32),
+    hotelsAvailable: bankCount(bank.hotelsAvailable, 12)
+  };
+};
+
+const readBuildingWindow = (publicState: JsonRecord): EstateBuildingWindowView => {
+  const window = isRecord(publicState.buildingWindow) ? publicState.buildingWindow : {};
+  return {
+    resumePlayerId: optionalText(window.resumePlayerId),
+    unitKind: optionalText(window.unitKind)
+  };
+};
+
 /**
  * Build the shortest display-only route between two confirmed positions.
  * Snapshots do not carry movement direction, so choosing the shorter arc
@@ -258,6 +306,19 @@ export function projectEstateRaceSession(
     turnNumber: finiteNumber(turn.turnNumber),
     lastRoll: readRoll(board),
     lastCardId: optionalText(board.lastCardId),
-    auction: readAuction(publicState)
+    auction: readAuction(publicState),
+    bankBuildings: readBuildingBank(publicState),
+    buildingWindow: readBuildingWindow(publicState),
+    buildingAuction: (() => {
+      const auction = isRecord(publicState.buildingAuction) ? publicState.buildingAuction : {};
+      return {
+        resumePlayerId: null,
+        cellId: null,
+        currentBid: finiteNumber(auction.currentBid),
+        minimumIncrement: finiteNumber(auction.minimumIncrement),
+        minimumNextBid: null,
+        leaderPlayerId: optionalText(auction.leaderPlayerId)
+      };
+    })()
   };
 }

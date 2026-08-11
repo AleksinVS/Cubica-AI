@@ -9,7 +9,7 @@
     "_semantics": "Локальная экономическая игра для 2–6 участников на полном авторском сорокаклеточном маршруте.",
     "meta": {
       "id": "estate-race",
-      "version": "0.3.0",
+      "version": "0.4.0",
       "name": "Estate Race · прототип",
       "description": "Локальная экономическая игра для 2–6 участников на полном авторском сорокаклеточном маршруте.",
       "author": "Cubica",
@@ -42,7 +42,9 @@
           "blocked",
           "finish",
           "auction",
-          "jail"
+          "jail",
+          "buildingWindow",
+          "buildingAuction"
         ]
       }
     },
@@ -186,7 +188,9 @@
         },
         "objects": {
           "bidderStatus": "idle",
-          "heldExitCardId": null
+          "heldExitCardId": null,
+          "buildingRequestCellId": "",
+          "buildingRequestUnitKind": ""
         },
         "status": "active",
         "visibility": {
@@ -252,14 +256,9 @@
                 "kind": "estate",
                 "group": "amber",
                 "price": 90,
-                "rentScale": [
-                  8,
-                  24,
-                  70,
-                  180,
-                  320,
-                  470
-                ],
+                "rentScale": [8, 24, 70, 180, 320, 470], "rent0": 8, "rent1": 24, "rent2": 70, "rent3": 180, "rent4": 320, "rent5": 470,
+                "improvementTier": 0, "mortgaged": false,
+                "buildCost": 50, "sellValue": 25, "mortgageValue": 45, "redeemCost": 50,
                 "rent": 8
               }
             },
@@ -280,14 +279,9 @@
                 "kind": "estate",
                 "group": "amber",
                 "price": 120,
-                "rentScale": [
-                  18,
-                  36,
-                  96,
-                  230,
-                  390,
-                  560
-                ],
+                "rentScale": [18, 36, 96, 230, 390, 560], "rent0": 18, "rent1": 36, "rent2": 96, "rent3": 230, "rent4": 390, "rent5": 560,
+                "improvementTier": 0, "mortgaged": false,
+                "buildCost": 50, "sellValue": 25, "mortgageValue": 60, "redeemCost": 66,
                 "rent": 18
               }
             },
@@ -343,14 +337,9 @@
                 "kind": "estate",
                 "group": "coral",
                 "price": 160,
-                "rentScale": [
-                  24,
-                  48,
-                  132,
-                  310,
-                  500,
-                  700
-                ],
+                "rentScale": [24, 48, 132, 310, 500, 700], "rent0": 24, "rent1": 48, "rent2": 132, "rent3": 310, "rent4": 500, "rent5": 700,
+                "improvementTier": 0, "mortgaged": false,
+                "buildCost": 60, "sellValue": 30, "mortgageValue": 80, "redeemCost": 88,
                 "rent": 24
               }
             },
@@ -371,6 +360,9 @@
                 "kind": "transit",
                 "group": "transit",
                 "price": 210,
+                "mortgaged": false,
+                "mortgageValue": 105,
+                "redeemCost": 116,
                 "rentScale": [
                   26,
                   52,
@@ -414,14 +406,9 @@
                 "kind": "estate",
                 "group": "coral",
                 "price": 200,
-                "rentScale": [
-                  30,
-                  60,
-                  168,
-                  380,
-                  610,
-                  840
-                ],
+                "rentScale": [30, 60, 168, 380, 610, 840], "rent0": 30, "rent1": 60, "rent2": 168, "rent3": 380, "rent4": 610, "rent5": 840,
+                "improvementTier": 0, "mortgaged": false,
+                "buildCost": 60, "sellValue": 30, "mortgageValue": 100, "redeemCost": 110,
                 "rent": 30
               }
             },
@@ -442,14 +429,9 @@
                 "kind": "estate",
                 "group": "coral",
                 "price": 220,
-                "rentScale": [
-                  34,
-                  68,
-                  190,
-                  420,
-                  660,
-                  900
-                ],
+                "rentScale": [34, 68, 190, 420, 660, 900], "rent0": 34, "rent1": 68, "rent2": 190, "rent3": 420, "rent4": 660, "rent5": 900,
+                "improvementTier": 0, "mortgaged": false,
+                "buildCost": 60, "sellValue": 30, "mortgageValue": 110, "redeemCost": 121,
                 "rent": 34
               }
             },
@@ -487,14 +469,9 @@
                 "kind": "estate",
                 "group": "gold",
                 "price": 240,
-                "rentScale": [
-                  36,
-                  72,
-                  210,
-                  460,
-                  720,
-                  980
-                ],
+                "rentScale": [36, 72, 210, 460, 720, 980], "rent0": 36, "rent1": 72, "rent2": 210, "rent3": 460, "rent4": 720, "rent5": 980,
+                "improvementTier": 0, "mortgaged": false,
+                "buildCost": 70, "sellValue": 35, "mortgageValue": 120, "redeemCost": 132,
                 "rent": 36
               }
             },
@@ -515,6 +492,9 @@
                 "kind": "utility",
                 "group": "utility",
                 "price": 180,
+                "mortgaged": false,
+                "mortgageValue": 90,
+                "redeemCost": 99,
                 "rentScale": [
                   5,
                   12
@@ -539,14 +519,9 @@
                 "kind": "estate",
                 "group": "gold",
                 "price": 260,
-                "rentScale": [
-                  38,
-                  76,
-                  220,
-                  490,
-                  760,
-                  1020
-                ],
+                "rentScale": [38, 76, 220, 490, 760, 1020], "rent0": 38, "rent1": 76, "rent2": 220, "rent3": 490, "rent4": 760, "rent5": 1020,
+                "improvementTier": 0, "mortgaged": false,
+                "buildCost": 70, "sellValue": 35, "mortgageValue": 130, "redeemCost": 143,
                 "rent": 38
               }
             },
@@ -567,14 +542,9 @@
                 "kind": "estate",
                 "group": "gold",
                 "price": 280,
-                "rentScale": [
-                  40,
-                  80,
-                  230,
-                  520,
-                  800,
-                  1080
-                ],
+                "rentScale": [40, 80, 230, 520, 800, 1080], "rent0": 40, "rent1": 80, "rent2": 230, "rent3": 520, "rent4": 800, "rent5": 1080,
+                "improvementTier": 0, "mortgaged": false,
+                "buildCost": 70, "sellValue": 35, "mortgageValue": 140, "redeemCost": 154,
                 "rent": 40
               }
             },
@@ -595,6 +565,9 @@
                 "kind": "transit",
                 "group": "transit",
                 "price": 210,
+                "mortgaged": false,
+                "mortgageValue": 105,
+                "redeemCost": 116,
                 "rentScale": [
                   26,
                   52,
@@ -621,14 +594,9 @@
                 "kind": "estate",
                 "group": "moss",
                 "price": 300,
-                "rentScale": [
-                  42,
-                  84,
-                  250,
-                  560,
-                  850,
-                  1140
-                ],
+                "rentScale": [42, 84, 250, 560, 850, 1140], "rent0": 42, "rent1": 84, "rent2": 250, "rent3": 560, "rent4": 850, "rent5": 1140,
+                "improvementTier": 0, "mortgaged": false,
+                "buildCost": 80, "sellValue": 40, "mortgageValue": 150, "redeemCost": 165,
                 "rent": 42
               }
             },
@@ -666,14 +634,9 @@
                 "kind": "estate",
                 "group": "moss",
                 "price": 320,
-                "rentScale": [
-                  45,
-                  90,
-                  270,
-                  600,
-                  900,
-                  1200
-                ],
+                "rentScale": [45, 90, 270, 600, 900, 1200], "rent0": 45, "rent1": 90, "rent2": 270, "rent3": 600, "rent4": 900, "rent5": 1200,
+                "improvementTier": 0, "mortgaged": false,
+                "buildCost": 80, "sellValue": 40, "mortgageValue": 160, "redeemCost": 176,
                 "rent": 45
               }
             },
@@ -694,14 +657,9 @@
                 "kind": "estate",
                 "group": "moss",
                 "price": 340,
-                "rentScale": [
-                  48,
-                  96,
-                  285,
-                  630,
-                  940,
-                  1260
-                ],
+                "rentScale": [48, 96, 285, 630, 940, 1260], "rent0": 48, "rent1": 96, "rent2": 285, "rent3": 630, "rent4": 940, "rent5": 1260,
+                "improvementTier": 0, "mortgaged": false,
+                "buildCost": 80, "sellValue": 40, "mortgageValue": 170, "redeemCost": 187,
                 "rent": 48
               }
             },
@@ -739,14 +697,9 @@
                 "kind": "estate",
                 "group": "azure",
                 "price": 360,
-                "rentScale": [
-                  50,
-                  100,
-                  300,
-                  660,
-                  980,
-                  1320
-                ],
+                "rentScale": [50, 100, 300, 660, 980, 1320], "rent0": 50, "rent1": 100, "rent2": 300, "rent3": 660, "rent4": 980, "rent5": 1320,
+                "improvementTier": 0, "mortgaged": false,
+                "buildCost": 90, "sellValue": 45, "mortgageValue": 180, "redeemCost": 198,
                 "rent": 50
               }
             },
@@ -784,14 +737,9 @@
                 "kind": "estate",
                 "group": "azure",
                 "price": 380,
-                "rentScale": [
-                  52,
-                  104,
-                  315,
-                  690,
-                  1020,
-                  1380
-                ],
+                "rentScale": [52, 104, 315, 690, 1020, 1380], "rent0": 52, "rent1": 104, "rent2": 315, "rent3": 690, "rent4": 1020, "rent5": 1380,
+                "improvementTier": 0, "mortgaged": false,
+                "buildCost": 90, "sellValue": 45, "mortgageValue": 190, "redeemCost": 209,
                 "rent": 52
               }
             },
@@ -812,14 +760,9 @@
                 "kind": "estate",
                 "group": "azure",
                 "price": 400,
-                "rentScale": [
-                  55,
-                  110,
-                  330,
-                  720,
-                  1060,
-                  1440
-                ],
+                "rentScale": [55, 110, 330, 720, 1060, 1440], "rent0": 55, "rent1": 110, "rent2": 330, "rent3": 720, "rent4": 1060, "rent5": 1440,
+                "improvementTier": 0, "mortgaged": false,
+                "buildCost": 90, "sellValue": 45, "mortgageValue": 200, "redeemCost": 220,
                 "rent": 55
               }
             },
@@ -840,6 +783,9 @@
                 "kind": "transit",
                 "group": "transit",
                 "price": 210,
+                "mortgaged": false,
+                "mortgageValue": 105,
+                "redeemCost": 116,
                 "rentScale": [
                   26,
                   52,
@@ -866,14 +812,9 @@
                 "kind": "estate",
                 "group": "plum",
                 "price": 420,
-                "rentScale": [
-                  58,
-                  116,
-                  350,
-                  760,
-                  1120,
-                  1510
-                ],
+                "rentScale": [58, 116, 350, 760, 1120, 1510], "rent0": 58, "rent1": 116, "rent2": 350, "rent3": 760, "rent4": 1120, "rent5": 1510,
+                "improvementTier": 0, "mortgaged": false,
+                "buildCost": 100, "sellValue": 50, "mortgageValue": 210, "redeemCost": 231,
                 "rent": 58
               }
             },
@@ -894,14 +835,9 @@
                 "kind": "estate",
                 "group": "plum",
                 "price": 440,
-                "rentScale": [
-                  60,
-                  120,
-                  365,
-                  790,
-                  1160,
-                  1570
-                ],
+                "rentScale": [60, 120, 365, 790, 1160, 1570], "rent0": 60, "rent1": 120, "rent2": 365, "rent3": 790, "rent4": 1160, "rent5": 1570,
+                "improvementTier": 0, "mortgaged": false,
+                "buildCost": 100, "sellValue": 50, "mortgageValue": 220, "redeemCost": 242,
                 "rent": 60
               }
             },
@@ -922,6 +858,9 @@
                 "kind": "utility",
                 "group": "utility",
                 "price": 180,
+                "mortgaged": false,
+                "mortgageValue": 90,
+                "redeemCost": 99,
                 "rentScale": [
                   5,
                   12
@@ -946,14 +885,9 @@
                 "kind": "estate",
                 "group": "plum",
                 "price": 460,
-                "rentScale": [
-                  64,
-                  128,
-                  385,
-                  830,
-                  1220,
-                  1640
-                ],
+                "rentScale": [64, 128, 385, 830, 1220, 1640], "rent0": 64, "rent1": 128, "rent2": 385, "rent3": 830, "rent4": 1220, "rent5": 1640,
+                "improvementTier": 0, "mortgaged": false,
+                "buildCost": 100, "sellValue": 50, "mortgageValue": 230, "redeemCost": 253,
                 "rent": 64
               }
             },
@@ -991,14 +925,9 @@
                 "kind": "estate",
                 "group": "copper",
                 "price": 480,
-                "rentScale": [
-                  66,
-                  132,
-                  400,
-                  860,
-                  1260,
-                  1700
-                ],
+                "rentScale": [66, 132, 400, 860, 1260, 1700], "rent0": 66, "rent1": 132, "rent2": 400, "rent3": 860, "rent4": 1260, "rent5": 1700,
+                "improvementTier": 0, "mortgaged": false,
+                "buildCost": 110, "sellValue": 55, "mortgageValue": 240, "redeemCost": 264,
                 "rent": 66
               }
             },
@@ -1019,14 +948,9 @@
                 "kind": "estate",
                 "group": "copper",
                 "price": 500,
-                "rentScale": [
-                  70,
-                  140,
-                  420,
-                  900,
-                  1320,
-                  1780
-                ],
+                "rentScale": [70, 140, 420, 900, 1320, 1780], "rent0": 70, "rent1": 140, "rent2": 420, "rent3": 900, "rent4": 1320, "rent5": 1780,
+                "improvementTier": 0, "mortgaged": false,
+                "buildCost": 110, "sellValue": 55, "mortgageValue": 250, "redeemCost": 275,
                 "rent": 70
               }
             },
@@ -1064,14 +988,9 @@
                 "kind": "estate",
                 "group": "copper",
                 "price": 520,
-                "rentScale": [
-                  74,
-                  148,
-                  440,
-                  940,
-                  1380,
-                  1860
-                ],
+                "rentScale": [74, 148, 440, 940, 1380, 1860], "rent0": 74, "rent1": 148, "rent2": 440, "rent3": 940, "rent4": 1380, "rent5": 1860,
+                "improvementTier": 0, "mortgaged": false,
+                "buildCost": 110, "sellValue": 55, "mortgageValue": 260, "redeemCost": 286,
                 "rent": 74
               }
             },
@@ -1092,6 +1011,9 @@
                 "kind": "transit",
                 "group": "transit",
                 "price": 210,
+                "mortgaged": false,
+                "mortgageValue": 105,
+                "redeemCost": 116,
                 "rentScale": [
                   26,
                   52,
@@ -1135,14 +1057,9 @@
                 "kind": "estate",
                 "group": "jade",
                 "price": 560,
-                "rentScale": [
-                  80,
-                  160,
-                  480,
-                  1020,
-                  1500,
-                  2020
-                ],
+                "rentScale": [80, 160, 480, 1020, 1500, 2020], "rent0": 80, "rent1": 160, "rent2": 480, "rent3": 1020, "rent4": 1500, "rent5": 2020,
+                "improvementTier": 0, "mortgaged": false,
+                "buildCost": 120, "sellValue": 60, "mortgageValue": 280, "redeemCost": 308,
                 "rent": 80
               }
             },
@@ -1181,14 +1098,9 @@
                 "kind": "estate",
                 "group": "jade",
                 "price": 620,
-                "rentScale": [
-                  90,
-                  180,
-                  540,
-                  1140,
-                  1680,
-                  2260
-                ],
+                "rentScale": [90, 180, 540, 1140, 1680, 2260], "rent0": 90, "rent1": 180, "rent2": 540, "rent3": 1140, "rent4": 1680, "rent5": 2260,
+                "improvementTier": 0, "mortgaged": false,
+                "buildCost": 120, "sellValue": 60, "mortgageValue": 310, "redeemCost": 341,
                 "rent": 90
               }
             }
@@ -1360,6 +1272,23 @@
                 "offset": 0,
                 "awardLap": false
               }
+            },
+            "fund-assessment": {
+              "objectType": "estate.card",
+              "facets": {
+                "deck": "fund"
+              },
+              "attributes": {
+                "id": "fund-assessment",
+                "label": "Оценка городской застройки",
+                "effectKind": "building-assessment",
+                "amount": 0,
+                "houseFee": 15,
+                "hotelFee": 60,
+                "destination": 0,
+                "offset": 0,
+                "awardLap": false
+              }
             }
           }
         },
@@ -1370,6 +1299,19 @@
         "auction": {
           "resumePlayerId": "",
           "cellId": "",
+          "currentBid": 0,
+          "minimumIncrement": 10,
+          "leaderPlayerId": ""
+        },
+        "bankBuildings": {
+          "housesAvailable": 32,
+          "hotelsAvailable": 12
+        },
+        "buildingWindow": {
+          "resumePlayerId": "",
+          "unitKind": ""
+        },
+        "buildingAuction": {
           "currentBid": 0,
           "minimumIncrement": 10,
           "leaderPlayerId": ""
@@ -1403,6 +1345,14 @@
                 "property.rent",
                 "property.auction.bid",
                 "property.auction.pass",
+                "property.build",
+                "property.build.request",
+                "property.build.pass",
+                "property.build.auction.bid",
+                "property.build.auction.pass",
+                "property.sell",
+                "property.mortgage",
+                "property.redeem",
                 "tax.pay",
                 "turn.finish"
               ]
@@ -1540,6 +1490,66 @@
           }
         },
         {
+          "id": "property.build", "_type": "game.Action", "_label": "Открыть окно застройки",
+          "_semantics": "Активный участник открывает окно заявок одного типа строения.",
+          "capabilityFamily": "runtime.server", "capability": "property.build", "displayName": "Открыть окно застройки",
+          "allowedSessionRoles": ["player"],
+          "paramsSchema": { "type": "object", "additionalProperties": false, "properties": { "unitKind": { "type": "string", "minLength": 1, "maxLength": 16 } }, "required": ["unitKind"] },
+          "binding": { "kind": "mechanics-plan", "planRef": "property.build" }
+        },
+        {
+          "id": "property.build.request", "_type": "game.Action", "_label": "Подать заявку на строение",
+          "_semantics": "Exact actor подаёт единственную заявку на допустимый участок.",
+          "capabilityFamily": "runtime.server", "capability": "property.build.request", "displayName": "Подать заявку",
+          "allowedSessionRoles": ["player"],
+          "paramsSchema": { "type": "object", "additionalProperties": false, "properties": { "cellId": { "type": "string", "minLength": 1, "maxLength": 128 } }, "required": ["cellId"] },
+          "binding": { "kind": "mechanics-plan", "planRef": "property.build.request" }
+        },
+        {
+          "id": "property.build.pass", "_type": "game.Action", "_label": "Не строить",
+          "_semantics": "Exact actor завершает своё участие в окне без заявки.",
+          "capabilityFamily": "runtime.server", "capability": "property.build.pass", "displayName": "Не строить",
+          "allowedSessionRoles": ["player"], "binding": { "kind": "mechanics-plan", "planRef": "property.build.pass" }
+        },
+        {
+          "id": "property.build.auction.bid", "_type": "game.Action", "_label": "Ставка за строение",
+          "_semantics": "Exact actor делает ставку за текущую дефицитную единицу.",
+          "capabilityFamily": "runtime.server", "capability": "property.build.auction.bid", "displayName": "Сделать ставку",
+          "allowedSessionRoles": ["player"],
+          "paramsSchema": { "type": "object", "additionalProperties": false, "properties": { "amount": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 } }, "required": ["amount"] },
+          "binding": { "kind": "mechanics-plan", "planRef": "property.build.auction.bid" }
+        },
+        {
+          "id": "property.build.auction.pass", "_type": "game.Action", "_label": "Пас на строение",
+          "_semantics": "Exact actor пасует только в текущем лоте.",
+          "capabilityFamily": "runtime.server", "capability": "property.build.auction.pass", "displayName": "Пас",
+          "allowedSessionRoles": ["player"], "binding": { "kind": "mechanics-plan", "planRef": "property.build.auction.pass" }
+        },
+        {
+          "id": "property.sell", "_type": "game.Action", "_label": "Продать строение",
+          "_semantics": "Продать одну допустимую ступень с максимального участка группы.",
+          "capabilityFamily": "runtime.server", "capability": "property.sell", "displayName": "Продать строение",
+          "allowedSessionRoles": ["player"],
+          "paramsSchema": { "type": "object", "additionalProperties": false, "properties": { "cellId": { "type": "string", "minLength": 1, "maxLength": 128 } }, "required": ["cellId"] },
+          "binding": { "kind": "mechanics-plan", "planRef": "property.sell" }
+        },
+        {
+          "id": "property.mortgage", "_type": "game.Action", "_label": "Заложить объект",
+          "_semantics": "Заложить принадлежащий объект при соблюдении группового запрета строений.",
+          "capabilityFamily": "runtime.server", "capability": "property.mortgage", "displayName": "Заложить объект",
+          "allowedSessionRoles": ["player"],
+          "paramsSchema": { "type": "object", "additionalProperties": false, "properties": { "cellId": { "type": "string", "minLength": 1, "maxLength": 128 } }, "required": ["cellId"] },
+          "binding": { "kind": "mechanics-plan", "planRef": "property.mortgage" }
+        },
+        {
+          "id": "property.redeem", "_type": "game.Action", "_label": "Выкупить объект",
+          "_semantics": "Атомарно оплатить точную стоимость выкупа и снять залог.",
+          "capabilityFamily": "runtime.server", "capability": "property.redeem", "displayName": "Выкупить объект",
+          "allowedSessionRoles": ["player"],
+          "paramsSchema": { "type": "object", "additionalProperties": false, "properties": { "cellId": { "type": "string", "minLength": 1, "maxLength": 128 } }, "required": ["cellId"] },
+          "binding": { "kind": "mechanics-plan", "planRef": "property.redeem" }
+        },
+        {
           "id": "tax.pay",
           "_type": "game.Action",
           "_label": "Оплатить налог",
@@ -1648,7 +1658,9 @@
               "blocked",
               "finish",
               "auction",
-              "jail"
+              "jail",
+              "buildingWindow",
+              "buildingAuction"
             ]
           },
           "core.integer": {
@@ -1817,6 +1829,14 @@
               "passed"
             ]
           },
+          "game.building-unit-kind": {
+            "kind": "enum",
+            "values": [
+              "",
+              "house",
+              "hotel"
+            ]
+          },
           "game.card-effect-kind": {
             "kind": "enum",
             "values": [
@@ -1828,7 +1848,8 @@
               "move-relative",
               "send-jail",
               "hold-exit",
-              "message"
+              "message",
+              "building-assessment"
             ]
           }
         },
@@ -2169,6 +2190,24 @@
             "valueType": "game.bidder-status",
             "access": "read-write"
           },
+          "participant.objects.buildingRequestCellId": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "players",
+              "segments": [{ "binding": "participantId" }, "objects", "buildingRequestCellId"]
+            },
+            "valueType": "core.string",
+            "access": "read-write"
+          },
+          "participant.objects.buildingRequestUnitKind": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "players",
+              "segments": [{ "binding": "participantId" }, "objects", "buildingRequestUnitKind"]
+            },
+            "valueType": "core.string",
+            "access": "read-write"
+          },
           "public.auction.resumePlayerId": {
             "audienceRef": "public",
             "storage": {
@@ -2227,6 +2266,48 @@
               ]
             },
             "valueType": "core.integer",
+            "access": "read-write"
+          },
+          "public.bankBuildings.housesAvailable": {
+            "audienceRef": "public",
+            "storage": { "root": "public", "segments": ["bankBuildings", "housesAvailable"] },
+            "valueType": "core.integer",
+            "access": "read-write"
+          },
+          "public.bankBuildings.hotelsAvailable": {
+            "audienceRef": "public",
+            "storage": { "root": "public", "segments": ["bankBuildings", "hotelsAvailable"] },
+            "valueType": "core.integer",
+            "access": "read-write"
+          },
+          "public.buildingWindow.resumePlayerId": {
+            "audienceRef": "public",
+            "storage": { "root": "public", "segments": ["buildingWindow", "resumePlayerId"] },
+            "valueType": "core.string",
+            "access": "read-write"
+          },
+          "public.buildingWindow.unitKind": {
+            "audienceRef": "public",
+            "storage": { "root": "public", "segments": ["buildingWindow", "unitKind"] },
+            "valueType": "core.string",
+            "access": "read-write"
+          },
+          "public.buildingAuction.currentBid": {
+            "audienceRef": "public",
+            "storage": { "root": "public", "segments": ["buildingAuction", "currentBid"] },
+            "valueType": "core.integer",
+            "access": "read-write"
+          },
+          "public.buildingAuction.minimumIncrement": {
+            "audienceRef": "public",
+            "storage": { "root": "public", "segments": ["buildingAuction", "minimumIncrement"] },
+            "valueType": "core.integer",
+            "access": "read-write"
+          },
+          "public.buildingAuction.leaderPlayerId": {
+            "audienceRef": "public",
+            "storage": { "root": "public", "segments": ["buildingAuction", "leaderPlayerId"] },
+            "valueType": "core.string",
             "access": "read-write"
           },
           "actor.metrics.jailAttempts": {
@@ -2376,6 +2457,16 @@
                 "valueType": "game.bidder-status",
                 "access": "read-only"
               },
+              "buildingRequestCellId": {
+                "storage": { "kind": "path", "path": ["objects", "buildingRequestCellId"] },
+                "valueType": "core.string",
+                "access": "read-only"
+              },
+              "buildingRequestUnitKind": {
+                "storage": { "kind": "path", "path": ["objects", "buildingRequestUnitKind"] },
+                "valueType": "core.string",
+                "access": "read-only"
+              },
               "jailAttempts": {
                 "storage": {
                   "kind": "path",
@@ -2498,7 +2589,7 @@
                   "name": "rent"
                 },
                 "valueType": "core.integer",
-                "access": "read-only"
+                "access": "read-write"
               },
               "ownerPlayerId": {
                 "storage": {
@@ -2524,6 +2615,18 @@
                 "valueType": "game.rent-scale",
                 "access": "read-only"
               },
+              "rent0": { "storage": { "kind": "attribute", "name": "rent0" }, "valueType": "core.integer", "access": "read-only" },
+              "rent1": { "storage": { "kind": "attribute", "name": "rent1" }, "valueType": "core.integer", "access": "read-only" },
+              "rent2": { "storage": { "kind": "attribute", "name": "rent2" }, "valueType": "core.integer", "access": "read-only" },
+              "rent3": { "storage": { "kind": "attribute", "name": "rent3" }, "valueType": "core.integer", "access": "read-only" },
+              "rent4": { "storage": { "kind": "attribute", "name": "rent4" }, "valueType": "core.integer", "access": "read-only" },
+              "rent5": { "storage": { "kind": "attribute", "name": "rent5" }, "valueType": "core.integer", "access": "read-only" },
+              "improvementTier": { "storage": { "kind": "attribute", "name": "improvementTier" }, "valueType": "core.integer", "access": "read-write" },
+              "mortgaged": { "storage": { "kind": "attribute", "name": "mortgaged" }, "valueType": "core.boolean", "access": "read-write" },
+              "buildCost": { "storage": { "kind": "attribute", "name": "buildCost" }, "valueType": "core.integer", "access": "read-only" },
+              "sellValue": { "storage": { "kind": "attribute", "name": "sellValue" }, "valueType": "core.integer", "access": "read-only" },
+              "mortgageValue": { "storage": { "kind": "attribute", "name": "mortgageValue" }, "valueType": "core.integer", "access": "read-only" },
+              "redeemCost": { "storage": { "kind": "attribute", "name": "redeemCost" }, "valueType": "core.integer", "access": "read-only" },
               "taxAmount": {
                 "storage": {
                   "kind": "attribute",
@@ -2612,6 +2715,16 @@
                 },
                 "valueType": "core.boolean",
                 "access": "read-only"
+              },
+              "houseFee": {
+                "storage": { "kind": "attribute", "name": "houseFee" },
+                "valueType": "core.integer",
+                "access": "read-only"
+              },
+              "hotelFee": {
+                "storage": { "kind": "attribute", "name": "hotelFee" },
+                "valueType": "core.integer",
+                "access": "read-only"
               }
             }
           },
@@ -2692,6 +2805,16 @@
                   "name": "awardLap"
                 },
                 "valueType": "core.boolean",
+                "access": "read-only"
+              },
+              "houseFee": {
+                "storage": { "kind": "attribute", "name": "houseFee" },
+                "valueType": "core.integer",
+                "access": "read-only"
+              },
+              "hotelFee": {
+                "storage": { "kind": "attribute", "name": "hotelFee" },
+                "valueType": "core.integer",
                 "access": "read-only"
               }
             }
@@ -3277,6 +3400,8 @@
                 "args": {
                   "deckId": "event",
                   "collection": "eventCards",
+                  "assessmentHouseStepId": "turn-event-assessment-houses",
+                  "assessmentHotelStepId": "turn-event-assessment-hotel",
                   "condition": {
                     "op": "predicate.compare",
                     "operator": "eq",
@@ -3300,6 +3425,8 @@
                 "args": {
                   "deckId": "fund",
                   "collection": "fundCards",
+                  "assessmentHouseStepId": "turn-fund-assessment-houses",
+                  "assessmentHotelStepId": "turn-fund-assessment-hotel",
                   "condition": {
                     "op": "predicate.compare",
                     "operator": "eq",
@@ -4194,6 +4321,18 @@
                 }
               },
               {
+                "id": "sync-estate-rent",
+                "kind": "macro",
+                "macro": "estate.sync-property-rent",
+                "args": {
+                  "cellId": {
+                    "op": "value.result",
+                    "stepId": "landing-cell",
+                    "path": ["ids", "0"]
+                  }
+                }
+              },
+              {
                 "id": "owner-estate-group",
                 "kind": "query",
                 "op": "core.entities.select",
@@ -4218,6 +4357,10 @@
                         }
                       },
                       "field": "ownerPlayerId"
+                    },
+                    "mortgaged": {
+                      "op": "value.literal",
+                      "value": false
                     }
                   },
                   "cardinality": {
@@ -4297,6 +4440,10 @@
                     "kind": {
                       "op": "value.literal",
                       "value": "estate"
+                    },
+                    "mortgaged": {
+                      "op": "value.literal",
+                      "value": false
                     }
                   }
                 }
@@ -4375,6 +4522,14 @@
                         "kind": {
                           "op": "value.literal",
                           "value": "estate"
+                        },
+                        "mortgaged": {
+                          "op": "value.literal",
+                          "value": false
+                        },
+                        "improvementTier": {
+                          "op": "value.literal",
+                          "value": 0
                         }
                       }
                     },
@@ -4470,6 +4625,10 @@
                     "kind": {
                       "op": "value.literal",
                       "value": "transit"
+                    },
+                    "mortgaged": {
+                      "op": "value.literal",
+                      "value": false
                     }
                   }
                 }
@@ -4548,6 +4707,10 @@
                         "kind": {
                           "op": "value.literal",
                           "value": "transit"
+                        },
+                        "mortgaged": {
+                          "op": "value.literal",
+                          "value": false
                         }
                       }
                     },
@@ -4682,6 +4845,10 @@
                         "kind": {
                           "op": "value.literal",
                           "value": "transit"
+                        },
+                        "mortgaged": {
+                          "op": "value.literal",
+                          "value": false
                         }
                       }
                     },
@@ -4816,6 +4983,10 @@
                         "kind": {
                           "op": "value.literal",
                           "value": "transit"
+                        },
+                        "mortgaged": {
+                          "op": "value.literal",
+                          "value": false
                         }
                       }
                     },
@@ -4949,6 +5120,10 @@
                     "kind": {
                       "op": "value.literal",
                       "value": "utility"
+                    },
+                    "mortgaged": {
+                      "op": "value.literal",
+                      "value": false
                     }
                   }
                 }
@@ -5027,6 +5202,10 @@
                         "kind": {
                           "op": "value.literal",
                           "value": "utility"
+                        },
+                        "mortgaged": {
+                          "op": "value.literal",
+                          "value": false
                         }
                       }
                     },
@@ -6300,6 +6479,174 @@
             ]
           }
         },
+        "property.build": {
+          "transaction": { "steps": [
+            { "id": "precondition", "kind": "assert", "op": "core.assert", "errorCode": "ACTION_PRECONDITION_FAILED", "predicate": { "op": "predicate.all", "items": [
+              { "op": "predicate.actor.active" },
+              { "op": "predicate.turn.phase", "phase": { "op": "value.literal", "value": "finish" } },
+              { "op": "predicate.any", "items": [
+                { "op": "predicate.compare", "operator": "eq", "left": { "op": "value.param", "name": "unitKind" }, "right": { "op": "value.literal", "value": "house" } },
+                { "op": "predicate.compare", "operator": "eq", "left": { "op": "value.param", "name": "unitKind" }, "right": { "op": "value.literal", "value": "hotel" } }
+              ] }
+            ] } },
+            { "id": "candidates", "kind": "query", "op": "core.entities.select", "selector": { "collection": "boardCells", "objectTypes": ["estate.cell"], "attributes": { "kind": { "op": "value.literal", "value": "estate" }, "ownerPlayerId": { "op": "value.actor" } }, "cardinality": { "min": 1, "max": 22 } } },
+            { "id": "tier-kind", "kind": "assert", "op": "core.assert", "errorCode": "ACTION_PRECONDITION_FAILED", "predicate": { "op": "predicate.any", "items": [
+              { "op": "predicate.all", "items": [{ "op": "predicate.compare", "operator": "eq", "left": { "op": "value.param", "name": "unitKind" }, "right": { "op": "value.literal", "value": "house" } }, { "op": "predicate.compare", "operator": "lt", "left": { "op": "value.entity", "entity": { "collection": "boardCells", "entityId": { "op": "value.result", "stepId": "candidates", "path": ["ids", "0"] } }, "field": "improvementTier" }, "right": { "op": "value.literal", "value": 4 } }] },
+              { "op": "predicate.all", "items": [{ "op": "predicate.compare", "operator": "eq", "left": { "op": "value.param", "name": "unitKind" }, "right": { "op": "value.literal", "value": "hotel" } }, { "op": "predicate.compare", "operator": "eq", "left": { "op": "value.entity", "entity": { "collection": "boardCells", "entityId": { "op": "value.result", "stepId": "candidates", "path": ["ids", "0"] } }, "field": "improvementTier" }, "right": { "op": "value.literal", "value": 4 } }] }
+            ] } },
+            { "id": "group", "kind": "query", "op": "core.entities.select", "selector": { "collection": "boardCells", "objectTypes": ["estate.cell"], "attributes": { "kind": { "op": "value.literal", "value": "estate" }, "group": { "op": "value.entity", "entity": { "collection": "boardCells", "entityId": { "op": "value.result", "stepId": "candidates", "path": ["ids", "0"] } }, "field": "group" } }, "cardinality": { "min": 2, "max": 3 } } },
+            { "id": "owned-group", "kind": "query", "op": "core.entities.select", "selector": { "collection": "boardCells", "objectTypes": ["estate.cell"], "attributes": { "kind": { "op": "value.literal", "value": "estate" }, "group": { "op": "value.entity", "entity": { "collection": "boardCells", "entityId": { "op": "value.result", "stepId": "candidates", "path": ["ids", "0"] } }, "field": "group" }, "ownerPlayerId": { "op": "value.actor" }, "mortgaged": { "op": "value.literal", "value": false } }, "cardinality": { "min": 1, "max": 3 } } },
+            { "id": "full-group", "kind": "assert", "op": "core.assert", "errorCode": "ACTION_PRECONDITION_FAILED", "predicate": { "op": "predicate.compare", "operator": "eq", "left": { "op": "value.result", "stepId": "group", "path": ["ids"] }, "right": { "op": "value.result", "stepId": "owned-group", "path": ["ids"] } } },
+            { "id": "lower-tier", "kind": "query", "op": "core.entities.select", "selector": { "collection": "boardCells", "objectTypes": ["estate.cell"], "attributes": { "kind": { "op": "value.literal", "value": "estate" }, "group": { "op": "value.entity", "entity": { "collection": "boardCells", "entityId": { "op": "value.result", "stepId": "candidates", "path": ["ids", "0"] } }, "field": "group" }, "improvementTier": { "operator": "lt", "value": { "op": "value.entity", "entity": { "collection": "boardCells", "entityId": { "op": "value.result", "stepId": "candidates", "path": ["ids", "0"] } }, "field": "improvementTier" } } }, "cardinality": { "min": 0, "max": 3 } } },
+            { "id": "even-build", "kind": "assert", "op": "core.assert", "errorCode": "ACTION_PRECONDITION_FAILED", "predicate": { "op": "predicate.compare", "operator": "eq", "left": { "op": "value.result", "stepId": "lower-tier", "path": ["ids"] }, "right": { "op": "value.literal", "value": [] } } },
+            { "id": "funds", "kind": "assert", "op": "core.assert", "errorCode": "MECHANICS_RESOURCE_INSUFFICIENT", "predicate": { "op": "predicate.compare", "operator": "gte", "left": { "op": "value.state", "ref": { "endpoint": "participant.metrics.cash", "bindings": { "participantId": { "op": "value.actor" } } } }, "right": { "op": "value.entity", "entity": { "collection": "boardCells", "entityId": { "op": "value.result", "stepId": "candidates", "path": ["ids", "0"] } }, "field": "buildCost" } } },
+            { "id": "stock", "kind": "assert", "op": "core.assert", "errorCode": "MECHANICS_RESOURCE_INSUFFICIENT", "predicate": { "op": "predicate.any", "items": [
+              { "op": "predicate.all", "items": [{ "op": "predicate.compare", "operator": "eq", "left": { "op": "value.param", "name": "unitKind" }, "right": { "op": "value.literal", "value": "house" } }, { "op": "predicate.compare", "operator": "gt", "left": { "op": "value.state", "ref": { "endpoint": "public.bankBuildings.housesAvailable" } }, "right": { "op": "value.literal", "value": 0 } }] },
+              { "op": "predicate.all", "items": [{ "op": "predicate.compare", "operator": "eq", "left": { "op": "value.param", "name": "unitKind" }, "right": { "op": "value.literal", "value": "hotel" } }, { "op": "predicate.compare", "operator": "gt", "left": { "op": "value.state", "ref": { "endpoint": "public.bankBuildings.hotelsAvailable" } }, "right": { "op": "value.literal", "value": 0 } }] }
+            ] } },
+            { "id": "initialize-participants", "kind": "macro", "macro": "estate.initialize-building-participants", "args": {} },
+            { "id": "open-window", "kind": "command", "op": "core.state.patch", "patches": [
+              { "operation": "set", "target": { "endpoint": "public.buildingWindow.resumePlayerId" }, "value": { "op": "value.actor" } },
+              { "operation": "set", "target": { "endpoint": "public.buildingWindow.unitKind" }, "value": { "op": "value.param", "name": "unitKind" } },
+              { "operation": "set", "target": { "endpoint": "public.board.availableActions" }, "value": { "op": "value.literal", "value": [
+                { "id": "building-request", "label": "Подать заявку", "actionId": "property.build.request" },
+                { "id": "building-pass", "label": "Не строить", "actionId": "property.build.pass" }
+              ] } }
+            ] },
+            { "id": "window-phase", "kind": "command", "op": "turn.phase.select", "phase": { "op": "value.literal", "value": "buildingWindow" } },
+            { "id": "record-request", "kind": "command", "op": "core.state.patch", "patches": [
+              { "operation": "set", "target": { "endpoint": "participant.objects.buildingRequestCellId", "bindings": { "participantId": { "op": "value.actor" } } }, "value": { "op": "value.result", "stepId": "candidates", "path": ["ids", "0"] } },
+              { "operation": "set", "target": { "endpoint": "participant.objects.buildingRequestUnitKind", "bindings": { "participantId": { "op": "value.actor" } } }, "value": { "op": "value.param", "name": "unitKind" } },
+              { "operation": "set", "target": { "endpoint": "participant.flags.bidderStatus", "bindings": { "participantId": { "op": "value.actor" } } }, "value": { "op": "value.literal", "value": "passed" } }
+            ] },
+            { "id": "resolve-window", "kind": "macro", "macro": "estate.resolve-building-window", "args": {} }
+          ] }
+        },
+        "property.build.request": {
+          "transaction": { "steps": [
+            { "id": "precondition", "kind": "assert", "op": "core.assert", "errorCode": "ACTION_PRECONDITION_FAILED", "predicate": { "op": "predicate.all", "items": [
+              { "op": "predicate.actor.active" },
+              { "op": "predicate.turn.phase", "phase": { "op": "value.literal", "value": "buildingWindow" } },
+              { "op": "predicate.compare", "operator": "eq", "left": { "op": "value.state", "ref": { "endpoint": "participant.flags.bidderStatus", "bindings": { "participantId": { "op": "value.actor" } } } }, "right": { "op": "value.literal", "value": "eligible" } },
+              { "op": "predicate.compare", "operator": "eq", "left": { "op": "value.state", "ref": { "endpoint": "participant.objects.buildingRequestCellId", "bindings": { "participantId": { "op": "value.actor" } } } }, "right": { "op": "value.literal", "value": "" } }
+            ] } },
+            { "id": "target", "kind": "query", "op": "core.entities.select", "selector": { "collection": "boardCells", "objectTypes": ["estate.cell"], "attributes": {
+              "id": { "op": "value.param", "name": "cellId" }, "kind": { "op": "value.literal", "value": "estate" },
+              "ownerPlayerId": { "op": "value.actor" }, "mortgaged": { "op": "value.literal", "value": false }
+            }, "cardinality": { "min": 1, "max": 1 } } },
+            { "id": "tier-kind", "kind": "assert", "op": "core.assert", "errorCode": "BUILDING_TIER_INVALID", "predicate": { "op": "predicate.any", "items": [
+              { "op": "predicate.all", "items": [
+                { "op": "predicate.compare", "operator": "eq", "left": { "op": "value.state", "ref": { "endpoint": "public.buildingWindow.unitKind" } }, "right": { "op": "value.literal", "value": "house" } },
+                { "op": "predicate.compare", "operator": "lt", "left": { "op": "value.entity", "entity": { "collection": "boardCells", "entityId": { "op": "value.param", "name": "cellId" } }, "field": "improvementTier" }, "right": { "op": "value.literal", "value": 4 } }
+              ] },
+              { "op": "predicate.all", "items": [
+                { "op": "predicate.compare", "operator": "eq", "left": { "op": "value.state", "ref": { "endpoint": "public.buildingWindow.unitKind" } }, "right": { "op": "value.literal", "value": "hotel" } },
+                { "op": "predicate.compare", "operator": "eq", "left": { "op": "value.entity", "entity": { "collection": "boardCells", "entityId": { "op": "value.param", "name": "cellId" } }, "field": "improvementTier" }, "right": { "op": "value.literal", "value": 4 } }
+              ] }
+            ] } },
+            { "id": "group", "kind": "query", "op": "core.entities.select", "selector": { "collection": "boardCells", "objectTypes": ["estate.cell"], "attributes": {
+              "kind": { "op": "value.literal", "value": "estate" }, "group": { "op": "value.entity", "entity": { "collection": "boardCells", "entityId": { "op": "value.param", "name": "cellId" } }, "field": "group" }
+            }, "cardinality": { "min": 2, "max": 3 } } },
+            { "id": "owned-unmortgaged-group", "kind": "query", "op": "core.entities.select", "selector": { "collection": "boardCells", "objectTypes": ["estate.cell"], "attributes": {
+              "kind": { "op": "value.literal", "value": "estate" }, "group": { "op": "value.entity", "entity": { "collection": "boardCells", "entityId": { "op": "value.param", "name": "cellId" } }, "field": "group" },
+              "ownerPlayerId": { "op": "value.actor" }, "mortgaged": { "op": "value.literal", "value": false }
+            }, "cardinality": { "min": 1, "max": 3 } } },
+            { "id": "full-group", "kind": "assert", "op": "core.assert", "errorCode": "BUILDING_GROUP_INCOMPLETE", "predicate": { "op": "predicate.compare", "operator": "eq", "left": { "op": "value.result", "stepId": "group", "path": ["ids"] }, "right": { "op": "value.result", "stepId": "owned-unmortgaged-group", "path": ["ids"] } } },
+            { "id": "lower-tier", "kind": "query", "op": "core.entities.select", "selector": { "collection": "boardCells", "objectTypes": ["estate.cell"], "attributes": {
+              "kind": { "op": "value.literal", "value": "estate" }, "group": { "op": "value.entity", "entity": { "collection": "boardCells", "entityId": { "op": "value.param", "name": "cellId" } }, "field": "group" },
+              "improvementTier": { "operator": "lt", "value": { "op": "value.entity", "entity": { "collection": "boardCells", "entityId": { "op": "value.param", "name": "cellId" } }, "field": "improvementTier" } }
+            }, "cardinality": { "min": 0, "max": 3 } } },
+            { "id": "even-build", "kind": "assert", "op": "core.assert", "errorCode": "BUILDING_MUST_BE_EVEN", "predicate": { "op": "predicate.compare", "operator": "eq", "left": { "op": "value.result", "stepId": "lower-tier", "path": ["ids"] }, "right": { "op": "value.literal", "value": [] } } },
+            { "id": "funds", "kind": "assert", "op": "core.assert", "errorCode": "BUILDING_FUNDS_INSUFFICIENT", "predicate": { "op": "predicate.compare", "operator": "gte", "left": { "op": "value.state", "ref": { "endpoint": "participant.metrics.cash", "bindings": { "participantId": { "op": "value.actor" } } } }, "right": { "op": "value.entity", "entity": { "collection": "boardCells", "entityId": { "op": "value.param", "name": "cellId" } }, "field": "buildCost" } } },
+            { "id": "record-request", "kind": "command", "op": "core.state.patch", "patches": [
+              { "operation": "set", "target": { "endpoint": "participant.objects.buildingRequestCellId", "bindings": { "participantId": { "op": "value.actor" } } }, "value": { "op": "value.param", "name": "cellId" } },
+              { "operation": "set", "target": { "endpoint": "participant.objects.buildingRequestUnitKind", "bindings": { "participantId": { "op": "value.actor" } } }, "value": { "op": "value.state", "ref": { "endpoint": "public.buildingWindow.unitKind" } } },
+              { "operation": "set", "target": { "endpoint": "participant.flags.bidderStatus", "bindings": { "participantId": { "op": "value.actor" } } }, "value": { "op": "value.literal", "value": "passed" } }
+            ] },
+            { "id": "resolve-window", "kind": "macro", "macro": "estate.resolve-building-window", "args": {} }
+          ] }
+        },
+        "property.build.pass": {
+          "transaction": { "steps": [
+            { "id": "precondition", "kind": "assert", "op": "core.assert", "errorCode": "ACTION_PRECONDITION_FAILED", "predicate": { "op": "predicate.all", "items": [
+              { "op": "predicate.actor.active" }, { "op": "predicate.turn.phase", "phase": { "op": "value.literal", "value": "buildingWindow" } },
+              { "op": "predicate.compare", "operator": "eq", "left": { "op": "value.state", "ref": { "endpoint": "participant.flags.bidderStatus", "bindings": { "participantId": { "op": "value.actor" } } } }, "right": { "op": "value.literal", "value": "eligible" } }
+            ] } },
+            { "id": "record-pass", "kind": "command", "op": "core.state.patch", "patches": [
+              { "operation": "set", "target": { "endpoint": "participant.flags.bidderStatus", "bindings": { "participantId": { "op": "value.actor" } } }, "value": { "op": "value.literal", "value": "passed" } }
+            ] },
+            { "id": "resolve-window", "kind": "macro", "macro": "estate.resolve-building-window", "args": {} }
+          ] }
+        },
+        "property.build.auction.bid": {
+          "transaction": { "steps": [
+            { "id": "precondition", "kind": "assert", "op": "core.assert", "errorCode": "ACTION_PRECONDITION_FAILED", "predicate": { "op": "predicate.all", "items": [
+              { "op": "predicate.actor.active" }, { "op": "predicate.turn.phase", "phase": { "op": "value.literal", "value": "buildingAuction" } },
+              { "op": "predicate.compare", "operator": "ne", "left": { "op": "value.state", "ref": { "endpoint": "participant.objects.buildingRequestCellId", "bindings": { "participantId": { "op": "value.actor" } } } }, "right": { "op": "value.literal", "value": "" } },
+              { "op": "predicate.compare", "operator": "gte", "left": { "op": "value.param", "name": "amount" }, "right": { "op": "number.add", "items": [{ "op": "value.state", "ref": { "endpoint": "public.buildingAuction.currentBid" } }, { "op": "value.state", "ref": { "endpoint": "public.buildingAuction.minimumIncrement" } }] } },
+              { "op": "predicate.compare", "operator": "gte", "left": { "op": "value.state", "ref": { "endpoint": "participant.metrics.cash", "bindings": { "participantId": { "op": "value.actor" } } } }, "right": { "op": "value.param", "name": "amount" } }
+            ] } },
+            { "id": "normalize", "kind": "macro", "macro": "estate.normalize-building-auction-bidders", "args": {} },
+            { "id": "previous-leader", "kind": "command", "op": "core.state.patch", "patches": [{ "operation": "set", "target": { "endpoint": "participant.flags.bidderStatus", "bindings": { "participantId": { "op": "value.state", "ref": { "endpoint": "public.buildingAuction.leaderPlayerId" } } } }, "value": { "op": "value.literal", "value": "eligible" } }], "when": { "op": "predicate.compare", "operator": "ne", "left": { "op": "value.state", "ref": { "endpoint": "public.buildingAuction.leaderPlayerId" } }, "right": { "op": "value.literal", "value": "" } } },
+            { "id": "bid", "kind": "command", "op": "core.state.patch", "patches": [
+              { "operation": "set", "target": { "endpoint": "participant.flags.bidderStatus", "bindings": { "participantId": { "op": "value.actor" } } }, "value": { "op": "value.literal", "value": "leading" } },
+              { "operation": "set", "target": { "endpoint": "public.buildingAuction.currentBid" }, "value": { "op": "value.param", "name": "amount" } },
+              { "operation": "set", "target": { "endpoint": "public.buildingAuction.leaderPlayerId" }, "value": { "op": "value.actor" } }
+            ] },
+            { "id": "resolve-lot", "kind": "macro", "macro": "estate.resolve-building-auction-lot", "args": {} }
+          ] }
+        },
+        "property.build.auction.pass": {
+          "transaction": { "steps": [
+            { "id": "precondition", "kind": "assert", "op": "core.assert", "errorCode": "ACTION_PRECONDITION_FAILED", "predicate": { "op": "predicate.all", "items": [
+              { "op": "predicate.actor.active" }, { "op": "predicate.turn.phase", "phase": { "op": "value.literal", "value": "buildingAuction" } },
+              { "op": "predicate.compare", "operator": "ne", "left": { "op": "value.state", "ref": { "endpoint": "participant.objects.buildingRequestCellId", "bindings": { "participantId": { "op": "value.actor" } } } }, "right": { "op": "value.literal", "value": "" } }
+            ] } },
+            { "id": "normalize", "kind": "macro", "macro": "estate.normalize-building-auction-bidders", "args": {} },
+            { "id": "pass", "kind": "command", "op": "core.state.patch", "patches": [{ "operation": "set", "target": { "endpoint": "participant.flags.bidderStatus", "bindings": { "participantId": { "op": "value.actor" } } }, "value": { "op": "value.literal", "value": "passed" } }] },
+            { "id": "resolve-lot", "kind": "macro", "macro": "estate.resolve-building-auction-lot", "args": {} }
+          ] }
+        },
+        "property.sell": {
+          "transaction": { "steps": [
+            { "id": "precondition", "kind": "assert", "op": "core.assert", "errorCode": "ACTION_PRECONDITION_FAILED", "predicate": { "op": "predicate.all", "items": [{ "op": "predicate.actor.active" }, { "op": "predicate.turn.phase", "phase": { "op": "value.literal", "value": "finish" } }] } },
+            { "id": "target", "kind": "query", "op": "core.entities.select", "selector": { "collection": "boardCells", "objectTypes": ["estate.cell"], "attributes": { "id": { "op": "value.param", "name": "cellId" }, "kind": { "op": "value.literal", "value": "estate" }, "ownerPlayerId": { "op": "value.actor" }, "mortgaged": { "op": "value.literal", "value": false }, "improvementTier": { "operator": "gt", "value": { "op": "value.literal", "value": 0 } } }, "cardinality": { "min": 1, "max": 1 } } },
+            { "id": "higher-tier", "kind": "query", "op": "core.entities.select", "selector": { "collection": "boardCells", "objectTypes": ["estate.cell"], "attributes": { "kind": { "op": "value.literal", "value": "estate" }, "group": { "op": "value.entity", "entity": { "collection": "boardCells", "entityId": { "op": "value.param", "name": "cellId" } }, "field": "group" }, "improvementTier": { "operator": "gt", "value": { "op": "value.entity", "entity": { "collection": "boardCells", "entityId": { "op": "value.param", "name": "cellId" } }, "field": "improvementTier" } } }, "cardinality": { "min": 0, "max": 3 } } },
+            { "id": "even-sell", "kind": "assert", "op": "core.assert", "errorCode": "ACTION_PRECONDITION_FAILED", "predicate": { "op": "predicate.compare", "operator": "eq", "left": { "op": "value.result", "stepId": "higher-tier", "path": ["ids"] }, "right": { "op": "value.literal", "value": [] } } },
+            { "id": "hotel-houses", "kind": "assert", "op": "core.assert", "errorCode": "MECHANICS_RESOURCE_INSUFFICIENT", "predicate": { "op": "predicate.any", "items": [
+              { "op": "predicate.compare", "operator": "ne", "left": { "op": "value.entity", "entity": { "collection": "boardCells", "entityId": { "op": "value.param", "name": "cellId" } }, "field": "improvementTier" }, "right": { "op": "value.literal", "value": 5 } },
+              { "op": "predicate.compare", "operator": "gte", "left": { "op": "value.state", "ref": { "endpoint": "public.bankBuildings.housesAvailable" } }, "right": { "op": "value.literal", "value": 4 } }
+            ] } },
+            { "id": "refund", "kind": "command", "op": "core.resource.transfer", "from": { "kind": "bank" }, "to": { "kind": "state", "target": { "endpoint": "participant.metrics.cash", "bindings": { "participantId": { "op": "value.actor" } } } }, "amount": { "op": "value.entity", "entity": { "collection": "boardCells", "entityId": { "op": "value.param", "name": "cellId" } }, "field": "sellValue" }, "onInsufficient": "fail" },
+            { "id": "house-stock", "kind": "command", "op": "core.state.patch", "patches": [{ "operation": "increment", "target": { "endpoint": "public.bankBuildings.housesAvailable" }, "value": { "op": "value.literal", "value": 1 } }], "when": { "op": "predicate.compare", "operator": "lt", "left": { "op": "value.entity", "entity": { "collection": "boardCells", "entityId": { "op": "value.param", "name": "cellId" } }, "field": "improvementTier" }, "right": { "op": "value.literal", "value": 5 } } },
+            { "id": "hotel-stock", "kind": "command", "op": "core.state.patch", "patches": [{ "operation": "increment", "target": { "endpoint": "public.bankBuildings.hotelsAvailable" }, "value": { "op": "value.literal", "value": 1 } }, { "operation": "increment", "target": { "endpoint": "public.bankBuildings.housesAvailable" }, "value": { "op": "value.literal", "value": -4 } }], "when": { "op": "predicate.compare", "operator": "eq", "left": { "op": "value.entity", "entity": { "collection": "boardCells", "entityId": { "op": "value.param", "name": "cellId" } }, "field": "improvementTier" }, "right": { "op": "value.literal", "value": 5 } } },
+            { "id": "tier", "kind": "command", "op": "core.entity.attributes.patch", "entity": { "collection": "boardCells", "entityId": { "op": "value.param", "name": "cellId" } }, "patches": [{ "operation": "increment", "path": ["improvementTier"], "value": { "op": "value.literal", "value": -1 } }] },
+            { "id": "rent", "kind": "macro", "macro": "estate.sync-property-rent", "args": { "cellId": { "op": "value.param", "name": "cellId" } } }
+          ] }
+        },
+        "property.mortgage": {
+          "transaction": { "steps": [
+            { "id": "precondition", "kind": "assert", "op": "core.assert", "errorCode": "ACTION_PRECONDITION_FAILED", "predicate": { "op": "predicate.all", "items": [{ "op": "predicate.actor.active" }, { "op": "predicate.turn.phase", "phase": { "op": "value.literal", "value": "finish" } }] } },
+            { "id": "target", "kind": "query", "op": "core.entities.select", "selector": { "collection": "boardCells", "objectTypes": ["estate.cell"], "attributes": { "id": { "op": "value.param", "name": "cellId" }, "ownerPlayerId": { "op": "value.actor" }, "mortgaged": { "op": "value.literal", "value": false } }, "cardinality": { "min": 1, "max": 1 } } },
+            { "id": "purchasable", "kind": "assert", "op": "core.assert", "errorCode": "ACTION_PRECONDITION_FAILED", "predicate": { "op": "predicate.any", "items": [
+              { "op": "predicate.entity.matches", "entity": { "collection": "boardCells", "entityId": { "op": "value.param", "name": "cellId" } }, "attributes": { "kind": { "op": "value.literal", "value": "estate" } } },
+              { "op": "predicate.entity.matches", "entity": { "collection": "boardCells", "entityId": { "op": "value.param", "name": "cellId" } }, "attributes": { "kind": { "op": "value.literal", "value": "transit" } } },
+              { "op": "predicate.entity.matches", "entity": { "collection": "boardCells", "entityId": { "op": "value.param", "name": "cellId" } }, "attributes": { "kind": { "op": "value.literal", "value": "utility" } } }
+            ] } },
+            { "id": "improved-group", "kind": "query", "op": "core.entities.select", "selector": { "collection": "boardCells", "objectTypes": ["estate.cell"], "attributes": { "kind": { "op": "value.literal", "value": "estate" }, "group": { "op": "value.entity", "entity": { "collection": "boardCells", "entityId": { "op": "value.param", "name": "cellId" } }, "field": "group" }, "improvementTier": { "operator": "gt", "value": { "op": "value.literal", "value": 0 } } }, "cardinality": { "min": 0, "max": 3 } }, "when": { "op": "predicate.entity.matches", "entity": { "collection": "boardCells", "entityId": { "op": "value.param", "name": "cellId" } }, "attributes": { "kind": { "op": "value.literal", "value": "estate" } } } },
+            { "id": "no-buildings", "kind": "assert", "op": "core.assert", "errorCode": "ACTION_PRECONDITION_FAILED", "predicate": { "op": "predicate.any", "items": [{ "op": "predicate.not", "item": { "op": "predicate.entity.matches", "entity": { "collection": "boardCells", "entityId": { "op": "value.param", "name": "cellId" } }, "attributes": { "kind": { "op": "value.literal", "value": "estate" } } } }, { "op": "predicate.compare", "operator": "eq", "left": { "op": "value.result", "stepId": "improved-group", "path": ["ids"] }, "right": { "op": "value.literal", "value": [] } }] } },
+            { "id": "credit", "kind": "command", "op": "core.resource.transfer", "from": { "kind": "bank" }, "to": { "kind": "state", "target": { "endpoint": "participant.metrics.cash", "bindings": { "participantId": { "op": "value.actor" } } } }, "amount": { "op": "value.entity", "entity": { "collection": "boardCells", "entityId": { "op": "value.param", "name": "cellId" } }, "field": "mortgageValue" }, "onInsufficient": "fail" },
+            { "id": "mortgage", "kind": "command", "op": "core.entity.attributes.patch", "entity": { "collection": "boardCells", "entityId": { "op": "value.param", "name": "cellId" } }, "patches": [{ "operation": "set", "path": ["mortgaged"], "value": { "op": "value.literal", "value": true } }] }
+          ] }
+        },
+        "property.redeem": {
+          "transaction": { "steps": [
+            { "id": "precondition", "kind": "assert", "op": "core.assert", "errorCode": "ACTION_PRECONDITION_FAILED", "predicate": { "op": "predicate.all", "items": [{ "op": "predicate.actor.active" }, { "op": "predicate.turn.phase", "phase": { "op": "value.literal", "value": "finish" } }] } },
+            { "id": "target", "kind": "query", "op": "core.entities.select", "selector": { "collection": "boardCells", "objectTypes": ["estate.cell"], "attributes": { "id": { "op": "value.param", "name": "cellId" }, "ownerPlayerId": { "op": "value.actor" }, "mortgaged": { "op": "value.literal", "value": true } }, "cardinality": { "min": 1, "max": 1 } } },
+            { "id": "payment", "kind": "command", "op": "core.resource.transfer", "from": { "kind": "state", "target": { "endpoint": "participant.metrics.cash", "bindings": { "participantId": { "op": "value.actor" } } } }, "to": { "kind": "bank" }, "amount": { "op": "value.entity", "entity": { "collection": "boardCells", "entityId": { "op": "value.param", "name": "cellId" } }, "field": "redeemCost" }, "onInsufficient": "fail" },
+            { "id": "redeem", "kind": "command", "op": "core.entity.attributes.patch", "entity": { "collection": "boardCells", "entityId": { "op": "value.param", "name": "cellId" } }, "patches": [{ "operation": "set", "path": ["mortgaged"], "value": { "op": "value.literal", "value": false } }] }
+          ] }
+        },
         "tax.pay": {
           "transaction": {
             "steps": [
@@ -7568,6 +7915,8 @@
                 "args": {
                   "deckId": "event",
                   "collection": "eventCards",
+                  "assessmentHouseStepId": "landing-event-assessment-houses",
+                  "assessmentHotelStepId": "landing-event-assessment-hotel",
                   "condition": {
                     "op": "predicate.compare",
                     "operator": "eq",
@@ -7591,6 +7940,8 @@
                 "args": {
                   "deckId": "fund",
                   "collection": "fundCards",
+                  "assessmentHouseStepId": "landing-fund-assessment-houses",
+                  "assessmentHotelStepId": "landing-fund-assessment-hotel",
                   "condition": {
                     "op": "predicate.compare",
                     "operator": "eq",
@@ -7947,6 +8298,203 @@
                 }
               ]
             }
+          ]
+        },
+        "estate.initialize-building-participants": {
+          "inputs": {},
+          "steps": [
+            { "id": "players", "kind": "query", "op": "core.entities.select", "selector": { "collection": "players", "attributes": { "status": { "op": "value.literal", "value": "active" } }, "cardinality": { "min": 2, "max": 6 } } },
+            { "id": "each", "kind": "command", "op": "core.entities.each", "selection": { "op": "value.result", "stepId": "players" }, "body": [
+              { "id": "initialize-building-player", "kind": "command", "op": "core.state.patch", "patches": [
+                { "operation": "set", "target": { "endpoint": "participant.flags.bidderStatus", "bindings": { "participantId": { "op": "value.item", "area": "identity", "field": "id" } } }, "value": { "op": "value.literal", "value": "eligible" } },
+                { "operation": "set", "target": { "endpoint": "participant.objects.buildingRequestCellId", "bindings": { "participantId": { "op": "value.item", "area": "identity", "field": "id" } } }, "value": { "op": "value.literal", "value": "" } },
+                { "operation": "set", "target": { "endpoint": "participant.objects.buildingRequestUnitKind", "bindings": { "participantId": { "op": "value.item", "area": "identity", "field": "id" } } }, "value": { "op": "value.literal", "value": "" } }
+              ] }
+            ] }
+          ]
+        },
+        "estate.finish-building-window": {
+          "inputs": { "condition": { "kind": "json" } },
+          "steps": [
+            { "id": "players", "kind": "query", "op": "core.entities.select", "selector": { "collection": "players", "attributes": { "status": { "op": "value.literal", "value": "active" } }, "cardinality": { "min": 2, "max": 6 } } },
+            { "id": "each", "kind": "command", "op": "core.entities.each", "selection": { "op": "value.result", "stepId": "players" }, "body": [
+              { "id": "finish-building-player", "kind": "command", "op": "core.state.patch", "patches": [
+                { "operation": "set", "target": { "endpoint": "participant.flags.bidderStatus", "bindings": { "participantId": { "op": "value.item", "area": "identity", "field": "id" } } }, "value": { "op": "value.literal", "value": "idle" } },
+                { "operation": "set", "target": { "endpoint": "participant.objects.buildingRequestCellId", "bindings": { "participantId": { "op": "value.item", "area": "identity", "field": "id" } } }, "value": { "op": "value.literal", "value": "" } },
+                { "operation": "set", "target": { "endpoint": "participant.objects.buildingRequestUnitKind", "bindings": { "participantId": { "op": "value.item", "area": "identity", "field": "id" } } }, "value": { "op": "value.literal", "value": "" } }
+              ] }
+            ], "when": { "$macroInput": "condition" } },
+            { "id": "restore", "kind": "command", "op": "core.state.patch", "patches": [
+              { "operation": "set", "target": { "endpoint": "public.turn.activePlayerId" }, "value": { "op": "value.state", "ref": { "endpoint": "public.buildingWindow.resumePlayerId" } } },
+              { "operation": "set", "target": { "endpoint": "public.buildingWindow.resumePlayerId" }, "value": { "op": "value.literal", "value": "" } },
+              { "operation": "set", "target": { "endpoint": "public.buildingWindow.unitKind" }, "value": { "op": "value.literal", "value": "" } },
+              { "operation": "set", "target": { "endpoint": "public.buildingAuction.currentBid" }, "value": { "op": "value.literal", "value": 0 } },
+              { "operation": "set", "target": { "endpoint": "public.buildingAuction.leaderPlayerId" }, "value": { "op": "value.literal", "value": "" } },
+              { "operation": "set", "target": { "endpoint": "public.board.availableActions" }, "value": { "op": "value.literal", "value": [
+                { "id": "finish", "label": "Завершить ход", "actionId": "turn.finish" }
+              ] } }
+            ], "when": { "$macroInput": "condition" } },
+            { "id": "phase", "kind": "command", "op": "turn.phase.select", "phase": { "op": "value.literal", "value": "finish" }, "when": { "$macroInput": "condition" } }
+          ]
+        },
+        "estate.prepare-building-auction": {
+          "inputs": { "condition": { "kind": "json" } },
+          "steps": [
+            { "id": "players", "kind": "query", "op": "core.entities.select", "selector": { "collection": "players", "attributes": { "status": { "op": "value.literal", "value": "active" } }, "cardinality": { "min": 2, "max": 6 } } },
+            { "id": "each", "kind": "command", "op": "core.entities.each", "selection": { "op": "value.result", "stepId": "players" }, "body": [
+              { "id": "eligible", "kind": "command", "op": "core.state.patch", "patches": [{ "operation": "set", "target": { "endpoint": "participant.flags.bidderStatus", "bindings": { "participantId": { "op": "value.item", "area": "identity", "field": "id" } } }, "value": { "op": "value.literal", "value": "eligible" } }], "when": { "op": "predicate.compare", "operator": "ne", "left": { "op": "value.state", "ref": { "endpoint": "participant.objects.buildingRequestCellId", "bindings": { "participantId": { "op": "value.item", "area": "identity", "field": "id" } } } }, "right": { "op": "value.literal", "value": "" } } },
+              { "id": "idle", "kind": "command", "op": "core.state.patch", "patches": [{ "operation": "set", "target": { "endpoint": "participant.flags.bidderStatus", "bindings": { "participantId": { "op": "value.item", "area": "identity", "field": "id" } } }, "value": { "op": "value.literal", "value": "idle" } }], "when": { "op": "predicate.compare", "operator": "eq", "left": { "op": "value.state", "ref": { "endpoint": "participant.objects.buildingRequestCellId", "bindings": { "participantId": { "op": "value.item", "area": "identity", "field": "id" } } } }, "right": { "op": "value.literal", "value": "" } } }
+            ], "when": { "$macroInput": "condition" } },
+            { "id": "first", "kind": "query", "op": "core.sequence.next", "items": { "op": "value.state", "ref": { "endpoint": "public.turn.order" } }, "current": { "op": "value.state", "ref": { "endpoint": "public.buildingWindow.resumePlayerId" } }, "exclude": { "collection": "players", "field": "bidderStatus", "values": [{ "op": "value.literal", "value": "idle" }, { "op": "value.literal", "value": "passed" }, { "op": "value.literal", "value": "leading" }] }, "when": { "$macroInput": "condition" } },
+            { "id": "state", "kind": "command", "op": "core.state.patch", "patches": [
+              { "operation": "set", "target": { "endpoint": "public.turn.activePlayerId" }, "value": { "op": "value.result", "stepId": "first" } },
+              { "operation": "set", "target": { "endpoint": "public.buildingAuction.currentBid" }, "value": { "op": "value.literal", "value": 0 } },
+              { "operation": "set", "target": { "endpoint": "public.buildingAuction.leaderPlayerId" }, "value": { "op": "value.literal", "value": "" } },
+              { "operation": "set", "target": { "endpoint": "public.board.availableActions" }, "value": { "op": "value.literal", "value": [
+                { "id": "building-auction-bid", "label": "Сделать ставку", "actionId": "property.build.auction.bid" },
+                { "id": "building-auction-pass", "label": "Пас", "actionId": "property.build.auction.pass" }
+              ] } }
+            ], "when": { "$macroInput": "condition" } },
+            { "id": "phase", "kind": "command", "op": "turn.phase.select", "phase": { "op": "value.literal", "value": "buildingAuction" }, "when": { "$macroInput": "condition" } }
+          ]
+        },
+        "estate.normalize-building-auction-bidders": {
+          "inputs": {},
+          "steps": [
+            { "id": "requesters", "kind": "query", "op": "core.entities.select", "selector": { "collection": "players", "attributes": { "status": { "op": "value.literal", "value": "active" }, "buildingRequestCellId": { "operator": "ne", "value": { "op": "value.literal", "value": "" } } }, "cardinality": { "min": 1, "max": 6 } } },
+            { "id": "each", "kind": "command", "op": "core.entities.each", "selection": { "op": "value.result", "stepId": "requesters" }, "body": [
+              { "id": "normalize", "kind": "command", "op": "core.state.patch", "patches": [{ "operation": "set", "target": { "endpoint": "participant.flags.bidderStatus", "bindings": { "participantId": { "op": "value.item", "area": "identity", "field": "id" } } }, "value": { "op": "value.literal", "value": "eligible" } }], "when": { "op": "predicate.compare", "operator": "eq", "left": { "op": "value.state", "ref": { "endpoint": "participant.flags.bidderStatus", "bindings": { "participantId": { "op": "value.item", "area": "identity", "field": "id" } } } }, "right": { "op": "value.literal", "value": "idle" } } }
+            ] }
+          ]
+        },
+        "estate.sync-property-rent": {
+          "inputs": { "cellId": { "kind": "value-expression" } },
+          "steps": [
+            { "id": "tier0", "kind": "command", "op": "core.entity.attributes.patch", "entity": { "collection": "boardCells", "entityId": { "$macroInput": "cellId" } }, "patches": [{ "operation": "set", "path": ["rent"], "value": { "op": "value.entity", "entity": { "collection": "boardCells", "entityId": { "$macroInput": "cellId" } }, "field": "rent0" } }], "when": { "op": "predicate.entity.matches", "entity": { "collection": "boardCells", "entityId": { "$macroInput": "cellId" } }, "attributes": { "improvementTier": { "op": "value.literal", "value": 0 } } } },
+            { "id": "tier1", "kind": "command", "op": "core.entity.attributes.patch", "entity": { "collection": "boardCells", "entityId": { "$macroInput": "cellId" } }, "patches": [{ "operation": "set", "path": ["rent"], "value": { "op": "value.entity", "entity": { "collection": "boardCells", "entityId": { "$macroInput": "cellId" } }, "field": "rent1" } }], "when": { "op": "predicate.entity.matches", "entity": { "collection": "boardCells", "entityId": { "$macroInput": "cellId" } }, "attributes": { "improvementTier": { "op": "value.literal", "value": 1 } } } },
+            { "id": "tier2", "kind": "command", "op": "core.entity.attributes.patch", "entity": { "collection": "boardCells", "entityId": { "$macroInput": "cellId" } }, "patches": [{ "operation": "set", "path": ["rent"], "value": { "op": "value.entity", "entity": { "collection": "boardCells", "entityId": { "$macroInput": "cellId" } }, "field": "rent2" } }], "when": { "op": "predicate.entity.matches", "entity": { "collection": "boardCells", "entityId": { "$macroInput": "cellId" } }, "attributes": { "improvementTier": { "op": "value.literal", "value": 2 } } } },
+            { "id": "tier3", "kind": "command", "op": "core.entity.attributes.patch", "entity": { "collection": "boardCells", "entityId": { "$macroInput": "cellId" } }, "patches": [{ "operation": "set", "path": ["rent"], "value": { "op": "value.entity", "entity": { "collection": "boardCells", "entityId": { "$macroInput": "cellId" } }, "field": "rent3" } }], "when": { "op": "predicate.entity.matches", "entity": { "collection": "boardCells", "entityId": { "$macroInput": "cellId" } }, "attributes": { "improvementTier": { "op": "value.literal", "value": 3 } } } },
+            { "id": "tier4", "kind": "command", "op": "core.entity.attributes.patch", "entity": { "collection": "boardCells", "entityId": { "$macroInput": "cellId" } }, "patches": [{ "operation": "set", "path": ["rent"], "value": { "op": "value.entity", "entity": { "collection": "boardCells", "entityId": { "$macroInput": "cellId" } }, "field": "rent4" } }], "when": { "op": "predicate.entity.matches", "entity": { "collection": "boardCells", "entityId": { "$macroInput": "cellId" } }, "attributes": { "improvementTier": { "op": "value.literal", "value": 4 } } } },
+            { "id": "tier5", "kind": "command", "op": "core.entity.attributes.patch", "entity": { "collection": "boardCells", "entityId": { "$macroInput": "cellId" } }, "patches": [{ "operation": "set", "path": ["rent"], "value": { "op": "value.entity", "entity": { "collection": "boardCells", "entityId": { "$macroInput": "cellId" } }, "field": "rent5" } }], "when": { "op": "predicate.entity.matches", "entity": { "collection": "boardCells", "entityId": { "$macroInput": "cellId" } }, "attributes": { "improvementTier": { "op": "value.literal", "value": 5 } } } }
+          ]
+        },
+        "estate.resolve-building-auction-lot": {
+          "inputs": {},
+          "steps": [
+            { "id": "eligible", "kind": "query", "op": "core.entities.select", "selector": { "collection": "players", "attributes": { "status": { "op": "value.literal", "value": "active" }, "bidderStatus": { "op": "value.literal", "value": "eligible" } }, "cardinality": { "min": 0, "max": 6 } } },
+            { "id": "next", "kind": "query", "op": "core.sequence.next", "items": { "op": "value.state", "ref": { "endpoint": "public.turn.order" } }, "current": { "op": "value.actor" }, "exclude": { "collection": "players", "field": "bidderStatus", "values": [{ "op": "value.literal", "value": "idle" }, { "op": "value.literal", "value": "passed" }, { "op": "value.literal", "value": "leading" }] }, "when": { "op": "predicate.exists", "value": { "op": "value.result", "stepId": "eligible", "path": ["ids", "0"] }, "exists": true } },
+            { "id": "continue", "kind": "command", "op": "core.state.patch", "patches": [{ "operation": "set", "target": { "endpoint": "public.turn.activePlayerId" }, "value": { "op": "value.result", "stepId": "next" } }], "when": { "op": "predicate.exists", "value": { "op": "value.result", "stepId": "eligible", "path": ["ids", "0"] }, "exists": true } },
+            { "id": "winner-payment", "kind": "command", "op": "core.resource.transfer", "from": { "kind": "state", "target": { "endpoint": "participant.metrics.cash", "bindings": { "participantId": { "op": "value.state", "ref": { "endpoint": "public.buildingAuction.leaderPlayerId" } } } } }, "to": { "kind": "bank" }, "amount": { "op": "value.state", "ref": { "endpoint": "public.buildingAuction.currentBid" } }, "onInsufficient": "fail", "when": { "op": "predicate.all", "items": [{ "op": "predicate.compare", "operator": "eq", "left": { "op": "value.result", "stepId": "eligible", "path": ["ids"] }, "right": { "op": "value.literal", "value": [] } }, { "op": "predicate.compare", "operator": "ne", "left": { "op": "value.state", "ref": { "endpoint": "public.buildingAuction.leaderPlayerId" } }, "right": { "op": "value.literal", "value": "" } }] } },
+            {
+              "id": "winner-tier", "kind": "command", "op": "core.entity.attributes.patch",
+              "entity": {
+                "collection": "boardCells",
+                "entityId": {
+                  "op": "value.state",
+                  "ref": {
+                    "endpoint": "participant.objects.buildingRequestCellId",
+                    "bindings": {
+                      "participantId": {
+                        "op": "value.state",
+                        "ref": { "endpoint": "public.buildingAuction.leaderPlayerId" }
+                      }
+                    }
+                  }
+                }
+              },
+              "patches": [{ "operation": "increment", "path": ["improvementTier"], "value": { "op": "value.literal", "value": 1 } }],
+              "when": { "op": "predicate.all", "items": [
+                { "op": "predicate.compare", "operator": "eq", "left": { "op": "value.result", "stepId": "eligible", "path": ["ids"] }, "right": { "op": "value.literal", "value": [] } },
+                { "op": "predicate.compare", "operator": "ne", "left": { "op": "value.state", "ref": { "endpoint": "public.buildingAuction.leaderPlayerId" } }, "right": { "op": "value.literal", "value": "" } }
+              ] }
+            },
+            { "id": "winner-rent0", "kind": "command", "op": "core.entity.attributes.patch", "entity": { "collection": "boardCells", "entityId": { "op": "value.state", "ref": { "endpoint": "participant.objects.buildingRequestCellId", "bindings": { "participantId": { "op": "value.state", "ref": { "endpoint": "public.buildingAuction.leaderPlayerId" } } } } } }, "patches": [{ "operation": "set", "path": ["rent"], "value": { "op": "value.item", "area": "attribute", "field": "rent0" } }], "when": { "op": "predicate.all", "items": [{ "op": "predicate.compare", "operator": "ne", "left": { "op": "value.state", "ref": { "endpoint": "public.buildingAuction.leaderPlayerId" } }, "right": { "op": "value.literal", "value": "" } }, { "op": "predicate.entity.matches", "entity": { "collection": "boardCells", "entityId": { "op": "value.state", "ref": { "endpoint": "participant.objects.buildingRequestCellId", "bindings": { "participantId": { "op": "value.state", "ref": { "endpoint": "public.buildingAuction.leaderPlayerId" } } } } } }, "attributes": { "improvementTier": { "op": "value.literal", "value": 0 } } }] } },
+            { "id": "winner-rent1", "kind": "command", "op": "core.entity.attributes.patch", "entity": { "collection": "boardCells", "entityId": { "op": "value.state", "ref": { "endpoint": "participant.objects.buildingRequestCellId", "bindings": { "participantId": { "op": "value.state", "ref": { "endpoint": "public.buildingAuction.leaderPlayerId" } } } } } }, "patches": [{ "operation": "set", "path": ["rent"], "value": { "op": "value.item", "area": "attribute", "field": "rent1" } }], "when": { "op": "predicate.all", "items": [{ "op": "predicate.compare", "operator": "ne", "left": { "op": "value.state", "ref": { "endpoint": "public.buildingAuction.leaderPlayerId" } }, "right": { "op": "value.literal", "value": "" } }, { "op": "predicate.entity.matches", "entity": { "collection": "boardCells", "entityId": { "op": "value.state", "ref": { "endpoint": "participant.objects.buildingRequestCellId", "bindings": { "participantId": { "op": "value.state", "ref": { "endpoint": "public.buildingAuction.leaderPlayerId" } } } } } }, "attributes": { "improvementTier": { "op": "value.literal", "value": 1 } } }] } },
+            { "id": "winner-rent2", "kind": "command", "op": "core.entity.attributes.patch", "entity": { "collection": "boardCells", "entityId": { "op": "value.state", "ref": { "endpoint": "participant.objects.buildingRequestCellId", "bindings": { "participantId": { "op": "value.state", "ref": { "endpoint": "public.buildingAuction.leaderPlayerId" } } } } } }, "patches": [{ "operation": "set", "path": ["rent"], "value": { "op": "value.item", "area": "attribute", "field": "rent2" } }], "when": { "op": "predicate.all", "items": [{ "op": "predicate.compare", "operator": "ne", "left": { "op": "value.state", "ref": { "endpoint": "public.buildingAuction.leaderPlayerId" } }, "right": { "op": "value.literal", "value": "" } }, { "op": "predicate.entity.matches", "entity": { "collection": "boardCells", "entityId": { "op": "value.state", "ref": { "endpoint": "participant.objects.buildingRequestCellId", "bindings": { "participantId": { "op": "value.state", "ref": { "endpoint": "public.buildingAuction.leaderPlayerId" } } } } } }, "attributes": { "improvementTier": { "op": "value.literal", "value": 2 } } }] } },
+            { "id": "winner-rent3", "kind": "command", "op": "core.entity.attributes.patch", "entity": { "collection": "boardCells", "entityId": { "op": "value.state", "ref": { "endpoint": "participant.objects.buildingRequestCellId", "bindings": { "participantId": { "op": "value.state", "ref": { "endpoint": "public.buildingAuction.leaderPlayerId" } } } } } }, "patches": [{ "operation": "set", "path": ["rent"], "value": { "op": "value.item", "area": "attribute", "field": "rent3" } }], "when": { "op": "predicate.all", "items": [{ "op": "predicate.compare", "operator": "ne", "left": { "op": "value.state", "ref": { "endpoint": "public.buildingAuction.leaderPlayerId" } }, "right": { "op": "value.literal", "value": "" } }, { "op": "predicate.entity.matches", "entity": { "collection": "boardCells", "entityId": { "op": "value.state", "ref": { "endpoint": "participant.objects.buildingRequestCellId", "bindings": { "participantId": { "op": "value.state", "ref": { "endpoint": "public.buildingAuction.leaderPlayerId" } } } } } }, "attributes": { "improvementTier": { "op": "value.literal", "value": 3 } } }] } },
+            { "id": "winner-rent4", "kind": "command", "op": "core.entity.attributes.patch", "entity": { "collection": "boardCells", "entityId": { "op": "value.state", "ref": { "endpoint": "participant.objects.buildingRequestCellId", "bindings": { "participantId": { "op": "value.state", "ref": { "endpoint": "public.buildingAuction.leaderPlayerId" } } } } } }, "patches": [{ "operation": "set", "path": ["rent"], "value": { "op": "value.item", "area": "attribute", "field": "rent4" } }], "when": { "op": "predicate.all", "items": [{ "op": "predicate.compare", "operator": "ne", "left": { "op": "value.state", "ref": { "endpoint": "public.buildingAuction.leaderPlayerId" } }, "right": { "op": "value.literal", "value": "" } }, { "op": "predicate.entity.matches", "entity": { "collection": "boardCells", "entityId": { "op": "value.state", "ref": { "endpoint": "participant.objects.buildingRequestCellId", "bindings": { "participantId": { "op": "value.state", "ref": { "endpoint": "public.buildingAuction.leaderPlayerId" } } } } } }, "attributes": { "improvementTier": { "op": "value.literal", "value": 4 } } }] } },
+            { "id": "winner-rent5", "kind": "command", "op": "core.entity.attributes.patch", "entity": { "collection": "boardCells", "entityId": { "op": "value.state", "ref": { "endpoint": "participant.objects.buildingRequestCellId", "bindings": { "participantId": { "op": "value.state", "ref": { "endpoint": "public.buildingAuction.leaderPlayerId" } } } } } }, "patches": [{ "operation": "set", "path": ["rent"], "value": { "op": "value.item", "area": "attribute", "field": "rent5" } }], "when": { "op": "predicate.all", "items": [{ "op": "predicate.compare", "operator": "ne", "left": { "op": "value.state", "ref": { "endpoint": "public.buildingAuction.leaderPlayerId" } }, "right": { "op": "value.literal", "value": "" } }, { "op": "predicate.entity.matches", "entity": { "collection": "boardCells", "entityId": { "op": "value.state", "ref": { "endpoint": "participant.objects.buildingRequestCellId", "bindings": { "participantId": { "op": "value.state", "ref": { "endpoint": "public.buildingAuction.leaderPlayerId" } } } } } }, "attributes": { "improvementTier": { "op": "value.literal", "value": 5 } } }] } },
+            { "id": "house-stock", "kind": "command", "op": "core.state.patch", "patches": [{ "operation": "increment", "target": { "endpoint": "public.bankBuildings.housesAvailable" }, "value": { "op": "value.literal", "value": -1 } }], "when": { "op": "predicate.all", "items": [{ "op": "predicate.compare", "operator": "eq", "left": { "op": "value.result", "stepId": "eligible", "path": ["ids"] }, "right": { "op": "value.literal", "value": [] } }, { "op": "predicate.compare", "operator": "eq", "left": { "op": "value.state", "ref": { "endpoint": "public.buildingWindow.unitKind" } }, "right": { "op": "value.literal", "value": "house" } }, { "op": "predicate.compare", "operator": "ne", "left": { "op": "value.state", "ref": { "endpoint": "public.buildingAuction.leaderPlayerId" } }, "right": { "op": "value.literal", "value": "" } }] } },
+            { "id": "hotel-stock", "kind": "command", "op": "core.state.patch", "patches": [{ "operation": "increment", "target": { "endpoint": "public.bankBuildings.hotelsAvailable" }, "value": { "op": "value.literal", "value": -1 } }, { "operation": "increment", "target": { "endpoint": "public.bankBuildings.housesAvailable" }, "value": { "op": "value.literal", "value": 4 } }], "when": { "op": "predicate.all", "items": [{ "op": "predicate.compare", "operator": "eq", "left": { "op": "value.result", "stepId": "eligible", "path": ["ids"] }, "right": { "op": "value.literal", "value": [] } }, { "op": "predicate.compare", "operator": "eq", "left": { "op": "value.state", "ref": { "endpoint": "public.buildingWindow.unitKind" } }, "right": { "op": "value.literal", "value": "hotel" } }, { "op": "predicate.compare", "operator": "ne", "left": { "op": "value.state", "ref": { "endpoint": "public.buildingAuction.leaderPlayerId" } }, "right": { "op": "value.literal", "value": "" } }] } },
+            { "id": "clear-winner", "kind": "command", "op": "core.state.patch", "patches": [
+              { "operation": "set", "target": { "endpoint": "participant.objects.buildingRequestCellId", "bindings": { "participantId": { "op": "value.state", "ref": { "endpoint": "public.buildingAuction.leaderPlayerId" } } } }, "value": { "op": "value.literal", "value": "" } },
+              { "operation": "set", "target": { "endpoint": "participant.objects.buildingRequestUnitKind", "bindings": { "participantId": { "op": "value.state", "ref": { "endpoint": "public.buildingAuction.leaderPlayerId" } } } }, "value": { "op": "value.literal", "value": "" } },
+              { "operation": "set", "target": { "endpoint": "participant.flags.bidderStatus", "bindings": { "participantId": { "op": "value.state", "ref": { "endpoint": "public.buildingAuction.leaderPlayerId" } } } }, "value": { "op": "value.literal", "value": "idle" } }
+            ], "when": { "op": "predicate.all", "items": [{ "op": "predicate.compare", "operator": "eq", "left": { "op": "value.result", "stepId": "eligible", "path": ["ids"] }, "right": { "op": "value.literal", "value": [] } }, { "op": "predicate.compare", "operator": "ne", "left": { "op": "value.state", "ref": { "endpoint": "public.buildingAuction.leaderPlayerId" } }, "right": { "op": "value.literal", "value": "" } }] } },
+            { "id": "pending", "kind": "query", "op": "core.entities.select", "selector": { "collection": "players", "attributes": { "status": { "op": "value.literal", "value": "active" }, "buildingRequestCellId": { "operator": "ne", "value": { "op": "value.literal", "value": "" } } }, "cardinality": { "min": 0, "max": 6 } }, "when": { "op": "predicate.compare", "operator": "eq", "left": { "op": "value.result", "stepId": "eligible", "path": ["ids"] }, "right": { "op": "value.literal", "value": [] } } },
+            { "id": "finish", "kind": "macro", "macro": "estate.finish-building-window", "args": { "condition": { "op": "predicate.all", "items": [
+              { "op": "predicate.compare", "operator": "eq", "left": { "op": "value.result", "stepId": "eligible", "path": ["ids"] }, "right": { "op": "value.literal", "value": [] } },
+              { "op": "predicate.any", "items": [
+                { "op": "predicate.compare", "operator": "eq", "left": { "op": "value.state", "ref": { "endpoint": "public.buildingAuction.leaderPlayerId" } }, "right": { "op": "value.literal", "value": "" } },
+                { "op": "predicate.exists", "value": { "op": "value.result", "stepId": "pending", "path": ["ids", "0"] }, "exists": false },
+                { "op": "predicate.all", "items": [{ "op": "predicate.compare", "operator": "eq", "left": { "op": "value.state", "ref": { "endpoint": "public.buildingWindow.unitKind" } }, "right": { "op": "value.literal", "value": "house" } }, { "op": "predicate.compare", "operator": "eq", "left": { "op": "value.state", "ref": { "endpoint": "public.bankBuildings.housesAvailable" } }, "right": { "op": "value.literal", "value": 0 } }] },
+                { "op": "predicate.all", "items": [{ "op": "predicate.compare", "operator": "eq", "left": { "op": "value.state", "ref": { "endpoint": "public.buildingWindow.unitKind" } }, "right": { "op": "value.literal", "value": "hotel" } }, { "op": "predicate.compare", "operator": "eq", "left": { "op": "value.state", "ref": { "endpoint": "public.bankBuildings.hotelsAvailable" } }, "right": { "op": "value.literal", "value": 0 } }] }
+              ] }
+            ] } } },
+            { "id": "next-lot", "kind": "macro", "macro": "estate.prepare-building-auction", "args": { "condition": { "op": "predicate.all", "items": [
+              { "op": "predicate.compare", "operator": "eq", "left": { "op": "value.result", "stepId": "eligible", "path": ["ids"] }, "right": { "op": "value.literal", "value": [] } },
+              { "op": "predicate.compare", "operator": "ne", "left": { "op": "value.state", "ref": { "endpoint": "public.buildingAuction.leaderPlayerId" } }, "right": { "op": "value.literal", "value": "" } },
+              { "op": "predicate.exists", "value": { "op": "value.result", "stepId": "pending", "path": ["ids", "0"] }, "exists": true },
+              { "op": "predicate.any", "items": [
+                { "op": "predicate.all", "items": [{ "op": "predicate.compare", "operator": "eq", "left": { "op": "value.state", "ref": { "endpoint": "public.buildingWindow.unitKind" } }, "right": { "op": "value.literal", "value": "house" } }, { "op": "predicate.compare", "operator": "gt", "left": { "op": "value.state", "ref": { "endpoint": "public.bankBuildings.housesAvailable" } }, "right": { "op": "value.literal", "value": 0 } }] },
+                { "op": "predicate.all", "items": [{ "op": "predicate.compare", "operator": "eq", "left": { "op": "value.state", "ref": { "endpoint": "public.buildingWindow.unitKind" } }, "right": { "op": "value.literal", "value": "hotel" } }, { "op": "predicate.compare", "operator": "gt", "left": { "op": "value.state", "ref": { "endpoint": "public.bankBuildings.hotelsAvailable" } }, "right": { "op": "value.literal", "value": 0 } }] }
+              ] }
+            ] } } }
+          ]
+        },
+        "estate.resolve-building-window": {
+          "inputs": {},
+          "steps": [
+            { "id": "remaining", "kind": "query", "op": "core.entities.select", "selector": { "collection": "players", "attributes": { "status": { "op": "value.literal", "value": "active" }, "bidderStatus": { "op": "value.literal", "value": "eligible" } }, "cardinality": { "min": 0, "max": 6 } } },
+            { "id": "next", "kind": "query", "op": "core.sequence.next", "items": { "op": "value.state", "ref": { "endpoint": "public.turn.order" } }, "current": { "op": "value.actor" }, "exclude": { "collection": "players", "field": "bidderStatus", "values": [{ "op": "value.literal", "value": "passed" }, { "op": "value.literal", "value": "leading" }, { "op": "value.literal", "value": "idle" }] }, "when": { "op": "predicate.exists", "value": { "op": "value.result", "stepId": "remaining", "path": ["ids", "0"] }, "exists": true } },
+            { "id": "continue", "kind": "command", "op": "core.state.patch", "patches": [
+              { "operation": "set", "target": { "endpoint": "public.turn.activePlayerId" }, "value": { "op": "value.result", "stepId": "next" } }
+            ], "when": { "op": "predicate.exists", "value": { "op": "value.result", "stepId": "remaining", "path": ["ids", "0"] }, "exists": true } },
+            { "id": "requests", "kind": "query", "op": "core.entities.select", "selector": { "collection": "players", "attributes": {
+              "status": { "op": "value.literal", "value": "active" }, "buildingRequestCellId": { "operator": "ne", "value": { "op": "value.literal", "value": "" } }
+            }, "cardinality": { "min": 0, "max": 6 } } },
+            { "id": "shortage-requests", "kind": "query", "op": "core.entities.select", "selector": {
+              "collection": "players", "within": { "op": "value.result", "stepId": "requests" },
+              "attributes": { "status": { "op": "value.literal", "value": "active" } },
+              "cardinality": { "min": 0, "max": 6 }
+            }, "when": { "op": "predicate.any", "items": [
+              { "op": "predicate.all", "items": [{ "op": "predicate.compare", "operator": "eq", "left": { "op": "value.state", "ref": { "endpoint": "public.buildingWindow.unitKind" } }, "right": { "op": "value.literal", "value": "house" } }, { "op": "predicate.compare", "operator": "lt", "left": { "op": "value.state", "ref": { "endpoint": "public.bankBuildings.housesAvailable" } }, "right": { "op": "value.literal", "value": 2 } }, { "op": "predicate.exists", "value": { "op": "value.result", "stepId": "requests", "path": ["ids", "1"] }, "exists": true }] },
+              { "op": "predicate.all", "items": [{ "op": "predicate.compare", "operator": "eq", "left": { "op": "value.state", "ref": { "endpoint": "public.buildingWindow.unitKind" } }, "right": { "op": "value.literal", "value": "house" } }, { "op": "predicate.compare", "operator": "lt", "left": { "op": "value.state", "ref": { "endpoint": "public.bankBuildings.housesAvailable" } }, "right": { "op": "value.literal", "value": 3 } }, { "op": "predicate.exists", "value": { "op": "value.result", "stepId": "requests", "path": ["ids", "2"] }, "exists": true }] },
+              { "op": "predicate.all", "items": [{ "op": "predicate.compare", "operator": "eq", "left": { "op": "value.state", "ref": { "endpoint": "public.buildingWindow.unitKind" } }, "right": { "op": "value.literal", "value": "house" } }, { "op": "predicate.compare", "operator": "lt", "left": { "op": "value.state", "ref": { "endpoint": "public.bankBuildings.housesAvailable" } }, "right": { "op": "value.literal", "value": 4 } }, { "op": "predicate.exists", "value": { "op": "value.result", "stepId": "requests", "path": ["ids", "3"] }, "exists": true }] },
+              { "op": "predicate.all", "items": [{ "op": "predicate.compare", "operator": "eq", "left": { "op": "value.state", "ref": { "endpoint": "public.buildingWindow.unitKind" } }, "right": { "op": "value.literal", "value": "house" } }, { "op": "predicate.compare", "operator": "lt", "left": { "op": "value.state", "ref": { "endpoint": "public.bankBuildings.housesAvailable" } }, "right": { "op": "value.literal", "value": 5 } }, { "op": "predicate.exists", "value": { "op": "value.result", "stepId": "requests", "path": ["ids", "4"] }, "exists": true }] },
+              { "op": "predicate.all", "items": [{ "op": "predicate.compare", "operator": "eq", "left": { "op": "value.state", "ref": { "endpoint": "public.buildingWindow.unitKind" } }, "right": { "op": "value.literal", "value": "house" } }, { "op": "predicate.compare", "operator": "lt", "left": { "op": "value.state", "ref": { "endpoint": "public.bankBuildings.housesAvailable" } }, "right": { "op": "value.literal", "value": 6 } }, { "op": "predicate.exists", "value": { "op": "value.result", "stepId": "requests", "path": ["ids", "5"] }, "exists": true }] },
+              { "op": "predicate.all", "items": [{ "op": "predicate.compare", "operator": "eq", "left": { "op": "value.state", "ref": { "endpoint": "public.buildingWindow.unitKind" } }, "right": { "op": "value.literal", "value": "hotel" } }, { "op": "predicate.compare", "operator": "lt", "left": { "op": "value.state", "ref": { "endpoint": "public.bankBuildings.hotelsAvailable" } }, "right": { "op": "value.literal", "value": 2 } }, { "op": "predicate.exists", "value": { "op": "value.result", "stepId": "requests", "path": ["ids", "1"] }, "exists": true }] },
+              { "op": "predicate.all", "items": [{ "op": "predicate.compare", "operator": "eq", "left": { "op": "value.state", "ref": { "endpoint": "public.buildingWindow.unitKind" } }, "right": { "op": "value.literal", "value": "hotel" } }, { "op": "predicate.compare", "operator": "lt", "left": { "op": "value.state", "ref": { "endpoint": "public.bankBuildings.hotelsAvailable" } }, "right": { "op": "value.literal", "value": 3 } }, { "op": "predicate.exists", "value": { "op": "value.result", "stepId": "requests", "path": ["ids", "2"] }, "exists": true }] },
+              { "op": "predicate.all", "items": [{ "op": "predicate.compare", "operator": "eq", "left": { "op": "value.state", "ref": { "endpoint": "public.buildingWindow.unitKind" } }, "right": { "op": "value.literal", "value": "hotel" } }, { "op": "predicate.compare", "operator": "lt", "left": { "op": "value.state", "ref": { "endpoint": "public.bankBuildings.hotelsAvailable" } }, "right": { "op": "value.literal", "value": 4 } }, { "op": "predicate.exists", "value": { "op": "value.result", "stepId": "requests", "path": ["ids", "3"] }, "exists": true }] },
+              { "op": "predicate.all", "items": [{ "op": "predicate.compare", "operator": "eq", "left": { "op": "value.state", "ref": { "endpoint": "public.buildingWindow.unitKind" } }, "right": { "op": "value.literal", "value": "hotel" } }, { "op": "predicate.compare", "operator": "lt", "left": { "op": "value.state", "ref": { "endpoint": "public.bankBuildings.hotelsAvailable" } }, "right": { "op": "value.literal", "value": 5 } }, { "op": "predicate.exists", "value": { "op": "value.result", "stepId": "requests", "path": ["ids", "4"] }, "exists": true }] },
+              { "op": "predicate.all", "items": [{ "op": "predicate.compare", "operator": "eq", "left": { "op": "value.state", "ref": { "endpoint": "public.buildingWindow.unitKind" } }, "right": { "op": "value.literal", "value": "hotel" } }, { "op": "predicate.compare", "operator": "lt", "left": { "op": "value.state", "ref": { "endpoint": "public.bankBuildings.hotelsAvailable" } }, "right": { "op": "value.literal", "value": 6 } }, { "op": "predicate.exists", "value": { "op": "value.result", "stepId": "requests", "path": ["ids", "5"] }, "exists": true }] }
+            ] } },
+            { "id": "fulfill", "kind": "command", "op": "core.entities.each", "selection": { "op": "value.result", "stepId": "requests" }, "body": [
+              { "id": "pay", "kind": "command", "op": "core.resource.transfer", "from": { "kind": "state", "target": { "endpoint": "participant.metrics.cash", "bindings": { "participantId": { "op": "value.item", "area": "identity", "field": "id" } } } }, "to": { "kind": "bank" }, "amount": { "op": "value.entity", "entity": { "collection": "boardCells", "entityId": { "op": "value.state", "ref": { "endpoint": "participant.objects.buildingRequestCellId", "bindings": { "participantId": { "op": "value.item", "area": "identity", "field": "id" } } } } }, "field": "buildCost" }, "onInsufficient": "fail" },
+              { "id": "tier", "kind": "command", "op": "core.entity.attributes.patch", "entity": { "collection": "boardCells", "entityId": { "op": "value.state", "ref": { "endpoint": "participant.objects.buildingRequestCellId", "bindings": { "participantId": { "op": "value.item", "area": "identity", "field": "id" } } } } }, "patches": [{ "operation": "increment", "path": ["improvementTier"], "value": { "op": "value.literal", "value": 1 } }] },
+              { "id": "rent0", "kind": "command", "op": "core.entity.attributes.patch", "entity": { "collection": "boardCells", "entityId": { "op": "value.state", "ref": { "endpoint": "participant.objects.buildingRequestCellId", "bindings": { "participantId": { "op": "value.item", "area": "identity", "field": "id" } } } } }, "patches": [{ "operation": "set", "path": ["rent"], "value": { "op": "value.item", "area": "attribute", "field": "rent0" } }], "when": { "op": "predicate.entity.matches", "entity": { "collection": "boardCells", "entityId": { "op": "value.state", "ref": { "endpoint": "participant.objects.buildingRequestCellId", "bindings": { "participantId": { "op": "value.item", "area": "identity", "field": "id" } } } } }, "attributes": { "improvementTier": { "op": "value.literal", "value": 0 } } } },
+              { "id": "rent1", "kind": "command", "op": "core.entity.attributes.patch", "entity": { "collection": "boardCells", "entityId": { "op": "value.state", "ref": { "endpoint": "participant.objects.buildingRequestCellId", "bindings": { "participantId": { "op": "value.item", "area": "identity", "field": "id" } } } } }, "patches": [{ "operation": "set", "path": ["rent"], "value": { "op": "value.item", "area": "attribute", "field": "rent1" } }], "when": { "op": "predicate.entity.matches", "entity": { "collection": "boardCells", "entityId": { "op": "value.state", "ref": { "endpoint": "participant.objects.buildingRequestCellId", "bindings": { "participantId": { "op": "value.item", "area": "identity", "field": "id" } } } } }, "attributes": { "improvementTier": { "op": "value.literal", "value": 1 } } } },
+              { "id": "rent2", "kind": "command", "op": "core.entity.attributes.patch", "entity": { "collection": "boardCells", "entityId": { "op": "value.state", "ref": { "endpoint": "participant.objects.buildingRequestCellId", "bindings": { "participantId": { "op": "value.item", "area": "identity", "field": "id" } } } } }, "patches": [{ "operation": "set", "path": ["rent"], "value": { "op": "value.item", "area": "attribute", "field": "rent2" } }], "when": { "op": "predicate.entity.matches", "entity": { "collection": "boardCells", "entityId": { "op": "value.state", "ref": { "endpoint": "participant.objects.buildingRequestCellId", "bindings": { "participantId": { "op": "value.item", "area": "identity", "field": "id" } } } } }, "attributes": { "improvementTier": { "op": "value.literal", "value": 2 } } } },
+              { "id": "rent3", "kind": "command", "op": "core.entity.attributes.patch", "entity": { "collection": "boardCells", "entityId": { "op": "value.state", "ref": { "endpoint": "participant.objects.buildingRequestCellId", "bindings": { "participantId": { "op": "value.item", "area": "identity", "field": "id" } } } } }, "patches": [{ "operation": "set", "path": ["rent"], "value": { "op": "value.item", "area": "attribute", "field": "rent3" } }], "when": { "op": "predicate.entity.matches", "entity": { "collection": "boardCells", "entityId": { "op": "value.state", "ref": { "endpoint": "participant.objects.buildingRequestCellId", "bindings": { "participantId": { "op": "value.item", "area": "identity", "field": "id" } } } } }, "attributes": { "improvementTier": { "op": "value.literal", "value": 3 } } } },
+              { "id": "rent4", "kind": "command", "op": "core.entity.attributes.patch", "entity": { "collection": "boardCells", "entityId": { "op": "value.state", "ref": { "endpoint": "participant.objects.buildingRequestCellId", "bindings": { "participantId": { "op": "value.item", "area": "identity", "field": "id" } } } } }, "patches": [{ "operation": "set", "path": ["rent"], "value": { "op": "value.item", "area": "attribute", "field": "rent4" } }], "when": { "op": "predicate.entity.matches", "entity": { "collection": "boardCells", "entityId": { "op": "value.state", "ref": { "endpoint": "participant.objects.buildingRequestCellId", "bindings": { "participantId": { "op": "value.item", "area": "identity", "field": "id" } } } } }, "attributes": { "improvementTier": { "op": "value.literal", "value": 4 } } } },
+              { "id": "rent5", "kind": "command", "op": "core.entity.attributes.patch", "entity": { "collection": "boardCells", "entityId": { "op": "value.state", "ref": { "endpoint": "participant.objects.buildingRequestCellId", "bindings": { "participantId": { "op": "value.item", "area": "identity", "field": "id" } } } } }, "patches": [{ "operation": "set", "path": ["rent"], "value": { "op": "value.item", "area": "attribute", "field": "rent5" } }], "when": { "op": "predicate.entity.matches", "entity": { "collection": "boardCells", "entityId": { "op": "value.state", "ref": { "endpoint": "participant.objects.buildingRequestCellId", "bindings": { "participantId": { "op": "value.item", "area": "identity", "field": "id" } } } } }, "attributes": { "improvementTier": { "op": "value.literal", "value": 5 } } } },
+              { "id": "house-stock", "kind": "command", "op": "core.state.patch", "patches": [{ "operation": "increment", "target": { "endpoint": "public.bankBuildings.housesAvailable" }, "value": { "op": "value.literal", "value": -1 } }], "when": { "op": "predicate.compare", "operator": "eq", "left": { "op": "value.state", "ref": { "endpoint": "participant.objects.buildingRequestUnitKind", "bindings": { "participantId": { "op": "value.item", "area": "identity", "field": "id" } } } }, "right": { "op": "value.literal", "value": "house" } } },
+              { "id": "hotel-stock", "kind": "command", "op": "core.state.patch", "patches": [
+                { "operation": "increment", "target": { "endpoint": "public.bankBuildings.hotelsAvailable" }, "value": { "op": "value.literal", "value": -1 } },
+                { "operation": "increment", "target": { "endpoint": "public.bankBuildings.housesAvailable" }, "value": { "op": "value.literal", "value": 4 } }
+              ], "when": { "op": "predicate.compare", "operator": "eq", "left": { "op": "value.state", "ref": { "endpoint": "participant.objects.buildingRequestUnitKind", "bindings": { "participantId": { "op": "value.item", "area": "identity", "field": "id" } } } }, "right": { "op": "value.literal", "value": "hotel" } } }
+            ], "when": { "op": "predicate.all", "items": [
+              { "op": "predicate.compare", "operator": "eq", "left": { "op": "value.result", "stepId": "remaining", "path": ["ids"] }, "right": { "op": "value.literal", "value": [] } },
+              { "op": "predicate.exists", "value": { "op": "value.result", "stepId": "shortage-requests", "path": ["ids"] }, "exists": false }
+            ] } },
+            { "id": "finish-normal", "kind": "macro", "macro": "estate.finish-building-window", "args": { "condition": { "op": "predicate.all", "items": [
+              { "op": "predicate.compare", "operator": "eq", "left": { "op": "value.result", "stepId": "remaining", "path": ["ids"] }, "right": { "op": "value.literal", "value": [] } },
+              { "op": "predicate.exists", "value": { "op": "value.result", "stepId": "shortage-requests", "path": ["ids"] }, "exists": false }
+            ] } } },
+            { "id": "prepare-auction", "kind": "macro", "macro": "estate.prepare-building-auction", "args": { "condition": { "op": "predicate.all", "items": [
+              { "op": "predicate.compare", "operator": "eq", "left": { "op": "value.result", "stepId": "remaining", "path": ["ids"] }, "right": { "op": "value.literal", "value": [] } },
+              { "op": "predicate.exists", "value": { "op": "value.result", "stepId": "shortage-requests", "path": ["ids"] }, "exists": true }
+            ] } } }
           ]
         },
         "estate.resolve-landing": {
@@ -9506,6 +10054,12 @@
             "collection": {
               "kind": "identifier"
             },
+            "assessmentHouseStepId": {
+              "kind": "identifier"
+            },
+            "assessmentHotelStepId": {
+              "kind": "identifier"
+            },
             "condition": {
               "kind": "json"
             }
@@ -9549,6 +10103,99 @@
               },
               "when": {
                 "$macroInput": "condition"
+              }
+            },
+            {
+              "id": "assessment-cells",
+              "kind": "query",
+              "op": "core.entities.select",
+              "selector": {
+                "collection": "boardCells",
+                "objectTypes": ["estate.cell"],
+                "attributes": {
+                  "kind": { "op": "value.literal", "value": "estate" },
+                  "ownerPlayerId": { "op": "value.actor" },
+                  "improvementTier": { "operator": "gt", "value": { "op": "value.literal", "value": 0 } }
+                },
+                "cardinality": { "min": 0, "max": 22 }
+              }
+            },
+            {
+              "id": "assessment-charge",
+              "kind": "command",
+              "op": "core.entities.each",
+              "selection": { "op": "value.result", "stepId": "assessment-cells" },
+              "body": [
+                {
+                  "id": { "$macroInput": "assessmentHouseStepId" },
+                  "kind": "command",
+                  "op": "core.resource.transfer",
+                  "from": {
+                    "kind": "state",
+                    "target": { "endpoint": "participant.metrics.cash", "bindings": { "participantId": { "op": "value.actor" } } }
+                  },
+                  "to": { "kind": "bank" },
+                  "amount": {
+                    "op": "number.multiply",
+                    "items": [
+                      {
+                        "op": "value.entity",
+                        "entity": {
+                          "collection": { "$macroInput": "collection" },
+                          "entityId": { "op": "value.state", "ref": { "endpoint": "public.board.lastCardId" } }
+                        },
+                        "field": "houseFee"
+                      },
+                      { "op": "value.item", "area": "attribute", "field": "improvementTier" }
+                    ]
+                  },
+                  "onInsufficient": "fail",
+                  "when": {
+                    "op": "predicate.compare",
+                    "operator": "lt",
+                    "left": { "op": "value.item", "area": "attribute", "field": "improvementTier" },
+                    "right": { "op": "value.literal", "value": 5 }
+                  }
+                },
+                {
+                  "id": { "$macroInput": "assessmentHotelStepId" },
+                  "kind": "command",
+                  "op": "core.resource.transfer",
+                  "from": {
+                    "kind": "state",
+                    "target": { "endpoint": "participant.metrics.cash", "bindings": { "participantId": { "op": "value.actor" } } }
+                  },
+                  "to": { "kind": "bank" },
+                  "amount": {
+                    "op": "value.entity",
+                    "entity": {
+                      "collection": { "$macroInput": "collection" },
+                      "entityId": { "op": "value.state", "ref": { "endpoint": "public.board.lastCardId" } }
+                    },
+                    "field": "hotelFee"
+                  },
+                  "onInsufficient": "fail",
+                  "when": {
+                    "op": "predicate.compare",
+                    "operator": "eq",
+                    "left": { "op": "value.item", "area": "attribute", "field": "improvementTier" },
+                    "right": { "op": "value.literal", "value": 5 }
+                  }
+                }
+              ],
+              "when": {
+                "op": "predicate.all",
+                "items": [
+                  { "$macroInput": "condition" },
+                  {
+                    "op": "predicate.entity.matches",
+                    "entity": {
+                      "collection": { "$macroInput": "collection" },
+                      "entityId": { "op": "value.state", "ref": { "endpoint": "public.board.lastCardId" } }
+                    },
+                    "attributes": { "effectKind": { "op": "value.literal", "value": "building-assessment" } }
+                  }
+                ]
               }
             },
             {
@@ -10185,6 +10832,26 @@
               }
             },
             {
+              "id": "assessment-finish-phase",
+              "kind": "command",
+              "op": "turn.phase.select",
+              "phase": { "op": "value.literal", "value": "finish" },
+              "when": {
+                "op": "predicate.all",
+                "items": [
+                  { "$macroInput": "condition" },
+                  {
+                    "op": "predicate.entity.matches",
+                    "entity": {
+                      "collection": { "$macroInput": "collection" },
+                      "entityId": { "op": "value.state", "ref": { "endpoint": "public.board.lastCardId" } }
+                    },
+                    "attributes": { "effectKind": { "op": "value.literal", "value": "building-assessment" } }
+                  }
+                ]
+              }
+            },
+            {
               "id": "finish-phase",
               "kind": "command",
               "op": "turn.phase.select",
@@ -10419,6 +11086,20 @@
               "when": {
                 "op": "predicate.any",
                 "items": [
+                  {
+                    "op": "predicate.all",
+                    "items": [
+                      { "$macroInput": "condition" },
+                      {
+                        "op": "predicate.entity.matches",
+                        "entity": {
+                          "collection": { "$macroInput": "collection" },
+                          "entityId": { "op": "value.state", "ref": { "endpoint": "public.board.lastCardId" } }
+                        },
+                        "attributes": { "effectKind": { "op": "value.literal", "value": "building-assessment" } }
+                      }
+                    ]
+                  },
                   {
                     "op": "predicate.all",
                     "items": [

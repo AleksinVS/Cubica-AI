@@ -303,6 +303,99 @@ describe("InteractiveBoardSurface", () => {
     disposeProvider();
   });
 
+  it("submits Estate-style building parameters through the generic DOM boundary", async () => {
+    const bidFields = [{
+      name: "amount",
+      label: "Сумма ставки",
+      kind: "number" as const,
+      required: true,
+      min: 0,
+      max: Number.MAX_SAFE_INTEGER,
+      step: 1
+    }];
+    const disposeProvider = registerAccessibleBoardActionsProvider(content.gameId, () => ([
+      {
+        id: "building-open",
+        label: "Открыть окно застройки",
+        actionId: "property.build",
+        fields: [{
+          name: "unitKind",
+          label: "Тип строения",
+          kind: "select" as const,
+          required: true,
+          options: [
+            { value: "house", label: "Дом" },
+            { value: "hotel", label: "Отель" }
+          ]
+        }]
+      },
+      {
+        id: "building-request",
+        label: "Подать заявку",
+        actionId: "property.build.request",
+        fields: [{
+          name: "cellId",
+          label: "Идентификатор участка",
+          kind: "text" as const,
+          required: true,
+          minLength: 1,
+          maxLength: 128
+        }]
+      },
+      {
+        id: "building-bid",
+        label: "Сделать ставку",
+        actionId: "property.build.auction.bid",
+        fields: bidFields
+      },
+      {
+        id: "building-pass",
+        label: "Пас",
+        actionId: "property.build.auction.pass"
+      }
+    ]));
+    const dispatchAction = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <InteractiveBoardSurface
+        gameId={content.gameId}
+        content={content}
+        session={session(0)}
+        assets={assets}
+        manifestProps={{ sceneId: "main" }}
+        dispatchAction={dispatchAction}
+      />
+    );
+
+    fireEvent.change(await screen.findByLabelText("Тип строения"), {
+      target: { value: "hotel" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Открыть окно застройки" }));
+    await waitFor(() => expect(dispatchAction).toHaveBeenNthCalledWith(1, "property.build", {
+      unitKind: "hotel"
+    }));
+
+    fireEvent.change(screen.getByLabelText("Идентификатор участка"), {
+      target: { value: "cell-05" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Подать заявку" }));
+    await waitFor(() => expect(dispatchAction).toHaveBeenNthCalledWith(2, "property.build.request", {
+      cellId: "cell-05"
+    }));
+
+    fireEvent.change(screen.getByLabelText("Сумма ставки"), {
+      target: { value: "20" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Сделать ставку" }));
+    await waitFor(() => expect(dispatchAction).toHaveBeenNthCalledWith(3, "property.build.auction.bid", {
+      amount: 20
+    }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Пас" }));
+    await waitFor(() => expect(dispatchAction).toHaveBeenNthCalledWith(4, "property.build.auction.pass", {}));
+    disposeProvider();
+  });
+
   it("preserves exact controlled text while exposing accessible validation hints", async () => {
     const disposeProvider = registerAccessibleBoardActionsProvider(content.gameId, () => ([{
       id: "name-team",
