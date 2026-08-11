@@ -8,7 +8,7 @@ import {
   isStructurallyValidEstateAuctionBid,
   provideEstateRaceAccessibleBoardActions
 } from "../src/accessible-actions.ts";
-import { projectEstateRaceSession } from "../src/board-state.ts";
+import { projectEstateRaceSession, traceEstateTokenPath } from "../src/board-state.ts";
 import { activate } from "../src/index.ts";
 
 test("projects cells, participants, roll and only runtime-declared actions", () => {
@@ -21,7 +21,7 @@ test("projects cells, participants, roll and only runtime-declared actions", () 
           availableActions: [{
             id: "pay",
             label: "Оплатить ренту",
-            actionId: "property.rent.cell-05",
+            actionId: "property.rent",
             params: { cellId: "cell-05" }
           }]
         },
@@ -49,7 +49,11 @@ test("projects cells, participants, roll and only runtime-declared actions", () 
         }
       },
       players: {
-        p1: { metrics: { cash: 764, position: 5 }, flags: { inJail: true } },
+        p1: {
+          metrics: { cash: 764, position: 5, jailAttempts: 2 },
+          flags: { inJail: true },
+          objects: { heldExitCardId: "event-exit" }
+        },
         p2: { metrics: { cash: 900, position: 5 }, flags: { inJail: false } }
       }
     }
@@ -63,8 +67,11 @@ test("projects cells, participants, roll and only runtime-declared actions", () 
   assert.deepEqual(projection.cells[0]?.rentScale, [24, 48, 132, 310, 500, 700]);
   assert.equal(projection.players[1]?.active, true);
   assert.equal(projection.players[0]?.inJail, true);
+  assert.equal(projection.players[0]?.jailAttempts, 2);
+  assert.equal(projection.players[0]?.heldExitCardId, "event-exit");
   assert.equal(projection.players[1]?.inJail, false);
-  assert.equal(projection.availableActions[0]?.actionId, "property.rent.cell-05");
+  assert.equal(projection.players[1]?.heldExitCardId, null);
+  assert.equal(projection.availableActions[0]?.actionId, "property.rent");
   assert.deepEqual(projection.availableActions[0]?.params, { cellId: "cell-05" });
 });
 
@@ -191,6 +198,55 @@ test("keeps a jailed roll disabled from canonical action availability", () => {
   }]);
 });
 
+test("projects only server-declared jail controls and actor-visible held state", () => {
+  const projection = projectEstateRaceSession({
+    state: {
+      public: {
+        turn: { activePlayerId: "p1", phase: "jail", turnNumber: 7 },
+        board: {
+          lastCardId: "event-exit",
+          availableActions: [
+            { id: "jail-pay", label: "Оплатить освобождение", actionId: "jail.pay" },
+            { id: "jail-card-event", label: "Использовать карту выхода", actionId: "jail.card.use.event" },
+            { id: "jail-roll", label: "Попытаться выбросить дубль", actionId: "jail.roll" }
+          ]
+        }
+      },
+      players: {
+        p1: {
+          metrics: { cash: 1200, position: 10, jailAttempts: 1 },
+          flags: { inJail: true },
+          objects: { heldExitCardId: "event-exit" }
+        },
+        p2: { metrics: { cash: 1200, position: 0, jailAttempts: 0 }, flags: { inJail: false } }
+      }
+    }
+  });
+
+  assert.equal(projection.lastCardId, "event-exit");
+  assert.equal(projection.players[0]?.jailAttempts, 1);
+  assert.equal(projection.players[0]?.heldExitCardId, "event-exit");
+  assert.equal(projection.players[1]?.heldExitCardId, null);
+  assert.deepEqual(projection.availableActions.map(({ actionId }) => actionId), [
+    "jail.pay",
+    "jail.card.use.event",
+    "jail.roll"
+  ]);
+
+  const peerProjection = projectEstateRaceSession({
+    state: {
+      public: { turn: { activePlayerId: "p1", phase: "jail" }, board: { lastCardId: "event-exit" } },
+      players: {
+        p1: { metrics: { jailAttempts: 1 }, flags: { inJail: true }, objects: {} },
+        p2: { metrics: { jailAttempts: 0 }, flags: { inJail: false } }
+      },
+      secret: { decks: { event: { held: ["event-exit"] } } }
+    }
+  });
+  assert.equal(peerProjection.players[0]?.heldExitCardId, null);
+  assert.equal("secret" in peerProjection, false);
+});
+
 test("keeps an unavailable auction bid disabled while exposing only the amount field", () => {
   const actions = provideEstateRaceAccessibleBoardActions({
     actionAvailability: [{
@@ -266,6 +322,24 @@ test("projects all six hotseat participants without assuming fixed player ids", 
   assert.equal(projection.players[5]?.active, true);
 });
 
+test("animates the shortest confirmed arc for forward and backward card movement", () => {
+  const cells = projectEstateRaceSession({
+    state: {
+      public: {
+        objects: {
+          boardCells: Object.fromEntries(Array.from({ length: 40 }, (_, index) => [
+            `cell-${index}`,
+            { attributes: { index, kind: "neutral" } }
+          ]))
+        }
+      }
+    }
+  }).cells;
+
+  assert.deepEqual(traceEstateTokenPath(cells, 3, 38).map(({ index }) => index), [2, 1, 0, 39, 38]);
+  assert.deepEqual(traceEstateTokenPath(cells, 36, 2).map(({ index }) => index), [37, 38, 39, 0, 1, 2]);
+});
+
 test("does not invent legal actions or expose malformed state", () => {
   const projection = projectEstateRaceSession({
     state: {
@@ -294,9 +368,9 @@ test("provides server-declared controls without constructing a Phaser scene", ()
         board: {
           availableActions: [{
             id: "buy-cell",
-            label: "Купить участок",
+            label: "Купить объект",
             description: "Подтверждение выполнит сервер",
-            actionId: "property.buy.cell-02",
+            actionId: "property.buy",
             params,
             disabled: false
           }]
@@ -309,9 +383,9 @@ test("provides server-declared controls without constructing a Phaser scene", ()
 
   assert.deepEqual(actions, [{
     id: "buy-cell",
-    label: "Купить участок",
+    label: "Купить объект",
     description: "Подтверждение выполнит сервер",
-    actionId: "property.buy.cell-02",
+    actionId: "property.buy",
     params: { cellId: "cell-02" },
     disabled: false
   }]);
@@ -321,7 +395,7 @@ test("provides server-declared controls without constructing a Phaser scene", ()
 test("disables a board control when canonical server availability rejects it", () => {
   const session = {
     actionAvailability: [{
-      actionId: "property.buy.cell-02",
+      actionId: "property.buy",
       status: "unavailable",
       reasonCode: "state_condition_failed",
       basisStateVersion: 5
@@ -331,8 +405,8 @@ test("disables a board control when canonical server availability rejects it", (
         board: {
           availableActions: [{
             id: "buy-cell",
-            label: "Купить участок",
-            actionId: "property.buy.cell-02"
+            label: "Купить объект",
+            actionId: "property.buy"
           }]
         }
       }
@@ -341,9 +415,9 @@ test("disables a board control when canonical server availability rejects it", (
 
   assert.deepEqual(provideEstateRaceAccessibleBoardActions(session), [{
     id: "buy-cell",
-    label: "Купить участок",
+    label: "Купить объект",
     description: "Действие недоступно в текущем состоянии игры.",
-    actionId: "property.buy.cell-02",
+    actionId: "property.buy",
     disabled: true
   }]);
 });

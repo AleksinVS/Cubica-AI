@@ -23,12 +23,14 @@ import { createImmutableBundleContent } from "../../../services/runtime-api/src/
 import { dispatchRuntimeAction } from "../../../services/runtime-api/src/modules/runtime/actionDispatcher.ts";
 import { projectSessionActionAvailability } from "../../../services/runtime-api/src/modules/runtime/actionAvailability.ts";
 import { InMemorySessionStore } from "../../../services/runtime-api/src/modules/session/inMemorySessionStore.ts";
+import { buildPlayerSessionProjection } from "../../../services/runtime-api/src/modules/session/playerSessionProjection.ts";
 import { initializeTurnBasedSessionState } from "../../../services/runtime-api/src/modules/session/turnBasedSessionState.ts";
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const require = createRequire(import.meta.url);
 const { compileAuthoringText } = require("../../../scripts/manifest-tools/authoring-compiler.cjs");
 const testCredentialSha256 = "b".repeat(64);
+const setupDeckSamples = Array(9).fill(0);
 // This package proof covers gameplay semantics. Admission limits are a
 // platform boundary with their own focused HTTP/controller regression suite.
 const testAdmissionController = {
@@ -86,7 +88,9 @@ const createReplay = async (mutateState, {
       credentialSha256: testCredentialSha256
     }
   });
-  const randomSamples = autoSetup ? [...setupSamples, ...samples] : samples;
+  const randomSamples = autoSetup
+    ? [...setupSamples, ...setupDeckSamples, ...samples]
+    : samples;
   let totalRandomCallCount = 0;
   let randomCallBaseline = 0;
   const replay = {
@@ -153,7 +157,8 @@ const assertRejectedAction = async (dispatch, messagePattern) => {
 const createPhaseReplay = async (mutateState, {
   participantCount = 2,
   phase = "acquire",
-  actorScope = { kind: "all-session-actors" }
+  actorScope = { kind: "all-session-actors" },
+  samples = []
 } = {}) => createReplay((state) => {
   const participantIds = Object.keys(state.players);
   state.public.setupComplete = true;
@@ -162,14 +167,17 @@ const createPhaseReplay = async (mutateState, {
   state.public.turn.phase = phase;
   state.public.board.availableActions = [];
   mutateState?.(state);
-}, { participantCount, actorScope, autoSetup: false, samples: [] });
+}, { participantCount, actorScope, autoSetup: false, samples });
 
 test("setup randomizes the exact 2/6 participant set once and is receipt-idempotent", async () => {
   for (const participantCount of [2, 6]) {
     const replay = await createReplay(undefined, {
       participantCount,
       autoSetup: false,
-      samples: Array.from({ length: participantCount - 1 }, () => 0)
+      samples: [
+        ...Array.from({ length: participantCount - 1 }, () => 0),
+        ...setupDeckSamples
+      ]
     });
     const before = await replay.store.getSession(replay.session.sessionId);
     const participantIds = Object.keys(before.state.players);
@@ -187,7 +195,7 @@ test("setup randomizes the exact 2/6 participant set once and is receipt-idempot
       expectedStateVersion: before.version.stateVersion
     });
     assert.equal(first.result.ok, true, JSON.stringify(first.result));
-    assert.equal(replay.totalRandomCallCount, participantCount - 1);
+    assert.equal(replay.totalRandomCallCount, participantCount - 1 + setupDeckSamples.length);
 
     const configured = await replay.store.getSession(replay.session.sessionId);
     assert.equal(configured.state.public.setupComplete, true);
@@ -209,7 +217,7 @@ test("setup randomizes the exact 2/6 participant set once and is receipt-idempot
       expectedStateVersion: before.version.stateVersion
     });
     assert.deepEqual(retried.receipt, first.receipt);
-    assert.equal(replay.totalRandomCallCount, participantCount - 1);
+    assert.equal(replay.totalRandomCallCount, participantCount - 1 + setupDeckSamples.length);
 
     const beforeFreshSetup = structuredClone(configured);
     await assertRejectedAction(
@@ -217,7 +225,7 @@ test("setup randomizes the exact 2/6 participant set once and is receipt-idempot
       /SESSION_SETUP_ALREADY_FINALIZED/
     );
     const afterFreshSetup = await replay.store.getSession(replay.session.sessionId);
-    assert.equal(replay.totalRandomCallCount, participantCount - 1);
+    assert.equal(replay.totalRandomCallCount, participantCount - 1 + setupDeckSamples.length);
     assert.deepEqual(afterFreshSetup.state, beforeFreshSetup.state);
     assert.equal(afterFreshSetup.version.stateVersion, beforeFreshSetup.version.stateVersion);
   }
@@ -276,7 +284,9 @@ test("compiled gameplay contains no legacy actor, resource or turn shortcuts", a
   const setupSteps = manifest.mechanics.plans["session.setup.finalize"].transaction.steps;
   const rollSteps = manifest.mechanics.plans["turn.roll"].transaction.steps;
   const taxSteps = manifest.mechanics.plans["tax.pay"].transaction.steps;
-  const landingSelection = rollSteps.find((step) => step.id === "s006-landing-cell");
+  const landingSelection = rollSteps.find(
+    (step) => step.op === "core.entities.select" && step.selector.collection === "boardCells"
+  );
   const taxTransfer = taxSteps.find((step) => step.op === "core.resource.transfer");
 
   assert.ok(turnSteps.some((step) => step.op === "core.sequence.next"));
@@ -416,7 +426,8 @@ test("the third consecutive double jails the actor and blocks a later roll befor
   assert.equal(current.state.players.p1.metrics.position, 20);
   assert.equal(current.state.public.board.consecutiveDoubles, 2);
 
-  await act(replay, "turn.roll");
+  const thirdDouble = await act(replay, "turn.roll");
+  assert.equal(thirdDouble.result.ok, true, JSON.stringify(thirdDouble.result));
   current = await replay.store.getSession(replay.session.sessionId);
   assert.deepEqual(current.state.public.board.lastRoll.values, [3, 3]);
   assert.equal(current.state.players.p1.metrics.position, 10);
@@ -442,7 +453,12 @@ test("the third consecutive double jails the actor and blocks a later roll befor
   await act(replay, "turn.finish");
   current = await replay.store.getSession(replay.session.sessionId);
   assert.equal(current.state.public.turn.activePlayerId, "p1");
-  assert.equal(current.state.public.turn.phase, "roll");
+  assert.equal(current.state.public.turn.phase, "jail");
+  assert.deepEqual(current.state.public.board.availableActions.map((item) => item.actionId), [
+    "jail.pay",
+    "jail.card.use.event",
+    "jail.roll"
+  ]);
 
   const availability = projectSessionActionAvailability(current, replay.bundle, {
     actorPlayerId: "p1",
@@ -452,6 +468,11 @@ test("the third consecutive double jails the actor and blocks a later roll befor
     actionId: "turn.roll",
     status: "unavailable",
     reasonCode: "state_condition_failed",
+    basisStateVersion: current.version.stateVersion
+  });
+  assert.deepEqual(availability.find((entry) => entry.actionId === "jail.roll"), {
+    actionId: "jail.roll",
+    status: "available",
     basisStateVersion: current.version.stateVersion
   });
 
@@ -576,31 +597,431 @@ test("neutral landing finishes while go-to-jail cancels a pending extra roll", a
   }]);
 });
 
-test("only the still-deferred event and fund cells enter an explicit blocked phase", async () => {
-  const manifest = await loadManifest();
-  const blockedKinds = new Set(["event", "fund"]);
-  const blockedCells = Object.values(manifest.state.public.objects.boardCells)
-    .filter((cell) => blockedKinds.has(cell.attributes.kind));
+const eventCardIds = [
+  "event-credit",
+  "event-advance",
+  "event-retreat",
+  "event-jail",
+  "event-exit",
+  "event-message"
+];
+const fundCardIds = [
+  "fund-debit",
+  "fund-pay-each",
+  "fund-collect-each",
+  "fund-start",
+  "fund-message"
+];
 
-  assert.equal(blockedCells.length, 6);
-  for (const [cellIndex, cell] of blockedCells.entries()) {
-    const targetIndex = cell.attributes.index;
-    const replay = await createReplay((state) => {
-      state.players.p1.metrics.position = (targetIndex + 37) % 40;
-    }, { samples: [0, 1] });
-    await act(replay, "turn.roll");
-    const current = await replay.store.getSession(replay.session.sessionId);
-    assert.equal(current.state.players.p1.metrics.position, targetIndex, cell.attributes.id);
-    assert.equal(current.state.public.turn.activePlayerId, "p1", cell.attributes.id);
-    assert.equal(current.state.public.turn.phase, "blocked", cell.attributes.id);
-    assert.deepEqual(current.state.public.board.availableActions, [], cell.attributes.id);
-    if (cellIndex === 0) {
-      const beforeFinish = structuredClone(current);
-      await assertRejectedAction(act(replay, "turn.finish"), /ACTION_PRECONDITION_FAILED/);
-      const afterFinish = await replay.store.getSession(replay.session.sessionId);
-      assert.deepEqual(afterFinish.state, beforeFinish.state);
-      assert.equal(afterFinish.version.stateVersion, beforeFinish.version.stateVersion);
+const installDecks = (state, {
+  eventOrder = eventCardIds,
+  eventDiscard = [],
+  eventHeld = [],
+  fundOrder = fundCardIds,
+  fundDiscard = [],
+  fundHeld = []
+} = {}) => {
+  state.secret.decks = {
+    event: {
+      order: eventOrder,
+      discard: eventDiscard,
+      held: eventHeld,
+      stream: "estate-race.deck.event"
+    },
+    fund: {
+      order: fundOrder,
+      discard: fundDiscard,
+      held: fundHeld,
+      stream: "estate-race.deck.fund"
     }
+  };
+};
+
+const orderedDeck = (cardIds, first) => [first, ...cardIds.filter((id) => id !== first)];
+
+const fixtureJailActor = async (replay, actorId = "p1") => {
+  const current = await replay.store.getSession(replay.session.sessionId);
+  const updated = structuredClone(current);
+  updated.state.players[actorId].metrics.position = 10;
+  updated.state.players[actorId].metrics.jailAttempts = 0;
+  updated.state.players[actorId].flags.inJail = true;
+  updated.state.public.turn.phase = "jail";
+  updated.state.public.board.consecutiveDoubles = 0;
+  updated.state.public.board.extraRollPending = false;
+  updated.state.public.board.availableActions = [
+    { id: "jail-card-event", label: "Использовать карту выхода", actionId: "jail.card.use.event" }
+  ];
+  updated.version.stateVersion += 1;
+  updated.updatedAt = new Date();
+  return replay.store.updateSession(updated, {
+    expectedStateVersion: current.version.stateVersion
+  });
+};
+
+test("both hidden decks dispatch every neutral card effect and continue the authoritative landing", async () => {
+  const cases = [
+    { deck: "event", cardId: "event-credit", participantCount: 2, assertState: (state) => {
+      assert.equal(state.players.p1.metrics.cash, 1290);
+      assert.equal(state.public.turn.phase, "finish");
+    } },
+    { deck: "event", cardId: "event-advance", participantCount: 2, assertState: (state) => {
+      assert.equal(state.players.p1.metrics.position, 9);
+      assert.equal(state.players.p1.metrics.cash, 1200);
+      assert.equal(state.public.turn.phase, "acquire");
+    } },
+    { deck: "event", cardId: "event-retreat", participantCount: 2, assertState: (state) => {
+      assert.equal(state.players.p1.metrics.position, 38);
+      assert.equal(state.players.p1.metrics.cash, 1200);
+      assert.equal(state.public.turn.phase, "tax");
+    } },
+    { deck: "event", cardId: "event-jail", participantCount: 2, assertState: (state) => {
+      assert.equal(state.players.p1.metrics.position, 10);
+      assert.equal(state.players.p1.flags.inJail, true);
+      assert.equal(state.players.p1.metrics.jailAttempts, 0);
+      assert.equal(state.public.turn.phase, "finish");
+    } },
+    { deck: "event", cardId: "event-exit", participantCount: 2, assertState: (state) => {
+      assert.equal(state.players.p1.objects.heldExitCardId, "event-exit");
+      assert.deepEqual(state.secret.decks.event.held, ["event-exit"]);
+      assert.equal(state.public.turn.phase, "finish");
+    } },
+    { deck: "event", cardId: "event-message", participantCount: 2, assertState: (state) => {
+      assert.equal(state.public.turn.phase, "finish");
+    } },
+    { deck: "fund", cardId: "fund-debit", participantCount: 2, assertState: (state) => {
+      assert.equal(state.players.p1.metrics.cash, 1160);
+      assert.equal(state.public.turn.phase, "finish");
+    } },
+    { deck: "fund", cardId: "fund-pay-each", participantCount: 6, assertState: (state) => {
+      assert.equal(state.players.p1.metrics.cash, 1150);
+      assert.ok(["p2", "p3", "p4", "p5", "p6"].every((id) => state.players[id].metrics.cash === 1210));
+    } },
+    { deck: "fund", cardId: "fund-collect-each", participantCount: 6, assertState: (state) => {
+      assert.equal(state.players.p1.metrics.cash, 1250);
+      assert.ok(["p2", "p3", "p4", "p5", "p6"].every((id) => state.players[id].metrics.cash === 1190));
+    } },
+    { deck: "fund", cardId: "fund-start", participantCount: 2, assertState: (state) => {
+      assert.equal(state.players.p1.metrics.position, 0);
+      assert.equal(state.players.p1.metrics.cash, 1320);
+      assert.equal(state.public.turn.phase, "finish");
+    } },
+    { deck: "fund", cardId: "fund-message", participantCount: 2, assertState: (state) => {
+      assert.equal(state.public.turn.phase, "finish");
+    } }
+  ];
+
+  for (const cardCase of cases) {
+    const targetIndex = cardCase.deck === "event" ? 3 : 7;
+    const replay = await createPhaseReplay((state) => {
+      state.players.p1.metrics.position = targetIndex - 3;
+      state.public.board.availableActions = [{ id: "roll", label: "Бросить кости", actionId: "turn.roll" }];
+      installDecks(state, {
+        eventOrder: orderedDeck(eventCardIds, cardCase.deck === "event" ? cardCase.cardId : "event-message"),
+        fundOrder: orderedDeck(fundCardIds, cardCase.deck === "fund" ? cardCase.cardId : "fund-message")
+      });
+    }, { phase: "roll", participantCount: cardCase.participantCount, samples: [0, 1] });
+
+    const outcome = await act(replay, "turn.roll");
+    assert.equal(outcome.result.ok, true, `${cardCase.cardId}: ${JSON.stringify(outcome.result)}`);
+    const current = await replay.store.getSession(replay.session.sessionId);
+    assert.equal(current.state.public.board.lastCardId, cardCase.cardId);
+    assert.equal(current.state.public.board.pendingDeckId, null);
+    cardCase.assertState(current.state);
+  }
+});
+
+test("relative cards cross zero in both directions and only forward movement awards one lap", async () => {
+  const crossingCase = async ({ cardId, startPosition, samples, expectedPosition, expectedCash }) => {
+    const replay = await createPhaseReplay((state) => {
+      state.players.p1.metrics.position = startPosition;
+      state.public.board.availableActions = [{ id: "roll", label: "Бросить кости", actionId: "turn.roll" }];
+      installDecks(state, { eventOrder: orderedDeck(eventCardIds, cardId) });
+    }, { phase: "roll", samples });
+    const outcome = await act(replay, "turn.roll");
+    assert.equal(outcome.result.ok, true, JSON.stringify(outcome.result));
+    const current = await replay.store.getSession(replay.session.sessionId);
+    assert.equal(current.state.public.board.lastCardId, cardId);
+    assert.equal(current.state.players.p1.metrics.position, expectedPosition);
+    assert.equal(current.state.players.p1.metrics.cash, expectedCash);
+  };
+
+  await crossingCase({
+    cardId: "event-advance",
+    startPosition: 33,
+    samples: [0, 1],
+    expectedPosition: 2,
+    expectedCash: 1320
+  });
+  await crossingCase({
+    cardId: "event-retreat",
+    startPosition: 0,
+    samples: [0, 1],
+    expectedPosition: 38,
+    expectedCash: 1200
+  });
+});
+
+test("discard exhaustion reshuffles once and exact retry neither reshuffles nor reapplies the card", async () => {
+  const replay = await createPhaseReplay((state) => {
+    state.players.p1.metrics.position = 0;
+    state.public.board.availableActions = [{ id: "roll", label: "Бросить кости", actionId: "turn.roll" }];
+    installDecks(state, { eventOrder: [], eventDiscard: eventCardIds });
+  }, { phase: "roll", samples: [0, 1, 0, 0, 0, 0, 0] });
+  const before = await replay.store.getSession(replay.session.sessionId);
+  const commandId = createTestCommandId();
+  const first = await act(replay, "turn.roll", {}, { commandId, expectedStateVersion: before.version.stateVersion });
+  assert.equal(first.result.ok, true, JSON.stringify(first.result));
+  assert.equal(replay.randomCallCount, 7);
+  let current = await replay.store.getSession(replay.session.sessionId);
+  assert.equal(current.state.secret.decks.event.order.length, 5);
+  assert.equal(current.state.secret.decks.event.discard.length, 1);
+  const afterFirst = structuredClone(current.state);
+
+  const retried = await act(replay, "turn.roll", {}, { commandId, expectedStateVersion: before.version.stateVersion });
+  assert.deepEqual(retried.receipt, first.receipt);
+  assert.equal(replay.randomCallCount, 7);
+  current = await replay.store.getSession(replay.session.sessionId);
+  assert.deepEqual(current.state, afterFirst);
+
+  await assertRejectedAction(act(replay, "turn.roll"), /ACTION_PRECONDITION_FAILED/);
+  assert.equal(replay.randomCallCount, 7);
+});
+
+test("held exit card is actor-private and three return cycles are receipt-idempotent", async () => {
+  const replay = await createPhaseReplay((state) => {
+    state.players.p1.metrics.position = 0;
+    state.public.board.availableActions = [{ id: "roll", label: "Бросить кости", actionId: "turn.roll" }];
+    installDecks(state, { eventOrder: ["event-exit"] });
+  }, { phase: "roll", samples: [0, 1, 2, 3, 2, 3] });
+
+  for (let cycle = 0; cycle < 3; cycle += 1) {
+    const beforeDraw = await replay.store.getSession(replay.session.sessionId);
+    const drawCommandId = createTestCommandId();
+    const drawn = await act(replay, "turn.roll", {}, {
+      commandId: drawCommandId,
+      expectedStateVersion: beforeDraw.version.stateVersion
+    });
+    assert.equal(drawn.result.ok, true, JSON.stringify(drawn.result));
+    const retriedDraw = await act(replay, "turn.roll", {}, {
+      commandId: drawCommandId,
+      expectedStateVersion: beforeDraw.version.stateVersion
+    });
+    assert.deepEqual(retriedDraw.receipt, drawn.receipt);
+    assert.equal(replay.randomCallCount, (cycle + 1) * 2);
+    let current = await replay.store.getSession(replay.session.sessionId);
+    assert.equal(current.state.public.board.lastCardId, "event-exit");
+    assert.equal(current.state.players.p1.objects.heldExitCardId, "event-exit");
+    assert.deepEqual(current.state.secret.decks.event, {
+      order: [],
+      discard: [],
+      held: ["event-exit"],
+      stream: "estate-race.deck.event"
+    });
+
+    const p1View = buildPlayerSessionProjection({
+      state: current.state,
+      stateModel: replay.manifest.mechanics.stateModel,
+      actorPlayerId: "p1"
+    });
+    const p2View = buildPlayerSessionProjection({
+      state: current.state,
+      stateModel: replay.manifest.mechanics.stateModel,
+      actorPlayerId: "p2"
+    });
+    const anonymousView = buildPlayerSessionProjection({
+      state: current.state,
+      stateModel: replay.manifest.mechanics.stateModel
+    });
+    assert.equal(p1View.state.players.p1.objects.heldExitCardId, "event-exit");
+    assert.equal(p2View.state.players.p1.objects?.heldExitCardId, undefined);
+    assert.equal(anonymousView.state.players.p1.objects?.heldExitCardId, undefined);
+    assert.equal(p1View.state.secret, undefined);
+    assert.equal(p2View.state.secret, undefined);
+
+    const heldZones = structuredClone(current.state.secret.decks.event);
+    await fixtureJailActor(replay);
+    current = await replay.store.getSession(replay.session.sessionId);
+    assert.deepEqual(current.state.secret.decks.event, heldZones);
+    const beforeUse = current;
+    const commandId = createTestCommandId();
+    const used = await act(replay, "jail.card.use.event", {}, {
+      commandId,
+      expectedStateVersion: beforeUse.version.stateVersion
+    });
+    assert.equal(used.result.ok, true, JSON.stringify(used.result));
+    const retried = await act(replay, "jail.card.use.event", {}, {
+      commandId,
+      expectedStateVersion: beforeUse.version.stateVersion
+    });
+    assert.deepEqual(retried.receipt, used.receipt);
+    current = await replay.store.getSession(replay.session.sessionId);
+    assert.equal(current.state.players.p1.objects.heldExitCardId, null);
+    assert.equal(current.state.players.p1.flags.inJail, false);
+    assert.equal(current.state.players.p1.metrics.jailAttempts, 0);
+    assert.deepEqual(current.state.secret.decks.event.held, []);
+    assert.deepEqual(current.state.secret.decks.event, {
+      order: [],
+      discard: ["event-exit"],
+      held: [],
+      stream: "estate-race.deck.event"
+    });
+    assert.equal(current.state.public.board.lastCardId, "event-exit");
+    assert.equal(current.state.public.turn.phase, "roll");
+
+    await assertRejectedAction(act(replay, "jail.card.use.event"), /JAIL_EXIT_CARD_UNAVAILABLE/);
+    assert.equal(replay.randomCallCount, (cycle + 1) * 2);
+  }
+});
+
+test("late multi-party transfer failure rolls back early candidates and deck draw after RNG", async () => {
+  for (const cardId of ["fund-pay-each", "fund-collect-each"]) {
+    const replay = await createPhaseReplay((state) => {
+      state.players.p1.metrics.position = 4;
+      state.public.board.availableActions = [{ id: "roll", label: "Бросить кости", actionId: "turn.roll" }];
+      if (cardId === "fund-pay-each") {
+        state.players.p1.metrics.cash = 25;
+      } else {
+        state.players.p5.metrics.cash = 5;
+      }
+      installDecks(state, { fundOrder: orderedDeck(fundCardIds, cardId) });
+    }, { participantCount: 6, phase: "roll", samples: [0, 1, 0, 1] });
+    const before = structuredClone(await replay.store.getSession(replay.session.sessionId));
+    const commandId = createTestCommandId();
+
+    const first = await act(replay, "turn.roll", {}, {
+      commandId,
+      expectedStateVersion: before.version.stateVersion
+    });
+    assert.equal(first.result.ok, false);
+    assert.equal(first.receipt.status, "rejected");
+    assert.match(first.result.error?.code ?? "", /MECHANICS_RESOURCE_INSUFFICIENT/);
+    assert.equal(replay.randomCallCount, 2, `${cardId}: dice RNG is consumed before candidate rollback`);
+    let current = await replay.store.getSession(replay.session.sessionId);
+    assert.deepEqual(current.state, before.state, `${cardId}: early candidate transfers and draw must roll back`);
+    assert.equal(current.version.stateVersion, before.version.stateVersion);
+
+    const retried = await act(replay, "turn.roll", {}, {
+      commandId,
+      expectedStateVersion: before.version.stateVersion
+    });
+    assert.deepEqual(retried.receipt, first.receipt);
+    assert.equal(replay.randomCallCount, 2, `${cardId}: exact retry must reuse the rejection receipt`);
+
+    const fresh = await act(replay, "turn.roll");
+    assert.equal(fresh.result.ok, false);
+    assert.equal(fresh.receipt.status, "rejected");
+    assert.match(fresh.result.error?.code ?? "", /MECHANICS_RESOURCE_INSUFFICIENT/);
+    assert.equal(replay.randomCallCount, 4, `${cardId}: fresh rejected command consumes fresh dice RNG`);
+    current = await replay.store.getSession(replay.session.sessionId);
+    assert.deepEqual(current.state, before.state);
+    assert.equal(current.version.stateVersion, before.version.stateVersion);
+  }
+});
+
+test("jail pay, doubles, failed attempts, and the pre-RNG third-attempt fee are atomic", async () => {
+  const jailedReplay = async ({ attempts = 0, cash = 1200, samples = [] } = {}) => createPhaseReplay((state) => {
+    state.players.p1.metrics.position = 10;
+    state.players.p1.metrics.cash = cash;
+    state.players.p1.metrics.jailAttempts = attempts;
+    state.players.p1.flags.inJail = true;
+    state.public.board.availableActions = [
+      { id: "jail-pay", label: "Оплатить освобождение", actionId: "jail.pay" },
+      { id: "jail-roll", label: "Попытаться выбросить дубль", actionId: "jail.roll" }
+    ];
+    installDecks(state);
+  }, { phase: "jail", samples });
+
+  const paid = await jailedReplay({ samples: [0, 0] });
+  const beforePay = await paid.store.getSession(paid.session.sessionId);
+  const payCommandId = createTestCommandId();
+  const firstPay = await act(paid, "jail.pay", {}, {
+    commandId: payCommandId,
+    expectedStateVersion: beforePay.version.stateVersion
+  });
+  const retriedPay = await act(paid, "jail.pay", {}, {
+    commandId: payCommandId,
+    expectedStateVersion: beforePay.version.stateVersion
+  });
+  assert.deepEqual(retriedPay.receipt, firstPay.receipt);
+  let current = await paid.store.getSession(paid.session.sessionId);
+  assert.equal(current.state.players.p1.metrics.cash, 1150);
+  assert.equal(current.state.players.p1.flags.inJail, false);
+  assert.equal(current.state.public.turn.phase, "roll");
+  await assertRejectedAction(act(paid, "jail.pay"), /JAIL_ACTION_UNAVAILABLE/);
+  await act(paid, "turn.roll");
+  current = await paid.store.getSession(paid.session.sessionId);
+  assert.equal(current.state.public.board.lastRoll.isDouble, true);
+  assert.equal(current.state.public.board.extraRollPending, true);
+
+  const poorPay = await jailedReplay({ cash: 49 });
+  const beforePoorPay = structuredClone(await poorPay.store.getSession(poorPay.session.sessionId));
+  await assertRejectedAction(act(poorPay, "jail.pay"), /MECHANICS_RESOURCE_INSUFFICIENT/);
+  const afterPoorPay = await poorPay.store.getSession(poorPay.session.sessionId);
+  assert.deepEqual(afterPoorPay.state, beforePoorPay.state);
+  assert.equal(afterPoorPay.version.stateVersion, beforePoorPay.version.stateVersion);
+  assert.equal(poorPay.randomCallCount, 0);
+
+  const doubled = await jailedReplay({ samples: [2, 2] });
+  const beforeDouble = await doubled.store.getSession(doubled.session.sessionId);
+  const commandId = createTestCommandId();
+  const firstDouble = await act(doubled, "jail.roll", {}, { commandId, expectedStateVersion: beforeDouble.version.stateVersion });
+  assert.equal(firstDouble.result.ok, true, JSON.stringify(firstDouble.result));
+  const retriedDouble = await act(doubled, "jail.roll", {}, { commandId, expectedStateVersion: beforeDouble.version.stateVersion });
+  assert.deepEqual(retriedDouble.receipt, firstDouble.receipt);
+  assert.equal(doubled.randomCallCount, 2);
+  current = await doubled.store.getSession(doubled.session.sessionId);
+  assert.equal(current.state.players.p1.metrics.position, 16);
+  assert.equal(current.state.players.p1.flags.inJail, false);
+  assert.equal(current.state.public.turn.phase, "acquire");
+  assert.equal(current.state.public.board.extraRollPending, false);
+
+  for (const attempts of [0, 1]) {
+    const failed = await jailedReplay({ attempts, samples: [0, 1] });
+    await act(failed, "jail.roll");
+    current = await failed.store.getSession(failed.session.sessionId);
+    assert.equal(current.state.players.p1.metrics.position, 10);
+    assert.equal(current.state.players.p1.metrics.jailAttempts, attempts + 1);
+    assert.equal(current.state.players.p1.flags.inJail, true);
+    assert.equal(current.state.public.turn.phase, "finish");
+    await act(failed, "turn.finish");
+    current = await failed.store.getSession(failed.session.sessionId);
+    assert.equal(current.state.public.turn.activePlayerId, "p2");
+  }
+
+  const third = await jailedReplay({ attempts: 2, cash: 50, samples: [0, 1] });
+  await act(third, "jail.roll");
+  current = await third.store.getSession(third.session.sessionId);
+  assert.equal(current.state.players.p1.metrics.cash, 0);
+  assert.equal(current.state.players.p1.metrics.position, 13);
+  assert.equal(current.state.players.p1.flags.inJail, false);
+  assert.equal(current.state.players.p1.metrics.jailAttempts, 0);
+  assert.equal(current.state.public.turn.phase, "acquire");
+
+  const poorThird = await jailedReplay({ attempts: 2, cash: 49, samples: [2, 2] });
+  const beforePoorThird = structuredClone(await poorThird.store.getSession(poorThird.session.sessionId));
+  await assertRejectedAction(act(poorThird, "jail.roll"), /JAIL_ROLL_UNAVAILABLE/);
+  const afterPoorThird = await poorThird.store.getSession(poorThird.session.sessionId);
+  assert.equal(poorThird.randomCallCount, 0);
+  assert.deepEqual(afterPoorThird.state, beforePoorThird.state);
+  assert.equal(afterPoorThird.version.stateVersion, beforePoorThird.version.stateVersion);
+});
+
+test("turn.finish publishes jail-only actions for the exact next actor with 2/6 participants", async () => {
+  for (const participantCount of [2, 6]) {
+    const replay = await createPhaseReplay((state) => {
+      state.players.p2.flags.inJail = true;
+      state.players.p2.metrics.jailAttempts = 1;
+      state.public.board.availableActions = [{ id: "finish", label: "Завершить ход", actionId: "turn.finish" }];
+    }, { participantCount, phase: "finish" });
+    await act(replay, "turn.finish");
+    const current = await replay.store.getSession(replay.session.sessionId);
+    assert.equal(current.state.public.turn.activePlayerId, "p2");
+    assert.equal(current.state.public.turn.phase, "jail");
+    assert.deepEqual(current.state.public.board.availableActions.map((item) => item.actionId), [
+      "jail.pay",
+      "jail.card.use.event",
+      "jail.roll"
+    ]);
   }
 });
 

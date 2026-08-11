@@ -93,10 +93,28 @@
         "pointer": "/root/logic/actions/7"
       }
     ],
-    "/actions/turn.finish": [
+    "/actions/jail.pay": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
         "pointer": "/root/logic/actions/8"
+      }
+    ],
+    "/actions/jail.card.use.event": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/9"
+      }
+    ],
+    "/actions/jail.roll": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/10"
+      }
+    ],
+    "/actions/turn.finish": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/11"
       }
     ],
     "/actions": [
@@ -139,6 +157,18 @@
       {
         "file": "games/estate-race/authoring/game.authoring.json",
         "pointer": "/root/mechanics/plans/session.setup.finalize/transaction/steps/3"
+      }
+    ],
+    "/mechanics/plans/session.setup.finalize/transaction/steps/4": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/session.setup.finalize/transaction/steps/4"
+      }
+    ],
+    "/mechanics/plans/session.setup.finalize/transaction/steps/5": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/session.setup.finalize/transaction/steps/5"
       }
     ],
     "/mechanics/plans/session.setup.finalize/planHash": [
@@ -217,96 +247,668 @@
       {
         "file": "games/estate-race/authoring/game.authoring.json",
         "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/10"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/0"
       }
     ],
     "/mechanics/plans/turn.roll/transaction/steps/11": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/11"
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/10"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/1"
       }
     ],
     "/mechanics/plans/turn.roll/transaction/steps/12": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/12"
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/10"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/2"
       }
     ],
     "/mechanics/plans/turn.roll/transaction/steps/13": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/13"
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/10"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/3"
       }
     ],
     "/mechanics/plans/turn.roll/transaction/steps/14": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/14"
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/10"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/4"
       }
     ],
     "/mechanics/plans/turn.roll/transaction/steps/15": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/15"
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/10"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/5"
       }
     ],
     "/mechanics/plans/turn.roll/transaction/steps/16": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/16"
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/10"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/6"
       }
     ],
     "/mechanics/plans/turn.roll/transaction/steps/17": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/17"
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/10"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/7"
       }
     ],
     "/mechanics/plans/turn.roll/transaction/steps/18": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/18"
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/10"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/8"
       }
     ],
     "/mechanics/plans/turn.roll/transaction/steps/19": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/19"
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/10"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/9"
       }
     ],
     "/mechanics/plans/turn.roll/transaction/steps/20": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/20"
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/10"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/10"
       }
     ],
     "/mechanics/plans/turn.roll/transaction/steps/21": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/21"
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/10"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/11"
       }
     ],
     "/mechanics/plans/turn.roll/transaction/steps/22": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/22"
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/10"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/12"
       }
     ],
     "/mechanics/plans/turn.roll/transaction/steps/23": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/23"
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/10"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/13"
       }
     ],
     "/mechanics/plans/turn.roll/transaction/steps/24": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/24"
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/10"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/14"
       }
     ],
     "/mechanics/plans/turn.roll/transaction/steps/25": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/25"
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/10"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/15"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/26": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/10"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/16"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/27": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/10"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/17"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/28": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/11"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-card/steps/0"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/29": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/11"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-card/steps/1"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/30": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/11"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-card/steps/2"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/31": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/11"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-card/steps/3"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/32": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/11"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-card/steps/4"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/33": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/11"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-card/steps/5"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/34": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/11"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-card/steps/6"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/35": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/11"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-card/steps/7"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/36": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/11"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-card/steps/8"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/37": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/11"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-card/steps/9"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/38": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/11"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-card/steps/10"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/39": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/11"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-card/steps/11"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/40": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/11"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-card/steps/12"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/41": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/12"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-card/steps/0"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/42": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/12"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-card/steps/1"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/43": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/12"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-card/steps/2"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/44": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/12"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-card/steps/3"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/45": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/12"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-card/steps/4"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/46": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/12"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-card/steps/5"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/47": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/12"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-card/steps/6"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/48": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/12"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-card/steps/7"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/49": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/12"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-card/steps/8"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/50": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/12"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-card/steps/9"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/51": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/12"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-card/steps/10"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/52": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/12"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-card/steps/11"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/53": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/12"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-card/steps/12"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/54": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/13"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-fund-transfers/steps/0"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/55": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/13"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-fund-transfers/steps/1"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/56": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/13"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-fund-transfers/steps/2"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/57": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/14"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/58": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/15"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/0"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/59": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/15"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/1"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/60": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/15"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/2"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/61": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/15"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/3"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/62": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/15"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/4"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/63": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/15"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/5"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/64": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/15"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/6"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/65": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/15"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/7"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/66": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/15"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/8"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/67": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/15"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/9"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/68": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/15"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/10"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/69": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/15"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/11"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/70": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/15"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/12"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/71": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/15"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/13"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/72": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/15"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/14"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/73": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/15"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/15"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/74": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/15"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/16"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/75": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/15"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/17"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/76": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/16"
+      }
+    ],
+    "/mechanics/plans/turn.roll/transaction/steps/77": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.roll/transaction/steps/17"
       }
     ],
     "/mechanics/plans/turn.roll/planHash": [
@@ -853,14 +1455,829 @@
         "pointer": "/root/mechanics/plans/turn.finish/transaction/steps/5"
       }
     ],
+    "/mechanics/plans/turn.finish/transaction/steps/6": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.finish/transaction/steps/6"
+      }
+    ],
+    "/mechanics/plans/turn.finish/transaction/steps/7": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/turn.finish/transaction/steps/7"
+      }
+    ],
     "/mechanics/plans/turn.finish/planHash": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
         "pointer": "/root/mechanics/plans/turn.finish"
       }
+    ],
+    "/mechanics/plans/jail.pay/transaction/steps": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.pay/transaction/steps"
+      }
+    ],
+    "/mechanics/plans/jail.pay/transaction/steps/0": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.pay/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/jail.pay/transaction/steps/1": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.pay/transaction/steps/1"
+      }
+    ],
+    "/mechanics/plans/jail.pay/transaction/steps/2": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.pay/transaction/steps/2"
+      }
+    ],
+    "/mechanics/plans/jail.pay/transaction/steps/3": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.pay/transaction/steps/3"
+      }
+    ],
+    "/mechanics/plans/jail.pay/planHash": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.pay"
+      }
+    ],
+    "/mechanics/plans/jail.card.use.event/transaction/steps": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.card.use.event/transaction/steps"
+      }
+    ],
+    "/mechanics/plans/jail.card.use.event/transaction/steps/0": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.card.use.event/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/jail.card.use.event/transaction/steps/1": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.card.use.event/transaction/steps/1"
+      }
+    ],
+    "/mechanics/plans/jail.card.use.event/transaction/steps/2": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.card.use.event/transaction/steps/2"
+      }
+    ],
+    "/mechanics/plans/jail.card.use.event/transaction/steps/3": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.card.use.event/transaction/steps/3"
+      }
+    ],
+    "/mechanics/plans/jail.card.use.event/planHash": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.card.use.event"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/0": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/1": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/1"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/2": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/2"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/3": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/3"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/4": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/4"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/5": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/5"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/6": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/6"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/7": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/7"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/0"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/8": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/7"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/1"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/9": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/7"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/2"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/10": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/7"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/3"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/11": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/7"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/4"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/12": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/7"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/5"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/13": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/7"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/6"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/14": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/7"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/7"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/15": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/7"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/8"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/16": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/7"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/9"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/17": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/7"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/10"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/18": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/7"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/11"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/19": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/7"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/12"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/20": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/7"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/13"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/21": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/7"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/14"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/22": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/7"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/15"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/23": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/7"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/16"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/24": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/7"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/17"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/25": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/8"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-card/steps/0"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/26": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/8"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-card/steps/1"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/27": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/8"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-card/steps/2"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/28": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/8"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-card/steps/3"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/29": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/8"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-card/steps/4"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/30": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/8"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-card/steps/5"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/31": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/8"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-card/steps/6"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/32": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/8"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-card/steps/7"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/33": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/8"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-card/steps/8"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/34": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/8"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-card/steps/9"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/35": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/8"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-card/steps/10"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/36": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/8"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-card/steps/11"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/37": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/8"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-card/steps/12"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/38": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/9"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-card/steps/0"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/39": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/9"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-card/steps/1"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/40": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/9"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-card/steps/2"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/41": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/9"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-card/steps/3"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/42": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/9"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-card/steps/4"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/43": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/9"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-card/steps/5"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/44": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/9"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-card/steps/6"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/45": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/9"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-card/steps/7"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/46": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/9"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-card/steps/8"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/47": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/9"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-card/steps/9"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/48": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/9"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-card/steps/10"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/49": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/9"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-card/steps/11"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/50": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/9"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-card/steps/12"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/51": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/10"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-fund-transfers/steps/0"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/52": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/10"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-fund-transfers/steps/1"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/53": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/10"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-fund-transfers/steps/2"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/54": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/11"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/55": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/12"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/0"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/56": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/12"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/1"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/57": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/12"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/2"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/58": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/12"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/3"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/59": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/12"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/4"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/60": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/12"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/5"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/61": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/12"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/6"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/62": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/12"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/7"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/63": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/12"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/8"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/64": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/12"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/9"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/65": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/12"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/10"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/66": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/12"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/11"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/67": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/12"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/12"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/68": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/12"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/13"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/69": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/12"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/14"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/70": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/12"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/15"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/71": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/12"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/16"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/72": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/12"
+      },
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/macros/estate.resolve-landing/steps/17"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/73": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/13"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/74": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/14"
+      }
+    ],
+    "/mechanics/plans/jail.roll/transaction/steps/75": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll/transaction/steps/15"
+      }
+    ],
+    "/mechanics/plans/jail.roll/planHash": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/jail.roll"
+      }
     ]
   },
   "verbatimSubtrees": [
+    "/actions/jail.card.use.event",
+    "/actions/jail.pay",
+    "/actions/jail.roll",
     "/actions/property.auction.bid",
     "/actions/property.auction.pass",
     "/actions/property.buy",

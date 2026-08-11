@@ -43,6 +43,9 @@ export interface EstatePlayerView {
   readonly active: boolean;
   /** Public server flag; the client only presents the authoritative status. */
   readonly inJail: boolean;
+  readonly jailAttempts: number;
+  /** Present only in the authenticated owner's actor projection. */
+  readonly heldExitCardId: string | null;
 }
 
 export interface EstateActionView {
@@ -73,6 +76,8 @@ export interface EstateBoardProjection {
   readonly phase: string;
   readonly turnNumber: number;
   readonly lastRoll: Readonly<{ values: readonly number[]; total: number; isDouble: boolean }> | null;
+  /** Public result of the latest resolved draw; never used to infer ownership. */
+  readonly lastCardId: string | null;
   readonly auction: EstateAuctionView;
 }
 
@@ -134,13 +139,16 @@ const readPlayers = (state: JsonRecord, activePlayerId: string | null): EstatePl
   return Object.entries(players).flatMap(([id, raw], index) => {
     if (!isRecord(raw)) return [];
     const metrics = isRecord(raw.metrics) ? raw.metrics : {};
+    const objects = isRecord(raw.objects) ? raw.objects : {};
     return [{
       id,
       label: `Игрок ${index + 1}`,
       cash: finiteNumber(metrics.cash),
       position: finiteNumber(metrics.position),
       active: id === activePlayerId,
-      inJail: isRecord(raw.flags) && raw.flags.inJail === true
+      inJail: isRecord(raw.flags) && raw.flags.inJail === true,
+      jailAttempts: finiteNumber(metrics.jailAttempts),
+      heldExitCardId: optionalText(objects.heldExitCardId)
     }];
   });
 };
@@ -209,6 +217,29 @@ const readAuction = (publicState: JsonRecord): EstateAuctionView => {
   };
 };
 
+/**
+ * Build the shortest display-only route between two confirmed positions.
+ * Snapshots do not carry movement direction, so choosing the shorter arc
+ * avoids presenting a backward card as a long forward lap without inferring
+ * or changing any gameplay result.
+ */
+export function traceEstateTokenPath(
+  cells: readonly EstateCellView[],
+  fromPosition: number,
+  toPosition: number
+): EstateCellView[] {
+  if (cells.length === 0 || fromPosition === toPosition) return [];
+  const byIndex = new Map(cells.map((cell) => [cell.index, cell] as const));
+  const forwardSteps = (toPosition - fromPosition + cells.length) % cells.length;
+  const backwardSteps = (fromPosition - toPosition + cells.length) % cells.length;
+  const direction = backwardSteps < forwardSteps ? -1 : 1;
+  const stepCount = Math.min(forwardSteps, backwardSteps);
+  return Array.from({ length: stepCount }, (_, step) => {
+    const index = (fromPosition + direction * (step + 1) + cells.length) % cells.length;
+    return byIndex.get(index);
+  }).filter((cell): cell is EstateCellView => cell !== undefined);
+}
+
 /** Convert a player-facing session snapshot to deterministic drawing data. */
 export function projectEstateRaceSession(
   session: { state?: unknown; actionAvailability?: unknown }
@@ -226,6 +257,7 @@ export function projectEstateRaceSession(
     phase: text(turn.phase, "setup"),
     turnNumber: finiteNumber(turn.turnNumber),
     lastRoll: readRoll(board),
+    lastCardId: optionalText(board.lastCardId),
     auction: readAuction(publicState)
   };
 }

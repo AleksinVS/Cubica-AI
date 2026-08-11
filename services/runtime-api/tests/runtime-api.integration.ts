@@ -792,7 +792,10 @@ test("POST /actions exact retry of a random command does not sample again", asyn
     assert.equal(setup.response.status, 200, JSON.stringify(setup.body));
     assert.equal(setup.body.receipt.status, "applied");
     const setupSampleCalls = sampleCalls;
-    assert.equal(setupSampleCalls, 1);
+    // Setup owns participant ordering and every declared deck shuffle. This
+    // test needs only their completed baseline; the roll below must add two
+    // dice samples once and its exact retry must add none.
+    assert.ok(setupSampleCalls > 0);
 
     const commandId = nextCommandId();
     const command = {

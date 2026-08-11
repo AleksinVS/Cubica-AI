@@ -1,4 +1,4 @@
-/** Package-level invariants for original content and the active S2 slice. */
+/** Package-level invariants for original content and the active S3 slice. */
 
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
@@ -36,7 +36,7 @@ test("manifest owns a classified forty-cell original board for two to six hotsea
   assert.equal(Object.keys(cells).length, 40);
   assert.deepEqual(Object.values(cells).map((cell) => cell.attributes.index),
     Array.from({ length: 40 }, (_, index) => index));
-  assert.deepEqual(state.playersTemplate.metrics, { cash: 1200, position: 0 });
+  assert.deepEqual(state.playersTemplate.metrics, { cash: 1200, position: 0, jailAttempts: 0 });
 
   const kinds = Object.values(cells).map((cell) => cell.attributes.kind);
   assert.deepEqual([...new Set(kinds)].sort(), [
@@ -62,12 +62,34 @@ test("manifest owns a classified forty-cell original board for two to six hotsea
     "property.decline",
     "property.rent"
   ]);
-  assert.equal(actionIds.some((id) => /(?:event|fund|card|deck)/u.test(id)), false);
+  assert.deepEqual(actionIds.filter((id) => id.startsWith("jail.")), [
+    "jail.card.use.event",
+    "jail.pay",
+    "jail.roll"
+  ]);
+  assert.equal(actionIds.some((id) => /^(?:event|fund|deck)\./u.test(id)), false);
 
+  const s1Rules = {
+    boardSize: rules.boardSize,
+    dice: rules.dice,
+    startingCash: rules.startingCash,
+    lapReward: rules.lapReward,
+    ownership: rules.ownership,
+    debtAllowed: rules.debtAllowed
+  };
   const datasetHash = createHash("sha256")
-    .update(stableJson({ rules, boardCells: cells }))
+    .update(stableJson({ rules: s1Rules, boardCells: cells }))
     .digest("hex");
   assert.equal(datasetHash, "60046e5696519cfa766ab111205dcb96e01a0e9a6d56bc5328662b18e3da73a8");
+
+  const s3DatasetHash = createHash("sha256")
+    .update(stableJson({
+      eventCards: state.public.objects.eventCards,
+      fundCards: state.public.objects.fundCards,
+      jailFee: rules.jailFee
+    }))
+    .digest("hex");
+  assert.equal(s3DatasetHash, "2c47121f60f28ccdb59597368baf134216d483d6cc05dab79de7d65d3eb6e611");
 });
 
 test("economy actions bind exact immutable plans to typed participant and object references", () => {
@@ -110,6 +132,10 @@ test("economy actions bind exact immutable plans to typed participant and object
       "core.resource.transfer",
       "core.sequence.next",
       "core.state.patch",
+      "deck.draw",
+      "deck.extract",
+      "deck.return",
+      "deck.shuffle",
       "random.dice.roll",
       "turn.phase.select"
     ]
@@ -179,8 +205,10 @@ test("turn completion is an explicit typed composition with no legacy shortcuts"
   assert.equal(participantCollection.itemShape, "record");
   assert.equal(participantCollection.capacity, 6);
   assert.deepEqual(Object.keys(participantCollection.fields).sort(), [
-    "bidderStatus", "cash", "inJail", "position", "status"
+    "bidderStatus", "cash", "inJail", "jailAttempts", "position", "status"
   ]);
+  assert.equal(Object.hasOwn(participantCollection.fields, "heldExitCardId"), false);
+  assert.equal(stateModel.endpoints["actor.objects.heldExitCardId"].audienceRef, "actor");
   assert.ok(setupSteps.some((step) => step.op === "core.entities.select"));
   assert.ok(setupSteps.some((step) => step.op === "core.entities.order"));
   assert.ok(setupSteps.every((step) => step.op !== "core.entities.each"));

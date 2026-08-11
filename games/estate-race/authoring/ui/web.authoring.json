@@ -6,14 +6,14 @@
   "_definitions": {},
   "root": {
     "_type": "ui.Manifest",
-    "_label": "Web-интерфейс: Estate Race · S2",
-    "_semantics": "UI S2: поле отображает подтверждённую сессию, публичное состояние аукциона и серверно объявленные действия.",
+    "_label": "Web-интерфейс: Estate Race · S3",
+    "_semantics": "UI S3: поле отображает подтверждённую сессию, публичные результаты карточек, состояние тюрьмы, аукцион и только серверно объявленные действия.",
     "meta": {
       "id": "estate-race.ui.web",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "schema_version": "1.0",
       "game_id": "estate-race",
-      "game_manifest_version": "0.2.0",
+      "game_manifest_version": "0.3.0",
       "channel": "web",
       "author": "Cubica"
     },
@@ -31,9 +31,9 @@
       {
         "id": "table",
         "_type": "ui.Screen",
-        "_label": "Экран table: Estate Race · S2",
-        "_semantics": "Экран UI-манифеста table: setup, auction, tax, blocked и jail только показывают публичное состояние и объявленные сервером действия.",
-        "title": "Estate Race · S2",
+        "_label": "Экран table: Estate Race · S3",
+        "_semantics": "Экран UI-манифеста table: setup, auction, tax, карточки и jail только показывают подтверждённое состояние и объявленные сервером действия.",
+        "title": "Estate Race · S3",
         "layout_mode": "topbar",
         "root": {
           "_type": "ui.Component",
@@ -57,12 +57,12 @@
               "children": [
                 {
                   "_type": "ui.Component",
-                  "_label": "Estate Race · S2 Ход · активен · этап",
+                  "_label": "Estate Race · S3 Ход · активен · этап",
                   "_semantics": "UI-компонент типа richTextComponent.",
                   "id": "table.title",
                   "type": "richTextComponent",
                   "props": {
-                    "html": "<h1>Estate Race · S2</h1><p>Ход {{game.state.public.turn.turnNumber}} · активен {{game.state.public.turn.activePlayerId}} · этап {{game.state.public.turn.phase}}</p><p>Покупка, рента и аукцион отображаются из подтверждённой публичной проекции; доступные действия и их доступность объявляет сервер.</p>"
+                    "html": "<h1>Estate Race · S3</h1><p>Ход {{game.state.public.turn.turnNumber}} · активен {{game.state.public.turn.activePlayerId}} · этап {{game.state.public.turn.phase}}</p><p>Карточки, тюрьма, покупка, рента и аукцион отображаются из подтверждённой проекции; доступные действия и их доступность объявляет сервер.</p>"
                   }
                 }
               ]
@@ -76,6 +76,28 @@
               "props": {
                 "cssClass": "board-game-auction",
                 "html": "<h2>Аукцион</h2><p>Объект {{game.state.public.auction.cellId}} · текущая ставка {{game.state.public.auction.currentBid}} · минимальный шаг {{game.state.public.auction.minimumIncrement}}</p><p>Лидер {{game.state.public.auction.leaderPlayerId}} · восстановление хода {{game.state.public.auction.resumePlayerId}}</p>"
+              }
+            },
+            {
+              "_type": "ui.Component",
+              "_label": "Последняя открытая карточка",
+              "_semantics": "Показывает только публичный результат последнего server-owned draw; будущий порядок колод и удерживаемые карты других участников не читаются.",
+              "id": "table.card-status",
+              "type": "richTextComponent",
+              "props": {
+                "cssClass": "board-game-card-status",
+                "html": "<h2>Карточка</h2><p>Последний открытый результат: {{game.state.public.board.lastCardId}}</p>"
+              }
+            },
+            {
+              "_type": "ui.Component",
+              "_label": "Состояние тюрьмы",
+              "_semantics": "Показывает публичный статус активного участника; конкретные способы выхода отображаются только как server-declared DOM-действия игрового поля.",
+              "id": "table.jail-status",
+              "type": "richTextComponent",
+              "props": {
+                "cssClass": "board-game-jail-status",
+                "html": "<h2>Тюрьма</h2><p>Активен {{game.state.public.turn.activePlayerId}} · этап {{game.state.public.turn.phase}}. Оплата, карта выхода и попытка дубля доступны только когда их объявил сервер.</p>"
               }
             },
             {

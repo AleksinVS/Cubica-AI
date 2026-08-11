@@ -15,6 +15,7 @@ import type {
 import { provideEstateRaceAccessibleBoardActions } from "./accessible-actions.ts";
 import {
   projectEstateRaceSession,
+  traceEstateTokenPath,
   type EstateActionView,
   type EstateBoardProjection,
   type EstateCellView
@@ -33,7 +34,8 @@ const phaseLabel: Readonly<Record<string, string>> = {
   resolve: "эффект клетки",
   blocked: "следующий срез",
   finish: "завершение",
-  auction: "аукцион"
+  auction: "аукцион",
+  jail: "тюрьма"
 };
 
 const errorText = (error: unknown) =>
@@ -149,6 +151,10 @@ export const createEstateRaceScene: PhaserSceneFactory = (
         }).setOrigin(0.5);
       }
 
+      if (projection.phase !== "blocked" && projection.phase !== "auction") {
+        this.drawCardAndJailSummary(projection);
+      }
+
       // A bid requires the numeric DOM form. Never dispatch an empty bid from
       // the canvas; the server remains the authority for the submitted amount.
       const action = projection.availableActions.find((item) =>
@@ -181,11 +187,34 @@ export const createEstateRaceScene: PhaserSceneFactory = (
       }).setOrigin(0.5);
     }
 
+    private drawCardAndJailSummary(projection: EstateBoardProjection) {
+      const activePlayer = projection.players.find((player) => player.id === projection.activePlayerId);
+      const heldPlayer = projection.players.find((player) => player.heldExitCardId !== null);
+      const lines = [
+        projection.lastCardId === null ? null : `Последняя открытая карта: ${projection.lastCardId}`,
+        activePlayer?.inJail
+          ? `Попытки выхода: ${activePlayer.jailAttempts}/3`
+          : null,
+        heldPlayer?.heldExitCardId === null || heldPlayer === undefined
+          ? null
+          : `${heldPlayer.label}: карта выхода ${heldPlayer.heldExitCardId}`
+      ].filter((line): line is string => line !== null);
+      if (lines.length === 0) return;
+      this.add.text(680, 550, lines.join("\n"), {
+        color: "#495c55",
+        align: "center",
+        fontFamily: "Arial, sans-serif",
+        fontSize: "17px",
+        lineSpacing: 5,
+        wordWrap: { width: 580 }
+      }).setOrigin(0.5);
+    }
+
     private drawPrimaryAction(action: EstateActionView) {
-      const button = this.add.rectangle(680, 595, 360, 68, 0x245f52, 1)
+      const button = this.add.rectangle(680, 620, 360, 68, 0x245f52, 1)
         .setStrokeStyle(2, 0xf4e8cf, 0.65)
         .setInteractive({ useHandCursor: true });
-      this.add.text(680, 595, action.label, {
+      this.add.text(680, 620, action.label, {
         color: "#fff9e9",
         fontFamily: "Arial, sans-serif",
         fontSize: "23px",
@@ -277,12 +306,11 @@ export const createEstateRaceScene: PhaserSceneFactory = (
         if (!initial && previousPlayer && previousCell && previousPlayer.position !== player.position) {
           const previousTokenPosition = tokenPosition(previousCell, index);
           token.setPosition(previousTokenPosition.x, previousTokenPosition.y);
-          const stepCount = (player.position - previousPlayer.position + projection.cells.length) % projection.cells.length;
-          const track = Array.from({ length: stepCount }, (_, step) =>
-            projection.cells.find((item) =>
-              item.index === (previousPlayer.position + step + 1) % projection.cells.length
-            )
-          ).filter((item): item is EstateCellView => item !== undefined);
+          const track = traceEstateTokenPath(
+            projection.cells,
+            previousPlayer.position,
+            player.position
+          );
           this.tweens.add({
             targets: token,
             // Tweening through every crossed cell keeps the token on the
@@ -301,7 +329,9 @@ export const createEstateRaceScene: PhaserSceneFactory = (
       projection.players.forEach((player, index) => {
         const spacing = 1100 / Math.max(1, projection.players.length - 1);
         const x = projection.players.length === 1 ? 700 : 150 + index * spacing;
-        this.add.text(x, 975, `${player.label}${player.active ? " · ходит" : ""}${player.inJail ? " · в тюрьме" : ""}   ${player.cash} монет`, {
+        const jailStatus = player.inJail ? ` · в тюрьме (${player.jailAttempts}/3)` : "";
+        const heldStatus = player.heldExitCardId === null ? "" : " · карта выхода";
+        this.add.text(x, 975, `${player.label}${player.active ? " · ходит" : ""}${jailStatus}${heldStatus}   ${player.cash} монет`, {
           color: player.active ? "#fff4d8" : "#b9c7c2",
           fontFamily: "Arial, sans-serif",
           fontSize: player.active ? "16px" : "14px",

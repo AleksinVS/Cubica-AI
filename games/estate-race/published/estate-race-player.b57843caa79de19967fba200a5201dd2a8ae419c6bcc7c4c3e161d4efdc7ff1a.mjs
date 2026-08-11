@@ -109,6 +109,7 @@ __pluginDefine("src/board-state.ts", (exports, module) => {
  * the plugin only combines and displays those server-owned declarations.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.traceEstateTokenPath = traceEstateTokenPath;
 exports.projectEstateRaceSession = projectEstateRaceSession;
 const isRecord = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
 const finiteNumber = (value, fallback = 0) => typeof value === "number" && Number.isFinite(value) ? value : fallback;
@@ -154,13 +155,16 @@ const readPlayers = (state, activePlayerId) => {
         if (!isRecord(raw))
             return [];
         const metrics = isRecord(raw.metrics) ? raw.metrics : {};
+        const objects = isRecord(raw.objects) ? raw.objects : {};
         return [{
                 id,
                 label: `Игрок ${index + 1}`,
                 cash: finiteNumber(metrics.cash),
                 position: finiteNumber(metrics.position),
                 active: id === activePlayerId,
-                inJail: isRecord(raw.flags) && raw.flags.inJail === true
+                inJail: isRecord(raw.flags) && raw.flags.inJail === true,
+                jailAttempts: finiteNumber(metrics.jailAttempts),
+                heldExitCardId: optionalText(objects.heldExitCardId)
             }];
     });
 };
@@ -224,6 +228,25 @@ const readAuction = (publicState) => {
         leaderPlayerId: optionalText(auction.leaderPlayerId)
     };
 };
+/**
+ * Build the shortest display-only route between two confirmed positions.
+ * Snapshots do not carry movement direction, so choosing the shorter arc
+ * avoids presenting a backward card as a long forward lap without inferring
+ * or changing any gameplay result.
+ */
+function traceEstateTokenPath(cells, fromPosition, toPosition) {
+    if (cells.length === 0 || fromPosition === toPosition)
+        return [];
+    const byIndex = new Map(cells.map((cell) => [cell.index, cell]));
+    const forwardSteps = (toPosition - fromPosition + cells.length) % cells.length;
+    const backwardSteps = (fromPosition - toPosition + cells.length) % cells.length;
+    const direction = backwardSteps < forwardSteps ? -1 : 1;
+    const stepCount = Math.min(forwardSteps, backwardSteps);
+    return Array.from({ length: stepCount }, (_, step) => {
+        const index = (fromPosition + direction * (step + 1) + cells.length) % cells.length;
+        return byIndex.get(index);
+    }).filter((cell) => cell !== undefined);
+}
 /** Convert a player-facing session snapshot to deterministic drawing data. */
 function projectEstateRaceSession(session) {
     const state = isRecord(session.state) ? session.state : {};
@@ -239,6 +262,7 @@ function projectEstateRaceSession(session) {
         phase: text(turn.phase, "setup"),
         turnNumber: finiteNumber(turn.turnNumber),
         lastRoll: readRoll(board),
+        lastCardId: optionalText(board.lastCardId),
         auction: readAuction(publicState)
     };
 }
@@ -269,7 +293,8 @@ const phaseLabel = {
     resolve: "эффект клетки",
     blocked: "следующий срез",
     finish: "завершение",
-    auction: "аукцион"
+    auction: "аукцион",
+    jail: "тюрьма"
 };
 const errorText = (error) => error instanceof Error ? error.message : "Действие отклонено сервером";
 const tokenPosition = (cell, playerIndex) => ({
@@ -372,6 +397,9 @@ const createEstateRaceScene = (context) => {
                     fontSize: "20px"
                 }).setOrigin(0.5);
             }
+            if (projection.phase !== "blocked" && projection.phase !== "auction") {
+                this.drawCardAndJailSummary(projection);
+            }
             // A bid requires the numeric DOM form. Never dispatch an empty bid from
             // the canvas; the server remains the authority for the submitted amount.
             const action = projection.availableActions.find((item) => !item.disabled && item.actionId !== "property.auction.bid");
@@ -401,11 +429,34 @@ const createEstateRaceScene = (context) => {
                 wordWrap: { width: 600 }
             }).setOrigin(0.5);
         }
+        drawCardAndJailSummary(projection) {
+            const activePlayer = projection.players.find((player) => player.id === projection.activePlayerId);
+            const heldPlayer = projection.players.find((player) => player.heldExitCardId !== null);
+            const lines = [
+                projection.lastCardId === null ? null : `Последняя открытая карта: ${projection.lastCardId}`,
+                activePlayer?.inJail
+                    ? `Попытки выхода: ${activePlayer.jailAttempts}/3`
+                    : null,
+                heldPlayer?.heldExitCardId === null || heldPlayer === undefined
+                    ? null
+                    : `${heldPlayer.label}: карта выхода ${heldPlayer.heldExitCardId}`
+            ].filter((line) => line !== null);
+            if (lines.length === 0)
+                return;
+            this.add.text(680, 550, lines.join("\n"), {
+                color: "#495c55",
+                align: "center",
+                fontFamily: "Arial, sans-serif",
+                fontSize: "17px",
+                lineSpacing: 5,
+                wordWrap: { width: 580 }
+            }).setOrigin(0.5);
+        }
         drawPrimaryAction(action) {
-            const button = this.add.rectangle(680, 595, 360, 68, 0x245f52, 1)
+            const button = this.add.rectangle(680, 620, 360, 68, 0x245f52, 1)
                 .setStrokeStyle(2, 0xf4e8cf, 0.65)
                 .setInteractive({ useHandCursor: true });
-            this.add.text(680, 595, action.label, {
+            this.add.text(680, 620, action.label, {
                 color: "#fff9e9",
                 fontFamily: "Arial, sans-serif",
                 fontSize: "23px",
@@ -475,8 +526,7 @@ const createEstateRaceScene = (context) => {
                 if (!initial && previousPlayer && previousCell && previousPlayer.position !== player.position) {
                     const previousTokenPosition = tokenPosition(previousCell, index);
                     token.setPosition(previousTokenPosition.x, previousTokenPosition.y);
-                    const stepCount = (player.position - previousPlayer.position + projection.cells.length) % projection.cells.length;
-                    const track = Array.from({ length: stepCount }, (_, step) => projection.cells.find((item) => item.index === (previousPlayer.position + step + 1) % projection.cells.length)).filter((item) => item !== undefined);
+                    const track = (0, board_state_ts_1.traceEstateTokenPath)(projection.cells, previousPlayer.position, player.position);
                     this.tweens.add({
                         targets: token,
                         // Tweening through every crossed cell keeps the token on the
@@ -494,7 +544,9 @@ const createEstateRaceScene = (context) => {
             projection.players.forEach((player, index) => {
                 const spacing = 1100 / Math.max(1, projection.players.length - 1);
                 const x = projection.players.length === 1 ? 700 : 150 + index * spacing;
-                this.add.text(x, 975, `${player.label}${player.active ? " · ходит" : ""}${player.inJail ? " · в тюрьме" : ""}   ${player.cash} монет`, {
+                const jailStatus = player.inJail ? ` · в тюрьме (${player.jailAttempts}/3)` : "";
+                const heldStatus = player.heldExitCardId === null ? "" : " · карта выхода";
+                this.add.text(x, 975, `${player.label}${player.active ? " · ходит" : ""}${jailStatus}${heldStatus}   ${player.cash} монет`, {
                     color: player.active ? "#fff4d8" : "#b9c7c2",
                     fontFamily: "Arial, sans-serif",
                     fontSize: player.active ? "16px" : "14px",
