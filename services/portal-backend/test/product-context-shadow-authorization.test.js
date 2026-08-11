@@ -150,7 +150,32 @@ test('binding is deterministic per user and separates users', () => {
   assert.notEqual(buildShadowPrincipalRef(key, 1), buildShadowPrincipalRef(key, 2));
 });
 
-test('Strapi route keeps authentication enabled', () => {
+test('Strapi route keeps authentication enabled without a generated role-permission scope', async () => {
   assert.equal(shadowRoutes.routes.length, 1);
-  assert.notEqual(shadowRoutes.routes[0].config?.auth, false);
+  const route = shadowRoutes.routes[0];
+  assert.equal(typeof route.handler, 'function');
+  assert.notEqual(route.config?.auth, false);
+  assert.equal(route.config?.auth?.scope, undefined);
+
+  const originalStrapi = global.strapi;
+  const marker = { status: 200 };
+  let receivedContext;
+  global.strapi = {
+    controller(uid) {
+      assert.equal(uid, 'api::product-context.product-context');
+      return {
+        shadowAuthorization(ctx) {
+          receivedContext = ctx;
+          return marker;
+        },
+      };
+    },
+  };
+  const context = { state: { user: { id: 7 } } };
+  try {
+    assert.equal(await route.handler(context), marker);
+    assert.equal(receivedContext, context);
+  } finally {
+    global.strapi = originalStrapi;
+  }
 });
