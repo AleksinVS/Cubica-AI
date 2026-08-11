@@ -1319,7 +1319,7 @@ function createModel(stateModel) {
       collection.audienceRef,
       collection.storage,
       child(pointer, "storage"),
-      collection.itemShape === "record"
+      collection.itemShape === "record" && collection.stableKey === "map-key"
     );
     if (collection.storage.segments.some((segment) => isRecord(segment) && segment.binding !== undefined)) {
       fail(
@@ -1501,6 +1501,7 @@ function checkAudienceStorage(audience, storage, pointer, allowWholePlayersRecor
  * beside actor-private hands.
  */
 function checkStorageAudienceOverlaps(stateModel) {
+  checkWholePlayersRecordMapActorLeaves(stateModel);
   const symbols = [
     ...Object.entries(stateModel.endpoints)
       .filter(([, value]) => value.usage !== "projection-only")
@@ -1513,6 +1514,7 @@ function checkStorageAudienceOverlaps(stateModel) {
       const right = symbols[rightIndex];
       if (left.audienceRef === right.audienceRef) continue;
       if (!storagePathsOverlapByContainment(left.storage, right.storage)) continue;
+      if (isWholePlayersRecordMapActorLeafPair(left, right)) continue;
       fail(
         "MECHANICS_STORAGE_AUDIENCE_OVERLAP",
         `/stateModel/${left.kind}/${escapePointer(left.id)}/storage`,
@@ -1520,6 +1522,75 @@ function checkStorageAudienceOverlaps(stateModel) {
       );
     }
   }
+}
+
+/**
+ * Admit one deliberately asymmetric storage overlap.
+ *
+ * A public record-map may describe the materialized participant records while
+ * one executable actor endpoint owns a literal child leaf in each record. The
+ * public collection cannot declare that leaf, a parent of it, or a child of
+ * it: record operations therefore remain limited to their public fields.
+ */
+function isWholePlayersRecordMapActorLeafPair(left, right) {
+  const collection = left.kind === "collections" ? left : right.kind === "collections" ? right : undefined;
+  const endpoint = left.kind === "endpoints" ? left : right.kind === "endpoints" ? right : undefined;
+  if (!collection || !endpoint ||
+      collection.audienceRef !== "public" || collection.itemShape !== "record" ||
+      collection.stableKey !== "map-key" || collection.storage.root !== "players" ||
+      collection.storage.segments.length !== 0 || endpoint.audienceRef !== "actor" ||
+      endpoint.usage === "projection-only" || !isActorLiteralLeafStorage(endpoint.storage)) {
+    return false;
+  }
+  const privatePath = endpoint.storage.segments.slice(1);
+  return Object.values(collection.fields)
+    .filter((field) => isStoredCollectionField(field))
+    .every((field) => !literalPathsOverlapByContainment(field.storage.path, privatePath));
+}
+
+/** Reject near-miss actor declarations even though projection-only overlaps are normally ignored. */
+function checkWholePlayersRecordMapActorLeaves(stateModel) {
+  const collections = Object.entries(stateModel.collections)
+    .filter(([, collection]) => collection.audienceRef === "public" &&
+      collection.itemShape === "record" && collection.stableKey === "map-key" &&
+      collection.storage.root === "players" && collection.storage.segments.length === 0)
+    .map(([id, collection]) => ({ kind: "collections", id, ...collection }));
+  for (const collection of collections) {
+    const privateLeaves = [];
+    for (const [endpointId, endpointValue] of Object.entries(stateModel.endpoints)) {
+      if (endpointValue.audienceRef !== "actor" || endpointValue.storage.root !== "players") continue;
+      const endpoint = { kind: "endpoints", id: endpointId, ...endpointValue };
+      if (!isWholePlayersRecordMapActorLeafPair(collection, endpoint)) {
+        fail(
+          "MECHANICS_STORAGE_AUDIENCE_OVERLAP",
+          `/stateModel/collections/${escapePointer(collection.id)}/storage`,
+          `whole-player public record-map overlaps actor endpoint "${endpointId}" outside the actor-private leaf exception`
+        );
+      }
+      const path = endpoint.storage.segments.slice(1);
+      const conflicting = privateLeaves.find((candidate) =>
+        literalPathsOverlapByContainment(candidate.path, path));
+      if (conflicting) {
+        fail(
+          "MECHANICS_STORAGE_AUDIENCE_OVERLAP",
+          `/stateModel/endpoints/${escapePointer(endpointId)}/storage`,
+          `actor-private leaf overlaps endpoint "${conflicting.endpointId}" and therefore has no unique owner`
+        );
+      }
+      privateLeaves.push({ endpointId, path });
+    }
+  }
+}
+
+function isActorLiteralLeafStorage(storage) {
+  return storage.root === "players" && storage.segments.length >= 2 &&
+    isRecord(storage.segments[0]) && storage.segments[0].context === "actor" &&
+    storage.segments.slice(1).every((segment) => typeof segment === "string");
+}
+
+function literalPathsOverlapByContainment(left, right) {
+  const minimum = Math.min(left.length, right.length);
+  return left.slice(0, minimum).every((segment, index) => segment === right[index]);
 }
 
 function storagePathsOverlapByContainment(left, right) {

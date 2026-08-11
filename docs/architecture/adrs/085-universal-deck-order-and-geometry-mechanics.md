@@ -2,7 +2,7 @@
 
 - **Дата:** 2026-07-17
 - **Изменено:** 2026-08-10
-- **Status:** Accepted
+**Status:** Accepted
 - **Автор решения:** PM
 - **Компоненты:** `docs/architecture/schemas`, `packages/contracts/manifest`,
   `services/runtime-api`, `games/*`

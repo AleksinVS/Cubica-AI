@@ -1184,7 +1184,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:416866f8adeb1a4549a7969af76623388c9305f483291d7122f51c31044bdcf2"
+      "definitionHash": "sha256:9efc86841c14c2747ae6c525641b0270ec781146951ae34f6548ac7cbb054e86"
     },
     "turn.roll": {
       "capabilityFamily": "runtime.server",
@@ -1204,7 +1204,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:0a785ed65181d2f84f7ca6c45756f51a38b5e64ee76dc2f65eca9617c8de5e51"
+      "definitionHash": "sha256:5b0d42b4f794035bd70cdd0ef8a7541413dad639ee7b99f592aa3d70e2b529a8"
     },
     "property.buy": {
       "capabilityFamily": "runtime.server",
@@ -1224,7 +1224,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:b78727840d3218314cfe2546923544f9b2805d43b45dae6d0ddda4b4ef2b8727"
+      "definitionHash": "sha256:3bf49f33527cdc7336594ddca529a831ded519399eb449244297799aebcf9583"
     },
     "property.decline": {
       "capabilityFamily": "runtime.server",
@@ -1244,7 +1244,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:d20cba48360c53a57d2eafdc61979016c5366eddf997c21b05c9cea3f7cc39f1"
+      "definitionHash": "sha256:068d4b0dda4d0f7a56549fa119c87c38618aac8f6f047a7947614a8a51c5d97a"
     },
     "property.rent": {
       "capabilityFamily": "runtime.server",
@@ -1264,7 +1264,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:b00418de9333dcbc0c05d56ede2fc5dd8d70786652ba1c2ec940cb02e3c54062"
+      "definitionHash": "sha256:5285a38390edd6b1fdf268f3cae6856cee6ce95a28db7bcb576b5b210f05c631"
     },
     "property.auction.bid": {
       "capabilityFamily": "runtime.server",
@@ -1292,7 +1292,7 @@
         "planRef": "property.auction.bid"
       },
       "invocation": "external",
-      "definitionHash": "sha256:f773e9a5490eec20d998c6e85f78e18acb3bafa0a868a0cb0040c27066fb4a47"
+      "definitionHash": "sha256:6b39c7fcadda21b67cc7ae9a5f78fb8068f20968902fa8ad74865571026e990d"
     },
     "property.auction.pass": {
       "capabilityFamily": "runtime.server",
@@ -1312,7 +1312,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:1432204dba0a781b8a91edbcbe0a920451f233d09207d6c05bba7355a63c0c75"
+      "definitionHash": "sha256:c7bd04defa0dfb33ad54187bfbed000cd8957b16370b20c3ae6d18f4c6171a84"
     },
     "tax.pay": {
       "capabilityFamily": "runtime.server",
@@ -1332,7 +1332,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:7478d3954a307675aaa67d7e473eb8d02175234c4505f312f6578d725a1e5499"
+      "definitionHash": "sha256:cd1ef6db17e4f2480077badca0508dfa1c061c6c018f384e21d9e91393a8b74a"
     },
     "turn.finish": {
       "capabilityFamily": "runtime.server",
@@ -1352,7 +1352,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:51fd3ede5e62879323e053fac10b8911073167684350fa13a193aab317b04b21"
+      "definitionHash": "sha256:b75047320036b72ba2fb024b45ce0fc521e14fca00f8b49cc5ad2aec189ef550"
     }
   },
   "mechanics": {
@@ -1361,21 +1361,21 @@
     "moduleLock": {
       "cubica.core": {
         "moduleId": "cubica.core",
-        "moduleVersion": "1.6.0",
-        "artifactHash": "sha256:201e2615cecd392f6b60a9064609dd2325a0957613cdd6bfdb360717dbfad529"
+        "moduleVersion": "1.7.0",
+        "artifactHash": "sha256:761d448c64868585c5b859043fb9ea19279e1c9e8993c4692ac23e3495458452"
       },
       "cubica.random": {
         "moduleId": "cubica.random",
-        "moduleVersion": "1.1.1",
-        "artifactHash": "sha256:82874667a23abfc02646dfa3d414e9568ce3d55d3d82db6488d7bf770d523968",
+        "moduleVersion": "1.1.2",
+        "artifactHash": "sha256:ef6fb6243f20f918329eba09f9437ebe5c708091c5f3a8d7986ef4935cde7a55",
         "algorithmVersions": {
           "randomProvider": "server-crypto-random-v1"
         }
       },
       "cubica.ordering": {
         "moduleId": "cubica.ordering",
-        "moduleVersion": "1.3.0",
-        "artifactHash": "sha256:27491a4d2c549952333a4a125358b2126b5345938aef7f62f3d098d3403e865c",
+        "moduleVersion": "1.4.0",
+        "artifactHash": "sha256:9a681f174a2c820da787835ca27059b7c970a6b8cf93ab508b7ca825d102acfb",
         "algorithmVersions": {
           "ordering": "lexicographic-bounded-v1",
           "tieBreak": "canonical-groups-server-crypto-random-v1"
@@ -2219,7 +2219,7 @@
     },
     "plans": {
       "session.setup.finalize": {
-        "planHash": "sha256:6a3457d9ad7ddf64b3a73028f8c38b81cfac13234b5027ed11ac32696be31928",
+        "planHash": "sha256:f8c478bcc411e8b055568f8cbc9f4c13df753582079a8c45fb647a8c8491dc76",
         "transaction": {
           "steps": [
             {
@@ -2369,7 +2369,7 @@
         }
       },
       "turn.roll": {
-        "planHash": "sha256:d197c4228be432fe77a95428cca09add6815365e059a0031537b14ea57173de6",
+        "planHash": "sha256:546313c954fc47ad9f20d4c0f4ad5fe08169d89fbdbd7f8408ed28303fc7a233",
         "transaction": {
           "steps": [
             {
@@ -4054,7 +4054,7 @@
         }
       },
       "property.buy": {
-        "planHash": "sha256:92a77a083194728209f4afff643f17f988c13c8dab87a3c21808e3af0749caaf",
+        "planHash": "sha256:ea9568a2b7550bcafd17a87b8c696b0d57cc580f7d13b2a1c25c08035040b2d2",
         "transaction": {
           "steps": [
             {
@@ -4325,7 +4325,7 @@
         }
       },
       "property.decline": {
-        "planHash": "sha256:253c1e5025d3098dadc572048d2d8ad66cd23e9bc5b84e2524c376a7647496ff",
+        "planHash": "sha256:194ad284c5e92e8f4a2661e14c92b32e35448f6684ab024ff232efaeb4b4acd6",
         "transaction": {
           "steps": [
             {
@@ -4681,7 +4681,7 @@
         }
       },
       "property.rent": {
-        "planHash": "sha256:784f749f664035e91574c8e836a8a156c20e77a57396bc7c9895095a1fc3e42e",
+        "planHash": "sha256:fbc903e34d76a5e45312f23526358b44d46cfc9c9a449ec3185bce8f55e7be41",
         "transaction": {
           "steps": [
             {
@@ -5825,7 +5825,7 @@
         }
       },
       "property.auction.bid": {
-        "planHash": "sha256:948ca4ce839f5fbcc15b8596d327a7b9ee3cf163597150d99ebf3a5eff0beedd",
+        "planHash": "sha256:a7194dcfa877c11678ada859cee6086b826e81b27d9970a344a018300b755d6b",
         "transaction": {
           "steps": [
             {
@@ -6467,7 +6467,7 @@
         }
       },
       "property.auction.pass": {
-        "planHash": "sha256:ffadf3741ea370868919d490bec786da9d8b347d85521e8b09bdef46726b1a73",
+        "planHash": "sha256:534c67d3869e3f89ee6c14eb6adb6c59551949f76b65b41912a6c6464c5da3d2",
         "transaction": {
           "steps": [
             {
@@ -7115,7 +7115,7 @@
         }
       },
       "tax.pay": {
-        "planHash": "sha256:72554f36749d28d07b711c79e3130f4abf9bfb5091bddab3dd8306084aeacd41",
+        "planHash": "sha256:193fdd663dab849da019318fc87aec62852481ecd549ec47802b6e9b3fb41616",
         "transaction": {
           "steps": [
             {
@@ -7237,7 +7237,7 @@
         }
       },
       "turn.finish": {
-        "planHash": "sha256:f340c0bcc3f4b22015bfb0a561f1b2e39ead15c8bfac0c58596251f00c931743",
+        "planHash": "sha256:fe4d5543b08770b7f68d3887acef1769b9ff41cf111a5656d2284aae13a60734",
         "transaction": {
           "steps": [
             {

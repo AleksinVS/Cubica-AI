@@ -293,6 +293,12 @@ test("checker admits only a public record-map collection over the whole players 
       }
     }
   };
+  accepted.stateModel.endpoints.privateNote = {
+    audienceRef: "actor",
+    storage: { root: "players", segments: [{ context: "actor" }, "privateNote"] },
+    valueType: "core.string",
+    access: "read-write"
+  };
   finalizeMechanics(accepted);
   assert.doesNotThrow(() => checkMechanicsBundle(accepted));
 
@@ -308,6 +314,11 @@ test("checker admits only a public record-map collection over the whole players 
     expectSemanticCode(restricted, "MECHANICS_AUDIENCE_STORAGE_MISMATCH");
   }
 
+  const idFieldRecords = structuredClone(accepted);
+  idFieldRecords.stateModel.collections.records.stableKey = "id-field";
+  finalizeMechanics(idFieldRecords);
+  expectSemanticCode(idFieldRecords, "MECHANICS_AUDIENCE_STORAGE_MISMATCH");
+
   const broadEndpoint = createOrderingMechanics();
   broadEndpoint.stateModel.endpoints.players = {
     audienceRef: "public",
@@ -317,6 +328,104 @@ test("checker admits only a public record-map collection over the whole players 
   };
   finalizeMechanics(broadEndpoint);
   expectSemanticCode(broadEndpoint, "MECHANICS_AUDIENCE_STORAGE_MISMATCH");
+});
+
+test("whole-player public record maps reject every near-miss private leaf declaration", () => {
+  const createFixture = () => {
+    const mechanics = createOrderingMechanics();
+    mechanics.stateModel.collections.records = {
+      itemShape: "record",
+      audienceRef: "public",
+      storage: { root: "players", segments: [] },
+      capacity: 8,
+      stableKey: "map-key",
+      fields: {
+        rank: {
+          storage: { kind: "path", path: ["rank"] },
+          valueType: "core.integer",
+          access: "read-only"
+        }
+      }
+    };
+    mechanics.stateModel.endpoints.privateNote = {
+      audienceRef: "actor",
+      storage: { root: "players", segments: [{ context: "actor" }, "privateNote"] },
+      valueType: "core.string",
+      access: "read-write"
+    };
+    return mechanics;
+  };
+
+  for (const segments of [
+    [{ context: "actor" }],
+    [{ context: "actor" }, { binding: "slot" }],
+    [{ context: "actor" }, { context: "actor" }, "privateNote"]
+  ]) {
+    const mechanics = createFixture();
+    mechanics.stateModel.endpoints.privateNote.storage.segments = segments;
+    finalizeMechanics(mechanics);
+    expectSemanticCode(mechanics, "MECHANICS_STORAGE_AUDIENCE_OVERLAP");
+  }
+
+  const projectionOnly = createFixture();
+  projectionOnly.stateModel.endpoints.privateNote.usage = "projection-only";
+  finalizeMechanics(projectionOnly);
+  expectSemanticCode(projectionOnly, "MECHANICS_STORAGE_AUDIENCE_OVERLAP");
+
+  const staticOwner = createFixture();
+  staticOwner.stateModel.endpoints.privateNote.storage.segments = ["alice", "privateNote"];
+  finalizeMechanics(staticOwner);
+  expectSemanticCode(staticOwner, "MECHANICS_AUDIENCE_STORAGE_MISMATCH");
+
+  const serverOwned = createFixture();
+  serverOwned.stateModel.endpoints.privateNote.audienceRef = "server";
+  finalizeMechanics(serverOwned);
+  expectSemanticCode(serverOwned, "MECHANICS_AUDIENCE_STORAGE_MISMATCH");
+
+  const broadPublicEndpoint = createFixture();
+  broadPublicEndpoint.stateModel.endpoints.publicActorRecord = {
+    audienceRef: "public",
+    storage: { root: "players", segments: [{ context: "actor" }] },
+    valueType: "core.string",
+    access: "read-only"
+  };
+  finalizeMechanics(broadPublicEndpoint);
+  expectSemanticCode(broadPublicEndpoint, "MECHANICS_STORAGE_AUDIENCE_OVERLAP");
+
+  for (const publicPath of [
+    ["privateNote"],
+    ["privateNote", "length"],
+    ["profile"]
+  ]) {
+    const mechanics = createFixture();
+    if (publicPath[0] === "profile") {
+      mechanics.stateModel.endpoints.privateNote.storage.segments = [
+        { context: "actor" }, "profile", "privateNote"
+      ];
+    }
+    mechanics.stateModel.collections.records.fields.rank.storage.path = publicPath;
+    finalizeMechanics(mechanics);
+    expectSemanticCode(mechanics, "MECHANICS_STORAGE_AUDIENCE_OVERLAP");
+  }
+
+  for (const [firstPath, secondPath] of [
+    [["privateNote"], ["privateNote"]],
+    [["profile", "privateNote"], ["profile"]],
+    [["profile"], ["profile", "privateNote"]]
+  ]) {
+    const mechanics = createFixture();
+    mechanics.stateModel.endpoints.privateNote.storage.segments = [
+      { context: "actor" }, ...firstPath
+    ];
+    mechanics.stateModel.endpoints.secondPrivateNote = {
+      audienceRef: "actor",
+      storage: { root: "players", segments: [{ context: "actor" }, ...secondPath] },
+      valueType: "core.string",
+      access: "read-write"
+    };
+    finalizeMechanics(mechanics);
+    expectSemanticCode(mechanics, "MECHANICS_STORAGE_AUDIENCE_OVERLAP");
+  }
 });
 
 test("record-map selectors reject entity-only objectTypes and facets", () => {

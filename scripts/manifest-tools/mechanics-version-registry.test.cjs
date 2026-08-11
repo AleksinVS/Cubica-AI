@@ -16,6 +16,7 @@ const {
   HISTORICAL_BLOCKED_LOCKS,
   MECHANICS_ARTIFACT_REGISTRY,
   MODULE_REGISTRY,
+  PRE_ACTOR_PRIVATE_LEAF_BLOCKED_ARTIFACTS,
   PRE_DUAL_RANDOM_PROVIDER_BLOCKED_ARTIFACTS,
   PRE_DYNAMIC_SCORE_BLOCKED_ARTIFACTS,
   PRE_FINITE_NUMBER_BLOCKED_ARTIFACTS,
@@ -207,12 +208,12 @@ test("shared validation identity pins exact validator dependency versions", () =
 });
 
 test("current exact modules pin the live server-random provider", () => {
-  assert.equal(SHARED_KERNEL_VERSION, "mechanics-shared-kernel-v12");
-  assert.equal(MODULE_REGISTRY.get("cubica.core").moduleVersion, "1.6.0");
-  assert.equal(MODULE_REGISTRY.get("cubica.core").behaviorVersion, "mechanics-core-v1alpha1-9");
-  assert.equal(MODULE_REGISTRY.get("cubica.random").moduleVersion, "1.1.1");
-  assert.equal(MODULE_REGISTRY.get("cubica.ordering").moduleVersion, "1.3.0");
-  assert.equal(MODULE_REGISTRY.get("cubica.ordering").behaviorVersion, "mechanics-ordering-v6");
+  assert.equal(SHARED_KERNEL_VERSION, "mechanics-shared-kernel-v13");
+  assert.equal(MODULE_REGISTRY.get("cubica.core").moduleVersion, "1.7.0");
+  assert.equal(MODULE_REGISTRY.get("cubica.core").behaviorVersion, "mechanics-core-v1alpha1-10");
+  assert.equal(MODULE_REGISTRY.get("cubica.random").moduleVersion, "1.1.2");
+  assert.equal(MODULE_REGISTRY.get("cubica.ordering").moduleVersion, "1.4.0");
+  assert.equal(MODULE_REGISTRY.get("cubica.ordering").behaviorVersion, "mechanics-ordering-v7");
   assert.deepEqual(
     ["cubica.random", "cubica.system", "cubica.deck", "cubica.graph", "cubica.relations"]
       .map((moduleId) => {
@@ -220,11 +221,11 @@ test("current exact modules pin the live server-random provider", () => {
         return [moduleId, descriptor.moduleVersion, descriptor.behaviorVersion];
       }),
     [
-      ["cubica.random", "1.1.1", "mechanics-random-v1alpha1-6"],
-      ["cubica.system", "1.0.6", "mechanics-system-v1alpha1-2"],
-      ["cubica.deck", "1.3.1", "mechanics-deck-v1alpha1-9"],
-      ["cubica.graph", "2.4.1", "mechanics-region-graph-v1alpha1-10"],
-      ["cubica.relations", "1.0.6", "mechanics-relation-v1alpha1-3"]
+      ["cubica.random", "1.1.2", "mechanics-random-v1alpha1-6"],
+      ["cubica.system", "1.0.7", "mechanics-system-v1alpha1-2"],
+      ["cubica.deck", "1.3.2", "mechanics-deck-v1alpha1-9"],
+      ["cubica.graph", "2.4.2", "mechanics-region-graph-v1alpha1-10"],
+      ["cubica.relations", "1.0.7", "mechanics-relation-v1alpha1-3"]
     ]
   );
   assert.equal(
@@ -235,6 +236,31 @@ test("current exact modules pin the live server-random provider", () => {
     MODULE_REGISTRY.get("cubica.deck").algorithmVersions.shuffle,
     "fisher-yates-server-crypto-random-v1"
   );
+});
+
+test("the exact pre-actor-private-leaf v12 module set remains archive-only", () => {
+  assert.deepEqual(
+    PRE_ACTOR_PRIVATE_LEAF_BLOCKED_ARTIFACTS.map(({ moduleId, moduleVersion }) => [moduleId, moduleVersion]),
+    [
+      ["cubica.core", "1.6.0"],
+      ["cubica.random", "1.1.1"],
+      ["cubica.ordering", "1.3.0"],
+      ["cubica.system", "1.0.6"],
+      ["cubica.deck", "1.3.1"],
+      ["cubica.graph", "2.4.1"],
+      ["cubica.relations", "1.0.6"]
+    ]
+  );
+  for (const identity of PRE_ACTOR_PRIVATE_LEAF_BLOCKED_ARTIFACTS) {
+    const resolved = MECHANICS_ARTIFACT_REGISTRY.resolve(identity);
+    assert.equal(resolved.state, "blocked");
+    assert.match(resolved.reason, /pre-actor-private-leaf executable corpus is unavailable/u);
+    assert.deepEqual(
+      MODULE_REGISTRY.get(identity.moduleId).algorithmVersions,
+      identity.algorithmVersions,
+      `${identity.moduleId} keeps its algorithm identity across the v13 corpus change`
+    );
+  }
 });
 
 test("the exact pre-record-map-order module set remains archive-only", () => {

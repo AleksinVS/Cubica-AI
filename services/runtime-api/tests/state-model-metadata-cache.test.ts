@@ -146,3 +146,67 @@ test("frozen model metadata never caches a session-state validation result", () 
     { code: "MECHANICS_ENTITY_FIELD_UNDECLARED" }
   );
 });
+
+test("frozen whole-player record metadata keeps actor-private leaves separately validated", () => {
+  const stateModel = deepFreezeJson({
+    types: {
+      "core.integer": { kind: "integer", minimum: 0, maximum: 100 },
+      "core.string": { kind: "string" }
+    },
+    endpoints: {
+      privateNote: {
+        audienceRef: "actor",
+        storage: { root: "players", segments: [{ context: "actor" }, "privateNote"] },
+        valueType: "core.string",
+        access: "read-write"
+      }
+    },
+    collections: {
+      participants: {
+        itemShape: "record",
+        audienceRef: "public",
+        storage: { root: "players", segments: [] },
+        capacity: 4,
+        stableKey: "map-key",
+        fields: {
+          score: {
+            storage: { kind: "path", path: ["score"] },
+            valueType: "core.integer",
+            access: "read-only"
+          }
+        }
+      }
+    },
+    events: {}
+  } satisfies StateModel);
+  const state: JsonRecord = {
+    public: {},
+    players: {
+      alpha: { score: 3, privateNote: "alpha-only" },
+      beta: { score: 5, privateNote: "beta-only" }
+    },
+    secret: {}
+  };
+  const context = {
+    stateModel,
+    state,
+    preActionState: state,
+    params: {},
+    actor: { actorPlayerId: "alpha", sessionRole: "player" as const },
+    limits: RUNTIME_BUDGETS["turn-based-standard-v1"]
+  };
+
+  assert.doesNotThrow(() => assertStateMatchesModel(context));
+  const beta = ((state.players as JsonRecord).beta as JsonRecord);
+  beta.privateNote = 42;
+  assert.throws(
+    () => assertStateMatchesModel(context),
+    { code: "MECHANICS_VALUE_TYPE_MISMATCH" }
+  );
+  beta.privateNote = "beta-only";
+  beta.undeclared = true;
+  assert.throws(
+    () => assertStateMatchesModel(context),
+    { code: "MECHANICS_ENTITY_FIELD_UNDECLARED" }
+  );
+});

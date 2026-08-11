@@ -955,9 +955,15 @@ test("the pre-commit pass expands actor storage across all stored participants",
 
 test("record-map collections validate closed paths and expose generic typed field access", () => {
   const mechanics = createMechanics();
+  mechanics.stateModel.endpoints.privateNote = {
+    audienceRef: "actor",
+    storage: { root: "players", segments: [{ context: "actor" }, "privateNote"] },
+    valueType: "core.string",
+    access: "read-write"
+  };
   mechanics.stateModel.collections.participants = {
     itemShape: "record",
-    audienceRef: "server",
+    audienceRef: "public",
     storage: { root: "players", segments: [] },
     capacity: 4,
     stableKey: "map-key",
@@ -987,15 +993,21 @@ test("record-map collections validate closed paths and expose generic typed fiel
     }
   };
   finalizePlanHashes(mechanics);
+  assert.doesNotThrow(() => checkMechanicsBundle(mechanics));
   const state = {
     ...createState(),
     players: {
-      alice: { metrics: { score: 3 }, status: "ready" }
+      alice: { metrics: { score: 3 }, status: "ready", privateNote: "alice-only" },
+      bob: { metrics: { score: 1 }, status: "waiting", privateNote: "bob-only" }
     }
   };
   const model = mechanics.stateModel.collections.participants;
   const alice = state.players.alice;
   assert.equal(readCollectionField(model, alice, "score"), 3);
+  assert.throws(
+    () => readCollectionField(model, alice, "privateNote"),
+    (error) => error instanceof MechanicsExecutionError && error.code === "MECHANICS_FIELD_REF_UNKNOWN"
+  );
 
   const context = {
     stateModel: mechanics.stateModel,
@@ -1026,6 +1038,22 @@ test("record-map collections validate closed paths and expose generic typed fiel
     actorContext: { sessionRole: "player" }
   });
   assert.equal((validOutput.candidateState.public as { counter: number }).counter, 5);
+  assert.equal(
+    ((validOutput.candidateState.players as Record<string, Record<string, unknown>>).bob).privateNote,
+    "bob-only"
+  );
+
+  const wrongPrivateType = structuredClone(state);
+  (wrongPrivateType.players.bob as Record<string, unknown>).privateNote = 42;
+  assert.throws(
+    () => executeMechanicsTransaction({
+      mechanics,
+      plan: mechanics.plans.incrementOnly,
+      state: wrongPrivateType,
+      actorContext: { actorPlayerId: "alice", sessionRole: "player" }
+    }),
+    (error) => error instanceof MechanicsExecutionError && error.code === "MECHANICS_VALUE_TYPE_MISMATCH"
+  );
 
   const corrupt = structuredClone(state);
   (corrupt.players.alice.metrics as Record<string, unknown>).undeclared = true;
@@ -1037,6 +1065,57 @@ test("record-map collections validate closed paths and expose generic typed fiel
       actorContext: { sessionRole: "player" }
     }),
     (error) => error instanceof MechanicsExecutionError && error.code === "MECHANICS_ENTITY_FIELD_UNDECLARED"
+  );
+});
+
+test("actor-private record leaves cannot flow through their public collection into public state", () => {
+  const mechanics = createMechanics();
+  mechanics.stateModel.endpoints.privateNote = {
+    audienceRef: "actor",
+    storage: { root: "players", segments: [{ context: "actor" }, "privateNote"] },
+    valueType: "core.string",
+    access: "read-write"
+  };
+  mechanics.stateModel.endpoints.publicEcho = {
+    audienceRef: "public",
+    storage: { root: "public", segments: ["echo"] },
+    valueType: "core.string",
+    access: "read-write"
+  };
+  mechanics.stateModel.collections.participants = {
+    itemShape: "record",
+    audienceRef: "public",
+    storage: { root: "players", segments: [] },
+    capacity: 4,
+    stableKey: "map-key",
+    fields: {
+      score: {
+        storage: { kind: "path", path: ["score"] },
+        valueType: "core.integer",
+        access: "read-only"
+      }
+    }
+  } as any;
+  mechanics.plans.disclosePrivate = {
+    planHash: HASH,
+    transaction: {
+      steps: [{
+        id: "disclosePrivate",
+        kind: "command",
+        op: "core.state.patch",
+        patches: [{
+          operation: "set",
+          target: { endpoint: "publicEcho" },
+          value: { op: "value.state", ref: { endpoint: "privateNote" } }
+        }]
+      }]
+    }
+  } as any;
+  finalizePlanHashes(mechanics);
+
+  assert.throws(
+    () => checkMechanicsBundle(mechanics),
+    (error: unknown) => isSemanticError(error, "MECHANICS_INFORMATION_FLOW_VIOLATION")
   );
 });
 

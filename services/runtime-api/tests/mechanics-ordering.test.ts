@@ -577,6 +577,54 @@ test("runtime orders record maps by current, related, count and sum keys with ex
   assert.deepEqual(output.candidateState, state, "stable map identifiers and records stay unchanged");
 });
 
+test("selection and ordering ignore actor-private leaves without dropping or rewriting records", () => {
+  const mechanics = createOrderingMechanics();
+  mechanics.stateModel.collections.records.storage = { root: "players", segments: [] };
+  mechanics.stateModel.endpoints.privateNote = {
+    audienceRef: "actor",
+    storage: { root: "players", segments: [{ context: "actor" }, "privateNote"] },
+    valueType: "core.string",
+    access: "read-write"
+  };
+  const networkModelsHash = mechanicsSha256({});
+  for (const [planId, plan] of Object.entries(mechanics.plans)) {
+    plan.planHash = mechanicsSha256({
+      apiVersion: mechanics.apiVersion,
+      budgetProfile: mechanics.budgetProfile,
+      moduleLock: mechanics.moduleLock,
+      stateModel: mechanics.stateModel,
+      objectModels: {},
+      networkModelsHash,
+      planId,
+      transaction: plan.transaction
+    });
+  }
+
+  const state = createOrderingState() as Record<string, any>;
+  state.players = structuredClone(state.public.records);
+  delete state.public.records;
+  for (const [actorId, actorRecord] of Object.entries(state.players) as Array<[
+    string,
+    Record<string, unknown>
+  ]>) {
+    actorRecord.privateNote = `${actorId}-only`;
+  }
+  const snapshot = structuredClone(state);
+  const output = executeMechanicsTransaction({
+    mechanics,
+    plan: mechanics.plans.recordTies,
+    state,
+    actorContext: { actorPlayerId: "record-a", sessionRole: "player" },
+    random: { sampleRange: () => 0 }
+  });
+  const result = output.result as { ids: string[]; tieGroups: string[][] };
+
+  assert.deepEqual(result.ids, ["record-b", "record-a", "record-z"]);
+  assert.equal(result.ids.length, 3, "only the public status selector controls cardinality");
+  assert.deepEqual(result.tieGroups, [["record-a", "record-b"]]);
+  assert.deepEqual(output.candidateState, snapshot, "private leaves and public record values are preserved exactly");
+});
+
 test("server randomness for record maps stays inside complete ties and rolls back atomically", () => {
   const state = createOrderingState();
   const snapshot = structuredClone(state);
