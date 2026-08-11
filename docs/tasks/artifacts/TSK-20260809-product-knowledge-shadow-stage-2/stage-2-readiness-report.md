@@ -11,8 +11,9 @@
 Первый реальный пользовательский прогон ещё не выполнен: для него нужны
 непроизводственные Portal/Editor и shadow-база, разрешающая политика,
 серверный bare Git, эксплуатационное расписание очистки и отдельное одобрение.
-Фиксированный Z.AI Coding Plan adapter уже реализован и проверен только на
-синтетическом диалоге без пользовательских и проектных данных.
+Фиксированный Z.AI Coding Plan adapter уже влит. Закрытая синтетическая
+репетиция локального `no_change` также выполнена; она не является реальным
+пользовательским прогоном и не разрешает его.
 
 ## Реализованные границы
 
@@ -54,56 +55,52 @@
 
 ## Проверки
 
-На момент создания отчёта свежо подтверждены:
+При реализации выключенного Stage 2 были подтверждены package acceptance,
+PostgreSQL 17 integration с отдельным непривилегированным runtime-login,
+Editor и Portal tests/build, единственная разрешённая интеграционная точка,
+неизменность основного SSE-ответа, защита bearer и полный
+`verify:canonical`. Три Sol high security review и две волны исправлений
+закрыли все Critical/High/Medium замечания. Миграция отдельно прошла
+statement-by-statement autocommit, проверку восстановления membership и
+временных grants при искусственной ошибке.
 
-- Editor typecheck, production build и целевые route/module tests — 16/16;
-- package schema generation, typecheck и полный acceptance — 92/92;
-- PostgreSQL 17 integration — 8/8 с отдельным непривилегированным runtime
-  login, принудительным RLS, атомарными terminal result + metric, точным
-  восстановлением membership options и откатом временных grants при ошибке;
-- Portal unit tests — 16/16 и успешная Strapi build;
-- машинный контроль единственной разрешённой интеграционной точки;
-- неизменность основного SSE-ответа при успехе, ошибке и timeout shadow;
-- защита Portal bearer от подложенного Host/origin;
-- полный `verify:canonical`, включая Runtime API, Player, Editor и production
-  builds, завершён успешно;
-- три независимых Sol high security review и две волны исправлений — финальный
-  ACCEPT merge-ready для выключенного Stage 2, без Critical/High/Medium
-  блокеров;
-- миграция отдельно выполнена PostgreSQL 17 statement-by-statement в обычном
-  autocommit-режиме, а не только одним составным запросом.
+После read-only grounding/cleanup были заново выполнены product-context
+typecheck и тесты, Editor typecheck/build, shadow module tests, schema
+generation, изоляция и независимый Sol high security review. После подключения
+Z.AI отдельно прошли product-context typecheck, 69/69 целевых и 133/133 полного
+unit-набора, Editor typecheck и 21/21 целевых тестов. Повторный Sol high review
+принял исправления без Critical/High/Medium. Полный `verify:canonical` после
+объединения изменений вновь подтвердил общие контракты, Runtime API, Player,
+Editor и обе production-сборки.
 
-После финального remediation дополнительно подтверждены Editor 14/14, Portal
-11/11, model gateway/coordinator 24/24 и полный пакет
-`verify:product-context` 97/97 на одноразовом PostgreSQL 17. Проверка миграции
-включает два autocommit-прогона, прежний membership с `SET FALSE` и искусственную
-ошибку внутри атомарного блока без оставшихся расширенных прав. Strapi
-production build также завершён успешно.
-Финальный `verify:canonical`, запущенный после всех исправлений, подтвердил
-общие контракты, Runtime API, Player, Editor и обе production-сборки.
+Закрытая синтетическая activation rehearsal 2026-08-11 дополнительно
+подтвердила:
 
-После слияния выключенного Stage 2 activation-safe блок read-only
-grounding/cleanup прошёл product-context typecheck, 48/48 целевых и 94/94
-полного unit-набора; 29 PostgreSQL integration штатно пропущены без URL
-одноразовой БД, а ранее проверенная миграция не менялась. Editor typecheck и
-production build, 5/5 shadow module tests, schema generation, изоляция и
-независимый повторный Sol high security review также успешны; High/Medium
-замечаний не осталось.
+- product-context typecheck;
+- 10/10 целевых тестов на одноразовой PostgreSQL 17, включая отдельный
+  `NOINHERIT` runtime-login без административных прав, подготовленное membership
+  в `product_context_shadow_app`, forced RLS, точные политики, триггеры,
+  привилегии и cleanup-функцию; отрицательные сценарии отклоняют лишнюю
+  привилегию/владение, permissive RLS и неверную привязку триггера;
+- отказ при удалённом PostgreSQL URL и при выходе пути из `.tmp/` через
+  промежуточную символическую ссылку;
+- фиксированные синтетические сообщения, локальный `no_change`, один модельный
+  вызов при точном повторе, одну запись run/metric и неизменный Git HEAD;
+- успешный CLI при заведомо нерабочем provider URL: `PKS_KEY` и provider
+  configuration не читаются, сетевой gateway не создаётся;
+- JSON-вывод без текстов, ссылок на principal/repository, URL базы и секретов.
 
-После подключения Z.AI дополнительно подтверждены product-context typecheck,
-69/69 целевых и 133/133 полного unit-набора; 29 PostgreSQL integration штатно
-пропущены без URL одноразовой базы. Editor typecheck и 21/21 целевых тестов.
-Первый Sol high security review нашёл два High и два Medium дефекта; после
-исправлений повторный review дал ACCEPT без Critical/High/Medium. Реальный
-запрос к Coding Plan с
-полностью синтетическим диалогом и временным пустым bare Git вернул канонический
-`no_change` примерно за 9 секунд при лимите 15 секунд. PostgreSQL и настоящие
-пользовательские либо проектные данные в прогоне не использовались.
+Составной приёмочный скрипт с обязательным URL одноразовой базы также прошёл:
+product-context 10/10, Portal authorization 11/11, Editor shadow/forwarding
+21/21 и машинная проверка единственной разрешённой интеграционной точки. Без
+URL базы скрипт завершается отказом до тестов, поэтому DB-путь нельзя незаметно
+пропустить. Повторное независимое Sol high review завершилось `ACCEPT` без
+оставшихся Critical/High/Medium замечаний.
 
-Этот прогон доказывает транспорт, формат ответа и закрытый отказ, но не
-смысловое качество точечного патча на реальной wiki. Перед пользовательским
-shadow отдельно проверяются условия допустимого использования Coding Plan,
-разрешающая политика и ограниченный сценарий оценки.
+Одноразовая база после проверки удалена. Даже успешный `no_change` доказывает
+только закрытый локальный контур, ограничения доступа и повторяемость; он не
+доказывает смысловое качество точечного патча на реальной wiki и не разрешает
+реальный shadow.
 
 ## Остаточные условия активации
 

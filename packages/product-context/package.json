@@ -10,6 +10,8 @@
     "generate:types": "node scripts/generate-types.cjs",
     "generate:types:check": "node scripts/generate-types.cjs --check",
     "cleanup:shadow": "node --experimental-strip-types scripts/cleanup-shadow.ts",
+    "preflight:shadow:synthetic": "../../node_modules/.bin/vite-node scripts/run-shadow-synthetic.ts preflight --synthetic-only --deny-external-processing",
+    "run:shadow:synthetic": "../../node_modules/.bin/vite-node scripts/run-shadow-synthetic.ts run --synthetic-only --deny-external-processing",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:acceptance": "vitest run --fileParallelism=false"

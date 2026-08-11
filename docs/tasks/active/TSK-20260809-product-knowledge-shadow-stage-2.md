@@ -176,6 +176,7 @@ not_required
 | Независимое security review | Sol high | done | Три приёмочных прохода и две волны исправлений закрыли все Critical/High/Medium замечания; итог — ACCEPT merge-ready для выключенного Stage 2 |
 | Read-only wiki и запуск cleanup | Sol high | done | Серверно закреплённый снимок bare Git и одноразовая ограниченная cleanup-команда прошли независимый security review |
 | Z.AI Coding Plan adapter | Sol high + Luna medium с обязательным Sol high review | code_ready | Фиксированные endpoint/model, полный read-only снимок HEAD и строгая серверная проверка ответа подтверждены mock-матрицей и синтетическим сетевым прогоном; пользовательские данные не передавались |
+| Синтетическая activation rehearsal | Sol high для критического кода, Luna medium для runbook, приёмка Sol high | done | Закрытый CLI preflight/run выполнен на одноразовой PostgreSQL 17 и disposable read-only bare Git: фиксированные сообщения, локальный `no_change`, точный retry, неизменный Git и бесконтентный вывод; повторный review — ACCEPT без Critical/High/Medium |
 
 После слияния PM разрешил Luna, включая `low`. Luna low выполнил только узкое
 чтение репозитория и перечислил готовые примитивы; проектирование, код,
@@ -220,6 +221,10 @@ not_required
   gateway credentials и политики внешней обработки;
 - синтетический сетевой прогон фиксированного Z.AI Coding Plan adapter без
   пользовательских, проектных и секретных данных;
+- закрытая синтетическая activation rehearsal по
+  [runbook](../../processes/product-context-shadow-activation-runbook.md):
+  preflight, run, точный retry, локальный `no_change`, read-only Git,
+  подготовленная роль PostgreSQL и бесконтентный вывод;
 - `node scripts/dev/generate-structure.js --check` и `git diff --check`.
 
 ## Activation Gate
@@ -399,3 +404,21 @@ provider registry, fallback-моделей, нового сервиса, инд�
   условий Coding Plan и заранее согласованный пользовательский прогон.
 - Simplification: адаптер не заменяет общий gateway и не добавляет SDK,
   отдельный сервис, индекс, fallback или автоматическое включение.
+
+### 2026-08-11 — основной AI agent, синтетическая activation rehearsal
+
+- Plan: подготовить закрытый CLI preflight/run для синтетических сообщений,
+  отдельного runtime-login shadow PostgreSQL, read-only bare Git в `.tmp/`,
+  локального `no_change` gateway и точного retry.
+- Execution: `done`; автоматические проверки и операторские ворота разделены
+  в runbook. Репетиция прошла на одноразовой PostgreSQL 17: 10/10 целевых тестов,
+  локальный `no_change`, точный повтор, неизменный Git и бесконтентный вывод.
+  Никаких `PKS_KEY`, Z.AI/network, Portal/Editor,
+  реального bearer/user/game/wiki, миграции, cron/secrets/TLS или канонических
+  записей.
+- Handoff: независимое Sol high review завершено `ACCEPT` без оставшихся
+  Critical/High/Medium; успешная репетиция не считается разрешением реального
+  shadow-прогона.
+- Residual: CLI-команды зафиксированы как `preflight:shadow:synthetic` и
+  `run:shadow:synthetic`; обязательные synthetic-only/deny-external флаги уже
+  встроены в scripts и не принимаются от оператора как изменяемая настройка.
