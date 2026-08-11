@@ -96,6 +96,42 @@ const buildingRequestFields = [{
         minLength: 1,
         maxLength: 128
     }];
+const tradeTargetFields = [{
+        name: "targetPlayerId",
+        label: "Участник сделки",
+        kind: "text",
+        required: true,
+        minLength: 1,
+        maxLength: 128
+    }];
+const tradeCashFields = [
+    { name: "offeredCash", label: "Предлагаемые деньги", kind: "number", required: true, min: 0, max: exports.ESTATE_AUCTION_BID_MAX, step: 1 },
+    { name: "requestedCash", label: "Запрашиваемые деньги", kind: "number", required: true, min: 0, max: exports.ESTATE_AUCTION_BID_MAX, step: 1 }
+];
+const tradeAssetFields = [
+    { name: "cellId", label: "Идентификатор объекта", kind: "text", required: true, minLength: 1, maxLength: 128 },
+    { name: "side", label: "Сторона сделки", kind: "text", required: true, minLength: 1, maxLength: 16 }
+];
+const tradeCellFields = [{
+        name: "cellId",
+        label: "Идентификатор объекта",
+        kind: "text",
+        required: true,
+        minLength: 1,
+        maxLength: 128
+    }];
+const tradeCardFields = [{
+        name: "cardId",
+        label: "Идентификатор карты",
+        kind: "text",
+        required: true,
+        minLength: 1,
+        maxLength: 128
+    }];
+const bankruptcyCardFields = [
+    { name: "heldCardId", label: "Первая удерживаемая карта", kind: "text", required: false, defaultValue: "", maxLength: 32 },
+    { name: "heldCardId2", label: "Вторая удерживаемая карта", kind: "text", required: false, defaultValue: "", maxLength: 32 }
+];
 const parameterFormFields = {
     "property.auction.bid": auctionBidFields,
     "property.build": buildingUnitKindFields,
@@ -103,7 +139,14 @@ const parameterFormFields = {
     "property.build.auction.bid": auctionBidFields,
     "property.sell": buildingRequestFields,
     "property.mortgage": buildingRequestFields,
-    "property.redeem": buildingRequestFields
+    "property.redeem": buildingRequestFields,
+    "trade.open": tradeTargetFields,
+    "trade.cash.set": tradeCashFields,
+    "trade.asset.set": tradeAssetFields,
+    "trade.asset.remove": tradeCellFields,
+    "trade.card.offer": tradeCardFields,
+    "trade.card.request": tradeCardFields,
+    "bankruptcy.declare": bankruptcyCardFields
 };
 /** Copy one server-declared action into the public host contribution shape. */
 const toAccessibleAction = (action) => ({
@@ -177,12 +220,14 @@ const readCells = (publicState) => {
                     : [],
                 improvementTier: improvementTier(attributes.improvementTier),
                 mortgaged: attributes.mortgaged === true,
+                tradeSide: optionalText(attributes.tradeSide),
+                liquidationPending: attributes.liquidationPending === true,
                 taxAmount: typeof attributes.taxAmount === "number" ? attributes.taxAmount : null,
                 ownerPlayerId: typeof attributes.ownerPlayerId === "string" ? attributes.ownerPlayerId : null
             }];
     }).sort((left, right) => left.index - right.index);
 };
-const readPlayers = (state, activePlayerId) => {
+const readPlayers = (state, activePlayerId, actorPlayerId) => {
     const players = isRecord(state.players) ? state.players : {};
     return Object.entries(players).flatMap(([id, raw], index) => {
         if (!isRecord(raw))
@@ -190,6 +235,7 @@ const readPlayers = (state, activePlayerId) => {
         const metrics = isRecord(raw.metrics) ? raw.metrics : {};
         const objects = isRecord(raw.objects) ? raw.objects : {};
         const flags = isRecord(raw.flags) ? raw.flags : {};
+        const canReadPrivate = actorPlayerId === id;
         return [{
                 id,
                 label: `Игрок ${index + 1}`,
@@ -198,7 +244,8 @@ const readPlayers = (state, activePlayerId) => {
                 active: id === activePlayerId,
                 inJail: isRecord(raw.flags) && raw.flags.inJail === true,
                 jailAttempts: finiteNumber(metrics.jailAttempts),
-                heldExitCardId: optionalText(objects.heldExitCardId),
+                heldExitCardId: canReadPrivate ? optionalText(objects.heldExitCardId) : null,
+                heldExitCardId2: canReadPrivate ? optionalText(objects.heldExitCardId2) : null,
                 bidderStatus: optionalText(objects.bidderStatus) ?? optionalText(flags.bidderStatus),
                 buildingRequestCellId: optionalText(objects.buildingRequestCellId),
                 buildingRequestUnitKind: optionalText(objects.buildingRequestUnitKind)
@@ -279,6 +326,46 @@ const readBuildingWindow = (publicState) => {
         unitKind: optionalText(window.unitKind)
     };
 };
+const readTrade = (publicState) => {
+    const trade = isRecord(publicState.trade) ? publicState.trade : {};
+    return {
+        status: text(trade.status, "idle"),
+        proposerPlayerId: optionalText(trade.proposerPlayerId),
+        targetPlayerId: optionalText(trade.targetPlayerId),
+        resumePlayerId: optionalText(trade.resumePlayerId),
+        offeredCash: finiteNumber(trade.offeredCash),
+        requestedCash: finiteNumber(trade.requestedCash),
+        offeredCardId: optionalText(trade.offeredCardId),
+        requestedCardId: optionalText(trade.requestedCardId),
+        claimCardId: optionalText(trade.claimCardId),
+        claimPlayerId: optionalText(trade.claimPlayerId)
+    };
+};
+const readObligation = (publicState) => {
+    const obligation = isRecord(publicState.obligation) ? publicState.obligation : {};
+    return {
+        status: text(obligation.status, "idle"),
+        debtorPlayerId: optionalText(obligation.debtorPlayerId),
+        creditorKind: optionalText(obligation.creditorKind),
+        creditorPlayerId: optionalText(obligation.creditorPlayerId),
+        amount: finiteNumber(obligation.amount),
+        perPartyAmount: finiteNumber(obligation.perPartyAmount),
+        reason: optionalText(obligation.reason),
+        resumePlayerId: optionalText(obligation.resumePlayerId)
+    };
+};
+const readLiquidation = (publicState) => {
+    const liquidation = isRecord(publicState.liquidation) ? publicState.liquidation : {};
+    return {
+        status: text(liquidation.status, "idle"),
+        resumePlayerId: optionalText(liquidation.resumePlayerId),
+        debtorPlayerId: optionalText(liquidation.debtorPlayerId),
+        creditorPlayerId: optionalText(liquidation.creditorPlayerId),
+        pendingCellId: optionalText(liquidation.pendingCellId),
+        claimCardId: optionalText(liquidation.claimCardId),
+        claimCardId2: optionalText(liquidation.claimCardId2)
+    };
+};
 /**
  * Build the shortest display-only route between two confirmed positions.
  * Snapshots do not carry movement direction, so choosing the shorter arc
@@ -305,9 +392,12 @@ function projectEstateRaceSession(session) {
     const board = isRecord(publicState.board) ? publicState.board : {};
     const turn = isRecord(publicState.turn) ? publicState.turn : {};
     const activePlayerId = typeof turn.activePlayerId === "string" ? turn.activePlayerId : null;
+    const actorPlayerId = typeof session.actorPlayerId === "string"
+        ? session.actorPlayerId
+        : typeof state.actorPlayerId === "string" ? state.actorPlayerId : null;
     return {
         cells: readCells(publicState),
-        players: readPlayers(state, activePlayerId),
+        players: readPlayers(state, activePlayerId, actorPlayerId),
         availableActions: readActions(board, readActionAvailability(session.actionAvailability)),
         activePlayerId,
         phase: text(turn.phase, "setup"),
@@ -327,7 +417,10 @@ function projectEstateRaceSession(session) {
                 minimumNextBid: null,
                 leaderPlayerId: optionalText(auction.leaderPlayerId)
             };
-        })()
+        })(),
+        trade: readTrade(publicState),
+        obligation: readObligation(publicState),
+        liquidation: readLiquidation(publicState)
     };
 }
 
@@ -483,6 +576,7 @@ const createEstateRaceScene = (context) => {
             if (projection.phase !== "blocked" && projection.phase !== "auction") {
                 this.drawCardAndJailSummary(projection);
             }
+            this.drawS5Summary(projection);
             // A bid requires the numeric DOM form. Never dispatch an empty bid from
             // the canvas; the server remains the authority for the submitted amount.
             const action = projection.availableActions.find((item) => !item.disabled && canvasCanDispatch(item));
@@ -540,17 +634,50 @@ const createEstateRaceScene = (context) => {
                 lineSpacing: 7
             }).setOrigin(0.5);
         }
+        drawS5Summary(projection) {
+            const lines = [];
+            if (projection.trade.status !== "idle") {
+                const trade = projection.trade;
+                lines.push(`Сделка: ${trade.status} · ${trade.proposerPlayerId ?? "—"} → ${trade.targetPlayerId ?? "—"}`);
+                lines.push(`Деньги: ${trade.offeredCash} / ${trade.requestedCash}`);
+            }
+            if (projection.obligation.status !== "idle") {
+                const debt = projection.obligation;
+                lines.push(`Обязательство: ${debt.status} · должник ${debt.debtorPlayerId ?? "—"} · ${debt.amount}`);
+                lines.push(`Причина: ${debt.reason ?? "—"} · получатель ${debt.creditorPlayerId ?? debt.creditorKind ?? "—"}`);
+            }
+            if (projection.liquidation.status !== "idle") {
+                const liquidation = projection.liquidation;
+                lines.push(`Ликвидация: ${liquidation.status}`);
+                if (liquidation.pendingCellId !== null)
+                    lines.push(`Ожидает клетку: ${liquidation.pendingCellId}`);
+            }
+            if (lines.length === 0)
+                return;
+            this.add.text(680, 695, lines.join("\n"), {
+                color: "#8d3d36",
+                align: "center",
+                fontFamily: "Arial, sans-serif",
+                fontSize: "16px",
+                lineSpacing: 4,
+                wordWrap: { width: 600 }
+            }).setOrigin(0.5);
+        }
         drawCardAndJailSummary(projection) {
             const activePlayer = projection.players.find((player) => player.id === projection.activePlayerId);
-            const heldPlayer = projection.players.find((player) => player.heldExitCardId !== null);
+            const heldPlayer = projection.players.find((player) => player.heldExitCardId !== null || player.heldExitCardId2 !== null);
+            const heldCards = heldPlayer === undefined
+                ? []
+                : [heldPlayer.heldExitCardId, heldPlayer.heldExitCardId2]
+                    .filter((cardId) => cardId !== null);
             const lines = [
                 projection.lastCardId === null ? null : `Последняя открытая карта: ${projection.lastCardId}`,
                 activePlayer?.inJail
                     ? `Попытки выхода: ${activePlayer.jailAttempts}/3`
                     : null,
-                heldPlayer?.heldExitCardId === null || heldPlayer === undefined
+                heldPlayer === undefined || heldCards.length === 0
                     ? null
-                    : `${heldPlayer.label}: карта выхода ${heldPlayer.heldExitCardId}`
+                    : `${heldPlayer.label}: карты выхода ${heldCards.join(", ")}`
             ].filter((line) => line !== null);
             if (lines.length === 0)
                 return;
@@ -628,6 +755,22 @@ const createEstateRaceScene = (context) => {
                     fontSize: "10px",
                     fontStyle: "bold",
                     padding: { x: 5, y: 3 }
+                }).setOrigin(0.5);
+            }
+            if (cell.tradeSide !== null) {
+                this.add.text(cell.x, cell.y + cell.height / 2 - 30, `СДЕЛКА: ${cell.tradeSide}`, {
+                    color: "#735b87",
+                    fontFamily: "Arial, sans-serif",
+                    fontSize: "9px",
+                    fontStyle: "bold"
+                }).setOrigin(0.5);
+            }
+            if (cell.liquidationPending) {
+                this.add.text(cell.x, cell.y + cell.height / 2 - 30, "ЛИКВИДАЦИЯ", {
+                    color: "#8d3d36",
+                    fontFamily: "Arial, sans-serif",
+                    fontSize: "9px",
+                    fontStyle: "bold"
                 }).setOrigin(0.5);
             }
             if (cell.ownerPlayerId) {

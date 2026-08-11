@@ -52,11 +52,55 @@ const buildingRequestFields = [{
   maxLength: 128
 }];
 
+const tradeTargetFields = [{
+  name: "targetPlayerId",
+  label: "Участник сделки",
+  kind: "text" as const,
+  required: true,
+  minLength: 1,
+  maxLength: 128
+}];
+
+const tradeCashFields = [
+  { name: "offeredCash", label: "Предлагаемые деньги", kind: "number" as const, required: true, min: 0, max: ESTATE_AUCTION_BID_MAX, step: 1 },
+  { name: "requestedCash", label: "Запрашиваемые деньги", kind: "number" as const, required: true, min: 0, max: ESTATE_AUCTION_BID_MAX, step: 1 }
+];
+
+const tradeAssetFields = [
+  { name: "cellId", label: "Идентификатор объекта", kind: "text" as const, required: true, minLength: 1, maxLength: 128 },
+  { name: "side", label: "Сторона сделки", kind: "text" as const, required: true, minLength: 1, maxLength: 16 }
+];
+
+const tradeCellFields = [{
+  name: "cellId",
+  label: "Идентификатор объекта",
+  kind: "text" as const,
+  required: true,
+  minLength: 1,
+  maxLength: 128
+}];
+
+const tradeCardFields = [{
+  name: "cardId",
+  label: "Идентификатор карты",
+  kind: "text" as const,
+  required: true,
+  minLength: 1,
+  maxLength: 128
+}];
+
+const bankruptcyCardFields = [
+  { name: "heldCardId", label: "Первая удерживаемая карта", kind: "text" as const, required: false, defaultValue: "", maxLength: 32 },
+  { name: "heldCardId2", label: "Вторая удерживаемая карта", kind: "text" as const, required: false, defaultValue: "", maxLength: 32 }
+];
+
 /**
  * Parameter forms are the only way these actions can be submitted from the
  * ordinary DOM path. Their server-projected `params` are intentionally not
  * forwarded: the form supplies the declared scalar and Runtime validates it
  * against the published action schema and current state.
+ * Bankruptcy uses explicit empty-string defaults because its closed schema
+ * requires both card slots even when the actor holds no card.
  */
 type ParameterFormFields = NonNullable<AccessibleBoardAction["fields"]>;
 
@@ -67,7 +111,14 @@ const parameterFormFields: Readonly<Record<string, ParameterFormFields>> = {
   "property.build.auction.bid": auctionBidFields,
   "property.sell": buildingRequestFields,
   "property.mortgage": buildingRequestFields,
-  "property.redeem": buildingRequestFields
+  "property.redeem": buildingRequestFields,
+  "trade.open": tradeTargetFields,
+  "trade.cash.set": tradeCashFields,
+  "trade.asset.set": tradeAssetFields,
+  "trade.asset.remove": tradeCellFields,
+  "trade.card.offer": tradeCardFields,
+  "trade.card.request": tradeCardFields,
+  "bankruptcy.declare": bankruptcyCardFields
 };
 
 /** Copy one server-declared action into the public host contribution shape. */

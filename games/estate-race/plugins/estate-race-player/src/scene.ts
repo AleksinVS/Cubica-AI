@@ -175,6 +175,7 @@ export const createEstateRaceScene: PhaserSceneFactory = (
       if (projection.phase !== "blocked" && projection.phase !== "auction") {
         this.drawCardAndJailSummary(projection);
       }
+      this.drawS5Summary(projection);
 
       // A bid requires the numeric DOM form. Never dispatch an empty bid from
       // the canvas; the server remains the authority for the submitted amount.
@@ -238,17 +239,51 @@ export const createEstateRaceScene: PhaserSceneFactory = (
       }).setOrigin(0.5);
     }
 
+    private drawS5Summary(projection: EstateBoardProjection) {
+      const lines: string[] = [];
+      if (projection.trade.status !== "idle") {
+        const trade = projection.trade;
+        lines.push(`Сделка: ${trade.status} · ${trade.proposerPlayerId ?? "—"} → ${trade.targetPlayerId ?? "—"}`);
+        lines.push(`Деньги: ${trade.offeredCash} / ${trade.requestedCash}`);
+      }
+      if (projection.obligation.status !== "idle") {
+        const debt = projection.obligation;
+        lines.push(`Обязательство: ${debt.status} · должник ${debt.debtorPlayerId ?? "—"} · ${debt.amount}`);
+        lines.push(`Причина: ${debt.reason ?? "—"} · получатель ${debt.creditorPlayerId ?? debt.creditorKind ?? "—"}`);
+      }
+      if (projection.liquidation.status !== "idle") {
+        const liquidation = projection.liquidation;
+        lines.push(`Ликвидация: ${liquidation.status}`);
+        if (liquidation.pendingCellId !== null) lines.push(`Ожидает клетку: ${liquidation.pendingCellId}`);
+      }
+      if (lines.length === 0) return;
+      this.add.text(680, 695, lines.join("\n"), {
+        color: "#8d3d36",
+        align: "center",
+        fontFamily: "Arial, sans-serif",
+        fontSize: "16px",
+        lineSpacing: 4,
+        wordWrap: { width: 600 }
+      }).setOrigin(0.5);
+    }
+
     private drawCardAndJailSummary(projection: EstateBoardProjection) {
       const activePlayer = projection.players.find((player) => player.id === projection.activePlayerId);
-      const heldPlayer = projection.players.find((player) => player.heldExitCardId !== null);
+      const heldPlayer = projection.players.find((player) =>
+        player.heldExitCardId !== null || player.heldExitCardId2 !== null
+      );
+      const heldCards = heldPlayer === undefined
+        ? []
+        : [heldPlayer.heldExitCardId, heldPlayer.heldExitCardId2]
+            .filter((cardId): cardId is string => cardId !== null);
       const lines = [
         projection.lastCardId === null ? null : `Последняя открытая карта: ${projection.lastCardId}`,
         activePlayer?.inJail
           ? `Попытки выхода: ${activePlayer.jailAttempts}/3`
           : null,
-        heldPlayer?.heldExitCardId === null || heldPlayer === undefined
+        heldPlayer === undefined || heldCards.length === 0
           ? null
-          : `${heldPlayer.label}: карта выхода ${heldPlayer.heldExitCardId}`
+          : `${heldPlayer.label}: карты выхода ${heldCards.join(", ")}`
       ].filter((line): line is string => line !== null);
       if (lines.length === 0) return;
       this.add.text(680, 550, lines.join("\n"), {
@@ -339,6 +374,22 @@ export const createEstateRaceScene: PhaserSceneFactory = (
           fontSize: "10px",
           fontStyle: "bold",
           padding: { x: 5, y: 3 }
+        }).setOrigin(0.5);
+      }
+      if (cell.tradeSide !== null) {
+        this.add.text(cell.x, cell.y + cell.height / 2 - 30, `СДЕЛКА: ${cell.tradeSide}`, {
+          color: "#735b87",
+          fontFamily: "Arial, sans-serif",
+          fontSize: "9px",
+          fontStyle: "bold"
+        }).setOrigin(0.5);
+      }
+      if (cell.liquidationPending) {
+        this.add.text(cell.x, cell.y + cell.height / 2 - 30, "ЛИКВИДАЦИЯ", {
+          color: "#8d3d36",
+          fontFamily: "Arial, sans-serif",
+          fontSize: "9px",
+          fontStyle: "bold"
         }).setOrigin(0.5);
       }
 

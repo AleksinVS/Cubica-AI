@@ -30,7 +30,7 @@ const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "
 const require = createRequire(import.meta.url);
 const { compileAuthoringText } = require("../../../scripts/manifest-tools/authoring-compiler.cjs");
 const testCredentialSha256 = "b".repeat(64);
-const setupDeckSamples = Array(10).fill(0);
+const setupDeckSamples = Array(11).fill(0);
 // This package proof covers gameplay semantics. Admission limits are a
 // platform boundary with their own focused HTTP/controller regression suite.
 const testAdmissionController = {
@@ -605,9 +605,18 @@ test("S4 building-assessment covers mixed, zero, insufficient rollback, and exac
       commandId, expectedStateVersion: before.version.stateVersion
     });
     if (cash < expectedCharge) {
-      assert.equal(first.result.ok, false);
-      assert.match(first.result.error?.code ?? "", /MECHANICS_RESOURCE_INSUFFICIENT/);
-      await s4AssertUnchanged(replay, before);
+      assert.equal(first.result.ok, true, JSON.stringify(first.result));
+      const retried = await act(replay, "turn.roll", {}, {
+        commandId, expectedStateVersion: before.version.stateVersion
+      });
+      assert.deepEqual(retried.receipt, first.receipt);
+      const current = await replay.store.getSession(replay.session.sessionId);
+      assert.equal(current.state.players.p1.metrics.cash, cash);
+      assert.equal(current.state.public.obligation.reason, "assessment");
+      assert.equal(current.state.public.obligation.amount, expectedCharge);
+      assert.equal(current.state.public.turn.phase, "obligation");
+      assert.equal(current.state.public.board.lastCardId, card.attributes.id);
+      s4Conservation(current.state);
     } else {
       assert.equal(first.result.ok, true, JSON.stringify(first.result));
       const retried = await act(replay, "turn.roll", {}, {
@@ -692,11 +701,18 @@ test("S4 building windows cover 2/6 actors, demand <, =, > stock, exact 2/6 stoc
       s4Conservation(current.state);
       assert.equal(current.state.public.board.extraRollPending, true);
       assert.equal(current.state.public.turn.activePlayerId, "p1");
-      assert.deepEqual(current.state.public.board.availableActions, [{
-        id: "finish",
-        label: "Завершить ход",
-        actionId: "turn.finish"
-      }]);
+      assert.deepEqual(current.state.public.board.availableActions, [
+        {
+          id: "trade-open",
+          label: "Предложить сделку",
+          actionId: "trade.open"
+        },
+        {
+          id: "finish",
+          label: "Завершить ход",
+          actionId: "turn.finish"
+        }
+      ]);
       assert.deepEqual(current.state.public.buildingWindow, { resumePlayerId: "", unitKind: "" });
       assert.deepEqual(current.state.public.buildingAuction, {
         currentBid: 0,
@@ -1119,11 +1135,10 @@ test("the third consecutive double jails the actor and blocks a later roll befor
   assert.equal(current.state.public.board.consecutiveDoubles, 0);
   assert.equal(current.state.public.board.extraRollPending, false);
   assert.equal(current.state.public.turn.phase, "finish");
-  assert.deepEqual(current.state.public.board.availableActions, [{
-    id: "finish",
-    label: "Завершить ход",
-    actionId: "turn.finish"
-  }]);
+  assert.deepEqual(current.state.public.board.availableActions, [
+    { id: "trade-open", label: "Предложить сделку", actionId: "trade.open" },
+    { id: "finish", label: "Завершить ход", actionId: "turn.finish" }
+  ]);
 
   await act(replay, "turn.finish");
   current = await replay.store.getSession(replay.session.sessionId);
@@ -1140,6 +1155,7 @@ test("the third consecutive double jails the actor and blocks a later roll befor
   assert.deepEqual(current.state.public.board.availableActions.map((item) => item.actionId), [
     "jail.pay",
     "jail.card.use.event",
+    "jail.card.use.fund",
     "jail.roll"
   ]);
 
@@ -1179,11 +1195,10 @@ test("visiting the jail cell does not mark the participant as imprisoned", async
   assert.equal(current.state.players.p1.flags.inJail, false);
   assert.equal(current.state.public.turn.phase, "finish");
   assert.equal(current.state.public.board.extraRollPending, true);
-  assert.deepEqual(current.state.public.board.availableActions, [{
-    id: "finish",
-    label: "Завершить ход",
-    actionId: "turn.finish"
-  }]);
+  assert.deepEqual(current.state.public.board.availableActions, [
+    { id: "trade-open", label: "Предложить сделку", actionId: "trade.open" },
+    { id: "finish", label: "Завершить ход", actionId: "turn.finish" }
+  ]);
 });
 
 test("start reward and a second double tax are resolved from the selected cell", async () => {
@@ -1245,11 +1260,21 @@ test("the second authored tax amount transfers atomically and insufficient cash 
   }, { samples: [2, 2] });
   await act(poorReplay, "turn.roll");
   const beforeTax = structuredClone(await poorReplay.store.getSession(poorReplay.session.sessionId));
-  await assertRejectedAction(act(poorReplay, "tax.pay"), /MECHANICS_RESOURCE_INSUFFICIENT/);
+  const commandId = createTestCommandId();
+  const started = await act(poorReplay, "tax.pay", {}, {
+    commandId,
+    expectedStateVersion: beforeTax.version.stateVersion
+  });
+  assert.equal(started.result.ok, true, JSON.stringify(started.result));
+  const retried = await act(poorReplay, "tax.pay", {}, {
+    commandId,
+    expectedStateVersion: beforeTax.version.stateVersion
+  });
+  assert.deepEqual(retried.receipt, started.receipt);
   const afterTax = await poorReplay.store.getSession(poorReplay.session.sessionId);
-  assert.deepEqual(afterTax.state, beforeTax.state);
-  assert.equal(afterTax.version.stateVersion, beforeTax.version.stateVersion);
-  assert.equal(afterTax.state.public.turn.phase, "tax");
+  assert.equal(afterTax.state.public.turn.phase, "obligation");
+  assert.equal(afterTax.state.public.obligation.reason, "tax");
+  assert.equal(afterTax.state.public.obligation.amount, 110);
   assert.equal(afterTax.state.players.p1.metrics.cash, 109);
 });
 
@@ -1273,11 +1298,10 @@ test("neutral landing finishes while go-to-jail cancels a pending extra roll", a
   assert.equal(current.state.public.board.consecutiveDoubles, 0);
   assert.equal(current.state.public.board.extraRollPending, false);
   assert.equal(current.state.public.turn.phase, "finish");
-  assert.deepEqual(current.state.public.board.availableActions, [{
-    id: "finish",
-    label: "Завершить ход",
-    actionId: "turn.finish"
-  }]);
+  assert.deepEqual(current.state.public.board.availableActions, [
+    { id: "trade-open", label: "Предложить сделку", actionId: "trade.open" },
+    { id: "finish", label: "Завершить ход", actionId: "turn.finish" }
+  ]);
 });
 
 const eventCardIds = [
@@ -1294,6 +1318,7 @@ const fundCardIds = [
   "fund-collect-each",
   "fund-start",
   "fund-message",
+  "fund-exit",
   "fund-assessment"
 ];
 
@@ -1333,7 +1358,8 @@ const fixtureJailActor = async (replay, actorId = "p1") => {
   updated.state.public.board.consecutiveDoubles = 0;
   updated.state.public.board.extraRollPending = false;
   updated.state.public.board.availableActions = [
-    { id: "jail-card-event", label: "Использовать карту выхода", actionId: "jail.card.use.event" }
+    { id: "jail-card-event", label: "Использовать карту выхода", actionId: "jail.card.use.event" },
+    { id: "jail-card-fund", label: "Использовать карту фонда", actionId: "jail.card.use.fund" }
   ];
   updated.version.stateVersion += 1;
   updated.updatedAt = new Date();
@@ -1561,7 +1587,68 @@ test("held exit card is actor-private and three return cycles are receipt-idempo
   }
 });
 
-test("late multi-party transfer failure rolls back early candidates and deck draw after RNG", async () => {
+test("both exit cards can be drawn into private slots and the fund card returns from its exact slot", async () => {
+  const replay = await createPhaseReplay((state) => {
+    state.players.p1.metrics.position = 0;
+    state.public.board.availableActions = [{ id: "roll", label: "Бросить кости", actionId: "turn.roll" }];
+    installDecks(state, { eventOrder: ["event-exit"], fundOrder: ["fund-exit"] });
+  }, { phase: "roll", samples: [0, 1, 0, 1] });
+
+  await act(replay, "turn.roll");
+  let current = await replay.store.getSession(replay.session.sessionId);
+  assert.equal(current.state.players.p1.objects.heldExitCardId, "event-exit");
+  assert.equal(current.state.players.p1.objects.heldExitCardId2, null);
+
+  const nextDraw = structuredClone(current);
+  nextDraw.state.players.p1.metrics.position = 4;
+  nextDraw.state.public.turn.phase = "roll";
+  nextDraw.state.public.board.availableActions = [{ id: "roll", label: "Бросить кости", actionId: "turn.roll" }];
+  nextDraw.version.stateVersion += 1;
+  nextDraw.updatedAt = new Date();
+  await replay.store.updateSession(nextDraw, {
+    expectedStateVersion: current.version.stateVersion
+  });
+
+  const secondDraw = await act(replay, "turn.roll");
+  assert.equal(secondDraw.result.ok, true, JSON.stringify(secondDraw.result));
+  current = await replay.store.getSession(replay.session.sessionId);
+  assert.equal(current.state.public.board.lastCardId, "fund-exit");
+  assert.equal(current.state.players.p1.objects.heldExitCardId, "event-exit");
+  assert.equal(current.state.players.p1.objects.heldExitCardId2, "fund-exit");
+  assert.deepEqual(current.state.secret.decks.event.held, ["event-exit"]);
+  assert.deepEqual(current.state.secret.decks.fund.held, ["fund-exit"]);
+
+  const peerView = buildPlayerSessionProjection({
+    state: current.state,
+    stateModel: replay.manifest.mechanics.stateModel,
+    actorPlayerId: "p2"
+  });
+  assert.equal(peerView.state.players.p1.objects?.heldExitCardId, undefined);
+  assert.equal(peerView.state.players.p1.objects?.heldExitCardId2, undefined);
+
+  await fixtureJailActor(replay);
+  const beforeUse = await replay.store.getSession(replay.session.sessionId);
+  const commandId = createTestCommandId();
+  const used = await act(replay, "jail.card.use.fund", {}, {
+    commandId,
+    expectedStateVersion: beforeUse.version.stateVersion
+  });
+  const retried = await act(replay, "jail.card.use.fund", {}, {
+    commandId,
+    expectedStateVersion: beforeUse.version.stateVersion
+  });
+  assert.deepEqual(retried.receipt, used.receipt);
+  current = await replay.store.getSession(replay.session.sessionId);
+  assert.equal(current.state.players.p1.objects.heldExitCardId, "event-exit");
+  assert.equal(current.state.players.p1.objects.heldExitCardId2, null);
+  assert.deepEqual(current.state.secret.decks.event.held, ["event-exit"]);
+  assert.deepEqual(current.state.secret.decks.fund.held, []);
+  assert.deepEqual(current.state.secret.decks.fund.discard, ["fund-exit"]);
+  assert.equal(current.state.players.p1.flags.inJail, false);
+  assert.equal(current.state.public.turn.phase, "roll");
+});
+
+test("multi-party card insolvency commits one explicit obligation and exact retry does not redraw", async () => {
   for (const cardId of ["fund-pay-each", "fund-collect-each"]) {
     const replay = await createPhaseReplay((state) => {
       state.players.p1.metrics.position = 4;
@@ -1580,34 +1667,43 @@ test("late multi-party transfer failure rolls back early candidates and deck dra
       commandId,
       expectedStateVersion: before.version.stateVersion
     });
-    assert.equal(first.result.ok, false);
-    assert.equal(first.receipt.status, "rejected");
-    assert.match(first.result.error?.code ?? "", /MECHANICS_RESOURCE_INSUFFICIENT/);
-    assert.equal(replay.randomCallCount, 2, `${cardId}: dice RNG is consumed before candidate rollback`);
+    assert.equal(first.result.ok, true, JSON.stringify(first.result));
+    assert.equal(first.receipt.status, "applied");
+    assert.equal(replay.randomCallCount, 2, `${cardId}: dice RNG is consumed once`);
     let current = await replay.store.getSession(replay.session.sessionId);
-    assert.deepEqual(current.state, before.state, `${cardId}: early candidate transfers and draw must roll back`);
-    assert.equal(current.version.stateVersion, before.version.stateVersion);
+    assert.equal(current.state.public.board.lastCardId, cardId);
+    assert.equal(current.state.public.turn.phase, "obligation");
+    assert.equal(current.state.public.obligation.status, "active");
+    if (cardId === "fund-pay-each") {
+      assert.equal(current.state.public.obligation.reason, "card-pay-each");
+      assert.equal(current.state.public.obligation.amount, 50);
+      assert.equal(current.state.players.p1.metrics.cash, 25);
+      assert.ok(["p2", "p3", "p4", "p5", "p6"].every((id) => current.state.players[id].metrics.cash === 1200));
+    } else {
+      assert.equal(current.state.public.obligation.reason, "card-collect-each");
+      assert.equal(current.state.public.obligation.amount, 10);
+      assert.equal(current.state.public.turn.activePlayerId, "p5");
+      assert.equal(current.state.players.p1.metrics.cash, 1240);
+      assert.equal(current.state.players.p5.metrics.cash, 5);
+    }
 
     const retried = await act(replay, "turn.roll", {}, {
       commandId,
       expectedStateVersion: before.version.stateVersion
     });
     assert.deepEqual(retried.receipt, first.receipt);
-    assert.equal(replay.randomCallCount, 2, `${cardId}: exact retry must reuse the rejection receipt`);
+    assert.equal(replay.randomCallCount, 2, `${cardId}: exact retry must reuse the committed receipt`);
 
     const fresh = await act(replay, "turn.roll");
     assert.equal(fresh.result.ok, false);
     assert.equal(fresh.receipt.status, "rejected");
-    assert.match(fresh.result.error?.code ?? "", /MECHANICS_RESOURCE_INSUFFICIENT/);
-    assert.equal(replay.randomCallCount, 4, `${cardId}: fresh rejected command consumes fresh dice RNG`);
-    current = await replay.store.getSession(replay.session.sessionId);
-    assert.deepEqual(current.state, before.state);
-    assert.equal(current.version.stateVersion, before.version.stateVersion);
+    assert.match(fresh.result.error?.code ?? "", /ACTION_PRECONDITION_FAILED/);
+    assert.equal(replay.randomCallCount, 2, `${cardId}: fresh invalid command is rejected before RNG`);
   }
 });
 
-test("jail pay, doubles, failed attempts, and the pre-RNG third-attempt fee are atomic", async () => {
-  const jailedReplay = async ({ attempts = 0, cash = 1200, samples = [] } = {}) => createPhaseReplay((state) => {
+test("jail pay, doubles, failed attempts, and third-attempt obligations are atomic", async () => {
+  const jailedReplay = async ({ attempts = 0, cash = 1200, samples = [], mutate = () => {} } = {}) => createPhaseReplay((state) => {
     state.players.p1.metrics.position = 10;
     state.players.p1.metrics.cash = cash;
     state.players.p1.metrics.jailAttempts = attempts;
@@ -1617,6 +1713,7 @@ test("jail pay, doubles, failed attempts, and the pre-RNG third-attempt fee are 
       { id: "jail-roll", label: "Попытаться выбросить дубль", actionId: "jail.roll" }
     ];
     installDecks(state);
+    mutate(state);
   }, { phase: "jail", samples });
 
   const paid = await jailedReplay({ samples: [0, 0] });
@@ -1641,13 +1738,24 @@ test("jail pay, doubles, failed attempts, and the pre-RNG third-attempt fee are 
   assert.equal(current.state.public.board.lastRoll.isDouble, true);
   assert.equal(current.state.public.board.extraRollPending, true);
 
-  const poorPay = await jailedReplay({ cash: 49 });
-  const beforePoorPay = structuredClone(await poorPay.store.getSession(poorPay.session.sessionId));
-  await assertRejectedAction(act(poorPay, "jail.pay"), /MECHANICS_RESOURCE_INSUFFICIENT/);
-  const afterPoorPay = await poorPay.store.getSession(poorPay.session.sessionId);
-  assert.deepEqual(afterPoorPay.state, beforePoorPay.state);
-  assert.equal(afterPoorPay.version.stateVersion, beforePoorPay.version.stateVersion);
+  const poorPay = await jailedReplay({
+    cash: 49,
+    mutate: (state) => {
+      state.public.objects.boardCells["cell-01"].attributes.ownerPlayerId = "p1";
+    }
+  });
+  await act(poorPay, "jail.pay");
+  let afterPoorPay = await poorPay.store.getSession(poorPay.session.sessionId);
+  assert.equal(afterPoorPay.state.public.turn.phase, "obligation");
+  assert.equal(afterPoorPay.state.public.obligation.reason, "jail-pay");
+  assert.equal(afterPoorPay.state.players.p1.flags.inJail, true);
   assert.equal(poorPay.randomCallCount, 0);
+  await act(poorPay, "property.mortgage", { cellId: "cell-01" });
+  await act(poorPay, "obligation.resolve");
+  afterPoorPay = await poorPay.store.getSession(poorPay.session.sessionId);
+  assert.equal(afterPoorPay.state.players.p1.metrics.cash, 44);
+  assert.equal(afterPoorPay.state.players.p1.flags.inJail, false);
+  assert.equal(afterPoorPay.state.public.turn.phase, "roll");
 
   const doubled = await jailedReplay({ samples: [2, 2] });
   const beforeDouble = await doubled.store.getSession(doubled.session.sessionId);
@@ -1685,13 +1793,42 @@ test("jail pay, doubles, failed attempts, and the pre-RNG third-attempt fee are 
   assert.equal(current.state.players.p1.metrics.jailAttempts, 0);
   assert.equal(current.state.public.turn.phase, "acquire");
 
-  const poorThird = await jailedReplay({ attempts: 2, cash: 49, samples: [2, 2] });
-  const beforePoorThird = structuredClone(await poorThird.store.getSession(poorThird.session.sessionId));
-  await assertRejectedAction(act(poorThird, "jail.roll"), /JAIL_ROLL_UNAVAILABLE/);
-  const afterPoorThird = await poorThird.store.getSession(poorThird.session.sessionId);
-  assert.equal(poorThird.randomCallCount, 0);
-  assert.deepEqual(afterPoorThird.state, beforePoorThird.state);
-  assert.equal(afterPoorThird.version.stateVersion, beforePoorThird.version.stateVersion);
+  const poorThird = await jailedReplay({
+    attempts: 2,
+    cash: 49,
+    samples: [0, 1],
+    mutate: (state) => {
+      state.public.objects.boardCells["cell-01"].attributes.ownerPlayerId = "p1";
+    }
+  });
+  const beforePoorThird = await poorThird.store.getSession(poorThird.session.sessionId);
+  const thirdCommandId = createTestCommandId();
+  const thirdFailure = await act(poorThird, "jail.roll", {}, {
+    commandId: thirdCommandId,
+    expectedStateVersion: beforePoorThird.version.stateVersion
+  });
+  const thirdRetry = await act(poorThird, "jail.roll", {}, {
+    commandId: thirdCommandId,
+    expectedStateVersion: beforePoorThird.version.stateVersion
+  });
+  assert.deepEqual(thirdRetry.receipt, thirdFailure.receipt);
+  let afterPoorThird = await poorThird.store.getSession(poorThird.session.sessionId);
+  assert.equal(poorThird.randomCallCount, 2);
+  assert.equal(afterPoorThird.state.public.turn.phase, "obligation");
+  assert.equal(afterPoorThird.state.public.obligation.reason, "jail-third");
+  assert.equal(afterPoorThird.state.players.p1.metrics.position, 10);
+  assert.equal(afterPoorThird.state.players.p1.flags.inJail, true);
+  await act(poorThird, "property.mortgage", { cellId: "cell-01" });
+  await act(poorThird, "obligation.resolve");
+  afterPoorThird = await poorThird.store.getSession(poorThird.session.sessionId);
+  assert.equal(afterPoorThird.state.public.turn.phase, "jail");
+  assert.deepEqual(afterPoorThird.state.public.board.availableActions.map((item) => item.actionId), ["jail.third.move"]);
+  await act(poorThird, "jail.third.move");
+  afterPoorThird = await poorThird.store.getSession(poorThird.session.sessionId);
+  assert.equal(afterPoorThird.state.players.p1.metrics.cash, 44);
+  assert.equal(afterPoorThird.state.players.p1.metrics.position, 13);
+  assert.equal(afterPoorThird.state.players.p1.flags.inJail, false);
+  assert.equal(afterPoorThird.state.public.turn.phase, "acquire");
 });
 
 test("turn.finish publishes jail-only actions for the exact next actor with 2/6 participants", async () => {
@@ -1708,6 +1845,7 @@ test("turn.finish publishes jail-only actions for the exact next actor with 2/6 
     assert.deepEqual(current.state.public.board.availableActions.map((item) => item.actionId), [
       "jail.pay",
       "jail.card.use.event",
+      "jail.card.use.fund",
       "jail.roll"
     ]);
   }
@@ -2026,11 +2164,467 @@ test("all 28 purchasable cells share generic actions and an own landing requires
   assert.equal(current.state.players.p1.metrics.position, 28);
   assert.equal(current.state.players.p1.metrics.cash, 1200);
   assert.equal(current.state.public.turn.phase, "finish");
-  assert.deepEqual(current.state.public.board.availableActions, [{
-    id: "finish",
-    label: "Завершить ход",
-    actionId: "turn.finish"
-  }]);
+  assert.deepEqual(current.state.public.board.availableActions.map((entry) => entry.actionId), [
+    "trade.open",
+    "turn.finish"
+  ]);
+});
+
+test("S5 trade atomically exchanges cash and unimproved assets then restores the turn", async () => {
+  const replay = await createPhaseReplay((state) => {
+    state.players.p1.metrics.cash = 1000;
+    state.players.p2.metrics.cash = 800;
+    state.public.objects.boardCells["cell-01"].attributes.ownerPlayerId = "p1";
+    state.public.objects.boardCells["cell-05"].attributes.ownerPlayerId = "p2";
+  }, { phase: "finish" });
+
+  await act(replay, "trade.open", { targetPlayerId: "p2" });
+  await act(replay, "trade.cash.set", { offeredCash: 100, requestedCash: 50 });
+  await act(replay, "trade.asset.set", { cellId: "cell-01", side: "offered" });
+  await act(replay, "trade.asset.set", { cellId: "cell-05", side: "requested" });
+  await act(replay, "trade.propose");
+  let current = await replay.store.getSession(replay.session.sessionId);
+  assert.equal(current.state.public.turn.activePlayerId, "p2");
+  assert.equal(current.state.public.turn.phase, "tradeResponse");
+  assert.equal(current.state.public.trade.status, "response");
+
+  const beforeAccept = current;
+  const commandId = createTestCommandId();
+  const accepted = await act(replay, "trade.accept", {}, {
+    commandId,
+    expectedStateVersion: beforeAccept.version.stateVersion
+  });
+  assert.equal(accepted.result.ok, true, JSON.stringify(accepted.result));
+  const retried = await act(replay, "trade.accept", {}, {
+    commandId,
+    expectedStateVersion: beforeAccept.version.stateVersion
+  });
+  assert.deepEqual(retried.receipt, accepted.receipt);
+
+  current = await replay.store.getSession(replay.session.sessionId);
+  assert.equal(current.state.players.p1.metrics.cash, 950);
+  assert.equal(current.state.players.p2.metrics.cash, 850);
+  assert.equal(current.state.public.objects.boardCells["cell-01"].attributes.ownerPlayerId, "p2");
+  assert.equal(current.state.public.objects.boardCells["cell-05"].attributes.ownerPlayerId, "p1");
+  assert.equal(current.state.public.objects.boardCells["cell-01"].attributes.tradeSide, "");
+  assert.equal(current.state.public.objects.boardCells["cell-05"].attributes.tradeSide, "");
+  assert.equal(current.state.public.trade.status, "idle");
+  assert.equal(current.state.public.turn.activePlayerId, "p1");
+  assert.equal(current.state.public.turn.phase, "finish");
+});
+
+test("S5 trade transfers both held cards without exposing another actor-private slot", async () => {
+  const replay = await createPhaseReplay((state) => {
+    installDecks(state, {
+      eventOrder: eventCardIds.filter((cardId) => cardId !== "event-exit"),
+      eventHeld: ["event-exit"],
+      fundOrder: fundCardIds.filter((cardId) => cardId !== "fund-exit"),
+      fundHeld: ["fund-exit"]
+    });
+    state.players.p1.objects.heldExitCardId = "event-exit";
+    state.players.p2.objects.heldExitCardId = "fund-exit";
+  }, { phase: "finish" });
+
+  await act(replay, "trade.open", { targetPlayerId: "p2" });
+  await act(replay, "trade.card.offer", { cardId: "event-exit" });
+  let current = await replay.store.getSession(replay.session.sessionId);
+  assert.equal(current.state.players.p1.objects.heldExitCardId, null);
+  assert.equal(current.state.public.trade.offeredCardId, "event-exit");
+  const p2Draft = buildPlayerSessionProjection({
+    state: current.state,
+    stateModel: replay.manifest.mechanics.stateModel,
+    actorPlayerId: "p2"
+  });
+  assert.equal(p2Draft.state.players.p1.objects?.heldExitCardId, undefined);
+  assert.equal(p2Draft.state.public.trade.offeredCardId, "event-exit");
+
+  await act(replay, "trade.card.request", { cardId: "fund-exit" });
+  await act(replay, "trade.propose");
+  const beforeAccept = await replay.store.getSession(replay.session.sessionId);
+  const acceptCommandId = createTestCommandId();
+  const accepted = await act(replay, "trade.accept", {}, {
+    commandId: acceptCommandId,
+    expectedStateVersion: beforeAccept.version.stateVersion
+  });
+  assert.equal(accepted.result.ok, true, JSON.stringify(accepted.result));
+  const retriedAccept = await act(replay, "trade.accept", {}, {
+    commandId: acceptCommandId,
+    expectedStateVersion: beforeAccept.version.stateVersion
+  });
+  assert.deepEqual(retriedAccept.receipt, accepted.receipt);
+
+  current = await replay.store.getSession(replay.session.sessionId);
+  assert.equal(current.state.players.p2.objects.heldExitCardId, "event-exit");
+  assert.equal(current.state.players.p1.objects.heldExitCardId, null);
+  assert.equal(current.state.public.trade.claimCardId, "fund-exit");
+  assert.equal(current.state.public.turn.activePlayerId, "p1");
+  assert.equal(current.state.public.turn.phase, "tradeClaim");
+
+  const beforeClaim = current;
+  const claimCommandId = createTestCommandId();
+  const claimed = await act(replay, "trade.card.claim", {}, {
+    commandId: claimCommandId,
+    expectedStateVersion: beforeClaim.version.stateVersion
+  });
+  assert.equal(claimed.result.ok, true, JSON.stringify(claimed.result));
+  const retriedClaim = await act(replay, "trade.card.claim", {}, {
+    commandId: claimCommandId,
+    expectedStateVersion: beforeClaim.version.stateVersion
+  });
+  assert.deepEqual(retriedClaim.receipt, claimed.receipt);
+
+  current = await replay.store.getSession(replay.session.sessionId);
+  assert.equal(current.state.players.p1.objects.heldExitCardId, "fund-exit");
+  assert.equal(current.state.players.p2.objects.heldExitCardId, "event-exit");
+  assert.deepEqual(current.state.secret.decks.event.held, ["event-exit"]);
+  assert.deepEqual(current.state.secret.decks.fund.held, ["fund-exit"]);
+  assert.equal(current.state.public.trade.status, "idle");
+  assert.equal(current.state.public.turn.phase, "finish");
+});
+
+test("S5 trade decline returns escrow and accept revalidates funds without partial changes", async () => {
+  const declined = await createPhaseReplay((state) => {
+    installDecks(state, { eventHeld: ["event-exit"] });
+    state.players.p1.objects.heldExitCardId = "event-exit";
+    state.public.objects.boardCells["cell-01"].attributes.ownerPlayerId = "p1";
+  }, { phase: "finish" });
+  await act(declined, "trade.open", { targetPlayerId: "p2" });
+  await act(declined, "trade.card.offer", { cardId: "event-exit" });
+  await act(declined, "trade.asset.set", { cellId: "cell-01", side: "offered" });
+  await act(declined, "trade.propose");
+  await act(declined, "trade.decline");
+  let current = await declined.store.getSession(declined.session.sessionId);
+  assert.equal(current.state.public.turn.phase, "tradeClaim");
+  assert.equal(current.state.public.turn.activePlayerId, "p1");
+  await act(declined, "trade.card.claim");
+  current = await declined.store.getSession(declined.session.sessionId);
+  assert.equal(current.state.players.p1.objects.heldExitCardId, "event-exit");
+  assert.equal(current.state.public.objects.boardCells["cell-01"].attributes.ownerPlayerId, "p1");
+  assert.equal(current.state.public.objects.boardCells["cell-01"].attributes.tradeSide, "");
+
+  const stale = await createPhaseReplay((state) => {
+    state.players.p1.metrics.cash = 500;
+    state.players.p2.metrics.cash = 100;
+  }, { phase: "finish" });
+  await act(stale, "trade.open", { targetPlayerId: "p2" });
+  await act(stale, "trade.cash.set", { offeredCash: 25, requestedCash: 80 });
+  await act(stale, "trade.propose");
+  current = await stale.store.getSession(stale.session.sessionId);
+  const corrupted = structuredClone(current);
+  corrupted.state.players.p2.metrics.cash = 50;
+  corrupted.version.stateVersion += 1;
+  corrupted.updatedAt = new Date();
+  await stale.store.updateSession(corrupted, { expectedStateVersion: current.version.stateVersion });
+  const beforeReject = structuredClone(await stale.store.getSession(stale.session.sessionId));
+  await assertRejectedAction(act(stale, "trade.accept"), /ACTION_PRECONDITION_FAILED/);
+  const afterReject = await stale.store.getSession(stale.session.sessionId);
+  assert.deepEqual(afterReject.state, beforeReject.state);
+  assert.equal(afterReject.version.stateVersion, beforeReject.version.stateVersion);
+});
+
+test("S5 tax, rent, and jail fees enter explicit obligations and resume after liquidity", async () => {
+  const tax = await createPhaseReplay((state) => {
+    state.players.p1.metrics.position = 4;
+    state.players.p1.metrics.cash = 30;
+    state.public.objects.boardCells["cell-01"].attributes.ownerPlayerId = "p1";
+  }, { phase: "tax" });
+  const taxStarted = await act(tax, "tax.pay");
+  assert.equal(taxStarted.result.ok, true, JSON.stringify(taxStarted.result));
+  let current = await tax.store.getSession(tax.session.sessionId);
+  assert.equal(current.state.public.turn.phase, "obligation");
+  assert.deepEqual({
+    status: current.state.public.obligation.status,
+    debtor: current.state.public.obligation.debtorPlayerId,
+    creditor: current.state.public.obligation.creditorKind,
+    amount: current.state.public.obligation.amount,
+    reason: current.state.public.obligation.reason
+  }, { status: "active", debtor: "p1", creditor: "bank", amount: 70, reason: "tax" });
+  assert.equal(current.state.players.p1.metrics.cash, 30);
+  await act(tax, "property.mortgage", { cellId: "cell-01" });
+  await act(tax, "obligation.resolve");
+  current = await tax.store.getSession(tax.session.sessionId);
+  assert.equal(current.state.players.p1.metrics.cash, 5);
+  assert.equal(current.state.public.turn.phase, "finish");
+  assert.equal(current.state.public.obligation.status, "idle");
+
+  const rent = await createPhaseReplay((state) => {
+    state.players.p1.metrics.position = 1;
+    state.players.p1.metrics.cash = 5;
+    state.public.board.lastRoll = { values: [3, 4], total: 7, isDouble: false };
+    state.public.objects.boardCells["cell-01"].attributes.ownerPlayerId = "p2";
+    state.public.objects.boardCells["cell-05"].attributes.ownerPlayerId = "p1";
+  }, { phase: "rent" });
+  await act(rent, "property.rent");
+  current = await rent.store.getSession(rent.session.sessionId);
+  assert.equal(current.state.public.obligation.amount, 8);
+  assert.equal(current.state.public.obligation.creditorPlayerId, "p2");
+  assert.equal(current.state.players.p2.metrics.cash, 1200);
+  await act(rent, "property.mortgage", { cellId: "cell-05" });
+  const rentResolved = await act(rent, "obligation.resolve");
+  assert.equal(rentResolved.result.ok, true, JSON.stringify(rentResolved.result));
+  current = await rent.store.getSession(rent.session.sessionId);
+  assert.equal(current.state.players.p1.metrics.cash, 77);
+  assert.equal(current.state.players.p2.metrics.cash, 1208);
+  assert.equal(current.state.public.turn.phase, "finish");
+
+  const jail = await createPhaseReplay((state) => {
+    state.players.p1.metrics.position = 10;
+    state.players.p1.metrics.cash = 20;
+    state.players.p1.flags.inJail = true;
+    state.public.objects.boardCells["cell-01"].attributes.ownerPlayerId = "p1";
+  }, { phase: "jail" });
+  await act(jail, "jail.pay");
+  current = await jail.store.getSession(jail.session.sessionId);
+  assert.equal(current.state.public.turn.phase, "obligation");
+  assert.equal(current.state.players.p1.flags.inJail, true);
+  await act(jail, "property.mortgage", { cellId: "cell-01" });
+  await act(jail, "obligation.resolve");
+  current = await jail.store.getSession(jail.session.sessionId);
+  assert.equal(current.state.players.p1.metrics.cash, 15);
+  assert.equal(current.state.players.p1.flags.inJail, false);
+  assert.equal(current.state.public.turn.phase, "roll");
+});
+
+test("S5 pay-each and collect-each obligations preserve full multi-party payment semantics", async () => {
+  const payEach = await createPhaseReplay((state) => {
+    state.players.p1.metrics.position = 4;
+    state.players.p1.metrics.cash = 5;
+    state.public.board.availableActions = [{ id: "roll", label: "Бросить кости", actionId: "turn.roll" }];
+    state.public.objects.boardCells["cell-05"].attributes.ownerPlayerId = "p1";
+    installDecks(state, { fundOrder: orderedDeck(fundCardIds, "fund-pay-each") });
+  }, { participantCount: 6, phase: "roll", samples: [0, 1] });
+  await act(payEach, "turn.roll");
+  let current = await payEach.store.getSession(payEach.session.sessionId);
+  assert.equal(current.state.public.obligation.reason, "card-pay-each");
+  assert.equal(current.state.public.obligation.amount, 50);
+  assert.ok(["p2", "p3", "p4", "p5", "p6"].every((id) => current.state.players[id].metrics.cash === 1200));
+  await act(payEach, "property.mortgage", { cellId: "cell-05" });
+  const beforeResolve = await payEach.store.getSession(payEach.session.sessionId);
+  const commandId = createTestCommandId();
+  const resolved = await act(payEach, "obligation.resolve", {}, {
+    commandId,
+    expectedStateVersion: beforeResolve.version.stateVersion
+  });
+  assert.equal(resolved.result.ok, true, JSON.stringify(resolved.result));
+  const retried = await act(payEach, "obligation.resolve", {}, {
+    commandId,
+    expectedStateVersion: beforeResolve.version.stateVersion
+  });
+  assert.deepEqual(retried.receipt, resolved.receipt);
+  current = await payEach.store.getSession(payEach.session.sessionId);
+  assert.equal(current.state.players.p1.metrics.cash, 35);
+  assert.ok(["p2", "p3", "p4", "p5", "p6"].every((id) => current.state.players[id].metrics.cash === 1210));
+  assert.equal(current.state.public.turn.phase, "finish");
+
+  const collectEach = await createPhaseReplay((state) => {
+    state.players.p1.metrics.position = 4;
+    state.players.p2.metrics.cash = 5;
+    state.public.board.availableActions = [{ id: "roll", label: "Бросить кости", actionId: "turn.roll" }];
+    state.public.objects.boardCells["cell-05"].attributes.ownerPlayerId = "p2";
+    installDecks(state, { fundOrder: orderedDeck(fundCardIds, "fund-collect-each") });
+  }, { phase: "roll", samples: [0, 1] });
+  await act(collectEach, "turn.roll");
+  current = await collectEach.store.getSession(collectEach.session.sessionId);
+  assert.equal(current.state.public.turn.activePlayerId, "p2");
+  assert.equal(current.state.public.turn.phase, "obligation");
+  assert.equal(current.state.public.obligation.reason, "card-collect-each");
+  assert.equal(current.state.players.p1.metrics.cash, 1200);
+  await act(collectEach, "property.mortgage", { cellId: "cell-05" });
+  await act(collectEach, "obligation.resolve");
+  current = await collectEach.store.getSession(collectEach.session.sessionId);
+  assert.equal(current.state.players.p1.metrics.cash, 1210);
+  assert.equal(current.state.players.p2.metrics.cash, 75);
+  assert.equal(current.state.public.turn.activePlayerId, "p1");
+  assert.equal(current.state.public.turn.phase, "finish");
+  assert.equal(current.state.public.obligation.status, "idle");
+});
+
+test("S5 bankruptcy rejects remaining liquidity, transfers to a player or bank, and skips eliminated turns", async () => {
+  const liquid = await createPhaseReplay((state) => {
+    state.players.p1.metrics.position = 1;
+    state.players.p1.metrics.cash = 0;
+    state.public.board.lastRoll = { values: [3, 4], total: 7, isDouble: false };
+    state.public.objects.boardCells["cell-01"].attributes.ownerPlayerId = "p2";
+    state.public.objects.boardCells["cell-05"].attributes.ownerPlayerId = "p1";
+  }, { phase: "rent" });
+  await act(liquid, "property.rent");
+  await assertRejectedAction(act(liquid, "bankruptcy.declare", { heldCardId: "", heldCardId2: "" }), /BANKRUPTCY_LIQUIDITY_REMAINS/);
+
+  const creditor = await createPhaseReplay((state) => {
+    state.players.p1.metrics.position = 1;
+    state.players.p1.metrics.cash = 0;
+    state.public.board.lastRoll = { values: [3, 4], total: 7, isDouble: false };
+    state.public.objects.boardCells["cell-01"].attributes.ownerPlayerId = "p2";
+    state.public.objects.boardCells["cell-05"].attributes.ownerPlayerId = "p1";
+    state.public.objects.boardCells["cell-05"].attributes.mortgaged = true;
+  }, { phase: "rent" });
+  const creditorRent = await act(creditor, "property.rent");
+  assert.equal(creditorRent.result.ok, true, JSON.stringify(creditorRent.result));
+  let current = await creditor.store.getSession(creditor.session.sessionId);
+  assert.equal(current.state.public.turn.phase, "obligation", JSON.stringify(current.state.public.obligation));
+  await act(creditor, "bankruptcy.declare", { heldCardId: "", heldCardId2: "" });
+  current = await creditor.store.getSession(creditor.session.sessionId);
+  assert.equal(current.state.players.p1.status, "eliminated");
+  assert.equal(current.state.public.objects.boardCells["cell-05"].attributes.ownerPlayerId, "p2");
+  assert.equal(current.state.public.turn.activePlayerId, "p2");
+  assert.equal(current.state.public.turn.phase, "liquidationMortgage");
+  assert.equal(current.state.public.liquidation.pendingCellId, "cell-05");
+  const transferFee = current.state.public.objects.boardCells["cell-05"].attributes.transferFee;
+  await act(creditor, "mortgage.transfer.keep");
+  current = await creditor.store.getSession(creditor.session.sessionId);
+  assert.equal(current.state.players.p2.metrics.cash, 1200 - transferFee);
+  assert.equal(current.state.public.objects.boardCells["cell-05"].attributes.mortgaged, true);
+  assert.equal(current.state.public.objects.boardCells["cell-05"].attributes.mortgageTransferPending, false);
+  assert.equal(current.state.public.turn.phase, "finish");
+
+  const bank = await createPhaseReplay((state) => {
+    state.players.p1.metrics.position = 4;
+    state.players.p1.metrics.cash = 0;
+    state.public.objects.boardCells["cell-01"].attributes.ownerPlayerId = "p1";
+    state.public.objects.boardCells["cell-01"].attributes.mortgaged = true;
+  }, { participantCount: 3, phase: "tax" });
+  await act(bank, "tax.pay");
+  const bankBaseDeclared = await act(bank, "bankruptcy.declare", { heldCardId: "", heldCardId2: "" });
+  assert.equal(bankBaseDeclared.result.ok, true, JSON.stringify(bankBaseDeclared));
+  current = await bank.store.getSession(bank.session.sessionId);
+  assert.equal(current.state.players.p1.status, "eliminated");
+  assert.equal(current.state.public.objects.boardCells["cell-01"].attributes.ownerPlayerId, null);
+  assert.equal(current.state.public.objects.boardCells["cell-01"].attributes.mortgaged, false);
+  assert.equal(current.state.public.objects.boardCells["cell-01"].attributes.liquidationPending, true);
+  assert.equal(current.state.public.turn.phase, "auction");
+  assert.equal(current.state.public.turn.activePlayerId, "p2");
+  await act(bank, "property.auction.pass");
+  await act(bank, "property.auction.pass");
+  current = await bank.store.getSession(bank.session.sessionId);
+  assert.equal(current.state.public.objects.boardCells["cell-01"].attributes.ownerPlayerId, null);
+  assert.equal(current.state.public.objects.boardCells["cell-01"].attributes.liquidationPending, false);
+  assert.equal(current.state.public.liquidation.status, "idle");
+  assert.equal(current.state.public.turn.phase, "finish");
+
+  const skip = await createPhaseReplay((state) => {
+    state.players.p2.status = "eliminated";
+  }, { participantCount: 3, phase: "finish" });
+  await act(skip, "turn.finish");
+  current = await skip.store.getSession(skip.session.sessionId);
+  assert.equal(current.state.public.turn.activePlayerId, "p3");
+});
+
+test("S5 creditor inherits held cards and bank bankruptcy returns both cards then auctions every asset", async () => {
+  const creditor = await createPhaseReplay((state) => {
+    state.players.p1.metrics.position = 1;
+    state.players.p1.metrics.cash = 0;
+    state.public.board.lastRoll = { values: [3, 4], total: 7, isDouble: false };
+    state.public.objects.boardCells["cell-01"].attributes.ownerPlayerId = "p2";
+    state.players.p1.objects.heldExitCardId = "event-exit";
+    state.players.p1.objects.heldExitCardId2 = "fund-exit";
+    installDecks(state, {
+      eventOrder: eventCardIds.filter((cardId) => cardId !== "event-exit"),
+      eventHeld: ["event-exit"],
+      fundOrder: fundCardIds.filter((cardId) => cardId !== "fund-exit"),
+      fundHeld: ["fund-exit"]
+    });
+  }, { phase: "rent" });
+  await act(creditor, "property.rent");
+  const declared = await act(creditor, "bankruptcy.declare", {
+    heldCardId: "event-exit",
+    heldCardId2: "fund-exit"
+  });
+  assert.equal(declared.result.ok, true, JSON.stringify(declared.result));
+  let current = await creditor.store.getSession(creditor.session.sessionId);
+  assert.equal(current.state.public.turn.phase, "liquidationClaim");
+  assert.equal(current.state.public.turn.activePlayerId, "p2");
+  assert.equal(current.state.players.p1.objects.heldExitCardId, null);
+  assert.equal(current.state.players.p1.objects.heldExitCardId2, null);
+  await act(creditor, "liquidation.card.claim");
+  current = await creditor.store.getSession(creditor.session.sessionId);
+  assert.equal(current.state.players.p2.objects.heldExitCardId, "event-exit");
+  assert.equal(current.state.players.p2.objects.heldExitCardId2, "fund-exit");
+  assert.deepEqual(current.state.secret.decks.event.held, ["event-exit"]);
+  assert.deepEqual(current.state.secret.decks.fund.held, ["fund-exit"]);
+  assert.equal(current.state.public.turn.phase, "finish");
+
+  const bank = await createPhaseReplay((state) => {
+    state.players.p1.metrics.position = 4;
+    state.players.p1.metrics.cash = 0;
+    for (const cellId of ["cell-01", "cell-05"]) {
+      state.public.objects.boardCells[cellId].attributes.ownerPlayerId = "p1";
+      state.public.objects.boardCells[cellId].attributes.mortgaged = true;
+    }
+    state.players.p1.objects.heldExitCardId = "event-exit";
+    state.players.p1.objects.heldExitCardId2 = "fund-exit";
+    installDecks(state, {
+      eventOrder: eventCardIds.filter((cardId) => cardId !== "event-exit"),
+      eventHeld: ["event-exit"],
+      fundOrder: fundCardIds.filter((cardId) => cardId !== "fund-exit"),
+      fundHeld: ["fund-exit"]
+    });
+  }, { participantCount: 3, phase: "tax" });
+  await act(bank, "tax.pay");
+  const bankDeclared = await act(bank, "bankruptcy.declare", {
+    heldCardId: "event-exit",
+    heldCardId2: "fund-exit"
+  });
+  assert.equal(bankDeclared.result.ok, true, JSON.stringify(bankDeclared.result));
+  current = await bank.store.getSession(bank.session.sessionId);
+  assert.deepEqual(current.state.secret.decks.event.held, []);
+  assert.deepEqual(current.state.secret.decks.fund.held, []);
+  assert.deepEqual(current.state.secret.decks.event.discard, ["event-exit"]);
+  assert.deepEqual(current.state.secret.decks.fund.discard, ["fund-exit"]);
+  for (let lotPass = 0; lotPass < 4; lotPass += 1) {
+    await act(bank, "property.auction.pass");
+  }
+  current = await bank.store.getSession(bank.session.sessionId);
+  assert.equal(current.state.public.liquidation.status, "idle");
+  assert.equal(current.state.public.turn.phase, "finish");
+  for (const cellId of ["cell-01", "cell-05"]) {
+    assert.equal(current.state.public.objects.boardCells[cellId].attributes.ownerPlayerId, null);
+    assert.equal(current.state.public.objects.boardCells[cellId].attributes.liquidationPending, false);
+  }
+});
+
+test("S5 mortgage transfer accepts exact cash and resumes liquidation after a fee obligation", async () => {
+  const createTransferReplay = (creditorCash) => createPhaseReplay((state) => {
+    state.players.p1.metrics.position = 1;
+    state.players.p1.metrics.cash = 0;
+    state.players.p2.metrics.cash = creditorCash;
+    state.public.board.lastRoll = { values: [3, 4], total: 7, isDouble: false };
+    state.public.objects.boardCells["cell-01"].attributes.ownerPlayerId = "p2";
+    state.public.objects.boardCells["cell-05"].attributes.ownerPlayerId = "p1";
+    state.public.objects.boardCells["cell-05"].attributes.mortgaged = true;
+  }, { phase: "rent" });
+
+  const exact = await createTransferReplay(8);
+  await act(exact, "property.rent");
+  await act(exact, "bankruptcy.declare", { heldCardId: "", heldCardId2: "" });
+  await act(exact, "mortgage.transfer.keep");
+  let current = await exact.store.getSession(exact.session.sessionId);
+  assert.equal(current.state.players.p2.metrics.cash, 0);
+  assert.equal(current.state.public.objects.boardCells["cell-05"].attributes.mortgageTransferPending, false);
+  assert.equal(current.state.public.turn.phase, "finish");
+
+  const obligated = await createTransferReplay(0);
+  let session = await obligated.store.getSession(obligated.session.sessionId);
+  session.state.public.objects.boardCells["cell-02"].attributes.ownerPlayerId = "p2";
+  session.version.stateVersion += 1;
+  session.updatedAt = new Date();
+  await obligated.store.updateSession(session, {
+    expectedStateVersion: session.version.stateVersion - 1
+  });
+  await act(obligated, "property.rent");
+  await act(obligated, "bankruptcy.declare", { heldCardId: "", heldCardId2: "" });
+  await act(obligated, "mortgage.transfer.keep");
+  current = await obligated.store.getSession(obligated.session.sessionId);
+  assert.equal(current.state.public.turn.phase, "obligation");
+  assert.equal(current.state.public.obligation.reason, "mortgage-transfer");
+  assert.equal(current.state.public.obligation.amount, 8);
+  assert.equal(current.state.public.objects.boardCells["cell-05"].attributes.mortgageTransferPending, true);
+  await act(obligated, "property.mortgage", { cellId: "cell-02" });
+  await act(obligated, "obligation.resolve");
+  current = await obligated.store.getSession(obligated.session.sessionId);
+  assert.equal(current.state.players.p2.metrics.cash, 52);
+  assert.equal(current.state.public.obligation.status, "idle");
+  assert.equal(current.state.public.objects.boardCells["cell-05"].attributes.mortgageTransferPending, false);
+  assert.equal(current.state.public.turn.phase, "finish");
 });
 
 test("a principal scoped to another actor cannot execute the active turn", async () => {

@@ -1,4 +1,4 @@
-/** Package-level invariants for original content and the active S4 slice. */
+/** Package-level invariants for original content and the active S5 slice. */
 
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
@@ -31,7 +31,7 @@ test("manifest owns a classified forty-cell original board for two to six hotsea
   const state = manifest.state as Record<string, any>;
   const cells = state.public.objects.boardCells as Record<string, any>;
 
-  assert.equal((manifest.meta as Record<string, unknown>).version, "0.4.0");
+  assert.equal((manifest.meta as Record<string, unknown>).version, "0.5.0");
   assert.deepEqual(config.players, { min: 2, max: 6 });
   assert.equal(config.settings.mode, "local-hotseat");
   assert.equal(Object.keys(cells).length, 40);
@@ -73,8 +73,30 @@ test("manifest owns a classified forty-cell original board for two to six hotsea
   ]);
   assert.deepEqual(actionIds.filter((id) => id.startsWith("jail.")), [
     "jail.card.use.event",
+    "jail.card.use.fund",
     "jail.pay",
-    "jail.roll"
+    "jail.roll",
+    "jail.third.move"
+  ]);
+  assert.deepEqual(actionIds.filter((id) => /^(?:trade\.|obligation\.|bankruptcy\.|mortgage\.transfer\.|liquidation\.)/u.test(id)), [
+    "bankruptcy.declare",
+    "liquidation.card.claim",
+    "mortgage.transfer.keep",
+    "mortgage.transfer.redeem",
+    "obligation.resolve",
+    "trade.accept",
+    "trade.asset.remove",
+    "trade.asset.set",
+    "trade.cancel",
+    "trade.card.claim",
+    "trade.card.offer",
+    "trade.card.offer.remove",
+    "trade.card.request",
+    "trade.card.request.remove",
+    "trade.cash.set",
+    "trade.decline",
+    "trade.open",
+    "trade.propose"
   ]);
   assert.equal(actionIds.some((id) => /^(?:event|fund|deck)\./u.test(id)), false);
 
@@ -90,7 +112,9 @@ test("manifest owns a classified forty-cell original board for two to six hotsea
     const {
       buildCost: _buildCost,
       improvementTier: _improvementTier,
+      liquidationPending: _liquidationPending,
       mortgageValue: _mortgageValue,
+      mortgageTransferPending: _mortgageTransferPending,
       mortgaged: _mortgaged,
       redeemCost: _redeemCost,
       rent0: _rent0,
@@ -100,6 +124,8 @@ test("manifest owns a classified forty-cell original board for two to six hotsea
       rent4: _rent4,
       rent5: _rent5,
       sellValue: _sellValue,
+      tradeSide: _tradeSide,
+      transferFee: _transferFee,
       ...s1Attributes
     } = cell.attributes;
     return [id, { ...cell, attributes: s1Attributes }];
@@ -151,6 +177,17 @@ test("manifest owns a classified forty-cell original board for two to six hotsea
   assert.deepEqual(state.public.bankBuildings, { housesAvailable: 32, hotelsAvailable: 12 });
   assert.equal(state.public.objects.fundCards["fund-assessment"].attributes.effectKind,
     "building-assessment");
+
+  const transferFees = Object.fromEntries(Object.entries(cells)
+    .filter(([, cell]) => ["estate", "transit", "utility"].includes(cell.attributes.kind))
+    .map(([id, cell]) => [id, cell.attributes.transferFee]));
+  const s5DatasetHash = createHash("sha256")
+    .update(stableJson({
+      fundExitCard: state.public.objects.fundCards["fund-exit"],
+      transferFees
+    }))
+    .digest("hex");
+  assert.equal(s5DatasetHash, "b022d448d23ed646e832ffa129b5186dcb71ee341b520b633632f13772f7a4ac");
 });
 
 test("economy actions bind exact immutable plans to typed participant and object references", () => {
@@ -159,7 +196,10 @@ test("economy actions bind exact immutable plans to typed participant and object
   const buySteps = planSteps(manifest, "property.buy");
   const rentSteps = planSteps(manifest, "property.rent");
   const buyTransfer = buySteps.find((step) => step.op === "core.resource.transfer");
-  const rentTransfer = rentSteps.find((step) => step.op === "core.resource.transfer");
+  const rentIteration = rentSteps.find((step) => step.id === "rent-payment");
+  const rentTransfer = rentIteration?.body?.find((step: Record<string, any>) =>
+    step.op === "core.resource.transfer"
+  );
   const ownerWrite = buySteps.find((step) => step.op === "core.entity.attributes.patch");
 
   assert.ok(buyTransfer);
@@ -206,7 +246,8 @@ test("economy actions bind exact immutable plans to typed participant and object
     collection: "boardCells",
     entityId: { op: "value.result", stepId: "landing-cell", path: ["ids", "0"] }
   });
-  assert.equal(manifest.mechanics.stateModel.collections.boardCells.fields.ownerPlayerId.valueType, "core.string");
+  assert.equal(manifest.mechanics.stateModel.collections.boardCells.fields.ownerPlayerId.valueType,
+    "core.optional-string");
   assert.deepEqual(manifest.mechanics.stateModel.endpoints["participant.metrics.cash"].storage, {
     root: "players",
     segments: [{ binding: "participantId" }, "metrics", "cash"]
@@ -230,12 +271,9 @@ test("economy actions bind exact immutable plans to typed participant and object
       endpoint: "participant.metrics.cash",
       bindings: {
         participantId: {
-          op: "value.entity",
-          entity: {
-            collection: "boardCells",
-            entityId: { op: "value.result", stepId: "landing-cell", path: ["ids", "0"] }
-          },
-          field: "ownerPlayerId"
+          op: "value.item",
+          area: "identity",
+          field: "id"
         }
       }
     }
@@ -267,19 +305,23 @@ test("turn completion is an explicit typed composition with no legacy shortcuts"
   assert.equal(participantCollection.capacity, 6);
   assert.deepEqual(Object.keys(participantCollection.fields).sort(), [
     "bidderStatus", "buildingRequestCellId", "buildingRequestUnitKind", "cash", "inJail",
-    "jailAttempts", "position", "status"
+    "jailAttempts", "liabilityAmount", "liabilityCreditorId", "liabilityStatus", "position", "status"
   ]);
   assert.equal(Object.hasOwn(participantCollection.fields, "heldExitCardId"), false);
   assert.equal(stateModel.endpoints["actor.objects.heldExitCardId"].audienceRef, "actor");
+  assert.equal(stateModel.endpoints["actor.objects.heldExitCardId2"].audienceRef, "actor");
   assert.ok(setupSteps.some((step) => step.op === "core.entities.select"));
   assert.ok(setupSteps.some((step) => step.op === "core.entities.order"));
   assert.ok(setupSteps.every((step) => step.op !== "core.entities.each"));
 
-  // Elimination is not implemented by this game slice. Later rotation uses
-  // only the setup result stored in public.turn.order until a real elimination
-  // capability exists.
+  // Elimination stays game-owned: the neutral sequence operation only consumes
+  // the declared record-map status field and never interprets Estate Race rules.
   assert.equal(Object.hasOwn(stateModel.collections, "participants"), false);
-  assert.equal(Object.hasOwn(nextParticipant, "exclude"), false);
+  assert.deepEqual(nextParticipant.exclude, {
+    collection: "players",
+    field: "status",
+    values: [{ op: "value.literal", value: "eliminated" }]
+  });
   assert.deepEqual(turnPatch.patches, [
     {
       operation: "set",

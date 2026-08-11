@@ -13,6 +13,7 @@ import { activate } from "../src/index.ts";
 
 test("projects cells, participants, roll and only runtime-declared actions", () => {
   const projection = projectEstateRaceSession({
+    actorPlayerId: "p1",
     state: {
       public: {
         turn: { activePlayerId: "p2", phase: "rent", turnNumber: 4 },
@@ -202,6 +203,49 @@ test("fails closed for malformed S4 projection values", () => {
   assert.equal(projection.cells[0]?.mortgaged, false);
 });
 
+test("projects public S5 trade, obligation, liquidation and nullable ownership", () => {
+  const projection = projectEstateRaceSession({
+    actorPlayerId: "p2",
+    state: {
+      public: {
+        trade: {
+          status: "proposed", proposerPlayerId: "p1", targetPlayerId: "p2", resumePlayerId: "p1",
+          offeredCash: 100, requestedCash: 40, offeredCardId: "event-exit", requestedCardId: null,
+          claimCardId: null, claimPlayerId: ""
+        },
+        obligation: {
+          status: "active", debtorPlayerId: "p2", creditorKind: "player", creditorPlayerId: "p1",
+          amount: 250, perPartyAmount: 0, reason: "rent", resumePlayerId: "p1"
+        },
+        liquidation: {
+          status: "pending", resumePlayerId: "p2", debtorPlayerId: "p1", creditorPlayerId: "",
+          pendingCellId: "cell-05", claimCardId: null, claimCardId2: null
+        },
+        objects: { boardCells: {
+          "cell-05": { attributes: { index: 5, kind: "estate", ownerPlayerId: null, tradeSide: "offered", liquidationPending: true } }
+        } }
+      },
+      players: {
+        p1: { objects: { heldExitCardId: "event-exit", heldExitCardId2: "fund-exit" } },
+        p2: { objects: { heldExitCardId: "fund-exit", heldExitCardId2: "event-exit" } }
+      }
+    }
+  });
+
+  assert.equal(projection.trade.status, "proposed");
+  assert.equal(projection.trade.offeredCardId, "event-exit");
+  assert.equal(projection.obligation.amount, 250);
+  assert.equal(projection.obligation.creditorKind, "player");
+  assert.equal(projection.liquidation.pendingCellId, "cell-05");
+  assert.equal(projection.cells[0]?.ownerPlayerId, null);
+  assert.equal(projection.cells[0]?.tradeSide, "offered");
+  assert.equal(projection.cells[0]?.liquidationPending, true);
+  assert.equal(projection.players[0]?.heldExitCardId, null);
+  assert.equal(projection.players[0]?.heldExitCardId2, null);
+  assert.equal(projection.players[1]?.heldExitCardId, "fund-exit");
+  assert.equal(projection.players[1]?.heldExitCardId2, "event-exit");
+});
+
 test("presents setup as the server-declared first action without client parameters", () => {
   const actions = provideEstateRaceAccessibleBoardActions({
     state: {
@@ -258,6 +302,7 @@ test("keeps a jailed roll disabled from canonical action availability", () => {
 
 test("projects only server-declared jail controls and actor-visible held state", () => {
   const projection = projectEstateRaceSession({
+    actorPlayerId: "p1",
     state: {
       public: {
         turn: { activePlayerId: "p1", phase: "jail", turnNumber: 7 },
@@ -453,6 +498,36 @@ test("projects S4 building window, request and shortage-bid forms without forwar
       maxLength: 128
     }]);
   }
+});
+
+test("projects S5 parameter forms from schemas without forwarding server params", () => {
+  const actionIds = [
+    "trade.open", "trade.cash.set", "trade.asset.set", "trade.asset.remove",
+    "trade.card.offer", "trade.card.request", "bankruptcy.declare"
+  ];
+  const actions = provideEstateRaceAccessibleBoardActions({
+    state: {
+      public: { board: { availableActions: actionIds.map((actionId) => ({
+        id: actionId, label: actionId, actionId,
+        params: { targetPlayerId: "server", offeredCash: 999, requestedCash: 999, cellId: "server", side: "server", cardId: "server", heldCardId: "server", heldCardId2: "server" }
+      })) } }
+    }
+  } as unknown as Parameters<typeof provideEstateRaceAccessibleBoardActions>[0]);
+
+  assert.deepEqual(actions.map(({ params }) => params), actionIds.map(() => undefined));
+  assert.deepEqual(actions[0]?.fields, [{
+    name: "targetPlayerId", label: "Участник сделки", kind: "text", required: true, minLength: 1, maxLength: 128
+  }]);
+  assert.deepEqual(actions[1]?.fields?.map(({ name }) => name), ["offeredCash", "requestedCash"]);
+  assert.deepEqual(actions[2]?.fields?.map(({ name }) => name), ["cellId", "side"]);
+  assert.deepEqual(actions[3]?.fields?.map(({ name }) => name), ["cellId"]);
+  assert.deepEqual(actions[4]?.fields?.map(({ name }) => name), ["cardId"]);
+  assert.deepEqual(actions[5]?.fields?.map(({ name }) => name), ["cardId"]);
+  assert.deepEqual(actions[6]?.fields?.map(({ name }) => name), ["heldCardId", "heldCardId2"]);
+  assert.deepEqual(actions[6]?.fields?.map(({ required, defaultValue }) => ({ required, defaultValue })), [
+    { required: false, defaultValue: "" },
+    { required: false, defaultValue: "" }
+  ]);
 });
 
 test("validates only the bid JSON-schema boundary in the client", () => {

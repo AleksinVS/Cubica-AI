@@ -34,6 +34,8 @@ export interface EstateCellView {
   /** Server-owned S4 representation: 1..4 houses, 5 one hotel. */
   readonly improvementTier: number;
   readonly mortgaged: boolean;
+  readonly tradeSide: string | null;
+  readonly liquidationPending: boolean;
   readonly taxAmount: number | null;
   readonly ownerPlayerId: string | null;
 }
@@ -49,6 +51,8 @@ export interface EstatePlayerView {
   readonly jailAttempts: number;
   /** Present only in the authenticated owner's actor projection. */
   readonly heldExitCardId: string | null;
+  /** Actor-private second held-card slot; never copied from another actor. */
+  readonly heldExitCardId2: string | null;
   /** Public participant projection; absent when the endpoint is not exposed. */
   readonly bidderStatus: string | null;
   readonly buildingRequestCellId: string | null;
@@ -85,6 +89,40 @@ export interface EstateBuildingWindowView {
   readonly unitKind: string | null;
 }
 
+export interface EstateTradeView {
+  readonly status: string;
+  readonly proposerPlayerId: string | null;
+  readonly targetPlayerId: string | null;
+  readonly resumePlayerId: string | null;
+  readonly offeredCash: number;
+  readonly requestedCash: number;
+  readonly offeredCardId: string | null;
+  readonly requestedCardId: string | null;
+  readonly claimCardId: string | null;
+  readonly claimPlayerId: string | null;
+}
+
+export interface EstateObligationView {
+  readonly status: string;
+  readonly debtorPlayerId: string | null;
+  readonly creditorKind: string | null;
+  readonly creditorPlayerId: string | null;
+  readonly amount: number;
+  readonly perPartyAmount: number;
+  readonly reason: string | null;
+  readonly resumePlayerId: string | null;
+}
+
+export interface EstateLiquidationView {
+  readonly status: string;
+  readonly resumePlayerId: string | null;
+  readonly debtorPlayerId: string | null;
+  readonly creditorPlayerId: string | null;
+  readonly pendingCellId: string | null;
+  readonly claimCardId: string | null;
+  readonly claimCardId2: string | null;
+}
+
 export interface EstateBoardProjection {
   readonly cells: readonly EstateCellView[];
   readonly players: readonly EstatePlayerView[];
@@ -99,6 +137,9 @@ export interface EstateBoardProjection {
   readonly bankBuildings: EstateBuildingBankView;
   readonly buildingWindow: EstateBuildingWindowView;
   readonly buildingAuction: EstateAuctionView;
+  readonly trade: EstateTradeView;
+  readonly obligation: EstateObligationView;
+  readonly liquidation: EstateLiquidationView;
 }
 
 type JsonRecord = Record<string, unknown>;
@@ -156,19 +197,26 @@ const readCells = (publicState: JsonRecord): EstateCellView[] => {
         : [],
       improvementTier: improvementTier(attributes.improvementTier),
       mortgaged: attributes.mortgaged === true,
+      tradeSide: optionalText(attributes.tradeSide),
+      liquidationPending: attributes.liquidationPending === true,
       taxAmount: typeof attributes.taxAmount === "number" ? attributes.taxAmount : null,
       ownerPlayerId: typeof attributes.ownerPlayerId === "string" ? attributes.ownerPlayerId : null
     }];
   }).sort((left, right) => left.index - right.index);
 };
 
-const readPlayers = (state: JsonRecord, activePlayerId: string | null): EstatePlayerView[] => {
+const readPlayers = (
+  state: JsonRecord,
+  activePlayerId: string | null,
+  actorPlayerId: string | null
+): EstatePlayerView[] => {
   const players = isRecord(state.players) ? state.players : {};
   return Object.entries(players).flatMap(([id, raw], index) => {
     if (!isRecord(raw)) return [];
     const metrics = isRecord(raw.metrics) ? raw.metrics : {};
     const objects = isRecord(raw.objects) ? raw.objects : {};
     const flags = isRecord(raw.flags) ? raw.flags : {};
+    const canReadPrivate = actorPlayerId === id;
     return [{
       id,
       label: `Игрок ${index + 1}`,
@@ -177,7 +225,8 @@ const readPlayers = (state: JsonRecord, activePlayerId: string | null): EstatePl
       active: id === activePlayerId,
       inJail: isRecord(raw.flags) && raw.flags.inJail === true,
       jailAttempts: finiteNumber(metrics.jailAttempts),
-      heldExitCardId: optionalText(objects.heldExitCardId),
+      heldExitCardId: canReadPrivate ? optionalText(objects.heldExitCardId) : null,
+      heldExitCardId2: canReadPrivate ? optionalText(objects.heldExitCardId2) : null,
       bidderStatus: optionalText(objects.bidderStatus) ?? optionalText(flags.bidderStatus),
       buildingRequestCellId: optionalText(objects.buildingRequestCellId),
       buildingRequestUnitKind: optionalText(objects.buildingRequestUnitKind)
@@ -265,6 +314,49 @@ const readBuildingWindow = (publicState: JsonRecord): EstateBuildingWindowView =
   };
 };
 
+const readTrade = (publicState: JsonRecord): EstateTradeView => {
+  const trade = isRecord(publicState.trade) ? publicState.trade : {};
+  return {
+    status: text(trade.status, "idle"),
+    proposerPlayerId: optionalText(trade.proposerPlayerId),
+    targetPlayerId: optionalText(trade.targetPlayerId),
+    resumePlayerId: optionalText(trade.resumePlayerId),
+    offeredCash: finiteNumber(trade.offeredCash),
+    requestedCash: finiteNumber(trade.requestedCash),
+    offeredCardId: optionalText(trade.offeredCardId),
+    requestedCardId: optionalText(trade.requestedCardId),
+    claimCardId: optionalText(trade.claimCardId),
+    claimPlayerId: optionalText(trade.claimPlayerId)
+  };
+};
+
+const readObligation = (publicState: JsonRecord): EstateObligationView => {
+  const obligation = isRecord(publicState.obligation) ? publicState.obligation : {};
+  return {
+    status: text(obligation.status, "idle"),
+    debtorPlayerId: optionalText(obligation.debtorPlayerId),
+    creditorKind: optionalText(obligation.creditorKind),
+    creditorPlayerId: optionalText(obligation.creditorPlayerId),
+    amount: finiteNumber(obligation.amount),
+    perPartyAmount: finiteNumber(obligation.perPartyAmount),
+    reason: optionalText(obligation.reason),
+    resumePlayerId: optionalText(obligation.resumePlayerId)
+  };
+};
+
+const readLiquidation = (publicState: JsonRecord): EstateLiquidationView => {
+  const liquidation = isRecord(publicState.liquidation) ? publicState.liquidation : {};
+  return {
+    status: text(liquidation.status, "idle"),
+    resumePlayerId: optionalText(liquidation.resumePlayerId),
+    debtorPlayerId: optionalText(liquidation.debtorPlayerId),
+    creditorPlayerId: optionalText(liquidation.creditorPlayerId),
+    pendingCellId: optionalText(liquidation.pendingCellId),
+    claimCardId: optionalText(liquidation.claimCardId),
+    claimCardId2: optionalText(liquidation.claimCardId2)
+  };
+};
+
 /**
  * Build the shortest display-only route between two confirmed positions.
  * Snapshots do not carry movement direction, so choosing the shorter arc
@@ -290,16 +382,19 @@ export function traceEstateTokenPath(
 
 /** Convert a player-facing session snapshot to deterministic drawing data. */
 export function projectEstateRaceSession(
-  session: { state?: unknown; actionAvailability?: unknown }
+  session: { state?: unknown; actionAvailability?: unknown; actorPlayerId?: unknown }
 ): EstateBoardProjection {
   const state = isRecord(session.state) ? session.state : {};
   const publicState = isRecord(state.public) ? state.public : {};
   const board = isRecord(publicState.board) ? publicState.board : {};
   const turn = isRecord(publicState.turn) ? publicState.turn : {};
   const activePlayerId = typeof turn.activePlayerId === "string" ? turn.activePlayerId : null;
+  const actorPlayerId = typeof session.actorPlayerId === "string"
+    ? session.actorPlayerId
+    : typeof state.actorPlayerId === "string" ? state.actorPlayerId : null;
   return {
     cells: readCells(publicState),
-    players: readPlayers(state, activePlayerId),
+    players: readPlayers(state, activePlayerId, actorPlayerId),
     availableActions: readActions(board, readActionAvailability(session.actionAvailability)),
     activePlayerId,
     phase: text(turn.phase, "setup"),
@@ -319,6 +414,9 @@ export function projectEstateRaceSession(
         minimumNextBid: null,
         leaderPlayerId: optionalText(auction.leaderPlayerId)
       };
-    })()
+    })(),
+    trade: readTrade(publicState),
+    obligation: readObligation(publicState),
+    liquidation: readLiquidation(publicState)
   };
 }

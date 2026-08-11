@@ -1,6 +1,6 @@
 /**
- * Browser acceptance for the Estate Race S4 display and bounded action slice
- * (GSR-043).
+ * Browser acceptance for the Estate Race S0–S5 display and bounded action
+ * slices (GSR-034, GSR-041–044).
  *
  * The browser creates one normal authenticated player session and performs one
  * production-random setup followed by one production-random roll. The
@@ -8,8 +8,8 @@
  * predicts a destination, forces dice, or derives card/jail state in the
  * client. If production randomness lands on a free object, the normal DOM flow
  * still covers decline → bid → pass. Isolated previews prove the S4 card and
- * building parameter paths. The card preview still covers every possible
- * production dice result.
+ * building parameter paths plus S5 trade, obligation and bankruptcy paths.
+ * The card preview still covers every possible production dice result.
  */
 
 import { createHash, randomUUID } from "node:crypto";
@@ -46,7 +46,13 @@ type EstatePhase =
   | "blocked"
   | "finish"
   | "auction"
-  | "jail";
+  | "jail"
+  | "tradeDraft"
+  | "tradeResponse"
+  | "tradeClaim"
+  | "obligation"
+  | "liquidationMortgage"
+  | "liquidationClaim";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -60,7 +66,10 @@ type RuntimeSnapshot = {
     stateVersion: number;
   };
   state: {
-    players: Record<string, { metrics: { cash: number; position: number } }>;
+    players: Record<string, {
+      metrics: { cash: number; position: number };
+      status?: string;
+    }>;
     secret?: {
       random?: unknown;
       decks?: unknown;
@@ -82,6 +91,24 @@ type RuntimeSnapshot = {
       bankBuildings: {
         housesAvailable: number;
         hotelsAvailable: number;
+      };
+      trade?: {
+        status: string;
+        proposerPlayerId?: string;
+        targetPlayerId?: string;
+        offeredCash?: number;
+        requestedCash?: number;
+      };
+      obligation?: {
+        status: string;
+        amount?: number;
+        creditorKind?: string;
+        creditorPlayerId?: string;
+      };
+      liquidation?: {
+        status: string;
+        creditorPlayerId?: string;
+        pendingCellId?: string;
       };
       objects?: Record<string, unknown>;
       auction: {
@@ -132,7 +159,7 @@ test.afterAll(() => {
   }
 });
 
-test.describe("Estate Race S4", { tag: "@player" }, () => {
+test.describe("Estate Race S0–S5", { tag: "@player" }, () => {
   test("finalizes random participant order and presents one server-owned random landing", async ({ page }) => {
     // Includes a cold two-service startup while keeping one browser-created
     // session and its HttpOnly credential for the whole acceptance path.
@@ -148,7 +175,7 @@ test.describe("Estate Race S4", { tag: "@player" }, () => {
     await expect(page.locator(".game-player-root")).toBeVisible();
     await expect(page.locator(".loading-state")).toHaveCount(0);
     await expect(page.getByRole("heading", {
-      name: "Estate Race · S4",
+      name: "Estate Race · S5",
       level: 1
     })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Локальная партия: 2–6 участников", level: 2 })).toBeVisible();
@@ -302,6 +329,7 @@ test.describe("Estate Race S4", { tag: "@player" }, () => {
     );
     expect(roll.snapshot.state.public.turn.phase).toBe("finish");
     expect(roll.snapshot.state.public.board.availableActions).toEqual([
+      expect.objectContaining({ actionId: "trade.open", label: "Предложить сделку" }),
       expect.objectContaining({ actionId: "turn.finish", label: "Завершить ход" })
     ]);
     expectPlayerSnapshotHasNoPlatformSecrets(roll.snapshot);
@@ -380,7 +408,7 @@ test.describe("Estate Race S4", { tag: "@player" }, () => {
       params: { cellId: "cell-01" }
     });
     expect(readEstateCell(sold.snapshot, "cell-01").improvementTier)
-      .toBe(sellCellBefore.improvementTier - 1);
+      .toBe(Number(sellCellBefore.improvementTier) - 1);
     expect(sold.snapshot.state.players.p1?.metrics.cash)
       .toBe((cashBeforeSell as number) + Number(sellCellBefore.sellValue));
     expect(sold.snapshot.state.public.bankBuildings.housesAvailable)
@@ -421,6 +449,146 @@ test.describe("Estate Race S4", { tag: "@player" }, () => {
       .toBe((cashBeforeRedeem as number) - Number(mortgageCellBefore.redeemCost));
     expect(redeemed.snapshot.state.public.bankBuildings)
       .toEqual(sold.snapshot.state.public.bankBuildings);
+  });
+
+  test("accepts a declared cash trade through the production DOM form", async ({ page }) => {
+    test.setTimeout(120_000);
+    const source = materializeTradePreview();
+    const initial = await openPreviewSession(page, source, "Предложить сделку");
+    const p1CashBefore = initial.state.players.p1?.metrics.cash;
+    const p2CashBefore = initial.state.players.p2?.metrics.cash;
+    expect(p1CashBefore).toBeDefined();
+    expect(p2CashBefore).toBeDefined();
+
+    const opened = await submitBoardFormFields(page, "Предложить сделку", {
+      targetPlayerId: "p2"
+    });
+    expect(opened.requestBody).toMatchObject({
+      actionId: "trade.open",
+      params: { targetPlayerId: "p2" }
+    });
+    expect(opened.snapshot.state.public.turn.phase).toBe("tradeDraft");
+
+    const cashSet = await submitBoardFormFields(page, "Указать деньги", {
+      offeredCash: "100",
+      requestedCash: "50"
+    }, {
+      offeredCash: "Предлагаемые деньги",
+      requestedCash: "Запрашиваемые деньги"
+    });
+    expect(cashSet.requestBody).toMatchObject({
+      actionId: "trade.cash.set",
+      params: { offeredCash: 100, requestedCash: 50 }
+    });
+
+    const proposed = await clickBoardAction(page, "Передать предложение");
+    expect(proposed.requestBody).toMatchObject({ actionId: "trade.propose", params: {} });
+    expect(proposed.snapshot.state.public.turn.phase).toBe("tradeResponse");
+    expect(proposed.snapshot.state.public.trade?.status).toBe("response");
+
+    const accepted = await clickBoardAction(page, "Принять сделку");
+    expect(accepted.requestBody).toMatchObject({ actionId: "trade.accept", params: {} });
+    expect(accepted.snapshot.state.players.p1?.metrics.cash)
+      .toBe((p1CashBefore as number) - 50);
+    expect(accepted.snapshot.state.players.p2?.metrics.cash)
+      .toBe((p2CashBefore as number) + 50);
+    expect(accepted.snapshot.state.public.trade?.status).toBe("idle");
+    expect(accepted.snapshot.state.public.turn.phase).toBe("finish");
+  });
+
+  test("resolves a mandatory obligation after a legal mortgage through DOM actions", async ({ page }) => {
+    test.setTimeout(120_000);
+    const source = materializeObligationPreview();
+    const initial = await openPreviewSession(page, source, "Оплатить налог");
+    const cashBefore = initial.state.players.p1?.metrics.cash;
+    expect(cashBefore).toBe(30);
+    const cellBefore = readEstateCell(initial, "cell-01");
+    expect(cellBefore.mortgaged).toBe(false);
+
+    const started = await clickBoardAction(page, "Оплатить налог");
+    expect(started.requestBody).toMatchObject({ actionId: "tax.pay", params: {} });
+    expect(started.snapshot.state.public.turn.phase).toBe("obligation");
+    expect(started.snapshot.state.public.obligation?.status).toBe("active");
+    expect(started.snapshot.state.public.obligation?.amount).toBe(70);
+
+    const mortgaged = await submitBoardFormFields(page, "Заложить объект", {
+      cellId: "cell-01"
+    });
+    expect(mortgaged.requestBody).toMatchObject({
+      actionId: "property.mortgage",
+      params: { cellId: "cell-01" }
+    });
+    expect(readEstateCell(mortgaged.snapshot, "cell-01").mortgaged).toBe(true);
+    expect(mortgaged.snapshot.state.players.p1?.metrics.cash).toBe(75);
+
+    const resolved = await clickBoardAction(page, "Погасить обязательство");
+    expect(resolved.requestBody).toMatchObject({ actionId: "obligation.resolve", params: {} });
+    expect(resolved.snapshot.state.players.p1?.metrics.cash).toBe(5);
+    expect(resolved.snapshot.state.public.obligation?.status).toBe("idle");
+    expect(resolved.snapshot.state.public.turn.phase).toBe("finish");
+  });
+
+  test("routes player and bank bankruptcy through creditor transfer and bank auction DOM paths", async ({ page }) => {
+    test.setTimeout(120_000);
+
+    const creditorSource = materializeCreditorBankruptcyPreview();
+    const creditorInitial = await openPreviewSession(page, creditorSource, "Оплатить ренту");
+    expect(creditorInitial.state.players.p1?.metrics.cash).toBe(1200);
+    const rent = await clickBoardAction(page, "Оплатить ренту");
+    expect(rent.requestBody).toMatchObject({ actionId: "property.rent", params: {} });
+    expect(rent.snapshot.state.public.turn.phase).toBe("obligation");
+
+    const declaredToCreditor = await submitBoardFormFields(page, "Объявить банкротство", {
+      heldCardId: "",
+      heldCardId2: ""
+    });
+    expect(declaredToCreditor.requestBody).toMatchObject({
+      actionId: "bankruptcy.declare",
+      params: { heldCardId: "", heldCardId2: "" }
+    });
+    expect(declaredToCreditor.snapshot.state.players.p1?.status).toBe("eliminated");
+    expect(declaredToCreditor.snapshot.state.public.turn.phase).toBe("liquidationMortgage");
+    expect(declaredToCreditor.snapshot.state.public.liquidation?.creditorPlayerId).toBe("p2");
+    expect(declaredToCreditor.snapshot.state.public.liquidation?.pendingCellId).toBe("cell-05");
+
+    const keptMortgage = await clickBoardAction(page, "Сохранить залог");
+    expect(keptMortgage.requestBody).toMatchObject({
+      actionId: "mortgage.transfer.keep",
+      params: {}
+    });
+    expect(readEstateCell(keptMortgage.snapshot, "cell-05").mortgaged).toBe(true);
+    expect(keptMortgage.snapshot.state.public.turn.phase).toBe("finish");
+
+    const bankSource = materializeBankBankruptcyPreview();
+    const bankInitial = await openPreviewSession(page, bankSource, "Оплатить налог");
+    expect(bankInitial.state.players.p1?.metrics.cash).toBe(0);
+    const bankTax = await clickBoardAction(page, "Оплатить налог");
+    expect(bankTax.requestBody).toMatchObject({ actionId: "tax.pay", params: {} });
+
+    const declaredToBank = await submitBoardFormFields(page, "Объявить банкротство", {
+      heldCardId: "",
+      heldCardId2: ""
+    });
+    expect(declaredToBank.requestBody).toMatchObject({
+      actionId: "bankruptcy.declare",
+      params: { heldCardId: "", heldCardId2: "" }
+    });
+    expect(declaredToBank.snapshot.state.players.p1?.status).toBe("eliminated");
+    expect(readEstateCell(declaredToBank.snapshot, "cell-01").liquidationPending).toBe(true);
+    expect(declaredToBank.snapshot.state.public.turn.phase).toBe("auction");
+
+    const firstPass = await clickBoardAction(page, "Пас");
+    expect(firstPass.requestBody).toMatchObject({ actionId: "property.auction.pass", params: {} });
+    const secondPass = await clickBoardAction(page, "Пас");
+    expect(secondPass.requestBody).toMatchObject({ actionId: "property.auction.pass", params: {} });
+    expect(readEstateCell(secondPass.snapshot, "cell-01").ownerPlayerId).toBeNull();
+    expect(readEstateCell(secondPass.snapshot, "cell-01").liquidationPending).toBe(false);
+    expect(secondPass.snapshot.state.public.liquidation?.status).toBe("idle");
+    expect(secondPass.snapshot.state.public.turn.phase).toBe("finish");
+
+    const skipped = await clickBoardAction(page, "Завершить ход");
+    expect(skipped.requestBody).toMatchObject({ actionId: "turn.finish", params: {} });
+    expect(skipped.snapshot.state.public.turn.activePlayerId).toBe("p3");
   });
 });
 
@@ -623,6 +791,136 @@ function materializeSellMortgagePreview(): PreviewSource {
   return materializePreviewSource(previewManifest, "estate-s4-sell-redeem");
 }
 
+/** Materialize a cash-only S5 trade so the browser asserts atomic balances. */
+function materializeTradePreview(): PreviewSource {
+  const sourceManifest = readJson<JsonRecord>(path.join(SOURCE_GAME_ROOT, "game.manifest.json"));
+  const previewManifest = structuredClone(sourceManifest);
+  const config = requireRecord(previewManifest.config, "preview.config");
+  const turnModel = requireRecord(config.turnModel, "preview.config.turnModel");
+  const phases = Array.isArray(turnModel.phases) ? turnModel.phases : [];
+  turnModel.phases = ["finish", ...phases.filter((phase) => phase !== "finish")];
+  const state = requireRecord(previewManifest.state, "preview.state");
+  const playersTemplate = requireRecord(state.playersTemplate, "preview.state.playersTemplate");
+  const metrics = requireRecord(playersTemplate.metrics, "preview.state.playersTemplate.metrics");
+  metrics.cash = 1000;
+  const publicState = requireRecord(state.public, "preview.state.public");
+  publicState.setupComplete = true;
+  const board = requireRecord(publicState.board, "preview.state.public.board");
+  board.availableActions = [{
+    id: "trade-open",
+    label: "Предложить сделку",
+    actionId: "trade.open"
+  }];
+  return materializePreviewSource(previewManifest, "estate-s5-trade");
+}
+
+/** Materialize the low-cash tax branch used to exercise legal mortgage liquidity. */
+function materializeObligationPreview(): PreviewSource {
+  const sourceManifest = readJson<JsonRecord>(path.join(SOURCE_GAME_ROOT, "game.manifest.json"));
+  const previewManifest = structuredClone(sourceManifest);
+  const config = requireRecord(previewManifest.config, "preview.config");
+  const turnModel = requireRecord(config.turnModel, "preview.config.turnModel");
+  const phases = Array.isArray(turnModel.phases) ? turnModel.phases : [];
+  turnModel.phases = ["tax", ...phases.filter((phase) => phase !== "tax")];
+  const state = requireRecord(previewManifest.state, "preview.state");
+  const playersTemplate = requireRecord(state.playersTemplate, "preview.state.playersTemplate");
+  const metrics = requireRecord(playersTemplate.metrics, "preview.state.playersTemplate.metrics");
+  metrics.cash = 30;
+  metrics.position = 4;
+  const publicState = requireRecord(state.public, "preview.state.public");
+  publicState.setupComplete = true;
+  const board = requireRecord(publicState.board, "preview.state.public.board");
+  board.availableActions = [{
+    id: "pay-tax",
+    label: "Оплатить налог",
+    actionId: "tax.pay"
+  }];
+  const objects = requireRecord(publicState.objects, "preview.state.public.objects");
+  const boardCells = requireRecord(objects.boardCells, "preview.state.public.objects.boardCells");
+  const cell = requireRecord(boardCells["cell-01"], "preview board cell cell-01");
+  const attributes = requireRecord(cell.attributes, "preview board cell cell-01.attributes");
+  attributes.ownerPlayerId = "p1";
+  attributes.improvementTier = 0;
+  attributes.mortgaged = false;
+  return materializePreviewSource(previewManifest, "estate-s5-obligation");
+}
+
+/** Materialize the player-creditor bankruptcy branch with one mortgaged asset. */
+function materializeCreditorBankruptcyPreview(): PreviewSource {
+  const sourceManifest = readJson<JsonRecord>(path.join(SOURCE_GAME_ROOT, "game.manifest.json"));
+  const previewManifest = structuredClone(sourceManifest);
+  const config = requireRecord(previewManifest.config, "preview.config");
+  const turnModel = requireRecord(config.turnModel, "preview.config.turnModel");
+  const phases = Array.isArray(turnModel.phases) ? turnModel.phases : [];
+  turnModel.phases = ["rent", ...phases.filter((phase) => phase !== "rent")];
+  const state = requireRecord(previewManifest.state, "preview.state");
+  const playersTemplate = requireRecord(state.playersTemplate, "preview.state.playersTemplate");
+  const metrics = requireRecord(playersTemplate.metrics, "preview.state.playersTemplate.metrics");
+  metrics.cash = 1200;
+  metrics.position = 1;
+  const publicState = requireRecord(state.public, "preview.state.public");
+  publicState.setupComplete = true;
+  const board = requireRecord(publicState.board, "preview.state.public.board");
+  board.lastRoll = { values: [3, 4], total: 7, isDouble: false };
+  board.availableActions = [{
+    id: "property-rent",
+    label: "Оплатить ренту",
+    actionId: "property.rent"
+  }];
+  const objects = requireRecord(publicState.objects, "preview.state.public.objects");
+  const boardCells = requireRecord(objects.boardCells, "preview.state.public.objects.boardCells");
+  setEstateCellOwner(boardCells, "cell-01", "p2", false);
+  setEstateCellOwner(boardCells, "cell-05", "p1", true);
+  const rentCell = requireRecord(boardCells["cell-01"], "preview board cell cell-01");
+  const rentAttributes = requireRecord(rentCell.attributes, "preview board cell cell-01.attributes");
+  rentAttributes.rent = 2000;
+  rentAttributes.rent0 = 2000;
+  return materializePreviewSource(previewManifest, "estate-s5-creditor-bankruptcy");
+}
+
+/** Materialize the bank-creditor bankruptcy branch with an auctionable lot. */
+function materializeBankBankruptcyPreview(): PreviewSource {
+  const sourceManifest = readJson<JsonRecord>(path.join(SOURCE_GAME_ROOT, "game.manifest.json"));
+  const previewManifest = structuredClone(sourceManifest);
+  const config = requireRecord(previewManifest.config, "preview.config");
+  const players = requireRecord(config.players, "preview.config.players");
+  players.min = 3;
+  players.max = Math.max(Number(players.max), 3);
+  const turnModel = requireRecord(config.turnModel, "preview.config.turnModel");
+  const phases = Array.isArray(turnModel.phases) ? turnModel.phases : [];
+  turnModel.phases = ["tax", ...phases.filter((phase) => phase !== "tax")];
+  const state = requireRecord(previewManifest.state, "preview.state");
+  const playersTemplate = requireRecord(state.playersTemplate, "preview.state.playersTemplate");
+  const metrics = requireRecord(playersTemplate.metrics, "preview.state.playersTemplate.metrics");
+  metrics.cash = 0;
+  metrics.position = 4;
+  const publicState = requireRecord(state.public, "preview.state.public");
+  publicState.setupComplete = true;
+  const board = requireRecord(publicState.board, "preview.state.public.board");
+  board.availableActions = [{
+    id: "pay-tax",
+    label: "Оплатить налог",
+    actionId: "tax.pay"
+  }];
+  const objects = requireRecord(publicState.objects, "preview.state.public.objects");
+  const boardCells = requireRecord(objects.boardCells, "preview.state.public.objects.boardCells");
+  setEstateCellOwner(boardCells, "cell-01", "p1", true);
+  return materializePreviewSource(previewManifest, "estate-s5-bank-bankruptcy");
+}
+
+function setEstateCellOwner(
+  boardCells: JsonRecord,
+  cellId: string,
+  ownerPlayerId: string,
+  mortgaged: boolean
+): void {
+  const cell = requireRecord(boardCells[cellId], `preview board cell ${cellId}`);
+  const attributes = requireRecord(cell.attributes, `preview board cell ${cellId}.attributes`);
+  attributes.ownerPlayerId = ownerPlayerId;
+  attributes.improvementTier = 0;
+  attributes.mortgaged = mortgaged;
+}
+
 /** Copy one temporary manifest and the verified published player bundle. */
 function materializePreviewSource(
   previewManifest: JsonRecord,
@@ -721,7 +1019,7 @@ async function openPreviewSession(
   );
   await expect(page.locator(".game-player-root")).toBeVisible();
   await expect(page.locator(".loading-state")).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: "Estate Race · S4", level: 1 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Estate Race · S5", level: 1 })).toBeVisible();
   await expect(board(page).getByRole("button", { name: initialActionLabel }))
     .toBeVisible({ timeout: BOARD_PLUGIN_READY_TIMEOUT_MS });
   return snapshot;
@@ -754,7 +1052,7 @@ async function clickBoardAction(page: Page, label: string): Promise<BrowserActio
   ).toBe("applied");
   expectPlayerSnapshotHasNoPlatformSecrets(snapshot);
   const requestBody = runtimeRequest.postDataJSON() as Record<string, unknown>;
-  expect(JSON.stringify(requestBody)).not.toMatch(/random|deck|cardId|credential/iu);
+  expect(JSON.stringify(requestBody)).not.toMatch(/random|deck|credential/iu);
 
   return {
     requestBody,
@@ -768,6 +1066,18 @@ async function submitBoardFormAction(
   fieldLabel: string,
   value: string
 ): Promise<BrowserActionResult> {
+  return submitBoardFormFields(page, actionLabel, {
+    [await resolveFormFieldName(page, actionLabel, fieldLabel)]: value
+  });
+}
+
+/** Submit every scalar declared by a server action's accessible form. */
+async function submitBoardFormFields(
+  page: Page,
+  actionLabel: string,
+  values: Record<string, string>,
+  fieldLabels: Readonly<Record<string, string>> = {}
+): Promise<BrowserActionResult> {
   const previousRoundTrip = await boardRoundTripMarker(page);
   const actionRequest = page.waitForRequest((request) =>
     request.url().endsWith("/api/runtime/actions") && request.method() === "POST"
@@ -777,11 +1087,17 @@ async function submitBoardFormAction(
   );
 
   const form = board(page).getByRole("form", { name: actionLabel });
-  const field = form.getByLabel(fieldLabel);
-  if (await field.evaluate((element) => element.tagName === "SELECT")) {
-    await field.selectOption(value);
-  } else {
-    await field.fill(value);
+  await expect(form).toBeVisible({ timeout: BOARD_PLUGIN_READY_TIMEOUT_MS });
+  for (const [name, value] of Object.entries(values)) {
+    const field = fieldLabels[name] === undefined
+      ? form.locator(`[name="${name}"]`)
+      : form.getByLabel(fieldLabels[name]);
+    await expect(field).toHaveCount(1);
+    if (await field.evaluate((element) => element.tagName === "SELECT")) {
+      await field.selectOption(value);
+    } else {
+      await field.fill(value);
+    }
   }
   await form.getByRole("button", { name: actionLabel }).click();
   const [runtimeRequest, runtimeResponse] = await Promise.all([actionRequest, actionResponse]);
@@ -795,8 +1111,17 @@ async function submitBoardFormAction(
   ).toBe("applied");
   expectPlayerSnapshotHasNoPlatformSecrets(snapshot);
   const requestBody = runtimeRequest.postDataJSON() as Record<string, unknown>;
-  expect(JSON.stringify(requestBody)).not.toMatch(/random|deck|cardId|credential/iu);
+  expect(JSON.stringify(requestBody)).not.toMatch(/random|deck|credential/iu);
   return { requestBody, snapshot };
+}
+
+async function resolveFormFieldName(page: Page, actionLabel: string, fieldLabel: string): Promise<string> {
+  const field = board(page).getByRole("form", { name: actionLabel }).getByLabel(fieldLabel);
+  await expect(field).toHaveCount(1);
+  return field.getAttribute("name").then((name) => {
+    if (!name) throw new Error(`Form field ${fieldLabel} has no declared name.`);
+    return name;
+  });
 }
 
 async function submitAuctionBid(page: Page, amount: number): Promise<BrowserActionResult> {

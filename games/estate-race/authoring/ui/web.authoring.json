@@ -6,14 +6,14 @@
   "_definitions": {},
   "root": {
     "_type": "ui.Manifest",
-    "_label": "Web-интерфейс: Estate Race · S4",
+    "_label": "Web-интерфейс: Estate Race · S5",
     "_semantics": "UI S4: поле отображает подтверждённую сессию, строения, залог, запас банка, карточки, тюрьму, аукционы и только серверно объявленные действия.",
     "meta": {
       "id": "estate-race.ui.web",
-      "version": "0.4.0",
+      "version": "0.5.0",
       "schema_version": "1.0",
       "game_id": "estate-race",
-      "game_manifest_version": "0.4.0",
+      "game_manifest_version": "0.5.0",
       "channel": "web",
       "author": "Cubica"
     },
@@ -31,9 +31,9 @@
       {
         "id": "table",
         "_type": "ui.Screen",
-        "_label": "Экран table: Estate Race · S4",
+        "_label": "Экран table: Estate Race · S5",
         "_semantics": "Экран UI-манифеста table: setup, строения, залог, аукционы, tax, карточки и jail только показывают подтверждённое состояние и объявленные сервером действия.",
-        "title": "Estate Race · S4",
+        "title": "Estate Race · S5",
         "layout_mode": "topbar",
         "root": {
           "_type": "ui.Component",
@@ -57,12 +57,12 @@
               "children": [
                 {
                   "_type": "ui.Component",
-                  "_label": "Estate Race · S4 Ход · активен · этап",
+                  "_label": "Estate Race · S5 Ход · активен · этап",
                   "_semantics": "UI-компонент типа richTextComponent.",
                   "id": "table.title",
                   "type": "richTextComponent",
                   "props": {
-                    "html": "<h1>Estate Race · S4</h1><p>Ход {{game.state.public.turn.turnNumber}} · активен {{game.state.public.turn.activePlayerId}} · этап {{game.state.public.turn.phase}}</p><p>Строения, залог, карточки, тюрьма, рента и аукционы отображаются из подтверждённой проекции; доступные действия и их доступность объявляет сервер.</p>"
+                    "html": "<h1>Estate Race · S5</h1><p>Ход {{game.state.public.turn.turnNumber}} · активен {{game.state.public.turn.activePlayerId}} · этап {{game.state.public.turn.phase}}</p><p>Строения, сделки, обязательства, ликвидация, карточки, тюрьма, рента и аукционы отображаются из подтверждённой проекции; доступные действия и их доступность объявляет сервер.</p>"
                   }
                 }
               ]
