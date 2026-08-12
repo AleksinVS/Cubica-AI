@@ -1,4 +1,4 @@
-/** Package-level invariants for original content and the active S6 slice. */
+/** Package-level invariants for original content and the public Estate Race surface. */
 
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
@@ -31,7 +31,7 @@ test("manifest owns a classified forty-cell original board for two to six hotsea
   const state = manifest.state as Record<string, any>;
   const cells = state.public.objects.boardCells as Record<string, any>;
 
-  assert.equal((manifest.meta as Record<string, unknown>).version, "0.6.0");
+  assert.equal((manifest.meta as Record<string, unknown>).version, "0.7.0");
   assert.deepEqual(config.players, { min: 2, max: 6 });
   assert.equal(config.settings.mode, "local-hotseat");
   assert.equal(Object.keys(cells).length, 40);
@@ -356,4 +356,84 @@ test("package text contains no protected classic board names or trade dress clai
   }
   assert.match(manifestText, /Липовая аллея/);
   assert.match(manifestText, /Оранжерейный проезд/);
+});
+
+test("authoring publishes the standalone Estate Race name and read-only optional methodology", () => {
+  const authoring = readJson("../../../authoring/game.authoring.json") as Record<string, any>;
+  const ui = readJson("../../../authoring/ui/web.authoring.json") as Record<string, any>;
+  const meta = authoring.root.meta;
+  const methodology = authoring.root.content.data.methodology;
+  const serializedPlayerCopy = JSON.stringify({
+    meta,
+    ui: ui.root
+  });
+
+  assert.equal(meta.name, "Estate Race");
+  assert.equal(meta.version, "0.7.0");
+  assert.equal(meta.tags.includes("prototype"), false);
+  assert.doesNotMatch(serializedPlayerCopy, /прототип|· S\d|UI S\d/u);
+  assert.equal(ui.root.screens[0].title, "Estate Race");
+  assert.equal(ui.root.meta.version, "0.7.0");
+  assert.equal(ui.root.meta.game_manifest_version, "0.7.0");
+  assert.equal(ui.root.screens[0].layout_mode, "map-first");
+  assert.equal(ui.root.default_layout_mode, "map-first");
+
+  assert.deepEqual(methodology.mode, {
+    id: "guided-review",
+    title: "Партия с разбором решений",
+    description: "Необязательный формат: ведущий делает короткие паузы после значимых решений и обсуждает их, не меняя ход партии.",
+    optional: true,
+    defaultEnabled: false,
+    readOnly: true
+  });
+  assert.equal(methodology.competencies.length, 4);
+  assert.equal(methodology.participantPrompts.length, 4);
+  assert.equal(methodology.facilitatorNotes.length, 4);
+  assert.equal(methodology.reflectionQuestions.length, 4);
+  assert.equal("actionId" in methodology, false);
+  assert.equal("state" in methodology, false);
+  assert.equal("mechanics" in methodology, false);
+});
+
+test("design reference is original, self-contained and paired with narrow-layout intent", () => {
+  const provenance = readJson("../../../design/provenance.json") as Record<string, any>;
+  const svg = readFileSync(new URL("../../../design/estate-race-board-reference.svg", import.meta.url), "utf8");
+  const narrowIntent = readFileSync(new URL("../../../design/narrow-layout-intent.md", import.meta.url), "utf8");
+
+  assert.equal(provenance.origin, "original");
+  assert.equal(provenance.createdAt, "2026-08-12");
+  assert.deepEqual(provenance.externalAssets, []);
+  assert.deepEqual(provenance.externalFonts, []);
+  const reference = provenance.artifacts.find((artifact: Record<string, unknown>) =>
+    artifact.path === "estate-race-board-reference.svg"
+  );
+  assert.equal(reference?.sha256, createHash("sha256").update(svg).digest("hex"));
+  assert.match(svg, /width="1400" height="1000" viewBox="0 0 1400 1000"/u);
+  assert.doesNotMatch(svg, /<image\b|(?:href|src)="https?:\/\//u);
+  assert.doesNotMatch(
+    svg,
+    /<text[^>]*class="detail"[^>]*>[^<]*(?:монет|сбор\s+\d|\d+\s*·\s*\d)/u
+  );
+  assert.match(narrowIntent, /prefers-reduced-motion: reduce/u);
+  assert.match(narrowIntent, /DOM-кнопки и формы/u);
+  assert.match(narrowIntent, /не\s+является\s+источником\s+цен/u);
+});
+
+test("scene keeps form actions in the accessible DOM and respects reduced motion", () => {
+  const scene = readFileSync(new URL("../src/scene.ts", import.meta.url), "utf8");
+  const accessible = readFileSync(new URL("../src/accessible-actions.ts", import.meta.url), "utf8");
+
+  for (const actionId of [
+    "property.auction.bid",
+    "property.build.request",
+    "trade.cash.set",
+    "bankruptcy.declare"
+  ]) {
+    assert.match(scene, new RegExp(JSON.stringify(actionId)));
+    assert.match(accessible, new RegExp(JSON.stringify(actionId)));
+  }
+  assert.match(scene, /prefers-reduced-motion: reduce/u);
+  assert.match(scene, /!this\.prefersReducedMotion\(\)/u);
+  assert.match(scene, /projectEstateRaceSession\(currentSession\)/u);
+  assert.doesNotMatch(scene, /winner\s*=\s*projection\.players\.sort|cash\s*[+*/-]=/u);
 });

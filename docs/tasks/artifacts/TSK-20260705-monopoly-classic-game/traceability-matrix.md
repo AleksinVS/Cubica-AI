@@ -1,4 +1,4 @@
-# Матрица трассировки Estate Race (S0–S6)
+# Матрица трассировки Estate Race (S0–S10)
 
 Матрица является исполнительным срезом полного плана S0–S10 и не создаёт
 отдельную очередь. Источником порядка и критериев служит [полный
@@ -9,11 +9,11 @@
 Статусы означают: `реализовано` — поведение есть в текущем коде и имеет
 свежую проверку; `запланировано` — правило назначено срезу и имеет критерий,
 но ещё не принято; `заблокировано` — дальнейшая работа зависит от явно
-указанного решения или внешнего результата. До решения P-01 используются
-только оригинальные данные Estate Race; это не разрешает публикацию
-содержимого.
+указанного решения или внешнего результата. P-01 принято PM 2026-08-12:
+оригинальные наборы Estate Race — кандидаты публичного контента только после
+provenance/hash и проверки баланса; публикация ими ещё не объявляется.
 
-## Реализовано в текущем срезе
+## Реализовано после S0 и запланировано далее
 
 | Правило | Срез | Состояние / Game Intent / план | UI | Проверка | Статус |
 |---|---|---|---|---|---|
@@ -35,8 +35,8 @@
 
 | Правило | Срез | Состояние / Game Intent / план | UI | Проверка | Статус |
 |---|---|---|---|---|---|
-| Две скрытые колоды дают оригинальный эффект, discard и повторное перемешивание | S3 (GSR-042) | deck/discard state; `deck.draw`; bounded `effectKind` dispatcher | публичный результат карты | replay каждого эффекта, движения через старт, exhaustion, reshuffle, exact retry и поздний rollback | реализовано; окончательное содержание блокирует P-01 |
-| Удерживаемые карты выхода обеих колод извлекаются и возвращаются в точную колоду | S3/S5 (GSR-042/044) | два actor-private held leaf; `deck.extract/return`; accepted deck operations | обе карты видны только владельцу | три реальных цикла, одновременное удержание `event-exit`/`fund-exit`, peer/anonymous не получают held и secret deck | реализовано; окончательное содержание блокирует P-01 |
+| Две скрытые колоды дают оригинальный эффект, discard и повторное перемешивание | S3 (GSR-042) | deck/discard state; `deck.draw`; bounded `effectKind` dispatcher | публичный результат карты | replay каждого эффекта, движения через старт, exhaustion, reshuffle, exact retry и поздний rollback | реализовано; набор — кандидат публичного контента после provenance/hash и проверки баланса |
+| Удерживаемые карты выхода обеих колод извлекаются и возвращаются в точную колоду | S3/S5 (GSR-042/044) | два actor-private held leaf; `deck.extract/return`; accepted deck operations | обе карты видны только владельцу | три реальных цикла, одновременное удержание `event-exit`/`fund-exit`, peer/anonymous не получают held и secret deck | реализовано; набор — кандидат публичного контента после provenance/hash и проверки баланса |
 | Тюрьма имеет оплату, обе карты, дубль и предел попыток выхода | S3/S5 (GSR-042/044) | jail phase/attempts; `jail.pay`, `jail.card.use.*`, `jail.roll`, `jail.third.move`, `turn.finish` | состояние тюрьмы и только server-declared способы выхода | оплата, обе карты, дубль, две неудачи, третья попытка, обязательство без повторного RNG | реализовано |
 | Строительство/продажа равномерны и ограничены запасом банка 32/12 | S4 (GSR-043) | `improvementTier`, `bankBuildings`; `property.build/sell`; bounded inventory plans | подтверждённые tier, банк и DOM-параметры | replay `0↔5`, равномерности, атомарного отказа и 32/12; production DOM sale | реализовано |
 | Отель заменяет четыре дома, обратный разбор и продажа используют согласованную долю | S4 (GSR-043) | tier `4↔5`, возврат домов/отеля и точная `sellValue` | ступень ренты и подтверждение продажи | все уровни туда/обратно, точные суммы и inventory conservation | реализовано |
@@ -46,21 +46,29 @@
 | Непогашенное обязательство допускает только продажу строений и залог | S5 (GSR-044) | obligation/liability state; `obligation.resolve`, liquidity intents; phase plan | подтверждённая сумма, получатель и server-declared действия | налог, рента, тюрьма, карточные цепочки, погашение через mortgage, без частичного успеха | реализовано |
 | Банкротство передаёт активы кредитору или банку и исключает участника | S5 (GSR-044) | `state.players.status`, ownership/held cards, liquidation state; `bankruptcy.declare`; transfer/auction plans | получатель, pending asset и DOM-действия залога/аукциона | оба получателя, две карты, заложенный актив, multi-lot/all-pass, 2/6, пропуск eliminated и browser flow | реализовано; S5 завершён |
 | Последний активный участник становится победителем ровно один раз | S6 (GSR-045) | `state.players` bounded record-map, server-owned terminal outcome; `estate.finish-last-active-player` | итоговый экран, закрытие изменяющих действий | `3→2`, обе ветви `2→1`, multi-lot, exact retry и terminal rejection | реализовано; S6 завершён |
-| Локальная партия 2–6 игроков использует один manifest до terminal outcome | S6 (GSR-045) | один game manifest; поздняя допустимая фикстура задаётся до session creation, затем только Game Intents | responsive UI, DOM fallback и подтверждённый winner | начало/середина/поздняя/terminal fixtures, bounded transcript и production browser flow | реализовано для локального режима; долговечное PostgreSQL-восстановление остаётся внешней границей S8 |
-| Тексты, карточки, mockups и методический слой подключаются к тем же состояниям | S7 | content provenance + UI bindings; read-only projections и risk confirmations | адаптивное поле, карточки, keyboard/focus, reflection | visual comparison, accessibility и content-rights review | запланировано |
-| Сетевая сессия сохраняет actor boundary, персональную проекцию и reconnect | S8 | authenticated participants, WebSocket projection, PostgreSQL version; те же intents | два браузерных контекста и reconnect state | spoofing/privacy, stale version, reconnect/resync | запланировано |
-| ИИ получает только проекцию и доступные действия, а не состояние движка | S9 | agent seat/fallback declarations; agent action choice → обычный dispatcher | состояние ИИ и fallback | adversarial mock, invalid choice, bounded retry/fallback, replay | запланировано |
+| Локальная партия 2–6 игроков использует один manifest до terminal outcome | S6 (GSR-045) | один game manifest; поздняя допустимая фикстура задаётся до session creation, затем только Game Intents | responsive UI, DOM fallback и подтверждённый winner | начало/середина/поздняя/terminal fixtures, bounded transcript и production browser flow | реализовано для локального режима; долговечное PostgreSQL-восстановление остаётся внешней границей private invite network |
+| Тексты, карточки, mockups и методический слой подключаются к тем же состояниям | S7 (GSR-046) | content provenance + UI bindings; read-only projections и risk confirmations; game/UI authoring `0.7.0` | map-first адаптивное поле, карточки, keyboard/focus, reflection, game-owned design reference, responsive camera | package `49/49`, plugin `37/37` + typecheck, balance `3/3` (`PASS-for-closed-alpha`), production browser S0–S7 `8/8`, style-parity `PASS`; локальная accessibility matrix `PASS` на 1400x1000/768x1024/320x800 | реализовано; публикация и финальный баланс не объявлены |
+| Общая модель участников сохраняет actor boundary, персональную проекцию и доступные действия | S8 | общая `participants` model; actor-scoped projection; те же intents | локальная проекция и доступность действий | privacy, stale version и actor checks | запланировано |
+| ИИ получает только проекцию и доступные действия, а не состояние движка | S9 | agent seat/fallback declarations; agent action choice → обычный dispatcher | состояние ИИ и fallback | adversarial mock, invalid choice, ordered safe fallback, pause/human takeover при недоступном Agent Runtime | запланировано |
+| Private invite network сохраняет actor boundary и reconnect | S10 | authenticated invite-only participants, WebSocket projection, PostgreSQL version; те же intents | два браузерных контекста и reconnect state | spoofing/privacy, stale version, reconnect/resync | запланировано |
 | Каталог публикуется только после принятия содержания, ресурсов и режимов | S10 | immutable game bundle + provenance; release/catalog plan | утверждённое название, описание и preview | production build/E2E, rights and product acceptance | запланировано |
 
 ## Заблокировано решениями и внешними воротами
 
 | Правило/ворота | Срез | Состояние / Game Intent / план | UI | Проверка | Статус |
 |---|---|---|---|---|---|
-| P-01: окончательные публичные названия, тексты, цены и таблицы ренты | S10 | source-of-truth content package ещё не утверждён; техническую готовность S1 это не меняет | публикационный текст и брендинг не утверждаются | PM выбирает оригинальный пакет либо отдельно подтверждённые права | заблокировано: P-01 pending |
-| Финальное содержание и публикация в каталоге | S10 | технически завершённый S1 использует оригинальные внутренние данные; финальный content package ещё не принят | production/catalog branding не объявляется готовым | content/provenance gate после P-01 | заблокировано: P-01 pending |
-| Сетевая партия | S8 | зависит от ADR-059 participants/join, персональной доставки и reconnect, не меняет game manifest | network UI не активируется | platform task + PostgreSQL/concurrency/browser checks | заблокировано: внешняя платформа |
-| ИИ-места | S9 | зависит от participants и actor-scoped availability из ADR-060; отдельную ветку runtime создавать нельзя | AI seat UI не активируется | adversarial projection/fallback checks после S8 prerequisites | заблокировано: внешняя платформа |
+| P-01: оригинальный публичный кандидат | S7 | принято PM 2026-08-12; source-of-truth наборы имеют provenance/hash; balance `3/3` только `PASS-for-closed-alpha` | public local UI/content завершены для локальной приёмки; каталог не активируется | provenance/rights-record, balance review и будущая economy telemetry | принято; публикационные критерии остаются |
+| Финальное содержание и публикация в каталоге | S10 | P-01 разблокировал кандидатный пакет, но контент, UI и каталог ещё не приняты | production/catalog branding не объявляется готовым | content/provenance, balance и product acceptance | запланировано |
+| Private invite network | S10 | зависит от общей модели участников, AI-среза, ADR-059, durability и quotas; game manifest не меняется | network UI не активируется | platform task + PostgreSQL/concurrency/browser checks | заблокировано: внешняя платформа |
+| ИИ-места | S9 | зависит от общей модели участников и ADR-060; отдельную ветку runtime создавать нельзя | AI seat UI не активируется | adversarial projection/fallback checks | заблокировано: внешняя платформа |
 | Каталог и полное закрытие | S10 | зависит от P-01, S7, `LEGACY-0072` и `LEGACY-0068`; source of truth не расширяется | каталог не публикуется | milestone H/N/A и product/rights acceptance | заблокировано: зависимости |
+
+Visual reference SHA-256: `f492f69142368e03def533fe5aead099f67c1f037582072eaa6dc059fd7c250c`;
+balance report/input SHA-256: `0d06087345740f5e88b842c416366884451ea6e5d11d998ab94f2b1ea943c9e7` /
+`9e1ac64d249f958e162308c012eb423dc8757d6627f976b8c264b32c0120134b`. Локальная
+visual/accessibility matrix — evidence конкретных viewport-проверок, не
+сертификация доступности. Для публичного релиза остаются economy telemetry и
+решение о целевой длительности партии.
 
 Таким образом, ни одно существенное правило S1–S10 не остаётся без среза,
 состояния/намерения, UI, проверки и статуса; `запланировано` не означает

@@ -246,6 +246,60 @@ test("projects public S5 trade, obligation, liquidation and nullable ownership",
   assert.equal(projection.players[1]?.heldExitCardId2, "event-exit");
 });
 
+test("keeps presentation values server-owned across property, card and jail context", () => {
+  const projection = projectEstateRaceSession({
+    actorPlayerId: "p1",
+    state: {
+      public: {
+        turn: { activePlayerId: "p1", phase: "acquire", turnNumber: 9 },
+        board: {
+          lastCardId: "fund-message",
+          lastRoll: { values: [4, 2], total: 6, isDouble: false },
+          availableActions: [{
+            id: "buy-declared",
+            label: "Купить Медную улицу",
+            actionId: "property.buy",
+            params: { cellId: "cell-05", quotedPrice: 173 }
+          }]
+        },
+        objects: {
+          boardCells: {
+            "cell-05": {
+              attributes: {
+                index: 5,
+                label: "Медная улица",
+                shortLabel: "Медная",
+                kind: "estate",
+                price: 173,
+                rent: 29,
+                ownerPlayerId: null,
+                improvementTier: 2,
+                mortgaged: false
+              }
+            }
+          }
+        }
+      },
+      players: {
+        p1: {
+          metrics: { cash: 811, position: 5, jailAttempts: 1 },
+          flags: { inJail: true }
+        }
+      }
+    }
+  });
+
+  assert.equal(projection.cells[0]?.price, 173);
+  assert.equal(projection.cells[0]?.rent, 29);
+  assert.equal(projection.cells[0]?.improvementTier, 2);
+  assert.equal(projection.lastCardId, "fund-message");
+  assert.deepEqual(projection.lastRoll, { values: [4, 2], total: 6, isDouble: false });
+  assert.equal(projection.players[0]?.cash, 811);
+  assert.equal(projection.players[0]?.inJail, true);
+  assert.equal(projection.players[0]?.jailAttempts, 1);
+  assert.deepEqual(projection.availableActions[0]?.params, { cellId: "cell-05", quotedPrice: 173 });
+});
+
 test("presents setup as the server-declared first action without client parameters", () => {
   const actions = provideEstateRaceAccessibleBoardActions({
     state: {

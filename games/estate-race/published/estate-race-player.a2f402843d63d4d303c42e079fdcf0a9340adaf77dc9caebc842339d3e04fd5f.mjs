@@ -457,45 +457,139 @@ function projectEstateRaceSession(session) {
 __pluginDefine("src/scene.ts", (exports, module) => {
 "use strict";
 /**
- * Phaser renderer for the Estate Race public field.
+ * Editorial Phaser surface for the Estate Race public field.
  *
- * The scene paints the authoritative snapshot and forwards only actions that
- * Runtime API already exposed. Balance, rent, movement and ownership rules are
- * intentionally absent from this file.
+ * The scene paints an authoritative snapshot and forwards only actions already
+ * exposed by Runtime API. It never calculates movement, prices, ownership,
+ * legality or the winner.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.createEstateRaceScene = void 0;
+exports.createEstateRaceScene = exports.estateRaceOverviewCameraView = exports.clampEstateRaceCameraView = exports.clampEstateRaceZoom = exports.fitEstateRaceOverviewZoom = void 0;
 const accessible_actions_ts_1 = __pluginRequire("src/accessible-actions.ts");
 const board_state_ts_1 = __pluginRequire("src/board-state.ts");
 const DESIGN_WIDTH = 1400;
 const DESIGN_HEIGHT = 1000;
-const PLAYER_COLORS = [0x245f52, 0xb56f3c, 0x735b87, 0x3c6f91, 0x9b7332, 0x934c54];
+const CAMERA_WORLD = { x: 0, y: 0, width: DESIGN_WIDTH, height: DESIGN_HEIGHT };
+const MAX_CAMERA_ZOOM = 3;
+const WHEEL_ZOOM_STEP = 1.15;
+const safeDimension = (value) => Number.isFinite(value) && value > 0 ? value : 1;
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+/** Largest undistorted zoom that keeps the complete Estate Race board visible. */
+const fitEstateRaceOverviewZoom = (viewport) => Math.min(safeDimension(viewport.width) / CAMERA_WORLD.width, safeDimension(viewport.height) / CAMERA_WORLD.height);
+exports.fitEstateRaceOverviewZoom = fitEstateRaceOverviewZoom;
+/** Camera zoom is never allowed below the recoverable complete-board overview. */
+const clampEstateRaceZoom = (viewport, requestedZoom) => {
+    const overviewZoom = (0, exports.fitEstateRaceOverviewZoom)(viewport);
+    const finiteRequest = Number.isFinite(requestedZoom) ? requestedZoom : overviewZoom;
+    return clamp(finiteRequest, overviewZoom, Math.max(MAX_CAMERA_ZOOM, overviewZoom));
+};
+exports.clampEstateRaceZoom = clampEstateRaceZoom;
+const clampScrollAxis = (value, viewportSize, worldStart, worldSize, zoom) => {
+    const safeViewport = safeDimension(viewportSize);
+    const visibleSize = safeViewport / zoom;
+    if (visibleSize >= worldSize) {
+        // Phaser scroll is measured before zoom around the viewport centre. Lock
+        // a smaller world to that centre rather than letting its spare axis drift.
+        return worldStart + worldSize / 2 - safeViewport / 2;
+    }
+    const minimum = worldStart + (visibleSize - safeViewport) / 2;
+    const maximum = minimum + worldSize - visibleSize;
+    return clamp(value, minimum, maximum);
+};
+/** Clamp a camera view to the immutable 1400 by 1000 board world. */
+const clampEstateRaceCameraView = (view, viewport) => {
+    const zoom = (0, exports.clampEstateRaceZoom)(viewport, view.zoom);
+    return {
+        scrollX: clampScrollAxis(view.scrollX, viewport.width, CAMERA_WORLD.x, CAMERA_WORLD.width, zoom),
+        scrollY: clampScrollAxis(view.scrollY, viewport.height, CAMERA_WORLD.y, CAMERA_WORLD.height, zoom),
+        zoom
+    };
+};
+exports.clampEstateRaceCameraView = clampEstateRaceCameraView;
+/** Deterministic initial/reset view used on scene creation and resize. */
+const estateRaceOverviewCameraView = (viewport) => (0, exports.clampEstateRaceCameraView)({
+    scrollX: CAMERA_WORLD.x + CAMERA_WORLD.width / 2 - safeDimension(viewport.width) / 2,
+    scrollY: CAMERA_WORLD.y + CAMERA_WORLD.height / 2 - safeDimension(viewport.height) / 2,
+    zoom: (0, exports.fitEstateRaceOverviewZoom)(viewport)
+}, viewport);
+exports.estateRaceOverviewCameraView = estateRaceOverviewCameraView;
+const zoomEstateRaceCameraAt = (view, point, requestedZoom, viewport) => {
+    const zoom = (0, exports.clampEstateRaceZoom)(viewport, requestedZoom);
+    const originX = safeDimension(viewport.width) / 2;
+    const originY = safeDimension(viewport.height) / 2;
+    const currentZoom = (0, exports.clampEstateRaceZoom)(viewport, view.zoom);
+    const worldX = view.scrollX + originX + (point.x - originX) / currentZoom;
+    const worldY = view.scrollY + originY + (point.y - originY) / currentZoom;
+    return (0, exports.clampEstateRaceCameraView)({
+        scrollX: worldX - originX - (point.x - originX) / zoom,
+        scrollY: worldY - originY - (point.y - originY) / zoom,
+        zoom
+    }, viewport);
+};
+const panEstateRaceCamera = (view, screenDelta, viewport) => (0, exports.clampEstateRaceCameraView)({
+    scrollX: view.scrollX - screenDelta.x / view.zoom,
+    scrollY: view.scrollY - screenDelta.y / view.zoom,
+    zoom: view.zoom
+}, viewport);
+const COLOR = {
+    paper: 0xf2ead9,
+    paperLight: 0xfaf5e9,
+    paperShade: 0xe4d9c4,
+    green: 0x173f37,
+    greenSoft: 0x315d51,
+    greenMuted: 0x6d8279,
+    copper: 0xb56f3c,
+    ink: 0x20322e,
+    quiet: 0x66736d,
+    warning: 0x8a4d37
+};
+// Participant colors remain functional map markers; copper is the only
+// decorative accent in the editorial palette.
+const PLAYER_COLORS = [0x173f37, 0xb56f3c, 0x55766d, 0x294f61, 0x76684d, 0x6e5551];
 const phaseLabel = {
     setup: "определение порядка",
     roll: "бросок",
-    acquire: "покупка",
-    rent: "рента",
-    tax: "налог",
-    resolve: "эффект клетки",
-    blocked: "следующий срез",
-    finish: "завершение",
+    acquire: "решение о покупке",
+    rent: "расчёт аренды",
+    tax: "обязательный сбор",
+    resolve: "событие клетки",
+    blocked: "ожидание доступного действия",
+    finish: "завершение хода",
     auction: "аукцион",
-    buildingWindow: "окно заявок",
+    buildingWindow: "заявки на строения",
     buildingAuction: "аукцион строений",
-    jail: "тюрьма",
-    terminal: "завершено"
+    jail: "выход из заключения",
+    tradeDraft: "подготовка сделки",
+    tradeResponse: "ответ на сделку",
+    tradeClaim: "передача карты",
+    obligation: "обязательство",
+    liquidationMortgage: "восстановление платёжеспособности",
+    liquidationClaim: "завершение ликвидации",
+    terminal: "партия завершена"
 };
+const parameterFormActionIds = new Set([
+    "property.auction.bid",
+    "property.build",
+    "property.build.request",
+    "property.build.auction.bid",
+    "property.sell",
+    "property.mortgage",
+    "property.redeem",
+    "trade.open",
+    "trade.cash.set",
+    "trade.asset.set",
+    "trade.asset.remove",
+    "trade.card.offer",
+    "trade.card.request",
+    "bankruptcy.declare"
+]);
+const canvasCanDispatch = (action) => !parameterFormActionIds.has(action.actionId);
 const errorText = (error) => error instanceof Error ? error.message : "Действие отклонено сервером";
 const tokenPosition = (cell, playerIndex) => ({
-    x: cell.x - 32 + (playerIndex % 3) * 32,
-    y: cell.y + cell.height / 2 - 18 - Math.floor(playerIndex / 3) * 28
+    x: cell.x - 30 + (playerIndex % 3) * 30,
+    y: cell.y + cell.height / 2 - 19 - Math.floor(playerIndex / 3) * 27
 });
-// These commands require a DOM form to collect declared parameters. The
-// canvas must not guess a cell or unit kind and must never submit an empty
-// request that the server would reject.
-const canvasCanDispatch = (action) => action.actionId !== "property.build.request"
-    && action.actionId !== "property.auction.bid"
-    && action.actionId !== "property.build.auction.bid";
+const money = (value) => `${value.toLocaleString("ru-RU")} монет`;
 /** Build a scene solely from platform-injected Phaser. */
 const createEstateRaceScene = (context) => {
     const Phaser = context.Phaser;
@@ -504,6 +598,8 @@ const createEstateRaceScene = (context) => {
     let lastError = null;
     class EstateRaceScene extends Phaser.Scene {
         projectionReady = false;
+        cameraInteractionReady = false;
+        dragState = null;
         constructor() {
             super({ key: `estate-race:${context.sceneId}` });
         }
@@ -511,349 +607,437 @@ const createEstateRaceScene = (context) => {
             this.projectionReady = true;
             this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
                 this.projectionReady = false;
+                this.stopCameraInteraction();
             });
-            this.cameras.main.setBackgroundColor("#13211f");
+            this.cameras.main.setBackgroundColor("#f2ead9");
+            this.configureCameraInteraction();
             this.renderProjection(true);
         }
+        /** Return to the complete-board overview exposed by the host DOM control. */
+        fitToView() {
+            if (!this.projectionReady)
+                return;
+            this.applyCameraView((0, exports.estateRaceOverviewCameraView)(this.currentViewport()));
+        }
+        /** Zoom around the viewport centre; factors above one mean zooming in. */
+        zoomBy(factor) {
+            if (!this.projectionReady || !Number.isFinite(factor) || factor <= 0)
+                return;
+            const viewport = this.currentViewport();
+            this.applyZoomAt({ x: viewport.width / 2, y: viewport.height / 2 }, factor);
+        }
+        configureCameraInteraction() {
+            this.cameraInteractionReady = true;
+            this.fitToView();
+            this.input.on("wheel", this.handleWheel);
+            this.input.on("pointerdown", this.handlePointerDown);
+            this.input.on("pointermove", this.handlePointerMove);
+            this.input.on("pointerup", this.handlePointerUp);
+            this.input.on("pointerupoutside", this.handlePointerUp);
+            this.input.on("gameout", this.cancelDrag);
+            this.scale.on("resize", this.handleResize);
+        }
+        stopCameraInteraction() {
+            if (!this.cameraInteractionReady)
+                return;
+            this.cameraInteractionReady = false;
+            this.dragState = null;
+            this.input.off("wheel", this.handleWheel);
+            this.input.off("pointerdown", this.handlePointerDown);
+            this.input.off("pointermove", this.handlePointerMove);
+            this.input.off("pointerup", this.handlePointerUp);
+            this.input.off("pointerupoutside", this.handlePointerUp);
+            this.input.off("gameout", this.cancelDrag);
+            this.scale.off("resize", this.handleResize);
+        }
+        currentViewport() {
+            const camera = this.cameras.main;
+            return {
+                width: safeDimension(camera.width),
+                height: safeDimension(camera.height)
+            };
+        }
+        currentCameraView() {
+            const camera = this.cameras.main;
+            return { scrollX: camera.scrollX, scrollY: camera.scrollY, zoom: camera.zoom };
+        }
+        applyCameraView(view) {
+            this.cameras.main.setZoom(view.zoom).setScroll(view.scrollX, view.scrollY);
+        }
+        applyZoomAt(point, factor) {
+            const viewport = this.currentViewport();
+            const current = this.currentCameraView();
+            this.applyCameraView(zoomEstateRaceCameraAt(current, point, current.zoom * factor, viewport));
+        }
+        handleWheel = (pointer, _currentlyOver, _deltaX, deltaY) => {
+            if (deltaY === 0)
+                return;
+            this.applyZoomAt({ x: pointer.x, y: pointer.y }, deltaY < 0 ? WHEEL_ZOOM_STEP : 1 / WHEEL_ZOOM_STEP);
+        };
+        handlePointerDown = (pointer, currentlyOver) => {
+            // Camera input starts only on empty map space. Cell and action hit zones
+            // keep their established gameplay dispatch without competing gestures.
+            if (currentlyOver.length > 0)
+                return;
+            this.dragState = { pointerId: pointer.id, x: pointer.x, y: pointer.y };
+        };
+        handlePointerMove = (pointer) => {
+            const previous = this.dragState;
+            if (!previous || previous.pointerId !== pointer.id || !pointer.isDown)
+                return;
+            const delta = { x: pointer.x - previous.x, y: pointer.y - previous.y };
+            this.dragState = { pointerId: pointer.id, x: pointer.x, y: pointer.y };
+            if (delta.x === 0 && delta.y === 0)
+                return;
+            this.applyCameraView(panEstateRaceCamera(this.currentCameraView(), delta, this.currentViewport()));
+        };
+        handlePointerUp = (pointer) => {
+            if (this.dragState?.pointerId === pointer.id)
+                this.dragState = null;
+        };
+        cancelDrag = () => {
+            this.dragState = null;
+        };
+        handleResize = () => {
+            if (!this.cameraInteractionReady)
+                return;
+            // A resized map-first workspace establishes a new complete overview.
+            // This keeps the board recoverable after rotation or fullscreen changes.
+            this.fitToView();
+        };
         renderProjection(initial = false) {
             if (!this.projectionReady)
                 return;
             const projection = (0, board_state_ts_1.projectEstateRaceSession)(currentSession);
             this.children.removeAll(true);
             const graphics = this.add.graphics();
-            graphics.fillStyle(0x13211f, 1);
-            graphics.fillRect(0, 0, DESIGN_WIDTH, DESIGN_HEIGHT);
-            graphics.lineStyle(2, 0x42635d, 0.55);
-            for (let x = 24; x < DESIGN_WIDTH; x += 36)
-                graphics.lineBetween(x, 0, x, DESIGN_HEIGHT);
-            for (let y = 24; y < DESIGN_HEIGHT; y += 36)
-                graphics.lineBetween(0, y, DESIGN_WIDTH, y);
-            this.drawCentre(projection);
+            this.drawPaper(graphics);
+            this.drawCentre(projection, initial);
             for (const cell of projection.cells)
                 this.drawCell(graphics, cell, projection, initial);
             this.drawPlayers(projection, initial);
-            this.drawStatus(projection);
+            this.drawParticipantLedger(projection);
             if (lastError) {
-                this.add.text(DESIGN_WIDTH / 2, DESIGN_HEIGHT - 22, lastError, {
-                    color: "#fff7e8",
-                    backgroundColor: "#8d3d36",
-                    padding: { x: 16, y: 9 },
-                    fontFamily: "Georgia, serif",
-                    fontSize: "20px"
-                }).setOrigin(0.5, 1);
+                this.add.text(DESIGN_WIDTH / 2, DESIGN_HEIGHT - 18, lastError, {
+                    color: "#fffaf0",
+                    backgroundColor: "#8a4d37",
+                    padding: { x: 18, y: 10 },
+                    fontFamily: "Arial, sans-serif",
+                    fontSize: "18px"
+                }).setOrigin(0.5, 1).setDepth(20);
             }
             previousProjection = projection;
         }
-        drawCentre(projection) {
-            const plaque = this.add.rectangle(680, 475, 690, 380, 0xe8dfca, 1)
-                .setStrokeStyle(5, 0xb56f3c, 0.75);
-            if (!previousProjection) {
-                plaque.setAlpha(0);
-                this.tweens.add({ targets: plaque, alpha: 1, duration: 420, ease: "Cubic.Out" });
+        prefersReducedMotion() {
+            return typeof window !== "undefined"
+                && typeof window.matchMedia === "function"
+                && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        }
+        drawPaper(graphics) {
+            graphics.fillStyle(COLOR.paper, 1);
+            graphics.fillRect(0, 0, DESIGN_WIDTH, DESIGN_HEIGHT);
+            // Sparse registration lines suggest an editorial map without competing
+            // with the forty-cell route.
+            graphics.lineStyle(1, COLOR.greenMuted, 0.12);
+            for (let x = 28; x < DESIGN_WIDTH; x += 64)
+                graphics.lineBetween(x, 0, x, DESIGN_HEIGHT);
+            for (let y = 28; y < DESIGN_HEIGHT; y += 64)
+                graphics.lineBetween(0, y, DESIGN_WIDTH, y);
+            graphics.lineStyle(3, COLOR.green, 0.85);
+            graphics.strokeRoundedRect(24, 24, DESIGN_WIDTH - 48, DESIGN_HEIGHT - 48, 18);
+            graphics.lineStyle(1, COLOR.copper, 0.75);
+            graphics.strokeRoundedRect(34, 34, DESIGN_WIDTH - 68, DESIGN_HEIGHT - 68, 14);
+        }
+        drawCentre(projection, initial) {
+            const sheet = this.add.rectangle(700, 500, 930, 640, COLOR.paperLight, 0.98)
+                .setStrokeStyle(2, COLOR.green, 0.82);
+            if (initial && !this.prefersReducedMotion()) {
+                sheet.setAlpha(0);
+                this.tweens.add({ targets: sheet, alpha: 0.98, duration: 320, ease: "Cubic.Out" });
             }
-            this.add.text(680, 370, "ESTATE RACE", {
-                color: "#173a34",
+            this.add.text(700, 252, "ESTATE RACE", {
+                color: "#173f37",
                 fontFamily: "Georgia, serif",
-                fontSize: "54px",
+                fontSize: "48px",
                 fontStyle: "bold",
-                letterSpacing: 5
+                letterSpacing: 7
             }).setOrigin(0.5);
-            this.add.text(680, 425, `Ход ${projection.turnNumber} · ${phaseLabel[projection.phase] ?? projection.phase}`, {
-                color: "#495c55",
+            this.add.text(700, 294, "ЭКОНОМИЧЕСКАЯ СТРАТЕГИЯ", {
+                color: "#b56f3c",
                 fontFamily: "Arial, sans-serif",
-                fontSize: "22px"
+                fontSize: "14px",
+                fontStyle: "bold",
+                letterSpacing: 3
             }).setOrigin(0.5);
-            this.add.text(680, 455, `Банк строений · дома ${projection.bankBuildings.housesAvailable}/32 · отели ${projection.bankBuildings.hotelsAvailable}/12`, {
-                color: "#495c55",
+            const activePlayer = this.playerLabel(projection, projection.activePlayerId);
+            const phase = phaseLabel[projection.phase] ?? projection.phase;
+            this.add.text(700, 341, `ХОД ${projection.turnNumber}  ·  ${activePlayer}  ·  ${phase}`, {
+                color: "#315d51",
                 fontFamily: "Arial, sans-serif",
-                fontSize: "17px"
+                fontSize: "19px",
+                fontStyle: "bold"
             }).setOrigin(0.5);
-            if (projection.outcome.status === "terminal") {
-                this.drawOutcomeSummary(projection);
-            }
-            else if (projection.phase === "terminal") {
-                this.add.text(680, 505, "Итог игры недоступен: сервер не подтвердил корректный результат.", {
-                    color: "#8d3d36",
-                    align: "center",
-                    wordWrap: { width: 600 },
-                    fontFamily: "Arial, sans-serif",
-                    fontSize: "20px"
-                }).setOrigin(0.5);
-            }
-            else if (projection.phase === "buildingWindow") {
-                this.drawBuildingWindowSummary(projection);
-            }
-            else if (projection.phase === "buildingAuction") {
-                this.drawBuildingAuctionSummary(projection);
-            }
-            else if (projection.phase === "auction") {
-                this.drawAuctionSummary(projection);
-            }
-            else if (projection.lastRoll) {
-                const dice = projection.lastRoll.values.map((value) => `[ ${value} ]`).join("   ");
-                this.add.text(680, 485, `${dice}\nсумма ${projection.lastRoll.total}`, {
-                    color: "#173a34",
-                    align: "center",
-                    fontFamily: "Georgia, serif",
-                    fontSize: "30px",
-                    lineSpacing: 8
-                }).setOrigin(0.5);
-            }
-            else {
-                this.add.text(680, 485, "Кости ждут первого броска", {
-                    color: "#66746d",
-                    fontFamily: "Georgia, serif",
-                    fontSize: "24px"
-                }).setOrigin(0.5);
-            }
-            if (projection.phase === "blocked") {
-                this.add.text(680, 535, "Эта клетка ещё не активирована в текущем срезе игры. Действий нет.", {
-                    color: "#8d3d36",
-                    align: "center",
-                    wordWrap: { width: 540 },
-                    fontFamily: "Arial, sans-serif",
-                    fontSize: "20px"
-                }).setOrigin(0.5);
-            }
-            if (projection.outcome.status !== "terminal"
-                && projection.phase !== "terminal"
-                && projection.phase !== "blocked"
-                && projection.phase !== "auction") {
-                this.drawCardAndJailSummary(projection);
-            }
-            if (projection.outcome.status !== "terminal")
-                this.drawS5Summary(projection);
-            // A bid requires the numeric DOM form. Never dispatch an empty bid from
-            // the canvas; the server remains the authority for the submitted amount.
-            const action = projection.availableActions.find((item) => !item.disabled && canvasCanDispatch(item));
+            this.add.rectangle(700, 372, 660, 1, COLOR.copper, 0.8);
+            this.drawDecisionContext(projection);
+            this.drawEconomyLine(projection);
+            const action = projection.availableActions.find((item) => !item.disabled);
             if (action)
                 this.drawPrimaryAction(action);
         }
-        drawAuctionSummary(projection) {
-            const auction = projection.auction;
-            const auctionCell = auction.cellId === null
-                ? null
-                : projection.cells.find((cell) => cell.id === auction.cellId);
-            const minimumNextBid = auction.minimumNextBid === null ? "—" : auction.minimumNextBid;
-            const lines = [
-                `Аукцион · ${auctionCell?.shortLabel ?? auction.cellId ?? "объект не объявлен"}`,
-                `Текущая ставка: ${auction.currentBid}`,
-                `Минимальная следующая ставка: ${minimumNextBid}`,
-                `Минимальный шаг: ${auction.minimumIncrement}`,
-                `Лидер: ${auction.leaderPlayerId ?? "нет"}`,
-                `Ход вернётся: ${auction.resumePlayerId ?? "не объявлено"}`
-            ];
-            this.add.text(680, 485, lines.join("\n"), {
-                color: "#173a34",
-                align: "center",
+        drawDecisionContext(projection) {
+            const phaseChanged = previousProjection !== null && previousProjection.phase !== projection.phase;
+            const context = this.decisionCopy(projection);
+            const eyebrow = this.add.text(700, 402, context.eyebrow.toUpperCase(), {
+                color: "#b56f3c",
                 fontFamily: "Arial, sans-serif",
-                fontSize: "21px",
-                lineSpacing: 7,
-                wordWrap: { width: 600 }
+                fontSize: "13px",
+                fontStyle: "bold",
+                letterSpacing: 2
             }).setOrigin(0.5);
-        }
-        drawOutcomeSummary(projection) {
-            const winnerId = projection.outcome.winnerPlayerId;
-            const winner = winnerId === null
-                ? null
-                : projection.players.find((player) => player.id === winnerId);
-            const winnerLabel = winner?.label ?? winnerId;
-            const result = winnerLabel === null
-                ? "Победитель не объявлен"
-                : `Победитель: ${winnerLabel}`;
-            this.add.text(680, 505, ["Игра завершена", result].join("\n"), {
-                color: "#173a34",
+            const title = this.add.text(700, 446, context.title, {
+                color: context.warning ? "#8a4d37" : "#20322e",
                 align: "center",
                 fontFamily: "Georgia, serif",
-                fontSize: "30px",
+                fontSize: "28px",
                 fontStyle: "bold",
-                lineSpacing: 12,
-                wordWrap: { width: 600 }
+                wordWrap: { width: 650 }
             }).setOrigin(0.5);
-            this.add.text(680, 590, projection.outcome.reason === "last-active-player"
-                ? "Последний активный участник"
-                : "Результат подтверждён сервером", {
-                color: "#495c55",
-                align: "center",
-                fontFamily: "Arial, sans-serif",
-                fontSize: "18px",
-                wordWrap: { width: 560 }
-            }).setOrigin(0.5);
-        }
-        drawBuildingWindowSummary(projection) {
-            const window = projection.buildingWindow;
-            this.add.text(680, 505, [
-                `Окно заявок · ${window.unitKind ?? "тип не объявлен"}`,
-                `Продолжит ход: ${window.resumePlayerId ?? "не объявлено"}`
-            ].join("\n"), {
-                color: "#173a34",
-                align: "center",
-                fontFamily: "Arial, sans-serif",
-                fontSize: "21px",
-                lineSpacing: 7
-            }).setOrigin(0.5);
-        }
-        drawBuildingAuctionSummary(projection) {
-            const auction = projection.buildingAuction;
-            this.add.text(680, 505, [
-                "Аукцион строений",
-                `Текущая ставка: ${auction.currentBid}`,
-                `Минимальный шаг: ${auction.minimumIncrement}`,
-                `Лидер: ${auction.leaderPlayerId ?? "нет"}`
-            ].join("\n"), {
-                color: "#173a34",
-                align: "center",
-                fontFamily: "Arial, sans-serif",
-                fontSize: "21px",
-                lineSpacing: 7
-            }).setOrigin(0.5);
-        }
-        drawS5Summary(projection) {
-            const lines = [];
-            if (projection.trade.status !== "idle") {
-                const trade = projection.trade;
-                lines.push(`Сделка: ${trade.status} · ${trade.proposerPlayerId ?? "—"} → ${trade.targetPlayerId ?? "—"}`);
-                lines.push(`Деньги: ${trade.offeredCash} / ${trade.requestedCash}`);
-            }
-            if (projection.obligation.status !== "idle") {
-                const debt = projection.obligation;
-                lines.push(`Обязательство: ${debt.status} · должник ${debt.debtorPlayerId ?? "—"} · ${debt.amount}`);
-                lines.push(`Причина: ${debt.reason ?? "—"} · получатель ${debt.creditorPlayerId ?? debt.creditorKind ?? "—"}`);
-            }
-            if (projection.liquidation.status !== "idle") {
-                const liquidation = projection.liquidation;
-                lines.push(`Ликвидация: ${liquidation.status}`);
-                if (liquidation.pendingCellId !== null)
-                    lines.push(`Ожидает клетку: ${liquidation.pendingCellId}`);
-            }
-            if (lines.length === 0)
-                return;
-            this.add.text(680, 695, lines.join("\n"), {
-                color: "#8d3d36",
-                align: "center",
-                fontFamily: "Arial, sans-serif",
-                fontSize: "16px",
-                lineSpacing: 4,
-                wordWrap: { width: 600 }
-            }).setOrigin(0.5);
-        }
-        drawCardAndJailSummary(projection) {
-            const activePlayer = projection.players.find((player) => player.id === projection.activePlayerId);
-            const heldPlayer = projection.players.find((player) => player.heldExitCardId !== null || player.heldExitCardId2 !== null);
-            const heldCards = heldPlayer === undefined
-                ? []
-                : [heldPlayer.heldExitCardId, heldPlayer.heldExitCardId2]
-                    .filter((cardId) => cardId !== null);
-            const lines = [
-                projection.lastCardId === null ? null : `Последняя открытая карта: ${projection.lastCardId}`,
-                activePlayer?.inJail
-                    ? `Попытки выхода: ${activePlayer.jailAttempts}/3`
-                    : null,
-                heldPlayer === undefined || heldCards.length === 0
-                    ? null
-                    : `${heldPlayer.label}: карты выхода ${heldCards.join(", ")}`
-            ].filter((line) => line !== null);
-            if (lines.length === 0)
-                return;
-            this.add.text(680, 550, lines.join("\n"), {
-                color: "#495c55",
+            const body = this.add.text(700, 505, context.body, {
+                color: "#52615b",
                 align: "center",
                 fontFamily: "Arial, sans-serif",
                 fontSize: "17px",
-                lineSpacing: 5,
-                wordWrap: { width: 580 }
+                lineSpacing: 6,
+                wordWrap: { width: 660 }
+            }).setOrigin(0.5);
+            if (phaseChanged && !this.prefersReducedMotion()) {
+                for (const item of [eyebrow, title, body])
+                    item.setAlpha(0);
+                this.tweens.add({
+                    targets: [eyebrow, title, body],
+                    alpha: 1,
+                    y: "+=0",
+                    duration: 220,
+                    ease: "Sine.Out"
+                });
+            }
+        }
+        decisionCopy(projection) {
+            if (projection.outcome.status === "terminal") {
+                const winner = this.playerLabel(projection, projection.outcome.winnerPlayerId);
+                return {
+                    eyebrow: "Итог подтверждён сервером",
+                    title: `Партия завершена · ${winner}`,
+                    body: projection.outcome.reason === "last-active-player"
+                        ? "Последний активный участник остаётся в игре."
+                        : "Результат получен из подтверждённой игровой проекции."
+                };
+            }
+            if (projection.phase === "terminal") {
+                return {
+                    eyebrow: "Итог недоступен",
+                    title: "Сервер не подтвердил корректный результат",
+                    body: "Интерфейс не определяет победителя самостоятельно.",
+                    warning: true
+                };
+            }
+            if (projection.auction.cellId !== null || projection.phase === "auction") {
+                const cell = projection.cells.find((item) => item.id === projection.auction.cellId);
+                const next = projection.auction.minimumNextBid === null ? "не объявлена" : money(projection.auction.minimumNextBid);
+                return {
+                    eyebrow: "Аукцион",
+                    title: cell?.label ?? projection.auction.cellId ?? "Объект не объявлен",
+                    body: `Текущая ставка ${money(projection.auction.currentBid)} · следующая ${next}\nЛидер: ${this.playerLabel(projection, projection.auction.leaderPlayerId)}`
+                };
+            }
+            if (projection.phase === "buildingWindow") {
+                return {
+                    eyebrow: "Развитие собственности",
+                    title: "Открыто окно заявок",
+                    body: `Тип строения: ${projection.buildingWindow.unitKind ?? "не объявлен"} · ход продолжит ${this.playerLabel(projection, projection.buildingWindow.resumePlayerId)}`
+                };
+            }
+            if (projection.phase === "buildingAuction") {
+                return {
+                    eyebrow: "Аукцион строений",
+                    title: `Текущая ставка ${money(projection.buildingAuction.currentBid)}`,
+                    body: `Шаг ${money(projection.buildingAuction.minimumIncrement)} · лидер ${this.playerLabel(projection, projection.buildingAuction.leaderPlayerId)}`
+                };
+            }
+            if (projection.trade.status !== "idle") {
+                const trade = projection.trade;
+                return {
+                    eyebrow: "Сделка",
+                    title: `${this.playerLabel(projection, trade.proposerPlayerId)} → ${this.playerLabel(projection, trade.targetPlayerId)}`,
+                    body: `Предлагается ${money(trade.offeredCash)} · запрашивается ${money(trade.requestedCash)}\nСтатус: ${trade.status}`
+                };
+            }
+            if (projection.obligation.status !== "idle") {
+                const debt = projection.obligation;
+                return {
+                    eyebrow: "Обязательство",
+                    title: `${this.playerLabel(projection, debt.debtorPlayerId)} · ${money(debt.amount)}`,
+                    body: `Причина: ${debt.reason ?? "не объявлена"} · получатель ${this.playerLabel(projection, debt.creditorPlayerId)}`,
+                    warning: true
+                };
+            }
+            if (projection.liquidation.status !== "idle") {
+                const liquidation = projection.liquidation;
+                const cell = projection.cells.find((item) => item.id === liquidation.pendingCellId);
+                return {
+                    eyebrow: "Восстановление платёжеспособности",
+                    title: this.playerLabel(projection, liquidation.debtorPlayerId),
+                    body: `Статус: ${liquidation.status} · объект ${cell?.shortLabel ?? liquidation.pendingCellId ?? "не объявлен"}`,
+                    warning: true
+                };
+            }
+            const active = projection.players.find((player) => player.id === projection.activePlayerId);
+            if (active?.inJail || projection.phase === "jail") {
+                return {
+                    eyebrow: "Заключение",
+                    title: `${active?.label ?? "Активный участник"} выбирает способ выхода`,
+                    body: `Подтверждённые попытки: ${active?.jailAttempts ?? 0}/3. Способы выхода показывает только сервер.`
+                };
+            }
+            const activeCell = active === undefined
+                ? null
+                : projection.cells.find((cell) => cell.index === active.position) ?? null;
+            if ((projection.phase === "acquire" || projection.phase === "rent") && activeCell !== null) {
+                const owner = this.playerLabel(projection, activeCell.ownerPlayerId);
+                return {
+                    eyebrow: projection.phase === "acquire" ? "Решение о собственности" : "Арендное обязательство",
+                    title: activeCell.label,
+                    body: `Цена ${activeCell.price === null ? "—" : money(activeCell.price)} · аренда ${activeCell.rent === null ? "—" : money(activeCell.rent)} · владелец ${owner}`
+                };
+            }
+            if (projection.lastCardId !== null) {
+                return {
+                    eyebrow: "Открытая карта",
+                    title: projection.lastCardId,
+                    body: "Показан последний публичный результат; будущий порядок колоды скрыт."
+                };
+            }
+            if (projection.lastRoll !== null) {
+                return {
+                    eyebrow: "Подтверждённый бросок",
+                    title: projection.lastRoll.values.map((value) => `〔${value}〕`).join("  "),
+                    body: `Сумма ${projection.lastRoll.total}${projection.lastRoll.isDouble ? " · дубль" : ""}`
+                };
+            }
+            return {
+                eyebrow: "Начало партии",
+                title: "Поле готово",
+                body: "Дождитесь действия, объявленного сервером для текущего участника."
+            };
+        }
+        drawEconomyLine(projection) {
+            this.add.rectangle(700, 594, 660, 1, COLOR.greenMuted, 0.35);
+            this.add.text(700, 615, `БАНК СТРОЕНИЙ  ·  ДОМА ${projection.bankBuildings.housesAvailable}/32  ·  ОТЕЛИ ${projection.bankBuildings.hotelsAvailable}/12`, {
+                color: "#53665f",
+                fontFamily: "Arial, sans-serif",
+                fontSize: "13px",
+                fontStyle: "bold",
+                letterSpacing: 1
             }).setOrigin(0.5);
         }
         drawPrimaryAction(action) {
-            const button = this.add.rectangle(680, 620, 360, 68, 0x245f52, 1)
-                .setStrokeStyle(2, 0xf4e8cf, 0.65)
+            const needsForm = !canvasCanDispatch(action);
+            const y = 667;
+            if (needsForm) {
+                this.add.text(700, y - 5, action.label, {
+                    color: "#173f37",
+                    fontFamily: "Arial, sans-serif",
+                    fontSize: "19px",
+                    fontStyle: "bold"
+                }).setOrigin(0.5);
+                this.add.text(700, y + 22, "Заполните доступную форму под полем", {
+                    color: "#66736d",
+                    fontFamily: "Arial, sans-serif",
+                    fontSize: "13px"
+                }).setOrigin(0.5);
+                return;
+            }
+            const button = this.add.rectangle(700, y, 360, 58, COLOR.green, 1)
+                .setStrokeStyle(2, COLOR.copper, 0.9)
                 .setInteractive({ useHandCursor: true });
-            this.add.text(680, 620, action.label, {
-                color: "#fff9e9",
+            this.add.text(700, y, action.label, {
+                color: "#fffaf0",
                 fontFamily: "Arial, sans-serif",
-                fontSize: "23px",
+                fontSize: "19px",
                 fontStyle: "bold"
             }).setOrigin(0.5);
-            button.on("pointerover", () => button.setFillStyle(0x327565, 1));
-            button.on("pointerout", () => button.setFillStyle(0x245f52, 1));
+            button.on("pointerover", () => button.setFillStyle(COLOR.greenSoft, 1));
+            button.on("pointerout", () => button.setFillStyle(COLOR.green, 1));
             button.on("pointerdown", () => this.dispatchAction(action));
         }
         drawCell(graphics, cell, projection, initial) {
-            const estate = cell.kind === "estate";
-            const fill = estate
-                ? 0xf2e5ca
-                : cell.kind === "start"
-                    ? 0xb9d2c2
-                    : cell.kind === "tax" || cell.kind === "go-to-jail"
-                        ? 0xd9b5a7
-                        : cell.kind === "event" || cell.kind === "fund"
-                            ? 0xc8d4df
-                            : 0xded7c5;
-            graphics.fillStyle(fill, 1);
+            const purchasable = cell.kind === "estate" || cell.kind === "transit" || cell.kind === "utility";
+            const fill = cell.kind === "start"
+                ? 0xd6e2d7
+                : cell.kind === "tax" || cell.kind === "go-to-jail"
+                    ? 0xe7d0c1
+                    : cell.kind === "event" || cell.kind === "fund"
+                        ? 0xe0e5df
+                        : purchasable ? COLOR.paperLight : COLOR.paperShade;
             const auctionCell = projection.phase === "auction" && projection.auction.cellId === cell.id;
-            graphics.lineStyle(auctionCell ? 6 : estate ? 4 : 2, auctionCell ? 0x245f52 : estate ? 0xb56f3c : 0x6f8178, 0.95);
-            graphics.fillRoundedRect(cell.x - cell.width / 2, cell.y - cell.height / 2, cell.width, cell.height, 12);
-            graphics.strokeRoundedRect(cell.x - cell.width / 2, cell.y - cell.height / 2, cell.width, cell.height, 12);
-            this.add.text(cell.x, cell.y - 30, cell.shortLabel, {
-                color: "#183a34",
+            graphics.fillStyle(fill, 1);
+            graphics.lineStyle(auctionCell ? 5 : 2, auctionCell ? COLOR.copper : COLOR.green, auctionCell ? 1 : 0.72);
+            graphics.fillRoundedRect(cell.x - cell.width / 2, cell.y - cell.height / 2, cell.width, cell.height, 8);
+            graphics.strokeRoundedRect(cell.x - cell.width / 2, cell.y - cell.height / 2, cell.width, cell.height, 8);
+            if (purchasable) {
+                graphics.fillStyle(COLOR.copper, cell.mortgaged ? 0.25 : 0.9);
+                graphics.fillRect(cell.x - cell.width / 2 + 7, cell.y - cell.height / 2 + 7, cell.width - 14, 5);
+            }
+            this.add.text(cell.x, cell.y - (cell.height >= 100 ? 29 : 13), cell.shortLabel, {
+                color: "#20322e",
                 align: "center",
                 fontFamily: "Georgia, serif",
-                fontSize: estate ? "13px" : "12px",
-                fontStyle: estate ? "bold" : "normal",
-                wordWrap: { width: cell.width - 24 }
+                fontSize: cell.height >= 100 ? "12px" : "11px",
+                fontStyle: purchasable ? "bold" : "normal",
+                wordWrap: { width: cell.width - 18 }
             }).setOrigin(0.5);
-            const detail = estate || cell.kind === "transit" || cell.kind === "utility"
-                ? `${cell.price ?? "—"} · рента ${cell.rent ?? "—"}`
-                : cell.kind === "tax" ? `сбор ${cell.taxAmount ?? "—"}` : `клетка ${cell.index}`;
-            this.add.text(cell.x, cell.y + 20, detail, {
-                color: "#65716c",
+            const detail = purchasable
+                ? `${cell.price ?? "—"} · ${cell.rent ?? "—"}`
+                : cell.kind === "tax" ? `сбор ${cell.taxAmount ?? "—"}` : `№ ${cell.index}`;
+            this.add.text(cell.x, cell.y + (cell.height >= 100 ? 17 : 12), detail, {
+                color: "#66736d",
                 fontFamily: "Arial, sans-serif",
-                fontSize: "10px"
+                fontSize: "9px"
             }).setOrigin(0.5);
-            if (estate && cell.improvementTier > 0) {
-                const marker = cell.improvementTier === 5
-                    ? "★ ОТЕЛЬ"
-                    : `${"■".repeat(cell.improvementTier)} ДОМА`;
-                this.add.text(cell.x, cell.y + 42, marker, {
-                    color: cell.improvementTier === 5 ? "#8d3d36" : "#245f52",
+            if (cell.improvementTier > 0) {
+                const marker = cell.improvementTier === 5 ? "ОТЕЛЬ" : `${"▪".repeat(cell.improvementTier)} ДОМ`;
+                this.add.text(cell.x, cell.y + cell.height / 2 - 24, marker, {
+                    color: "#173f37",
                     fontFamily: "Arial, sans-serif",
-                    fontSize: "11px",
+                    fontSize: "9px",
                     fontStyle: "bold"
                 }).setOrigin(0.5);
             }
             if (cell.mortgaged) {
-                this.add.text(cell.x, cell.y - cell.height / 2 + 12, "ЗАЛОЖЕНО", {
-                    color: "#8d3d36",
-                    backgroundColor: "#fff1e4",
+                this.add.text(cell.x, cell.y - cell.height / 2 + 12, "ЗАЛОГ", {
+                    color: "#8a4d37",
+                    backgroundColor: "#faf5e9",
                     fontFamily: "Arial, sans-serif",
-                    fontSize: "10px",
+                    fontSize: "9px",
                     fontStyle: "bold",
-                    padding: { x: 5, y: 3 }
+                    padding: { x: 4, y: 2 }
                 }).setOrigin(0.5);
             }
-            if (cell.tradeSide !== null) {
-                this.add.text(cell.x, cell.y + cell.height / 2 - 30, `СДЕЛКА: ${cell.tradeSide}`, {
-                    color: "#735b87",
+            if (cell.tradeSide !== null || cell.liquidationPending) {
+                this.add.text(cell.x, cell.y + cell.height / 2 - 13, cell.liquidationPending ? "ЛИКВИДАЦИЯ" : "В СДЕЛКЕ", {
+                    color: "#8a4d37",
                     fontFamily: "Arial, sans-serif",
-                    fontSize: "9px",
-                    fontStyle: "bold"
-                }).setOrigin(0.5);
-            }
-            if (cell.liquidationPending) {
-                this.add.text(cell.x, cell.y + cell.height / 2 - 30, "ЛИКВИДАЦИЯ", {
-                    color: "#8d3d36",
-                    fontFamily: "Arial, sans-serif",
-                    fontSize: "9px",
+                    fontSize: "8px",
                     fontStyle: "bold"
                 }).setOrigin(0.5);
             }
             if (cell.ownerPlayerId) {
                 const ownerIndex = projection.players.findIndex((player) => player.id === cell.ownerPlayerId);
-                const ribbon = this.add.rectangle(cell.x, cell.y + cell.height / 2 - 12, cell.width - 22, 18, PLAYER_COLORS[Math.max(0, ownerIndex)] ?? PLAYER_COLORS[0], 1);
+                const ribbon = this.add.rectangle(cell.x, cell.y + cell.height / 2 - 6, cell.width - 16, 8, PLAYER_COLORS[Math.max(0, ownerIndex)] ?? PLAYER_COLORS[0], 1);
                 const previousOwner = previousProjection?.cells.find((item) => item.id === cell.id)?.ownerPlayerId;
-                if (!initial && previousOwner !== cell.ownerPlayerId) {
+                if (!initial && previousOwner !== cell.ownerPlayerId && !this.prefersReducedMotion()) {
                     ribbon.setAlpha(0);
-                    this.tweens.add({ targets: ribbon, alpha: 1, duration: 360, ease: "Sine.Out" });
+                    this.tweens.add({ targets: ribbon, alpha: 1, duration: 220, ease: "Sine.Out" });
                 }
             }
             const cellAction = projection.availableActions.find((action) => action.params?.cellId === cell.id);
@@ -868,49 +1052,61 @@ const createEstateRaceScene = (context) => {
                 const cell = projection.cells.find((item) => item.index === player.position);
                 if (!cell)
                     return;
-                const currentTokenPosition = tokenPosition(cell, index);
-                const token = this.add.circle(currentTokenPosition.x, currentTokenPosition.y, player.active ? 12 : 10, PLAYER_COLORS[index] ?? PLAYER_COLORS[0], 1).setStrokeStyle(4, 0xfff7e4, 1);
+                const current = tokenPosition(cell, index);
+                const token = this.add.circle(current.x, current.y, player.active ? 12 : 10, PLAYER_COLORS[index] ?? PLAYER_COLORS[0], 1).setStrokeStyle(player.active ? 4 : 3, COLOR.paperLight, 1).setDepth(10);
                 const previousPlayer = previousProjection?.players.find((item) => item.id === player.id);
                 const previousCell = previousProjection?.cells.find((item) => item.index === previousPlayer?.position);
-                if (!initial && previousPlayer && previousCell && previousPlayer.position !== player.position) {
-                    const previousTokenPosition = tokenPosition(previousCell, index);
-                    token.setPosition(previousTokenPosition.x, previousTokenPosition.y);
+                if (!initial
+                    && !this.prefersReducedMotion()
+                    && previousPlayer
+                    && previousCell
+                    && previousPlayer.position !== player.position) {
+                    const from = tokenPosition(previousCell, index);
+                    token.setPosition(from.x, from.y);
                     const track = (0, board_state_ts_1.traceEstateTokenPath)(projection.cells, previousPlayer.position, player.position);
                     this.tweens.add({
                         targets: token,
-                        // Tweening through every crossed cell keeps the token on the
-                        // cyclic track instead of cutting diagonally across the board.
                         x: track.map((item) => tokenPosition(item, index).x),
                         y: track.map((item) => tokenPosition(item, index).y),
-                        duration: Math.max(360, track.length * 130),
+                        duration: Math.max(260, track.length * 95),
                         interpolation: "linear",
                         ease: "Cubic.InOut"
                     });
                 }
             });
         }
-        drawStatus(projection) {
+        drawParticipantLedger(projection) {
+            if (projection.players.length === 0)
+                return;
+            const width = 820 / projection.players.length;
             projection.players.forEach((player, index) => {
-                const spacing = 1100 / Math.max(1, projection.players.length - 1);
-                const x = projection.players.length === 1 ? 700 : 150 + index * spacing;
-                const jailStatus = player.inJail ? ` · в тюрьме (${player.jailAttempts}/3)` : "";
-                const heldStatus = player.heldExitCardId === null ? "" : " · карта выхода";
-                this.add.text(x, 975, `${player.label}${player.active ? " · ходит" : ""}${jailStatus}${heldStatus}   ${player.cash} монет`, {
-                    color: player.active ? "#fff4d8" : "#b9c7c2",
+                const x = 290 + width / 2 + index * width;
+                this.add.circle(x, 753, 6, PLAYER_COLORS[index] ?? PLAYER_COLORS[0], 1);
+                this.add.text(x + 12, 744, `${player.label}${player.active ? " · ход" : ""}`, {
+                    color: player.active ? "#173f37" : "#52615b",
                     fontFamily: "Arial, sans-serif",
-                    fontSize: player.active ? "16px" : "14px",
+                    fontSize: projection.players.length > 4 ? "11px" : "13px",
                     fontStyle: player.active ? "bold" : "normal"
-                }).setOrigin(0.5, 1);
+                }).setOrigin(0, 0.5);
+                this.add.text(x + 12, 765, `${money(player.cash)}${player.inJail ? ` · заключение ${player.jailAttempts}/3` : ""}`, {
+                    color: "#66736d",
+                    fontFamily: "Arial, sans-serif",
+                    fontSize: projection.players.length > 4 ? "10px" : "11px"
+                }).setOrigin(0, 0.5);
             });
         }
+        playerLabel(projection, playerId) {
+            if (playerId === null)
+                return "не объявлен";
+            return projection.players.find((player) => player.id === playerId)?.label ?? playerId;
+        }
         dispatchAction(action) {
-            if (action.disabled)
+            if (action.disabled || !canvasCanDispatch(action))
                 return;
             void context.dispatchAction(action.actionId, { ...(action.params ?? {}) })
                 .then(() => { lastError = null; })
                 .catch((error) => {
-                // Runtime refusal must not mutate the board; only transient feedback
-                // is rendered over the last confirmed snapshot.
+                // Runtime refusal leaves the last confirmed board intact.
                 lastError = errorText(error);
                 this.renderProjection();
             });
@@ -927,8 +1123,15 @@ const createEstateRaceScene = (context) => {
         destroy() {
             lastError = null;
             previousProjection = null;
+            scene.stopCameraInteraction();
             if (scene.sys?.isActive())
                 scene.children.removeAll(true);
+        },
+        fitToView() {
+            scene.fitToView();
+        },
+        zoomBy(factor) {
+            scene.zoomBy(factor);
         },
         getAccessibleActions: accessible_actions_ts_1.provideEstateRaceAccessibleBoardActions
     };

@@ -21,10 +21,22 @@
         "pointer": "/root/entry_point"
       }
     ],
+    "/default_layout_mode": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/default_layout_mode"
+      }
+    ],
     "/screen_routing": [
       {
         "file": "games/estate-race/authoring/ui/web.authoring.json",
         "pointer": "/root/screen_routing"
+      }
+    ],
+    "/design_artifacts": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/design_artifacts"
       }
     ],
     "/screens/table": [
@@ -41,6 +53,8 @@
     ]
   },
   "verbatimSubtrees": [
+    "/default_layout_mode",
+    "/design_artifacts",
     "/entry_point",
     "/meta",
     "/screen_routing",

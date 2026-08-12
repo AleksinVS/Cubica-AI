@@ -1,103 +1,62 @@
 {
   "meta": {
     "id": "estate-race.ui.web",
-    "version": "0.6.0",
+    "version": "0.7.0",
     "schema_version": "1.0",
     "game_id": "estate-race",
-    "game_manifest_version": "0.6.0",
+    "game_manifest_version": "0.7.0",
     "channel": "web",
     "author": "Cubica"
   },
   "entry_point": "table",
+  "default_layout_mode": "map-first",
   "screen_routing": [
     {
       "screenKey": "table",
       "conditions": {
-        "screenId": "table",
-        "layoutMode": "topbar"
+        "screenId": "table"
       }
     }
   ],
+  "design_artifacts": {
+    "reference": "games/estate-race/design/estate-race-board-reference.svg",
+    "narrowIntent": "games/estate-race/design/narrow-layout-intent.md"
+  },
   "screens": {
     "table": {
-      "title": "Estate Race · S6",
-      "layout_mode": "topbar",
+      "title": "Estate Race",
+      "layout_mode": "map-first",
+      "design_artifact_id": "reference",
       "root": {
         "id": "table.root",
         "type": "screenComponent",
         "props": {
-          "cssClass": "board-game-shell"
+          "cssClass": "map-first-screen-shell estate-race-shell"
         },
         "children": [
           {
-            "id": "table.header",
+            "id": "table.status",
             "type": "areaComponent",
             "props": {
-              "cssClass": "board-game-header"
+              "workspaceSlot": "status",
+              "cssClass": "game-variables-container estate-race-status"
             },
             "children": [
               {
-                "id": "table.title",
+                "id": "table.status-copy",
                 "type": "richTextComponent",
                 "props": {
-                  "html": "<h1>Estate Race · S6</h1><p>Ход {{game.state.public.turn.turnNumber}} · активен {{game.state.public.turn.activePlayerId}} · этап {{game.state.public.turn.phase}}</p><p>Строения, сделки, обязательства, ликвидация и итог партии отображаются из подтверждённой проекции; доступные действия и их доступность объявляет сервер.</p>"
+                  "html": "<h1>Estate Race</h1><p><strong>Ход {{game.state.public.turn.turnNumber}}</strong> · участник {{game.state.public.turn.activePlayerId}} · {{game.state.public.turn.phase}}</p>"
                 }
               }
             ]
           },
           {
-            "id": "table.auction-status",
-            "type": "richTextComponent",
-            "props": {
-              "cssClass": "board-game-auction",
-              "html": "<h2>Аукцион</h2><p>Объект {{game.state.public.auction.cellId}} · текущая ставка {{game.state.public.auction.currentBid}} · минимальный шаг {{game.state.public.auction.minimumIncrement}}</p><p>Лидер {{game.state.public.auction.leaderPlayerId}} · восстановление хода {{game.state.public.auction.resumePlayerId}}</p>"
-            }
-          },
-          {
-            "id": "table.building-status",
-            "type": "richTextComponent",
-            "props": {
-              "cssClass": "board-game-building-status",
-              "html": "<h2>Строения банка</h2><p>Дома {{game.state.public.bankBuildings.housesAvailable}}/32 · отели {{game.state.public.bankBuildings.hotelsAvailable}}/12</p><p>Тип окна {{game.state.public.buildingWindow.unitKind}} · восстановление хода {{game.state.public.buildingWindow.resumePlayerId}}</p><p>Ставка {{game.state.public.buildingAuction.currentBid}} · шаг {{game.state.public.buildingAuction.minimumIncrement}} · лидер {{game.state.public.buildingAuction.leaderPlayerId}}</p>"
-            }
-          },
-          {
-            "id": "table.card-status",
-            "type": "richTextComponent",
-            "props": {
-              "cssClass": "board-game-card-status",
-              "html": "<h2>Карточка</h2><p>Последний открытый результат: {{game.state.public.board.lastCardId}}</p>"
-            }
-          },
-          {
-            "id": "table.jail-status",
-            "type": "richTextComponent",
-            "props": {
-              "cssClass": "board-game-jail-status",
-              "html": "<h2>Тюрьма</h2><p>Активен {{game.state.public.turn.activePlayerId}} · этап {{game.state.public.turn.phase}}. Оплата, карта выхода и попытка дубля доступны только когда их объявил сервер.</p>"
-            }
-          },
-          {
-            "id": "table.players",
+            "id": "table.board-zone",
             "type": "areaComponent",
             "props": {
-              "cssClass": "board-game-players"
-            },
-            "children": [
-              {
-                "id": "table.players-summary",
-                "type": "richTextComponent",
-                "props": {
-                  "html": "<h2>Локальная партия: 2–6 участников</h2><p>Активен {{game.state.public.turn.activePlayerId}}. Балансы, позиции и статус заключения показаны непосредственно из публичной проекции.</p>"
-                }
-              }
-            ]
-          },
-          {
-            "id": "table.workspace",
-            "type": "areaComponent",
-            "props": {
-              "cssClass": "board-game-workspace"
+              "workspaceSlot": "board",
+              "cssClass": "map-first-board-zone estate-race-board-zone"
             },
             "children": [
               {
@@ -107,52 +66,49 @@
                   "sceneId": "main",
                   "designWidth": 1400,
                   "designHeight": 1000,
-                  "accessibleLabel": "Игровое поле Estate Race"
+                  "accessibleLabel": "Игровое поле Estate Race. Доступные действия полностью дублируются обычными кнопками и формами под полем."
                 }
               }
             ]
           },
           {
-            "id": "table.roll",
-            "type": "richTextComponent",
-            "props": {
-              "cssClass": "board-game-roll",
-              "html": "<p><strong>Последний бросок:</strong> {{game.state.public.board.lastRoll.values}} · сумма {{game.state.public.board.lastRoll.total}}</p>"
-            }
-          },
-          {
-            "id": "table.log",
+            "id": "table.economy",
             "type": "areaComponent",
             "props": {
-              "cssClass": "board-game-log"
+              "workspaceSlot": "primary-panel",
+              "cssClass": "map-first-primary-panel estate-race-economy"
             },
             "children": [
               {
-                "id": "table.log-title",
+                "id": "table.economy-copy",
                 "type": "richTextComponent",
                 "props": {
-                  "html": "<h2>Журнал</h2>"
+                  "html": "<h2>Участники и экономика</h2><p>Балансы, позиции, владение, строения и статус заключения показаны из подтверждённой игровой проекции.</p><p><strong>Банк строений:</strong> дома {{game.state.public.bankBuildings.housesAvailable}} · отели {{game.state.public.bankBuildings.hotelsAvailable}}</p>"
+                }
+              }
+            ]
+          },
+          {
+            "id": "table.context",
+            "type": "areaComponent",
+            "props": {
+              "workspaceSlot": "context-panel",
+              "cssClass": "map-first-context-panel estate-race-context"
+            },
+            "children": [
+              {
+                "id": "table.context-copy",
+                "type": "richTextComponent",
+                "props": {
+                  "html": "<h2>Контекст решения</h2><p><strong>Последняя открытая карта:</strong> {{game.state.public.board.lastCardId}}</p><p><strong>Аукцион:</strong> {{game.state.public.auction.cellId}} · ставка {{game.state.public.auction.currentBid}} · лидер {{game.state.public.auction.leaderPlayerId}}</p><p><strong>Сделка:</strong> {{game.state.public.trade.status}} · <strong>обязательство:</strong> {{game.state.public.obligation.status}} · <strong>ликвидация:</strong> {{game.state.public.liquidation.status}}</p><p><strong>Подтверждённый итог:</strong> победитель {{game.state.public.outcome.winnerPlayerId}} · {{game.state.public.outcome.reason}}</p>"
                 }
               },
               {
-                "id": "table.log-entries",
-                "type": "areaComponent",
+                "id": "table.reflection",
+                "type": "richTextComponent",
                 "props": {
-                  "cssClass": "board-game-log-entries"
-                },
-                "itemTemplate": {
-                  "collection": "{{game.state.public.log}}",
-                  "itemKey": "logEntry"
-                },
-                "children": [
-                  {
-                    "id": "table.log-entry",
-                    "type": "richTextComponent",
-                    "props": {
-                      "html": "<p><strong>{{logEntry.data.kind}}</strong> {{logEntry.summary}} {{logEntry.data.winnerPlayerId}}</p>"
-                    }
-                  }
-                ]
+                  "html": "<h2>Пауза для разбора · необязательно</h2><p>Что останется в резерве после этого решения? Обсуждайте только после подтверждения действия.</p>"
+                }
               }
             ]
           }

@@ -69,6 +69,7 @@ docs: # Архитектура, задачи, планирование
       043-estate-race-buildings-mortgage-and-shortage.md: file # Estate Race S4: уровни строений, физический запас банка, залог и последовательный аукцион дефицита.
       044-estate-race-trade-obligation-and-bankruptcy.md: file # Estate Race S5: сделки, обязательства, ликвидность и банкротство банку или участнику.
       045-estate-race-terminal-local-game.md: file # Estate Race S6: game-owned terminal outcome, последний активный участник и полный локальный transcript.
+      046-estate-race-product-surface-and-methodology.md: file # Estate Race S7: оригинальная публичная поверхность, визуальная система и необязательный обучающий режим.
     metadata: directory... # Архитектура метаданных, аналитики и связанных событий.
     processes: directory... # Процессы сопровождения архитектуры и принятия технических решений.
     protocols: directory... # Межкомпонентные протоколы и форматы обмена платформы.
@@ -215,8 +216,10 @@ games: # Пакеты игр и связанные ресурсы
     ui: directory... # Собранные UI-манифесты тестового игрового пакета.
   estate-race: # Оригинальная пошаговая экономическая игра Estate Race и её изолированные игровые манифесты, интерфейс и подключаемый модуль поля. Первый срез доказывает бросок костей, владение участком и выплату ренты без заимствования названий или оформления Monopoly.
     authoring: directory... # Редактируемые исходные манифесты Estate Race, из которых компилятор создаёт runtime- и web-манифесты вместе с картами источников.
+    design: directory... # Оригинальные визуальные референсы Estate Race, описание узкой компоновки и происхождение game-owned дизайн-материалов.
     plugins: directory... # Подключаемые клиентские модули Estate Race; игровое состояние и правила остаются в манифесте и Runtime API.
     published: directory... # Неизменяемый собранный клиентский модуль Estate Race и реестр его адресуемой по содержимому версии.
+    scripts: directory... # Детерминированные игровые отчёты Estate Race, вычисляемые непосредственно из исходного авторинга.
     tests: directory... # Сквозные runtime-проверки первого игрового среза Estate Race с воспроизводимым зерном случайности.
     ui: directory... # Скомпилированные клиентские манифесты Estate Race, сгруппированные по каналам.
   simple-choice: # Minimal game-agnostic fixture used to prove that runtime-api and player-web can run a second game without a custom web plugin.

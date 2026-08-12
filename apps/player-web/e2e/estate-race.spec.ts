@@ -1,6 +1,6 @@
 /**
- * Browser acceptance for the Estate Race S0–S6 display and bounded action
- * slices (GSR-034, GSR-041–044).
+ * Browser acceptance for the Estate Race S0–S7 display and bounded action
+ * slices (GSR-034, GSR-041–046).
  *
  * The browser creates one normal authenticated player session and performs one
  * production-random setup followed by one production-random roll. The
@@ -164,7 +164,7 @@ test.afterAll(() => {
   }
 });
 
-test.describe("Estate Race S0–S6", { tag: "@player" }, () => {
+test.describe("Estate Race S0–S7", { tag: "@player" }, () => {
   test("finalizes random participant order and presents one server-owned random landing", async ({ page }) => {
     // Includes a cold two-service startup while keeping one browser-created
     // session and its HttpOnly credential for the whole acceptance path.
@@ -179,12 +179,7 @@ test.describe("Estate Race S0–S6", { tag: "@player" }, () => {
 
     await expect(page.locator(".game-player-root")).toBeVisible();
     await expect(page.locator(".loading-state")).toHaveCount(0);
-    await expect(page.getByRole("heading", {
-      name: "Estate Race · S6",
-      level: 1
-    })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Локальная партия: 2–6 участников", level: 2 })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Карточка", level: 2 })).toBeVisible();
+    await expectEstateRaceS7Surface(page);
     await expect(board(page)).toBeVisible();
     await expect(board(page).getByTestId("interactive-board-canvas-host")).toBeVisible();
     await expect(board(page).getByRole("button", { name: "Определить порядок" }))
@@ -219,9 +214,12 @@ test.describe("Estate Race S0–S6", { tag: "@player" }, () => {
     expect(snapshot.state.public.board.lastRoll?.total).toBeGreaterThanOrEqual(2);
     expect(snapshot.state.public.board.lastRoll?.total).toBeLessThanOrEqual(12);
     if (snapshot.state.public.board.lastCardId) {
-      await expect(page.getByText(
-        `Последний открытый результат: ${snapshot.state.public.board.lastCardId}`
+      await page.getByRole("button", { name: "Открыть панель «Контекст»" }).click();
+      const contextPanel = page.locator('[data-workspace-slot="context-panel"]');
+      await expect(contextPanel.getByText(
+        `Последняя открытая карта: ${snapshot.state.public.board.lastCardId}`
       )).toBeVisible();
+      await page.getByRole("button", { name: "Закрыть панель «Контекст»" }).click();
     } else {
       // With no card effect, the first move starts at zero and ends on the
       // authoritative dice total. Card movement deliberately owns its own
@@ -233,7 +231,7 @@ test.describe("Estate Race S0–S6", { tag: "@player" }, () => {
     // The manifest binds this text to public.turn, so card, tax and jail
     // continuations remain exactly the phase selected by Runtime.
     await expect(page.getByText(new RegExp(
-      `^Ход \\d+ · активен ${snapshot.state.public.turn.activePlayerId} · этап ${snapshot.state.public.turn.phase}$`,
+      `^Ход \\d+ · участник ${snapshot.state.public.turn.activePlayerId} · ${snapshot.state.public.turn.phase}$`,
       "i"
     ))).toBeVisible();
 
@@ -339,8 +337,10 @@ test.describe("Estate Race S0–S6", { tag: "@player" }, () => {
     ]);
     expectPlayerSnapshotHasNoPlatformSecrets(roll.snapshot);
 
-    await expect(page.getByRole("heading", { name: "Карточка", level: 2 })).toBeVisible();
-    await expect(page.getByText(`Последний открытый результат: ${TECHNICAL_CARD_ID}`)).toBeVisible();
+    await page.getByRole("button", { name: "Открыть панель «Контекст»" }).click();
+    const contextPanel = page.locator('[data-workspace-slot="context-panel"]');
+    await expect(contextPanel.getByText(`Последняя открытая карта: ${TECHNICAL_CARD_ID}`)).toBeVisible();
+    await page.getByRole("button", { name: "Закрыть панель «Контекст»" }).click();
     await expect(board(page).getByRole("button", { name: "Завершить ход" })).toBeVisible();
   });
 
@@ -639,13 +639,15 @@ test.describe("Estate Race S0–S6", { tag: "@player" }, () => {
     });
     expect(terminal.snapshot.state.public.turn.phase).toBe("terminal");
     expect(terminal.snapshot.state.public.board.availableActions).toEqual([]);
-    await expect(page.getByText(
-      /Остался один активный участник; партия завершена\.\s+p2/u
+    await page.getByRole("button", { name: "Открыть панель «Контекст»" }).click();
+    const contextPanel = page.locator('[data-workspace-slot="context-panel"]');
+    await expect(contextPanel.getByText(
+      /Подтверждённый итог:\s+победитель p2 · last-active-player/u
     )).toBeVisible();
 
     // The UI presents the exact server-owned winner; DOM controls remain the
     // accessible action surface and must be empty after terminal state.
-    await expect(board(page).getByRole("button")).toHaveCount(0);
+    await expect(board(page).getByText("Сейчас нет доступных действий на поле.")).toBeVisible();
     await expect(board(page).getByRole("button", { name: "Сохранить залог" })).toHaveCount(0);
   });
 });
@@ -1077,13 +1079,40 @@ async function openPreviewSession(
   );
   await expect(page.locator(".game-player-root")).toBeVisible();
   await expect(page.locator(".loading-state")).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: "Estate Race · S6", level: 1 })).toBeVisible();
+  await expectEstateRaceS7Surface(page);
   await expect(board(page).getByRole("button", { name: initialActionLabel }))
     .toBeVisible({ timeout: BOARD_PLUGIN_READY_TIMEOUT_MS });
   return snapshot;
 }
 
 const board = (page: Page) => page.getByRole("region", { name: FIELD_LABEL });
+
+async function expectEstateRaceS7Surface(page: Page): Promise<void> {
+  await expect(page.getByRole("heading", { name: "Estate Race", level: 1 })).toBeVisible();
+  await expect(board(page)).toBeVisible();
+  await expect(board(page)).toHaveAttribute("data-layout-mode", "map-first");
+
+  await expect(page.getByRole("button", { name: "Открыть панель «Обзор»" })).toBeVisible();
+  await page.getByRole("button", { name: "Открыть панель «Обзор»" }).click();
+  const economyPanel = page.locator('[data-workspace-slot="primary-panel"]');
+  await expect(economyPanel).toBeVisible();
+  await expect(economyPanel.getByRole("heading", { name: "Участники и экономика", level: 2 }))
+    .toBeVisible();
+
+  await expect(page.getByRole("button", { name: "Открыть панель «Контекст»" })).toBeVisible();
+  await page.getByRole("button", { name: "Открыть панель «Контекст»" }).click();
+  const contextPanel = page.locator('[data-workspace-slot="context-panel"]');
+  await expect(contextPanel).toBeVisible();
+  await expect(contextPanel.getByRole("heading", { name: "Контекст решения", level: 2 }))
+    .toBeVisible();
+  await expect(contextPanel.getByRole("heading", {
+    name: "Пауза для разбора · необязательно",
+    level: 2
+  })).toBeVisible();
+  await page.getByRole("button", { name: "Закрыть панель «Контекст»" }).click();
+  await board(page).getByRole("button", { name: "Действия" }).click();
+  await expect(board(page).getByRole("button", { name: "Закрыть действия" })).toBeVisible();
+}
 
 const waitForSessionCreation = (page: Page) => page.waitForResponse((response) =>
   response.url().endsWith("/api/runtime/sessions") && response.request().method() === "POST"

@@ -5,5 +5,6 @@
   "042-estate-race-decks-and-jail.md": "Estate Race S3: две скрытые колоды, удерживаемая карта выхода и полный game-owned цикл тюрьмы.",
   "043-estate-race-buildings-mortgage-and-shortage.md": "Estate Race S4: уровни строений, физический запас банка, залог и последовательный аукцион дефицита.",
   "044-estate-race-trade-obligation-and-bankruptcy.md": "Estate Race S5: сделки, обязательства, ликвидность и банкротство банку или участнику.",
-  "045-estate-race-terminal-local-game.md": "Estate Race S6: game-owned terminal outcome, последний активный участник и полный локальный transcript."
+  "045-estate-race-terminal-local-game.md": "Estate Race S6: game-owned terminal outcome, последний активный участник и полный локальный transcript.",
+  "046-estate-race-product-surface-and-methodology.md": "Estate Race S7: оригинальная публичная поверхность, визуальная система и необязательный обучающий режим."
 }
