@@ -187,6 +187,28 @@ const isRecord = (value) => value !== null && typeof value === "object" && !Arra
 const finiteNumber = (value, fallback = 0) => typeof value === "number" && Number.isFinite(value) ? value : fallback;
 const text = (value, fallback) => typeof value === "string" && value.trim().length > 0 ? value : fallback;
 const optionalText = (value) => typeof value === "string" && value.trim().length > 0 ? value : null;
+const readOutcome = (publicState, state, phase) => {
+    const outcome = isRecord(publicState.outcome) ? publicState.outcome : null;
+    if (outcome?.status === "active")
+        return { status: "active", winnerPlayerId: null, reason: "none" };
+    const winnerPlayerId = optionalText(outcome?.winnerPlayerId);
+    const rawPlayers = isRecord(state.players) ? state.players : {};
+    const activePlayerIds = Object.entries(rawPlayers).flatMap(([playerId, rawPlayer]) => isRecord(rawPlayer) && rawPlayer.status === "active" ? [playerId] : []);
+    if (phase === "terminal"
+        && outcome?.status === "terminal"
+        && outcome.reason === "last-active-player"
+        && winnerPlayerId !== null
+        && activePlayerIds.length === 1
+        && activePlayerIds[0] === winnerPlayerId) {
+        return {
+            status: "terminal",
+            winnerPlayerId,
+            reason: outcome.reason
+        };
+    }
+    // Malformed terminal data must not become a client-side result or winner.
+    return { status: "active", winnerPlayerId: null, reason: "none" };
+};
 const improvementTier = (value) => typeof value === "number" && Number.isSafeInteger(value) && value >= 0 && value <= 5 ? value : 0;
 const bankCount = (value, maximum) => typeof value === "number" && Number.isSafeInteger(value) && value >= 0 && value <= maximum ? value : 0;
 const readCells = (publicState) => {
@@ -392,15 +414,21 @@ function projectEstateRaceSession(session) {
     const board = isRecord(publicState.board) ? publicState.board : {};
     const turn = isRecord(publicState.turn) ? publicState.turn : {};
     const activePlayerId = typeof turn.activePlayerId === "string" ? turn.activePlayerId : null;
+    const phase = text(turn.phase, "setup");
     const actorPlayerId = typeof session.actorPlayerId === "string"
         ? session.actorPlayerId
         : typeof state.actorPlayerId === "string" ? state.actorPlayerId : null;
+    const players = readPlayers(state, activePlayerId, actorPlayerId);
     return {
         cells: readCells(publicState),
-        players: readPlayers(state, activePlayerId, actorPlayerId),
-        availableActions: readActions(board, readActionAvailability(session.actionAvailability)),
+        players,
+        // A terminal snapshot is actionless even if a stale board payload still
+        // contains controls. The client never manufactures a terminal action.
+        availableActions: phase === "terminal"
+            ? []
+            : readActions(board, readActionAvailability(session.actionAvailability)),
         activePlayerId,
-        phase: text(turn.phase, "setup"),
+        phase,
         turnNumber: finiteNumber(turn.turnNumber),
         lastRoll: readRoll(board),
         lastCardId: optionalText(board.lastCardId),
@@ -420,7 +448,8 @@ function projectEstateRaceSession(session) {
         })(),
         trade: readTrade(publicState),
         obligation: readObligation(publicState),
-        liquidation: readLiquidation(publicState)
+        liquidation: readLiquidation(publicState),
+        outcome: readOutcome(publicState, state, phase)
     };
 }
 
@@ -453,7 +482,8 @@ const phaseLabel = {
     auction: "аукцион",
     buildingWindow: "окно заявок",
     buildingAuction: "аукцион строений",
-    jail: "тюрьма"
+    jail: "тюрьма",
+    terminal: "завершено"
 };
 const errorText = (error) => error instanceof Error ? error.message : "Действие отклонено сервером";
 const tokenPosition = (cell, playerIndex) => ({
@@ -538,7 +568,19 @@ const createEstateRaceScene = (context) => {
                 fontFamily: "Arial, sans-serif",
                 fontSize: "17px"
             }).setOrigin(0.5);
-            if (projection.phase === "buildingWindow") {
+            if (projection.outcome.status === "terminal") {
+                this.drawOutcomeSummary(projection);
+            }
+            else if (projection.phase === "terminal") {
+                this.add.text(680, 505, "Итог игры недоступен: сервер не подтвердил корректный результат.", {
+                    color: "#8d3d36",
+                    align: "center",
+                    wordWrap: { width: 600 },
+                    fontFamily: "Arial, sans-serif",
+                    fontSize: "20px"
+                }).setOrigin(0.5);
+            }
+            else if (projection.phase === "buildingWindow") {
                 this.drawBuildingWindowSummary(projection);
             }
             else if (projection.phase === "buildingAuction") {
@@ -573,10 +615,14 @@ const createEstateRaceScene = (context) => {
                     fontSize: "20px"
                 }).setOrigin(0.5);
             }
-            if (projection.phase !== "blocked" && projection.phase !== "auction") {
+            if (projection.outcome.status !== "terminal"
+                && projection.phase !== "terminal"
+                && projection.phase !== "blocked"
+                && projection.phase !== "auction") {
                 this.drawCardAndJailSummary(projection);
             }
-            this.drawS5Summary(projection);
+            if (projection.outcome.status !== "terminal")
+                this.drawS5Summary(projection);
             // A bid requires the numeric DOM form. Never dispatch an empty bid from
             // the canvas; the server remains the authority for the submitted amount.
             const action = projection.availableActions.find((item) => !item.disabled && canvasCanDispatch(item));
@@ -604,6 +650,34 @@ const createEstateRaceScene = (context) => {
                 fontSize: "21px",
                 lineSpacing: 7,
                 wordWrap: { width: 600 }
+            }).setOrigin(0.5);
+        }
+        drawOutcomeSummary(projection) {
+            const winnerId = projection.outcome.winnerPlayerId;
+            const winner = winnerId === null
+                ? null
+                : projection.players.find((player) => player.id === winnerId);
+            const winnerLabel = winner?.label ?? winnerId;
+            const result = winnerLabel === null
+                ? "Победитель не объявлен"
+                : `Победитель: ${winnerLabel}`;
+            this.add.text(680, 505, ["Игра завершена", result].join("\n"), {
+                color: "#173a34",
+                align: "center",
+                fontFamily: "Georgia, serif",
+                fontSize: "30px",
+                fontStyle: "bold",
+                lineSpacing: 12,
+                wordWrap: { width: 600 }
+            }).setOrigin(0.5);
+            this.add.text(680, 590, projection.outcome.reason === "last-active-player"
+                ? "Последний активный участник"
+                : "Результат подтверждён сервером", {
+                color: "#495c55",
+                align: "center",
+                fontFamily: "Arial, sans-serif",
+                fontSize: "18px",
+                wordWrap: { width: 560 }
             }).setOrigin(0.5);
         }
         drawBuildingWindowSummary(projection) {

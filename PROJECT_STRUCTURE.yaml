@@ -68,6 +68,7 @@ docs: # Архитектура, задачи, планирование
       042-estate-race-decks-and-jail.md: file # Estate Race S3: две скрытые колоды, удерживаемая карта выхода и полный game-owned цикл тюрьмы.
       043-estate-race-buildings-mortgage-and-shortage.md: file # Estate Race S4: уровни строений, физический запас банка, залог и последовательный аукцион дефицита.
       044-estate-race-trade-obligation-and-bankruptcy.md: file # Estate Race S5: сделки, обязательства, ликвидность и банкротство банку или участнику.
+      045-estate-race-terminal-local-game.md: file # Estate Race S6: game-owned terminal outcome, последний активный участник и полный локальный transcript.
     metadata: directory... # Архитектура метаданных, аналитики и связанных событий.
     processes: directory... # Процессы сопровождения архитектуры и принятия технических решений.
     protocols: directory... # Межкомпонентные протоколы и форматы обмена платформы.

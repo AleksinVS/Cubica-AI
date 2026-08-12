@@ -123,6 +123,12 @@ export interface EstateLiquidationView {
   readonly claimCardId2: string | null;
 }
 
+export interface EstateOutcomeView {
+  readonly status: "active" | "terminal";
+  readonly winnerPlayerId: string | null;
+  readonly reason: "none" | "last-active-player";
+}
+
 export interface EstateBoardProjection {
   readonly cells: readonly EstateCellView[];
   readonly players: readonly EstatePlayerView[];
@@ -140,6 +146,8 @@ export interface EstateBoardProjection {
   readonly trade: EstateTradeView;
   readonly obligation: EstateObligationView;
   readonly liquidation: EstateLiquidationView;
+  /** Server-owned terminal result; the player layer only presents it. */
+  readonly outcome: EstateOutcomeView;
 }
 
 type JsonRecord = Record<string, unknown>;
@@ -160,6 +168,36 @@ const text = (value: unknown, fallback: string): string =>
 
 const optionalText = (value: unknown): string | null =>
   typeof value === "string" && value.trim().length > 0 ? value : null;
+
+const readOutcome = (
+  publicState: JsonRecord,
+  state: JsonRecord,
+  phase: string
+): EstateOutcomeView => {
+  const outcome = isRecord(publicState.outcome) ? publicState.outcome : null;
+  if (outcome?.status === "active") return { status: "active", winnerPlayerId: null, reason: "none" };
+  const winnerPlayerId = optionalText(outcome?.winnerPlayerId);
+  const rawPlayers = isRecord(state.players) ? state.players : {};
+  const activePlayerIds = Object.entries(rawPlayers).flatMap(([playerId, rawPlayer]) =>
+    isRecord(rawPlayer) && rawPlayer.status === "active" ? [playerId] : []
+  );
+  if (
+    phase === "terminal"
+    && outcome?.status === "terminal"
+    && outcome.reason === "last-active-player"
+    && winnerPlayerId !== null
+    && activePlayerIds.length === 1
+    && activePlayerIds[0] === winnerPlayerId
+  ) {
+    return {
+      status: "terminal",
+      winnerPlayerId,
+      reason: outcome.reason
+    };
+  }
+  // Malformed terminal data must not become a client-side result or winner.
+  return { status: "active", winnerPlayerId: null, reason: "none" };
+};
 
 const improvementTier = (value: unknown): number =>
   typeof value === "number" && Number.isSafeInteger(value) && value >= 0 && value <= 5 ? value : 0;
@@ -389,15 +427,21 @@ export function projectEstateRaceSession(
   const board = isRecord(publicState.board) ? publicState.board : {};
   const turn = isRecord(publicState.turn) ? publicState.turn : {};
   const activePlayerId = typeof turn.activePlayerId === "string" ? turn.activePlayerId : null;
+  const phase = text(turn.phase, "setup");
   const actorPlayerId = typeof session.actorPlayerId === "string"
     ? session.actorPlayerId
     : typeof state.actorPlayerId === "string" ? state.actorPlayerId : null;
+  const players = readPlayers(state, activePlayerId, actorPlayerId);
   return {
     cells: readCells(publicState),
-    players: readPlayers(state, activePlayerId, actorPlayerId),
-    availableActions: readActions(board, readActionAvailability(session.actionAvailability)),
+    players,
+    // A terminal snapshot is actionless even if a stale board payload still
+    // contains controls. The client never manufactures a terminal action.
+    availableActions: phase === "terminal"
+      ? []
+      : readActions(board, readActionAvailability(session.actionAvailability)),
     activePlayerId,
-    phase: text(turn.phase, "setup"),
+    phase,
     turnNumber: finiteNumber(turn.turnNumber),
     lastRoll: readRoll(board),
     lastCardId: optionalText(board.lastCardId),
@@ -417,6 +461,7 @@ export function projectEstateRaceSession(
     })(),
     trade: readTrade(publicState),
     obligation: readObligation(publicState),
-    liquidation: readLiquidation(publicState)
+    liquidation: readLiquidation(publicState),
+    outcome: readOutcome(publicState, state, phase)
   };
 }

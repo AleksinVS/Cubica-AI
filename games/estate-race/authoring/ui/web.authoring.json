@@ -6,14 +6,14 @@
   "_definitions": {},
   "root": {
     "_type": "ui.Manifest",
-    "_label": "Web-интерфейс: Estate Race · S5",
-    "_semantics": "UI S4: поле отображает подтверждённую сессию, строения, залог, запас банка, карточки, тюрьму, аукционы и только серверно объявленные действия.",
+    "_label": "Web-интерфейс: Estate Race · S6",
+    "_semantics": "UI S6: поле отображает подтверждённую сессию, terminal outcome и только серверно объявленные действия; победитель на клиенте не вычисляется.",
     "meta": {
       "id": "estate-race.ui.web",
-      "version": "0.5.0",
+      "version": "0.6.0",
       "schema_version": "1.0",
       "game_id": "estate-race",
-      "game_manifest_version": "0.5.0",
+      "game_manifest_version": "0.6.0",
       "channel": "web",
       "author": "Cubica"
     },
@@ -31,9 +31,9 @@
       {
         "id": "table",
         "_type": "ui.Screen",
-        "_label": "Экран table: Estate Race · S5",
-        "_semantics": "Экран UI-манифеста table: setup, строения, залог, аукционы, tax, карточки и jail только показывают подтверждённое состояние и объявленные сервером действия.",
-        "title": "Estate Race · S5",
+        "_label": "Экран table: Estate Race · S6",
+        "_semantics": "Экран UI-манифеста table: setup, строения, сделки, банкротство и terminal outcome только показывают подтверждённое состояние и объявленные сервером действия.",
+        "title": "Estate Race · S6",
         "layout_mode": "topbar",
         "root": {
           "_type": "ui.Component",
@@ -57,12 +57,12 @@
               "children": [
                 {
                   "_type": "ui.Component",
-                  "_label": "Estate Race · S5 Ход · активен · этап",
+                  "_label": "Estate Race · S6 Ход · активен · этап",
                   "_semantics": "UI-компонент типа richTextComponent.",
                   "id": "table.title",
                   "type": "richTextComponent",
                   "props": {
-                    "html": "<h1>Estate Race · S5</h1><p>Ход {{game.state.public.turn.turnNumber}} · активен {{game.state.public.turn.activePlayerId}} · этап {{game.state.public.turn.phase}}</p><p>Строения, сделки, обязательства, ликвидация, карточки, тюрьма, рента и аукционы отображаются из подтверждённой проекции; доступные действия и их доступность объявляет сервер.</p>"
+                    "html": "<h1>Estate Race · S6</h1><p>Ход {{game.state.public.turn.turnNumber}} · активен {{game.state.public.turn.activePlayerId}} · этап {{game.state.public.turn.phase}}</p><p>Строения, сделки, обязательства, ликвидация и итог партии отображаются из подтверждённой проекции; доступные действия и их доступность объявляет сервер.</p>"
                   }
                 }
               ]
@@ -206,11 +206,11 @@
                     {
                       "_type": "ui.Component",
                       "_label": "Запись журнала",
-                      "_semantics": "Показывает авторское описание либо идентификатор подтверждённого действия.",
+                      "_semantics": "Показывает подтверждённое описание события; terminal-запись также содержит server-owned идентификатор победителя.",
                       "id": "table.log-entry",
                       "type": "richTextComponent",
                       "props": {
-                        "html": "<p><strong>{{logEntry.data.kind}}</strong> {{logEntry.summary}}</p>"
+                        "html": "<p><strong>{{logEntry.data.kind}}</strong> {{logEntry.summary}} {{logEntry.data.winnerPlayerId}}</p>"
                       }
                     }
                   ]

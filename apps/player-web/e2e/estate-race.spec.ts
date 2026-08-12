@@ -1,5 +1,5 @@
 /**
- * Browser acceptance for the Estate Race S0–S5 display and bounded action
+ * Browser acceptance for the Estate Race S0–S6 display and bounded action
  * slices (GSR-034, GSR-041–044).
  *
  * The browser creates one normal authenticated player session and performs one
@@ -77,6 +77,11 @@ type RuntimeSnapshot = {
     };
     public: {
       setupComplete: boolean;
+      outcome?: {
+        status: "active" | "terminal";
+        winnerPlayerId: string | null;
+        reason: "none" | "last-active-player";
+      };
       turn: { activePlayerId: string; order: string[]; phase: EstatePhase; turnNumber: number };
       board: {
         lastRoll?: { values: number[]; total: number; isDouble: boolean } | null;
@@ -159,7 +164,7 @@ test.afterAll(() => {
   }
 });
 
-test.describe("Estate Race S0–S5", { tag: "@player" }, () => {
+test.describe("Estate Race S0–S6", { tag: "@player" }, () => {
   test("finalizes random participant order and presents one server-owned random landing", async ({ page }) => {
     // Includes a cold two-service startup while keeping one browser-created
     // session and its HttpOnly credential for the whole acceptance path.
@@ -175,7 +180,7 @@ test.describe("Estate Race S0–S5", { tag: "@player" }, () => {
     await expect(page.locator(".game-player-root")).toBeVisible();
     await expect(page.locator(".loading-state")).toHaveCount(0);
     await expect(page.getByRole("heading", {
-      name: "Estate Race · S5",
+      name: "Estate Race · S6",
       level: 1
     })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Локальная партия: 2–6 участников", level: 2 })).toBeVisible();
@@ -529,7 +534,7 @@ test.describe("Estate Race S0–S5", { tag: "@player" }, () => {
   });
 
   test("routes player and bank bankruptcy through creditor transfer and bank auction DOM paths", async ({ page }) => {
-    test.setTimeout(120_000);
+    test.setTimeout(180_000);
 
     const creditorSource = materializeCreditorBankruptcyPreview();
     const creditorInitial = await openPreviewSession(page, creditorSource, "Оплатить ренту");
@@ -557,7 +562,12 @@ test.describe("Estate Race S0–S5", { tag: "@player" }, () => {
       params: {}
     });
     expect(readEstateCell(keptMortgage.snapshot, "cell-05").mortgaged).toBe(true);
-    expect(keptMortgage.snapshot.state.public.turn.phase).toBe("finish");
+    expect(keptMortgage.snapshot.state.public.turn.phase).toBe("terminal");
+    expect(keptMortgage.snapshot.state.public.outcome).toEqual({
+      status: "terminal",
+      winnerPlayerId: "p2",
+      reason: "last-active-player"
+    });
 
     const bankSource = materializeBankBankruptcyPreview();
     const bankInitial = await openPreviewSession(page, bankSource, "Оплатить налог");
@@ -589,6 +599,54 @@ test.describe("Estate Race S0–S5", { tag: "@player" }, () => {
     const skipped = await clickBoardAction(page, "Завершить ход");
     expect(skipped.requestBody).toMatchObject({ actionId: "turn.finish", params: {} });
     expect(skipped.snapshot.state.public.turn.activePlayerId).toBe("p3");
+  });
+
+  test("finishes a coherent two-player bankruptcy through DOM liquidation and shows the server winner", async ({ page }) => {
+    test.setTimeout(120_000);
+
+    const source = materializeCreditorBankruptcyPreview();
+    const initial = await openPreviewSession(page, source, "Оплатить ренту");
+    expect(Object.keys(initial.state.players)).toEqual(["p1", "p2"]);
+    expect(Object.values(initial.state.players).every((player) => player.status === "active")).toBe(true);
+    expect(initial.state.public.outcome).toEqual({
+      status: "active",
+      winnerPlayerId: null,
+      reason: "none"
+    });
+
+    const rent = await clickBoardAction(page, "Оплатить ренту");
+    expect(rent.requestBody).toMatchObject({ actionId: "property.rent", params: {} });
+    expect(rent.snapshot.state.public.turn.phase).toBe("obligation");
+
+    const declared = await submitBoardFormFields(page, "Объявить банкротство", {
+      heldCardId: "",
+      heldCardId2: ""
+    });
+    expect(declared.requestBody).toMatchObject({
+      actionId: "bankruptcy.declare",
+      params: { heldCardId: "", heldCardId2: "" }
+    });
+    expect(declared.snapshot.state.players.p1?.status).toBe("eliminated");
+    expect(declared.snapshot.state.public.turn.phase).toBe("liquidationMortgage");
+    await expect(board(page).getByRole("button", { name: "Сохранить залог" })).toBeVisible();
+
+    const terminal = await clickBoardAction(page, "Сохранить залог");
+    expect(terminal.requestBody).toMatchObject({ actionId: "mortgage.transfer.keep", params: {} });
+    expect(terminal.snapshot.state.public.outcome).toEqual({
+      status: "terminal",
+      winnerPlayerId: "p2",
+      reason: "last-active-player"
+    });
+    expect(terminal.snapshot.state.public.turn.phase).toBe("terminal");
+    expect(terminal.snapshot.state.public.board.availableActions).toEqual([]);
+    await expect(page.getByText(
+      /Остался один активный участник; партия завершена\.\s+p2/u
+    )).toBeVisible();
+
+    // The UI presents the exact server-owned winner; DOM controls remain the
+    // accessible action surface and must be empty after terminal state.
+    await expect(board(page).getByRole("button")).toHaveCount(0);
+    await expect(board(page).getByRole("button", { name: "Сохранить залог" })).toHaveCount(0);
   });
 });
 
@@ -1019,7 +1077,7 @@ async function openPreviewSession(
   );
   await expect(page.locator(".game-player-root")).toBeVisible();
   await expect(page.locator(".loading-state")).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: "Estate Race · S5", level: 1 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Estate Race · S6", level: 1 })).toBeVisible();
   await expect(board(page).getByRole("button", { name: initialActionLabel }))
     .toBeVisible({ timeout: BOARD_PLUGIN_READY_TIMEOUT_MS });
   return snapshot;

@@ -58,17 +58,31 @@ const loadManifest = async () => manifestPromise ??= (async () => {
   return validateGameManifest(compiled.manifest);
 })();
 
+const compileClonedInitialManifest = async () => {
+  const sourceFile = path.join(packageRoot, "authoring", "game.authoring.json");
+  const clonedAuthoring = structuredClone(JSON.parse(await readFile(sourceFile, "utf8")));
+  const compiled = compileAuthoringText({
+    kind: "game",
+    gameId: "estate-race",
+    sourceFile,
+    outputFile: path.join(packageRoot, "game.manifest.json"),
+    sourceMapFile: path.join(packageRoot, "game.manifest.source-map.json")
+  }, JSON.stringify(clonedAuthoring));
+  return validateGameManifest(compiled.manifest);
+};
+
 const createReplay = async (mutateState, {
   participantCount = 2,
   samples = [0, 3, 0, 3],
   actorScope = { kind: "all-session-actors" },
   autoSetup = true,
+  manifest: manifestOverride,
   setupSamples = Array.from(
     { length: participantCount - 1 },
     (_, index) => participantCount - index - 1
   )
 } = {}) => {
-  const manifest = await loadManifest();
+  const manifest = manifestOverride ?? await loadManifest();
   const initialState = initializeTurnBasedSessionState(manifest, structuredClone(manifest.state), {
     participantCount
   });
@@ -857,6 +871,7 @@ const createPhaseReplay = async (mutateState, {
   participantCount = 2,
   phase = "acquire",
   actorScope = { kind: "all-session-actors" },
+  manifest,
   samples = []
 } = {}) => createReplay((state) => {
   const participantIds = Object.keys(state.players);
@@ -866,7 +881,7 @@ const createPhaseReplay = async (mutateState, {
   state.public.turn.phase = phase;
   state.public.board.availableActions = [];
   mutateState?.(state);
-}, { participantCount, actorScope, autoSetup: false, samples });
+}, { participantCount, actorScope, autoSetup: false, manifest, samples });
 
 test("setup randomizes the exact 2/6 participant set once and is receipt-idempotent", async () => {
   for (const participantCount of [2, 6]) {
@@ -2457,7 +2472,7 @@ test("S5 bankruptcy rejects remaining liquidity, transfers to a player or bank, 
     state.public.objects.boardCells["cell-01"].attributes.ownerPlayerId = "p2";
     state.public.objects.boardCells["cell-05"].attributes.ownerPlayerId = "p1";
     state.public.objects.boardCells["cell-05"].attributes.mortgaged = true;
-  }, { phase: "rent" });
+  }, { participantCount: 3, phase: "rent" });
   const creditorRent = await act(creditor, "property.rent");
   assert.equal(creditorRent.result.ok, true, JSON.stringify(creditorRent.result));
   let current = await creditor.store.getSession(creditor.session.sessionId);
@@ -2523,7 +2538,7 @@ test("S5 creditor inherits held cards and bank bankruptcy returns both cards the
       fundOrder: fundCardIds.filter((cardId) => cardId !== "fund-exit"),
       fundHeld: ["fund-exit"]
     });
-  }, { phase: "rent" });
+  }, { participantCount: 3, phase: "rent" });
   await act(creditor, "property.rent");
   const declared = await act(creditor, "bankruptcy.declare", {
     heldCardId: "event-exit",
@@ -2591,7 +2606,7 @@ test("S5 mortgage transfer accepts exact cash and resumes liquidation after a fe
     state.public.objects.boardCells["cell-01"].attributes.ownerPlayerId = "p2";
     state.public.objects.boardCells["cell-05"].attributes.ownerPlayerId = "p1";
     state.public.objects.boardCells["cell-05"].attributes.mortgaged = true;
-  }, { phase: "rent" });
+  }, { participantCount: 3, phase: "rent" });
 
   const exact = await createTransferReplay(8);
   await act(exact, "property.rent");
@@ -2625,6 +2640,143 @@ test("S5 mortgage transfer accepts exact cash and resumes liquidation after a fe
   assert.equal(current.state.public.obligation.status, "idle");
   assert.equal(current.state.public.objects.boardCells["cell-05"].attributes.mortgageTransferPending, false);
   assert.equal(current.state.public.turn.phase, "finish");
+});
+
+test("S6 bankruptcy keeps 3-to-2 active and terminals a bounded creditor transcript exactly once", async () => {
+  const nonterminal = await createPhaseReplay((state) => {
+    state.players.p1.metrics.position = 1;
+    state.players.p1.metrics.cash = 0;
+    state.public.board.lastRoll = { values: [3, 4], total: 7, isDouble: false };
+    state.public.objects.boardCells["cell-01"].attributes.ownerPlayerId = "p2";
+  }, { participantCount: 3, phase: "rent" });
+  await act(nonterminal, "property.rent");
+  await act(nonterminal, "bankruptcy.declare", { heldCardId: "", heldCardId2: "" });
+  let current = await nonterminal.store.getSession(nonterminal.session.sessionId);
+  assert.equal(current.state.players.p1.status, "eliminated");
+  assert.equal(current.state.public.outcome.status, "active");
+  assert.equal(current.state.public.outcome.winnerPlayerId, null);
+  assert.equal(current.state.public.outcome.reason, "none");
+  assert.equal(current.state.public.turn.phase, "finish");
+  assert.deepEqual(current.state.public.board.availableActions.map(({ actionId }) => actionId), [
+    "trade.open",
+    "turn.finish"
+  ]);
+  assert.equal((await nonterminal.store.getSessionEvents(nonterminal.session.sessionId))
+    .filter(({ eventType }) => eventType === "estate-race.terminal").length, 0);
+
+  const clonedInitialManifest = await compileClonedInitialManifest();
+  const transcript = await createPhaseReplay((state) => {
+    state.players.p1.metrics.position = 1;
+    state.players.p1.metrics.cash = 0;
+    state.players.p2.metrics.cash = 0;
+    state.public.board.lastRoll = { values: [3, 4], total: 7, isDouble: false };
+    state.public.objects.boardCells["cell-01"].attributes.ownerPlayerId = "p2";
+    state.public.objects.boardCells["cell-02"].attributes.ownerPlayerId = "p2";
+    state.public.objects.boardCells["cell-05"].attributes.ownerPlayerId = "p1";
+    state.public.objects.boardCells["cell-05"].attributes.mortgaged = true;
+    state.players.p1.objects.heldExitCardId = "event-exit";
+    installDecks(state, {
+      eventOrder: eventCardIds.filter((cardId) => cardId !== "event-exit"),
+      eventHeld: ["event-exit"]
+    });
+  }, { manifest: clonedInitialManifest, phase: "rent" });
+
+  await act(transcript, "property.rent");
+  await act(transcript, "bankruptcy.declare", {
+    heldCardId: "event-exit",
+    heldCardId2: ""
+  });
+  await act(transcript, "mortgage.transfer.keep");
+  current = await transcript.store.getSession(transcript.session.sessionId);
+  assert.equal(current.state.public.turn.phase, "obligation");
+  assert.equal(current.state.public.outcome.status, "active");
+  await act(transcript, "property.mortgage", { cellId: "cell-02" });
+  await act(transcript, "obligation.resolve");
+  current = await transcript.store.getSession(transcript.session.sessionId);
+  assert.equal(
+    current.state.public.turn.phase,
+    "liquidationClaim",
+    JSON.stringify({
+      liquidation: current.state.public.liquidation,
+      obligation: current.state.public.obligation,
+      creditorCards: current.state.players.p2.objects
+    })
+  );
+  assert.equal(current.state.public.outcome.status, "active");
+
+  const beforeClaim = await transcript.store.getSession(transcript.session.sessionId);
+  const commandId = createTestCommandId();
+  const first = await act(transcript, "liquidation.card.claim", {}, {
+    commandId,
+    expectedStateVersion: beforeClaim.version.stateVersion
+  });
+  assert.equal(first.result.ok, true, JSON.stringify(first.result));
+  const retry = await act(transcript, "liquidation.card.claim", {}, {
+    commandId,
+    expectedStateVersion: beforeClaim.version.stateVersion
+  });
+  assert.deepEqual(retry.receipt, first.receipt);
+
+  current = await transcript.store.getSession(transcript.session.sessionId);
+  assert.equal(current.state.players.p1.status, "eliminated");
+  assert.equal(current.state.public.outcome.status, "terminal");
+  assert.equal(current.state.public.outcome.winnerPlayerId, "p2");
+  assert.equal(current.state.public.outcome.reason, "last-active-player");
+  assert.equal(current.state.public.turn.phase, "terminal");
+  assert.deepEqual(current.state.public.board.availableActions, []);
+  assert.equal(current.state.players.p2.objects.heldExitCardId, "event-exit");
+  const terminalEvents = (await transcript.store.getSessionEvents(transcript.session.sessionId))
+    .filter(({ eventType }) => eventType === "estate-race.terminal");
+  assert.equal(terminalEvents.length, 1);
+  assert.equal(terminalEvents[0].data.winnerPlayerId, "p2");
+  assert.equal(terminalEvents[0].data.reason, "last-active-player");
+});
+
+test("S6 bank liquidation finishes every lot before terminal and rejects a prior action unchanged", async () => {
+  const replay = await createPhaseReplay((state) => {
+    state.players.p1.metrics.position = 4;
+    state.players.p1.metrics.cash = 0;
+    for (const cellId of ["cell-01", "cell-05"]) {
+      state.public.objects.boardCells[cellId].attributes.ownerPlayerId = "p1";
+      state.public.objects.boardCells[cellId].attributes.mortgaged = true;
+    }
+  }, { phase: "tax" });
+  await act(replay, "tax.pay");
+  await act(replay, "bankruptcy.declare", { heldCardId: "", heldCardId2: "" });
+  let current = await replay.store.getSession(replay.session.sessionId);
+  assert.equal(current.state.public.turn.phase, "auction");
+  assert.equal(current.state.public.outcome.status, "active");
+
+  await act(replay, "property.auction.pass");
+  current = await replay.store.getSession(replay.session.sessionId);
+  assert.equal(current.state.public.turn.phase, "auction");
+  assert.equal(current.state.public.outcome.status, "active");
+  assert.equal(current.state.public.objects.boardCells["cell-01"].attributes.liquidationPending, false);
+  assert.equal(current.state.public.objects.boardCells["cell-05"].attributes.liquidationPending, true);
+  assert.equal((await replay.store.getSessionEvents(replay.session.sessionId))
+    .filter(({ eventType }) => eventType === "estate-race.terminal").length, 0);
+
+  await act(replay, "property.auction.pass");
+  current = await replay.store.getSession(replay.session.sessionId);
+  assert.equal(current.state.public.liquidation.status, "idle");
+  assert.equal(current.state.public.objects.boardCells["cell-05"].attributes.liquidationPending, false);
+  assert.equal(current.state.public.outcome.status, "terminal");
+  assert.equal(current.state.public.outcome.winnerPlayerId, "p2");
+  assert.equal(current.state.public.turn.phase, "terminal");
+  assert.deepEqual(current.state.public.board.availableActions, []);
+  assert.equal((await replay.store.getSessionEvents(replay.session.sessionId))
+    .filter(({ eventType }) => eventType === "estate-race.terminal").length, 1);
+
+  const terminalSnapshot = structuredClone(current);
+  await assertRejectedAction(
+    act(replay, "property.auction.pass"),
+    /ACTION|available|terminal/iu
+  );
+  const afterRejected = await replay.store.getSession(replay.session.sessionId);
+  assert.deepEqual(afterRejected.state, terminalSnapshot.state);
+  assert.equal(afterRejected.version.stateVersion, terminalSnapshot.version.stateVersion);
+  assert.equal((await replay.store.getSessionEvents(replay.session.sessionId))
+    .filter(({ eventType }) => eventType === "estate-race.terminal").length, 1);
 });
 
 test("a principal scoped to another actor cannot execute the active turn", async () => {

@@ -1,10 +1,10 @@
 {
   "meta": {
     "id": "estate-race.ui.web",
-    "version": "0.5.0",
+    "version": "0.6.0",
     "schema_version": "1.0",
     "game_id": "estate-race",
-    "game_manifest_version": "0.5.0",
+    "game_manifest_version": "0.6.0",
     "channel": "web",
     "author": "Cubica"
   },
@@ -20,7 +20,7 @@
   ],
   "screens": {
     "table": {
-      "title": "Estate Race · S5",
+      "title": "Estate Race · S6",
       "layout_mode": "topbar",
       "root": {
         "id": "table.root",
@@ -40,7 +40,7 @@
                 "id": "table.title",
                 "type": "richTextComponent",
                 "props": {
-                  "html": "<h1>Estate Race · S5</h1><p>Ход {{game.state.public.turn.turnNumber}} · активен {{game.state.public.turn.activePlayerId}} · этап {{game.state.public.turn.phase}}</p><p>Строения, сделки, обязательства, ликвидация, карточки, тюрьма, рента и аукционы отображаются из подтверждённой проекции; доступные действия и их доступность объявляет сервер.</p>"
+                  "html": "<h1>Estate Race · S6</h1><p>Ход {{game.state.public.turn.turnNumber}} · активен {{game.state.public.turn.activePlayerId}} · этап {{game.state.public.turn.phase}}</p><p>Строения, сделки, обязательства, ликвидация и итог партии отображаются из подтверждённой проекции; доступные действия и их доступность объявляет сервер.</p>"
                 }
               }
             ]
@@ -149,7 +149,7 @@
                     "id": "table.log-entry",
                     "type": "richTextComponent",
                     "props": {
-                      "html": "<p><strong>{{logEntry.data.kind}}</strong> {{logEntry.summary}}</p>"
+                      "html": "<p><strong>{{logEntry.data.kind}}</strong> {{logEntry.summary}} {{logEntry.data.winnerPlayerId}}</p>"
                     }
                   }
                 ]

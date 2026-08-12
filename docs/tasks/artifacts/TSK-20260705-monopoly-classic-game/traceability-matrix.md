@@ -1,4 +1,4 @@
-# Матрица трассировки Estate Race (S0–S5)
+# Матрица трассировки Estate Race (S0–S6)
 
 Матрица является исполнительным срезом полного плана S0–S10 и не создаёт
 отдельную очередь. Источником порядка и критериев служит [полный
@@ -45,8 +45,8 @@
 | Сделка проходит propose/accept/decline/cancel с повторной проверкой владения | S5 (GSR-044) | offer state, actor/resume actor; `trade.*`; sequential reaction plan | панель и DOM-формы только опубликованных действий | деньги/объекты/обе карты, stale funds/ownership, decline/cancel, rollback и exact retry | реализовано |
 | Непогашенное обязательство допускает только продажу строений и залог | S5 (GSR-044) | obligation/liability state; `obligation.resolve`, liquidity intents; phase plan | подтверждённая сумма, получатель и server-declared действия | налог, рента, тюрьма, карточные цепочки, погашение через mortgage, без частичного успеха | реализовано |
 | Банкротство передаёт активы кредитору или банку и исключает участника | S5 (GSR-044) | `state.players.status`, ownership/held cards, liquidation state; `bankruptcy.declare`; transfer/auction plans | получатель, pending asset и DOM-действия залога/аукциона | оба получателя, две карты, заложенный актив, multi-lot/all-pass, 2/6, пропуск eliminated и browser flow | реализовано; S5 завершён |
-| Последний активный участник становится победителем ровно один раз | S6 | `state.players` bounded record-map, terminal outcome; `game.finish`; active-count plan | итоговый экран, закрытие изменяющих действий | переход 3→2 не завершает, 2→1 завершает; replay и restart | запланировано |
-| Локальная партия 2–6 игроков проходит от создания до terminal outcome | S6 | общий game manifest и сохранённая PostgreSQL-сессия; те же intents/plans | полный responsive UI и DOM fallback | начало/середина/поздняя/terminal fixtures + один bounded transcript | запланировано |
+| Последний активный участник становится победителем ровно один раз | S6 (GSR-045) | `state.players` bounded record-map, server-owned terminal outcome; `estate.finish-last-active-player` | итоговый экран, закрытие изменяющих действий | `3→2`, обе ветви `2→1`, multi-lot, exact retry и terminal rejection | реализовано; S6 завершён |
+| Локальная партия 2–6 игроков использует один manifest до terminal outcome | S6 (GSR-045) | один game manifest; поздняя допустимая фикстура задаётся до session creation, затем только Game Intents | responsive UI, DOM fallback и подтверждённый winner | начало/середина/поздняя/terminal fixtures, bounded transcript и production browser flow | реализовано для локального режима; долговечное PostgreSQL-восстановление остаётся внешней границей S8 |
 | Тексты, карточки, mockups и методический слой подключаются к тем же состояниям | S7 | content provenance + UI bindings; read-only projections и risk confirmations | адаптивное поле, карточки, keyboard/focus, reflection | visual comparison, accessibility и content-rights review | запланировано |
 | Сетевая сессия сохраняет actor boundary, персональную проекцию и reconnect | S8 | authenticated participants, WebSocket projection, PostgreSQL version; те же intents | два браузерных контекста и reconnect state | spoofing/privacy, stale version, reconnect/resync | запланировано |
 | ИИ получает только проекцию и доступные действия, а не состояние движка | S9 | agent seat/fallback declarations; agent action choice → обычный dispatcher | состояние ИИ и fallback | adversarial mock, invalid choice, bounded retry/fallback, replay | запланировано |
@@ -60,7 +60,7 @@
 | Финальное содержание и публикация в каталоге | S10 | технически завершённый S1 использует оригинальные внутренние данные; финальный content package ещё не принят | production/catalog branding не объявляется готовым | content/provenance gate после P-01 | заблокировано: P-01 pending |
 | Сетевая партия | S8 | зависит от ADR-059 participants/join, персональной доставки и reconnect, не меняет game manifest | network UI не активируется | platform task + PostgreSQL/concurrency/browser checks | заблокировано: внешняя платформа |
 | ИИ-места | S9 | зависит от participants и actor-scoped availability из ADR-060; отдельную ветку runtime создавать нельзя | AI seat UI не активируется | adversarial projection/fallback checks после S8 prerequisites | заблокировано: внешняя платформа |
-| Каталог и полное закрытие | S10 | зависит от P-01, S6/S7, `LEGACY-0072` и `LEGACY-0068`; source of truth не расширяется | каталог не публикуется | milestone H/N/A и product/rights acceptance | заблокировано: зависимости |
+| Каталог и полное закрытие | S10 | зависит от P-01, S7, `LEGACY-0072` и `LEGACY-0068`; source of truth не расширяется | каталог не публикуется | milestone H/N/A и product/rights acceptance | заблокировано: зависимости |
 
 Таким образом, ни одно существенное правило S1–S10 не остаётся без среза,
 состояния/намерения, UI, проверки и статуса; `запланировано` не означает

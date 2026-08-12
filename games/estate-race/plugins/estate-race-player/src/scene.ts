@@ -37,7 +37,8 @@ const phaseLabel: Readonly<Record<string, string>> = {
   auction: "аукцион",
   buildingWindow: "окно заявок",
   buildingAuction: "аукцион строений",
-  jail: "тюрьма"
+  jail: "тюрьма",
+  terminal: "завершено"
 };
 
 const errorText = (error: unknown) =>
@@ -139,7 +140,17 @@ export const createEstateRaceScene: PhaserSceneFactory = (
           fontSize: "17px"
         }).setOrigin(0.5);
 
-      if (projection.phase === "buildingWindow") {
+      if (projection.outcome.status === "terminal") {
+        this.drawOutcomeSummary(projection);
+      } else if (projection.phase === "terminal") {
+        this.add.text(680, 505, "Итог игры недоступен: сервер не подтвердил корректный результат.", {
+          color: "#8d3d36",
+          align: "center",
+          wordWrap: { width: 600 },
+          fontFamily: "Arial, sans-serif",
+          fontSize: "20px"
+        }).setOrigin(0.5);
+      } else if (projection.phase === "buildingWindow") {
         this.drawBuildingWindowSummary(projection);
       } else if (projection.phase === "buildingAuction") {
         this.drawBuildingAuctionSummary(projection);
@@ -172,10 +183,13 @@ export const createEstateRaceScene: PhaserSceneFactory = (
         }).setOrigin(0.5);
       }
 
-      if (projection.phase !== "blocked" && projection.phase !== "auction") {
+      if (projection.outcome.status !== "terminal"
+        && projection.phase !== "terminal"
+        && projection.phase !== "blocked"
+        && projection.phase !== "auction") {
         this.drawCardAndJailSummary(projection);
       }
-      this.drawS5Summary(projection);
+      if (projection.outcome.status !== "terminal") this.drawS5Summary(projection);
 
       // A bid requires the numeric DOM form. Never dispatch an empty bid from
       // the canvas; the server remains the authority for the submitted amount.
@@ -207,6 +221,35 @@ export const createEstateRaceScene: PhaserSceneFactory = (
         lineSpacing: 7,
         wordWrap: { width: 600 }
       }).setOrigin(0.5);
+    }
+
+    private drawOutcomeSummary(projection: EstateBoardProjection) {
+      const winnerId = projection.outcome.winnerPlayerId;
+      const winner = winnerId === null
+        ? null
+        : projection.players.find((player) => player.id === winnerId);
+      const winnerLabel = winner?.label ?? winnerId;
+      const result = winnerLabel === null
+        ? "Победитель не объявлен"
+        : `Победитель: ${winnerLabel}`;
+      this.add.text(680, 505, ["Игра завершена", result].join("\n"), {
+        color: "#173a34",
+        align: "center",
+        fontFamily: "Georgia, serif",
+        fontSize: "30px",
+        fontStyle: "bold",
+        lineSpacing: 12,
+        wordWrap: { width: 600 }
+      }).setOrigin(0.5);
+      this.add.text(680, 590, projection.outcome.reason === "last-active-player"
+        ? "Последний активный участник"
+        : "Результат подтверждён сервером", {
+          color: "#495c55",
+          align: "center",
+          fontFamily: "Arial, sans-serif",
+          fontSize: "18px",
+          wordWrap: { width: 560 }
+        }).setOrigin(0.5);
     }
 
     private drawBuildingWindowSummary(projection: EstateBoardProjection) {

@@ -1,7 +1,7 @@
 {
   "meta": {
     "id": "estate-race",
-    "version": "0.5.0",
+    "version": "0.6.0",
     "name": "Estate Race · прототип",
     "description": "Локальная экономическая игра для 2–6 участников на полном авторском сорокаклеточном маршруте.",
     "author": "Cubica",
@@ -42,7 +42,8 @@
         "tradeClaim",
         "obligation",
         "liquidationMortgage",
-        "liquidationClaim"
+        "liquidationClaim",
+        "terminal"
       ]
     }
   },
@@ -1799,6 +1800,11 @@
         "activeScreen": "topbar"
       },
       "log": [],
+      "outcome": {
+        "status": "active",
+        "winnerPlayerId": null,
+        "reason": "none"
+      },
       "auction": {
         "resumePlayerId": "",
         "cellId": "",
@@ -1872,7 +1878,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:d537ccae221ffcb7b1b5695fec76957e991a974e8907f1a5d482564c429ba2df"
+      "definitionHash": "sha256:d146075730e8e046e514b3a7e5c6a3890a93d41be88918fd6a1877056d67739f"
     },
     "turn.roll": {
       "capabilityFamily": "runtime.server",
@@ -1892,7 +1898,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:fa712e45d0941ea4fc28a499b982b1094d7e1a791cd77c1dab452806a64b9010"
+      "definitionHash": "sha256:50cf64b57e4b78b4dba183beb2c1542477e4a9c8e387c2e5b0720588775641c1"
     },
     "property.buy": {
       "capabilityFamily": "runtime.server",
@@ -1912,7 +1918,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:6c330a44f0caf65997e3d1bd804dfa02cd207dd066f8e3cacdd9b833705703c6"
+      "definitionHash": "sha256:22518cf3c26b4eaacece584e535d93bf9f8adb1aabcdacec8890d95b22d27a11"
     },
     "property.decline": {
       "capabilityFamily": "runtime.server",
@@ -1932,7 +1938,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:1b084e739297649811f1e51f2d1b96609eb37cb38097ef4a039886f78b3fe8c2"
+      "definitionHash": "sha256:6463344aaca8d89716ab4f89d178aaa1eb397543d5f7c4b0c4f31ff5019582a1"
     },
     "property.rent": {
       "capabilityFamily": "runtime.server",
@@ -1952,7 +1958,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:dab481af38781a71f21b3b88d0bbf4e0f3d5f2f2035bba8cdf3ac187ac833c61"
+      "definitionHash": "sha256:7b95a1e611616b979c20200f559ec7bf54ae54afedb3815d739c52dfa193af69"
     },
     "property.auction.bid": {
       "capabilityFamily": "runtime.server",
@@ -1980,7 +1986,7 @@
         "planRef": "property.auction.bid"
       },
       "invocation": "external",
-      "definitionHash": "sha256:0ca58e6b114afcc7072c53ea7d5740f3f08ec7529d24059a8e9cdb28ebec66bf"
+      "definitionHash": "sha256:94b4a94f01e639d593bf173d92208097b00a84c9ccb7cc071c78e6dc7692a834"
     },
     "property.auction.pass": {
       "capabilityFamily": "runtime.server",
@@ -2000,7 +2006,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:06ed0bb18fccc4f46617cda730c5f49e2951085ff0bce1445bb0a73e4b629016"
+      "definitionHash": "sha256:d683828fbffc14bed0abff22371b60a2d45cc65ea5725e64960aae66132a6c11"
     },
     "property.build": {
       "capabilityFamily": "runtime.server",
@@ -2028,7 +2034,7 @@
         "planRef": "property.build"
       },
       "invocation": "external",
-      "definitionHash": "sha256:d88d487d5f53a172e9f83056fd364eea7a3d371b9f37b3bb7aadcff48a3497b3"
+      "definitionHash": "sha256:911d3d9dddd3d76cf4c6ea0d439341728c93c4da76f22e4c7d561671fb04a34a"
     },
     "property.build.request": {
       "capabilityFamily": "runtime.server",
@@ -2056,7 +2062,7 @@
         "planRef": "property.build.request"
       },
       "invocation": "external",
-      "definitionHash": "sha256:001d25197e79ed28c51fb1599d6b444444a9a5b175f5aeee68a6d674bbd2b251"
+      "definitionHash": "sha256:338d95e0865eb04b5719a7bd839c9d7137d5a08459e380c7c4dad2c64253fb38"
     },
     "property.build.pass": {
       "capabilityFamily": "runtime.server",
@@ -2076,7 +2082,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:5e614c7007db9960b98e1b6c72f87cbc6ddfb596caa1a6078cd07545698b9b83"
+      "definitionHash": "sha256:be97da05b8d92589a936505b639b46f8e8e22d7105f897abbae355ca66697499"
     },
     "property.build.auction.bid": {
       "capabilityFamily": "runtime.server",
@@ -2104,7 +2110,7 @@
         "planRef": "property.build.auction.bid"
       },
       "invocation": "external",
-      "definitionHash": "sha256:d5922d5b448eb46ac477bb95f72df85a9e1a29d936e289bfd891435df8d991c2"
+      "definitionHash": "sha256:f8273f701b241b499206c341479e3e7f7380ae71d04a907ce3b4ffd1570fd045"
     },
     "property.build.auction.pass": {
       "capabilityFamily": "runtime.server",
@@ -2124,7 +2130,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:0e51c05a7ff0ab959da092585173497c8f4fc75445e2eac92f8d77d4a95109e7"
+      "definitionHash": "sha256:0296fe9c0f3d0220605929f965f0265ddfd290824af9f606f3c92ada9efd96c1"
     },
     "property.sell": {
       "capabilityFamily": "runtime.server",
@@ -2152,7 +2158,7 @@
         "planRef": "property.sell"
       },
       "invocation": "external",
-      "definitionHash": "sha256:caee3d65f846e0a525ae53886703d8dc3ec759680d2e942113303aef663112a8"
+      "definitionHash": "sha256:826a58cfb53f1f889a2cb0dff16348ce93fe312b4975c55622680dbfe9e41a95"
     },
     "property.mortgage": {
       "capabilityFamily": "runtime.server",
@@ -2180,7 +2186,7 @@
         "planRef": "property.mortgage"
       },
       "invocation": "external",
-      "definitionHash": "sha256:064e5bb307f7b5233928879dff172a8a689c9fdecd1ab54d8f55f957bf6e02cd"
+      "definitionHash": "sha256:2731d31a3026414ca755b8fb403e4b2cd2e5ec449ed24cfd06308751d838f524"
     },
     "property.redeem": {
       "capabilityFamily": "runtime.server",
@@ -2208,7 +2214,7 @@
         "planRef": "property.redeem"
       },
       "invocation": "external",
-      "definitionHash": "sha256:9f499fc2ca1a45089c12de474a136a80a375906295aaebd95fe12558d0acb4d9"
+      "definitionHash": "sha256:aa8c488e3221121ea0d094daaf2b64ddee13bfd82eb11b42f56a93360aa8871a"
     },
     "tax.pay": {
       "capabilityFamily": "runtime.server",
@@ -2228,7 +2234,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:8389a84f05417f44af7927df10cf6ea0c01e350f67aac38154a8e727d5230ef9"
+      "definitionHash": "sha256:9fc271e5059abf7a8659707756483247b9263c0ac67db5bfc832d14c45cf4d19"
     },
     "jail.pay": {
       "capabilityFamily": "runtime.server",
@@ -2248,7 +2254,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:73651397e5258942499d81a6209d5ec1f635b5d5657f91b3681cdf5f6b18fdfd"
+      "definitionHash": "sha256:01edc68f587e325b6378ee43ededae30dc3752b0d8f1c63ee3d12049ca847680"
     },
     "jail.card.use.event": {
       "capabilityFamily": "runtime.server",
@@ -2268,7 +2274,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:f447cf18be7ff8b885c3fcd36620a750149129c5150fe2cbd0288a768d02fdd2"
+      "definitionHash": "sha256:cd96922be39bf055f7d0e13e6332f1b1d6d9131c488c8ecd6d7a19e2d898be6e"
     },
     "jail.roll": {
       "capabilityFamily": "runtime.server",
@@ -2288,7 +2294,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:c35d2d6829412028f21c933154bf068f59d21437ccc9a226026364bf9d51e732"
+      "definitionHash": "sha256:dda26d197b08ae11d8d1867ae2cfa5ff23987cb4c7f669bee681094c41598da4"
     },
     "jail.third.move": {
       "capabilityFamily": "runtime.server",
@@ -2308,7 +2314,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:15f78f4bba02808b31df445382763f5e1943a6bc5f8a2ddef4c087064d3480b9"
+      "definitionHash": "sha256:f15b17bbf2f6b322b12a3b23531387f3b3e5aab088785e8d5c1d18be0a37f17f"
     },
     "turn.finish": {
       "capabilityFamily": "runtime.server",
@@ -2328,7 +2334,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:42051849cd90c9424310d129791b6819faf41f869a773c2fe5f01b8c9256e1ac"
+      "definitionHash": "sha256:82310a90d1f9ac7ef9a460a1000d5ca03edd095dcfe525c6900a50651e326e46"
     },
     "trade.open": {
       "capabilityFamily": "runtime.server",
@@ -2356,7 +2362,7 @@
         "planRef": "trade.open"
       },
       "invocation": "external",
-      "definitionHash": "sha256:2711fe22173b685c4b81fa5fa77c15db7d9a029a11f7e3558af94d72f8531883"
+      "definitionHash": "sha256:5285b3007f50a9f3557f253b6a57f0767b010218e8785142de7f668eab9a13ed"
     },
     "trade.cash.set": {
       "capabilityFamily": "runtime.server",
@@ -2390,7 +2396,7 @@
         "planRef": "trade.cash.set"
       },
       "invocation": "external",
-      "definitionHash": "sha256:d52ad311d52960344429bd74ed6df5423656ae1130360985262f38f7fd681599"
+      "definitionHash": "sha256:4b829a23663b19a9918dd6b0c4af1d5f92d97078f6a96e374c78e12d8d5b4a80"
     },
     "trade.asset.set": {
       "capabilityFamily": "runtime.server",
@@ -2424,7 +2430,7 @@
         "planRef": "trade.asset.set"
       },
       "invocation": "external",
-      "definitionHash": "sha256:938dd3904fe11f49e88e63a368cc3cf5d4d5c8b83d272c3a44a4fb4a3cdff020"
+      "definitionHash": "sha256:e2d215237509a80e1fab82bb3a6649d5c0cf4b4949c8b301d39b0fc14b78fe83"
     },
     "trade.asset.remove": {
       "capabilityFamily": "runtime.server",
@@ -2452,7 +2458,7 @@
         "planRef": "trade.asset.remove"
       },
       "invocation": "external",
-      "definitionHash": "sha256:611401baad4e48564144328932a8a62443c045f973adbc42008df145c896cde5"
+      "definitionHash": "sha256:a484738d016c1e90992ba86e8bd7cb53c9aff6b86b6313069ef8123e4af91b5f"
     },
     "trade.card.offer": {
       "capabilityFamily": "runtime.server",
@@ -2480,7 +2486,7 @@
         "planRef": "trade.card.offer"
       },
       "invocation": "external",
-      "definitionHash": "sha256:98ccadba1989462dd8aef7bd7661ab88cc55a6f8be5e66b247c4db6c54122d86"
+      "definitionHash": "sha256:79a8be5a7d875788aa064c308838b35dc62dafcd317beced0514a30a3a87e8cc"
     },
     "trade.card.offer.remove": {
       "capabilityFamily": "runtime.server",
@@ -2500,7 +2506,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:a6837beace9ef9fd2c2b6149fe85b3c27a3a73b1b1346e46b5cd23726e21ecee"
+      "definitionHash": "sha256:cb19ef11ac61fcd834af50aa23c36132321586d6f4f5d3dc7fede287c2d07dc0"
     },
     "trade.card.request": {
       "capabilityFamily": "runtime.server",
@@ -2528,7 +2534,7 @@
         "planRef": "trade.card.request"
       },
       "invocation": "external",
-      "definitionHash": "sha256:e2555efb2ecabed2c9e892b741c3090caca2e8e2dfa09e6ab714b8b04a0ab92c"
+      "definitionHash": "sha256:764632890593f1f9363aaaeb7c86c2c0a3f181e3149e64378652470e786f5700"
     },
     "trade.card.request.remove": {
       "capabilityFamily": "runtime.server",
@@ -2548,7 +2554,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:9b8e9e2114b6f7aaf6c55017074fa006a7a7bb09fff27b83e5e45f0f22464426"
+      "definitionHash": "sha256:a9dac39e5405def0d900574a45bba9418bbc7f5448b34c455439bf709b63cf59"
     },
     "trade.propose": {
       "capabilityFamily": "runtime.server",
@@ -2568,7 +2574,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:b478cb3a7124e218468b64885166095909a6b519ae2716ca976233afc6622d4b"
+      "definitionHash": "sha256:2be85f5a6d07e6af52c78169d7019f154d3040b11ae2cb765b966134ca0cf4ee"
     },
     "trade.accept": {
       "capabilityFamily": "runtime.server",
@@ -2588,7 +2594,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:60ab5f28551b1c8185c104b325de5f5a5e54b021fc961d77f1caa812fa4e6e8c"
+      "definitionHash": "sha256:711ff4c9059f6b118e338baf4e13d5a8b446d11cf824f972e5c19963ccb80b3c"
     },
     "trade.decline": {
       "capabilityFamily": "runtime.server",
@@ -2608,7 +2614,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:b9723aff048969bfeeed1a2bcfac6619fa27e83986f90bbc698ff929515c53ff"
+      "definitionHash": "sha256:fb9df3bb18de7112a15e14e8f2642a52016386ee8ac1210c7b4c19942cbbc4c1"
     },
     "trade.cancel": {
       "capabilityFamily": "runtime.server",
@@ -2628,7 +2634,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:6889e641dc59eb1f416b19c5749cf36097e42c87fc7631836b89be4a09b42c1b"
+      "definitionHash": "sha256:45a6fc5654b3afba4572c67771a202ce1a1fa58ba63cdde56b8b2d4bd227bdb5"
     },
     "trade.card.claim": {
       "capabilityFamily": "runtime.server",
@@ -2648,7 +2654,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:11e95ff87e4e9f3d49fbd04543f6d61ec6d7f6e84424c12a4b0aada658e627a9"
+      "definitionHash": "sha256:e09968740a0e2c677367d898bae5ea4c3de0f351f1e92e2eb000a01565b34611"
     },
     "obligation.resolve": {
       "capabilityFamily": "runtime.server",
@@ -2668,7 +2674,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:29b9c144c7fe5e5ae5f3fdca84be6308c2d77f55c065e6e8b126d37c8ff67f75"
+      "definitionHash": "sha256:a03789dc73e3cde5a72c50ba1618ad2bc3e96fac6738042342cd69029ef71402"
     },
     "bankruptcy.declare": {
       "capabilityFamily": "runtime.server",
@@ -2700,7 +2706,7 @@
         ]
       },
       "invocation": "external",
-      "definitionHash": "sha256:8e571d2675d923a721ce3526fabb4f1c8d77d25700a5e22888d6296822395709"
+      "definitionHash": "sha256:95bae4c37929183906c8c783190dfe930aac455820201e8a49279e803a2ba9e2"
     },
     "jail.card.use.fund": {
       "capabilityFamily": "runtime.server",
@@ -2720,7 +2726,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:f89ec087ec26aed78e40cd18e17ed5a65606b1a46f6099683a9f67bf9f575bf8"
+      "definitionHash": "sha256:c374a40215defe7b321455964ceab34c6bf325c66483e1bfe033e8571d011927"
     },
     "mortgage.transfer.redeem": {
       "capabilityFamily": "runtime.server",
@@ -2740,7 +2746,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:74a8444b714c12cb134bb8bb7cb14dc85e46c0e08762a6f297b4aa5355715aea"
+      "definitionHash": "sha256:e4b454847d584676a776bf61bfbda5689f7d6b83990e7f44e6f4627f584a73ac"
     },
     "mortgage.transfer.keep": {
       "capabilityFamily": "runtime.server",
@@ -2760,7 +2766,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:cbee353b205d25b158c6feddc1a6c7e34f0a552335693d1505afa8f7dc68e1b9"
+      "definitionHash": "sha256:87a216c68827a3c0e80140dd03387c3e2d08d67f90b13c2bd683ddd4cdc5a1cb"
     },
     "liquidation.card.claim": {
       "capabilityFamily": "runtime.server",
@@ -2780,7 +2786,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:372c107f55cd8a74fc720187df36a1e404f3450216d2db5727adc2f98662e357"
+      "definitionHash": "sha256:d4bc1443533e018aacd10fb57c1effdd88d798de77cdbfc28e66487fc7f04e72"
     }
   },
   "mechanics": {
@@ -2826,6 +2832,20 @@
         "core.string": {
           "kind": "string"
         },
+        "game.outcome-status": {
+          "kind": "enum",
+          "values": [
+            "active",
+            "terminal"
+          ]
+        },
+        "game.outcome-reason": {
+          "kind": "enum",
+          "values": [
+            "none",
+            "last-active-player"
+          ]
+        },
         "game.participant-order": {
           "kind": "list",
           "itemType": "core.string",
@@ -2850,7 +2870,8 @@
             "tradeClaim",
             "obligation",
             "liquidationMortgage",
-            "liquidationClaim"
+            "liquidationClaim",
+            "terminal"
           ]
         },
         "core.integer": {
@@ -2904,6 +2925,23 @@
           "fields": {
             "kind": {
               "typeRef": "core.string",
+              "optional": false
+            }
+          }
+        },
+        "game.terminal-event": {
+          "kind": "record",
+          "fields": {
+            "kind": {
+              "typeRef": "core.string",
+              "optional": false
+            },
+            "winnerPlayerId": {
+              "typeRef": "core.string",
+              "optional": false
+            },
+            "reason": {
+              "typeRef": "game.outcome-reason",
               "optional": false
             }
           }
@@ -3343,6 +3381,42 @@
             ]
           },
           "valueType": "core.optional-string",
+          "access": "read-write"
+        },
+        "public.outcome.status": {
+          "audienceRef": "public",
+          "storage": {
+            "root": "public",
+            "segments": [
+              "outcome",
+              "status"
+            ]
+          },
+          "valueType": "game.outcome-status",
+          "access": "read-write"
+        },
+        "public.outcome.winnerPlayerId": {
+          "audienceRef": "public",
+          "storage": {
+            "root": "public",
+            "segments": [
+              "outcome",
+              "winnerPlayerId"
+            ]
+          },
+          "valueType": "core.optional-string",
+          "access": "read-write"
+        },
+        "public.outcome.reason": {
+          "audienceRef": "public",
+          "storage": {
+            "root": "public",
+            "segments": [
+              "outcome",
+              "reason"
+            ]
+          },
+          "valueType": "game.outcome-reason",
           "access": "read-write"
         },
         "public.log": {
@@ -4689,6 +4763,13 @@
             "endpoint": "public.log"
           }
         },
+        "estate-race.terminal": {
+          "audienceRef": "public",
+          "payloadType": "game.terminal-event",
+          "journalEndpoint": {
+            "endpoint": "public.log"
+          }
+        },
         "turn.roll.event.23": {
           "audienceRef": "public",
           "payloadType": "game.turn.roll.event.23-event-record.1",
@@ -4707,7 +4788,7 @@
     },
     "plans": {
       "session.setup.finalize": {
-        "planHash": "sha256:fec3b4c3733d5afb2a7faf7ce5c4612138bc2e1c74b7a3c3184724807f57ff4d",
+        "planHash": "sha256:72f3f33911a97effeddc440c46810f7d9b6a65b5753a92af23c8008cf2a6c984",
         "transaction": {
           "steps": [
             {
@@ -4873,7 +4954,7 @@
         }
       },
       "turn.roll": {
-        "planHash": "sha256:cd6a098a9228cb342a503bf61587648fdbf7481550e30636b95752576df69fc0",
+        "planHash": "sha256:f937741259b91c3a3e6efcfc5bbb1de032e7faf50d6c03cad6cacb5257398fc4",
         "transaction": {
           "steps": [
             {
@@ -14990,7 +15071,7 @@
         }
       },
       "property.buy": {
-        "planHash": "sha256:6975f007a87b2628afe8dbdc3c0e7e81c8a66f4397e082de34f22e3c228bf73b",
+        "planHash": "sha256:89f11e4c47a4bf06d7826fdfb6a7cb59e662089855f3153ed001796e959ed15e",
         "transaction": {
           "steps": [
             {
@@ -15266,7 +15347,7 @@
         }
       },
       "property.decline": {
-        "planHash": "sha256:35a33a9a1a002217ca341d83bddf710450e600307f3a3a868b6994b0f961c6df",
+        "planHash": "sha256:760c0a1449a64ec97124e25883a5efb77e9101d1000a906a920b6d1eeb950fec",
         "transaction": {
           "steps": [
             {
@@ -15622,7 +15703,7 @@
         }
       },
       "property.rent": {
-        "planHash": "sha256:8a514c80bf07a83fbd59944e35e6a9c97d533d1a7eecaccec3c9d02268c09b96",
+        "planHash": "sha256:ebf116c2d08651beb86ec1142005957e06a15d5ef7ed06f1bbd8c7845895f6fd",
         "transaction": {
           "steps": [
             {
@@ -17361,7 +17442,7 @@
         }
       },
       "property.auction.bid": {
-        "planHash": "sha256:c6918e88423bb8638d6f370863643d918912aa6724bb36598c5878e864f484b2",
+        "planHash": "sha256:1c1a94ca806cf55c64d656ec48db3ec0fe2c9d63cee167951919c5dcb81ab8ee",
         "transaction": {
           "steps": [
             {
@@ -18290,6 +18371,70 @@
               ]
             },
             {
+              "id": "final-bankruptcy-active-players",
+              "kind": "query",
+              "op": "core.entities.select",
+              "selector": {
+                "collection": "players",
+                "attributes": {
+                  "status": {
+                    "op": "value.literal",
+                    "value": "active"
+                  }
+                },
+                "cardinality": {
+                  "min": 1,
+                  "max": 6
+                }
+              },
+              "when": {
+                "op": "predicate.all",
+                "items": [
+                  {
+                    "op": "predicate.compare",
+                    "operator": "eq",
+                    "left": {
+                      "op": "value.result",
+                      "stepId": "remaining-eligible",
+                      "path": [
+                        "ids"
+                      ]
+                    },
+                    "right": {
+                      "op": "value.literal",
+                      "value": []
+                    }
+                  },
+                  {
+                    "op": "predicate.compare",
+                    "operator": "eq",
+                    "left": {
+                      "op": "value.state",
+                      "ref": {
+                        "endpoint": "public.liquidation.status"
+                      }
+                    },
+                    "right": {
+                      "op": "value.literal",
+                      "value": "bankAuction"
+                    }
+                  },
+                  {
+                    "op": "predicate.exists",
+                    "value": {
+                      "op": "value.result",
+                      "stepId": "remaining-liquidation",
+                      "path": [
+                        "ids",
+                        "0"
+                      ]
+                    },
+                    "exists": false
+                  }
+                ]
+              }
+            },
+            {
               "id": "finish-liquidation",
               "kind": "command",
               "op": "core.state.patch",
@@ -18602,12 +18747,167 @@
                   }
                 ]
               }
+            },
+            {
+              "id": "finish-last-active-player.active-players",
+              "kind": "query",
+              "op": "core.entities.select",
+              "selector": {
+                "collection": "players",
+                "attributes": {
+                  "status": {
+                    "op": "value.literal",
+                    "value": "active"
+                  }
+                },
+                "cardinality": {
+                  "min": 1,
+                  "max": 6
+                }
+              }
+            },
+            {
+              "id": "finish-last-active-player.finish-one",
+              "kind": "command",
+              "op": "core.entities.each",
+              "selection": {
+                "op": "value.result",
+                "stepId": "finish-last-active-player.active-players"
+              },
+              "body": [
+                {
+                  "id": "write-terminal-outcome",
+                  "kind": "command",
+                  "op": "core.state.patch",
+                  "patches": [
+                    {
+                      "operation": "set",
+                      "target": {
+                        "endpoint": "public.outcome.status"
+                      },
+                      "value": {
+                        "op": "value.literal",
+                        "value": "terminal"
+                      }
+                    },
+                    {
+                      "operation": "set",
+                      "target": {
+                        "endpoint": "public.outcome.winnerPlayerId"
+                      },
+                      "value": {
+                        "op": "value.item",
+                        "area": "identity",
+                        "field": "id"
+                      }
+                    },
+                    {
+                      "operation": "set",
+                      "target": {
+                        "endpoint": "public.outcome.reason"
+                      },
+                      "value": {
+                        "op": "value.literal",
+                        "value": "last-active-player"
+                      }
+                    },
+                    {
+                      "operation": "set",
+                      "target": {
+                        "endpoint": "public.board.availableActions"
+                      },
+                      "value": {
+                        "op": "value.literal",
+                        "value": []
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "terminal-phase",
+                  "kind": "command",
+                  "op": "turn.phase.select",
+                  "phase": {
+                    "op": "value.literal",
+                    "value": "terminal"
+                  }
+                },
+                {
+                  "id": "terminal-event",
+                  "kind": "command",
+                  "op": "core.event.emit",
+                  "eventType": "estate-race.terminal",
+                  "summary": {
+                    "op": "value.literal",
+                    "value": "Остался один активный участник; партия завершена."
+                  },
+                  "audience": "public",
+                  "data": {
+                    "kind": {
+                      "op": "value.literal",
+                      "value": "terminal"
+                    },
+                    "winnerPlayerId": {
+                      "op": "value.item",
+                      "area": "identity",
+                      "field": "id"
+                    },
+                    "reason": {
+                      "op": "value.literal",
+                      "value": "last-active-player"
+                    }
+                  }
+                }
+              ],
+              "when": {
+                "op": "predicate.all",
+                "items": [
+                  {
+                    "op": "predicate.exists",
+                    "value": {
+                      "op": "value.result",
+                      "stepId": "final-bankruptcy-active-players",
+                      "path": [
+                        "ids",
+                        "0"
+                      ]
+                    },
+                    "exists": true
+                  },
+                  {
+                    "op": "predicate.exists",
+                    "value": {
+                      "op": "value.result",
+                      "stepId": "finish-last-active-player.active-players",
+                      "path": [
+                        "ids",
+                        "1"
+                      ]
+                    },
+                    "exists": false
+                  },
+                  {
+                    "op": "predicate.compare",
+                    "operator": "eq",
+                    "left": {
+                      "op": "value.state",
+                      "ref": {
+                        "endpoint": "public.outcome.status"
+                      }
+                    },
+                    "right": {
+                      "op": "value.literal",
+                      "value": "active"
+                    }
+                  }
+                ]
+              }
             }
           ]
         }
       },
       "property.auction.pass": {
-        "planHash": "sha256:331881106a454142c271127a0d10e386c0e837269304a301d0e0ea812d9e2e7b",
+        "planHash": "sha256:bb5ab4db68777f5a2c193b6f33e6f5570f7541693a4f11cf92b5135798510a72",
         "transaction": {
           "steps": [
             {
@@ -19542,6 +19842,70 @@
               ]
             },
             {
+              "id": "final-bankruptcy-active-players",
+              "kind": "query",
+              "op": "core.entities.select",
+              "selector": {
+                "collection": "players",
+                "attributes": {
+                  "status": {
+                    "op": "value.literal",
+                    "value": "active"
+                  }
+                },
+                "cardinality": {
+                  "min": 1,
+                  "max": 6
+                }
+              },
+              "when": {
+                "op": "predicate.all",
+                "items": [
+                  {
+                    "op": "predicate.compare",
+                    "operator": "eq",
+                    "left": {
+                      "op": "value.result",
+                      "stepId": "remaining-eligible",
+                      "path": [
+                        "ids"
+                      ]
+                    },
+                    "right": {
+                      "op": "value.literal",
+                      "value": []
+                    }
+                  },
+                  {
+                    "op": "predicate.compare",
+                    "operator": "eq",
+                    "left": {
+                      "op": "value.state",
+                      "ref": {
+                        "endpoint": "public.liquidation.status"
+                      }
+                    },
+                    "right": {
+                      "op": "value.literal",
+                      "value": "bankAuction"
+                    }
+                  },
+                  {
+                    "op": "predicate.exists",
+                    "value": {
+                      "op": "value.result",
+                      "stepId": "remaining-liquidation",
+                      "path": [
+                        "ids",
+                        "0"
+                      ]
+                    },
+                    "exists": false
+                  }
+                ]
+              }
+            },
+            {
               "id": "finish-liquidation",
               "kind": "command",
               "op": "core.state.patch",
@@ -19854,12 +20218,167 @@
                   }
                 ]
               }
+            },
+            {
+              "id": "finish-last-active-player.active-players",
+              "kind": "query",
+              "op": "core.entities.select",
+              "selector": {
+                "collection": "players",
+                "attributes": {
+                  "status": {
+                    "op": "value.literal",
+                    "value": "active"
+                  }
+                },
+                "cardinality": {
+                  "min": 1,
+                  "max": 6
+                }
+              }
+            },
+            {
+              "id": "finish-last-active-player.finish-one",
+              "kind": "command",
+              "op": "core.entities.each",
+              "selection": {
+                "op": "value.result",
+                "stepId": "finish-last-active-player.active-players"
+              },
+              "body": [
+                {
+                  "id": "write-terminal-outcome",
+                  "kind": "command",
+                  "op": "core.state.patch",
+                  "patches": [
+                    {
+                      "operation": "set",
+                      "target": {
+                        "endpoint": "public.outcome.status"
+                      },
+                      "value": {
+                        "op": "value.literal",
+                        "value": "terminal"
+                      }
+                    },
+                    {
+                      "operation": "set",
+                      "target": {
+                        "endpoint": "public.outcome.winnerPlayerId"
+                      },
+                      "value": {
+                        "op": "value.item",
+                        "area": "identity",
+                        "field": "id"
+                      }
+                    },
+                    {
+                      "operation": "set",
+                      "target": {
+                        "endpoint": "public.outcome.reason"
+                      },
+                      "value": {
+                        "op": "value.literal",
+                        "value": "last-active-player"
+                      }
+                    },
+                    {
+                      "operation": "set",
+                      "target": {
+                        "endpoint": "public.board.availableActions"
+                      },
+                      "value": {
+                        "op": "value.literal",
+                        "value": []
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "terminal-phase",
+                  "kind": "command",
+                  "op": "turn.phase.select",
+                  "phase": {
+                    "op": "value.literal",
+                    "value": "terminal"
+                  }
+                },
+                {
+                  "id": "terminal-event",
+                  "kind": "command",
+                  "op": "core.event.emit",
+                  "eventType": "estate-race.terminal",
+                  "summary": {
+                    "op": "value.literal",
+                    "value": "Остался один активный участник; партия завершена."
+                  },
+                  "audience": "public",
+                  "data": {
+                    "kind": {
+                      "op": "value.literal",
+                      "value": "terminal"
+                    },
+                    "winnerPlayerId": {
+                      "op": "value.item",
+                      "area": "identity",
+                      "field": "id"
+                    },
+                    "reason": {
+                      "op": "value.literal",
+                      "value": "last-active-player"
+                    }
+                  }
+                }
+              ],
+              "when": {
+                "op": "predicate.all",
+                "items": [
+                  {
+                    "op": "predicate.exists",
+                    "value": {
+                      "op": "value.result",
+                      "stepId": "final-bankruptcy-active-players",
+                      "path": [
+                        "ids",
+                        "0"
+                      ]
+                    },
+                    "exists": true
+                  },
+                  {
+                    "op": "predicate.exists",
+                    "value": {
+                      "op": "value.result",
+                      "stepId": "finish-last-active-player.active-players",
+                      "path": [
+                        "ids",
+                        "1"
+                      ]
+                    },
+                    "exists": false
+                  },
+                  {
+                    "op": "predicate.compare",
+                    "operator": "eq",
+                    "left": {
+                      "op": "value.state",
+                      "ref": {
+                        "endpoint": "public.outcome.status"
+                      }
+                    },
+                    "right": {
+                      "op": "value.literal",
+                      "value": "active"
+                    }
+                  }
+                ]
+              }
             }
           ]
         }
       },
       "property.build": {
-        "planHash": "sha256:32a2e4385cede4d792c799e4e5984d72f0e24e3530c4c123eb878be2345d607a",
+        "planHash": "sha256:1153bf6bf85437fc96a652922f874fb47ddbfc45d7208f68d29c80f801838511",
         "transaction": {
           "steps": [
             {
@@ -22285,7 +22804,7 @@
         }
       },
       "property.build.request": {
-        "planHash": "sha256:40a36c6b710d1c0a99124a0f714220052f74ac757bffbcbaa9ae9b71129019f1",
+        "planHash": "sha256:10c6fe8c85e27541d087c2c7f07135b9b3fbf795439f1445443f5b827f5fef52",
         "transaction": {
           "steps": [
             {
@@ -24486,7 +25005,7 @@
         }
       },
       "property.build.pass": {
-        "planHash": "sha256:95c3152e741d3a56425371def1aad408422b7e5cb8ca25c595a5e109b486f8e1",
+        "planHash": "sha256:20490dc034528929dc7b8479771ea82ad9b5660448e8ca893f8b81bc74cae165",
         "transaction": {
           "steps": [
             {
@@ -26323,7 +26842,7 @@
         }
       },
       "property.build.auction.bid": {
-        "planHash": "sha256:e9d429770c2340698d35ac2664bb1067fa4d0cbd120d1db8bf5567b9fdfecd3e",
+        "planHash": "sha256:da2af9a063231ffae9d308c6a58edc8b90be0eb878b16238a2f27a17d491ae96",
         "transaction": {
           "steps": [
             {
@@ -28772,7 +29291,7 @@
         }
       },
       "property.build.auction.pass": {
-        "planHash": "sha256:530282baab186b74440a7a8e9ffd8410199eace8b7aa2547e17ad3c23914f285",
+        "planHash": "sha256:2c33f445ff6ef4e637898c825006c6ff52242a03a51925321808e2dfa2427d51",
         "transaction": {
           "steps": [
             {
@@ -31119,7 +31638,7 @@
         }
       },
       "property.sell": {
-        "planHash": "sha256:596b4b75dcba064fe54097d56bc4e2053060866e4defa8a2002d2f7aee4783f0",
+        "planHash": "sha256:56ab7ffd068450fad78b69644df2eee04516a4589a54022a87e1e34e98265915",
         "transaction": {
           "steps": [
             {
@@ -31728,7 +32247,7 @@
         }
       },
       "property.mortgage": {
-        "planHash": "sha256:7a1b3e2dc231715304eb74c9b2fda06aea361ddc0f75b614791f1a177cada332",
+        "planHash": "sha256:ed3cc48d49c69008e9e2dad69332c6a7c39001cd455a3f545e18cfbba9f8ffb4",
         "transaction": {
           "steps": [
             {
@@ -32010,7 +32529,7 @@
         }
       },
       "property.redeem": {
-        "planHash": "sha256:17af2fe36dee71c6abebd19af3beec1fcbe67a8120703e0f1180aea095f17ca0",
+        "planHash": "sha256:d4960e4f31bfa7c8ab55628dbd35769073964f3e3c99ca5880a506e2d426a359",
         "transaction": {
           "steps": [
             {
@@ -32121,7 +32640,7 @@
         }
       },
       "tax.pay": {
-        "planHash": "sha256:4e183e15cd1dce56efb49550e89fd11e17485895e0e042b7fc09338adc069848",
+        "planHash": "sha256:9e34d9a7a56312f9b71011dea86413463bb23cc2a88c37539c945896cf3640e4",
         "transaction": {
           "steps": [
             {
@@ -32502,7 +33021,7 @@
         }
       },
       "turn.finish": {
-        "planHash": "sha256:ce022d4507ad424069d346ad882c3aa66a85d83fedaed30cc0df7fc9294b6907",
+        "planHash": "sha256:2f3f16487e572901bfad3d51fbb2d72e17c3a02619c00e5b4dc7ce20089984a3",
         "transaction": {
           "steps": [
             {
@@ -32872,7 +33391,7 @@
         }
       },
       "jail.pay": {
-        "planHash": "sha256:30f5cfe86e2e82823760e3942537e3d3b0fb476b114665db2f99b7fa422a4572",
+        "planHash": "sha256:74c108b0a7cd3477aba52b0f82964421e6c9b84d6d231f4685344801488a8948",
         "transaction": {
           "steps": [
             {
@@ -33220,7 +33739,7 @@
         }
       },
       "jail.card.use.event": {
-        "planHash": "sha256:c956458bc525138eccfcc4743f602ad63a9b416f694f077f7d14df5a3f38fde3",
+        "planHash": "sha256:3d38843bbdcdf3b3ba58eb4927b604462d668295ba1b8b374ab6b7d097f0b55f",
         "transaction": {
           "steps": [
             {
@@ -33445,7 +33964,7 @@
         }
       },
       "jail.roll": {
-        "planHash": "sha256:01b0d16159bc88459b26deeeaf0b2b6fe0e52dd84943fc912bd0d9996cce249c",
+        "planHash": "sha256:b08b27b7568a1be1743c3839e73c781574997283effec65944c0ec80c4bac59b",
         "transaction": {
           "steps": [
             {
@@ -44102,7 +44621,7 @@
         }
       },
       "jail.third.move": {
-        "planHash": "sha256:dd9a82830fcff0193ff6eb072f3bd1f441fc70fa17f796b78480e8fd97f17e0e",
+        "planHash": "sha256:0063cd8a28df15fde35b04a14d306e7adf46dbff7de1971815a0f15396698b4e",
         "transaction": {
           "steps": [
             {
@@ -54073,7 +54592,7 @@
         }
       },
       "trade.open": {
-        "planHash": "sha256:5a160641d3c51d7562db05168a99cde2e541886d03908a7ad227c334be3144e3",
+        "planHash": "sha256:4fe1a88070160f8a54b0c07705faa4be6834fe62a3fc1456a539e7ca13f736c1",
         "transaction": {
           "steps": [
             {
@@ -54256,7 +54775,7 @@
         }
       },
       "trade.cash.set": {
-        "planHash": "sha256:3979bd02ff843bd0dc514afdf94461ed60fca7aa895f3ff3e4d555a4b379f26c",
+        "planHash": "sha256:48116c4e1cec0a6ba915c0ffd83f36abf3f3fd4f71e4b79b51edaada372b5b91",
         "transaction": {
           "steps": [
             {
@@ -54387,7 +54906,7 @@
         }
       },
       "trade.asset.set": {
-        "planHash": "sha256:1fc661c069e7e97719c6dc51a765fa56c44aecbc19dfe9b2d51340abf7f119bf",
+        "planHash": "sha256:16e0112cd7284df23d0c5a74f987d94bc97821ab061b4190e652c887696135cf",
         "transaction": {
           "steps": [
             {
@@ -54701,7 +55220,7 @@
         }
       },
       "trade.asset.remove": {
-        "planHash": "sha256:30b25262ac9401e6b2cf6a928edc0ef0a65edc170fac18e74ce393b5ea794f63",
+        "planHash": "sha256:cd6019ecc0987460b46a9903bd3ce33579f205bacf8a45abc869aaae3bf774c7",
         "transaction": {
           "steps": [
             {
@@ -54819,7 +55338,7 @@
         }
       },
       "trade.card.offer": {
-        "planHash": "sha256:268a0af3a43c08e71cbceebc429b0d75af3b1647dc3c0c0ffaf1e23609310a74",
+        "planHash": "sha256:3ad8f0734e41092f5769fa90e1db8e55a8fe6440c65c2843f494158830770c7c",
         "transaction": {
           "steps": [
             {
@@ -55075,7 +55594,7 @@
         }
       },
       "trade.card.offer.remove": {
-        "planHash": "sha256:f2210e6279109c6ea481574192c7e6b3d07f09604ad91f91fb25d43f89ec3863",
+        "planHash": "sha256:033e81abcd0546f49cb3d5b4228c55753e64eb943adb00b0f25157a189a3086b",
         "transaction": {
           "steps": [
             {
@@ -55305,7 +55824,7 @@
         }
       },
       "trade.card.request": {
-        "planHash": "sha256:aa1eec78e5331c4cc0eebe0b0e2429e05de4c6770843ab3cb365f710edf8b1d7",
+        "planHash": "sha256:2e0c14b59b52943f49febd6c189a54826a9f005f2b9c53cb3ab7c23774ba2e2f",
         "transaction": {
           "steps": [
             {
@@ -55452,7 +55971,7 @@
         }
       },
       "trade.card.request.remove": {
-        "planHash": "sha256:0792bc6435defb89b79fa265c8f4de11f2655adf65ce385ddbf815fc68f00841",
+        "planHash": "sha256:045b2f025e2e0734b2321d8d21180087643928876d05b48a2ada8cf12cc068bf",
         "transaction": {
           "steps": [
             {
@@ -55539,7 +56058,7 @@
         }
       },
       "trade.propose": {
-        "planHash": "sha256:d2c3829bac044b982b779108f4b008b779098f4ca5651a687c210d8783a1803c",
+        "planHash": "sha256:a186874f10f083255d691393d21f9a56fbfe2cba026ebfca01f56d17603e77a1",
         "transaction": {
           "steps": [
             {
@@ -55912,7 +56431,7 @@
         }
       },
       "trade.accept": {
-        "planHash": "sha256:9d7ea1038cb81268dd502548750173edf79cac9c3f01628f297dd1f71cc86744",
+        "planHash": "sha256:59a4d0016a30929393423d888619900e10a1995b543aa6fb862f4904d8d61217",
         "transaction": {
           "steps": [
             {
@@ -57018,7 +57537,7 @@
         }
       },
       "trade.decline": {
-        "planHash": "sha256:fe26c115a5c934194d505ec542343be14418eaf16a2f7b832573abb02913282d",
+        "planHash": "sha256:be81638d6dfe7015610b550a0f0def7db375ada7cbb2d120bca7ffc88c526212",
         "transaction": {
           "steps": [
             {
@@ -57410,7 +57929,7 @@
         }
       },
       "trade.cancel": {
-        "planHash": "sha256:0245ec3c9e6b8a4380ac7995f250b08d0765969d4baddf85ab19525932f4e080",
+        "planHash": "sha256:a5b6d7ffd8572b4f0376efc34aba1027c9167e7766a1df10d30a967a6450b50b",
         "transaction": {
           "steps": [
             {
@@ -57837,7 +58356,7 @@
         }
       },
       "trade.card.claim": {
-        "planHash": "sha256:51e975f74fa2b4c379b5fa41238c470ae0a96e9b6a672bed8d192c57be2d9add",
+        "planHash": "sha256:cf82991294058a3e0f551288d75e334479877305dbba15bc9d494a24e1054441",
         "transaction": {
           "steps": [
             {
@@ -58194,7 +58713,7 @@
         }
       },
       "obligation.resolve": {
-        "planHash": "sha256:a6a661ab5636ea51408fd2ec78e27d0b41158b2e67807af91bc8818bc7c8ee56",
+        "planHash": "sha256:5d4a732c00378eb796268bfe763ed8415f58f3f0172ed8bd1e428329ca6f8b96",
         "transaction": {
           "steps": [
             {
@@ -59325,6 +59844,182 @@
               }
             },
             {
+              "id": "mortgage-transfer-finish-last-active-player.active-players",
+              "kind": "query",
+              "op": "core.entities.select",
+              "selector": {
+                "collection": "players",
+                "attributes": {
+                  "status": {
+                    "op": "value.literal",
+                    "value": "active"
+                  }
+                },
+                "cardinality": {
+                  "min": 1,
+                  "max": 6
+                }
+              }
+            },
+            {
+              "id": "mortgage-transfer-finish-last-active-player.finish-one",
+              "kind": "command",
+              "op": "core.entities.each",
+              "selection": {
+                "op": "value.result",
+                "stepId": "mortgage-transfer-finish-last-active-player.active-players"
+              },
+              "body": [
+                {
+                  "id": "write-terminal-outcome",
+                  "kind": "command",
+                  "op": "core.state.patch",
+                  "patches": [
+                    {
+                      "operation": "set",
+                      "target": {
+                        "endpoint": "public.outcome.status"
+                      },
+                      "value": {
+                        "op": "value.literal",
+                        "value": "terminal"
+                      }
+                    },
+                    {
+                      "operation": "set",
+                      "target": {
+                        "endpoint": "public.outcome.winnerPlayerId"
+                      },
+                      "value": {
+                        "op": "value.item",
+                        "area": "identity",
+                        "field": "id"
+                      }
+                    },
+                    {
+                      "operation": "set",
+                      "target": {
+                        "endpoint": "public.outcome.reason"
+                      },
+                      "value": {
+                        "op": "value.literal",
+                        "value": "last-active-player"
+                      }
+                    },
+                    {
+                      "operation": "set",
+                      "target": {
+                        "endpoint": "public.board.availableActions"
+                      },
+                      "value": {
+                        "op": "value.literal",
+                        "value": []
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "terminal-phase",
+                  "kind": "command",
+                  "op": "turn.phase.select",
+                  "phase": {
+                    "op": "value.literal",
+                    "value": "terminal"
+                  }
+                },
+                {
+                  "id": "terminal-event",
+                  "kind": "command",
+                  "op": "core.event.emit",
+                  "eventType": "estate-race.terminal",
+                  "summary": {
+                    "op": "value.literal",
+                    "value": "Остался один активный участник; партия завершена."
+                  },
+                  "audience": "public",
+                  "data": {
+                    "kind": {
+                      "op": "value.literal",
+                      "value": "terminal"
+                    },
+                    "winnerPlayerId": {
+                      "op": "value.item",
+                      "area": "identity",
+                      "field": "id"
+                    },
+                    "reason": {
+                      "op": "value.literal",
+                      "value": "last-active-player"
+                    }
+                  }
+                }
+              ],
+              "when": {
+                "op": "predicate.all",
+                "items": [
+                  {
+                    "op": "predicate.all",
+                    "items": [
+                      {
+                        "op": "predicate.compare",
+                        "operator": "eq",
+                        "left": {
+                          "op": "value.state",
+                          "ref": {
+                            "endpoint": "public.obligation.reason"
+                          }
+                        },
+                        "right": {
+                          "op": "value.literal",
+                          "value": "mortgage-transfer"
+                        }
+                      },
+                      {
+                        "op": "predicate.compare",
+                        "operator": "eq",
+                        "left": {
+                          "op": "value.state",
+                          "ref": {
+                            "endpoint": "public.liquidation.status"
+                          }
+                        },
+                        "right": {
+                          "op": "value.literal",
+                          "value": "idle"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "op": "predicate.exists",
+                    "value": {
+                      "op": "value.result",
+                      "stepId": "mortgage-transfer-finish-last-active-player.active-players",
+                      "path": [
+                        "ids",
+                        "1"
+                      ]
+                    },
+                    "exists": false
+                  },
+                  {
+                    "op": "predicate.compare",
+                    "operator": "eq",
+                    "left": {
+                      "op": "value.state",
+                      "ref": {
+                        "endpoint": "public.outcome.status"
+                      }
+                    },
+                    "right": {
+                      "op": "value.literal",
+                      "value": "active"
+                    }
+                  }
+                ]
+              }
+            },
+            {
               "id": "mortgage-transfer-clear-obligation",
               "kind": "command",
               "op": "core.state.patch",
@@ -59660,18 +60355,51 @@
                 "value": "finish"
               },
               "when": {
-                "op": "predicate.compare",
-                "operator": "eq",
-                "left": {
-                  "op": "value.state",
-                  "ref": {
-                    "endpoint": "public.obligation.status"
+                "op": "predicate.all",
+                "items": [
+                  {
+                    "op": "predicate.compare",
+                    "operator": "eq",
+                    "left": {
+                      "op": "value.state",
+                      "ref": {
+                        "endpoint": "public.obligation.status"
+                      }
+                    },
+                    "right": {
+                      "op": "value.literal",
+                      "value": "idle"
+                    }
+                  },
+                  {
+                    "op": "predicate.compare",
+                    "operator": "eq",
+                    "left": {
+                      "op": "value.state",
+                      "ref": {
+                        "endpoint": "public.liquidation.status"
+                      }
+                    },
+                    "right": {
+                      "op": "value.literal",
+                      "value": "idle"
+                    }
+                  },
+                  {
+                    "op": "predicate.compare",
+                    "operator": "eq",
+                    "left": {
+                      "op": "value.state",
+                      "ref": {
+                        "endpoint": "public.outcome.status"
+                      }
+                    },
+                    "right": {
+                      "op": "value.literal",
+                      "value": "active"
+                    }
                   }
-                },
-                "right": {
-                  "op": "value.literal",
-                  "value": "idle"
-                }
+                ]
               }
             },
             {
@@ -59998,7 +60726,7 @@
         }
       },
       "bankruptcy.declare": {
-        "planHash": "sha256:74871660c04c5b532bec4fdc523d94e9da83c6b24055b9da3f18e8b8a5479f0b",
+        "planHash": "sha256:59f5e96260c30f39b43c20066adc09d563254599912670f5411aa1cc8e1a04c0",
         "transaction": {
           "steps": [
             {
@@ -61967,12 +62695,169 @@
                   "value": "idle"
                 }
               }
+            },
+            {
+              "id": "finish-last-active-player.active-players",
+              "kind": "query",
+              "op": "core.entities.select",
+              "selector": {
+                "collection": "players",
+                "attributes": {
+                  "status": {
+                    "op": "value.literal",
+                    "value": "active"
+                  }
+                },
+                "cardinality": {
+                  "min": 1,
+                  "max": 6
+                }
+              }
+            },
+            {
+              "id": "finish-last-active-player.finish-one",
+              "kind": "command",
+              "op": "core.entities.each",
+              "selection": {
+                "op": "value.result",
+                "stepId": "finish-last-active-player.active-players"
+              },
+              "body": [
+                {
+                  "id": "write-terminal-outcome",
+                  "kind": "command",
+                  "op": "core.state.patch",
+                  "patches": [
+                    {
+                      "operation": "set",
+                      "target": {
+                        "endpoint": "public.outcome.status"
+                      },
+                      "value": {
+                        "op": "value.literal",
+                        "value": "terminal"
+                      }
+                    },
+                    {
+                      "operation": "set",
+                      "target": {
+                        "endpoint": "public.outcome.winnerPlayerId"
+                      },
+                      "value": {
+                        "op": "value.item",
+                        "area": "identity",
+                        "field": "id"
+                      }
+                    },
+                    {
+                      "operation": "set",
+                      "target": {
+                        "endpoint": "public.outcome.reason"
+                      },
+                      "value": {
+                        "op": "value.literal",
+                        "value": "last-active-player"
+                      }
+                    },
+                    {
+                      "operation": "set",
+                      "target": {
+                        "endpoint": "public.board.availableActions"
+                      },
+                      "value": {
+                        "op": "value.literal",
+                        "value": []
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "terminal-phase",
+                  "kind": "command",
+                  "op": "turn.phase.select",
+                  "phase": {
+                    "op": "value.literal",
+                    "value": "terminal"
+                  }
+                },
+                {
+                  "id": "terminal-event",
+                  "kind": "command",
+                  "op": "core.event.emit",
+                  "eventType": "estate-race.terminal",
+                  "summary": {
+                    "op": "value.literal",
+                    "value": "Остался один активный участник; партия завершена."
+                  },
+                  "audience": "public",
+                  "data": {
+                    "kind": {
+                      "op": "value.literal",
+                      "value": "terminal"
+                    },
+                    "winnerPlayerId": {
+                      "op": "value.item",
+                      "area": "identity",
+                      "field": "id"
+                    },
+                    "reason": {
+                      "op": "value.literal",
+                      "value": "last-active-player"
+                    }
+                  }
+                }
+              ],
+              "when": {
+                "op": "predicate.all",
+                "items": [
+                  {
+                    "op": "predicate.compare",
+                    "operator": "eq",
+                    "left": {
+                      "op": "value.state",
+                      "ref": {
+                        "endpoint": "public.liquidation.status"
+                      }
+                    },
+                    "right": {
+                      "op": "value.literal",
+                      "value": "idle"
+                    }
+                  },
+                  {
+                    "op": "predicate.exists",
+                    "value": {
+                      "op": "value.result",
+                      "stepId": "finish-last-active-player.active-players",
+                      "path": [
+                        "ids",
+                        "1"
+                      ]
+                    },
+                    "exists": false
+                  },
+                  {
+                    "op": "predicate.compare",
+                    "operator": "eq",
+                    "left": {
+                      "op": "value.state",
+                      "ref": {
+                        "endpoint": "public.outcome.status"
+                      }
+                    },
+                    "right": {
+                      "op": "value.literal",
+                      "value": "active"
+                    }
+                  }
+                ]
+              }
             }
           ]
         }
       },
       "jail.card.use.fund": {
-        "planHash": "sha256:32191e947126d58204af05a69438ab3fc81338da5028bd858774908ceff08bb5",
+        "planHash": "sha256:d90d20a1446b404c6b621a03f9d8d19eee24007b631c6494d475d57baa0af7ef",
         "transaction": {
           "steps": [
             {
@@ -62197,7 +63082,7 @@
         }
       },
       "mortgage.transfer.redeem": {
-        "planHash": "sha256:b23f6a9806538cfe9fa00877962277eec56b878cac31312848fb676ee642b77e",
+        "planHash": "sha256:a9f493c0265b4aa7040adb4d9bffbb68f9c088d560cfbe353e316f9c3c92ba68",
         "transaction": {
           "steps": [
             {
@@ -63006,12 +63891,169 @@
                   "value": "idle"
                 }
               }
+            },
+            {
+              "id": "finish-last-active-player.active-players",
+              "kind": "query",
+              "op": "core.entities.select",
+              "selector": {
+                "collection": "players",
+                "attributes": {
+                  "status": {
+                    "op": "value.literal",
+                    "value": "active"
+                  }
+                },
+                "cardinality": {
+                  "min": 1,
+                  "max": 6
+                }
+              }
+            },
+            {
+              "id": "finish-last-active-player.finish-one",
+              "kind": "command",
+              "op": "core.entities.each",
+              "selection": {
+                "op": "value.result",
+                "stepId": "finish-last-active-player.active-players"
+              },
+              "body": [
+                {
+                  "id": "write-terminal-outcome",
+                  "kind": "command",
+                  "op": "core.state.patch",
+                  "patches": [
+                    {
+                      "operation": "set",
+                      "target": {
+                        "endpoint": "public.outcome.status"
+                      },
+                      "value": {
+                        "op": "value.literal",
+                        "value": "terminal"
+                      }
+                    },
+                    {
+                      "operation": "set",
+                      "target": {
+                        "endpoint": "public.outcome.winnerPlayerId"
+                      },
+                      "value": {
+                        "op": "value.item",
+                        "area": "identity",
+                        "field": "id"
+                      }
+                    },
+                    {
+                      "operation": "set",
+                      "target": {
+                        "endpoint": "public.outcome.reason"
+                      },
+                      "value": {
+                        "op": "value.literal",
+                        "value": "last-active-player"
+                      }
+                    },
+                    {
+                      "operation": "set",
+                      "target": {
+                        "endpoint": "public.board.availableActions"
+                      },
+                      "value": {
+                        "op": "value.literal",
+                        "value": []
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "terminal-phase",
+                  "kind": "command",
+                  "op": "turn.phase.select",
+                  "phase": {
+                    "op": "value.literal",
+                    "value": "terminal"
+                  }
+                },
+                {
+                  "id": "terminal-event",
+                  "kind": "command",
+                  "op": "core.event.emit",
+                  "eventType": "estate-race.terminal",
+                  "summary": {
+                    "op": "value.literal",
+                    "value": "Остался один активный участник; партия завершена."
+                  },
+                  "audience": "public",
+                  "data": {
+                    "kind": {
+                      "op": "value.literal",
+                      "value": "terminal"
+                    },
+                    "winnerPlayerId": {
+                      "op": "value.item",
+                      "area": "identity",
+                      "field": "id"
+                    },
+                    "reason": {
+                      "op": "value.literal",
+                      "value": "last-active-player"
+                    }
+                  }
+                }
+              ],
+              "when": {
+                "op": "predicate.all",
+                "items": [
+                  {
+                    "op": "predicate.compare",
+                    "operator": "eq",
+                    "left": {
+                      "op": "value.state",
+                      "ref": {
+                        "endpoint": "public.liquidation.status"
+                      }
+                    },
+                    "right": {
+                      "op": "value.literal",
+                      "value": "idle"
+                    }
+                  },
+                  {
+                    "op": "predicate.exists",
+                    "value": {
+                      "op": "value.result",
+                      "stepId": "finish-last-active-player.active-players",
+                      "path": [
+                        "ids",
+                        "1"
+                      ]
+                    },
+                    "exists": false
+                  },
+                  {
+                    "op": "predicate.compare",
+                    "operator": "eq",
+                    "left": {
+                      "op": "value.state",
+                      "ref": {
+                        "endpoint": "public.outcome.status"
+                      }
+                    },
+                    "right": {
+                      "op": "value.literal",
+                      "value": "active"
+                    }
+                  }
+                ]
+              }
             }
           ]
         }
       },
       "mortgage.transfer.keep": {
-        "planHash": "sha256:356c16c2b3a75e9afd2eec62ec2cbbf244e7522a2e494257e9d8c604b86455a3",
+        "planHash": "sha256:faba6201d12a7beaa154af606a3da1371303144fca908345e0a2941cd346b105",
         "transaction": {
           "steps": [
             {
@@ -63880,12 +64922,169 @@
                   "value": "idle"
                 }
               }
+            },
+            {
+              "id": "finish-last-active-player.active-players",
+              "kind": "query",
+              "op": "core.entities.select",
+              "selector": {
+                "collection": "players",
+                "attributes": {
+                  "status": {
+                    "op": "value.literal",
+                    "value": "active"
+                  }
+                },
+                "cardinality": {
+                  "min": 1,
+                  "max": 6
+                }
+              }
+            },
+            {
+              "id": "finish-last-active-player.finish-one",
+              "kind": "command",
+              "op": "core.entities.each",
+              "selection": {
+                "op": "value.result",
+                "stepId": "finish-last-active-player.active-players"
+              },
+              "body": [
+                {
+                  "id": "write-terminal-outcome",
+                  "kind": "command",
+                  "op": "core.state.patch",
+                  "patches": [
+                    {
+                      "operation": "set",
+                      "target": {
+                        "endpoint": "public.outcome.status"
+                      },
+                      "value": {
+                        "op": "value.literal",
+                        "value": "terminal"
+                      }
+                    },
+                    {
+                      "operation": "set",
+                      "target": {
+                        "endpoint": "public.outcome.winnerPlayerId"
+                      },
+                      "value": {
+                        "op": "value.item",
+                        "area": "identity",
+                        "field": "id"
+                      }
+                    },
+                    {
+                      "operation": "set",
+                      "target": {
+                        "endpoint": "public.outcome.reason"
+                      },
+                      "value": {
+                        "op": "value.literal",
+                        "value": "last-active-player"
+                      }
+                    },
+                    {
+                      "operation": "set",
+                      "target": {
+                        "endpoint": "public.board.availableActions"
+                      },
+                      "value": {
+                        "op": "value.literal",
+                        "value": []
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "terminal-phase",
+                  "kind": "command",
+                  "op": "turn.phase.select",
+                  "phase": {
+                    "op": "value.literal",
+                    "value": "terminal"
+                  }
+                },
+                {
+                  "id": "terminal-event",
+                  "kind": "command",
+                  "op": "core.event.emit",
+                  "eventType": "estate-race.terminal",
+                  "summary": {
+                    "op": "value.literal",
+                    "value": "Остался один активный участник; партия завершена."
+                  },
+                  "audience": "public",
+                  "data": {
+                    "kind": {
+                      "op": "value.literal",
+                      "value": "terminal"
+                    },
+                    "winnerPlayerId": {
+                      "op": "value.item",
+                      "area": "identity",
+                      "field": "id"
+                    },
+                    "reason": {
+                      "op": "value.literal",
+                      "value": "last-active-player"
+                    }
+                  }
+                }
+              ],
+              "when": {
+                "op": "predicate.all",
+                "items": [
+                  {
+                    "op": "predicate.compare",
+                    "operator": "eq",
+                    "left": {
+                      "op": "value.state",
+                      "ref": {
+                        "endpoint": "public.liquidation.status"
+                      }
+                    },
+                    "right": {
+                      "op": "value.literal",
+                      "value": "idle"
+                    }
+                  },
+                  {
+                    "op": "predicate.exists",
+                    "value": {
+                      "op": "value.result",
+                      "stepId": "finish-last-active-player.active-players",
+                      "path": [
+                        "ids",
+                        "1"
+                      ]
+                    },
+                    "exists": false
+                  },
+                  {
+                    "op": "predicate.compare",
+                    "operator": "eq",
+                    "left": {
+                      "op": "value.state",
+                      "ref": {
+                        "endpoint": "public.outcome.status"
+                      }
+                    },
+                    "right": {
+                      "op": "value.literal",
+                      "value": "active"
+                    }
+                  }
+                ]
+              }
             }
           ]
         }
       },
       "liquidation.card.claim": {
-        "planHash": "sha256:126a2e4eec2bf2c92cf8b6c7c2b3d282eefdac4eb4ca18b3b2b586da5d16ee69",
+        "planHash": "sha256:eafe1a78b9293eb9ff8cd1116f25d02fefd053b796763b4e621e6352ad9d73ca",
         "transaction": {
           "steps": [
             {
@@ -64413,6 +65612,163 @@
               "phase": {
                 "op": "value.literal",
                 "value": "finish"
+              }
+            },
+            {
+              "id": "finish-last-active-player.active-players",
+              "kind": "query",
+              "op": "core.entities.select",
+              "selector": {
+                "collection": "players",
+                "attributes": {
+                  "status": {
+                    "op": "value.literal",
+                    "value": "active"
+                  }
+                },
+                "cardinality": {
+                  "min": 1,
+                  "max": 6
+                }
+              }
+            },
+            {
+              "id": "finish-last-active-player.finish-one",
+              "kind": "command",
+              "op": "core.entities.each",
+              "selection": {
+                "op": "value.result",
+                "stepId": "finish-last-active-player.active-players"
+              },
+              "body": [
+                {
+                  "id": "write-terminal-outcome",
+                  "kind": "command",
+                  "op": "core.state.patch",
+                  "patches": [
+                    {
+                      "operation": "set",
+                      "target": {
+                        "endpoint": "public.outcome.status"
+                      },
+                      "value": {
+                        "op": "value.literal",
+                        "value": "terminal"
+                      }
+                    },
+                    {
+                      "operation": "set",
+                      "target": {
+                        "endpoint": "public.outcome.winnerPlayerId"
+                      },
+                      "value": {
+                        "op": "value.item",
+                        "area": "identity",
+                        "field": "id"
+                      }
+                    },
+                    {
+                      "operation": "set",
+                      "target": {
+                        "endpoint": "public.outcome.reason"
+                      },
+                      "value": {
+                        "op": "value.literal",
+                        "value": "last-active-player"
+                      }
+                    },
+                    {
+                      "operation": "set",
+                      "target": {
+                        "endpoint": "public.board.availableActions"
+                      },
+                      "value": {
+                        "op": "value.literal",
+                        "value": []
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "terminal-phase",
+                  "kind": "command",
+                  "op": "turn.phase.select",
+                  "phase": {
+                    "op": "value.literal",
+                    "value": "terminal"
+                  }
+                },
+                {
+                  "id": "terminal-event",
+                  "kind": "command",
+                  "op": "core.event.emit",
+                  "eventType": "estate-race.terminal",
+                  "summary": {
+                    "op": "value.literal",
+                    "value": "Остался один активный участник; партия завершена."
+                  },
+                  "audience": "public",
+                  "data": {
+                    "kind": {
+                      "op": "value.literal",
+                      "value": "terminal"
+                    },
+                    "winnerPlayerId": {
+                      "op": "value.item",
+                      "area": "identity",
+                      "field": "id"
+                    },
+                    "reason": {
+                      "op": "value.literal",
+                      "value": "last-active-player"
+                    }
+                  }
+                }
+              ],
+              "when": {
+                "op": "predicate.all",
+                "items": [
+                  {
+                    "op": "predicate.compare",
+                    "operator": "eq",
+                    "left": {
+                      "op": "value.state",
+                      "ref": {
+                        "endpoint": "public.liquidation.status"
+                      }
+                    },
+                    "right": {
+                      "op": "value.literal",
+                      "value": "idle"
+                    }
+                  },
+                  {
+                    "op": "predicate.exists",
+                    "value": {
+                      "op": "value.result",
+                      "stepId": "finish-last-active-player.active-players",
+                      "path": [
+                        "ids",
+                        "1"
+                      ]
+                    },
+                    "exists": false
+                  },
+                  {
+                    "op": "predicate.compare",
+                    "operator": "eq",
+                    "left": {
+                      "op": "value.state",
+                      "ref": {
+                        "endpoint": "public.outcome.status"
+                      }
+                    },
+                    "right": {
+                      "op": "value.literal",
+                      "value": "active"
+                    }
+                  }
+                ]
               }
             }
           ]

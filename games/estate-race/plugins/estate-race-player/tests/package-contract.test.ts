@@ -1,4 +1,4 @@
-/** Package-level invariants for original content and the active S5 slice. */
+/** Package-level invariants for original content and the active S6 slice. */
 
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
@@ -31,7 +31,7 @@ test("manifest owns a classified forty-cell original board for two to six hotsea
   const state = manifest.state as Record<string, any>;
   const cells = state.public.objects.boardCells as Record<string, any>;
 
-  assert.equal((manifest.meta as Record<string, unknown>).version, "0.5.0");
+  assert.equal((manifest.meta as Record<string, unknown>).version, "0.6.0");
   assert.deepEqual(config.players, { min: 2, max: 6 });
   assert.equal(config.settings.mode, "local-hotseat");
   assert.equal(Object.keys(cells).length, 40);
@@ -175,6 +175,11 @@ test("manifest owns a classified forty-cell original board for two to six hotsea
     .digest("hex");
   assert.equal(s4DatasetHash, "e8dd8fd14d48da2c681cb1deabc5dbd17aeb53b9b01b5137bd2a8ca49ff0a1f8");
   assert.deepEqual(state.public.bankBuildings, { housesAvailable: 32, hotelsAvailable: 12 });
+  assert.deepEqual(state.public.outcome, {
+    status: "active",
+    winnerPlayerId: null,
+    reason: "none"
+  });
   assert.equal(state.public.objects.fundCards["fund-assessment"].attributes.effectKind,
     "building-assessment");
 

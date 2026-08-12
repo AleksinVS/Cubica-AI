@@ -279,6 +279,110 @@ test("projects blocked phase as actionless server state", () => {
   assert.deepEqual(projection.availableActions, []);
 });
 
+test("projects the server-owned terminal outcome and suppresses stale actions", () => {
+  const projection = projectEstateRaceSession({
+    state: {
+      public: {
+        turn: { phase: "terminal" },
+        outcome: { status: "terminal", winnerPlayerId: "p1", reason: "last-active-player" },
+        board: { availableActions: [{ id: "stale", label: "Старое действие", actionId: "turn.roll" }] }
+      },
+      players: { p1: { status: "active", metrics: { cash: 1 } } }
+    }
+  });
+
+  assert.deepEqual(projection.outcome, {
+    status: "terminal",
+    winnerPlayerId: "p1",
+    reason: "last-active-player"
+  });
+  assert.deepEqual(projection.availableActions, []);
+  assert.deepEqual(provideEstateRaceAccessibleBoardActions({
+    state: {
+      public: {
+        turn: { phase: "terminal" },
+        outcome: { status: "terminal", winnerPlayerId: "p1", reason: "last-active-player" },
+        board: { availableActions: [{ id: "stale", label: "Старое действие", actionId: "turn.roll" }] }
+      },
+      players: { p1: { status: "active" } }
+    }
+  } as unknown as Parameters<typeof provideEstateRaceAccessibleBoardActions>[0]), []);
+});
+
+test("fails closed when terminal outcome is malformed", () => {
+  const projection = projectEstateRaceSession({
+    state: {
+      public: {
+        turn: { phase: "terminal" },
+        outcome: { status: "terminal", winnerPlayerId: {}, reason: "last-active-player" }
+      }
+    }
+  });
+
+  assert.deepEqual(projection.outcome, { status: "active", winnerPlayerId: null, reason: "none" });
+  assert.deepEqual(projection.availableActions, []);
+});
+
+test("does not render terminal state for an empty or non-winning outcome", () => {
+  for (const outcome of [
+    { status: "terminal", reason: "none", winnerPlayerId: null },
+    { status: "terminal", reason: "last-active-player", winnerPlayerId: null },
+    { status: "terminal", reason: "last-active-player", winnerPlayerId: "   " }
+  ]) {
+    const projection = projectEstateRaceSession({
+      state: { public: { turn: { phase: "terminal" }, outcome } }
+    });
+    assert.deepEqual(projection.outcome, { status: "active", winnerPlayerId: null, reason: "none" });
+    assert.deepEqual(projection.availableActions, []);
+  }
+});
+
+test("rejects a terminal winner that is unknown, eliminated, non-unique, or out of phase", () => {
+  const cases = [
+    {
+      phase: "terminal",
+      winnerPlayerId: "ghost",
+      players: { p1: { status: "active" } }
+    },
+    {
+      phase: "terminal",
+      winnerPlayerId: "p1",
+      players: { p1: { status: "eliminated" } }
+    },
+    {
+      phase: "terminal",
+      winnerPlayerId: "p1",
+      players: { p1: { status: "active" }, p2: { status: "active" } }
+    },
+    {
+      phase: "roll",
+      winnerPlayerId: "p1",
+      players: { p1: { status: "active" } }
+    }
+  ] as const;
+
+  for (const entry of cases) {
+    const projection = projectEstateRaceSession({
+      state: {
+        public: {
+          turn: { phase: entry.phase },
+          outcome: {
+            status: "terminal",
+            winnerPlayerId: entry.winnerPlayerId,
+            reason: "last-active-player"
+          },
+          board: {
+            availableActions: [{ id: "roll", label: "Бросить", actionId: "turn.roll" }]
+          }
+        },
+        players: entry.players
+      }
+    });
+    assert.deepEqual(projection.outcome, { status: "active", winnerPlayerId: null, reason: "none" });
+    assert.equal(projection.availableActions.length, entry.phase === "terminal" ? 0 : 1);
+  }
+});
+
 test("keeps a jailed roll disabled from canonical action availability", () => {
   const actions = provideEstateRaceAccessibleBoardActions({
     actionAvailability: [{ actionId: "turn.roll", status: "unavailable", reasonCode: "state_condition_failed" }],
