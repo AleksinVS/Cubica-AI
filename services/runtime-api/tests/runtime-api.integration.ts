@@ -588,7 +588,7 @@ test("POST /sessions rejects invalid request bodies", async () => {
   });
 
   assert.equal(response.status, 400);
-  assert.match(body.error, /gameId must match/);
+  assert.match(body.error, /gameId must be string/);
 });
 
 test("POST /sessions with an empty body responds 400 (not 500)", async () => {
