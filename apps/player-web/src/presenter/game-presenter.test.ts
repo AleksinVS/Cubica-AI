@@ -142,7 +142,13 @@ describe("GamePresenter board action serialization", () => {
       version: { ...initialSession.version, stateVersion: 2, lastEventSequence: 1 },
       state: { public: { turn: { activePlayerId: "p2" } }, secret: {} },
       actionAvailability: [],
-      agentTurn: { surface: null }
+      agentTurn: {
+        schemaVersion: "1.0.0",
+        turnId: "turn-test",
+        agentId: "agent-test",
+        ok: true,
+        audit: { source: "mock", createdAt: "2026-08-13T00:00:00.000Z" }
+      }
     });
     const presenter = new GamePresenter({
       gateway: new ReactViewGateway(),
