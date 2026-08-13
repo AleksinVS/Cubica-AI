@@ -652,6 +652,52 @@ integration('synthetic shadow activation against prepared PostgreSQL', () => {
     expect(claims.filter((claim) => claim === null)).toHaveLength(1);
   });
 
+  it('keeps long worker payloads canonical through claim, reread, and prepare', async () => {
+    const userBytes = new TextEncoder().encode('Long user payload for canonical base64 regression. '.repeat(8));
+    const agentBytes = new TextEncoder().encode('Long agent payload for canonical base64 regression. '.repeat(8));
+    const userBase64 = Buffer.from(userBytes).toString('base64');
+    const agentBase64 = Buffer.from(agentBytes).toString('base64');
+    expect(userBase64.length).toBeGreaterThan(76);
+    expect(agentBase64.length).toBeGreaterThan(76);
+    const now = new Date();
+    const stableTurnKey = `${testStableTurnKey}-long-base64`;
+    const run = await enqueueShadowTurn(new PostgresConversationStore(appRuntimePool), {
+      receipt: testReceipt, threadRef: `${testThreadRef}-long-base64`, stableTurnKey,
+      userBytes, agentBytes, now, retainedUntil: new Date(now.getTime() + 60 * 60 * 1_000)
+    });
+    const store = new PostgresShadowWorkerStore(workerRuntimePool, {
+      ownerRef: testReceipt.shadow_principal_ref, gameRef: testReceipt.applies_to[0]!, stableTurnKey
+    });
+    const assertCanonicalPayload = (turn: NonNullable<Awaited<ReturnType<typeof store.reread>>>) => {
+      expect(turn.user_message.content_base64).toBe(userBase64);
+      expect(turn.agent_message.content_base64).toBe(agentBase64);
+      for (const content of [turn.user_message.content_base64, turn.agent_message.content_base64]) {
+        expect(content).not.toBeNull();
+        expect(content).not.toMatch(/[\r\n]/u);
+        expect(Buffer.from(content!, 'base64').toString('base64')).toBe(content);
+      }
+    };
+
+    const lease = await store.leaseNext(10_000, 1);
+    expect(lease?.run.runId).toBe(run.runId);
+    if (!lease) throw new Error('Expected a worker lease for the long Base64 regression.');
+    assertCanonicalPayload(lease.turn);
+
+    const reread = await store.reread(lease);
+    expect(reread).not.toBeNull();
+    if (!reread) throw new Error('Expected the leased turn to be reread.');
+    assertCanonicalPayload(reread);
+
+    const prepared = await store.prepareCall(lease, 'modelreq_long_base64', 10_000, new Date());
+    assertCanonicalPayload(prepared);
+    await expect(store.complete(lease, {
+      result: { schema_version: '1.0.0', request_id: 'modelreq_long_base64', outcome: 'no_change', proposal: null },
+      inputBytes: userBytes.byteLength + agentBytes.byteLength, outputBytes: 0, durationMs: 1
+    }, new Date())).resolves.toBe('completed');
+    expect((await adminPool.query(`SELECT status, outcome_code FROM product_context_shadow.shadow_runs WHERE run_id = $1`, [run.runId])).rows[0])
+      .toEqual({ status: 'succeeded', outcome_code: 'no_change' });
+  });
+
   it('never sends bytes when an uncommitted concurrent tombstone wins the prepare-call lock', async () => {
     const run = await enqueueQueue('concurrent-tombstone');
     const current = await adminPool.query(`SELECT revision FROM product_context_shadow.conversation_messages
@@ -930,16 +976,35 @@ integration('synthetic shadow activation against prepared PostgreSQL', () => {
 
   it('atomically discards a provider result when retention expires after the post-call reread', async () => {
     const store = new PostgresShadowWorkerStore(workerRuntimePool);
-    const created = new Date();
+    const retention = await adminPool.query<{ created_at: Date; retained_until: Date }>(`
+      SELECT database_now AS created_at,
+             database_now + interval '1.5 seconds' AS retained_until
+      FROM (SELECT clock_timestamp() AS database_now) AS clock
+    `);
+    const created = retention.rows[0]!.created_at;
+    const retainedUntil = retention.rows[0]!.retained_until;
     await enqueueShadowTurn(new PostgresConversationStore(appRuntimePool), {
       receipt: testReceipt, threadRef: `${testThreadRef}-atomic-retention`,
       stableTurnKey: `${testStableTurnKey}-atomic-retention`, userBytes: testUserBytes,
-      agentBytes: testAgentBytes, now: created, retainedUntil: new Date(created.getTime() + 200)
+      agentBytes: testAgentBytes, now: created, retainedUntil
     });
     const started = new Date();
     const lease = await store.leaseNext(20_000, 3, started);
     await store.prepareCall(lease!, 'modelreq_atomic_retention', 20_000, started);
-    await adminPool.query('SELECT pg_sleep(0.25)');
+    const live = await adminPool.query<{ retained_until: Date; database_now: Date }>(`
+      SELECT retained_until, clock_timestamp() AS database_now
+      FROM product_context_shadow.shadow_runs
+      WHERE run_id = $1
+    `, [lease!.run.runId]);
+    expect(live.rows[0]!.retained_until.getTime()).toBeGreaterThan(live.rows[0]!.database_now.getTime());
+    await adminPool.query(`
+      SELECT pg_sleep(GREATEST(
+        0.05,
+        EXTRACT(EPOCH FROM (retained_until - clock_timestamp())) + 0.05
+      ))
+      FROM product_context_shadow.shadow_runs
+      WHERE run_id = $1
+    `, [lease!.run.runId]);
     const completion = await store.complete(lease!, {
       result: { schema_version: '1.0.0', request_id: 'modelreq_atomic_retention', outcome: 'no_change', proposal: null },
       durationMs: 7, inputBytes: 11, outputBytes: 13

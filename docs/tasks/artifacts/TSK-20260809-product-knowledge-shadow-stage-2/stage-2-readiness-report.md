@@ -24,12 +24,29 @@
 ослабления серверных проверок, однако реальная повторная оценка требует нового
 явно разрешённого окна.
 
-Четвёртое явно разрешённое окно с лимитом 25 секунд подтвердило всю
-отрицательную матрицу и первый положительный путь создания знания. Реальный
-`proposal` прошёл независимую смысловую проверку по фактической точности,
-странице, локальности и отсутствию побочных изменений. Второй положительный
-путь коррекции завершился `gateway_timeout` на 25015 мс без смыслового
-результата. Поэтому Stage 2 остаётся `in_progress`, а Stage 3 закрыт.
+Историческое четвёртое окно с лимитом 25 секунд подтвердило отрицательную
+матрицу и первый путь создания, но не коррекцию. Новое отдельно разрешённое
+окно использовало 45 секунд только для себя, authority timeout 5 секунд,
+lease 60 секунд и `maxAttempts=1` без retry. Оно сделало ровно четыре вызова:
+три `no_change` (9272, 8640 и 3816 мс) и create proposal (26167 мс). Create
+proposal нарушил правило «все и только подтверждённые факты», поскольку
+выдумал/скопировал timestamp страницы, которого не было в trusted server input;
+пятый correction не вызывался. Поэтому Stage 2 остаётся `in_progress`, а
+Stage 3, чтение, применение и Git закрыты.
+
+До provider call первая попытка остановилась на `message_changed`: PostgreSQL
+`encode(bytea,'base64')` сворачивал длинный Base64. Байты и хэши были целы;
+нормализация SQL-вывода добавлена во все claim/reread/prepare пути. Реальный
+PG17 regression покрывает длинные user/agent messages, точный canonical
+Base64 и 41/41 activation/security tests. Провайдер не вызывался (model
+duration/input/output — ноль), затем cleanup обнулил состояние.
+
+После окна gateway получил fail-closed trusted timestamp rule: точный ISO
+`knowledge_timestamp` берётся из server clock в начале вызова, передаётся в
+grounding и должен совпасть с parsed page timestamp; output не мутируется.
+47/47 gateway tests, typecheck/generated types прошли, Luna-xhigh review —
+`ACCEPT` без High/Medium. Постоянные timeout и retry остаются pending; 45s не
+становится default.
 
 После этого PM сохранил provider и модель, но перенёс синтез из ограниченного
 web-процесса в устойчивое асинхронное задание. Критическое ядро готово: Editor
@@ -245,6 +262,34 @@ Portal-база не менялись.
 PM; запускать только пятый сценарий, повышать лимит или подстраивать prompt
 нельзя. Эти вопросы собраны в
 [отдельном реестре решений для пересмотра](stage-2-decision-review.md).
+
+## Текущее handoff-состояние — 2026-08-13
+
+Persistent content-free report записывался после каждого сценария. Cleanup
+удалил 4 runs и 4 metrics, tombstoned 8 messages и 4 threads; осталось 0
+active runs/metrics/messages/threads/text bytes. Disposable PostgreSQL, Portal
+process/data, bare Git, роли и ключи удалены/остановлены; Git не менялся.
+
+Канонический baseline был исправлен только в двух заранее существовавших
+Runtime API projection fixtures: добавлено обязательное `public.turn.order`.
+Focused 5/5, Runtime API 365 passed/2 skipped, Player Web 274/274. Полная
+каноническая проверка дошла до Player Web production build: компиляция
+завершилась, но принадлежащая прогону process group была безопасно остановлена
+во время последующих lint/type checks, когда свободный swap опустился ниже
+обязательного порога 20%. Финальный build и последующие view/editor gates не
+доказаны; неизвестных процессов и настроек хоста не меняли.
+
+На новой одноразовой PostgreSQL 17 полный `verify:product-context` прошёл
+263/263. Первый полный прогон выявил только прежний тестовый интервал retention
+200 мс, который мог истечь до `prepareCall` под нагрузкой набора. Проверка
+переведена на две доказуемые фазы по `clock_timestamp()` PostgreSQL; production
+код не менялся, целевой файл повторно прошёл 41/41 и Luna-xhigh review не нашёл
+High/Medium замечаний.
+
+Упрощение подтверждено: новых сервиса, таблицы, схемы или runner не нужно.
+Обе правки находятся на существующих границах — SQL serialization и provider
+adapter trust validation — и переиспользуют evaluator/queue; добавление
+компонента снизило бы качество и проверяемость.
 
 ## Остаточные условия активации
 

@@ -28,6 +28,8 @@ in_progress
 - Владелец: Platform Team.
 - Создана: 2026-08-09.
 - Stage 1 принят PM и слит в `main` коммитом `928f2ee`.
+- Текущее состояние после нового разрешённого окна 2026-08-13: Stage 2 остаётся
+  `in_progress`, Stage 3, чтение, применение и Git остаются закрыты.
 
 ## Parent
 
@@ -196,7 +198,7 @@ approved
 | Контракты, ConversationStore и gateway | Sol high | done | Server-only foundation; retention, crash recovery без опасного повтора и атомарные terminal result + metric проверены на PostgreSQL 17 |
 | Portal authorization adapter | Sol high | done | Настоящая Portal-аутентификация и право разработчика без client identity |
 | Editor post-response hook и изоляция | Sol high | done | Единственная разрешённая server-only точка shadow; основной ответ неизменен |
-| Оценка и rollback | Sol high | in_progress | Полная отрицательная матрица и создание нового знания доказаны; четвёртое окно fail-closed остановилось на `gateway_timeout` сценария коррекции, поэтому update-путь и Stage 3 остаются закрыты |
+| Оценка и rollback | Sol high | in_progress | Новое окно подтвердило три `no_change` и один create proposal, но proposal нарушил критерий «все и только подтверждённые факты»; correction не вызывался, поэтому update-путь и Stage 3 остаются закрыты |
 | Независимое security review | Sol high | done | Три приёмочных прохода и две волны исправлений закрыли все Critical/High/Medium замечания; итог — ACCEPT merge-ready для выключенного Stage 2 |
 | Read-only wiki и запуск cleanup | Sol high | done | Серверно закреплённый снимок bare Git и одноразовая ограниченная cleanup-команда прошли независимый security review |
 | Z.AI Coding Plan adapter | Sol high + Luna medium с обязательным Sol high review | code_ready | Фиксированные endpoint/model, полный read-only снимок HEAD и строгая серверная проверка ответа подтверждены mock-матрицей и синтетическим сетевым прогоном; пользовательские данные не передавались |
@@ -205,7 +207,7 @@ approved
 | Архитектура устойчивого синтеза | основной агент + Sol high architecture review | done | Приняты PostgreSQL-очередь на базе `shadow_runs`, one-shot CLI worker, служебная повторная авторизация Portal и отсутствие нового broker/микросервиса |
 | Асинхронная очередь, worker и границы безопасности | Sol high critical implementation | done | Миграция 003 без удаления данных, с заменой ограничений/политик и добавлением queue state; безопасная аренда, повторная авторизация без bearer, фиксированные SQL-функции, полная классификация ошибок и проверки конкуренции/crash recovery приняты основным агентом |
 | Постоянный evaluator/runner | Luna high implementation → tests → Luna high critic → Luna correction → основной агент | done | Поддерживаемая непроизводственная команда наблюдает только уже поставленные штатным Editor/Portal-контуром ходы, передаёт worker точный target owner/game/stable key и запускает каждый ход одной попыткой; пять категорий идут в фиксированном порядке, отчёт атомарно сохраняется после каждого сценария, локальная проверка идёт через `/dev/tty`, поддерживаются resume, hard stop и cleanup; второй путь постановки задания не создаётся |
-| Финальная приёмка Stage 2 async | основной агент + независимый Sol high review | in_progress | Пакетная, PostgreSQL, Editor, Portal, schema, isolation и документационная приёмка прошли; полный канонический шлюз с Next.js-сборками отложен только из-за сработавшего предохранителя памяти хоста; новый внешний вызов в приёмку не входит |
+| Финальная приёмка Stage 2 async | основной агент + независимый Sol high review | in_progress | Пакетная, PostgreSQL, Editor, Portal, schema, isolation и документационная приёмка прошли; partial canonical evidence: baseline fixtures repaired, but full canonical verification safely stopped at/before Player Web production build by low-memory/resource contention; primary rerun remains required |
 
 После слияния PM разрешил Luna, включая `low`. Luna low выполнил только узкое
 чтение репозитория и перечислил готовые примитивы; проектирование, код,
@@ -368,6 +370,11 @@ SDK, provider registry, fallback-моделей, нового сервиса, и
 второй таблицей с тем же жизненным циклом. Постоянный evaluator принят после
 повторных дефектов одноразовой оркестрации, но остаётся командой над тем же
 worker и не открывает второй путь к модели или содержательным данным.
+
+Исправления 2026-08-13 не добавляют компонент: сериализация SQL исправлена на
+границе выдачи, а trusted timestamp проверяется в существующем provider adapter.
+Новый сервис, таблица, схема или runner не нужны; дальнейшее добавление
+компонента ухудшило бы качество и проверяемость, а не упростило бы контур.
 
 Дальнейшее упрощение — использование клиентского `threadId`, runtime
 `SessionPrincipal` или сообщений AG-UI как источника истины — потеряет
@@ -780,3 +787,57 @@ worker и не открывает второй путь к модели или �
   прогон на чистом актуальном `main` воспроизвёл те же 2 из 5 падений с тем же
   стеком; ветка Product Context не меняет Runtime API. Поэтому это не принято
   как регрессия текущего блока и не исправлялось в его merge.
+
+### 2026-08-13 — основной AI agent, новое разрешённое смысловое окно и handoff
+
+- Authorization: одноразовое окно использовало только для него разрешённые
+  Z.AI Coding Plan и `glm-4.7`, model timeout 45 секунд, authority timeout
+  5 секунд, lease 60 секунд, `maxAttempts=1` без retry; один developer и одна
+  игра, disposable Portal/PostgreSQL 17/bare Git. Stage 3, чтение, применение
+  и запись закрыты. 45 секунд не стали default.
+- Baseline repair: две заранее существовавшие Runtime API fixture-записи
+  получили обязательный `public.turn.order`; менялись только fixtures.
+  Focused 5/5, Runtime API 365 passed/2 skipped и Player Web 274/274.
+  Полная каноническая проверка позднее безопасно остановлена до/на production
+  build Player Web из-за low-memory/resource contention; неизвестных процессов
+  и настроек хоста не меняли. Это partial evidence до повторного запуска
+  основным агентом.
+- First attempt: до provider call hard stop с `message_changed` возник потому,
+  что PostgreSQL `encode(bytea,'base64')` сворачивал длинный Base64. Байты и
+  хэши были целы; нормализация SQL-вывода добавлена во все claim/reread/prepare
+  пути. Regression на PG17 покрывает длинные user/agent messages, точный
+  canonical Base64 и 41/41 activation/security тестов. Модельное время и
+  input/output были нулевыми, cleanup обнулил состояние; provider call не
+  расходовался.
+- Clean window: ровно четыре provider calls — три `no_change` (9272, 8640 и
+  3816 мс) и create proposal (26167 мс). Первые три и структурные проверки
+  outcome/page/minimality/no-side-effect прошли ручной review. Create proposal
+  нарушил «все и только подтверждённые факты»: в нём был выдуман/скопирован
+  timestamp страницы, которого не было в trusted server input. Пятый сценарий
+  correction не вызывался; Git не менялся.
+- Evidence and cleanup: content-free report сохранялся после каждого
+  сценария. Удалены 4 runs и 4 metrics, tombstoned 8 messages и 4 threads;
+  осталось 0 active runs/metrics/messages/threads/text bytes. Disposable
+  PostgreSQL, Portal process/data, bare Git, роли и ключи удалены/остановлены.
+- Remediation: gateway берёт точный ISO `knowledge_timestamp` из trusted
+  server clock в начале вызова, передаёт его в grounding и требует точного
+  совпадения в parsed page; create/update fail-closed при invented/copied/
+  unchanged/incorrect timestamp и не мутирует output. 47/47 gateway tests,
+  typecheck/generated types и Luna-xhigh review ACCEPT без High/Medium.
+- Package acceptance: на новой одноразовой PostgreSQL 17 полный
+  `verify:product-context` прошёл 263/263; первый полный прогон обнаружил
+  тестовую гонку 200 мс в прежней проверке retention. Тест переведён на две
+  явные фазы по часам PostgreSQL и после Luna-xhigh review повторно прошёл в
+  составе всего пакета. Производственный код ради теста не менялся.
+- Canonical verification: свежий `verify:canonical` прошёл все ворота до
+  Runtime API включительно (365 passed/2 skipped и smoke) и Player Web
+  typecheck/tests 274/274. Player Web production build скомпилировал исходники,
+  но основной агент остановил принадлежащую прогону process group во время
+  последующих lint/type checks, когда свободный swap снизился ниже
+  обязательного порога 20%. Финальный build и последующие view/editor gates
+  поэтому не доказаны; чужие процессы и настройки хоста не менялись.
+- Verdict: Stage 2 остаётся `in_progress`; новый внешний вызов требует новой
+  авторизации и полного повтора всех пяти неизменных категорий, а не только
+  correction. Permanent model timeout и retries остаются pending. Decision
+  registry обновлён: разовое 45s authorization consumed, trusted timestamp
+  implemented, trigger — новая approved full five-scenario rerun.

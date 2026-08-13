@@ -34,6 +34,7 @@ const systemPrompt = [
   'A proposal must target one non-index Markdown page, use exact anchors, preserve valid page metadata, and cite only supplied message refs.',
   'When user evidence establishes a new subject not covered by a snapshot page, use one create_file operation at an absent path instead of changing an existing page.',
   'For create_file, new_text must be a complete Markdown page: --- then one JSON front-matter object then --- then a non-empty body. Front matter must contain only schema_version "1.0.0"; type "decision", "preference", "constraint", or "note"; non-empty title and description; an ISO date-time timestamp; a unique cubica_id matching knw_[A-Za-z0-9_-]+; role_scope "developer"; source_refs containing every operation source and at least one supplied user evidence or confirmation; and applies_to containing exactly the sole user-JSON applies_to value. Optional fields are subject_key, depends_on, and state "active" or "disputed".',
+  'For a proposal that creates or changes a page, the final page timestamp must equal knowledge_timestamp from the user JSON exactly; never copy, infer, or invent a timestamp. no_change does not require a page timestamp.',
   'For an existing page update, never replace the entire file or delete and recreate it; use the smallest local exact operations whose old_text is a unique substring.',
   'An existing page update must preserve cubica_id and every existing front-matter source_refs entry, add every operation source_refs entry to the final front matter, and change only metadata or body text required by the current evidence.',
   'Agent messages may supply wording or context only; user evidence or confirmation is required.',
@@ -134,13 +135,16 @@ export class ZaiCodingPlanModelGateway implements ModelGateway {
     if (encoder.encode(JSON.stringify(request)).byteLength > this.maxRequestBytes) throw new ModelGatewayError('invalid_request');
 
     const messages = decodeExactMessages(request);
-    const started = this.now();
-    const body = providerBody(request, this.snapshot, messages);
+    let started: number;
+    try { started = this.now(); }
+    catch { throw new ModelGatewayError('transport_error'); }
+    const knowledgeTimestamp = trustedKnowledgeTimestamp(started);
+    const body = providerBody(request, this.snapshot, messages, knowledgeTimestamp);
     if (body.byteLength > this.maxRequestBytes) throw new ModelGatewayError('invalid_request');
     const { candidate, outputBytes } = await this.providerCall(body);
-    const normalized = normalizeProviderResult(candidate, request, this.snapshot);
+    const normalized = normalizeProviderResult(candidate, request, this.snapshot, knowledgeTimestamp);
     const result = validateModelGatewayResult(request, normalized);
-    validateFinalProposal(result, request, this.snapshot);
+    validateFinalProposal(result, request, this.snapshot, knowledgeTimestamp);
     return {
       result,
       inputBytes: body.byteLength,
@@ -285,11 +289,17 @@ function decodeExactMessages(request: ModelGatewayRequest): readonly DecodedMess
   }
 }
 
-function providerBody(request: ModelGatewayRequest, snapshot: ShadowKnowledgeSnapshot, messages: readonly DecodedMessage[]): Uint8Array<ArrayBuffer> {
+function providerBody(
+  request: ModelGatewayRequest,
+  snapshot: ShadowKnowledgeSnapshot,
+  messages: readonly DecodedMessage[],
+  knowledgeTimestamp: string
+): Uint8Array<ArrayBuffer> {
   const groundingPayload = {
     schema_version: '1.0.0',
     request_id: request.request_id,
     applies_to: request.applies_to,
+    knowledge_timestamp: knowledgeTimestamp,
     snapshot: {
       commit: snapshot.commit,
       index: snapshot.index,
@@ -325,7 +335,12 @@ function providerContent(envelope: unknown): unknown {
   catch { throw new ModelGatewayError('malformed_output'); }
 }
 
-function normalizeProviderResult(candidate: unknown, request: ModelGatewayRequest, snapshot: ShadowKnowledgeSnapshot): unknown {
+function normalizeProviderResult(
+  candidate: unknown,
+  request: ModelGatewayRequest,
+  snapshot: ShadowKnowledgeSnapshot,
+  knowledgeTimestamp: string
+): unknown {
   if (!isRecord(candidate) || candidate.outcome !== 'proposal') return candidate;
   const rawProposal = candidate.proposal;
   if (!isRecord(rawProposal) || hasSecretLikeText(JSON.stringify(rawProposal)) || rawProposal.base_commit !== snapshot.commit ||
@@ -350,6 +365,14 @@ function normalizeProviderResult(candidate: unknown, request: ModelGatewayReques
   try {
     for (const operation of operations) current = applyExactOperation(current, operation, original);
   } catch { throw new ModelGatewayError('malformed_output'); }
+  if (current !== undefined) {
+    try {
+      if (parseKnowledgePage(current).timestamp !== knowledgeTimestamp) throw new ModelGatewayError('malformed_output');
+    } catch (error) {
+      if (error instanceof ModelGatewayError) throw error;
+      throw new ModelGatewayError('malformed_output');
+    }
+  }
 
   const proposal = {
     ...rawProposal,
@@ -385,7 +408,12 @@ function normalizeOperation(rawOperation: unknown, pages: ReadonlyMap<string, Ui
   } as ExactPatchOperation;
 }
 
-function validateFinalProposal(result: ModelGatewayResult, request: ModelGatewayRequest, snapshot: ShadowKnowledgeSnapshot): void {
+function validateFinalProposal(
+  result: ModelGatewayResult,
+  request: ModelGatewayRequest,
+  snapshot: ShadowKnowledgeSnapshot,
+  knowledgeTimestamp: string
+): void {
   if (!result.proposal) return;
   const proposal = result.proposal;
   if (hasSecretLikeText(JSON.stringify(proposal))) throw new ModelGatewayError('malformed_output');
@@ -398,7 +426,8 @@ function validateFinalProposal(result: ModelGatewayResult, request: ModelGateway
     for (const operation of proposal.operations) current = applyExactOperation(current, operation, originalBytes);
     if (!current) return;
     const page = parseKnowledgePage(current);
-    if ((originalPage !== null && page.cubica_id !== originalPage.cubica_id) ||
+    if (page.timestamp !== knowledgeTimestamp ||
+        (originalPage !== null && page.cubica_id !== originalPage.cubica_id) ||
         (originalPage === null && snapshot.pages.some((snapshotPage) => parseKnowledgePage(encoder.encode(snapshotPage.content)).cubica_id === page.cubica_id)) ||
         !pageProvenanceIsSafe(originalPage, page, proposal.operations, request) || !evaluateKnowledgePageRead(page, {
       role: 'developer',
@@ -411,6 +440,12 @@ function validateFinalProposal(result: ModelGatewayResult, request: ModelGateway
     if (error instanceof ModelGatewayError) throw error;
     throw new ModelGatewayError('malformed_output');
   }
+}
+
+function trustedKnowledgeTimestamp(started: number): string {
+  if (!Number.isFinite(started)) throw new ModelGatewayError('transport_error');
+  try { return new Date(started).toISOString(); }
+  catch { throw new ModelGatewayError('transport_error'); }
 }
 
 function pageProvenanceIsSafe(
