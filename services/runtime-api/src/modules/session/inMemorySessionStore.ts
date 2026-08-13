@@ -131,6 +131,18 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
     return match === undefined ? null : clone(match.principal);
   }
 
+  async getCommandReceipt(input: SessionCommandTransactionInput): Promise<SessionCommandReceipt | null> {
+    if (this.archivedAtBySessionId.has(input.sessionId)) return null;
+    const storedPrincipal = this.findStoredPrincipal(input);
+    if (storedPrincipal === undefined) return null;
+    const receipt = this.receipts.get(commandReceiptKey(
+      input.sessionId,
+      storedPrincipal.principal.principalId,
+      input.commandId
+    ));
+    return receipt === undefined ? null : clone(receipt);
+  }
+
   async archiveSession(
     input: SessionAuthenticationInput
   ): Promise<ArchivedSessionAudit<TState> | null> {
@@ -298,7 +310,15 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
         currentSession: clone(current),
         principal: clone(storedPrincipal.principal),
         bundle: clone(bundle),
-        ...(existingReceipt === undefined ? {} : { existingReceipt: clone(existingReceipt) })
+        ...(existingReceipt === undefined ? {} : { existingReceipt: clone(existingReceipt) }),
+        getCommandReceipt: async (commandId) => {
+          const receipt = this.receipts.get(commandReceiptKey(
+            input.sessionId,
+            storedPrincipal.principal.principalId,
+            commandId
+          ));
+          return receipt === undefined ? null : clone(receipt);
+        }
       });
 
       assertCommandTransactionResult({
@@ -376,7 +396,15 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
         principal: clone(principal),
         bundle: clone(bundle),
         schedule: clone(schedule),
-        ...(existingReceipt === undefined ? {} : { existingReceipt: clone(existingReceipt) })
+        ...(existingReceipt === undefined ? {} : { existingReceipt: clone(existingReceipt) }),
+        getCommandReceipt: async (commandId) => {
+          const receipt = this.receipts.get(commandReceiptKey(
+            input.sessionId,
+            principal.principalId,
+            commandId
+          ));
+          return receipt === undefined ? null : clone(receipt);
+        }
       });
       assertSystemDisposition(existingReceipt, operationResult);
       assertCommandTransactionResult({

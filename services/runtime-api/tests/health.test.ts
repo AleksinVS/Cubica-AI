@@ -119,6 +119,9 @@ test("deriveSessionStoreMode reflects an alternate store class name", () => {
     async withCommandTransaction() {
       return undefined as never;
     }
+    async getCommandReceipt() {
+      return null;
+    }
     async withSystemCommandTransaction() {
       return undefined as never;
     }

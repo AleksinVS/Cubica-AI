@@ -315,6 +315,7 @@ function validateHistoricalSpecs() {
 function validateSchemaCoverage(spec) {
   const requiredSchemas = [
     "ActionResponse",
+    "AgentControl",
     "AgentTurnRequest",
     "AgentTurnResponse",
     "ContentReloadRequest",
@@ -436,6 +437,25 @@ function validatePreciseRuntimeShapes(spec) {
     if (!responseSchema.required?.includes("participants") ||
         responseSchema.properties?.participants?.$ref !== participantRef) {
       fail(`${schemaName} must require authoritative session participants`);
+    }
+  }
+
+  const agentControl = spec.components.schemas.AgentControl;
+  if (
+    agentControl?.additionalProperties !== false ||
+    JSON.stringify(agentControl.required) !== JSON.stringify(["playerId", "status", "reasonCode"]) ||
+    agentControl.properties?.playerId?.$ref !== "#/components/schemas/PlayerId" ||
+    JSON.stringify(agentControl.properties?.status?.enum) !==
+      JSON.stringify(["paused", "facilitatorTakeover"]) ||
+    JSON.stringify(agentControl.properties?.reasonCode?.enum) !==
+      JSON.stringify(["runtimeUnavailable", "invalidAttemptLimit", "fallbackUnavailable", "stepLimit"])
+  ) {
+    fail("AgentControl must remain the exact approved closed public status shape");
+  }
+  for (const schemaName of ["ActionResponse", "CreatedSessionResponse", "SessionResponse"]) {
+    if (spec.components.schemas[schemaName]?.properties?.agentControl?.$ref !==
+        "#/components/schemas/AgentControl") {
+      fail(`${schemaName} must expose optional AgentControl`);
     }
   }
 

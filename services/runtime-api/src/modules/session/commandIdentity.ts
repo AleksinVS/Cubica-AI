@@ -9,6 +9,7 @@
 
 import { createHash, randomUUID } from "node:crypto";
 import type {
+  AgentControl,
   DispatchActionInput,
   PublicSessionCommandReceipt,
   SessionCommandReceipt,
@@ -16,6 +17,7 @@ import type {
   SessionPrincipal,
   SessionRecord
 } from "@cubica/contracts-session";
+import { validateAgentControlShape } from "@cubica/contracts-session";
 import { canonicalizeJson } from "../content/canonicalJson.ts";
 
 const DURABLE_COMMAND_RESULT_FORMAT = "1.0.0" as const;
@@ -68,6 +70,21 @@ export function createSystemCommandId(
     .update(canonicalizeJson(["cubica.system-command/v1", sessionId, scheduleId, occurrence]))
     .digest("base64url");
   return `sys_${digest}`;
+}
+
+/** Stable identity for one active agent participant at one authoritative version. */
+export function createAgentSeatCommandId(
+  sessionId: string,
+  playerId: string,
+  stateVersion: number
+): string {
+  if (!sessionId || !playerId || !Number.isSafeInteger(stateVersion) || stateVersion < 0) {
+    throw new Error("Agent-seat command identity requires session, actor and state version");
+  }
+  const digest = createHash("sha256")
+    .update(canonicalizeJson(["cubica.agent-seat-turn/v1", sessionId, playerId, stateVersion]))
+    .digest("base64url");
+  return `agt_${digest}`;
 }
 
 export function createSystemCommandFingerprint(input: {
@@ -248,6 +265,18 @@ export function requireDurableCommandResult(
     throw new Error("Stored command result uses an unsupported durable format");
   }
   return cloneBoundedDurableResult(value as DurableCommandResult);
+}
+
+/** Read only the bounded public control projection from a protected seat result. */
+export function readAgentSeatControl(receipt: SessionCommandReceipt): AgentControl | undefined {
+  const value = requireDurableCommandResult(receipt.result, "agent-turn").value;
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new Error("Stored agent-seat result is invalid");
+  }
+  const control = (value as { control?: unknown }).control;
+  if (control === undefined) return undefined;
+  if (!validateAgentControlShape(control)) throw new Error("Stored agent-seat control is invalid");
+  return structuredClone(control);
 }
 
 /**

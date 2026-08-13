@@ -1,0 +1,38 @@
+{
+  "description": "Derived blocking outcome for the current immutable agent participant and authoritative active actor.",
+  "type": "object",
+  "required": [
+    "playerId",
+    "status",
+    "reasonCode"
+  ],
+  "properties": {
+    "playerId": {
+      "description": "Non-empty player identifier that cannot address JavaScript object prototype properties.",
+      "type": "string",
+      "minLength": 1,
+      "not": {
+        "enum": [
+          "__proto__",
+          "constructor",
+          "prototype"
+        ]
+      }
+    },
+    "status": {
+      "enum": [
+        "paused",
+        "facilitatorTakeover"
+      ]
+    },
+    "reasonCode": {
+      "enum": [
+        "runtimeUnavailable",
+        "invalidAttemptLimit",
+        "fallbackUnavailable",
+        "stepLimit"
+      ]
+    }
+  },
+  "additionalProperties": false
+}

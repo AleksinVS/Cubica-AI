@@ -347,6 +347,27 @@ export class PostgresSessionStore<TState = unknown> implements SessionStorePort<
     }
   }
 
+  async getCommandReceipt(input: SessionCommandTransactionInput): Promise<SessionCommandReceipt | null> {
+    try {
+      const result = await this.pool.query<ReceiptRow>(
+        `${SELECT_RECEIPT}
+         WHERE session_id = $1 AND command_id = $3
+           AND principal_id = (
+             SELECT principal_id FROM session_principals
+             WHERE session_id = $1 AND credential_sha256 = $2
+           )
+           AND EXISTS (
+             SELECT 1 FROM game_sessions
+             WHERE id = $1 AND archived_at IS NULL AND bundle_hash IS NOT NULL
+           )`,
+        [input.sessionId, input.credentialSha256, input.commandId]
+      );
+      return result.rows[0] === undefined ? null : mapReceiptRow(result.rows[0]);
+    } catch (error) {
+      throw mapDatabaseOperationalError(error);
+    }
+  }
+
   async archiveSession(
     input: SessionAuthenticationInput
   ): Promise<ArchivedSessionAudit<TState> | null> {
@@ -553,7 +574,17 @@ export class PostgresSessionStore<TState = unknown> implements SessionStorePort<
         currentSession: current,
         principal,
         bundle: mapBundleRow(bundleRow),
-        ...(existingReceipt === undefined ? {} : { existingReceipt })
+        ...(existingReceipt === undefined ? {} : { existingReceipt }),
+        getCommandReceipt: async (commandId) => {
+          const receipt = await queryClient<ReceiptRow>(
+            client,
+            input.sessionId,
+            `${SELECT_RECEIPT}
+             WHERE session_id = $1 AND principal_id = $2 AND command_id = $3`,
+            [input.sessionId, principal.principalId, commandId]
+          );
+          return receipt.rows[0] === undefined ? null : mapReceiptRow(receipt.rows[0]);
+        }
       });
 
       assertCommandTransactionResult({
@@ -655,7 +686,17 @@ export class PostgresSessionStore<TState = unknown> implements SessionStorePort<
         principal,
         bundle: mapBundleRow(bundleRow),
         schedule,
-        ...(existingReceipt === undefined ? {} : { existingReceipt })
+        ...(existingReceipt === undefined ? {} : { existingReceipt }),
+        getCommandReceipt: async (commandId) => {
+          const receipt = await queryClient<ReceiptRow>(
+            client,
+            input.sessionId,
+            `${SELECT_RECEIPT}
+             WHERE session_id = $1 AND principal_id = $2 AND command_id = $3`,
+            [input.sessionId, principal.principalId, commandId]
+          );
+          return receipt.rows[0] === undefined ? null : mapReceiptRow(receipt.rows[0]);
+        }
       });
       assertSystemDisposition(existingReceipt, operationResult);
       assertCommandTransactionResult({

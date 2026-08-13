@@ -453,7 +453,7 @@ export interface CubicaAgentTurnInput {
   readonly gameId: string;
   readonly playerId?: string;
   readonly agentId: string;
-  readonly executionMode: Exclude<CubicaGameExecutionMode, "deterministic">;
+  readonly executionMode: CubicaGameExecutionMode;
   readonly trigger: CubicaAgentTurnTrigger;
   readonly stateScope: {
     /** State-model symbols visible to every participant. */
@@ -873,7 +873,7 @@ export const agentTurnInputSchema = {
       not: { enum: ["__proto__", "constructor", "prototype"] }
     },
     agentId: { type: "string", minLength: 1 },
-    executionMode: { enum: ["hybrid", "ai-driven"] },
+    executionMode: { enum: ["deterministic", "hybrid", "ai-driven"] },
     trigger: {
       type: "object",
       additionalProperties: false,

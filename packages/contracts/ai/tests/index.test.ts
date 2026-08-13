@@ -546,18 +546,14 @@ describe("Agent Turn validation", () => {
     }
   });
 
-  it("rejects deterministic mode for Agent Turn input", () => {
+  it("accepts deterministic mode for the runtime-authorized system agent-seat path", () => {
     const result = validateAgentTurnInput({
       ...validAgentTurnInput,
       executionMode: "deterministic"
     });
 
-    expect(result.ok).toBe(false);
-    expect(result.diagnostics).toContainEqual(
-      expect.objectContaining({
-        code: "schema.enum"
-      })
-    );
+    expect(result.ok).toBe(true);
+    expect(result.value?.executionMode).toBe("deterministic");
   });
 
   it("accepts a valid Agent Turn result with a CubicaSurface", () => {

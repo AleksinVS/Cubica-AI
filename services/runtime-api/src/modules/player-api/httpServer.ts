@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import type { SessionStorePort } from "@cubica/contracts-session";
 import { HttpError } from "../errors.ts";
 import { AgentTurnService } from "../ai/agentRuntime.ts";
+import { AgentSeatDriver } from "../ai/agentSeatDriver.ts";
 import { SessionService } from "../session/session.service.ts";
 import { createSessionStoreFromEnvironment } from "../session/sessionStoreFactory.ts";
 import {
@@ -185,13 +186,16 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
   const sessionStore = options.sessionStore ?? createSessionStoreFromEnvironment();
   const commandAdmissionController = options.commandAdmissionController ??
     new BoundedInMemoryCommandAdmissionController();
-  const sessionService = new SessionService({
-    sessionStore
-  });
   // Both mutation endpoints must share counters; constructing separate
   // controllers would let Agent Turns bypass the general command budget.
-  const runtimeService = new RuntimeService(commandAdmissionController, options.random);
   const agentTurnService = new AgentTurnService(commandAdmissionController);
+  const agentSeatDriver = new AgentSeatDriver(agentTurnService);
+  const sessionService = new SessionService({ sessionStore, agentSeatDriver });
+  const runtimeService = new RuntimeService(
+    commandAdmissionController,
+    options.random,
+    agentSeatDriver
+  );
   let activePort = port;
   let closed = false;
 

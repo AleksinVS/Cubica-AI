@@ -23,9 +23,11 @@ import { RequestValidationError } from "../errors.ts";
 import { executeMechanicsTransaction, MechanicsExecutionError } from "../mechanics/index.ts";
 import {
   createAppliedCommandReceipt,
+  createAgentSeatCommandId,
   createDurableCommandResult,
   createExternalCommandFingerprint,
   createRejectedCommandReceipt,
+  readAgentSeatControl,
   requireDurableCommandResult
 } from "../session/commandIdentity.ts";
 import {
@@ -34,6 +36,7 @@ import {
 } from "../session/sessionAuthentication.ts";
 import {
   CommandIdReusedError,
+  SessionAuthorizationError,
   SessionStoreUnavailableError,
   SessionVersionConflictError
 } from "../session/sessionStoreErrors.ts";
@@ -351,7 +354,7 @@ export async function dispatchRuntimeAction(
     sessionId: options.input.sessionId,
     commandId: options.input.commandId,
     credentialSha256: options.credentialSha256
-  }, async ({ currentSession: current, principal, bundle: storedBundle, existingReceipt }) => {
+  }, async ({ currentSession: current, principal, bundle: storedBundle, existingReceipt, getCommandReceipt }) => {
     // A committed receipt is readable even after its pinned executor version
     // leaves the active registry. New execution still takes the full current
     // schema/module admission path below.
@@ -407,6 +410,25 @@ export async function dispatchRuntimeAction(
     }
     const sessionRole = principal.role;
     const commandActorPlayerId = resolveSessionActor(current, principal);
+    const activeParticipant = commandActorPlayerId === undefined
+      ? undefined
+      : current.participants.find((participant) => participant.playerId === commandActorPlayerId);
+    if (activeParticipant?.kind === "agent") {
+      const seatReceipt = await getCommandReceipt(createAgentSeatCommandId(
+        current.sessionId,
+        activeParticipant.playerId,
+        current.version.stateVersion
+      ));
+      let control;
+      try {
+        control = seatReceipt === null ? undefined : readAgentSeatControl(seatReceipt);
+      } catch {
+        throw new SessionStoreUnavailableError();
+      }
+      if (control?.status !== "facilitatorTakeover") {
+        throw new SessionAuthorizationError();
+      }
+    }
     const candidateOptions: ExecutePublishedGameIntentCandidateOptions = {
       bundle,
       state: current.state,

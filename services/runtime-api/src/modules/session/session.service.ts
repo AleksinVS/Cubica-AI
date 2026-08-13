@@ -20,6 +20,7 @@ import type {
   SessionStorePort
 } from "@cubica/contracts-session";
 import { assertGameLaunchReady } from "../admin/health.ts";
+import { AgentSeatDriver, projectAgentControl } from "../ai/agentSeatDriver.ts";
 import { contentService } from "../content/contentService.ts";
 import {
   extractInitialState,
@@ -49,6 +50,7 @@ type RuntimeState = Record<string, unknown>;
 
 interface SessionServiceOptions {
   sessionStore: SessionStorePort<RuntimeState>;
+  agentSeatDriver?: AgentSeatDriver;
 }
 
 export interface AuthenticatedSessionAccess {
@@ -68,9 +70,11 @@ export type AuthenticatedArchivedSessionAccess = ArchivedSessionAudit<RuntimeSta
 
 export class SessionService {
   private readonly sessionStore: SessionStorePort<RuntimeState>;
+  private readonly agentSeatDriver?: AgentSeatDriver;
 
   constructor(options: SessionServiceOptions) {
     this.sessionStore = options.sessionStore;
+    this.agentSeatDriver = options.agentSeatDriver;
   }
 
   async createSession(request: CreateSessionRequest): Promise<CreateSessionResponse<RuntimeState>> {
@@ -107,7 +111,24 @@ export class SessionService {
       immutableBundle: toImmutableGameBundle(bundle),
       principal: localAccess.principal
     });
-    const snapshot = created.session;
+    let driven: Awaited<ReturnType<AgentSeatDriver["drive"]>> | undefined;
+    if (this.agentSeatDriver !== undefined) {
+      try {
+        driven = await this.agentSeatDriver.drive({
+          sessionStore: this.sessionStore,
+          credentialSha256: localAccess.principal.credentialSha256,
+          sessionId: created.session.sessionId
+        });
+      } catch (error) {
+        // Session creation and one-time credential handoff already committed.
+        // A post-commit driver fault must not strand that credential.
+        console.error(
+          `[agent-seat] initial bounded driver failed for session ${created.session.sessionId}:`,
+          error instanceof Error ? error.message : String(error)
+        );
+      }
+    }
+    const snapshot = driven?.snapshot ?? created.session;
     const actorPlayerId = resolveSessionViewerActor(snapshot, created.principal);
 
     return {
@@ -124,6 +145,7 @@ export class SessionService {
         ...(actorPlayerId === undefined ? {} : { actorPlayerId }),
         sessionRole: created.principal.role
       }),
+      ...(driven?.agentControl === undefined ? {} : { agentControl: driven.agentControl }),
       credential: localAccess.accessToken
     };
   }
@@ -131,6 +153,11 @@ export class SessionService {
   async getSession(sessionId: SessionId, accessToken: string): Promise<GetSessionResponse<RuntimeState>> {
     const { snapshot, principal, bundle } = await this.authenticateSessionAccess(sessionId, accessToken);
     const actorPlayerId = resolveSessionViewerActor(snapshot, principal);
+    const agentControl = await projectAgentControl({
+      sessionStore: this.sessionStore,
+      credentialSha256: hashSessionCredential(accessToken),
+      snapshot
+    });
     return {
       sessionId: snapshot.sessionId,
       gameId: snapshot.gameId,
@@ -144,7 +171,8 @@ export class SessionService {
       actionAvailability: projectSessionActionAvailability(snapshot, bundle, {
         ...(actorPlayerId === undefined ? {} : { actorPlayerId }),
         sessionRole: principal.role
-      })
+      }),
+      ...(agentControl === undefined ? {} : { agentControl })
     };
   }
 

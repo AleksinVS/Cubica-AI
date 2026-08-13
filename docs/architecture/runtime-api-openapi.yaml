@@ -986,6 +986,7 @@
           "version": { "$ref": "#/components/schemas/SessionStateVersion" },
           "state": { "$ref": "#/components/schemas/JsonObject" },
           "actionAvailability": { "$ref": "#/components/schemas/SessionActionAvailabilityList" },
+          "agentControl": { "$ref": "#/components/schemas/AgentControl" },
           "receipt": { "$ref": "#/components/schemas/PublicCommandReceipt" }
         },
         "additionalProperties": true
@@ -1007,6 +1008,19 @@
           "reasonCode": {
             "type": "string",
             "enum": ["role_not_allowed", "state_condition_failed", "parameters_required", "runtime_unsupported"]
+          }
+        },
+        "additionalProperties": false
+      },
+      "AgentControl": {
+        "description": "Derived blocking outcome for the current immutable agent participant and authoritative active actor.",
+        "type": "object",
+        "required": ["playerId", "status", "reasonCode"],
+        "properties": {
+          "playerId": { "$ref": "#/components/schemas/PlayerId" },
+          "status": { "enum": ["paused", "facilitatorTakeover"] },
+          "reasonCode": {
+            "enum": ["runtimeUnavailable", "invalidAttemptLimit", "fallbackUnavailable", "stepLimit"]
           }
         },
         "additionalProperties": false
@@ -1350,7 +1364,8 @@
           "participants": { "$ref": "#/components/schemas/SessionParticipants" },
           "version": { "$ref": "#/components/schemas/SessionStateVersion" },
           "state": { "$ref": "#/components/schemas/JsonObject" },
-          "actionAvailability": { "$ref": "#/components/schemas/SessionActionAvailabilityList" }
+          "actionAvailability": { "$ref": "#/components/schemas/SessionActionAvailabilityList" },
+          "agentControl": { "$ref": "#/components/schemas/AgentControl" }
         },
         "additionalProperties": false
       },
@@ -1367,6 +1382,7 @@
           "version": { "$ref": "#/components/schemas/SessionStateVersion" },
           "state": { "$ref": "#/components/schemas/JsonObject" },
           "actionAvailability": { "$ref": "#/components/schemas/SessionActionAvailabilityList" },
+          "agentControl": { "$ref": "#/components/schemas/AgentControl" },
           "credential": {
             "type": "string",
             "pattern": "^ses_[A-Za-z0-9_-]{43}$"
