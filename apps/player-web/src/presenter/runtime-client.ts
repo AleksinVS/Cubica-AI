@@ -162,6 +162,7 @@ export async function createNewSession(gameId: string): Promise<SessionSnapshot>
 export async function createNewSessionWithOptions(input: {
   readonly gameId: string;
   readonly contentSourceId?: string;
+  readonly agentSeatCount?: number;
 }): Promise<SessionSnapshot> {
   const response = await fetch("/api/runtime/sessions", {
     method: "POST",
@@ -169,7 +170,8 @@ export async function createNewSessionWithOptions(input: {
     credentials: "same-origin",
     body: JSON.stringify({
       gameId: input.gameId,
-      ...(input.contentSourceId === undefined ? {} : { contentSourceId: input.contentSourceId })
+      ...(input.contentSourceId === undefined ? {} : { contentSourceId: input.contentSourceId }),
+      ...(input.agentSeatCount === undefined ? {} : { agentSeatCount: input.agentSeatCount })
     })
   });
   if (!response.ok) {

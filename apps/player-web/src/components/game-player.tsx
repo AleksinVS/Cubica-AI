@@ -41,6 +41,9 @@ import { applyGameStylesheetLinks } from "@/lib/game-stylesheet-links";
 import type { PlayerLayoutMode } from "@/lib/player-layout-mode";
 import { createManifestActionAdapter } from "@/lib/manifest-action-adapter";
 import { restorePreviewSession } from "@/presenter/runtime-client";
+import { SessionSetupPanel } from "@/components/session-setup-panel";
+import { SessionParticipants } from "@/components/session-participants";
+import { AgentControlPanel } from "@/components/agent-control-panel";
 
 export type { PlayerFacingMockup as GameMockup };
 
@@ -395,6 +398,14 @@ export function GamePlayer({
     void presenter.boot();
   };
 
+  const handleSessionSetup = (selection: { agentSeatCount: number }) => {
+    void presenterRef.current?.createSessionFromSetup(selection);
+  };
+
+  const handleRefreshAgentControl = () => {
+    void presenterRef.current?.refreshSession();
+  };
+
   const handleSurfaceAction = (action: Parameters<GamePresenter["handleSurfaceAction"]>[0]) => {
     const presenter = presenterRef.current;
     if (!presenter) return;
@@ -452,6 +463,19 @@ export function GamePlayer({
     );
   }
 
+  if (state.sessionSetup) {
+    return (
+      <main ref={rootRef} className="shell game-player-root" style={rootStyle}>
+        <SessionSetupPanel
+          setup={state.sessionSetup}
+          isPending={state.booting}
+          error={state.error}
+          onSubmit={handleSessionSetup}
+        />
+      </main>
+    );
+  }
+
   if (state.runtimeStatus !== "ready") {
     return (
       <main ref={rootRef} className="shell game-player-root" style={rootStyle}>
@@ -462,6 +486,24 @@ export function GamePlayer({
           agentRuntimeRequired={state.agentRuntimeRequired}
           onRetry={handleRetryBoot}
         />
+      </main>
+    );
+  }
+
+  const agentControl = state.agentControl;
+  if (agentControl.kind === "invalid") {
+    return (
+      <main ref={rootRef} className="shell game-player-root" style={rootStyle}>
+        <SessionParticipants participants={state.participants} />
+        <AgentControlPanel invalid onRefresh={handleRefreshAgentControl} />
+      </main>
+    );
+  }
+  if (agentControl.kind === "valid" && agentControl.value.status === "paused") {
+    return (
+      <main ref={rootRef} className="shell game-player-root" style={rootStyle}>
+        <SessionParticipants participants={state.participants} />
+        <AgentControlPanel control={agentControl.value} onRefresh={handleRefreshAgentControl} />
       </main>
     );
   }
@@ -478,6 +520,10 @@ export function GamePlayer({
 
   return (
     <main ref={rootRef} className="shell game-player-root" style={rootStyle}>
+      <SessionParticipants participants={state.participants} />
+      {agentControl.kind === "valid" && agentControl.value.status === "facilitatorTakeover" ? (
+        <AgentControlPanel control={agentControl.value} onRefresh={handleRefreshAgentControl} />
+      ) : null}
       <PublicJournalDownload sessionId={state.sessionId} runtimeStatus={state.runtimeStatus} />
       {activeManifestPanel && !keepsMapBehindPanel ? (
         <ManifestRenderer

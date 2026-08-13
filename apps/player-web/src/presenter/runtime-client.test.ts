@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   createNewSession,
+  createNewSessionWithOptions,
   dispatchAction,
   getGameReadiness,
   previewTransportRoad,
@@ -13,6 +14,51 @@ describe("runtime-client", () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+  });
+
+  it("sends only the explicitly selected agent-seat count when creating a session", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      sessionId: "session-agent",
+      gameId: "neutral-game",
+      participants: [],
+      version: { sessionId: "session-agent", stateVersion: 0, lastEventSequence: 0 },
+      state: { public: {}, secret: {} },
+      actionAvailability: []
+    }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await createNewSessionWithOptions({
+      gameId: "neutral-game",
+      contentSourceId: "preview-source",
+      agentSeatCount: 2
+    });
+
+    const request = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    expect(JSON.parse(String(request.body))).toEqual({
+      gameId: "neutral-game",
+      contentSourceId: "preview-source",
+      agentSeatCount: 2
+    });
+    expect(JSON.parse(String(request.body))).not.toHaveProperty("participantCount");
+  });
+
+  it("omits agentSeatCount for an explicitly human-only session", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      sessionId: "session-human",
+      gameId: "neutral-game",
+      participants: [],
+      version: { sessionId: "session-human", stateVersion: 0, lastEventSequence: 0 },
+      state: { public: {}, secret: {} },
+      actionAvailability: []
+    }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await createNewSessionWithOptions({ gameId: "neutral-game" });
+
+    const body = JSON.parse(String((fetchMock.mock.calls[0]?.[1] as RequestInit).body));
+    expect(body).toEqual({ gameId: "neutral-game" });
+    expect(body).not.toHaveProperty("participantCount");
+    expect(body).not.toHaveProperty("agentSeatCount");
   });
 
   it("preserves runtime-api error bodies for failed session creation", async () => {

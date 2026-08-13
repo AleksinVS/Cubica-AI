@@ -86,6 +86,32 @@ export const ru = {
   /** Entry-point error description explaining how to fix the URL */
   entryMissingGameIdDescription:
     "Добавьте параметр ?gameId=<идентификатор игры> к адресу страницы, чтобы запустить игру.",
+
+  sessionSetupKicker: "Настройка сессии",
+  sessionSetupTitle: "Кто участвует в игре?",
+  sessionSetupDescription: "Выберите состав участников перед запуском. Настройку нельзя изменить после создания сессии.",
+  participantCountLabel: "Количество участников",
+  participantModeLabel: "Тип участников",
+  humanOnlyChoice: "Только люди",
+  agentSeatChoice: "Добавить ИИ-участника",
+  agentSeatCountLabel: "Количество ИИ-участников",
+  startSession: "Начать игру",
+  participantsTitle: "Участники",
+  humanParticipant: "Человек",
+  aiParticipant: "ИИ",
+  agentControlKicker: "Управление ИИ-участником",
+  agentPausedTitle: "Ход ИИ-участника приостановлен",
+  agentPausedDescription: "Действия временно недоступны. Повторите проверку состояния игры, когда сервис будет готов.",
+  agentTakeoverTitle: "Управление передано ведущему",
+  agentTakeoverDescription: "ИИ-участник не смог продолжить. Вы можете выполнить его обычное действие в этой сессии.",
+  agentControlIntegrityTitle: "Состояние участника не удалось проверить",
+  agentControlIntegrityDescription: "Действия заблокированы до получения корректного состояния от игрового сервера.",
+  agentControlReasons: {
+    runtimeUnavailable: "Сервис ИИ-агента недоступен.",
+    invalidAttemptLimit: "ИИ-агент исчерпал допустимые попытки.",
+    fallbackUnavailable: "Резервное действие недоступно.",
+    stepLimit: "Достигнут предел шагов ИИ-участника."
+  },
 } as const;
 
 export type LocaleKey = keyof typeof ru;

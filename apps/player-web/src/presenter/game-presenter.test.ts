@@ -126,6 +126,101 @@ describe("GamePresenter session recovery", () => {
     expect(window.localStorage.getItem(config.storageKey)).toBe("unrelated-local-session");
     expect(presenter.sessionSnapshot?.sessionId).toBe("session-portal");
   });
+
+  it("keeps automatic creation when the content has no agent-seat declaration", async () => {
+    const content = neutralContent("neutral-auto-create");
+    const session = { ...turnSession("p1"), gameId: content.gameId };
+    const fetchMock = vi.fn().mockResolvedValue(runtimeResponse(session, 0));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const presenter = new GamePresenter({
+      gateway: new ReactViewGateway(),
+      content,
+      config: createDefaultGameConfig(createDefaultGameConfigData(content))
+    });
+    await presenter.boot();
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(presenter.playerState.sessionSetup).toBeNull();
+    expect(presenter.sessionSnapshot?.sessionId).toBe(session.sessionId);
+  });
+
+  it("requires an explicit human/agent choice before creating a declared session", async () => {
+    const content = agentSeatContent("neutral-agent-setup", 2);
+    const session = { ...turnSession("p1"), gameId: content.gameId };
+    const fetchMock = vi.fn().mockResolvedValue(runtimeResponse(session, 0));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const presenter = new GamePresenter({
+      gateway: new ReactViewGateway(),
+      content,
+      config: createDefaultGameConfig(createDefaultGameConfigData(content))
+    });
+    await presenter.boot();
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(presenter.playerState.sessionSetup).toEqual({
+      participantCount: 2,
+      minParticipants: 2,
+      maxAgentSeats: 2
+    });
+
+    await presenter.createSessionFromSetup({ agentSeatCount: 0 });
+    expect(JSON.parse(String((fetchMock.mock.calls[0]?.[1] as RequestInit).body))).toEqual({
+      gameId: content.gameId
+    });
+  });
+
+  it("bounds agent seats, blocks duplicate setup submits and keeps a creation error on the form", async () => {
+    const content = agentSeatContent("neutral-agent-bounds", 1);
+    let rejectCreation: (error: Error) => void = () => undefined;
+    const deferred = new Promise<Response>((_resolve, reject) => {
+      rejectCreation = reject;
+    });
+    const fetchMock = vi.fn().mockReturnValue(deferred);
+    vi.stubGlobal("fetch", fetchMock);
+    const presenter = new GamePresenter({
+      gateway: new ReactViewGateway(),
+      content,
+      config: createDefaultGameConfig(createDefaultGameConfigData(content))
+    });
+    await presenter.boot();
+
+    await presenter.createSessionFromSetup({ agentSeatCount: 2 });
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    const creation = presenter.createSessionFromSetup({ agentSeatCount: 1 });
+    const duplicate = presenter.createSessionFromSetup({ agentSeatCount: 1 });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(presenter.playerState.booting).toBe(true);
+    expect(presenter.playerState.sessionSetup).toBeNull();
+    await duplicate;
+    rejectCreation(new Error("creation failed"));
+    await creation;
+    expect(presenter.playerState.booting).toBe(false);
+    expect(presenter.playerState.sessionSetup).not.toBeNull();
+    expect(presenter.playerState.error).toBe("creation failed");
+  });
+
+  it("resets a declared session back to setup without creating it implicitly", async () => {
+    const content = agentSeatContent("neutral-agent-reset", 1);
+    const session = { ...turnSession("p1"), gameId: content.gameId };
+    const fetchMock = vi.fn().mockResolvedValue(runtimeResponse(session, 0));
+    vi.stubGlobal("fetch", fetchMock);
+    const presenter = new GamePresenter({
+      gateway: new ReactViewGateway(),
+      content,
+      config: createDefaultGameConfig(createDefaultGameConfigData(content))
+    });
+    await presenter.boot();
+    expect(presenter.playerState.sessionSetup).not.toBeNull();
+
+    await presenter.resetGame();
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(presenter.sessionSnapshot).toBeNull();
+    expect(presenter.playerState.sessionSetup).not.toBeNull();
+  });
 });
 
 describe("GamePresenter board action serialization", () => {
@@ -148,6 +243,11 @@ describe("GamePresenter board action serialization", () => {
         agentId: "agent-test",
         ok: true,
         audit: { source: "mock", createdAt: "2026-08-13T00:00:00.000Z" }
+      },
+      agentControl: {
+        playerId: "p2",
+        status: "paused" as const,
+        reasonCode: "runtimeUnavailable" as const
       }
     });
     const presenter = new GamePresenter({
@@ -166,7 +266,66 @@ describe("GamePresenter board action serialization", () => {
     });
 
     expect(presenter.sessionSnapshot?.participants).toEqual(participants);
+    expect(presenter.playerState.agentControl).toEqual({
+      kind: "valid",
+      value: {
+        playerId: "p2",
+        status: "paused",
+        reasonCode: "runtimeUnavailable"
+      }
+    });
     agentTurn.mockRestore();
+  });
+
+  it("propagates and clears agent control across ordinary action snapshots", async () => {
+    const content = neutralContent("neutral-control-clear");
+    const initialSession: GameSession = {
+      ...turnSession("p1"),
+      gameId: content.gameId,
+      agentControl: {
+        playerId: "p2",
+        status: "facilitatorTakeover",
+        reasonCode: "stepLimit"
+      }
+    };
+    const nextSession: GameSession = {
+      ...initialSession,
+      version: { ...initialSession.version, stateVersion: 2, lastEventSequence: 1 }
+    };
+    delete nextSession.agentControl;
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(runtimeResponse(nextSession, 2)));
+    const presenter = new GamePresenter({
+      gateway: new ReactViewGateway(),
+      content,
+      config: createDefaultGameConfig(createDefaultGameConfigData(content))
+    });
+    Reflect.set(presenter, "session", initialSession);
+    Reflect.set(presenter, "booting", false);
+
+    expect(presenter.playerState.agentControl.kind).toBe("valid");
+    await presenter.handleBoardAction("turn.advance");
+    expect(presenter.playerState.agentControl).toEqual({ kind: "absent" });
+  });
+
+  it("fails closed when a session contains malformed agent control", () => {
+    const content = neutralContent("neutral-control-invalid");
+    const presenter = new GamePresenter({
+      gateway: new ReactViewGateway(),
+      content,
+      config: createDefaultGameConfig(createDefaultGameConfigData(content))
+    });
+    Reflect.set(presenter, "session", {
+      ...turnSession("p1"),
+      gameId: content.gameId,
+      agentControl: {
+        playerId: "p2",
+        status: "facilitatorTakeover",
+        reasonCode: "not-a-server-code"
+      }
+    });
+    Reflect.set(presenter, "booting", false);
+
+    expect(presenter.playerState.agentControl).toEqual({ kind: "invalid" });
   });
 
   it("sends one request per state version and unlocks after the response", async () => {
@@ -498,6 +657,21 @@ function neutralContent(gameId: string): PlayerFacingContent {
     playerConfig: { min: 1, max: 1 },
     actions: [],
     mockups: []
+  };
+}
+
+function agentSeatContent(gameId: string, participantCount: number): PlayerFacingContent {
+  return {
+    ...neutralContent(gameId),
+    playerConfig: {
+      min: participantCount,
+      max: participantCount,
+      agentSeats: {
+        max: 4,
+        invalidAttemptLimit: 1,
+        deterministicFallbackCandidates: [{ actionId: "turn.advance", params: {} }]
+      }
+    }
   };
 }
 
