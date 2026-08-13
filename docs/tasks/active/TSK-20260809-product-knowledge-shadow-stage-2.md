@@ -734,11 +734,12 @@ worker и не открывает второй путь к модели или �
   postgres) и Sol high security re-review `ACCEPT`; evaluator наблюдает только штатный enqueue, передаёт
   точный target и не добавляет queue/storage/service. Stage 3 и новое внешнее
   окно остаются закрыты.
-- Final verification: полный `verify:product-context` прошёл 235/235 до
-  добавления отдельного PostgreSQL-теста evaluator adapter; свежий связанный
-  PostgreSQL-набор после него прошёл 30/30, Editor — 20/20, Portal — 13/13.
+- Final verification: после актуализации от `main` полный
+  `verify:product-context` прошёл 236/236, Editor — 20/20, Portal — 13/13.
   Повторно прошли product-context и Editor typecheck, schema generation,
-  isolation, legacy, routing, структура и `git diff --check`. Полный
-  `verify:canonical` не запускался: обязательный low-memory preflight дважды
-  остановил Next.js-сборки при 19% свободного swap и пороге 20%; процессы и
-  swap хоста не изменялись.
+  isolation, routing, agent instructions, структура и `git diff --check`.
+  Полный `verify:canonical` не запускался: обязательный low-memory preflight
+  дважды остановил Next.js-сборки при 19% свободного swap и пороге 20%, а
+  отдельный `verify:legacy` выявил уже присутствующее в текущем `main`
+  рассогласование статуса `TSK-20260705-agent-controlled-players` (`planned` в
+  задаче, `blocked` в `NEXT_STEPS.md`). Процессы и swap хоста не изменялись.
