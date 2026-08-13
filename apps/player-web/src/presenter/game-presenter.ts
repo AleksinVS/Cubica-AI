@@ -730,7 +730,6 @@ export class GamePresenter {
       gameId: this.config.gameId,
       participants: next.participants,
       version: next.version,
-      participants: next.participants,
       state: next.state,
       actionAvailability: next.actionAvailability
     };

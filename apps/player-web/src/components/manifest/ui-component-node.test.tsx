@@ -125,7 +125,6 @@ describe("UiComponentNode declarative action binding (ADR-055)", () => {
           gameId: "neutral-game",
           participants: [{ seatId: "p1", playerId: "p1", kind: "human", joinState: "local" }],
           version: { sessionId: "session-1", stateVersion: 1, lastEventSequence: 1 },
-          participants: [{ seatId: "p1", playerId: "p1", kind: "human", joinState: "local" }],
           state: {},
           actionAvailability: [{
             actionId: "requestServer",

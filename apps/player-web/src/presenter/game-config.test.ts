@@ -87,10 +87,6 @@ describe("default game config", () => {
         { seatId: "p2", playerId: "p2", kind: "human", joinState: "local" },
       ],
       version: { sessionId: "s1", stateVersion: 1, lastEventSequence: 0 },
-      participants: [
-        { seatId: "p1", playerId: "p1", kind: "human", joinState: "local" },
-        { seatId: "p2", playerId: "p2", kind: "human", joinState: "local" }
-      ],
       actionAvailability: [],
       state: {
         players: {
@@ -238,7 +234,6 @@ describe("default game config", () => {
       gameId: "simple-choice",
       participants: [{ seatId: "p1", playerId: "p1", kind: "human", joinState: "local" }],
       version: { sessionId: "s1", stateVersion: 1, lastEventSequence: 0 },
-      participants: [{ seatId: "p1", playerId: "p1", kind: "human", joinState: "local" }],
       actionAvailability: [],
       state: {
         public: {
@@ -318,7 +313,6 @@ describe("default game config", () => {
       gameId: "simple-choice",
       participants: [{ seatId: "p1", playerId: "p1", kind: "human", joinState: "local" }],
       version: { sessionId: "s1", stateVersion: 1, lastEventSequence: 0 },
-      participants: [{ seatId: "p1", playerId: "p1", kind: "human", joinState: "local" }],
       actionAvailability: [],
       state: {
         public: {

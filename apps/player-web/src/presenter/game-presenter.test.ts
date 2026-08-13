@@ -22,10 +22,6 @@ const turnSession = (
 ): GameSession => ({
   sessionId: "session-hotseat",
   gameId: "turn-fixture",
-  participants: [
-    { seatId: "p1", playerId: "p1", kind: "human", joinState: "local" },
-    { seatId: "p2", playerId: "p2", kind: "human", joinState: "local" },
-  ],
   version: {
     sessionId: "session-hotseat",
     stateVersion: 1,

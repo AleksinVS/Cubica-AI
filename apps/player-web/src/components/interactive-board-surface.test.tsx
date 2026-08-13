@@ -71,7 +71,6 @@ function session(sequence: number): GameSession {
       stateVersion: sequence,
       lastEventSequence: sequence
     },
-    participants: [{ seatId: "p1", playerId: "p1", kind: "human", joinState: "local" }],
     state: { public: { sequence } },
     actionAvailability: []
   };
