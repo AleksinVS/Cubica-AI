@@ -745,3 +745,38 @@ worker и не открывает второй путь к модели или �
   `TSK-20260705-agent-controlled-players` исправлено перемещением уже
   разблокированной `planned`-задачи из `Blocked` в `Next`; повторный
   `verify:legacy` прошёл. Процессы и swap хоста не изменялись.
+
+### 2026-08-13 — основной AI agent, усиление асинхронной границы перед слиянием
+
+- Security remediation: Editor теперь атомарно сохраняет точные две реплики и
+  pending run в одной транзакции. Каждый app/worker/evaluator-сеанс до
+  `SET ROLE` проверяет безопасный отдельный `NOINHERIT LOGIN` ровно с одним
+  прямым membership. Миграция восстанавливает точный ACL функций: app может
+  вызвать только cleanup, worker — только шесть фиксированных queue-функций;
+  лишние и унаследованные права отклоняются или удаляются.
+- Upgrade and fencing: `003` самостоятельно обновляет уже применённую `002`,
+  не удаляет незавершённые run при cleanup и атомарно удаляет прежнюю
+  `worker_mark_calling`. Сроки аренды и хранения определяет время PostgreSQL;
+  после ожидания блокировок они проверяются повторно. Переход к внешнему вызову
+  блокирует run, thread и обе точные реплики, а сохранение результата повторяет
+  тот же порядок и не допускает результат после tombstone, cleanup или
+  истечения аренды.
+- Isolation and recovery: target-bound evaluator не выполняет housekeeping для
+  чужих owner/game/turn. Потеря подтверждения commit сверяется с авторитетным
+  состоянием БД. Истёкший `calling_model` остаётся только неизвестным исходом
+  без автоматического повтора.
+- Evidence: на одноразовой PostgreSQL 17 прошли 40/40 upgrade/security/race
+  сценариев и 10/10 прежнего PostgreSQL-контура; 92/92 целевых тестов
+  queue/evaluator/worker-config/Z.AI, Editor 10/10 и Portal 13/13. Оба
+  typecheck, generated-types check, isolation, legacy, agent instructions,
+  routing и `git diff --check` успешны. Независимый итоговый Sol high review —
+  `ACCEPT`, замечаний High/Medium нет. Provider и сеть не вызывались.
+- Package acceptance: после обновления cleanup test doubles полный
+  `verify:product-context` на отдельной PostgreSQL 17 с обязательным именем БД
+  `product_context_stage1` прошёл 257/257; одноразовая БД удалена.
+- Canonical baseline: полный `verify:canonical` дошёл до Runtime API и
+  остановился на 2 из 367 тестов про проекцию участников: их фикстуры содержат
+  `state.players` без обязательного `public.turn.order`. Точный минимальный
+  прогон на чистом актуальном `main` воспроизвёл те же 2 из 5 падений с тем же
+  стеком; ветка Product Context не меняет Runtime API. Поэтому это не принято
+  как регрессия текущего блока и не исправлялось в его merge.

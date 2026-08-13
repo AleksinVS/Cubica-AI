@@ -263,6 +263,22 @@ async function verifyDatabaseReadiness(pool: Pool, workerPool: Pool): Promise<vo
             to_regprocedure('product_context_shadow.enforce_shadow_run_contract()'), 'EXECUTE'), true) AND
           COALESCE(has_function_privilege('product_context_shadow_app',
             to_regprocedure('product_context_shadow.cleanup_expired(integer)'), 'EXECUTE'), false) AND
+          (SELECT count(*) = 6 AND bool_and(signature = ANY(ARRAY[
+              'worker_claim(integer, integer, timestamp with time zone, text, text, text)',
+              'worker_reread(text, text)',
+              'worker_prepare_call(text, text, text, integer, timestamp with time zone)',
+              'worker_retry(text, text, text, timestamp with time zone, integer, integer, integer, timestamp with time zone)',
+              'worker_terminal(text, text, text, text, text, integer, integer, integer, timestamp with time zone)',
+              'worker_complete(text, text, jsonb, text, integer, integer, integer, integer, timestamp with time zone)'
+            ]::text[]))
+           FROM (
+             SELECT deployed_function.proname || '(' ||
+               oidvectortypes(deployed_function.proargtypes) || ')' AS signature
+             FROM pg_proc AS deployed_function
+             JOIN pg_namespace AS function_schema ON function_schema.oid = deployed_function.pronamespace
+             WHERE function_schema.nspname = 'product_context_shadow'
+               AND deployed_function.proname LIKE 'worker_%'
+           ) AS worker_catalog) AND
           (SELECT count(*) = 10 AND bool_and(CASE
               WHEN deployed_function.proname = 'cleanup_expired'
                 THEN pg_get_userbyid(deployed_function.proowner) = 'product_context_shadow_cleanup'
@@ -275,7 +291,35 @@ async function verifyDatabaseReadiness(pool: Pool, workerPool: Pool): Promise<vo
             JOIN pg_namespace AS function_schema ON function_schema.oid = deployed_function.pronamespace
             WHERE function_schema.nspname = 'product_context_shadow' AND deployed_function.proname IN
               ('enforce_thread_contract', 'enforce_message_contract', 'enforce_shadow_run_contract', 'cleanup_expired',
-               'worker_claim', 'worker_reread', 'worker_mark_calling', 'worker_retry', 'worker_terminal', 'worker_complete')) AS functions_ready,
+               'worker_claim', 'worker_reread', 'worker_prepare_call', 'worker_retry', 'worker_terminal', 'worker_complete')) AND
+          (SELECT count(DISTINCT deployed_function.oid) = 6
+             AND bool_and(acl.privilege_type = 'EXECUTE'
+               AND acl.grantee IN (deployed_function.proowner, worker_role.oid))
+           FROM pg_proc AS deployed_function
+           JOIN pg_namespace AS function_schema ON function_schema.oid = deployed_function.pronamespace
+           JOIN pg_roles AS worker_role ON worker_role.rolname = 'product_context_shadow_worker'
+           CROSS JOIN LATERAL aclexplode(COALESCE(deployed_function.proacl,
+             acldefault('f', deployed_function.proowner))) AS acl
+           WHERE function_schema.nspname = 'product_context_shadow'
+             AND deployed_function.proname IN ('worker_claim', 'worker_reread', 'worker_prepare_call',
+               'worker_retry', 'worker_terminal', 'worker_complete')) AND
+          (SELECT count(DISTINCT deployed_function.oid) = 6
+           FROM pg_proc AS deployed_function
+           JOIN pg_namespace AS function_schema ON function_schema.oid = deployed_function.pronamespace
+           JOIN pg_roles AS worker_role ON worker_role.rolname = 'product_context_shadow_worker'
+           CROSS JOIN LATERAL aclexplode(COALESCE(deployed_function.proacl,
+             acldefault('f', deployed_function.proowner))) AS acl
+           WHERE function_schema.nspname = 'product_context_shadow'
+             AND deployed_function.proname IN ('worker_claim', 'worker_reread', 'worker_prepare_call',
+               'worker_retry', 'worker_terminal', 'worker_complete')
+             AND acl.privilege_type = 'EXECUTE' AND acl.grantee = worker_role.oid) AND
+          (SELECT count(*) = 2 AND bool_and(acl.privilege_type = 'EXECUTE'
+               AND acl.grantee IN (cleanup_function.proowner, app_role.oid))
+           FROM pg_proc AS cleanup_function
+           JOIN pg_roles AS app_role ON app_role.rolname = 'product_context_shadow_app'
+           CROSS JOIN LATERAL aclexplode(COALESCE(cleanup_function.proacl,
+             acldefault('f', cleanup_function.proowner))) AS acl
+           WHERE cleanup_function.oid = 'product_context_shadow.cleanup_expired(integer)'::regprocedure) AS functions_ready,
         current_user = 'product_context_shadow_app' AND
           NOT (SELECT rolsuper OR rolcreatedb OR rolcreaterole OR rolreplication OR rolbypassrls OR rolcanlogin OR rolinherit
                FROM pg_roles WHERE rolname = 'product_context_shadow_app') AND
@@ -321,8 +365,19 @@ async function verifyDatabaseReadiness(pool: Pool, workerPool: Pool): Promise<vo
         )
         AND (SELECT count(*)=6 AND bool_and(has_function_privilege(current_user,deployed.oid,'EXECUTE'))
           FROM pg_proc AS deployed JOIN pg_namespace AS namespace ON namespace.oid=deployed.pronamespace
-          WHERE namespace.nspname='product_context_shadow' AND deployed.proname IN
-            ('worker_claim','worker_reread','worker_mark_calling','worker_retry','worker_terminal','worker_complete')) AS ready
+          WHERE namespace.nspname='product_context_shadow' AND deployed.proname LIKE 'worker_%')
+        AND (SELECT count(*)=6 AND bool_and(signature = ANY(ARRAY[
+              'worker_claim(integer, integer, timestamp with time zone, text, text, text)',
+              'worker_reread(text, text)',
+              'worker_prepare_call(text, text, text, integer, timestamp with time zone)',
+              'worker_retry(text, text, text, timestamp with time zone, integer, integer, integer, timestamp with time zone)',
+              'worker_terminal(text, text, text, text, text, integer, integer, integer, timestamp with time zone)',
+              'worker_complete(text, text, jsonb, text, integer, integer, integer, integer, timestamp with time zone)'
+            ]::text[])) FROM (
+          SELECT deployed.proname || '(' || oidvectortypes(deployed.proargtypes) || ')' AS signature
+          FROM pg_proc AS deployed JOIN pg_namespace AS namespace ON namespace.oid=deployed.pronamespace
+          WHERE namespace.nspname='product_context_shadow' AND deployed.proname LIKE 'worker_%'
+        ) AS worker_catalog) AS ready
     `);
     if(workerReady.rows[0]?.ready!==true)throw new Error();
     await workerClient.query('ROLLBACK');

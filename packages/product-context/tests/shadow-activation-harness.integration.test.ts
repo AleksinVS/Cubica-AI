@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { mkdir, mkdtemp, readFile, rm, symlink } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -8,7 +8,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 
 import { ManagedKnowledgeGit, ReadOnlyKnowledgeGit } from '../src/git.ts';
 import { PostgresConversationStore } from '../src/conversation-postgres.ts';
-import { enqueueShadowTurn, PostgresShadowWorkerStore } from '../src/shadow-async-queue.ts';
+import { enqueueShadowTurn, PostgresShadowWorkerStore, ShadowAsyncWorker } from '../src/shadow-async-queue.ts';
 import type { ShadowAuthorizationReceipt } from '../src/generated/product-knowledge.ts';
 import {
   preflightSyntheticShadowActivation,
@@ -122,6 +122,8 @@ integration('synthetic shadow activation against prepared PostgreSQL', () => {
   let repositoryRoot = '';
   let repository = '';
   let migrationCompatibility: unknown;
+  let cleanupUpgradeCompatibility: unknown;
+  let legacyWorkerUpgradeCompatibility: unknown;
 
   beforeAll(async () => {
     adminPool = new Pool({ connectionString: databaseUrl, max: 4 });
@@ -136,7 +138,29 @@ integration('synthetic shadow activation against prepared PostgreSQL', () => {
     const baseMigration = await readFile(fileURLToPath(new URL('../migrations/002_product_context_shadow.sql', import.meta.url)), 'utf8');
     const queueMigration = await readFile(fileURLToPath(new URL('../migrations/003_product_context_async_shadow_queue.sql', import.meta.url)), 'utf8');
     await adminPool.query(baseMigration);
-    const legacyStore = new PostgresConversationStore(adminPool);
+    await adminPool.query(`GRANT product_context_shadow_app TO ${quoteIdentifier(runtimeRole)}`);
+    const url = new URL(databaseUrl!);
+    url.username = runtimeRole; url.password = runtimePassword;
+    runtimeUrl = url.toString();
+    appRuntimePool = new Pool({ connectionString: runtimeUrl, max: 4 });
+    const executor = String((await adminPool.query('SELECT current_user')).rows[0].current_user);
+    const cleanupBoundary = async () => ({
+      memberships: (await adminPool.query(`SELECT grantor_role.rolname AS grantor,
+          membership.admin_option, membership.inherit_option, membership.set_option
+        FROM pg_auth_members AS membership
+        JOIN pg_roles AS granted_role ON granted_role.oid = membership.roleid
+        JOIN pg_roles AS member_role ON member_role.oid = membership.member
+        JOIN pg_roles AS grantor_role ON grantor_role.oid = membership.grantor
+        WHERE granted_role.rolname = 'product_context_shadow_cleanup'
+          AND member_role.rolname = $1 ORDER BY grantor_role.rolname`, [executor])).rows,
+      schemaCreate: Boolean((await adminPool.query(`SELECT has_schema_privilege(
+        'product_context_shadow_cleanup', 'product_context_shadow', 'CREATE') AS value`)).rows[0].value)
+    });
+    const cleanupBefore = await cleanupBoundary();
+    expect(String((await adminPool.query(`SELECT pg_get_functiondef(
+      'product_context_shadow.cleanup_expired(integer)'::regprocedure) AS definition`)).rows[0].definition))
+      .not.toContain("status IN ('succeeded', 'denied', 'failed', 'blocked')");
+    const legacyStore = new PostgresConversationStore(appRuntimePool);
     const legacyInput = (suffix: string) => ({
       receipt: testReceipt, threadRef: `${testThreadRef}-${suffix}`, stableTurnKey: `${testStableTurnKey}-${suffix}`,
       userBytes: testUserBytes, agentBytes: testAgentBytes, retainedUntil: new Date('2098-01-01T00:00:00.000Z'),
@@ -155,7 +179,54 @@ integration('synthetic shadow activation against prepared PostgreSQL', () => {
       external_processing_policy_revision: testReceipt.external_processing_policy_revision,
       recorded_at: '2026-08-12T00:00:02.000Z'
     }, new Date('2026-08-12T00:00:02.000Z'));
+    const executorOwnsLegacyWorker = String((await adminPool.query('SELECT current_user')).rows[0].current_user);
+    await adminPool.query(`CREATE ROLE product_context_shadow_worker NOLOGIN;
+      CREATE ROLE product_context_shadow_worker_owner NOLOGIN;
+      CREATE OR REPLACE FUNCTION product_context_shadow.worker_mark_calling(
+        p_run_id text, p_lease_token text, p_request_id text, p_call_lease_ms integer, p_now timestamptz
+      ) RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER
+      SET search_path = pg_catalog, product_context_shadow
+      AS $$
+      BEGIN
+        IF p_call_lease_ms IS NULL OR p_call_lease_ms < 1 OR p_call_lease_ms > 120000 OR p_now IS NULL THEN
+          RAISE EXCEPTION 'invalid call lease' USING ERRCODE = '22023';
+        END IF;
+        UPDATE product_context_shadow.shadow_runs
+        SET status = 'calling_model', request_id = p_request_id, started_at = p_now,
+            lease_expires_at = p_now + make_interval(secs => p_call_lease_ms::double precision / 1000),
+            updated_at = p_now
+        WHERE run_id = p_run_id AND lease_token = p_lease_token AND status = 'leased'
+          AND lease_expires_at > p_now;
+        RETURN FOUND;
+      END
+      $$;
+      REVOKE ALL ON FUNCTION product_context_shadow.worker_mark_calling(text,text,text,integer,timestamptz) FROM PUBLIC;
+      GRANT EXECUTE ON FUNCTION product_context_shadow.worker_mark_calling(text,text,text,integer,timestamptz)
+        TO product_context_shadow_worker`);
+    await adminPool.query(`ALTER FUNCTION product_context_shadow.worker_mark_calling(text,text,text,integer,timestamptz)
+      OWNER TO product_context_shadow_worker_owner`);
+    expect(executorOwnsLegacyWorker).not.toBe('product_context_shadow_worker_owner');
+    expect(Boolean((await adminPool.query(`SELECT has_function_privilege('product_context_shadow_worker',
+      'product_context_shadow.worker_mark_calling(text,text,text,integer,timestamptz)', 'EXECUTE') AS value`)).rows[0].value)).toBe(true);
     for (const statement of splitSqlStatements(queueMigration)) await adminPool.query(statement);
+    legacyWorkerUpgradeCompatibility = {
+      legacyAbsent: (await adminPool.query(`SELECT to_regprocedure(
+        'product_context_shadow.worker_mark_calling(text,text,text,integer,timestamptz)') AS value`)).rows[0].value === null,
+      catalog: (await adminPool.query(`SELECT proname, pg_get_function_identity_arguments(fn.oid) AS args
+        FROM pg_proc AS fn JOIN pg_namespace AS namespace ON namespace.oid = fn.pronamespace
+        WHERE namespace.nspname = 'product_context_shadow' AND fn.proname LIKE 'worker_%'
+        ORDER BY proname`)).rows
+    };
+    cleanupUpgradeCompatibility = {
+      before: cleanupBefore,
+      after: await cleanupBoundary(),
+      upgraded: String((await adminPool.query(`SELECT pg_get_functiondef(
+        'product_context_shadow.cleanup_expired(integer)'::regprocedure) AS definition`)).rows[0].definition)
+        .includes("status = ANY (ARRAY['succeeded'::text, 'denied'::text, 'failed'::text, 'blocked'::text])") ||
+        String((await adminPool.query(`SELECT pg_get_functiondef(
+          'product_context_shadow.cleanup_expired(integer)'::regprocedure) AS definition`)).rows[0].definition)
+          .includes("status IN ('succeeded', 'denied', 'failed', 'blocked')")
+    };
     migrationCompatibility = (await adminPool.query(`
       SELECT run_id, status, attempts, lease_token IS NOT NULL AS fenced
       FROM product_context_shadow.shadow_runs ORDER BY run_id
@@ -167,14 +238,9 @@ integration('synthetic shadow activation against prepared PostgreSQL', () => {
       expect.objectContaining({ run_id: calling.runId, status: 'calling_model', attempts: 1, fenced: true }),
       expect.objectContaining({ run_id: terminal.runId, status: 'failed', attempts: 0, fenced: false })
     ]));
-    await adminPool.query(`GRANT product_context_shadow_app TO ${quoteIdentifier(runtimeRole)}`);
     await adminPool.query(`GRANT product_context_shadow_worker TO ${quoteIdentifier(workerRole)}`);
-    const url = new URL(databaseUrl!);
-    url.username = runtimeRole; url.password = runtimePassword;
-    runtimeUrl = url.toString();
     url.username = workerRole; url.password = workerPassword;
     workerUrl = url.toString();
-    appRuntimePool = new Pool({ connectionString: runtimeUrl, max: 4 });
     workerRuntimePool = new Pool({ connectionString: workerUrl, max: 4 });
 
     await mkdir(repositoryTmp, { recursive: true });
@@ -227,8 +293,53 @@ integration('synthetic shadow activation against prepared PostgreSQL', () => {
     expect(afterReader.head()).toBe(before); await afterReader.close();
   });
 
+  it('rolls back thread and exact messages when atomic enqueue cannot create its run', async () => {
+    await adminPool.query(`CREATE OR REPLACE FUNCTION product_context_shadow.test_reject_atomic_run()
+      RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
+        IF NEW.stable_turn_key = '${testStableTurnKey}-atomic-rollback' THEN
+          RAISE EXCEPTION 'injected run constraint failure' USING ERRCODE = '23514';
+        END IF;
+        RETURN NEW;
+      END $$;
+      CREATE TRIGGER test_reject_atomic_run BEFORE INSERT ON product_context_shadow.shadow_runs
+      FOR EACH ROW EXECUTE FUNCTION product_context_shadow.test_reject_atomic_run()`);
+    try {
+      await expect(enqueueQueue('atomic-rollback')).rejects.toMatchObject({ code: '23514' });
+      const counts = await adminPool.query(`SELECT
+        (SELECT count(*)::int FROM product_context_shadow.conversation_threads WHERE thread_ref = $1) AS threads,
+        (SELECT count(*)::int FROM product_context_shadow.conversation_messages WHERE stable_turn_key = $2) AS messages,
+        (SELECT count(*)::int FROM product_context_shadow.shadow_runs WHERE stable_turn_key = $2) AS runs`,
+      [`${testThreadRef}-atomic-rollback`, `${testStableTurnKey}-atomic-rollback`]);
+      expect(counts.rows[0]).toEqual({ threads: 0, messages: 0, runs: 0 });
+    } finally {
+      await adminPool.query(`DROP TRIGGER test_reject_atomic_run ON product_context_shadow.shadow_runs;
+        DROP FUNCTION product_context_shadow.test_reject_atomic_run()`);
+    }
+  });
+
   it('migrates legacy pending, calling, and terminal rows without losing their state', () => {
     expect(migrationCompatibility).toHaveLength(3);
+  });
+
+  it('removes the old 003 mark-calling bypass and leaves exactly the six current worker signatures', () => {
+    expect(legacyWorkerUpgradeCompatibility).toMatchObject({ legacyAbsent: true });
+    expect((legacyWorkerUpgradeCompatibility as { catalog: unknown[] }).catalog).toHaveLength(6);
+  });
+
+  it('upgrades the legacy cleanup function in 003 and restores cleanup membership and schema CREATE exactly', async () => {
+    expect(cleanupUpgradeCompatibility).toMatchObject({ upgraded: true });
+    expect((cleanupUpgradeCompatibility as { before: unknown }).before)
+      .toEqual((cleanupUpgradeCompatibility as { after: unknown }).after);
+    const run = await enqueueShadowTurn(new PostgresConversationStore(appRuntimePool), {
+      receipt: testReceipt, threadRef: `${testThreadRef}-cleanup-upgrade-pending`,
+      stableTurnKey: `${testStableTurnKey}-cleanup-upgrade-pending`, userBytes: testUserBytes,
+      agentBytes: testAgentBytes, now: new Date(), retainedUntil: new Date(Date.now() + 100)
+    });
+    await adminPool.query('SELECT pg_sleep(0.15)');
+    const cleanup = await new PostgresConversationStore(appRuntimePool).cleanupExpired(100);
+    expect(cleanup.runsDeleted).toBe(0);
+    expect((await adminPool.query(`SELECT status FROM product_context_shadow.shadow_runs WHERE run_id = $1`, [run.runId])).rows)
+      .toEqual([{ status: 'pending' }]);
   });
 
   it('gives the worker only the six fenced functions and no table or inherited application authority', async () => {
@@ -268,6 +379,40 @@ integration('synthetic shadow activation against prepared PostgreSQL', () => {
       await sharedPool.end();
       await adminPool.query(`REVOKE product_context_shadow_worker, product_context_shadow_app FROM ${quoteIdentifier(sharedRole)}`);
       await adminPool.query(`DROP ROLE ${quoteIdentifier(sharedRole)}`);
+    }
+  });
+
+  it('rejects wrapper-role alternatives for both dedicated worker and evaluator app logins', async () => {
+    const workerWrapper = `shadow_worker_wrapper_${process.pid}_${randomBytes(4).toString('hex')}`;
+    const workerLogin = `shadow_worker_wrapped_${process.pid}_${randomBytes(4).toString('hex')}`;
+    const appWrapper = `shadow_app_wrapper_${process.pid}_${randomBytes(4).toString('hex')}`;
+    const appLogin = `shadow_app_wrapped_${process.pid}_${randomBytes(4).toString('hex')}`;
+    const password = randomBytes(24).toString('base64url');
+    await adminPool.query(`CREATE ROLE ${quoteIdentifier(workerWrapper)} NOLOGIN;
+      CREATE ROLE ${quoteIdentifier(workerLogin)} LOGIN PASSWORD ${quoteLiteral(password)} NOINHERIT;
+      CREATE ROLE ${quoteIdentifier(appWrapper)} NOLOGIN;
+      CREATE ROLE ${quoteIdentifier(appLogin)} LOGIN PASSWORD ${quoteLiteral(password)} NOINHERIT;
+      GRANT product_context_shadow_worker TO ${quoteIdentifier(workerWrapper)};
+      GRANT ${quoteIdentifier(workerWrapper)} TO ${quoteIdentifier(workerLogin)};
+      GRANT product_context_shadow_app TO ${quoteIdentifier(appWrapper)};
+      GRANT ${quoteIdentifier(appWrapper)} TO ${quoteIdentifier(appLogin)}`);
+    const url = new URL(databaseUrl!);
+    try {
+      url.username = workerLogin; url.password = password;
+      const wrappedWorker = new Pool({ connectionString: url.toString(), max: 1 });
+      try { await expect(verifyWorkerLogin(wrappedWorker)).rejects.toThrow('Dedicated shadow worker login'); }
+      finally { await wrappedWorker.end(); }
+      url.username = appLogin;
+      const wrappedApp = new Pool({ connectionString: url.toString(), max: 1 });
+      try {
+        const evaluator = new PostgresShadowEvaluatorDatabase(wrappedApp, testReceipt.shadow_principal_ref, testReceipt.applies_to[0]!);
+        await expect(evaluator.inspect()).rejects.toThrow('Dedicated shadow app login');
+      } finally { await wrappedApp.end(); }
+    } finally {
+      await adminPool.query(`DROP ROLE ${quoteIdentifier(workerLogin)};
+        DROP ROLE ${quoteIdentifier(workerWrapper)};
+        DROP ROLE ${quoteIdentifier(appLogin)};
+        DROP ROLE ${quoteIdentifier(appWrapper)}`);
     }
   });
 
@@ -329,6 +474,155 @@ integration('synthetic shadow activation against prepared PostgreSQL', () => {
     }
   });
 
+  it('fails before widening privileges when the fixed worker is itself a member of any role', async () => {
+    const wrapper = `shadow_worker_forbidden_parent_${process.pid}_${randomBytes(4).toString('hex')}`;
+    const migration = await readFile(fileURLToPath(new URL('../migrations/003_product_context_async_shadow_queue.sql', import.meta.url)), 'utf8');
+    const guard = splitSqlStatements(migration).find((statement) => statement.includes('DO $worker_membership_guard$'))!;
+    await adminPool.query(`CREATE ROLE ${quoteIdentifier(wrapper)} NOLOGIN`);
+    await adminPool.query(`GRANT ${quoteIdentifier(wrapper)} TO product_context_shadow_worker`);
+    try { await expect(adminPool.query(guard)).rejects.toMatchObject({ code: '42501' }); }
+    finally {
+      await adminPool.query(`REVOKE ${quoteIdentifier(wrapper)} FROM product_context_shadow_worker`);
+      await adminPool.query(`DROP ROLE ${quoteIdentifier(wrapper)}`);
+    }
+  });
+
+  it('fails closed before upgrading cleanup when a foreign cleanup member exists', async () => {
+    const foreign = `shadow_cleanup_foreign_${process.pid}_${randomBytes(4).toString('hex')}`;
+    const migration = await readFile(fileURLToPath(new URL('../migrations/003_product_context_async_shadow_queue.sql', import.meta.url)), 'utf8');
+    const guard = splitSqlStatements(migration).find((statement) => statement.includes('DO $cleanup_membership_guard$'))!;
+    await adminPool.query(`CREATE ROLE ${quoteIdentifier(foreign)} NOLOGIN`);
+    await adminPool.query(`GRANT product_context_shadow_cleanup TO ${quoteIdentifier(foreign)}`);
+    try { await expect(adminPool.query(guard)).rejects.toMatchObject({ code: '42501' }); }
+    finally {
+      await adminPool.query(`REVOKE product_context_shadow_cleanup FROM ${quoteIdentifier(foreign)}`);
+      await adminPool.query(`DROP ROLE ${quoteIdentifier(foreign)}`);
+    }
+  });
+
+  it('fails closed when a foreign grantor gives cleanup membership to the migration executor', async () => {
+    const executor = String((await adminPool.query('SELECT current_user')).rows[0].current_user);
+    const grantor = `shadow_cleanup_grantor_${process.pid}_${randomBytes(4).toString('hex')}`;
+    const migration = await readFile(fileURLToPath(new URL('../migrations/003_product_context_async_shadow_queue.sql', import.meta.url)), 'utf8');
+    const guard = splitSqlStatements(migration).find((statement) => statement.includes('DO $cleanup_membership_guard$'))!;
+    await adminPool.query(`CREATE ROLE ${quoteIdentifier(grantor)} NOLOGIN`);
+    await adminPool.query(`GRANT product_context_shadow_cleanup TO ${quoteIdentifier(grantor)} WITH ADMIN OPTION`);
+    await adminPool.query(`GRANT product_context_shadow_cleanup TO ${quoteIdentifier(executor)}
+      WITH ADMIN FALSE, INHERIT FALSE, SET FALSE GRANTED BY ${quoteIdentifier(grantor)}`);
+    const snapshot = async () => ({
+      memberships: (await adminPool.query(`SELECT grantor_role.rolname AS grantor,
+          membership.admin_option, membership.inherit_option, membership.set_option
+        FROM pg_auth_members AS membership
+        JOIN pg_roles AS granted_role ON granted_role.oid = membership.roleid
+        JOIN pg_roles AS member_role ON member_role.oid = membership.member
+        JOIN pg_roles AS grantor_role ON grantor_role.oid = membership.grantor
+        WHERE granted_role.rolname = 'product_context_shadow_cleanup'
+          AND member_role.rolname = $1 ORDER BY grantor_role.rolname`, [executor])).rows,
+      schemaCreate: Boolean((await adminPool.query(`SELECT has_schema_privilege(
+        'product_context_shadow_cleanup', 'product_context_shadow', 'CREATE') AS value`)).rows[0].value),
+      definition: String((await adminPool.query(`SELECT pg_get_functiondef(
+        'product_context_shadow.cleanup_expired(integer)'::regprocedure) AS value`)).rows[0].value)
+    });
+    try {
+      const before = await snapshot();
+      await expect(adminPool.query(guard)).rejects.toMatchObject({ code: '42501' });
+      expect(await snapshot()).toEqual(before);
+    } finally {
+      await adminPool.query(`REVOKE product_context_shadow_cleanup FROM ${quoteIdentifier(executor)} GRANTED BY ${quoteIdentifier(grantor)}`);
+      await adminPool.query(`REVOKE product_context_shadow_cleanup FROM ${quoteIdentifier(grantor)}`);
+      await adminPool.query(`DROP ROLE ${quoteIdentifier(grantor)}`);
+    }
+  });
+
+  it('fails closed when the fixed app role can SET ROLE to any parent role', async () => {
+    const parent = `shadow_app_parent_${process.pid}_${randomBytes(4).toString('hex')}`;
+    const migration = await readFile(fileURLToPath(new URL('../migrations/003_product_context_async_shadow_queue.sql', import.meta.url)), 'utf8');
+    const guard = splitSqlStatements(migration).find((statement) => statement.includes('DO $cleanup_membership_guard$'))!;
+    await adminPool.query(`CREATE ROLE ${quoteIdentifier(parent)} NOLOGIN`);
+    await adminPool.query(`GRANT ${quoteIdentifier(parent)} TO product_context_shadow_app`);
+    const before = {
+      membership: Boolean((await adminPool.query(`SELECT pg_has_role(
+        'product_context_shadow_app', $1, 'MEMBER') AS value`, [parent])).rows[0].value),
+      schemaCreate: Boolean((await adminPool.query(`SELECT has_schema_privilege(
+        'product_context_shadow_cleanup', 'product_context_shadow', 'CREATE') AS value`)).rows[0].value)
+    };
+    try {
+      expect(before.membership).toBe(true);
+      await expect(adminPool.query(guard)).rejects.toMatchObject({ code: '42501' });
+      expect({
+        membership: Boolean((await adminPool.query(`SELECT pg_has_role(
+          'product_context_shadow_app', $1, 'MEMBER') AS value`, [parent])).rows[0].value),
+        schemaCreate: Boolean((await adminPool.query(`SELECT has_schema_privilege(
+          'product_context_shadow_cleanup', 'product_context_shadow', 'CREATE') AS value`)).rows[0].value)
+      }).toEqual(before);
+    } finally {
+      await adminPool.query(`REVOKE ${quoteIdentifier(parent)} FROM product_context_shadow_app`);
+      await adminPool.query(`DROP ROLE ${quoteIdentifier(parent)}`);
+    }
+  });
+
+  it('rolls back cleanup owner membership and schema CREATE when its 003 upgrade statement fails', async () => {
+    const executor = String((await adminPool.query('SELECT current_user')).rows[0].current_user);
+    const migration = await readFile(fileURLToPath(new URL('../migrations/003_product_context_async_shadow_queue.sql', import.meta.url)), 'utf8');
+    const upgrade = splitSqlStatements(migration).find((statement) => statement.includes('DO $cleanup_owner_upgrade$'))!;
+    const snapshot = async () => ({
+      memberships: (await adminPool.query(`SELECT grantor_role.rolname AS grantor,
+          membership.admin_option, membership.inherit_option, membership.set_option
+        FROM pg_auth_members AS membership
+        JOIN pg_roles AS granted_role ON granted_role.oid = membership.roleid
+        JOIN pg_roles AS member_role ON member_role.oid = membership.member
+        JOIN pg_roles AS grantor_role ON grantor_role.oid = membership.grantor
+        WHERE granted_role.rolname = 'product_context_shadow_cleanup'
+          AND member_role.rolname = $1 ORDER BY grantor_role.rolname`, [executor])).rows,
+      schemaCreate: Boolean((await adminPool.query(`SELECT has_schema_privilege(
+        'product_context_shadow_cleanup', 'product_context_shadow', 'CREATE') AS value`)).rows[0].value)
+    });
+    const before = await snapshot();
+    const failing = upgrade.replace(
+      "  EXECUTE 'RESET ROLE';",
+      "  RAISE EXCEPTION 'simulated cleanup upgrade failure';\n  EXECUTE 'RESET ROLE';"
+    );
+    await expect(adminPool.query(failing)).rejects.toThrow(/simulated cleanup upgrade failure/u);
+    expect(await snapshot()).toEqual(before);
+  });
+
+  it('scrubs every pre-existing unintended function grantee before restoring the exact ACL', async () => {
+    const migration = await readFile(fileURLToPath(new URL('../migrations/003_product_context_async_shadow_queue.sql', import.meta.url)), 'utf8');
+    const foreign = `shadow_acl_foreign_${process.pid}_${randomBytes(4).toString('hex')}`;
+    await adminPool.query(`CREATE ROLE ${quoteIdentifier(foreign)} NOLOGIN`);
+    await adminPool.query(`GRANT CREATE ON SCHEMA product_context_shadow TO product_context_shadow_worker;
+      GRANT EXECUTE ON FUNCTION product_context_shadow.cleanup_expired(integer) TO product_context_shadow_worker;
+      GRANT EXECUTE ON FUNCTION product_context_shadow.enforce_thread_contract() TO product_context_shadow_worker;
+      GRANT EXECUTE ON FUNCTION product_context_shadow.worker_claim(integer,integer,timestamptz,text,text,text) TO product_context_shadow_app;
+      GRANT EXECUTE ON FUNCTION product_context_shadow.cleanup_expired(integer) TO ${quoteIdentifier(foreign)}`);
+    try {
+      for (const statement of splitSqlStatements(migration)) await adminPool.query(statement);
+      const schema = await adminPool.query(`SELECT
+        has_schema_privilege('product_context_shadow_worker', 'product_context_shadow', 'USAGE') AS usage,
+        has_schema_privilege('product_context_shadow_worker', 'product_context_shadow', 'CREATE') AS create`);
+      const functions = await adminPool.query(`SELECT routine_name FROM information_schema.routine_privileges
+        WHERE grantee = 'product_context_shadow_worker' AND routine_schema = 'product_context_shadow'
+        ORDER BY routine_name`);
+      expect(schema.rows).toEqual([{ usage: true, create: false }]);
+      expect(functions.rows.map((row) => row.routine_name)).toEqual([
+        'worker_claim', 'worker_complete', 'worker_prepare_call',
+        'worker_reread', 'worker_retry', 'worker_terminal'
+      ]);
+      expect((await adminPool.query(`SELECT
+        has_function_privilege('product_context_shadow_app',
+          'product_context_shadow.worker_claim(integer,integer,timestamptz,text,text,text)', 'EXECUTE') AS app_worker,
+        has_function_privilege($1,
+          'product_context_shadow.cleanup_expired(integer)', 'EXECUTE') AS foreign_cleanup,
+        has_function_privilege('product_context_shadow_worker',
+          'product_context_shadow.cleanup_expired(integer)', 'EXECUTE') AS worker_cleanup,
+        has_function_privilege('product_context_shadow_cleanup',
+          'product_context_shadow.cleanup_expired(integer)', 'EXECUTE') AS owner_cleanup`, [foreign])).rows[0])
+        .toEqual({ app_worker: false, foreign_cleanup: false, worker_cleanup: false, owner_cleanup: true });
+    } finally {
+      await adminPool.query(`DROP ROLE ${quoteIdentifier(foreign)}`);
+    }
+  });
+
   it('rolls back temporary worker-owner membership and CREATE if its autocommit statement fails', async () => {
     const executor = String((await adminPool.query('SELECT current_user')).rows[0].current_user);
     const migration = await readFile(fileURLToPath(new URL('../migrations/003_product_context_async_shadow_queue.sql', import.meta.url)), 'utf8');
@@ -357,6 +651,111 @@ integration('synthetic shadow activation against prepared PostgreSQL', () => {
     expect(claims.filter((claim) => claim === null)).toHaveLength(1);
   });
 
+  it('never sends bytes when an uncommitted concurrent tombstone wins the prepare-call lock', async () => {
+    const run = await enqueueQueue('concurrent-tombstone');
+    const current = await adminPool.query(`SELECT revision FROM product_context_shadow.conversation_messages
+      WHERE message_ref = $1`, [run.userMessageRef]);
+    const deletedAt = new Date();
+    const revision = `sha256:${createHash('sha256').update('cubica-shadow-message-tombstone/v1\n')
+      .update(`${current.rows[0].revision}\n${deletedAt.toISOString()}`).digest('hex')}`;
+    const tombstone = await appRuntimePool.connect();
+    await tombstone.query('BEGIN');
+    await tombstone.query('SET LOCAL ROLE product_context_shadow_app');
+    await tombstone.query("SELECT set_config('cubica.shadow_principal_ref', $1, true)", [testReceipt.shadow_principal_ref]);
+    await tombstone.query(`UPDATE product_context_shadow.conversation_messages
+      SET content_bytes = NULL, tombstone = true, revision = $2, deleted_at = $3, updated_at = $3
+      WHERE message_ref = $1`, [run.userMessageRef, revision, deletedAt.toISOString()]);
+    let calls = 0;
+    const store = new PostgresShadowWorkerStore(workerRuntimePool, {
+      ownerRef: testReceipt.shadow_principal_ref, gameRef: testReceipt.applies_to[0]!,
+      stableTurnKey: `${testStableTurnKey}-concurrent-tombstone`
+    });
+    const worker = new ShadowAsyncWorker(store, { current: async () => testReceipt }, async () => ({
+      timeoutMs: 1, maxRequestBytes: 1024 * 1024,
+      call: async () => { calls += 1; throw new Error('must not be called'); }
+    }), { leaseMs: 10_000, authorizationTimeoutMs: 10, retryBaseMs: 1_000, maxAttempts: 1 });
+    const running = worker.runOne();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    await tombstone.query('COMMIT');
+    tombstone.release();
+    await expect(running).resolves.toBe('failed');
+    expect(calls).toBe(0);
+    expect((await adminPool.query(`SELECT status, outcome_code, result_payload FROM product_context_shadow.shadow_runs WHERE run_id = $1`, [run.runId])).rows[0])
+      .toEqual({ status: 'failed', outcome_code: 'message_deleted', result_payload: null });
+  });
+
+  it('rechecks the prepare-call lease after waiting for thread/message locks', async () => {
+    const run = await enqueueQueue('prepare-lock-expiry');
+    const store = new PostgresShadowWorkerStore(workerRuntimePool, {
+      ownerRef: testReceipt.shadow_principal_ref, gameRef: testReceipt.applies_to[0]!,
+      stableTurnKey: `${testStableTurnKey}-prepare-lock-expiry`
+    });
+    const lease = await store.leaseNext(100, 3);
+    const blocker = await adminPool.connect();
+    await blocker.query('BEGIN');
+    await blocker.query(`SELECT message_ref FROM product_context_shadow.conversation_messages
+      WHERE message_ref = $1 FOR UPDATE`, [run.userMessageRef]);
+    const preparing = store.prepareCall(lease!, 'modelreq_prepare_lock_expiry', 10_000, new Date('2020-01-01T00:00:00Z'));
+    await adminPool.query('SELECT pg_sleep(0.15)');
+    await blocker.query('COMMIT'); blocker.release();
+    await expect(preparing).rejects.toThrow('lease was lost');
+    expect((await adminPool.query(`SELECT status, request_id FROM product_context_shadow.shadow_runs WHERE run_id = $1`, [run.runId])).rows[0])
+      .toEqual({ status: 'leased', request_id: null });
+  });
+
+  it.each(['retry', 'terminal'] as const)('rechecks the %s lease after waiting for the run lock', async (operation) => {
+    const run = await enqueueQueue(`mutator-lock-expiry-${operation}`);
+    const store = new PostgresShadowWorkerStore(workerRuntimePool, {
+      ownerRef: testReceipt.shadow_principal_ref, gameRef: testReceipt.applies_to[0]!,
+      stableTurnKey: `${testStableTurnKey}-mutator-lock-expiry-${operation}`
+    });
+    const lease = await store.leaseNext(100, 3);
+    const blocker = await adminPool.connect();
+    await blocker.query('BEGIN');
+    await blocker.query(`SELECT run_id FROM product_context_shadow.shadow_runs WHERE run_id = $1 FOR UPDATE`, [run.runId]);
+    const mutation = operation === 'retry'
+      ? store.retry(lease!, 'zai_1303', new Date(Date.now() + 60_000), null, new Date('2020-01-01T00:00:00Z'))
+      : store.terminal(lease!, 'failed', 'gateway_error', 'late_terminal', null, new Date('2020-01-01T00:00:00Z'));
+    await adminPool.query('SELECT pg_sleep(0.15)');
+    await blocker.query('COMMIT'); blocker.release();
+    await expect(mutation).rejects.toThrow('lease was lost');
+    expect((await adminPool.query(`SELECT status, outcome_code FROM product_context_shadow.shadow_runs WHERE run_id = $1`, [run.runId])).rows[0])
+      .toEqual({ status: 'leased', outcome_code: null });
+  });
+
+  it('cannot commit success when cleanup tombstones sources during a real provider call', async () => {
+    const created = new Date();
+    const run = await enqueueShadowTurn(new PostgresConversationStore(appRuntimePool), {
+      receipt: testReceipt, threadRef: `${testThreadRef}-concurrent-cleanup`,
+      stableTurnKey: `${testStableTurnKey}-concurrent-cleanup`, userBytes: testUserBytes,
+      agentBytes: testAgentBytes, now: created, retainedUntil: new Date(created.getTime() + 200)
+    });
+    let release!: () => void;
+    let entered!: () => void;
+    const gatewayEntered = new Promise<void>((resolve) => { entered = resolve; });
+    const gatewayRelease = new Promise<void>((resolve) => { release = resolve; });
+    const store = new PostgresShadowWorkerStore(workerRuntimePool, {
+      ownerRef: testReceipt.shadow_principal_ref, gameRef: testReceipt.applies_to[0]!,
+      stableTurnKey: `${testStableTurnKey}-concurrent-cleanup`
+    });
+    const worker = new ShadowAsyncWorker(store, { current: async () => testReceipt }, async () => ({
+      timeoutMs: 1, maxRequestBytes: 1024 * 1024,
+      call: async (request) => {
+        entered(); await gatewayRelease;
+        return { result: { schema_version: '1.0.0', request_id: request.request_id, outcome: 'no_change', proposal: null }, inputBytes: 10, outputBytes: 10, durationMs: 1 };
+      }
+    }), { leaseMs: 10_000, authorizationTimeoutMs: 10, retryBaseMs: 1_000, maxAttempts: 1 });
+    const running = worker.runOne();
+    await gatewayEntered;
+    await adminPool.query('SELECT pg_sleep(0.25)');
+    const cleanup = await new PostgresConversationStore(appRuntimePool).cleanupExpired(100);
+    expect(cleanup).toMatchObject({ runsDeleted: 0, messagesTombstoned: 2 });
+    release();
+    await expect(running).resolves.toBe('failed');
+    expect((await adminPool.query(`SELECT status, outcome_code, result_payload FROM product_context_shadow.shadow_runs WHERE run_id = $1`, [run.runId])).rows[0])
+      .toEqual({ status: 'failed', outcome_code: 'retention_expired', result_payload: null });
+  });
+
   it('atomically claims only the exact evaluator target even when an earlier hidden run exists', async () => {
     const hiddenReceipt = {
       ...testReceipt,
@@ -364,7 +763,7 @@ integration('synthetic shadow activation against prepared PostgreSQL', () => {
       authorization_revision: `sha256:${'9'.repeat(64)}`
     };
     const now = new Date();
-    const hidden = await enqueueShadowTurn(new PostgresConversationStore(adminPool), {
+    const hidden = await enqueueShadowTurn(new PostgresConversationStore(appRuntimePool), {
       receipt: hiddenReceipt, threadRef: `${testThreadRef}-hidden`, stableTurnKey: `${testStableTurnKey}-hidden`,
       userBytes: testUserBytes, agentBytes: testAgentBytes, now,
       retainedUntil: new Date(now.getTime() + 60 * 60 * 1_000)
@@ -378,6 +777,50 @@ integration('synthetic shadow activation against prepared PostgreSQL', () => {
     const lease = await store.leaseNext(20_000, 1, new Date(Date.now() + 1_000));
     expect(lease?.run.runId).toBe(target.runId);
     expect((await adminPool.query('SELECT status FROM product_context_shadow.shadow_runs WHERE run_id = $1', [hidden.runId])).rows[0]).toEqual({ status: 'pending' });
+  });
+
+  it('does not run any housekeeping transition outside an exact evaluator target', async () => {
+    const hiddenReceipt = {
+      ...testReceipt,
+      shadow_principal_ref: `cubica://shadow-principal/v1/${'6'.repeat(64)}`,
+      authorization_revision: `sha256:${'6'.repeat(64)}`
+    };
+    const enqueueHidden = async (suffix: string, retainedUntil: Date) => enqueueShadowTurn(new PostgresConversationStore(appRuntimePool), {
+      receipt: hiddenReceipt, threadRef: `${testThreadRef}-hidden-${suffix}`,
+      stableTurnKey: `${testStableTurnKey}-hidden-${suffix}`,
+      userBytes: testUserBytes, agentBytes: testAgentBytes, now: new Date(), retainedUntil
+    });
+    const hiddenStore = (suffix: string) => new PostgresShadowWorkerStore(workerRuntimePool, {
+      ownerRef: hiddenReceipt.shadow_principal_ref,
+      gameRef: hiddenReceipt.applies_to[0]!,
+      stableTurnKey: `${testStableTurnKey}-hidden-${suffix}`
+    });
+    const expired = await enqueueHidden('retention', new Date(Date.now() + 150));
+    const calling = await enqueueHidden('calling', new Date(Date.now() + 60_000));
+    const callingLease = await hiddenStore('calling').leaseNext(20_000, 3);
+    await hiddenStore('calling').prepareCall(callingLease!, 'modelreq_hidden_calling', 1, new Date());
+    const exhaustedLease = await enqueueHidden('leased-exhausted', new Date(Date.now() + 60_000));
+    await hiddenStore('leased-exhausted').leaseNext(1, 1);
+    const exhaustedRetry = await enqueueHidden('retry-exhausted', new Date(Date.now() + 60_000));
+    const retryLease = await hiddenStore('retry-exhausted').leaseNext(20_000, 1);
+    await hiddenStore('retry-exhausted').retry(retryLease!, 'zai_1303', new Date(Date.now() + 50));
+    await adminPool.query('SELECT pg_sleep(0.2)');
+
+    const target = await enqueueQueue('housekeeping-target');
+    const targetStore = new PostgresShadowWorkerStore(workerRuntimePool, {
+      ownerRef: testReceipt.shadow_principal_ref,
+      gameRef: testReceipt.applies_to[0]!,
+      stableTurnKey: `${testStableTurnKey}-housekeeping-target`
+    });
+    expect((await targetStore.leaseNext(20_000, 1, new Date('2020-01-01T00:00:00Z')))?.run.runId).toBe(target.runId);
+    const hidden = await adminPool.query(`SELECT run_id, status FROM product_context_shadow.shadow_runs
+      WHERE run_id = ANY($1::text[]) ORDER BY run_id`, [[expired.runId, calling.runId, exhaustedLease.runId, exhaustedRetry.runId]]);
+    expect(new Map(hidden.rows.map((row) => [row.run_id, row.status]))).toEqual(new Map([
+      [expired.runId, 'pending'],
+      [calling.runId, 'calling_model'],
+      [exhaustedLease.runId, 'leased'],
+      [exhaustedRetry.runId, 'retry_wait']
+    ]));
   });
 
   it('lets the evaluator app adapter inspect and review only its exact completed turn', async () => {
@@ -405,7 +848,7 @@ integration('synthetic shadow activation against prepared PostgreSQL', () => {
     const started = new Date();
     const lease = await store.leaseNext(20_000, 1, started);
     expect(lease?.run.runId).toBe(run.runId);
-    await store.markCallingModel(lease!, 'modelreq_evaluator_adapter', 20_000, started);
+    await store.prepareCall(lease!, 'modelreq_evaluator_adapter', 20_000, started);
     await expect(store.complete(lease!, {
       result: { schema_version: '1.0.0', request_id: 'modelreq_evaluator_adapter', outcome: 'no_change', proposal: null },
       durationMs: 7,
@@ -436,7 +879,8 @@ integration('synthetic shadow activation against prepared PostgreSQL', () => {
     await enqueueQueue('expired-leased');
     const leasedAt = new Date();
     const first = await store.leaseNext(1_000, 3, leasedAt);
-    const second = await store.leaseNext(1_000, 3, new Date(leasedAt.getTime() + 2_000));
+    await adminPool.query('SELECT pg_sleep(1.05)');
+    const second = await store.leaseNext(1_000, 3, new Date());
     expect(first).not.toBeNull();
     expect(second).toMatchObject({ run: { runId: first!.run.runId }, attempt: 2 });
     expect(second!.token).not.toBe(first!.token);
@@ -446,8 +890,9 @@ integration('synthetic shadow activation against prepared PostgreSQL', () => {
     await enqueueQueue('expired-calling');
     const callingAt = new Date();
     const calling = await store.leaseNext(10_000, 3, callingAt);
-    await store.markCallingModel(calling!, 'modelreq_expired_calling', 1_000, callingAt);
-    await expect(store.leaseNext(10_000, 3, new Date(callingAt.getTime() + 2_000))).resolves.toBeNull();
+    await store.prepareCall(calling!, 'modelreq_expired_calling', 1_000, callingAt);
+    await adminPool.query('SELECT pg_sleep(1.05)');
+    await expect(store.leaseNext(10_000, 3, new Date())).resolves.toBeNull();
     const terminal = await adminPool.query(`SELECT status, outcome_code, attempts, lease_token, result_payload
       FROM product_context_shadow.shadow_runs WHERE run_id = $1`, [calling!.run.runId]);
     expect(terminal.rows[0]).toEqual({ status: 'failed', outcome_code: 'gateway_outcome_unknown', attempts: 1, lease_token: null, result_payload: null });
@@ -460,13 +905,15 @@ integration('synthetic shadow activation against prepared PostgreSQL', () => {
     await enqueueQueue('retry-metrics');
     const started = new Date();
     const first = await store.leaseNext(10_000, 3, started);
-    await store.retry(first!, 'zai_1303', new Date(started.getTime() + 1_000), null, started);
-    const secondAt = new Date(started.getTime() + 1_001);
+    await store.retry(first!, 'zai_1303', new Date(Date.now() + 50), null, started);
+    await adminPool.query('SELECT pg_sleep(0.06)');
+    const secondAt = new Date();
     const second = await store.leaseNext(10_000, 3, secondAt);
-    await store.retry(second!, 'zai_1305', new Date(secondAt.getTime() + 2_000), null, secondAt);
-    const thirdAt = new Date(secondAt.getTime() + 2_001);
+    await store.retry(second!, 'zai_1305', new Date(Date.now() + 50), null, secondAt);
+    await adminPool.query('SELECT pg_sleep(0.06)');
+    const thirdAt = new Date();
     const third = await store.leaseNext(10_000, 3, thirdAt);
-    await store.markCallingModel(third!, 'modelreq_retry_complete', 10_000, thirdAt);
+    await store.prepareCall(third!, 'modelreq_retry_complete', 10_000, thirdAt);
     await expect(store.complete(third!, {
       result: { schema_version: '1.0.0', request_id: 'modelreq_retry_complete', outcome: 'no_change', proposal: null },
       durationMs: 1, inputBytes: 2, outputBytes: 3
@@ -486,18 +933,47 @@ integration('synthetic shadow activation against prepared PostgreSQL', () => {
     await enqueueShadowTurn(new PostgresConversationStore(appRuntimePool), {
       receipt: testReceipt, threadRef: `${testThreadRef}-atomic-retention`,
       stableTurnKey: `${testStableTurnKey}-atomic-retention`, userBytes: testUserBytes,
-      agentBytes: testAgentBytes, now: created, retainedUntil: new Date(created.getTime() + 5_000)
+      agentBytes: testAgentBytes, now: created, retainedUntil: new Date(created.getTime() + 200)
     });
     const started = new Date();
     const lease = await store.leaseNext(20_000, 3, started);
-    await store.markCallingModel(lease!, 'modelreq_atomic_retention', 20_000, started);
+    await store.prepareCall(lease!, 'modelreq_atomic_retention', 20_000, started);
+    await adminPool.query('SELECT pg_sleep(0.25)');
     const completion = await store.complete(lease!, {
       result: { schema_version: '1.0.0', request_id: 'modelreq_atomic_retention', outcome: 'no_change', proposal: null },
       durationMs: 7, inputBytes: 11, outputBytes: 13
-    }, new Date(created.getTime() + 6_000));
+    }, new Date());
     expect(completion).toBe('retention_expired');
     expect((await adminPool.query(`SELECT status, outcome_code, result_payload FROM product_context_shadow.shadow_runs
       WHERE run_id = $1`, [lease!.run.runId])).rows[0]).toEqual({ status: 'failed', outcome_code: 'retention_expired', result_payload: null });
+  });
+
+  it('fences a late completion behind a row lock and lets the DB-clock sweeper record only unknown outcome', async () => {
+    const run = await enqueueQueue('late-completion-fence');
+    const store = new PostgresShadowWorkerStore(workerRuntimePool, {
+      ownerRef: testReceipt.shadow_principal_ref, gameRef: testReceipt.applies_to[0]!,
+      stableTurnKey: `${testStableTurnKey}-late-completion-fence`
+    });
+    const lease = await store.leaseNext(10_000, 1);
+    await store.prepareCall(lease!, 'modelreq_late_completion', 100, new Date('2020-01-01T00:00:00Z'));
+    const blocker = await appRuntimePool.connect();
+    await blocker.query('BEGIN');
+    await blocker.query('SET LOCAL ROLE product_context_shadow_app');
+    await blocker.query("SELECT set_config('cubica.shadow_principal_ref', $1, true)", [testReceipt.shadow_principal_ref]);
+    await blocker.query(`SELECT message_ref FROM product_context_shadow.conversation_messages WHERE message_ref = $1 FOR UPDATE`, [run.userMessageRef]);
+    const completion = store.complete(lease!, {
+      result: { schema_version: '1.0.0', request_id: 'modelreq_late_completion', outcome: 'no_change', proposal: null },
+      durationMs: 1, inputBytes: 1, outputBytes: 1
+    }, new Date('2020-01-01T00:00:00Z'));
+    await adminPool.query('SELECT pg_sleep(0.15)');
+    const sweep = new PostgresShadowWorkerStore(workerRuntimePool).leaseNext(10_000, 1, new Date('2020-01-01T00:00:00Z'));
+    await blocker.query('COMMIT'); blocker.release();
+    await expect(completion).rejects.toThrow('lease was lost');
+    await expect(sweep).resolves.toBeNull();
+    expect((await adminPool.query(`SELECT status, outcome_code, result_payload FROM product_context_shadow.shadow_runs WHERE run_id = $1`, [run.runId])).rows[0])
+      .toEqual({ status: 'failed', outcome_code: 'gateway_outcome_unknown', result_payload: null });
+    expect((await adminPool.query(`SELECT outcome FROM product_context_shadow.shadow_metrics WHERE run_id = $1`, [run.runId])).rows)
+      .toEqual([{ outcome: 'gateway_outcome_unknown' }]);
   });
 
   it('refuses inherited or cleanup privileges on the dedicated runtime login', async () => {
@@ -524,6 +1000,38 @@ integration('synthetic shadow activation against prepared PostgreSQL', () => {
       await expect(preflightSyntheticShadowActivation(config)).rejects.toBeInstanceOf(SyntheticShadowActivationError);
     } finally {
       await adminPool.query('DROP POLICY synthetic_forbidden_policy ON product_context_shadow.shadow_runs');
+    }
+  });
+
+  it('readiness rejects post-migration worker and cleanup function ACL drift', async () => {
+    const config = syntheticShadowActivationConfig(environment());
+    const foreign = `shadow_acl_drift_${process.pid}_${randomBytes(4).toString('hex')}`;
+    await adminPool.query(`CREATE ROLE ${quoteIdentifier(foreign)} NOLOGIN`);
+    try {
+      await adminPool.query(`GRANT EXECUTE ON FUNCTION
+        product_context_shadow.worker_claim(integer,integer,timestamptz,text,text,text)
+        TO product_context_shadow_app`);
+      await expect(preflightSyntheticShadowActivation(config)).rejects.toBeInstanceOf(SyntheticShadowActivationError);
+      await adminPool.query(`REVOKE EXECUTE ON FUNCTION
+        product_context_shadow.worker_claim(integer,integer,timestamptz,text,text,text)
+        FROM product_context_shadow_app`);
+      await adminPool.query(`GRANT EXECUTE ON FUNCTION product_context_shadow.cleanup_expired(integer)
+        TO ${quoteIdentifier(foreign)}`);
+      await expect(preflightSyntheticShadowActivation(config)).rejects.toBeInstanceOf(SyntheticShadowActivationError);
+      await adminPool.query(`REVOKE EXECUTE ON FUNCTION product_context_shadow.cleanup_expired(integer)
+        FROM ${quoteIdentifier(foreign)};
+        CREATE FUNCTION product_context_shadow.worker_unknown_legacy(text)
+          RETURNS boolean LANGUAGE sql AS $$ SELECT true $$;
+        REVOKE ALL ON FUNCTION product_context_shadow.worker_unknown_legacy(text) FROM PUBLIC`);
+      await expect(preflightSyntheticShadowActivation(config)).rejects.toBeInstanceOf(SyntheticShadowActivationError);
+    } finally {
+      await adminPool.query(`REVOKE EXECUTE ON FUNCTION
+        product_context_shadow.worker_claim(integer,integer,timestamptz,text,text,text)
+        FROM product_context_shadow_app`);
+      await adminPool.query(`REVOKE EXECUTE ON FUNCTION product_context_shadow.cleanup_expired(integer)
+        FROM ${quoteIdentifier(foreign)}`);
+      await adminPool.query('DROP FUNCTION IF EXISTS product_context_shadow.worker_unknown_legacy(text)');
+      await adminPool.query(`DROP ROLE ${quoteIdentifier(foreign)}`);
     }
   });
 

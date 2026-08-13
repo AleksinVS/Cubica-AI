@@ -68,13 +68,12 @@ describe("product-context shadow durable enqueue", () => {
 
 function enqueueStore(captured: Array<Record<string, unknown>>) {
   return {
-    appendExactTurn: vi.fn(async (input: Record<string, unknown>) => {
+    appendExactTurnAndCreateRun: vi.fn(async (input: Record<string, unknown>, auth: ProductContextShadowReceipt) => {
       captured.push(input);
       const request = input.gatewayRequest as { messages: Array<Record<string, unknown>> };
       const [user, agent] = request.messages;
-      return { schema_version:"1.0.0",turn_ref:`${input.threadRef}/turn/x`,thread_ref:input.threadRef,stable_turn_key:input.stableTurnKey,user_message:{...user,schema_version:"1.0.0",thread_ref:input.threadRef,stable_turn_key:input.stableTurnKey,sequence:1,byte_length:(input.userBytes as Uint8Array).byteLength,tombstone:false,retained_until:(input.retainedUntil as Date).toISOString(),created_at:(input.now as Date).toISOString()},agent_message:{...agent,schema_version:"1.0.0",thread_ref:input.threadRef,stable_turn_key:input.stableTurnKey,sequence:2,byte_length:(input.agentBytes as Uint8Array).byteLength,tombstone:false,retained_until:(input.retainedUntil as Date).toISOString(),created_at:(input.now as Date).toISOString()},created_at:(input.now as Date).toISOString() };
-    }),
-    createRun: vi.fn(async (auth: ProductContextShadowReceipt, turn: { thread_ref: string; stable_turn_key: string; user_message: Record<string, string>; agent_message: Record<string, string> }, retainedUntil: Date) => ({ runId:"shadowrun_test",ownerRef:auth.shadow_principal_ref,threadRef:turn.thread_ref,stableTurnKey:turn.stable_turn_key,authorizationRevision:auth.authorization_revision,receipt:auth,userMessageRef:turn.user_message.message_ref,userMessageRevision:turn.user_message.revision,userMessageHash:turn.user_message.content_hash,agentMessageRef:turn.agent_message.message_ref,agentMessageRevision:turn.agent_message.revision,agentMessageHash:turn.agent_message.content_hash,status:"pending",outcome:null,requestId:null,result:null,leaseExpiresAt:null,retainedUntil:retainedUntil.toISOString() }))
+      return { runId:"shadowrun_test",ownerRef:auth.shadow_principal_ref,threadRef:String(input.threadRef),stableTurnKey:String(input.stableTurnKey),authorizationRevision:auth.authorization_revision,receipt:auth,userMessageRef:String(user!.message_ref),userMessageRevision:String(user!.revision),userMessageHash:String(user!.content_hash),agentMessageRef:String(agent!.message_ref),agentMessageRevision:String(agent!.revision),agentMessageHash:String(agent!.content_hash),status:"pending",outcome:null,requestId:null,result:null,leaseExpiresAt:null,retainedUntil:(input.retainedUntil as Date).toISOString() };
+    })
   } as never;
 }
 function jobFor(env: NodeJS.ProcessEnv) { return buildProductContextShadowJob(forwarded(env), candidate(), env)!; }

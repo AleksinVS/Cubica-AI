@@ -172,7 +172,10 @@ export async function runNextShadowEvaluation(deps: ShadowEvaluatorDeps): Promis
         gameRef: manifest.applies_to[0]!,
         stableTurnKey: target.stable_turn_key
       });
-    } catch { return await stop(deps, report, index, 'gateway_error'); }
+    } catch {
+      // A worker may commit the terminal run and lose the acknowledgement.
+      // The target database is authoritative and is reconciled below.
+    }
   }
   if (await deps.readGitHead() !== manifest.expected_git_head) return await stop(deps, report, index, 'git_drift');
   const after = (await deps.db.inspect()).runs.filter((run) => run.stableTurnKey === target.stable_turn_key);

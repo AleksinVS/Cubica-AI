@@ -118,12 +118,17 @@ class MemoryWorkerStore implements ShadowWorkerStore {
   retryState: {code:string;next:Date}|null=null;
   terminalState: {status:string;outcome:string;code:string}|null=null;
   postCallTurn: ShadowWorkerLease['turn']|null=null;
-  private rereads=0;
   constructor(private readonly value:ShadowWorkerLease){}
   async leaseNext(){if(!this.available)return null;this.available=false;return this.value;}
-  async reread(){this.rereads+=1;return this.rereads > 1 && this.postCallTurn ? this.postCallTurn : this.value.turn;}
-  async markCallingModel(){}
-  async complete(){this.completed+=1;return 'completed' as const;}
+  async reread(){return this.value.turn;}
+  async prepareCall(){return this.value.turn;}
+  async complete(){
+    if (this.postCallTurn && this.postCallTurn.user_message.revision !== this.value.turn.user_message.revision) {
+      this.terminalState={status:'failed',outcome:'message_changed',code:'message_changed'};
+      return 'message_changed' as const;
+    }
+    this.completed+=1;return 'completed' as const;
+  }
   async retry(_lease:ShadowWorkerLease,code:string,next:Date){this.retryState={code,next};}
   async terminal(_lease:ShadowWorkerLease,status:'denied'|'failed'|'blocked',outcome:string,code:string){this.terminalState={status,outcome,code};}
 }

@@ -41,6 +41,19 @@ describe('persistent shadow evaluator', () => {
   it('resumes a terminal target without a second worker call', async () => {
     const f = await fixture(); try { f.db.value = snapshot([{ ownerRef: 'cubica://shadow-principal/v1/evaluator', gameRef: 'cubica://game-project/evaluator', receiptPrincipal: 'cubica://shadow-principal/v1/evaluator', receiptGame: 'cubica://game-project/evaluator', messageCount: 2, liveMessageCount: 2, stableTurnKey: manifest().scenarios[0]!.stable_turn_key, status: 'succeeded', outcome: 'no_change', operationCount: 0, durationMs: 1, inputBytes: 1, outputBytes: 1, metricCount: 1 }]); await preflightShadowEvaluation(f.deps); const result = await runNextShadowEvaluation(f.deps); expect(f.db.workerCalls).toBe(0); expect(result.status).toBe('awaiting_review'); } finally { await rm(f.dir, { recursive: true, force: true }); }
   });
+
+  it('reconciles a committed terminal target when the worker acknowledgement is lost', async () => {
+    const f = await fixture();
+    try {
+      (f.deps as { worker: ShadowEvaluatorDeps['worker'] }).worker = async () => {
+        f.db.worker();
+        throw new Error('commit acknowledgement lost');
+      };
+      await preflightShadowEvaluation(f.deps);
+      await expect(runNextShadowEvaluation(f.deps)).resolves.toMatchObject({ status: 'awaiting_review' });
+      expect(f.db.workerCalls).toBe(1);
+    } finally { await rm(f.dir, { recursive: true, force: true }); }
+  });
   it('does not allow the next scenario before review and stops on false review', async () => {
     const f = await fixture(); try { (f.deps as { reviewer: ShadowEvaluatorDeps['reviewer'] }).reviewer = { review: vi.fn(async () => [true, false, true, true] as const) }; await preflightShadowEvaluation(f.deps); const first = await runNextShadowEvaluation(f.deps); expect(first.status).toBe('awaiting_review'); const reviewed = await reviewShadowEvaluation(f.deps); expect(reviewed.status).toBe('hard_stopped'); expect(f.db.workerCalls).toBe(1); } finally { await rm(f.dir, { recursive: true, force: true }); }
   });

@@ -14,7 +14,7 @@ import {
   safeShadowDatabaseUrl,
   validateProductKnowledgeContract,
   type ShadowAuthorizationReceipt,
-  type ShadowConversationStore,
+  type AtomicShadowEnqueueStore,
   type ShadowRunRecord
 } from "@cubica/product-context";
 import { Pool } from "pg";
@@ -53,7 +53,7 @@ export interface ProductContextShadowJob {
 
 export interface ProductContextShadowDependencies {
   readonly authorize?: (job: ProductContextShadowJob) => Promise<unknown>;
-  readonly createStore?: (job: ProductContextShadowJob) => ShadowConversationStore;
+  readonly createStore?: (job: ProductContextShadowJob) => AtomicShadowEnqueueStore;
 }
 
 export function buildProductContextShadowJob(

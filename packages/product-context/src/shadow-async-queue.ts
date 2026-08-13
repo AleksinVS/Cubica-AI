@@ -11,7 +11,7 @@ import { isDeepStrictEqual } from 'node:util';
 import type { Pool, PoolClient } from 'pg';
 
 import { validateProductKnowledgeContract } from './contracts.ts';
-import type { AppendExactTurnInput, ShadowConversationStore, ShadowRunOutcome, ShadowRunRecord } from './conversation-postgres.ts';
+import type { AppendExactTurnInput, AtomicShadowEnqueueStore, ShadowRunOutcome, ShadowRunRecord } from './conversation-postgres.ts';
 import { ModelGatewayError, type ModelGateway, type ModelGatewayCall } from './model-gateway.ts';
 import type { ConversationMessage, ConversationTurn, ModelGatewayRequest, ModelGatewayResult, ShadowAuthorizationReceipt } from './generated/product-knowledge.ts';
 
@@ -29,7 +29,7 @@ export interface EnqueueShadowTurnInput {
 }
 
 /** Idempotently persists exact bytes and a pending run without calling a model. */
-export async function enqueueShadowTurn(store: ShadowConversationStore, input: EnqueueShadowTurnInput): Promise<ShadowRunRecord> {
+export async function enqueueShadowTurn(store: AtomicShadowEnqueueStore, input: EnqueueShadowTurnInput): Promise<ShadowRunRecord> {
   assertReceipt(input.receipt);
   const now = input.now ?? new Date();
   if (Date.parse(input.receipt.issued_at) > now.getTime() || Date.parse(input.receipt.expires_at) <= now.getTime()) {
@@ -47,8 +47,7 @@ export async function enqueueShadowTurn(store: ShadowConversationStore, input: E
     retainedUntil: input.retainedUntil,
     now
   };
-  const turn = await store.appendExactTurn(append);
-  return store.createRun(input.receipt, turn, input.retainedUntil);
+  return store.appendExactTurnAndCreateRun(append, input.receipt);
 }
 
 export type ShadowWorkerErrorAction =
@@ -83,7 +82,7 @@ export interface ShadowWorkerLease {
 export interface ShadowWorkerStore {
   leaseNext(leaseMs: number, maxAttempts: number, now?: Date): Promise<ShadowWorkerLease | null>;
   reread(lease: ShadowWorkerLease): Promise<ConversationTurn | null>;
-  markCallingModel(lease: ShadowWorkerLease, requestId: string, callLeaseMs: number, now?: Date): Promise<void>;
+  prepareCall(lease: ShadowWorkerLease, requestId: string, callLeaseMs: number, now?: Date): Promise<ConversationTurn>;
   complete(lease: ShadowWorkerLease, call: ModelGatewayCall, now?: Date): Promise<'completed' | 'message_deleted' | 'message_changed' | 'retention_expired'>;
   retry(lease: ShadowWorkerLease, code: string, nextAttemptAt: Date, call?: ModelGatewayCall | null, now?: Date): Promise<void>;
   terminal(lease: ShadowWorkerLease, status: 'denied' | 'failed' | 'blocked', outcome: Exclude<ShadowRunOutcome, 'success' | 'no_change' | 'disabled' | 'gateway_retry_scheduled'>, code: string, call?: ModelGatewayCall | null, now?: Date): Promise<void>;
@@ -146,15 +145,11 @@ export class ShadowAsyncWorker {
       await this.store.terminal(lease, 'blocked', 'gateway_error', 'unsafe_timeout_configuration', null, this.now());
       return 'blocked';
     }
-    const latestTurn = await this.store.reread(lease);
-    const latestLease = latestTurn ? { ...lease, turn: latestTurn } : lease;
-    const latestBindingFailure = latestTurn ? validateLeasedTurn(latestLease, this.now()) : 'message_deleted';
-    if (latestBindingFailure) {
-      await this.store.terminal(lease, 'failed', latestBindingFailure, latestBindingFailure, null, this.now());
-      return 'failed';
-    }
-    const finalRequest = requestForTurn(lease.run, latestTurn!);
-    await this.store.markCallingModel(lease, finalRequest.request_id, this.options.leaseMs, this.now());
+    const requestId = requestForTurn(lease.run, lease.turn).request_id;
+    let preparedTurn: ConversationTurn;
+    try { preparedTurn = await this.store.prepareCall(lease, requestId, this.options.leaseMs, this.now()); }
+    catch { return 'failed'; }
+    const finalRequest = requestForTurn(lease.run, preparedTurn);
     try {
       const call = await gateway.call(finalRequest);
       const checked = validateProductKnowledgeContract<ModelGatewayResult>('ModelGatewayResult', call.result);
@@ -163,13 +158,6 @@ export class ShadowAsyncWorker {
       if (!postCallAuthorization || !sameAuthorization(lease.run.receipt, postCallAuthorization)) {
         await this.store.terminal(lease, 'denied', 'authorization_changed', 'authorization_changed', call, this.now());
         return 'blocked';
-      }
-      const postCallTurn = await this.store.reread(lease);
-      const postCallLease = postCallTurn ? { ...lease, turn: postCallTurn } : lease;
-      const postCallDrift = postCallTurn ? validateLeasedTurn(postCallLease, this.now()) : 'message_deleted';
-      if (postCallDrift) {
-        await this.store.terminal(lease, 'failed', postCallDrift, postCallDrift, call, this.now());
-        return 'failed';
       }
       const completion = await this.store.complete(lease, call, this.now());
       return completion === 'completed' ? 'completed' : 'failed';
@@ -229,12 +217,17 @@ export class PostgresShadowWorkerStore implements ShadowWorkerStore {
     });
   }
 
-  async markCallingModel(lease: ShadowWorkerLease, requestId: string, callLeaseMs: number, now = new Date()): Promise<void> {
+  async prepareCall(lease: ShadowWorkerLease, requestId: string, callLeaseMs: number, now = new Date()): Promise<ConversationTurn> {
     if (!Number.isSafeInteger(callLeaseMs) || callLeaseMs <= 0) throw new TypeError('A positive call lease is required.');
-    await this.requireFunctionResult(
-      'SELECT product_context_shadow.worker_mark_calling($1,$2,$3,$4,$5) AS changed',
-      [lease.run.runId, lease.token, requestId, callLeaseMs, now.toISOString()]
-    );
+    const turn = await this.transaction(async (client) => {
+      const result = await client.query<{ payload: WorkerPayload | null }>(
+        'SELECT product_context_shadow.worker_prepare_call($1,$2,$3,$4,$5) AS payload',
+        [lease.run.runId, lease.token, requestId, callLeaseMs, now.toISOString()]
+      );
+      return result.rows[0]?.payload ? turnFromPayload(result.rows[0].payload) : null;
+    });
+    if (!turn) throw new Error('Shadow worker lease was lost.');
+    return turn;
   }
 
   async reread(lease: ShadowWorkerLease): Promise<ConversationTurn | null> {

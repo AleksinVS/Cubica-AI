@@ -150,6 +150,51 @@ integration('PostgreSQL shadow conversation boundary', () => {
     expect(schemaOwner.rows[0].rolname).not.toBe(runtimeRole);
   });
 
+  it.each(['wrapper', 'app-plus-cleanup'] as const)('rejects a non-dedicated %s app login before enqueue or cleanup mutation', async (kind) => {
+    const login = `shadow_app_invalid_${kind.replaceAll('-', '_')}_${process.pid}_${randomBytes(4).toString('hex')}`;
+    const wrapper = `shadow_app_wrapper_${process.pid}_${randomBytes(4).toString('hex')}`;
+    const password = randomBytes(24).toString('base64url');
+    if (kind === 'wrapper') {
+      await pool.query(`CREATE ROLE ${quoteIdentifier(wrapper)} NOLOGIN`);
+      await pool.query(`GRANT product_context_shadow_app TO ${quoteIdentifier(wrapper)}`);
+    }
+    await pool.query(`CREATE ROLE ${quoteIdentifier(login)} LOGIN PASSWORD ${quoteLiteral(password)}
+      NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS`);
+    await pool.query(kind === 'wrapper'
+      ? `GRANT ${quoteIdentifier(wrapper)} TO ${quoteIdentifier(login)}`
+      : `GRANT product_context_shadow_app, product_context_shadow_cleanup TO ${quoteIdentifier(login)}`);
+    const invalidPool = runtimePoolFor(databaseUrl!, login, password);
+    const invalidStore = new PostgresConversationStore(invalidPool);
+    const now = new Date();
+    const input = turnInput(`invalid-login-${kind}`, ownerA, now);
+    const auth = receipt(ownerA, now);
+    const append = {
+      ownerRef: ownerA, gameRef: projectA, threadRef: input.threadRef,
+      stableTurnKey: input.stableTurnKey, userBytes: input.userBytes, agentBytes: input.agentBytes,
+      gatewayRequest: exactRequest(auth, input), retainedUntil: new Date(now.getTime() + 60_000), now
+    };
+    try {
+      await expect(invalidStore.appendExactTurnAndCreateRun(append, auth)).rejects.toThrow('Dedicated shadow app login');
+      await expect(invalidStore.cleanupExpired(100)).rejects.toThrow('Dedicated shadow app login');
+      const counts = await pool.query(`SELECT
+        (SELECT count(*)::int FROM product_context_shadow.conversation_threads WHERE thread_ref = $1) AS threads,
+        (SELECT count(*)::int FROM product_context_shadow.conversation_messages WHERE stable_turn_key = $2) AS messages,
+        (SELECT count(*)::int FROM product_context_shadow.shadow_runs WHERE stable_turn_key = $2) AS runs`,
+      [input.threadRef, input.stableTurnKey]);
+      expect(counts.rows[0]).toEqual({ threads: 0, messages: 0, runs: 0 });
+    } finally {
+      await invalidPool.end();
+      await pool.query(kind === 'wrapper'
+        ? `REVOKE ${quoteIdentifier(wrapper)} FROM ${quoteIdentifier(login)}`
+        : `REVOKE product_context_shadow_app, product_context_shadow_cleanup FROM ${quoteIdentifier(login)}`);
+      await pool.query(`DROP ROLE ${quoteIdentifier(login)}`);
+      if (kind === 'wrapper') {
+        await pool.query(`REVOKE product_context_shadow_app FROM ${quoteIdentifier(wrapper)}`);
+        await pool.query(`DROP ROLE ${quoteIdentifier(wrapper)}`);
+      }
+    }
+  });
+
   it('preserves every PostgreSQL 17 membership option and grantor across autocommit reruns', async () => {
     const executor = String((await pool.query('SELECT current_user')).rows[0].current_user);
     const originalGrantor = `shadow_grantor_${process.pid}_${randomBytes(4).toString('hex')}`;

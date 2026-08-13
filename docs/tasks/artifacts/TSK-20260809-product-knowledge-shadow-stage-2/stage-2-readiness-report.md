@@ -117,14 +117,27 @@ unit-набора, Editor typecheck и 21/21 целевых тестов. Пов
 объединения изменений вновь подтвердил общие контракты, Runtime API, Player,
 Editor и обе production-сборки.
 
-Для постоянного evaluator отдельно подтверждены 16/16 evaluator tests,
+Для постоянного evaluator отдельно подтверждены 17/17 evaluator tests,
 включая crash/resume, удаление manifest после завершённого хода, hard stop,
 атомарный `0600` report после каждого сценария, ручной `/dev/tty` review и
 точную cleanup-проверку. Combined focused unit ранее прошёл 55/55 до добавления
-этого теста, PostgreSQL 17 — 30/30 (22 activation + 8 shadow postgres);
+этого теста. После security-remediation асинхронной границы PostgreSQL 17
+прошёл 50/50 (40 activation/upgrade/security/race + 10 shadow postgres), а
+целевой набор queue/evaluator/worker-config/Z.AI — 92/92;
 независимый Sol high security re-review —
 `ACCEPT`. Cleanup требует нулевые runs, metrics, messages, threads и text, а
 Git остаётся неизменным.
+
+Перед слиянием отдельно доказаны совместимость обновления уже применённых
+`002` и ранней `003`, удаление устаревшей `worker_mark_calling`, точный набор из
+шести worker-функций и отсутствие лишних `EXECUTE`. App и worker на каждой
+транзакции проверяют отдельный непривилегированный login с единственным прямым
+membership. Реальные конкурентные тесты закрывают ожидание блокировки дольше
+аренды, tombstone и cleanup до внешнего вызова и после него, изоляцию точного
+evaluator-target, атомарный enqueue и потерю подтверждения commit. Итоговый
+независимый Sol high review не оставил замечаний High/Medium.
+Полный package-шлюз `verify:product-context` после этих изменений прошёл
+257/257 на отдельной PostgreSQL 17; тестовые БД и роли после прогона удалены.
 
 Закрытая синтетическая activation rehearsal 2026-08-11 дополнительно
 подтвердила:

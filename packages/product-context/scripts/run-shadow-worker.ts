@@ -54,8 +54,9 @@ export async function verifyWorkerLogin(pool: Pool): Promise<void> {
     SELECT login.rolcanlogin AND NOT login.rolsuper AND NOT login.rolcreatedb AND
       NOT login.rolcreaterole AND NOT login.rolreplication AND NOT login.rolbypassrls AND
       NOT login.rolinherit AND
-      pg_has_role(login.rolname, 'product_context_shadow_worker', 'MEMBER') AND
-      (SELECT count(*) = 1 FROM pg_auth_members AS membership
+      (SELECT count(*) = 1 AND bool_and(granted.rolname = 'product_context_shadow_worker')
+       FROM pg_auth_members AS membership
+       JOIN pg_roles AS granted ON granted.oid = membership.roleid
        WHERE membership.member = login.oid) AS ready
     FROM pg_roles AS login WHERE login.rolname = session_user AND current_user = session_user
   `);

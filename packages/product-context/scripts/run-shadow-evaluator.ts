@@ -103,8 +103,9 @@ export class PostgresShadowEvaluatorDatabase implements ShadowEvaluatorDatabase 
 
 async function verifyAppLogin(client: PoolClient): Promise<void> {
   const result = await client.query(`SELECT r.rolcanlogin AND NOT r.rolsuper AND NOT r.rolcreatedb AND NOT r.rolcreaterole AND NOT r.rolreplication AND NOT r.rolbypassrls AND NOT r.rolinherit
-      AND pg_has_role(r.rolname, 'product_context_shadow_app', 'MEMBER')
-      AND (SELECT count(*) = 1 FROM pg_auth_members m WHERE m.member = r.oid) AS ready
+      AND (SELECT count(*) = 1 AND bool_and(granted.rolname = 'product_context_shadow_app')
+        FROM pg_auth_members m JOIN pg_roles granted ON granted.oid = m.roleid
+        WHERE m.member = r.oid) AS ready
     FROM pg_roles r WHERE r.rolname = session_user`);
   if (result.rows[0]?.ready !== true) throw new Error('Dedicated shadow app login is required.');
 }
