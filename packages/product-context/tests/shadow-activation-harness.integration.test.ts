@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { mkdir, mkdtemp, readFile, rm, symlink } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
+import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { join, resolve } from 'node:path';
 import { Pool } from 'pg';
@@ -23,7 +24,7 @@ const databaseUrl = process.env.TEST_PRODUCT_CONTEXT_DATABASE_URL;
 const integration = databaseUrl ? describe.sequential : describe.skip;
 const repositoryTmp = resolve(fileURLToPath(new URL('../../../.tmp/', import.meta.url)));
 const cli = fileURLToPath(new URL('../scripts/run-shadow-synthetic.ts', import.meta.url));
-const viteNode = fileURLToPath(new URL('../../../node_modules/.bin/vite-node', import.meta.url));
+const viteNode = createRequire(import.meta.url).resolve('vite-node/vite-node.mjs');
 const testReceipt: ShadowAuthorizationReceipt = {
   schema_version: '1.0.0', decision: 'allow',
   shadow_principal_ref: `cubica://shadow-principal/v1/${'7'.repeat(64)}`,
