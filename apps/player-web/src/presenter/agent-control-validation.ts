@@ -1,6 +1,6 @@
 import Ajv2020 from "ajv/dist/2020.js";
 import type { ValidateFunction } from "ajv";
-import agentControlSchema from "../../../../packages/contracts/session/src/generated/agent-control.schema.json";
+import agentControlSchema from "@cubica/contracts-session/agent-control.schema.json";
 import type { AgentControl } from "@cubica/contracts-session";
 import type { NormalizedAgentControl } from "@/presenter/types";
 
