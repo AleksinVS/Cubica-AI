@@ -42,10 +42,12 @@ import {
   assertNextSessionVersion,
   assertProtectedEventSequenceUnchanged,
   SessionAuthenticationError,
+  PublicJournalTooLargeError,
   SessionStoreUnavailableError,
   SessionVersionConflictError,
   SessionWriteLockedError
 } from "./sessionStoreErrors.ts";
+import { createPublicGameplayJournalByteAccumulator } from "./publicGameplayJournal.ts";
 import {
   assertSessionParticipantsImmutable,
   assertSessionParticipantsMatchState
@@ -69,14 +71,13 @@ interface ArchivedSessionRow extends SessionRow {
   archived_at: Date | string;
 }
 
-interface PublicJournalSessionRow extends SessionRow {
+interface PublicJournalSessionRow extends QueryResultRow {
+  session_id: string;
+  game_id: string;
+  state_version: string | number;
+  last_event_sequence: string | number;
+  created_at: Date | string;
   archived_at: Date | string | null;
-  principal_id: string;
-  principal_session_id: string;
-  principal_kind: SessionPrincipal["kind"];
-  principal_role: SessionRole;
-  actor_scope: unknown;
-  principal_created_at: Date | string;
 }
 
 interface PrincipalRow extends QueryResultRow {
@@ -192,15 +193,9 @@ const SESSION_COLUMNS = `
 const PUBLIC_JOURNAL_SESSION_COLUMNS = `
   s.id AS session_id,
   s.game_id,
-  s.bundle_hash,
-  s.content_source_id,
-  s.session_role,
-  s.participants,
-  s.state,
   s.state_version,
   s.last_event_sequence,
-  s.created_at,
-  s.updated_at
+  s.created_at
 `;
 const SELECT_SESSION = `SELECT ${SESSION_COLUMNS}
   FROM game_sessions
@@ -224,6 +219,7 @@ const SYSTEM_SCHEDULE_COLUMNS = `
   created_at,
   updated_at
 `;
+const PUBLIC_JOURNAL_EVENT_BATCH_SIZE = 128;
 
 export class PostgresSessionStore<TState = unknown> implements SessionStorePort<TState> {
   readonly mode = "postgresql";
@@ -379,10 +375,7 @@ export class PostgresSessionStore<TState = unknown> implements SessionStorePort<
       const sessionRead = await queryClient<PublicJournalSessionRow>(
         client,
         input.sessionId,
-        `SELECT ${PUBLIC_JOURNAL_SESSION_COLUMNS}, s.archived_at,
-                p.principal_id, p.session_id AS principal_session_id,
-                p.principal_kind, p.session_role AS principal_role,
-                p.actor_scope, p.created_at AS principal_created_at
+        `SELECT ${PUBLIC_JOURNAL_SESSION_COLUMNS}, s.archived_at
          FROM game_sessions s
          JOIN session_principals p ON p.session_id = s.id
          WHERE s.id = $1 AND p.credential_sha256 = $2
@@ -395,23 +388,43 @@ export class PostgresSessionStore<TState = unknown> implements SessionStorePort<
         await queryClient(client, input.sessionId, "COMMIT");
         return null;
       }
-      const eventRead = await queryClient<EventRow>(
-        client,
-        input.sessionId,
-        `${SELECT_EVENT}
-         WHERE session_id = $1 AND audience = 'public' AND sequence <= $2
-         ORDER BY sequence ASC
-         LIMIT $3`,
-        [input.sessionId, parseSafeInteger(row.last_event_sequence), limit]
-      );
-      const session = mapSessionRow<TState>(row);
+      const session = mapPublicJournalSessionRow<TState>(row);
       const archivedAt = row.archived_at === null ? undefined : new Date(row.archived_at);
+      const accumulator = createPublicGameplayJournalByteAccumulator({
+        session,
+        lifecycle: archivedAt === undefined ? "active" : "archived",
+        ...(archivedAt === undefined ? {} : { archivedAt }),
+        maxEntries: limit
+      });
+      const events: SessionEventRecord[] = [];
+      let afterSequence = 0;
+      let exhausted = false;
+      while (events.length < limit && !exhausted) {
+        const eventRead = await queryClient<EventRow>(
+          client,
+          input.sessionId,
+          `${SELECT_EVENT}
+           WHERE session_id = $1 AND audience = 'public' AND sequence > $2 AND sequence <= $3
+           ORDER BY sequence ASC
+           LIMIT $4`,
+          [input.sessionId, afterSequence, parseSafeInteger(row.last_event_sequence), PUBLIC_JOURNAL_EVENT_BATCH_SIZE]
+        );
+        if (eventRead.rows.length === 0) break;
+        for (const eventRow of eventRead.rows) {
+          const event = mapEventRow(eventRow);
+          accumulator.addEvent(event);
+          events.push(event);
+          afterSequence = event.sequence;
+          if (events.length === limit) break;
+        }
+        exhausted = eventRead.rows.length < PUBLIC_JOURNAL_EVENT_BATCH_SIZE;
+      }
       await queryClient(client, input.sessionId, "COMMIT");
       return {
         session,
         lifecycle: archivedAt === undefined ? "active" : "archived",
         ...(archivedAt === undefined ? {} : { archivedAt }),
-        events: eventRead.rows.map(mapEventRow)
+        events
       };
     } catch (error) {
       if (transactionStarted) releaseError = await rollbackAfterFailure(client, error);
@@ -1351,6 +1364,22 @@ function mapSessionRow<TState>(row: SessionRow): SessionRecord<TState> {
   return session;
 }
 
+/** Journal export only needs immutable session metadata, not JSONB state. */
+function mapPublicJournalSessionRow<TState>(
+  row: PublicJournalSessionRow
+): Pick<SessionRecord<TState>, "sessionId" | "gameId" | "version" | "createdAt"> {
+  return {
+    sessionId: row.session_id,
+    gameId: row.game_id,
+    version: {
+      sessionId: row.session_id,
+      stateVersion: parseSafeInteger(row.state_version),
+      lastEventSequence: parseSafeInteger(row.last_event_sequence)
+    },
+    createdAt: new Date(row.created_at)
+  };
+}
+
 function mapPrincipalRow(row: PrincipalRow): SessionPrincipal {
   return {
     principalId: row.principal_id,
@@ -1539,6 +1568,7 @@ async function rollbackAfterFailure(
 
 function mapDatabaseOperationalError(error: unknown): Error {
   if (
+    error instanceof PublicJournalTooLargeError ||
     error instanceof SessionAuthenticationError ||
     error instanceof SessionStoreUnavailableError ||
     error instanceof SessionVersionConflictError ||

@@ -22,6 +22,7 @@ import {
   type SessionDatabasePool
 } from "../src/modules/session/postgresSessionStore.ts";
 import {
+  PublicJournalTooLargeError,
   SessionAuthenticationError,
   SessionStoreUnavailableError,
   SessionWriteLockedError
@@ -1130,13 +1131,70 @@ test("PostgreSQL public journal source uses one bounded authenticated snapshot",
   assert.deepEqual(source?.events[0]?.metricChanges, publicEvent.metricChanges);
   const eventQuery = client.queries.find(({ text }) => text.includes("FROM session_events"));
   assert.match(eventQuery?.text ?? "", /audience = 'public'/u);
-  assert.match(eventQuery?.text ?? "", /sequence <= \$2/u);
+  assert.match(eventQuery?.text ?? "", /sequence > \$2[\s\S]*sequence <= \$3/u);
   assert.match(eventQuery?.text ?? "", /ORDER BY sequence ASC/u);
-  assert.match(eventQuery?.text ?? "", /LIMIT \$3/u);
-  assert.deepEqual(eventQuery?.values, [sessionId, 7, 65_537]);
+  assert.match(eventQuery?.text ?? "", /LIMIT \$4/u);
+  assert.doesNotMatch(eventQuery?.text ?? "", /s\.participants|s\.state/u);
+  assert.deepEqual(eventQuery?.values, [sessionId, 0, 7, 128]);
   assert.deepEqual(client.queries.map(({ text }) => firstSqlWord(text)), [
     "BEGIN", "SELECT", "SELECT", "COMMIT"
   ]);
+});
+
+test("PostgreSQL public journal source advances through bounded keyset pages", async () => {
+  const throughSequence = 260;
+  const client = new ScriptedClient((text, values) => {
+    if (text.includes("JOIN session_principals")) {
+      return result([{ ...persistedRow, last_event_sequence: String(throughSequence), archived_at: null }]);
+    }
+    if (text.includes("FROM session_events")) {
+      const afterSequence = Number(values?.[1] ?? 0);
+      const count = Math.min(128, throughSequence - afterSequence);
+      return result(Array.from({ length: count }, (_, index) =>
+        eventRow(event({ session: sessionId, sequence: afterSequence + index + 1 }))
+      ));
+    }
+    return result([]);
+  });
+  const store = new PostgresSessionStore<Record<string, unknown>>(new ScriptedPool(client));
+
+  const source = await store.readPublicJournalSource({ sessionId, credentialSha256 }, 65_537);
+
+  assert.equal(source?.events.length, throughSequence);
+  const eventQueries = client.queries.filter(({ text }) => text.includes("FROM session_events"));
+  assert.deepEqual(eventQueries.map(({ values }) => values), [
+    [sessionId, 0, throughSequence, 128],
+    [sessionId, 128, throughSequence, 128],
+    [sessionId, 256, throughSequence, 128]
+  ]);
+  assert.equal(firstSqlWord(client.queries.at(-1)?.text ?? ""), "COMMIT");
+});
+
+test("PostgreSQL public journal stops after the first page when its exact byte budget overflows", async () => {
+  const payload = "x".repeat(300 * 1024);
+  const client = new ScriptedClient((text, values) => {
+    if (text.includes("JOIN session_principals")) {
+      return result([{ ...persistedRow, last_event_sequence: "1000", archived_at: null }]);
+    }
+    if (text.includes("FROM session_events")) {
+      const afterSequence = Number(values?.[1] ?? 0);
+      return result(Array.from({ length: 128 }, (_, index) => {
+        const storedEvent = event({ session: sessionId, sequence: afterSequence + index + 1 });
+        storedEvent.data = { payload };
+        return eventRow(storedEvent);
+      }));
+    }
+    return result([]);
+  });
+  const store = new PostgresSessionStore<Record<string, unknown>>(new ScriptedPool(client));
+
+  await assert.rejects(
+    store.readPublicJournalSource({ sessionId, credentialSha256 }, 65_537),
+    PublicJournalTooLargeError
+  );
+
+  assert.equal(client.queries.filter(({ text }) => text.includes("FROM session_events")).length, 1);
+  assert.equal(firstSqlWord(client.queries.at(-1)?.text ?? ""), "ROLLBACK");
 });
 
 test("PostgreSQL metricChanges mapping rejects malformed durable JSON", async () => {

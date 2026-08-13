@@ -38,7 +38,11 @@ import {
   resolveSessionViewerActor
 } from "./sessionAuthentication.ts";
 import { SessionAuthenticationError, SessionStoreUnavailableError } from "./sessionStoreErrors.ts";
-import { initializeTurnBasedSessionState } from "./turnBasedSessionState.ts";
+import {
+  initializeTurnBasedSessionState,
+  ParticipantCountValidationError,
+  resolveParticipantCount
+} from "./turnBasedSessionState.ts";
 import {
   buildPublicGameplayJournal,
   MAX_PUBLIC_JOURNAL_ENTRIES
@@ -82,10 +86,22 @@ export class SessionService {
     await assertGameLaunchReady({ gameId, contentSourceId: request.contentSourceId });
     const bundle = await contentService.getBundle(gameId, request.contentSourceId);
     const declaredState = extractInitialState(bundle) as RuntimeState;
-    const initialState = initializeTurnBasedSessionState(bundle.manifest, declaredState, {});
+    let initialState: RuntimeState;
+    let participantCount: number;
+    try {
+      participantCount = resolveParticipantCount(bundle.manifest, request.participantCount);
+      initialState = initializeTurnBasedSessionState(bundle.manifest, declaredState, {
+        participantCount
+      });
+    } catch (error) {
+      if (error instanceof ParticipantCountValidationError) {
+        throw new RequestValidationError(error.message);
+      }
+      throw error;
+    }
     const participants = materializeLocalSessionParticipants(
       initialState,
-      bundle.manifest.config.players.min
+      participantCount
     );
     // A client never chooses its own trusted role. Facilitated mode is the one
     // current manifest rule that creates a facilitator controller.

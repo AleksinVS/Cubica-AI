@@ -50,6 +50,11 @@ import {
 
 export type { ClientRequest, PlayerState } from "@/presenter/types";
 
+export interface ParticipantCountBounds {
+  readonly min: number;
+  readonly max: number;
+}
+
 /**
  * Generic Presenter для игрового Web-плеера.
  *
@@ -85,6 +90,7 @@ export class GamePresenter {
   private launchContext: PortalLaunchContext | null = null;
   private contentSourceId: string | undefined;
   private deterministicFallbackActive = false;
+  private readonly requestParticipantCount?: (bounds: ParticipantCountBounds) => Promise<number>;
 
   constructor(options: {
     gateway: ReactViewGateway;
@@ -92,12 +98,14 @@ export class GamePresenter {
     gameUi?: GamePlayerUiContent;
     config: GameConfig;
     contentSourceId?: string;
+    requestParticipantCount?: (bounds: ParticipantCountBounds) => Promise<number>;
   }) {
     this.gateway = options.gateway;
     this.content = options.content;
     this.gameUi = options.gameUi;
     this.config = options.config;
     this.contentSourceId = options.contentSourceId;
+    this.requestParticipantCount = options.requestParticipantCount;
   }
 
   /**
@@ -254,6 +262,9 @@ export class GamePresenter {
           // credential. A command tied to that inaccessible session can never
           // be recovered and must not block the fresh local session.
           clearPendingRuntimeCommand(storedSessionId);
+          // A stale local id cannot be safely mapped back to its old setup
+          // choice without a new storage protocol; preserve recovery by using
+          // the manifest minimum for this one fallback path.
           const data = await this.createSession();
           this.session = { ...data, gameId: this.config.gameId };
           if (typeof window !== "undefined") {
@@ -264,7 +275,7 @@ export class GamePresenter {
           await this.recoverPendingCommandOrEnsureAiSurface();
         }
       } else {
-        const data = await this.createSession();
+        const data = await this.createFreshSession();
         this.session = { ...data, gameId: this.config.gameId };
         if (typeof window !== "undefined") {
           window.localStorage.setItem(this.config.storageKey, data.sessionId);
@@ -307,7 +318,7 @@ export class GamePresenter {
       }
       const data = this.launchContext
         ? await bindPortalLaunchSession(this.launchContext)
-        : await this.createSession();
+        : await this.createSession(this.session?.participants.length);
       this.session = { ...data, gameId: data.gameId || this.config.gameId };
       if (typeof window !== "undefined") {
         const storageKey = this.launchContext
@@ -571,10 +582,19 @@ export class GamePresenter {
       (this.content.executionMode === "ai-driven" || this.content.executionMode === "hybrid");
   }
 
-  private createSession(): Promise<GameSession> {
+  private async createFreshSession(): Promise<GameSession> {
+    const bounds = this.content.playerConfig;
+    const participantCount = bounds.min < bounds.max && this.requestParticipantCount !== undefined
+      ? await this.requestParticipantCount({ min: bounds.min, max: bounds.max })
+      : undefined;
+    return this.createSession(participantCount);
+  }
+
+  private createSession(participantCount?: number): Promise<GameSession> {
     return createNewSessionWithOptions({
       gameId: this.config.gameId,
-      contentSourceId: this.contentSourceId
+      contentSourceId: this.contentSourceId,
+      ...(participantCount === undefined ? {} : { participantCount })
     }) as Promise<GameSession>;
   }
 

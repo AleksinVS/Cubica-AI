@@ -18,6 +18,13 @@ export const ru = {
   /** Runtime dependency state label */
   runtimeStatusKicker: "Состояние запуска",
 
+  /** Fresh local session preparation screen */
+  sessionSetupKicker: "Подготовка к игре",
+  sessionSetupTitle: "Выберите количество участников",
+  sessionSetupDescription: "Количество можно изменить только перед началом новой сессии.",
+  sessionSetupParticipants: "Участники",
+  sessionSetupStart: "Начать игру",
+
   /** AI-driven game is paused by declared failure policy */
   runtimePausedTitle: "Игра поставлена на паузу",
 

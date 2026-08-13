@@ -1067,7 +1067,12 @@
         "required": ["gameId"],
         "properties": {
           "gameId": { "$ref": "#/components/schemas/GameId" },
-          "contentSourceId": { "$ref": "#/components/schemas/ContentSourceId" }
+          "contentSourceId": { "$ref": "#/components/schemas/ContentSourceId" },
+          "participantCount": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Optional number of local participants. Runtime checks this against the published manifest bounds."
+          }
         },
         "additionalProperties": false
       },

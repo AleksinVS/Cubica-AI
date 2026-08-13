@@ -10,9 +10,10 @@ import type {
   SessionRecord
 } from "@cubica/contracts-session";
 import { HttpError } from "../errors.ts";
+import { PublicJournalTooLargeError } from "./sessionStoreErrors.ts";
 
 export const MAX_PUBLIC_JOURNAL_ENTRIES = 65_536;
-const MAX_SERIALIZED_BYTES = 32 * 1024 * 1024;
+export const MAX_SERIALIZED_BYTES = 32 * 1024 * 1024;
 const Ajv2020 = (Ajv2020Lib as any).default || Ajv2020Lib;
 const addFormats = (addFormatsLib as any).default || addFormatsLib;
 const schemaPath = path.resolve(
@@ -30,23 +31,23 @@ const validateSchema = ajv.compile(schema) as (value: unknown) => boolean;
  * invariants that cannot be expressed by the journal schema alone.
  */
 export function buildPublicGameplayJournal<TState>(input: {
-  session: SessionRecord<TState>;
+  session: Pick<SessionRecord<TState>, "sessionId" | "gameId" | "version" | "createdAt">;
   events: ReadonlyArray<SessionEventRecord>;
   lifecycle: "active" | "archived";
   archivedAt?: Date;
 }): PortablePublicGameplayJournal {
   const throughEventSequence = input.session.version.lastEventSequence;
-  const entries = input.events
-    .filter((event) => event.audience === "public" && event.sequence <= throughEventSequence)
-    .map(toPublicEntry);
-
-  if (entries.length > MAX_PUBLIC_JOURNAL_ENTRIES) {
-    throw new HttpError(
-      413,
-      `Public gameplay journal exceeds the ${MAX_PUBLIC_JOURNAL_ENTRIES}-entry limit.`,
-      "PUBLIC_JOURNAL_TOO_LARGE"
-    );
+  const accumulator = createPublicGameplayJournalByteAccumulator({
+    session: input.session,
+    lifecycle: input.lifecycle,
+    ...(input.archivedAt === undefined ? {} : { archivedAt: input.archivedAt })
+  });
+  for (const event of input.events) {
+    if (event.audience === "public" && event.sequence <= throughEventSequence) {
+      accumulator.addEvent(event);
+    }
   }
+  const entries = [...accumulator.entries];
 
   const journal: PortablePublicGameplayJournal = {
     format: "cubica.public-gameplay-journal",
@@ -84,13 +85,85 @@ export function serializePublicGameplayJournal(journal: PortablePublicGameplayJo
   }
   const bytes = Buffer.byteLength(serialized, "utf8");
   if (bytes > MAX_SERIALIZED_BYTES) {
-    throw new HttpError(
-      413,
-      `Public gameplay journal exceeds the ${MAX_SERIALIZED_BYTES}-byte limit.`,
-      "PUBLIC_JOURNAL_TOO_LARGE"
+    throw new PublicJournalTooLargeError(
+      `Public gameplay journal exceeds the ${MAX_SERIALIZED_BYTES}-byte limit.`
     );
   }
   return serialized;
+}
+
+/**
+ * Count the exact bytes emitted by JSON.stringify while events are read.
+ * The accumulator deliberately mirrors buildPublicGameplayJournal's property
+ * insertion order, including archivedAt after entries.
+ */
+export function createPublicGameplayJournalByteAccumulator<TState>(input: {
+  session: Pick<SessionRecord<TState>, "sessionId" | "gameId" | "version" | "createdAt">;
+  lifecycle: "active" | "archived";
+  archivedAt?: Date;
+  maxEntries?: number;
+}): { readonly entries: ReadonlyArray<PortablePublicGameplayJournalEntry>; addEvent(event: SessionEventRecord): void } {
+  const sessionCreatedAt = toIso(input.session.createdAt);
+  const archivedAt = input.archivedAt === undefined ? undefined : toIso(input.archivedAt);
+  const header = JSON.stringify({
+    format: "cubica.public-gameplay-journal",
+    schemaVersion: "1.0.0",
+    sessionId: input.session.sessionId,
+    gameId: input.session.gameId,
+    lifecycle: input.lifecycle,
+    sessionCreatedAt,
+    throughEventSequence: input.session.version.lastEventSequence
+  });
+  if (header === undefined) throw invalidJournal("Public gameplay journal contains a non-JSON value.");
+  const prefix = `${header.slice(0, -1)},"entries":[`;
+  const suffix = archivedAt === undefined
+    ? "]}"
+    : `],"archivedAt":${JSON.stringify(archivedAt)}}`;
+  const entries: PortablePublicGameplayJournalEntry[] = [];
+  let bytes = Buffer.byteLength(prefix + suffix, "utf8");
+  let previousSequence = 0;
+  const eventIds = new Set<string>();
+  const maxEntries = Math.min(input.maxEntries ?? MAX_PUBLIC_JOURNAL_ENTRIES, MAX_PUBLIC_JOURNAL_ENTRIES);
+
+  if (bytes > MAX_SERIALIZED_BYTES) {
+    throw new PublicJournalTooLargeError(
+      `Public gameplay journal exceeds the ${MAX_SERIALIZED_BYTES}-byte limit.`
+    );
+  }
+
+  return {
+    get entries(): ReadonlyArray<PortablePublicGameplayJournalEntry> {
+      return entries;
+    },
+    addEvent(event: SessionEventRecord): void {
+      if (entries.length >= maxEntries || entries.length >= MAX_PUBLIC_JOURNAL_ENTRIES) {
+        throw new PublicJournalTooLargeError(
+          `Public gameplay journal exceeds the ${MAX_PUBLIC_JOURNAL_ENTRIES}-entry limit.`
+        );
+      }
+      const entry = toPublicEntry(event);
+      if (entry.sequence <= previousSequence) {
+        throw invalidJournal("Public gameplay journal event sequences must be strictly increasing.");
+      }
+      if (eventIds.has(entry.eventId)) {
+        throw invalidJournal("Public gameplay journal event ids must be unique.");
+      }
+      const serializedEntry = JSON.stringify(entry);
+      if (serializedEntry === undefined) {
+        throw invalidJournal("Public gameplay journal contains a non-JSON value.");
+      }
+      const nextBytes = bytes + Buffer.byteLength(`${entries.length === 0 ? "" : ","}${serializedEntry}`, "utf8");
+      if (nextBytes > MAX_SERIALIZED_BYTES) {
+        throw new PublicJournalTooLargeError(
+          `Public gameplay journal exceeds the ${MAX_SERIALIZED_BYTES}-byte limit.`
+        );
+      }
+      entries.push(entry);
+      eventIds.add(entry.eventId);
+      previousSequence = entry.sequence;
+      bytes = nextBytes;
+    }
+  };
 }
 
 function toPublicEntry(event: SessionEventRecord): PortablePublicGameplayJournalEntry {

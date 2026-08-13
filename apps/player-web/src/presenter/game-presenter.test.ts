@@ -50,6 +50,118 @@ afterEach(() => {
 });
 
 describe("GamePresenter session recovery", () => {
+  it("does not POST a fresh flexible-count session until participant choice is confirmed", async () => {
+    const content = neutralContent("neutral-participant-setup", { min: 2, max: 4 });
+    const config = createDefaultGameConfig(createDefaultGameConfigData(content));
+    let confirmChoice: ((count: number) => void) | undefined;
+    const requestParticipantCount = vi.fn(() => new Promise<number>((resolve) => {
+      confirmChoice = resolve;
+    }));
+    const freshSession: GameSession = {
+      ...turnSession("p1", { p1: {}, p2: {}, p3: {} }),
+      sessionId: "session-three",
+      gameId: content.gameId
+    };
+    const fetchMock = vi.fn().mockResolvedValue(runtimeResponse(freshSession, 0));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const presenter = new GamePresenter({
+      gateway: new ReactViewGateway(),
+      content,
+      config,
+      requestParticipantCount
+    });
+    const bootPromise = presenter.boot();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(requestParticipantCount).toHaveBeenCalledWith({ min: 2, max: 4 });
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    confirmChoice?.(3);
+    await bootPromise;
+    expect(JSON.parse(String((fetchMock.mock.calls[0]?.[1] as RequestInit).body))).toMatchObject({
+      gameId: content.gameId,
+      participantCount: 3
+    });
+  });
+
+  it("keeps fixed-count session creation automatic", async () => {
+    const content = neutralContent("neutral-fixed-count", { min: 2, max: 2 });
+    const requestParticipantCount = vi.fn(() => Promise.resolve(2));
+    const session = {
+      ...turnSession("p1", { p1: {}, p2: {} }),
+      gameId: content.gameId
+    };
+    const fetchMock = vi.fn().mockResolvedValue(runtimeResponse(session, 0));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const presenter = new GamePresenter({
+      gateway: new ReactViewGateway(),
+      content,
+      config: createDefaultGameConfig(createDefaultGameConfigData(content)),
+      requestParticipantCount
+    });
+    await presenter.boot();
+
+    expect(requestParticipantCount).not.toHaveBeenCalled();
+    expect(JSON.parse(String((fetchMock.mock.calls[0]?.[1] as RequestInit).body))).toEqual({
+      gameId: content.gameId
+    });
+  });
+
+  it("resumes a flexible-count session without reopening setup", async () => {
+    const content = neutralContent("neutral-flexible-resume", { min: 2, max: 4 });
+    const config = createDefaultGameConfig(createDefaultGameConfigData(content));
+    const requestParticipantCount = vi.fn(() => Promise.resolve(2));
+    const session = {
+      ...turnSession("p1", { p1: {}, p2: {}, p3: {} }),
+      sessionId: "session-resume-three",
+      gameId: content.gameId
+    };
+    window.localStorage.setItem(config.storageKey, session.sessionId);
+    const fetchMock = vi.fn().mockResolvedValue(runtimeResponse(session, 0));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const presenter = new GamePresenter({
+      gateway: new ReactViewGateway(),
+      content,
+      config,
+      requestParticipantCount
+    });
+    await presenter.boot();
+
+    expect(requestParticipantCount).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(`/api/runtime/sessions/${session.sessionId}`);
+  });
+
+  it("preserves the active participant count when resetting a local session", async () => {
+    const content = neutralContent("neutral-flexible-reset", { min: 2, max: 4 });
+    const current = {
+      ...turnSession("p1", { p1: {}, p2: {}, p3: {} }),
+      gameId: content.gameId
+    };
+    const replacement = { ...current, sessionId: "session-reset-three" };
+    const fetchMock = vi.fn().mockResolvedValue(runtimeResponse(replacement, 0));
+    vi.stubGlobal("fetch", fetchMock);
+    const requestParticipantCount = vi.fn(() => Promise.resolve(2));
+    const presenter = new GamePresenter({
+      gateway: new ReactViewGateway(),
+      content,
+      config: createDefaultGameConfig(createDefaultGameConfigData(content)),
+      requestParticipantCount
+    });
+    Reflect.set(presenter, "session", current);
+    Reflect.set(presenter, "booting", false);
+
+    await presenter.resetGame();
+
+    expect(requestParticipantCount).not.toHaveBeenCalled();
+    expect(JSON.parse(String((fetchMock.mock.calls[0]?.[1] as RequestInit).body))).toMatchObject({
+      gameId: content.gameId,
+      participantCount: 3
+    });
+  });
+
   it.each([401, 404])("replaces an inaccessible local session after HTTP %s and clears its outbox", async (status) => {
     const content = neutralContent("neutral-session-recovery");
     const config = createDefaultGameConfig(createDefaultGameConfigData(content));
@@ -96,7 +208,7 @@ describe("GamePresenter session recovery", () => {
   });
 
   it("uses only the portal rebind flow when launch parameters are present", async () => {
-    const content = neutralContent("neutral-portal-rebind");
+    const content = neutralContent("neutral-portal-rebind", { min: 2, max: 4 });
     const config = createDefaultGameConfig(createDefaultGameConfigData(content));
     const portalSession: GameSession = {
       ...turnSession("p1"),
@@ -115,16 +227,19 @@ describe("GamePresenter session recovery", () => {
       runtimeSession: portalSession
     }), { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);
+    const requestParticipantCount = vi.fn(() => Promise.resolve(2));
 
     const presenter = new GamePresenter({
       gateway: new ReactViewGateway(),
       content,
-      config
+      config,
+      requestParticipantCount
     });
     await presenter.boot();
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/portal/runtime-session");
+    expect(requestParticipantCount).not.toHaveBeenCalled();
     expect(window.localStorage.getItem(config.storageKey)).toBe("unrelated-local-session");
     expect(presenter.sessionSnapshot?.sessionId).toBe("session-portal");
   });
@@ -530,14 +645,17 @@ function runtimeResponse(session: GameSession, stateVersion: number): Response {
   });
 }
 
-function neutralContent(gameId: string): PlayerFacingContent {
+function neutralContent(
+  gameId: string,
+  playerConfig: PlayerFacingContent["playerConfig"] = { min: 1, max: 1 }
+): PlayerFacingContent {
   return {
     gameId,
     version: "1.0.0",
     name: "Neutral fixture",
     description: "Presenter transport fixture",
     locale: "ru",
-    playerConfig: { min: 1, max: 1 },
+    playerConfig,
     actions: [],
     mockups: []
   };

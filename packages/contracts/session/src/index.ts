@@ -2,9 +2,14 @@ export type SessionId = string;
 export type PlayerId = string;
 export type EventId = string;
 export type * from "./generated/public-gameplay-journal.ts";
+import type { CreateSessionRequest as GeneratedCreateSessionRequest } from "./generated/create-session-request.ts";
 import type { SessionParticipant } from "./generated/session-participant.ts";
 export type { SessionParticipant } from "./generated/session-participant.ts";
 export { validateSessionParticipantsShape } from "./sessionParticipantValidation.ts";
+export {
+  getCreateSessionRequestValidationErrors,
+  validateCreateSessionRequestShape
+} from "./createSessionRequestValidation.ts";
 export type SessionRole = "player" | "facilitator" | "assistant" | "observer";
 export type SessionPrincipalId = string;
 
@@ -118,14 +123,7 @@ export interface ArchivedSessionAudit<TState = unknown> {
   receipts: ReadonlyArray<SessionCommandReceipt>;
 }
 
-export interface CreateSessionRequest {
-  gameId?: string;
-  /**
-   * Optional runtime content source for editor preview sessions.
-   * Normal player sessions omit it and use the canonical published content.
-   */
-  contentSourceId?: string;
-}
+export type CreateSessionRequest = GeneratedCreateSessionRequest;
 
 export interface CreateSessionInput<TState = unknown> {
   gameId: string;
@@ -358,7 +356,7 @@ export interface SessionAuthenticationInput {
  * the public-journal limits.
  */
 export interface SessionPublicJournalSource<TState = unknown> {
-  session: SessionRecord<TState>;
+  session: Pick<SessionRecord<TState>, "sessionId" | "gameId" | "version" | "createdAt">;
   lifecycle: "active" | "archived";
   archivedAt?: Date;
   events: ReadonlyArray<SessionEventRecord>;

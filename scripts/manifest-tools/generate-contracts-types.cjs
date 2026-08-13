@@ -41,6 +41,21 @@ const JOBS = [
     outputKind: "json-schema"
   },
   {
+    name: "create-session-request",
+    schema: path.join(repoRoot, "docs", "architecture", "runtime-api-openapi.yaml"),
+    schemaPath: ["components", "schemas", "CreateSessionRequest"],
+    output: path.join(repoRoot, "packages", "contracts", "session", "src", "generated", "create-session-request.ts"),
+    rootName: "CreateSessionRequest",
+    compileRoot: true
+  },
+  {
+    name: "create-session-request-schema",
+    schema: path.join(repoRoot, "docs", "architecture", "runtime-api-openapi.yaml"),
+    schemaPath: ["components", "schemas", "CreateSessionRequest"],
+    output: path.join(repoRoot, "packages", "contracts", "session", "src", "generated", "create-session-request.schema.json"),
+    outputKind: "json-schema"
+  },
+  {
     name: "game-intent",
     schema: path.join(repoRoot, "docs", "architecture", "schemas", "game-intent.schema.json"),
     output: path.join(repoRoot, "packages", "contracts", "manifest", "src", "generated", "game-intent.ts"),

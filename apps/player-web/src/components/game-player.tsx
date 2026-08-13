@@ -41,6 +41,8 @@ import { applyGameStylesheetLinks } from "@/lib/game-stylesheet-links";
 import type { PlayerLayoutMode } from "@/lib/player-layout-mode";
 import { createManifestActionAdapter } from "@/lib/manifest-action-adapter";
 import { restorePreviewSession } from "@/presenter/runtime-client";
+import { SessionSetup } from "@/components/session-setup";
+import type { ParticipantCountBounds } from "@/presenter/game-presenter";
 
 export type { PlayerFacingMockup as GameMockup };
 
@@ -135,6 +137,20 @@ export function GamePlayer({
   const [lastCompletedPreviewAction, setLastCompletedPreviewAction] = useState<EditorPreviewCompletedAction | undefined>(
     undefined
   );
+  const [participantSetup, setParticipantSetup] = useState<ParticipantCountBounds | null>(null);
+  const participantSetupResolverRef = useRef<((participantCount: number) => void) | null>(null);
+  const requestParticipantCount = useCallback((bounds: ParticipantCountBounds) => {
+    setParticipantSetup(bounds);
+    return new Promise<number>((resolve) => {
+      participantSetupResolverRef.current = resolve;
+    });
+  }, []);
+  const confirmParticipantCount = useCallback((participantCount: number) => {
+    const resolve = participantSetupResolverRef.current;
+    participantSetupResolverRef.current = null;
+    setParticipantSetup(null);
+    resolve?.(participantCount);
+  }, []);
 
   useEffect(() => {
     if (!needsGameAssets) {
@@ -260,7 +276,8 @@ export function GamePlayer({
       content,
       gameUi,
       config: fullConfig,
-      contentSourceId
+      contentSourceId,
+      requestParticipantCount: editorPreviewMode ? undefined : requestParticipantCount
     });
     presenterRef.current = presenter;
 
@@ -323,7 +340,7 @@ export function GamePlayer({
       unsubscribe();
       presenterRef.current = null;
     };
-  }, [content, contentSourceId, gameUi, fullConfig, initialSessionId, playerPluginState.status]);
+  }, [content, contentSourceId, editorPreviewMode, gameUi, fullConfig, initialSessionId, playerPluginState.status, requestParticipantCount]);
 
   const handleAction = async (actionId: string, payload?: Record<string, unknown>) => {
     const presenter = presenterRef.current;
@@ -438,6 +455,16 @@ export function GamePlayer({
       <main ref={rootRef} className="shell game-player-root" style={rootStyle}>
         <div className="error inline-error">{playerPluginState.message}</div>
       </main>
+    );
+  }
+
+  if (participantSetup) {
+    return (
+      <SessionSetup
+        min={participantSetup.min}
+        max={participantSetup.max}
+        onConfirm={confirmParticipantCount}
+      />
     );
   }
 

@@ -137,6 +137,19 @@ test("untrusted create request cannot inject participant metadata", () => {
   }), /unsupported field "participants"/u);
 });
 
+test("create request accepts only a positive integer participantCount", () => {
+  assert.deepEqual(parseCreateSessionRequest({ gameId: "neutral-game", participantCount: 2 }), {
+    gameId: "neutral-game",
+    participantCount: 2
+  });
+  for (const participantCount of [0, -1, 1.5, "2", null]) {
+    assert.throws(
+      () => parseCreateSessionRequest({ gameId: "neutral-game", participantCount }),
+      /participantCount must be a positive integer/u
+    );
+  }
+});
+
 test("migration 004 deletes sessions before the required column and preserves bundles", async () => {
   const up = await readFile(new URL("../migrations/004_session_participants.up.sql", import.meta.url), "utf8");
   const down = await readFile(new URL("../migrations/004_session_participants.down.sql", import.meta.url), "utf8");
