@@ -34,6 +34,13 @@ const JOBS = [
     compileRoot: true
   },
   {
+    name: "session-participants-schema",
+    schema: path.join(repoRoot, "docs", "architecture", "runtime-api-openapi.yaml"),
+    schemaPath: ["components", "schemas", "SessionParticipants"],
+    output: path.join(repoRoot, "packages", "contracts", "session", "src", "generated", "session-participants.schema.json"),
+    outputKind: "json-schema"
+  },
+  {
     name: "game-intent",
     schema: path.join(repoRoot, "docs", "architecture", "schemas", "game-intent.schema.json"),
     output: path.join(repoRoot, "packages", "contracts", "manifest", "src", "generated", "game-intent.ts"),
@@ -163,6 +170,9 @@ async function generateOne(job) {
   if (job.schemaPath) {
     source = inlineOpenApiComponentRefs(source, sourceDocument);
   }
+  if (job.outputKind === "json-schema") {
+    return `${JSON.stringify(source, null, 2)}\n`;
+  }
   const schema = normalizeSchemaForTypeGeneration(source, job);
   const compileOptions = job.schemaPath
     ? {
@@ -245,7 +255,7 @@ async function run() {
         drifted = true;
         console.error(
           `generate-contracts-types: DRIFT in ${relOutput}. ` +
-            `The committed TypeScript no longer matches the JSON Schema. ` +
+          `The committed artifact no longer matches its canonical schema. ` +
             `Run "npm run generate:contracts" and commit the result.`
         );
       }

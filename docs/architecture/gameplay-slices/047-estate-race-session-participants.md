@@ -1,7 +1,7 @@
 # GSR-047: Estate Race — общая модель локальных участников S8
 
-- **Дата:** 2026-08-12
-- **Статус:** In progress
+- **Дата:** 2026-08-13
+- **Статус:** Completed
 - **Предусловие:** GSR-046 завершил локальную продуктовую поверхность; PM
   одобрил session-owned participants и отказ от совместимости с тестовыми
   сессиями до production
@@ -32,19 +32,22 @@ S9, а invite/join/WebSocket/reconnect остаются S10. Существую�
 строители персональной проекции и canonical action availability переиспользуются
 без второго вычислителя или отдельного Estate Race API.
 
-`seatId` не является игровым термином. `playerId` остаётся actor, на который
-ссылаются `state.players`, порядок и активный ход. Совпадение двух значений в
-локальном materializer — исполнительский инвариант S8, а не универсальное
-тождество идентичностей.
+`seatId` не является игровым термином. В player/turn-игре `playerId` остаётся
+actor, на который точно ссылаются `state.players`, порядок и активный ход.
+Нейтральная неходовая сессия не получает искусственные `state.players` или
+`public.turn`, поэтому actor без отдельно ограниченного principal scope в ней
+не определяется. Совпадение `seatId` и `playerId` в локальном materializer —
+исполнительский инвариант S8, а не универсальное тождество идентичностей.
 
 ## Разрушительный pre-release cutover
 
-Repository evidence не обнаружил поддерживаемого production deployment или
+Pre-release evidence не обнаружил поддерживаемого production deployment или
 пользовательских сохранённых партий. Поэтому миграция S8 удаляет прежние
 `game_sessions` и каскадно связанные principals, receipts, events и schedules,
 затем делает `participants` обязательным. Immutable `game_bundles` сохраняются.
-Миграция не подключается к неизвестной внешней базе самостоятельно и не
-обещает такой способ обновления после production-запуска.
+Disposable PostgreSQL proof подтвердил migrations 001–005 и store restart
+roundtrip (`1/1`); миграция не подключается к неизвестной внешней базе
+самостоятельно, а проверка использовала только одноразовую локальную базу.
 
 ## Отсутствие дрейфа игровой семантики
 
@@ -55,18 +58,23 @@ Repository evidence не обнаружил поддерживаемого produ
 
 ## Приёмка
 
-- OpenAPI/JSON Schema и производные типы согласованы;
+- OpenAPI/JSON Schema и производные типы согласованы (canonical generated
+  contracts и OpenAPI validation — `PASS`, contracts `7/7`);
 - create/get/action/restore и agent-facing snapshot возвращают один и тот же
   неизменяемый список participants;
 - локальный principal получает actor scope только из session participants;
 - дубликаты мест/actor, `agent` в S8 и попытка передать participants клиентом
   отклоняются;
 - миграция удаляет только session-owned данные и сохраняет bundles;
-- нейтральная фикстура доказывает два локальных места, приватную проекцию,
-  чужой actor и canonical availability;
+- player/turn fixture доказывает два локальных места, приватную проекцию,
+  чужой actor и canonical availability; нейтральная неходовая fixture
+  подтверждает отсутствие искусственных `state.players`/`public.turn`, а не
+  наличие игровой очереди;
 - Estate Race доказывает 2–6 мест, setup и ротацию тем же manifest без правки
   правил игры;
-- game-agnostic и player-core seam проверки не находят предметной ветки.
+- game-agnostic (`10/10`) и player-core seam проверки не находят предметной
+  ветки. Полный CMT suite в приёмку S8 не входит; проверен representative
+  session-setup после обновления прямых consumers.
 
 ## Условия остановки
 

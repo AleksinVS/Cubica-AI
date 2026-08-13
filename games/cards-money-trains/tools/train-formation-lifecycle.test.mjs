@@ -18,6 +18,7 @@ import { createImmutableBundleContent } from "../../../services/runtime-api/src/
 import { validateGameManifest } from "../../../services/runtime-api/src/modules/content/manifestValidation.ts";
 import { dispatchRuntimeAction } from "../../../services/runtime-api/src/modules/runtime/actionDispatcher.ts";
 import { InMemorySessionStore } from "../../../services/runtime-api/src/modules/session/inMemorySessionStore.ts";
+import { materializeLocalSessionParticipants } from "../../../services/runtime-api/src/modules/session/sessionParticipants.ts";
 import { buildLifecycleAuthoring } from "./build-card-lifecycle.mjs";
 import { buildMovementOrderAuthoring } from "./build-movement-order.mjs";
 import { buildOperatingTurnAuthoring } from "./build-operating-turn.mjs";
@@ -107,6 +108,7 @@ const createSession = async (manifest, initialState = manifest.state) => {
     gameId: manifest.meta.id,
     sessionRole: "facilitator",
     initialState: structuredClone(initialState),
+    participants: materializeLocalSessionParticipants(initialState, manifest.config.players.min),
     immutableBundle: createImmutableBundleContent(manifest.meta.id, manifest),
     principal: {
       principalId: "train-formation-test-facilitator",

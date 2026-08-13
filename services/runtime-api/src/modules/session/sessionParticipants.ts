@@ -1,8 +1,11 @@
 /** Neutral materialization and semantic validation of authoritative session seats. */
-import type { SessionParticipant, SessionRecord } from "@cubica/contracts-session";
+import {
+  validateSessionParticipantsShape,
+  type SessionParticipant,
+  type SessionRecord
+} from "@cubica/contracts-session";
 
 type RuntimeState = Record<string, unknown>;
-const forbiddenIds = new Set(["__proto__", "constructor", "prototype"]);
 
 /**
  * Derive local human seats only from the exact player actors materialized in
@@ -33,24 +36,19 @@ export function materializeLocalSessionParticipants(
 
 /** Validate shape plus cross-field actor identity; JSON Schema owns public shape. */
 export function assertSessionParticipantsMatchState(
-  participants: ReadonlyArray<SessionParticipant>,
+  participants: unknown,
   state: unknown,
   options: { allowAgents: boolean }
-): void {
-  const playerIds = readAuthoritativePlayerIds(state);
-  if (!Array.isArray(participants) || participants.length === 0) {
-    throw new Error("Session participants must contain at least one authoritative seat");
+): asserts participants is ReadonlyArray<SessionParticipant> {
+  if (!validateSessionParticipantsShape(participants)) {
+    throw new Error("Session participants failed the canonical schema");
   }
+  const playerIds = readAuthoritativePlayerIds(state);
 
   const seats = new Set<string>();
   const actors = new Set<string>();
   for (const participant of participants) {
     if (
-      !isRecord(participant) ||
-      typeof participant.seatId !== "string" || participant.seatId.length === 0 ||
-      typeof participant.playerId !== "string" || !isSafeId(participant.playerId) ||
-      (participant.kind !== "human" && participant.kind !== "agent") ||
-      participant.joinState !== "local" ||
       (!options.allowAgents && participant.kind === "agent") ||
       seats.has(participant.seatId) || actors.has(participant.playerId)
     ) {
@@ -85,15 +83,32 @@ export function participantActorIds<TState>(session: SessionRecord<TState>): Rea
 
 function readAuthoritativePlayerIds(state: unknown): string[] | undefined {
   if (!isRecord(state)) return undefined;
-  const players = isRecord(state.players) ? state.players : undefined;
+  const hasPlayers = Object.prototype.hasOwnProperty.call(state, "players");
+  if (hasPlayers && !isRecord(state.players)) {
+    throw new Error("Session state.players must be an actor record when present");
+  }
+  const players = hasPlayers ? state.players as Record<string, unknown> : undefined;
   const playerKeys = players === undefined ? undefined : Object.keys(players);
-  if (playerKeys !== undefined && (
-    playerKeys.length === 0 || playerKeys.some((playerId) => !isSafeId(playerId))
-  )) throw new Error("Session state.players must contain safe non-empty actor keys");
+  if (playerKeys !== undefined && playerKeys.length === 0) {
+    throw new Error("Session state.players must contain at least one actor");
+  }
   const turn = isRecord(state.public) && isRecord(state.public.turn) ? state.public.turn : undefined;
-  if (turn?.order === undefined) return playerKeys === undefined ? undefined : [...playerKeys].sort();
-  if (!Array.isArray(turn.order) || turn.order.some((entry) => typeof entry !== "string" || !isSafeId(entry))) {
-    throw new Error("Session turn.order must contain safe player ids");
+  const hasTurn = isRecord(state.public) && Object.prototype.hasOwnProperty.call(state.public, "turn");
+  if (hasTurn && turn === undefined) {
+    throw new Error("Session public.turn must be an object when present");
+  }
+  const hasOrder = turn !== undefined && Object.prototype.hasOwnProperty.call(turn, "order");
+  if (hasPlayers !== hasTurn || hasPlayers !== hasOrder) {
+    throw new Error("Session state.players and public.turn.order must be present together without a partial turn shape");
+  }
+  if (!hasPlayers) {
+    if (turn !== undefined && Object.prototype.hasOwnProperty.call(turn, "activePlayerId")) {
+      throw new Error("Session activePlayerId requires state.players and public.turn.order");
+    }
+    return undefined;
+  }
+  if (!Array.isArray(turn?.order)) {
+    throw new Error("Session turn.order must be an array of player ids");
   }
   const order = turn.order as string[];
   if (new Set(order).size !== order.length || playerKeys !== undefined && (
@@ -101,11 +116,10 @@ function readAuthoritativePlayerIds(state: unknown): string[] | undefined {
   )) {
     throw new Error("Session turn.order must exactly match state.players");
   }
+  if (Object.prototype.hasOwnProperty.call(turn, "activePlayerId") && !order.includes(turn.activePlayerId as string)) {
+    throw new Error("Session activePlayerId must reference public.turn.order");
+  }
   return [...order];
-}
-
-function isSafeId(value: string): boolean {
-  return value.length > 0 && !forbiddenIds.has(value);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

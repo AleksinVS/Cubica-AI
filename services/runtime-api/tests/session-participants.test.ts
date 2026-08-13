@@ -50,6 +50,38 @@ test("semantic participant validation rejects agent creation, duplicates and act
   ], state, { allowAgents: false }), /state\.players/u);
 });
 
+test("canonical schema rejects malformed participant shapes before semantic validation", () => {
+  const state = { players: { p1: {} }, public: { turn: { order: ["p1"] } } };
+  for (const malformed of [
+    null,
+    [],
+    [{ ...participants[0], extra: true }],
+    [{ ...participants[0], playerId: "__proto__" }],
+    [{ ...participants[0], kind: "robot" }]
+  ]) {
+    assert.throws(
+      () => assertSessionParticipantsMatchState(malformed, state, { allowAgents: false }),
+      /canonical schema/u
+    );
+  }
+});
+
+test("semantic validation rejects partial or contradictory player-turn shapes", () => {
+  for (const state of [
+    { players: { p1: {} }, public: {} },
+    { public: { turn: { order: ["p1"] } } },
+    { players: null, public: { turn: { order: ["p1"] } } },
+    { public: { turn: null } },
+    { public: { turn: { activePlayerId: "p1" } } },
+    { players: { p1: {} }, public: { turn: { order: ["p1"], activePlayerId: "p2" } } }
+  ]) {
+    assert.throws(
+      () => assertSessionParticipantsMatchState([participants[0]], state, { allowAgents: false }),
+      /state\.players|public\.turn|activePlayerId/u
+    );
+  }
+});
+
 test("S8 store creation rejects an agent participant", async () => {
   const store = new InMemorySessionStore<Record<string, unknown>>();
   const bundle = createImmutableBundleContent("neutral-agent-seat-fixture", {});
@@ -112,13 +144,14 @@ test("migration 004 deletes sessions before the required column and preserves bu
   const schedules = await readFile(new URL("../migrations/003_system_schedules.up.sql", import.meta.url), "utf8");
 
   assert.ok(up.indexOf("DELETE FROM game_sessions") < up.indexOf("ADD COLUMN participants JSONB NOT NULL"));
+  assert.ok(up.indexOf("DELETE FROM game_sessions") < up.indexOf("DROP COLUMN player_id"));
+  assert.match(up, /DROP COLUMN player_id/u);
   assert.doesNotMatch(up, /DELETE FROM game_bundles/u);
   assert.match(up, /jsonb_typeof\(participants\) = 'array'/u);
-  assert.match(up, /item->>'kind' NOT IN \('human', 'agent'\)/u);
-  assert.match(up, /item - ARRAY\['seatId', 'playerId', 'kind', 'joinState'\]/u);
-  assert.match(up, /COUNT\(DISTINCT item->>'seatId'\)/u);
+  assert.doesNotMatch(up, /seatId|playerId|joinState/u);
   assert.match(ledger, /REFERENCES game_sessions\(id\) ON DELETE CASCADE/u);
   assert.match(schedules, /REFERENCES game_sessions\(id, bundle_hash\) ON DELETE CASCADE/u);
   assert.match(down, /disposable pre-release development\/test databases/u);
+  assert.match(down, /ADD COLUMN player_id TEXT/u);
   assert.doesNotMatch(down, /DELETE FROM game_bundles/u);
 });

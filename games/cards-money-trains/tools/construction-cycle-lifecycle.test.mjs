@@ -19,6 +19,7 @@ import { validateGameManifest } from "../../../services/runtime-api/src/modules/
 import { dispatchRuntimeAction } from "../../../services/runtime-api/src/modules/runtime/actionDispatcher.ts";
 import { planMinimumRegionRoad } from "../../../services/runtime-api/src/modules/runtime/regionRoadPlanner.ts";
 import { InMemorySessionStore } from "../../../services/runtime-api/src/modules/session/inMemorySessionStore.ts";
+import { materializeLocalSessionParticipants } from "../../../services/runtime-api/src/modules/session/sessionParticipants.ts";
 import {
   authoringPath,
   buildConstructionCycleAuthoring
@@ -127,6 +128,7 @@ const createSession = async (manifest, state) => {
     gameId: manifest.meta.id,
     sessionRole: "facilitator",
     initialState: structuredClone(state),
+    participants: materializeLocalSessionParticipants(state, manifest.config.players.min),
     immutableBundle: loadImmutableBundle(manifest),
     principal: {
       principalId: "construction-cycle-test-facilitator",

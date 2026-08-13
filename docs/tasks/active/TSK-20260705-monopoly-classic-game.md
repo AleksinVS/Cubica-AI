@@ -65,12 +65,15 @@ read-only методика приняты для локальной партии
 Позиционирование — доступная экономическая стратегия с необязательным
 обучающим режимом; обычная партия от обучения не зависит.
 
-На 2026-08-12 S8 находится в исполнении и ожидает доказательств основной
-реализации. Участники принадлежат сессии, а не game state или manifest. Публичный
+На 2026-08-13 S8 реализован и принят по свежим контрактным, runtime,
+player-web и disposable PostgreSQL доказательствам. Участники принадлежат
+сессии, а не game state или manifest. Публичный
 элемент имеет форму `seatId: string`, `playerId: string`, `kind: "human" | "agent"`,
 `joinState: "local"`; S8 создаёт только `human`/`local`. `seatId` — стабильное
-место, `playerId` — actor/key в `state.players`; совпадение этих значений в
-локальном режиме допустимо, но не является семантической идентичностью. S9
+место, а в player/turn-игре `playerId` — actor/key в `state.players`; нейтральной
+неходовой сессии искусственные `state.players` не добавляются. Совпадение этих
+значений в локальном режиме допустимо, но не является семантической
+идентичностью. S9
 зависит от принятого S8-контракта, а S10 сохраняет сетевой join/reconnect
 запланированными.
 
@@ -197,9 +200,8 @@ not_required
 7. **S6:** безопасная победа и полная локальная партия. Общие agent-readiness
    декларации остаются внешним результатом задачи ADR-060 и не реализуются в
    игровом пакете.
-8. **S7:** public local UI/content и методический слой; затем общая модель
-   `participants` и actor-scoped available actions S8 (в исполнении, ожидает
-   проверки) по принятому ADR-059.
+8. **S7:** public local UI/content и методический слой; затем принятая общая
+   модель `participants` и actor-scoped available actions S8 по ADR-059.
 9. **S9:** локальные AI-места после принятия S8 без форка манифеста: персональная
    проекция, доступные действия, ограниченные невалидные попытки и
    упорядоченный безопасный fallback; недоступный Agent Runtime ставит игру
@@ -251,8 +253,9 @@ npx playwright test apps/player-web/e2e/estate-race.spec.ts --project=chromium
 | GSR-043: строения, залог и дефицит банка | done | Уровни 0–5, физический запас 32/12, равномерность, залог/выкуп, карточная оценка и shortage-аукцион приняты replay, plugin и production browser flow. |
 | GSR-044: сделки, обязательства и банкротство | done | Атомарные сделки, ликвидность, обе судьбы банкротства, заложенные активы, две удерживаемые карты и банковские аукционы приняты replay, plugin и production browser flow без изменения общей платформы. |
 | GSR-045: победитель и terminal outcome | done | Последний active участник объявляется ровно один раз после завершения ликвидации; terminal snapshot закрывает действия, bounded transcript и production browser flow приняты без изменения общей платформы. |
-| Полная локальная техническая партия | done | Правила S0–S6 используют один manifest от setup до terminal outcome; S7 завершил локальную продуктовую поверхность. S8 выполняется отдельно и ещё ожидает проверки. |
+| Полная локальная техническая партия | done | Правила S0–S6 используют один manifest от setup до terminal outcome; S7 завершил локальную продуктовую поверхность. S8 принят отдельно; S9 и S10 остаются следующими срезами. |
 | S7: public local UI/content | done | GSR-046 принят: game/UI authoring `0.7.0`, map-first UI, game-owned design reference, responsive camera, production browser S0–S7 `8/8`, style-parity `PASS`, локальная accessibility matrix `PASS` на 1400x1000/768x1024/320x800; package `49/49`, plugin `37/37` + typecheck, balance `3/3` (`PASS-for-closed-alpha`). Публикация и финальный экономический баланс не объявлены. |
+| GSR-047 / S8: session-owned participants | done | Session-owned `human`/`local` participants, actor-scoped projection and participant propagation приняты. Canonical contracts/OpenAPI, contracts `7/7`, runtime session/PostgreSQL `42/42`, player-web `50/50`, disposable PostgreSQL restart roundtrip `1/1`, game-agnostic `10/10` и player-core seam — `PASS`; полный CMT suite не заявляется. |
 
 ## Artifacts
 
@@ -266,6 +269,7 @@ npx playwright test apps/player-web/e2e/estate-race.spec.ts --project=chromium
 - `docs/architecture/gameplay-slices/043-estate-race-buildings-mortgage-and-shortage.md` — завершённая граница S4: уровни строений, запас банка, залог и аукцион дефицита.
 - `docs/architecture/gameplay-slices/044-estate-race-trade-obligation-and-bankruptcy.md` — завершённая граница S5: сделки, обязательства, ликвидность и обе судьбы банкротства.
 - `docs/architecture/gameplay-slices/045-estate-race-terminal-local-game.md` — завершённая граница S6: последний активный участник, terminal outcome и ограниченный локальный transcript.
+- `docs/architecture/gameplay-slices/047-estate-race-session-participants.md` — завершённая граница S8: session-owned participants и actor-scoped local delivery.
 - `docs/tasks/artifacts/TSK-20260705-monopoly-classic-game/product-specification.md` — продуктовый сценарий и интерфейс.
 - `docs/tasks/artifacts/TSK-20260705-monopoly-classic-game/rules-and-rights-provenance.md` — источники и границы прав.
 - `docs/tasks/artifacts/TSK-20260705-monopoly-classic-game/traceability-matrix.md` — связь требований с реализацией и тестами.
@@ -478,11 +482,18 @@ npx playwright test apps/player-web/e2e/estate-race.spec.ts --project=chromium
   Visual reference SHA-256 —
   `f492f69142368e03def533fe5aead099f67c1f037582072eaa6dc059fd7c250c`;
   report/input SHA-256 зафиксированы в provenance. Matrix является локальным
-  evidence, а не сертификацией доступности. S8 в исполнении и ожидает проверки;
-  S9 зависит от принятого S8-контракта, S10 остаётся запланированным; для
+  evidence, а не сертификацией доступности. S8 принят по свежим контрактным,
+  runtime, player-web и disposable PostgreSQL проверкам; S9 теперь
+  запланирован следующим, S10 остаётся запланированным; для
   публичного релиза нужны экономическая telemetry и решение о целевой
   длительности партии.
 - 2026-08-12: S8 передан в исполнение. Зафиксирована session-owned модель
   участников и публичная форма элемента `seatId`/`playerId`/`kind`/`joinState`;
   S8 ограничен `human`/`local`, agent seats отложены в S9, network join — в S10.
-  Основная реализация и подтверждающие проверки ещё ожидаются.
+- 2026-08-13: GSR-047/S8 принят. Canonical contracts/OpenAPI, contracts 7/7,
+  runtime session/PostgreSQL 42/42, player-web 50/50, disposable PostgreSQL
+  restart roundtrip 1/1, game-agnostic 10/10 и player-core seam — `PASS`.
+  Pre-release cutover сохраняет bundles; проверка использовала только
+  одноразовую локальную базу, полный CMT suite не заявляется. S9 — следующий
+  запланированный срез, S10 — последующая
+  private invite network граница.

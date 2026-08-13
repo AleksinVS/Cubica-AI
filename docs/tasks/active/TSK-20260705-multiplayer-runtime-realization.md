@@ -20,9 +20,14 @@
 
 in_progress
 
-Status note: архитектура ADR-059 принята 2026-07-06; S8 передан в исполнение
-2026-08-12. Реализация S8 продолжается и ожидает проверки основной командой;
-задача не объявляет milestone принятым и не утверждает прохождение тестов.
+Status note: архитектура ADR-059 принята 2026-07-06; S8 реализован и принят
+2026-08-13. Canonical generated contracts и OpenAPI — `PASS`, contracts
+typecheck и 7/7 тестов — `PASS`, runtime typecheck и focused session/PostgreSQL
+проверки — 42/42, player-web typecheck и focused suites — 50/50. Disposable
+PostgreSQL migrations 001–005 и store restart roundtrip — 1/1. Полный CMT suite
+не заявляется: проверен representative session-setup после обновления прямых
+CMT store consumers. S9 остаётся следующим срезом, S10 — запланированной
+сетевой границей.
 ADR-058; сквозное доказательство (Phase 6) требует фикстурной игры
 `games/dice-track/` из `TSK-20260705-board-game-platform-capabilities`.
 
@@ -36,7 +41,7 @@ ADR-058; сквозное доказательство (Phase 6) требует 
 
 ## Architecture Source
 
-- `docs/architecture/adrs/059-multiplayer-realization-in-modular-monolith.md` (Proposed)
+- `docs/architecture/adrs/059-multiplayer-realization-in-modular-monolith.md` (Accepted)
 - ADR-005 (session persistence), ADR-011 (модель мультиплеера), ADR-017
   (модульный монолит), ADR-019 (player content boundary), ADR-033 (portal
   binding), ADR-051 (current API contract), ADR-058 (playersTemplate/turn)
@@ -194,5 +199,9 @@ npx playwright test  # двухбраузерный e2e dice-track
 - 2026-07-06: ADR-059 принят владельцем проекта (Accepted 2026-07-06).
   Реализация не начата.
 - 2026-08-12: S8 передан в исполнение. Session-owned участники, публичная форма
-  элемента и границы S9/S10 зафиксированы; реализация и проверки ожидают
-  подтверждения основной командой.
+  элемента и границы S9/S10 зафиксированы.
+- 2026-08-13: S8 принят после canonical contracts/OpenAPI, contracts 7/7,
+  runtime session/PostgreSQL 42/42, player-web 50/50 и disposable PostgreSQL
+  restart roundtrip 1/1. Pre-release cutover сохраняет immutable bundles и
+  был проверен только на одноразовой локальной базе; полный CMT suite не
+  является частью этой приёмки.

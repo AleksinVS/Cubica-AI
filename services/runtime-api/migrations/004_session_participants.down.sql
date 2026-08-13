@@ -4,8 +4,6 @@
 DELETE FROM game_sessions;
 
 ALTER TABLE game_sessions
-  DROP CONSTRAINT IF EXISTS game_sessions_participants_shape_check,
   DROP CONSTRAINT IF EXISTS game_sessions_participants_array_check,
-  DROP COLUMN IF EXISTS participants;
-
-DROP FUNCTION IF EXISTS cubica_session_participants_are_valid(JSONB);
+  DROP COLUMN IF EXISTS participants,
+  ADD COLUMN player_id TEXT;

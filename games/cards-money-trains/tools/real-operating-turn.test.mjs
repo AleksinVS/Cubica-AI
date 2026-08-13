@@ -19,6 +19,7 @@ import { validateGameManifest } from "../../../services/runtime-api/src/modules/
 import { createImmutableBundleContent } from "../../../services/runtime-api/src/modules/content/immutableBundle.ts";
 import { dispatchRuntimeAction } from "../../../services/runtime-api/src/modules/runtime/actionDispatcher.ts";
 import { InMemorySessionStore } from "../../../services/runtime-api/src/modules/session/inMemorySessionStore.ts";
+import { materializeLocalSessionParticipants } from "../../../services/runtime-api/src/modules/session/sessionParticipants.ts";
 
 const Ajv = AjvImport.default ?? AjvImport;
 const toolsRoot = path.dirname(fileURLToPath(import.meta.url));
@@ -69,6 +70,7 @@ const createTechnicalSession = async (
     gameId: manifest.meta.id,
     sessionRole: "facilitator",
     initialState: state,
+    participants: materializeLocalSessionParticipants(state, manifest.config.players.min),
     immutableBundle: createImmutableBundleContent(manifest.meta.id, manifest),
     principal: {
       principalId: "real-operating-turn-test-facilitator",
@@ -301,6 +303,7 @@ test("technical actions reject the ordinary normative fixture without mutation",
     gameId: manifest.meta.id,
     sessionRole: "facilitator",
     initialState: structuredClone(manifest.state),
+    participants: materializeLocalSessionParticipants(manifest.state, manifest.config.players.min),
     immutableBundle: createImmutableBundleContent(manifest.meta.id, manifest),
     principal: {
       principalId: "ordinary-fixture-test-facilitator",
