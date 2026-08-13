@@ -43,7 +43,8 @@ import {
   type BoardHighlightView,
   type BoardNodeView,
   type BoardProjection,
-  type CanonicalPoint
+  type CanonicalPoint,
+  type MethodologyPauseView
 } from "./board-state.ts";
 import {
   deriveBoardTransitions,
@@ -74,7 +75,8 @@ import {
   buildFacilitatorTeamSummaries,
   facilitatorTeamSummaryLabel,
   isFacilitatorHudPhase,
-  readFinalReflectionGuide
+  readFinalReflectionGuide,
+  selectMethodologyPause
 } from "./facilitator-hud.ts";
 import {
   finalStandingLabel,
@@ -287,6 +289,7 @@ export const createCardsMoneyTrainsScene: PhaserSceneFactory = (
     private facilitatorEconomyButton:
       InstanceType<typeof Phaser.GameObjects.Text> | null = null;
     private facilitatorHudExpanded = true;
+    private selectedMethodologyPause: MethodologyPauseView | null = null;
     /** Full reflection text is a local read-only overlay opened from the HUD. */
     private reflectionGuideLayer:
       InstanceType<typeof Phaser.GameObjects.Container> | null = null;
@@ -835,18 +838,7 @@ export const createCardsMoneyTrainsScene: PhaserSceneFactory = (
       this.reflectionGuideBody = body;
       this.reflectionGuideClose = close;
 
-      if (finalReflectionGuide) {
-        body.setText([
-          `Подготовка команд: ${finalReflectionGuide.preparationMinutes.min}–${finalReflectionGuide.preparationMinutes.max} минут`,
-          `Выступление каждой команды: до ${finalReflectionGuide.presentationMinutesMax} минут`,
-          "",
-          ...finalReflectionGuide.questions.map(
-            (question, index) => `${index + 1}. ${question}`
-          ),
-          "",
-          `После выступлений сформулируйте ${finalReflectionGuide.conclusionCount.min}–${finalReflectionGuide.conclusionCount.max} общих вывода.`
-        ]);
-      }
+      this.populateReflectionGuide();
       this.layoutReflectionGuidePanel();
     }
 
@@ -1062,6 +1054,7 @@ export const createCardsMoneyTrainsScene: PhaserSceneFactory = (
     private reconcileFacilitatorHud(projection: BoardProjection) {
       const finalResults = projection.finalResults ?? null;
       const economyCorrector = projectEconomyCorrector(projection);
+      this.selectedMethodologyPause = selectMethodologyPause(projection);
       const visible =
         isFacilitatorHudPhase(projection.phase)
         || finalResults !== null
@@ -1069,6 +1062,9 @@ export const createCardsMoneyTrainsScene: PhaserSceneFactory = (
       this.facilitatorHudLayer?.setVisible(visible);
       this.facilitatorFinalResultsButton?.setVisible(finalResults !== null);
       this.facilitatorEconomyButton?.setVisible(economyCorrector !== null);
+      this.facilitatorMethodologyButton?.setVisible(
+        finalReflectionGuide !== null || this.selectedMethodologyPause !== null
+      );
       if (!visible) {
         this.hideReflectionGuide();
         this.hideFinalResults();
@@ -1087,6 +1083,10 @@ export const createCardsMoneyTrainsScene: PhaserSceneFactory = (
       }
       this.facilitatorTeamCount = summaries.length;
       this.layoutFacilitatorHud();
+      if (this.reflectionGuideLayer?.visible) {
+        this.populateReflectionGuide();
+        this.layoutReflectionGuidePanel();
+      }
       if (economyCorrector) {
         const activeTeamIds = new Set(
           economyCorrector.rows.map((row) => row.teamId)
@@ -1182,12 +1182,42 @@ export const createCardsMoneyTrainsScene: PhaserSceneFactory = (
 
     /** Open only local immutable guidance; no Runtime command is dispatched. */
     private showReflectionGuide() {
-      if (!finalReflectionGuide || !this.reflectionGuideLayer) return;
+      if (
+        (!finalReflectionGuide && !this.selectedMethodologyPause)
+        || !this.reflectionGuideLayer
+      ) return;
       this.hideCountryInformation();
       this.hideFinalResults();
       this.hideEconomyCorrector();
+      this.populateReflectionGuide();
       this.layoutReflectionGuidePanel();
       this.reflectionGuideLayer.setVisible(true);
+    }
+
+    /** Combine current public pause guidance with the immutable final guide. */
+    private populateReflectionGuide() {
+      const title = this.reflectionGuideTitle;
+      const body = this.reflectionGuideBody;
+      if (!title || !body) return;
+      const pause = this.selectedMethodologyPause;
+      title.setText(pause?.title ?? "Итоговая рефлексия");
+      const pauseLines = pause ? [
+        pause.timing,
+        "",
+        ...pause.prompts.map((prompt, index) => `${index + 1}. ${prompt}`)
+      ] : [];
+      const finalLines = finalReflectionGuide ? [
+        ...(pauseLines.length > 0 ? ["", "Итоговая рефлексия"] : []),
+        `Подготовка команд: ${finalReflectionGuide.preparationMinutes.min}–${finalReflectionGuide.preparationMinutes.max} минут`,
+        `Выступление каждой команды: до ${finalReflectionGuide.presentationMinutesMax} минут`,
+        "",
+        ...finalReflectionGuide.questions.map(
+          (question, index) => `${index + 1}. ${question}`
+        ),
+        "",
+        `После выступлений сформулируйте ${finalReflectionGuide.conclusionCount.min}–${finalReflectionGuide.conclusionCount.max} общих вывода.`
+      ] : [];
+      body.setText([...pauseLines, ...finalLines]);
     }
 
     /** Close the local methodology surface without touching session state. */

@@ -120,6 +120,10 @@ test("two authenticated principals receive isolated actor views of the same stat
     sessionId: "session-neutral",
     gameId: "neutral-game",
     bundleHash: "a".repeat(64),
+    participants: [
+      { seatId: "p1", playerId: "p1", kind: "human", joinState: "local" },
+      { seatId: "p2", playerId: "p2", kind: "human", joinState: "local" }
+    ],
     state: storedState,
     sessionRole: "player",
     version: { sessionId: "session-neutral", stateVersion: 3, lastEventSequence: 0 },
@@ -156,6 +160,62 @@ test("two authenticated principals receive isolated actor views of the same stat
   });
   assert.equal(JSON.stringify(p1View).includes("beta"), false);
   assert.equal(JSON.stringify(p2View).includes("alpha"), false);
+});
+
+test("actor-private leaves override a whole-player public record map for owners, peers and anonymous viewers", () => {
+  const overlappingModel = {
+    ...stateModel,
+    endpoints: {
+      "actor.hand": stateModel.endpoints["actor.hand"]
+    },
+    collections: {
+      participants: {
+        itemShape: "record",
+        audienceRef: "public",
+        storage: { root: "players", segments: [] },
+        capacity: 4,
+        stableKey: "map-key",
+        fields: {
+          rank: {
+            storage: { kind: "path", path: ["rank"] },
+            valueType: "test.integer",
+            access: "read-only"
+          }
+        }
+      }
+    }
+  } as const satisfies StateModel;
+  const state = {
+    public: {},
+    players: {
+      p1: { rank: 1, hand: { cardIds: ["alpha"] }, corruptUnknownSibling: "must-not-leave-runtime" },
+      p2: { rank: 2, hand: { cardIds: ["beta"] }, corruptUnknownSibling: "must-not-leave-runtime" }
+    },
+    secret: {}
+  };
+
+  const p1 = buildPlayerSessionProjection({ state, stateModel: overlappingModel, actorPlayerId: "p1" });
+  const p2 = buildPlayerSessionProjection({ state, stateModel: overlappingModel, actorPlayerId: "p2" });
+  const anonymous = buildPlayerSessionProjection({ state, stateModel: overlappingModel });
+
+  assert.deepEqual(p1.state.players, {
+    p1: { rank: 1, hand: { cardIds: ["alpha"] } },
+    p2: { rank: 2 }
+  });
+  assert.deepEqual(p2.state.players, {
+    p1: { rank: 1 },
+    p2: { rank: 2, hand: { cardIds: ["beta"] } }
+  });
+  assert.deepEqual(anonymous.state.players, {
+    p1: { rank: 1 },
+    p2: { rank: 2 }
+  });
+  assert.equal(JSON.stringify(p1.publicAudienceState).includes("alpha"), false);
+  assert.equal(JSON.stringify(p1.publicAudienceState).includes("beta"), false);
+  assert.equal(JSON.stringify(p1.actorAudienceState).includes("beta"), false);
+  assert.equal(JSON.stringify(p1).includes("corruptUnknownSibling"), false);
+  assert.equal(JSON.stringify(p2).includes("corruptUnknownSibling"), false);
+  assert.equal(JSON.stringify(anonymous).includes("corruptUnknownSibling"), false);
 });
 
 test("an actor-labelled static path fails closed because it cannot identify its owner", () => {

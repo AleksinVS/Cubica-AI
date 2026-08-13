@@ -1315,7 +1315,12 @@ function createModel(stateModel) {
   }
   for (const [collectionId, collection] of Object.entries(stateModel.collections)) {
     const pointer = `/stateModel/collections/${escapePointer(collectionId)}`;
-    checkAudienceStorage(collection.audienceRef, collection.storage, child(pointer, "storage"));
+    checkAudienceStorage(
+      collection.audienceRef,
+      collection.storage,
+      child(pointer, "storage"),
+      collection.itemShape === "record" && collection.stableKey === "map-key"
+    );
     if (collection.storage.segments.some((segment) => isRecord(segment) && segment.binding !== undefined)) {
       fail(
         "MECHANICS_COLLECTION_STORAGE_BINDING_UNSUPPORTED",
@@ -1466,14 +1471,19 @@ function requireType(typeIds, typeRef, pointer) {
   if (!typeIds.has(typeRef)) fail("MECHANICS_TYPE_REF_UNKNOWN", pointer, `unknown type "${typeRef}"`);
 }
 
-function checkAudienceStorage(audience, storage, pointer) {
+function checkAudienceStorage(audience, storage, pointer, allowWholePlayersRecordMap = false) {
   const compatible = audience === "public"
     // Visibility is a logical contract, not an accidental property of the
     // physical JSON root. Public per-participant scoreboards may be stored in
     // `players/{actor}` for efficient mutation while remaining public by
-    // declaration and projection.
-    ? storage.root === "public" || (storage.root === "players" && storage.segments.some(
-      (segment) => isRecord(segment) && (segment.context === "actor" || typeof segment.binding === "string")
+    // declaration and projection. A bounded record-map collection may also
+    // describe the complete materialized participant map, but this exception
+    // is deliberately unavailable to endpoints and entity collections.
+    ? storage.root === "public" || (storage.root === "players" && (
+      (allowWholePlayersRecordMap && storage.segments.length === 0) ||
+      storage.segments.some(
+        (segment) => isRecord(segment) && (segment.context === "actor" || typeof segment.binding === "string")
+      )
     ))
     : audience === "actor"
       ? storage.root === "players" && storage.segments.some((segment) => isRecord(segment) && segment.context === "actor")
@@ -1491,6 +1501,7 @@ function checkAudienceStorage(audience, storage, pointer) {
  * beside actor-private hands.
  */
 function checkStorageAudienceOverlaps(stateModel) {
+  checkWholePlayersRecordMapActorLeaves(stateModel);
   const symbols = [
     ...Object.entries(stateModel.endpoints)
       .filter(([, value]) => value.usage !== "projection-only")
@@ -1503,6 +1514,7 @@ function checkStorageAudienceOverlaps(stateModel) {
       const right = symbols[rightIndex];
       if (left.audienceRef === right.audienceRef) continue;
       if (!storagePathsOverlapByContainment(left.storage, right.storage)) continue;
+      if (isWholePlayersRecordMapActorLeafPair(left, right)) continue;
       fail(
         "MECHANICS_STORAGE_AUDIENCE_OVERLAP",
         `/stateModel/${left.kind}/${escapePointer(left.id)}/storage`,
@@ -1510,6 +1522,75 @@ function checkStorageAudienceOverlaps(stateModel) {
       );
     }
   }
+}
+
+/**
+ * Admit one deliberately asymmetric storage overlap.
+ *
+ * A public record-map may describe the materialized participant records while
+ * one executable actor endpoint owns a literal child leaf in each record. The
+ * public collection cannot declare that leaf, a parent of it, or a child of
+ * it: record operations therefore remain limited to their public fields.
+ */
+function isWholePlayersRecordMapActorLeafPair(left, right) {
+  const collection = left.kind === "collections" ? left : right.kind === "collections" ? right : undefined;
+  const endpoint = left.kind === "endpoints" ? left : right.kind === "endpoints" ? right : undefined;
+  if (!collection || !endpoint ||
+      collection.audienceRef !== "public" || collection.itemShape !== "record" ||
+      collection.stableKey !== "map-key" || collection.storage.root !== "players" ||
+      collection.storage.segments.length !== 0 || endpoint.audienceRef !== "actor" ||
+      endpoint.usage === "projection-only" || !isActorLiteralLeafStorage(endpoint.storage)) {
+    return false;
+  }
+  const privatePath = endpoint.storage.segments.slice(1);
+  return Object.values(collection.fields)
+    .filter((field) => isStoredCollectionField(field))
+    .every((field) => !literalPathsOverlapByContainment(field.storage.path, privatePath));
+}
+
+/** Reject near-miss actor declarations even though projection-only overlaps are normally ignored. */
+function checkWholePlayersRecordMapActorLeaves(stateModel) {
+  const collections = Object.entries(stateModel.collections)
+    .filter(([, collection]) => collection.audienceRef === "public" &&
+      collection.itemShape === "record" && collection.stableKey === "map-key" &&
+      collection.storage.root === "players" && collection.storage.segments.length === 0)
+    .map(([id, collection]) => ({ kind: "collections", id, ...collection }));
+  for (const collection of collections) {
+    const privateLeaves = [];
+    for (const [endpointId, endpointValue] of Object.entries(stateModel.endpoints)) {
+      if (endpointValue.audienceRef !== "actor" || endpointValue.storage.root !== "players") continue;
+      const endpoint = { kind: "endpoints", id: endpointId, ...endpointValue };
+      if (!isWholePlayersRecordMapActorLeafPair(collection, endpoint)) {
+        fail(
+          "MECHANICS_STORAGE_AUDIENCE_OVERLAP",
+          `/stateModel/collections/${escapePointer(collection.id)}/storage`,
+          `whole-player public record-map overlaps actor endpoint "${endpointId}" outside the actor-private leaf exception`
+        );
+      }
+      const path = endpoint.storage.segments.slice(1);
+      const conflicting = privateLeaves.find((candidate) =>
+        literalPathsOverlapByContainment(candidate.path, path));
+      if (conflicting) {
+        fail(
+          "MECHANICS_STORAGE_AUDIENCE_OVERLAP",
+          `/stateModel/endpoints/${escapePointer(endpointId)}/storage`,
+          `actor-private leaf overlaps endpoint "${conflicting.endpointId}" and therefore has no unique owner`
+        );
+      }
+      privateLeaves.push({ endpointId, path });
+    }
+  }
+}
+
+function isActorLiteralLeafStorage(storage) {
+  return storage.root === "players" && storage.segments.length >= 2 &&
+    isRecord(storage.segments[0]) && storage.segments[0].context === "actor" &&
+    storage.segments.slice(1).every((segment) => typeof segment === "string");
+}
+
+function literalPathsOverlapByContainment(left, right) {
+  const minimum = Math.min(left.length, right.length);
+  return left.slice(0, minimum).every((segment, index) => segment === right[index]);
 }
 
 function storagePathsOverlapByContainment(left, right) {
@@ -3283,7 +3364,24 @@ function domainOperationStateAudiences(step, context) {
 
 function checkSelector(selector, collection, context, pointer) {
   if (collection.itemShape === "record") {
-    fail("MECHANICS_COLLECTION_ITEM_SHAPE_MISMATCH", `${pointer}/collection`, "entity selector requires an entity collection");
+    // The public selector schema is shared with entity collections. Record-map
+    // selection deliberately admits only logical fields: object types and
+    // facets have no meaning for a closed record and must fail closed instead
+    // of being interpreted as missing physical properties.
+    if (selector.objectTypes !== undefined) {
+      fail(
+        "MECHANICS_COLLECTION_ITEM_SHAPE_MISMATCH",
+        `${pointer}/objectTypes`,
+        "record collection selectors cannot declare objectTypes"
+      );
+    }
+    if (selector.facets !== undefined) {
+      fail(
+        "MECHANICS_COLLECTION_ITEM_SHAPE_MISMATCH",
+        `${pointer}/facets`,
+        "record collection selectors cannot declare facets"
+      );
+    }
   }
   const flows = [{ audience: collection.audienceRef, integrity: "server" }];
   if (selector.objectTypes) {
@@ -3300,7 +3398,9 @@ function checkSelector(selector, collection, context, pointer) {
   }
   flows.push(...checkFieldExpressions(selector.facets, "facet", collection, context, `${pointer}/facets`, false));
   for (const [fieldId, condition] of Object.entries(selector.attributes || {})) {
-    const field = requireField(collection, fieldId, "attribute", `${pointer}/attributes/${escapePointer(fieldId)}`);
+    const field = collection.itemShape === "record"
+      ? requireCollectionField(collection, fieldId, `${pointer}/attributes/${escapePointer(fieldId)}`)
+      : requireField(collection, fieldId, "attribute", `${pointer}/attributes/${escapePointer(fieldId)}`);
     const expression = isRecord(condition) && typeof condition.operator === "string" ? condition.value : condition;
     const checked = checkExpression(expression, context, `${pointer}/attributes/${escapePointer(fieldId)}`);
     flows.push(checked.flow);

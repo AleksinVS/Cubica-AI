@@ -11,6 +11,7 @@ import type {
   CreateSessionRequest,
   CreateSessionResponse,
   GetSessionResponse,
+  PortablePublicGameplayJournal,
   RestorePreviewSessionRequest,
   RestorePreviewSessionResponse,
   SessionId,
@@ -38,6 +39,11 @@ import {
 } from "./sessionAuthentication.ts";
 import { SessionAuthenticationError, SessionStoreUnavailableError } from "./sessionStoreErrors.ts";
 import { initializeTurnBasedSessionState } from "./turnBasedSessionState.ts";
+import {
+  buildPublicGameplayJournal,
+  MAX_PUBLIC_JOURNAL_ENTRIES
+} from "./publicGameplayJournal.ts";
+import { materializeLocalSessionParticipants } from "./sessionParticipants.ts";
 
 type RuntimeState = Record<string, unknown>;
 
@@ -55,8 +61,8 @@ export interface AuthenticatedSessionAccess {
  * Let an authenticated facilitator close a session at its exact audit boundary.
  *
  * This application-service method deliberately returns the protected archive
- * object only to trusted server callers. A future player or facilitator HTTP
- * endpoint must define a narrower audience-aware projection first.
+ * object only to trusted server callers. The public journal endpoint uses the
+ * separate bounded source method below and never exposes this audit object.
  */
 export type AuthenticatedArchivedSessionAccess = ArchivedSessionAudit<RuntimeState>;
 
@@ -77,6 +83,10 @@ export class SessionService {
     const bundle = await contentService.getBundle(gameId, request.contentSourceId);
     const declaredState = extractInitialState(bundle) as RuntimeState;
     const initialState = initializeTurnBasedSessionState(bundle.manifest, declaredState, {});
+    const participants = materializeLocalSessionParticipants(
+      initialState,
+      bundle.manifest.config.players.min
+    );
     // A client never chooses its own trusted role. Facilitated mode is the one
     // current manifest rule that creates a facilitator controller.
     const sessionRole = bundle.manifest.config.sessionMode === "facilitated"
@@ -87,6 +97,7 @@ export class SessionService {
       gameId,
       ...(request.contentSourceId === undefined ? {} : { contentSourceId: request.contentSourceId }),
       initialState,
+      participants,
       sessionRole,
       immutableBundle: toImmutableGameBundle(bundle),
       principal: localAccess.principal
@@ -97,6 +108,7 @@ export class SessionService {
     return {
       sessionId: snapshot.sessionId,
       gameId: snapshot.gameId,
+      participants: snapshot.participants,
       version: snapshot.version,
       state: projectPlayerSessionState({
         state: snapshot.state,
@@ -117,6 +129,7 @@ export class SessionService {
     return {
       sessionId: snapshot.sessionId,
       gameId: snapshot.gameId,
+      participants: snapshot.participants,
       version: snapshot.version,
       state: projectPlayerSessionState({
         state: snapshot.state,
@@ -152,6 +165,24 @@ export class SessionService {
     });
     if (archived === null) throw new SessionAuthenticationError();
     return archived;
+  }
+
+  /**
+   * Read only public durable events. A live session accepts any authenticated
+   * principal; an archived session is available only through the store's
+   * facilitator-checked archive boundary. If archiving wins a live-read race,
+   * returning no journal is safer than exposing a partially assembled view.
+   */
+  async getPublicGameplayJournal(
+    sessionId: SessionId,
+    accessToken: string
+  ): Promise<PortablePublicGameplayJournal> {
+    const source = await this.sessionStore.readPublicJournalSource(
+      { sessionId, credentialSha256: hashSessionCredential(accessToken) },
+      MAX_PUBLIC_JOURNAL_ENTRIES + 1
+    );
+    if (source === null) throw new SessionAuthenticationError();
+    return buildPublicGameplayJournal(source);
   }
 
   async restorePreviewSession(
@@ -217,6 +248,7 @@ export class SessionService {
         result: {
           sessionId: restored.sessionId,
           gameId: restored.gameId,
+          participants: restored.participants,
           version: restored.version,
           state: projectPlayerSessionState({
             state: restored.state,

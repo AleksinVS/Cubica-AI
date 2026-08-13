@@ -37,6 +37,9 @@ Use these logical roles and project profiles:
 | --- | --- | --- | --- |
 | Lead architect | `lead-architect` | Sol high | One architecture pass, decomposition, integration, and final acceptance |
 | Scout | `scout` | Luna low | Narrow repository search and evidence gathering |
+| Luna worker | `luna-medium` | Luna medium | Bounded routine implementation, documentation, and focused verification with low architectural risk |
+| Deep Luna worker | `luna-high` | Luna high | Bounded non-critical work requiring deeper analysis or careful handling of edge cases |
+| Deepest Luna worker | `luna-xhigh` | Luna xhigh | Deepest bounded non-critical work when Luna high is insufficient but no Sol-owned high-error-cost decision is required |
 | Builder | `builder-low` | Terra low | Mechanical implementation from an exact plan |
 | Builder | `builder` | Terra medium | Ordinary feature and bug-fix implementation |
 | Complex builder | `builder_complex` | Sol high | Non-obvious or critical implementation and complex test design |
@@ -46,19 +49,34 @@ Use these logical roles and project profiles:
 | Critical reviewer | `critical-reviewer-high` | Sol high | Architecture, security, or high-error-cost review |
 
 The installed Luna model does not expose reasoning `none`; `scout` therefore
-uses its cheapest supported level, `low`. The suffixed profiles are fixed-effort
-variants of the six logical roles, not additional team roles.
+uses its cheapest supported level, `low`. `luna-medium`, `luna-high`, and
+`luna-xhigh` are general bounded worker profiles, not architecture or
+final-acceptance roles.
+Every write made by a Luna worker requires subsequent review of the integrated
+diff by the primary agent or an independent reviewer.
 
-Do not use `ultra` or `pro`. Do not route Luna to `high` or `max`, Terra to
-`high` or `max`, or Sol directly to `max`. Escalate the model class before
-raising a weaker model's effort:
+Do not use `ultra` or `pro`. Do not route Luna or Terra to `max`, Terra to
+`high`, or Sol directly to `max`. Keep architecture, security, public contract,
+and other high-error-cost decisions on Sol even when Luna high could complete
+the mechanical implementation. Escalate with this default ladder:
 
 ```text
-Luna low -> Terra low/medium -> Sol medium -> Sol high
+Luna low -> Luna medium -> Luna high -> Luna xhigh -> Sol medium -> Sol high
 ```
 
 Escalate only with a concrete blocker, failed criterion, risky uncertainty, or
 evidence that the current profile is insufficient.
+
+### Comparative visual analysis
+
+A systematic final comparison of an implemented interface with a mockup,
+reference, or screenshot is a high-error-cost assessment. Route the final
+judgment of differences, causes, and fix priorities to Sol high: use
+`critical-reviewer-high` for read-only assessment or `builder_complex` when the
+same bounded task also owns non-obvious implementation or test design.
+
+Luna or Terra may collect screenshots, dimensions, colors, and other mechanical
+evidence, but must not make the final comparative assessment.
 
 ## Choose the workflow
 
@@ -115,6 +133,13 @@ The scout must not design a solution, change code, or summarize the repository.
 Use Terra low for prescribed mechanical changes and Terra medium for new
 functions, connected changes across several files, business logic, error
 handling, or several acceptance criteria.
+
+Use `luna-medium` for routine bounded work, `luna-high` when that same
+non-critical scope needs deeper reasoning or careful edge-case handling, and
+`luna-xhigh` when Luna high is concretely insufficient but the task still does
+not cross a Sol-owned high-error-cost boundary. Do not use a Luna worker to
+approve architecture, security, public contracts, or final acceptance. Review
+every Luna-authored integrated diff before accepting it.
 
 Do not let a builder approve architecture. Route non-obvious logic, critical
 blocks, and non-obvious test design to `builder_complex` with Sol high.

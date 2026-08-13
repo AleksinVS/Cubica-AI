@@ -1,5 +1,5 @@
 /**
- * Neutral runtime proof for bounded lexicographic entity ordering.
+ * Neutral runtime proof for bounded lexicographic typed-collection ordering.
  *
  * Generic entities, related owners and measurements exercise the public
  * Mechanics contract without embedding any concrete game's terminology or
@@ -63,7 +63,7 @@ const orderingPlan = (
   planHash: HASH,
   transaction: {
     steps: [
-      selectedStep,
+      structuredClone(selectedStep),
       {
         id: "ordered",
         kind: "command",
@@ -75,6 +75,21 @@ const orderingPlan = (
     ] as unknown as CubicaMechanicsIRV1Alpha1["plans"][string]["transaction"]["steps"]
   }
 });
+
+const recordOrderingPlan = (
+  keys: Array<Record<string, unknown>>,
+  tieBreak: Record<string, unknown> = { kind: "canonical-id" }
+): CubicaMechanicsIRV1Alpha1["plans"][string] => {
+  const plan = orderingPlan(keys, tieBreak);
+  (plan.transaction.steps[0] as unknown as { selector: Record<string, unknown> }).selector = {
+    collection: "records",
+    attributes: {
+      status: { op: "value.literal", value: "active" }
+    },
+    cardinality: { min: 0, max: 8 }
+  };
+  return plan;
+};
 
 function createOrderingMechanics(): CubicaMechanicsIRV1Alpha1 {
   const aggregateSource = (
@@ -158,6 +173,30 @@ function createOrderingMechanics(): CubicaMechanicsIRV1Alpha1 {
             amount: collectionField("amount", "fixture.decimal"),
             binaryAmount: collectionField("binaryAmount", "fixture.coordinate")
           }
+        },
+        records: {
+          itemShape: "record",
+          audienceRef: "public",
+          storage: { root: "public", segments: ["records"] },
+          capacity: 8,
+          stableKey: "map-key",
+          fields: {
+            rank: {
+              storage: { kind: "path", path: ["rank"] },
+              valueType: "core.integer",
+              access: "read-only"
+            },
+            status: {
+              storage: { kind: "path", path: ["status"] },
+              valueType: "core.string",
+              access: "read-only"
+            },
+            ownerRef: {
+              storage: { kind: "path", path: ["ownerRef"] },
+              valueType: "core.optional-string",
+              access: "read-only"
+            }
+          }
         }
       },
       events: {}
@@ -232,7 +271,39 @@ function createOrderingMechanics(): CubicaMechanicsIRV1Alpha1 {
         },
         direction: "ascending",
         missing: "error"
-      }], { kind: "server-random", stream: "fixture.order" })
+      }], { kind: "server-random", stream: "fixture.order" }),
+      recordRelated: recordOrderingPlan([
+        {
+          source: { kind: "current-field", field: "rank" },
+          direction: "ascending",
+          missing: "error"
+        },
+        {
+          source: {
+            kind: "related-field",
+            referenceField: "ownerRef",
+            collection: "owners",
+            field: "priority"
+          },
+          direction: "descending",
+          missing: "last"
+        },
+        {
+          source: aggregateSource("count"),
+          direction: "descending",
+          missing: "error"
+        },
+        {
+          source: aggregateSource("sum"),
+          direction: "descending",
+          missing: "last"
+        }
+      ]),
+      recordTies: recordOrderingPlan([{
+        source: { kind: "current-field", field: "rank" },
+        direction: "ascending",
+        missing: "error"
+      }], { kind: "server-random", stream: "fixture.record-order" })
     }
   } as unknown as CubicaMechanicsIRV1Alpha1;
 
@@ -244,6 +315,22 @@ function createOrderingMechanics(): CubicaMechanicsIRV1Alpha1 {
     predicate: { op: "predicate.constant", value: false },
     errorCode: "FIXTURE_REJECT_AFTER_RANDOM"
   });
+  mechanics.plans.recordTiesThenFail = structuredClone(mechanics.plans.recordTies);
+  mechanics.plans.recordTiesThenFail.transaction.steps.push({
+    id: "reject-record-after-random",
+    kind: "assert",
+    op: "core.assert",
+    predicate: { op: "predicate.constant", value: false },
+    errorCode: "FIXTURE_REJECT_RECORD_AFTER_RANDOM"
+  });
+  mechanics.plans.recordForbiddenObjectTypes = structuredClone(mechanics.plans.recordRelated);
+  (mechanics.plans.recordForbiddenObjectTypes.transaction.steps[0] as unknown as {
+    selector: Record<string, unknown>;
+  }).selector.objectTypes = ["fixture.entity"];
+  mechanics.plans.recordForbiddenFacets = structuredClone(mechanics.plans.recordRelated);
+  (mechanics.plans.recordForbiddenFacets.transaction.steps[0] as unknown as {
+    selector: Record<string, unknown>;
+  }).selector.facets = { active: { op: "value.literal", value: true } };
 
   const operations = Object.values(mechanics.plans)
     .flatMap((plan) => plan.transaction.steps.map((step) => step.op));
@@ -320,6 +407,12 @@ function createOrderingState(): Record<string, unknown> {
         "measurement-2": measurement("alpha", 2.25),
         "measurement-3": measurement("bravo", 3.5),
         "measurement-4": measurement("delta", -1)
+      },
+      records: {
+        "record-z": { rank: 2, status: "active", ownerRef: "owner-b" },
+        "record-a": { rank: 1, status: "active", ownerRef: "owner-b" },
+        "record-hidden": { rank: 0, status: "inactive", ownerRef: "owner-c" },
+        "record-b": { rank: 1, status: "active", ownerRef: "owner-a" }
       }
     },
     secret: {}
@@ -446,6 +539,133 @@ test("a failed transaction after tie breaking leaves its input state untouched",
       error.code === "FIXTURE_REJECT_AFTER_RANDOM"
   );
   assert.deepEqual(original, snapshot);
+});
+
+test("runtime orders record maps by current, related, count and sum keys with exact costs", () => {
+  const state = createOrderingState();
+  const records = (state.public as {
+    records: Record<string, Record<string, unknown>>;
+  }).records;
+  records["record-a"].ownerRef = "owner-a";
+  records["record-b"].ownerRef = "owner-a";
+  records["record-c"] = { rank: 1, status: "active", ownerRef: "owner-a" };
+  records["record-d"] = { rank: 1, status: "active", ownerRef: "owner-b" };
+  const measurements = (state.public as {
+    measurements: Record<string, Record<string, unknown>>;
+  }).measurements;
+  Object.assign(measurements, {
+    "record-measurement-1": measurement("record-a", 1),
+    "record-measurement-2": measurement("record-a", 2),
+    "record-measurement-3": measurement("record-b", 2),
+    "record-measurement-4": measurement("record-b", 3),
+    "record-measurement-5": measurement("record-c", 100),
+    "record-measurement-6": measurement("record-d", 100),
+    "record-measurement-7": measurement("record-z", -1)
+  });
+  const output = executePlan("recordRelated", state);
+
+  assert.deepEqual(output.result, {
+    kind: "entities",
+    collectionId: "records",
+    ids: ["record-b", "record-a", "record-c", "record-d", "record-z"],
+    ordered: true,
+    tieGroups: []
+  });
+  assert.equal(output.cost.scannedEntities, 37);
+  assert.equal(output.cost.algorithmWork, 173);
+  assert.equal(output.cost.resultEntities, 10);
+  assert.deepEqual(output.candidateState, state, "stable map identifiers and records stay unchanged");
+});
+
+test("selection and ordering ignore actor-private leaves without dropping or rewriting records", () => {
+  const mechanics = createOrderingMechanics();
+  mechanics.stateModel.collections.records.storage = { root: "players", segments: [] };
+  mechanics.stateModel.endpoints.privateNote = {
+    audienceRef: "actor",
+    storage: { root: "players", segments: [{ context: "actor" }, "privateNote"] },
+    valueType: "core.string",
+    access: "read-write"
+  };
+  const networkModelsHash = mechanicsSha256({});
+  for (const [planId, plan] of Object.entries(mechanics.plans)) {
+    plan.planHash = mechanicsSha256({
+      apiVersion: mechanics.apiVersion,
+      budgetProfile: mechanics.budgetProfile,
+      moduleLock: mechanics.moduleLock,
+      stateModel: mechanics.stateModel,
+      objectModels: {},
+      networkModelsHash,
+      planId,
+      transaction: plan.transaction
+    });
+  }
+
+  const state = createOrderingState() as Record<string, any>;
+  state.players = structuredClone(state.public.records);
+  delete state.public.records;
+  for (const [actorId, actorRecord] of Object.entries(state.players) as Array<[
+    string,
+    Record<string, unknown>
+  ]>) {
+    actorRecord.privateNote = `${actorId}-only`;
+  }
+  const snapshot = structuredClone(state);
+  const output = executeMechanicsTransaction({
+    mechanics,
+    plan: mechanics.plans.recordTies,
+    state,
+    actorContext: { actorPlayerId: "record-a", sessionRole: "player" },
+    random: { sampleRange: () => 0 }
+  });
+  const result = output.result as { ids: string[]; tieGroups: string[][] };
+
+  assert.deepEqual(result.ids, ["record-b", "record-a", "record-z"]);
+  assert.equal(result.ids.length, 3, "only the public status selector controls cardinality");
+  assert.deepEqual(result.tieGroups, [["record-a", "record-b"]]);
+  assert.deepEqual(output.candidateState, snapshot, "private leaves and public record values are preserved exactly");
+});
+
+test("server randomness for record maps stays inside complete ties and rolls back atomically", () => {
+  const state = createOrderingState();
+  const snapshot = structuredClone(state);
+  const output = executePlan("recordTies", state, () => 0);
+  const result = output.result as { ids: Array<string>; tieGroups: Array<Array<string>> };
+
+  assert.deepEqual(result.tieGroups, [["record-a", "record-b"]]);
+  assert.equal(result.ids.at(-1), "record-z", "a non-tied record must not cross its key boundary");
+  assert.deepEqual(output.candidateState, snapshot);
+
+  const mechanics = createOrderingMechanics();
+  assert.throws(
+    () => executeMechanicsTransaction({
+      mechanics,
+      plan: mechanics.plans.recordTiesThenFail,
+      state,
+      actorContext: { sessionRole: "player" },
+      random: { sampleRange: () => 0 }
+    }),
+    (error) => error instanceof MechanicsExecutionError &&
+      error.code === "FIXTURE_REJECT_RECORD_AFTER_RANDOM"
+  );
+  assert.deepEqual(state, snapshot);
+});
+
+test("runtime record selectors fail closed for entity-only selector fields", () => {
+  const mechanics = createOrderingMechanics();
+  const state = createOrderingState();
+  for (const planId of ["recordForbiddenObjectTypes", "recordForbiddenFacets"] as const) {
+    assert.throws(
+      () => executeMechanicsTransaction({
+        mechanics,
+        plan: mechanics.plans[planId],
+        state,
+        actorContext: { sessionRole: "player" },
+        random: { sampleRange: () => 0 }
+      }),
+      (error) => error instanceof MechanicsExecutionError &&
+        error.code === "MECHANICS_COLLECTION_ITEM_SHAPE_MISMATCH"
+    );
+  }
 });
 
 test("the shared trusted-selection guard rejects duplicate identifiers", () => {

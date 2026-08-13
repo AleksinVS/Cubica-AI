@@ -1,6 +1,9 @@
 export type SessionId = string;
 export type PlayerId = string;
 export type EventId = string;
+export type * from "./generated/public-gameplay-journal.ts";
+import type { SessionParticipant } from "./generated/session-participant.ts";
+export type { SessionParticipant } from "./generated/session-participant.ts";
 export type SessionRole = "player" | "facilitator" | "assistant" | "observer";
 export type SessionPrincipalId = string;
 
@@ -83,6 +86,8 @@ export interface SessionRecord<TState = unknown> {
    * restored session could accidentally load canonical content instead.
    */
   contentSourceId?: string;
+  /** Authoritative immutable bindings between stable seats and gameplay actors. */
+  participants: ReadonlyArray<SessionParticipant>;
   state: TState;
   /**
    * Legacy/default session presentation role captured at creation.
@@ -125,6 +130,7 @@ export interface CreateSessionInput<TState = unknown> {
   gameId: string;
   contentSourceId?: string;
   initialState: TState;
+  participants: ReadonlyArray<SessionParticipant>;
   sessionRole?: SessionRole;
   immutableBundle: CreateImmutableGameBundleInput;
   principal: CreateSessionPrincipalInput;
@@ -196,6 +202,7 @@ export type LockedSessionOperation<TState, TResult> = (
 export interface CreateSessionResponse<TState = unknown> {
   sessionId: SessionId;
   gameId: string;
+  participants: ReadonlyArray<SessionParticipant>;
   version: SessionStateVersion;
   state: TState;
   actionAvailability: Array<SessionActionAvailability>;
@@ -342,6 +349,20 @@ export interface SessionAuthenticationInput {
   credentialSha256: string;
 }
 
+/**
+ * Authenticated, bounded source for the portable public gameplay journal.
+ *
+ * The store owns lifecycle authorization and the bounded ledger scan so the
+ * runtime never has to materialize an unbounded audit history before applying
+ * the public-journal limits.
+ */
+export interface SessionPublicJournalSource<TState = unknown> {
+  session: SessionRecord<TState>;
+  lifecycle: "active" | "archived";
+  archivedAt?: Date;
+  events: ReadonlyArray<SessionEventRecord>;
+}
+
 /** Input for one authenticated command transaction. */
 export interface SessionCommandTransactionInput extends SessionAuthenticationInput {
   commandId: string;
@@ -421,6 +442,7 @@ export type SessionSystemCommandTransaction<TState, TResult> = (
 
 export interface DispatchActionResponse<TState = unknown> {
   sessionId: SessionId;
+  participants: ReadonlyArray<SessionParticipant>;
   version: SessionStateVersion;
   state: TState;
   actionAvailability: Array<SessionActionAvailability>;
@@ -502,6 +524,7 @@ export interface RestorePreviewSessionRequest<TState = unknown> {
 export interface RestorePreviewSessionResponse<TState = unknown> {
   sessionId: SessionId;
   gameId: string;
+  participants: ReadonlyArray<SessionParticipant>;
   version: SessionStateVersion;
   state: TState;
   actionAvailability: Array<SessionActionAvailability>;
@@ -532,6 +555,17 @@ export interface SessionStorePort<TState = unknown> {
   readArchivedSession(
     input: SessionAuthenticationInput
   ): Promise<ArchivedSessionAudit<TState> | null>;
+  /**
+   * Authenticate and read at most `limit` public events in sequence order.
+   *
+   * Live sessions accept any session principal. Archived sessions accept only
+   * their facilitator. Implementations must establish the lifecycle boundary
+   * and read events from one consistent store snapshot.
+   */
+  readPublicJournalSource(
+    input: SessionAuthenticationInput,
+    limit: number
+  ): Promise<SessionPublicJournalSource<TState> | null>;
   /** Resolve rules only by the immutable hash pinned into the session record. */
   getImmutableBundle(bundleHash: string): Promise<ImmutableGameBundle | null>;
   /** Read the immutable gameplay event ledger in canonical sequence order. */
@@ -588,6 +622,7 @@ export type DispatchActionCommand = DispatchActionInput;
 export interface SessionResponse<TState = unknown> {
   sessionId: SessionId;
   gameId: string;
+  participants: ReadonlyArray<SessionParticipant>;
   version: SessionStateVersion;
   state: TState;
   actionAvailability: Array<SessionActionAvailability>;
@@ -599,6 +634,7 @@ export interface SessionResponse<TState = unknown> {
  */
 export interface ActionResponse<TState = unknown> {
   sessionId: SessionId;
+  participants: ReadonlyArray<SessionParticipant>;
   version: SessionStateVersion;
   state: TState;
   actionAvailability: Array<SessionActionAvailability>;

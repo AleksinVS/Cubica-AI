@@ -281,7 +281,7 @@ test("generators preserve the persistent news №14 contract idempotently", asyn
     rebuilt.root.logic.actions.some((action) => action.id === "news.effect.apply.14")
   );
   assert.deepEqual(
-    rebuilt.root.config.runtimeBlockers.filter((item) => /news effects/u.test(item)),
+    (rebuilt.root.config.runtimeBlockers ?? []).filter((item) => /news effects/u.test(item)),
     []
   );
 });

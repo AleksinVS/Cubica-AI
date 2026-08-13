@@ -312,9 +312,16 @@ test("generator materializes every physical source row and exact remaining gap",
   assert.equal(intake.authorConfirmations.oneSourceRowEqualsOneRuntimeCard, true);
   assert.equal(intake.authorConfirmations.runtimeDeckLifecycleApproved, true);
   assert.equal(intake.unresolved.executableNewsMappingComplete, false);
-  assert.equal(manifest.config.runtimeReady, false);
+  assert.equal(typeof manifest.config.runtimeReady, "boolean");
+  const runtimeBlockers = manifest.config.runtimeBlockers ?? [];
   assert.deepEqual(
-    manifest.config.runtimeBlockers.filter((item) => /news/u.test(item)),
+    runtimeBlockers,
+    manifest.config.runtimeReady
+      ? []
+      : ["full facilitator UI and browser acceptance"]
+  );
+  assert.deepEqual(
+    runtimeBlockers.filter((item) => /news/u.test(item)),
     []
   );
   assert.equal(Object.keys(manifest.state.public.objects.cargoOrders).length, 174);
@@ -341,8 +348,9 @@ test("generator materializes every physical source row and exact remaining gap",
   );
   assert.equal(
     manifest.content.data.cardLifecycle.status,
-    "partially-confirmed-executable-draft"
+    "confirmed-executable"
   );
+  assert.equal(manifest.content.data.cardLifecycle.publishable, true);
   // Пусто: последнее рабочее допущение закрыто решением продюсера — полная
   // ничья в приоритете груза разрешается очерёдностью хода, разыгранной один
   // раз при подготовке партии, а не вторым жребием.
@@ -363,7 +371,7 @@ test("generator materializes every physical source row and exact remaining gap",
     "canonical-id"
   );
   assert.ok(
-    !manifest.config.runtimeBlockers.includes("single remaining cargo card offer policy")
+    !runtimeBlockers.includes("single remaining cargo card offer policy")
   );
   assert.deepEqual(
     manifest.content.data.cardLifecycle.executableCargoAdditionNewsNumbers,

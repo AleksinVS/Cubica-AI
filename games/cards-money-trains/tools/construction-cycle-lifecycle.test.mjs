@@ -289,10 +289,15 @@ test("construction generator is idempotent and publishes only six dynamic intent
       .sort(),
     ["edgeId", "positionT"]
   );
-  assert.equal(manifest.config.runtimeReady, false);
+  assert.equal(typeof manifest.config.runtimeReady, "boolean");
+  assert.deepEqual(
+    manifest.config.runtimeBlockers ?? [],
+    manifest.config.runtimeReady
+      ? []
+      : ["full facilitator UI and browser acceptance"]
+  );
   // ADR-100: regions now come from the real author map, so there is nothing
-  // left to replace before publication (`runtimeReady` stays false only
-  // because of the unrelated market/cargo/reporting blockers tracked below).
+  // left to replace before publication.
   assert.equal(
     manifest.content.data.constructionCycle.regionData.replaceBeforePublication,
     false

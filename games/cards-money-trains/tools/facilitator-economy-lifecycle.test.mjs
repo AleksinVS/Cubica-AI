@@ -400,6 +400,16 @@ test("exclusion returns equipment, grounds cargo and advances an affected moveme
     "locomotive-b"
   );
 
+  const finalGuildExclusion = await dispatch({
+    ...session,
+    actionId: "facilitator.economy.team.exclude",
+    params: { teamId: "team-guild-2" }
+  });
+  assert.equal(finalGuildExclusion.result.ok, true);
+  snapshot = await session.store.getSession(session.sessionId);
+  assert.equal(snapshot.state.public.session.phase, "settlement");
+  assert.equal(snapshot.state.public.session.canRequestFinish, false);
+
   await assertRejectedWithoutMutation(session, {
     actionId: "facilitator.economy.adjust.credit",
     params: { teamId: "team-logistics", amount: 1 }

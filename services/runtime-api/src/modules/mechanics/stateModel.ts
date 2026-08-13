@@ -113,7 +113,10 @@ const stateModelTraversalMetadataCache = new WeakMap<
   StateAccessContext["stateModel"],
   StateModelTraversalMetadata
 >();
-const recordPathMetadataCache = new WeakMap<RecordCollectionModel, RecordPathNode>();
+const recordPathMetadataCache = new WeakMap<
+  StateAccessContext["stateModel"],
+  WeakMap<RecordCollectionModel, RecordPathNode>
+>();
 const entityAreaMetadataCache = new WeakMap<EntityCollectionModel, EntityAreaMetadata>();
 const collectionFieldMetadataCache = new WeakMap<CollectionModel, CollectionFieldMetadata>();
 const verifiedReadOnlyStateAccessData = new WeakMap<
@@ -560,6 +563,8 @@ function validateCollectionEntity(
 
 interface RecordPathNode {
   fieldId?: string;
+  /** Value is owned and validated by one exact actor endpoint, not by this public collection. */
+  actorPrivateLeaf?: true;
   children: Map<string, RecordPathNode>;
 }
 
@@ -571,14 +576,17 @@ function validateRecordCollectionItem(
   collectionId: string,
   entityId: string
 ): void {
-  const root = recordPathMetadata(model);
+  const root = recordPathMetadata(context.stateModel, model);
   validateRecordPathNode(context, model, item, root, `collection "${collectionId}" item "${entityId}"`, true);
   validateDerivedCollectionFields(context, model, item, collectionId, entityId);
 }
 
 /** Build the declared closed-record path tree once for an admitted model. */
-function recordPathMetadata(model: RecordCollectionModel): RecordPathNode {
-  const cached = recordPathMetadataCache.get(model);
+function recordPathMetadata(
+  stateModel: StateAccessContext["stateModel"],
+  model: RecordCollectionModel
+): RecordPathNode {
+  const cached = recordPathMetadataCache.get(stateModel)?.get(model);
   if (cached) return cached;
 
   const root: RecordPathNode = { children: new Map() };
@@ -591,19 +599,78 @@ function recordPathMetadata(model: RecordCollectionModel): RecordPathNode {
     }
     node.fieldId = fieldId;
   }
-  if (isFrozenRecordCollectionMetadata(model)) {
-    recordPathMetadataCache.set(model, root);
+  for (const privatePath of actorPrivateRecordLeafPaths(stateModel, model)) {
+    let node = root;
+    for (const segment of privatePath) {
+      const next = node.children.get(segment) ?? { children: new Map<string, RecordPathNode>() };
+      node.children.set(segment, next);
+      node = next;
+    }
+    node.actorPrivateLeaf = true;
+  }
+  if (isFrozenRecordCollectionMetadata(stateModel, model)) {
+    const modelCache = recordPathMetadataCache.get(stateModel) ??
+      new WeakMap<RecordCollectionModel, RecordPathNode>();
+    modelCache.set(model, root);
+    recordPathMetadataCache.set(stateModel, modelCache);
   }
   return root;
 }
 
+/**
+ * Return only the actor-private leaves admitted beside a whole-player public
+ * record map. Endpoint validation remains responsible for every stored actor;
+ * these paths merely prevent the collection's closed-record walk from
+ * misclassifying that separately typed value as an unknown public field.
+ */
+function actorPrivateRecordLeafPaths(
+  stateModel: StateAccessContext["stateModel"],
+  model: RecordCollectionModel
+): string[][] {
+  if (model.audienceRef !== "public" || model.stableKey !== "map-key" ||
+      model.storage.root !== "players" || model.storage.segments.length !== 0) {
+    return [];
+  }
+  const publicPaths = collectionFieldMetadata(model).stored.map(([, field]) => field.storage.path);
+  const paths: string[][] = [];
+  for (const endpoint of Object.values(stateModel.endpoints)) {
+    const segments = endpoint.storage.segments as Array<RuntimeStorageSegment>;
+    if (endpoint.audienceRef !== "actor" || endpoint.usage === "projection-only" ||
+        endpoint.storage.root !== "players" || segments.length < 2 ||
+        !isActorContextSegment(segments[0]) ||
+        !segments.slice(1).every((segment): segment is string => typeof segment === "string")) {
+      continue;
+    }
+    const privatePath = segments.slice(1) as string[];
+    if (publicPaths.some((publicPath) => pathsOverlapByContainment(publicPath, privatePath))) continue;
+    paths.push(privatePath);
+  }
+  return paths;
+}
+
+function isActorContextSegment(segment: RuntimeStorageSegment): segment is { context: "actor" } {
+  return typeof segment !== "string" && "context" in segment && segment.context === "actor";
+}
+
+function pathsOverlapByContainment(left: ReadonlyArray<string>, right: ReadonlyArray<string>): boolean {
+  const minimum = Math.min(left.length, right.length);
+  return left.slice(0, minimum).every((segment, index) => segment === right[index]);
+}
+
 /** Require every model fragment read by the cached path tree to be immutable. */
-function isFrozenRecordCollectionMetadata(model: RecordCollectionModel): boolean {
+function isFrozenRecordCollectionMetadata(
+  stateModel: StateAccessContext["stateModel"],
+  model: RecordCollectionModel
+): boolean {
   return Object.isFrozen(model) &&
     Object.isFrozen(model.fields) &&
     collectionFieldMetadataCache.has(model) &&
     collectionFieldMetadata(model).stored.every(([, field]) =>
-      Object.isFrozen(field.storage) && Object.isFrozen(field.storage.path));
+      Object.isFrozen(field.storage) && Object.isFrozen(field.storage.path)) &&
+    Object.isFrozen(stateModel.endpoints) &&
+    Object.values(stateModel.endpoints).every((endpoint) =>
+      Object.isFrozen(endpoint) && Object.isFrozen(endpoint.storage) &&
+      Object.isFrozen(endpoint.storage.segments));
 }
 
 /** Validate every declared projection at both input and candidate boundaries. */
@@ -632,6 +699,7 @@ function validateRecordPathNode(
   label: string,
   root: boolean
 ): void {
+  if (node.actorPrivateLeaf) return;
   if (node.fieldId !== undefined) {
     assertValueMatchesType(context, model.fields[node.fieldId].valueType, value, `${label} field "${node.fieldId}"`);
     // A leaf type owns its complete value. Paths below that leaf would create

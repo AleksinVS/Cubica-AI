@@ -26,6 +26,12 @@ const turnSession = (
     stateVersion: 1,
     lastEventSequence: 0
   },
+  participants: Object.keys(players ?? { p1: {} }).map((playerId) => ({
+    seatId: playerId,
+    playerId,
+    kind: "human" as const,
+    joinState: "local" as const
+  })),
   actionAvailability: [],
   state: {
     ...(players === undefined ? {} : { players }),
@@ -296,6 +302,46 @@ describe("GamePresenter board action serialization", () => {
     await presenter.handleBoardAction("state.replace");
 
     expect(presenter.sessionSnapshot?.state).toEqual({ public: { current: true }, secret: {} });
+  });
+});
+
+describe("GamePresenter Agent Turn snapshots", () => {
+  it("preserves participants from the Agent Turn response", async () => {
+    const content = neutralContent("neutral-agent-turn-participants");
+    const initialSession = turnSession("p1");
+    const participants = initialSession.participants;
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      sessionId: initialSession.sessionId,
+      participants,
+      version: {
+        ...initialSession.version,
+        stateVersion: 2,
+        lastEventSequence: 1
+      },
+      state: initialSession.state,
+      actionAvailability: [],
+      agentTurn: { surface: null }
+    }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" }
+    })));
+
+    const presenter = new GamePresenter({
+      gateway: new ReactViewGateway(),
+      content,
+      config: createDefaultGameConfig(createDefaultGameConfigData(content))
+    });
+    Reflect.set(presenter, "session", initialSession);
+    Reflect.set(presenter, "booting", false);
+
+    await presenter.handleSurfaceAction({
+      id: "agent-turn",
+      kind: "agentTurn",
+      target: "agent.continue",
+      sideEffectPolicy: "system-approved"
+    });
+
+    expect(presenter.sessionSnapshot?.participants).toEqual(participants);
   });
 });
 

@@ -1083,6 +1083,58 @@ button.button-helper-arrow:focus-visible {
   background: transparent;
 }
 
+.public-journal-download {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 3;
+  padding: 0.65rem 0.9rem;
+  border: 1px solid rgba(170, 227, 255, 0.28);
+  border-radius: 0.65rem;
+  background: rgba(11, 31, 51, 0.78);
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+  backdrop-filter: blur(12px);
+}
+
+.public-journal-download:hover,
+.public-journal-download:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Keep the affordance out of the platform-owned top-right map controls while
+   preserving z-index below the modal overlay layer. */
+.game-player-root:has(.game-renderer--map-first) > .public-journal-download {
+  top: 4.25rem;
+  right: 0.75rem;
+  z-index: 9;
+}
+
+/* Above 900px the action tray reserves a real left gutter and the desktop
+   action panel may occupy the top-right. Keep the link in that gutter rather
+   than guessing a vertical offset beside either control. */
+@media (min-width: 901px) {
+  .game-player-root:has(.game-renderer--map-first) > .public-journal-download {
+    top: auto;
+    right: auto;
+    bottom: 0.75rem;
+    left: 0.75rem;
+    max-width: calc(14vw - 1.5rem);
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (max-width: 900px) {
+  .game-player-root:has(.game-renderer--map-first) > .public-journal-download {
+    top: 0.75rem;
+    right: auto;
+    left: 0.75rem;
+  }
+}
+
 .game-player-root,
 .game-player-root * {
   font-family: var(--font-inter), system-ui, sans-serif;

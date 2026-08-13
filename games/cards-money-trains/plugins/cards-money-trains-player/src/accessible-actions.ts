@@ -60,6 +60,23 @@ const SETUP_LOCOMOTIVE_PLACE_ACTION_ID = "session.setup.place.locomotive";
 const MAINTENANCE_LOCOMOTIVE_ACTION_ID = "maintenance.pay.locomotive";
 const MAINTENANCE_WAGON_ACTION_ID = "maintenance.pay.wagon";
 const MAINTENANCE_CARGO_ACTION_ID = "maintenance.pay.held-cargo";
+const MARKET_PURCHASE_WAGON_ACTION_ID = "market.purchase.wagon";
+const MARKET_PURCHASE_LOCOMOTIVE_ACTION_ID = "market.purchase.locomotive";
+const MARKET_SELL_WAGON_ACTION_ID = "market.sell.wagon";
+const MARKET_SELL_LOCOMOTIVE_ACTION_ID = "market.sell.locomotive";
+const NEWS_EFFECT_19_PREPARE_TEAM_ACTION_ID = "news.effect.19.prepare-team";
+const NEWS_EFFECT_19_REMOVE_LOCOMOTIVE_ACTION_ID =
+  "news.effect.19.remove-locomotive";
+const NEWS_EFFECT_19_REMOVE_WAGON_ACTION_ID = "news.effect.19.remove-wagon";
+const REQUIRED_INPUT_ACTION_IDS: ReadonlySet<string> = new Set([
+  MARKET_PURCHASE_WAGON_ACTION_ID,
+  MARKET_PURCHASE_LOCOMOTIVE_ACTION_ID,
+  MARKET_SELL_WAGON_ACTION_ID,
+  MARKET_SELL_LOCOMOTIVE_ACTION_ID,
+  NEWS_EFFECT_19_PREPARE_TEAM_ACTION_ID,
+  NEWS_EFFECT_19_REMOVE_LOCOMOTIVE_ACTION_ID,
+  NEWS_EFFECT_19_REMOVE_WAGON_ACTION_ID
+]);
 const ECONOMY_ADJUST_CREDIT_ACTION_ID =
   "facilitator.economy.adjust.credit";
 const ECONOMY_ADJUST_DEBIT_ACTION_ID =
@@ -168,6 +185,15 @@ const placedTeamSelectOptions = (projection: BoardProjection) =>
  */
 const stationSelectOptions = (projection: BoardProjection) =>
   selectOptions(projection.nodes);
+
+/** Purchases accept only public terminals; Runtime owns all remaining checks. */
+const terminalSelectOptions = (projection: BoardProjection) =>
+  selectOptions(projection.nodes.filter((node) =>
+    node.objectType === "transport.terminal"));
+
+/** Public teams are input aids, never a client-side role or phase decision. */
+const teamSelectOptions = (projection: BoardProjection) =>
+  selectOptions(projection.teams.map((team) => ({ id: team.id, label: team.label })));
 
 /**
  * Offer decks exist only for the numbered terminals 1–23.
@@ -322,6 +348,78 @@ const actionFields = (
       kind: "select",
       required: true,
       options: visibleCargoSelectOptions(projection)
+    }];
+  }
+
+  if (
+    action.actionId === MARKET_PURCHASE_WAGON_ACTION_ID
+    || action.actionId === MARKET_PURCHASE_LOCOMOTIVE_ACTION_ID
+  ) {
+    return [{
+      name: "teamId",
+      label: "Команда",
+      kind: "select",
+      required: true,
+      options: teamSelectOptions(projection)
+    }, {
+      name: "stationId",
+      label: "Терминал покупки",
+      kind: "select",
+      required: true,
+      options: terminalSelectOptions(projection)
+    }];
+  }
+
+  if (action.actionId === MARKET_SELL_WAGON_ACTION_ID) {
+    return [{
+      name: "wagonId",
+      label: "Вагон",
+      kind: "select",
+      required: true,
+      options: wagonSelectOptions(projection)
+    }];
+  }
+
+  if (action.actionId === MARKET_SELL_LOCOMOTIVE_ACTION_ID) {
+    return [{
+      name: "locomotiveId",
+      label: "Локомотив",
+      kind: "select",
+      required: true,
+      options: locomotiveSelectOptions(projection)
+    }];
+  }
+
+  if (action.actionId === NEWS_EFFECT_19_PREPARE_TEAM_ACTION_ID) {
+    return [{
+      name: "teamId",
+      label: "Команда",
+      kind: "select",
+      required: true,
+      options: teamSelectOptions(projection)
+    }];
+  }
+
+  if (
+    action.actionId === NEWS_EFFECT_19_REMOVE_LOCOMOTIVE_ACTION_ID
+    || action.actionId === NEWS_EFFECT_19_REMOVE_WAGON_ACTION_ID
+  ) {
+    const removesLocomotive =
+      action.actionId === NEWS_EFFECT_19_REMOVE_LOCOMOTIVE_ACTION_ID;
+    return [{
+      name: "teamId",
+      label: "Команда",
+      kind: "select",
+      required: true,
+      options: teamSelectOptions(projection)
+    }, {
+      name: removesLocomotive ? "locomotiveId" : "wagonId",
+      label: removesLocomotive ? "Локомотив" : "Вагон",
+      kind: "select",
+      required: true,
+      options: removesLocomotive
+        ? locomotiveSelectOptions(projection)
+        : wagonSelectOptions(projection)
     }];
   }
 
@@ -498,6 +596,7 @@ const actionFields = (
 /** Cargo workflows accept only their explicit form fields, never hidden defaults. */
 const omitsFixedParams = (actionId: string): boolean =>
   EXPLICIT_FORM_ACTION_IDS.has(actionId)
+  || REQUIRED_INPUT_ACTION_IDS.has(actionId)
   || PARAMETERLESS_LIFECYCLE_ACTION_IDS.has(actionId)
   || ECONOMY_ACTION_IDS.has(actionId)
   || actionId.startsWith("news.effect.apply.")

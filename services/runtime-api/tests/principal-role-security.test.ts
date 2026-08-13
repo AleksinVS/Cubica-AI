@@ -36,6 +36,7 @@ test("command authorization follows the authenticated principal role in both mis
   const deniedAdmission = new TrackingAdmissionController();
   const denied = await deniedStore.createSession({
     gameId: manifest.meta.id,
+    participants: [{ seatId: "p1", playerId: "p1", kind: "human", joinState: "local" }],
     // Deliberately opposite to the authenticated principal. This retained
     // session metadata must never elevate the caller to facilitator authority.
     sessionRole: "facilitator",
@@ -70,6 +71,7 @@ test("command authorization follows the authenticated principal role in both mis
   const allowedAdmission = new TrackingAdmissionController();
   const allowed = await allowedStore.createSession({
     gameId: manifest.meta.id,
+    participants: [{ seatId: "p1", playerId: "p1", kind: "human", joinState: "local" }],
     // The inverse mismatch proves the old session-wide default can no longer
     // suppress authority that belongs to the authenticated facilitator.
     sessionRole: "player",

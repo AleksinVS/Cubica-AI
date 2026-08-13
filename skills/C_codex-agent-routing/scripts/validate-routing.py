@@ -26,6 +26,9 @@ ROOT_INSTRUCTIONS = ROOT / "AGENTS.md"
 EXPECTED_PROFILES = {
     "lead-architect": ("gpt-5.6-sol", "high", "workspace-write"),
     "scout": ("gpt-5.6-luna", "low", "read-only"),
+    "luna-medium": ("gpt-5.6-luna", "medium", "workspace-write"),
+    "luna-high": ("gpt-5.6-luna", "high", "workspace-write"),
+    "luna-xhigh": ("gpt-5.6-luna", "xhigh", "workspace-write"),
     "builder-low": ("gpt-5.6-terra", "low", "workspace-write"),
     "builder": ("gpt-5.6-terra", "medium", "workspace-write"),
     "builder_complex": ("gpt-5.6-sol", "high", "workspace-write"),

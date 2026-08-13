@@ -53,6 +53,7 @@ const persistedRow = {
   bundle_hash: bundleHash,
   content_source_id: "editor-source",
   session_role: "facilitator",
+  participants: [{ seatId: "p1", playerId: "p1", kind: "human", joinState: "local" }],
   state: { public: { step: 1 } },
   state_version: "4",
   last_event_sequence: "7",
@@ -155,6 +156,7 @@ test("PostgreSQL creates immutable bundle, session and hashed principal atomical
   const created = await store.createSession(createInput());
 
   assert.equal(created.session.bundleHash, bundleHash);
+  assert.deepEqual(created.session.participants, persistedRow.participants);
   assert.equal(created.principal.principalId, principalId);
   assert.deepEqual(client.queries.map(({ text }) => firstSqlWord(text)), [
     "BEGIN", "INSERT", "INSERT", "INSERT", "COMMIT"
@@ -162,6 +164,8 @@ test("PostgreSQL creates immutable bundle, session and hashed principal atomical
   const principalInsert = client.queries.find(({ text }) => text.includes("INSERT INTO session_principals"));
   assert.equal(principalInsert?.values?.[5], credentialSha256);
   assert.equal(JSON.stringify(client.queries).includes("ses_"), false);
+  const sessionInsert = client.queries.find(({ text }) => text.includes("INSERT INTO game_sessions"));
+  assert.equal(sessionInsert?.values?.[5], JSON.stringify(persistedRow.participants));
 });
 
 test("PostgreSQL commits state, first receipt and ordered events in the same locked transaction", async () => {
@@ -177,6 +181,7 @@ test("PostgreSQL commits state, first receipt and ordered events in the same loc
   });
   const store = new PostgresSessionStore<Record<string, unknown>>(new ScriptedPool(client));
   const committedEvent = event({ session: sessionId, sequence: 8 });
+  committedEvent.metricChanges = [{ metricId: "score", before: 1, after: 2 }];
   const committedReceipt = receipt({
     before: 4,
     after: 5,
@@ -211,6 +216,29 @@ test("PostgreSQL commits state, first receipt and ordered events in the same loc
   assert.equal(eventInsert?.values?.[3], receiptId);
   assert.equal(eventInsert?.values?.[10], JSON.stringify(committedEvent.summary));
   assert.equal(eventInsert?.values?.[11], JSON.stringify(committedEvent.data));
+  assert.equal(eventInsert?.values?.[12], JSON.stringify(committedEvent.metricChanges));
+});
+
+test("PostgreSQL rejects participant mutation before writing a locked snapshot", async () => {
+  const client = new ScriptedClient((text) => {
+    if (text.includes("FOR UPDATE NOWAIT")) return result([persistedRow]);
+    return result([]);
+  });
+  const store = new PostgresSessionStore<Record<string, unknown>>(new ScriptedPool(client));
+  await assert.rejects(store.updateSession({
+    sessionId,
+    gameId: persistedRow.game_id,
+    bundleHash,
+    contentSourceId: persistedRow.content_source_id,
+    sessionRole: "facilitator",
+    participants: [{ seatId: "changed", playerId: "p1", kind: "human", joinState: "local" }],
+    state: persistedRow.state,
+    version: { sessionId, stateVersion: 5, lastEventSequence: 7 },
+    createdAt: now,
+    updatedAt: new Date("2026-07-11T12:01:00.000Z")
+  }, { expectedStateVersion: 4 }), /cannot change/u);
+  assert.equal(client.queries.some(({ text }) => text.includes("UPDATE game_sessions SET")), false);
+  assert.equal(firstSqlWord(client.queries.at(-1)?.text ?? ""), "ROLLBACK");
 });
 
 test("PostgreSQL registers a protected schedule and credential-free system principal in the command transaction", async () => {
@@ -1077,6 +1105,51 @@ test("PostgreSQL reads session events after a cursor in canonical sequence order
   assert.deepEqual(events, [storedEvent]);
 });
 
+test("PostgreSQL public journal source uses one bounded authenticated snapshot", async () => {
+  const publicEvent = event({ session: sessionId, sequence: 3 });
+  publicEvent.metricChanges = [{ metricId: "score", before: 1, after: 2 }];
+  const client = new ScriptedClient((text) => {
+    if (text.includes("JOIN session_principals")) {
+      return result([{
+        ...persistedRow,
+        archived_at: null,
+        principal_id: principalId,
+        principal_session_id: sessionId,
+        principal_kind: principalRow.principal_kind,
+        principal_role: "player",
+        actor_scope: principalRow.actor_scope,
+        principal_created_at: now
+      }]);
+    }
+    if (text.includes("FROM session_events")) return result([eventRow(publicEvent)]);
+    return result([]);
+  });
+  const store = new PostgresSessionStore<Record<string, unknown>>(new ScriptedPool(client));
+  const source = await store.readPublicJournalSource({ sessionId, credentialSha256 }, 65_537);
+  assert.equal(source?.lifecycle, "active");
+  assert.deepEqual(source?.events[0]?.metricChanges, publicEvent.metricChanges);
+  const eventQuery = client.queries.find(({ text }) => text.includes("FROM session_events"));
+  assert.match(eventQuery?.text ?? "", /audience = 'public'/u);
+  assert.match(eventQuery?.text ?? "", /sequence <= \$2/u);
+  assert.match(eventQuery?.text ?? "", /ORDER BY sequence ASC/u);
+  assert.match(eventQuery?.text ?? "", /LIMIT \$3/u);
+  assert.deepEqual(eventQuery?.values, [sessionId, 7, 65_537]);
+  assert.deepEqual(client.queries.map(({ text }) => firstSqlWord(text)), [
+    "BEGIN", "SELECT", "SELECT", "COMMIT"
+  ]);
+});
+
+test("PostgreSQL metricChanges mapping rejects malformed durable JSON", async () => {
+  const malformed = eventRow(event({ session: sessionId, sequence: 3 }));
+  malformed.metric_changes = [{ metricId: "score", before: "bad", after: 2 }];
+  const pool = new ScriptedPool(new ScriptedClient(() => result([])), (text) => {
+    if (text.includes("FROM session_events")) return result([malformed]);
+    return result([]);
+  });
+  const store = new PostgresSessionStore<Record<string, unknown>>(pool);
+  await assert.rejects(store.getSessionEvents(sessionId), SessionStoreUnavailableError);
+});
+
 test("database details are replaced by a neutral typed HTTP 503", async () => {
   const pool = new ScriptedPool(
     new ScriptedClient(() => result([])),
@@ -1116,6 +1189,7 @@ function createInput(): CreateSessionInput<Record<string, unknown>> {
     gameId: "fixture-game",
     contentSourceId: "editor-source",
     sessionRole: "facilitator",
+    participants: [{ seatId: "p1", playerId: "p1", kind: "human", joinState: "local" }],
     initialState: { public: { step: 1 } },
     immutableBundle: {
       bundleHash,
@@ -1338,6 +1412,7 @@ function eventRow(value: SessionEventRecord): QueryResultRow {
     event_type: value.eventType,
     summary: value.summary,
     event_data: value.data,
+    metric_changes: value.metricChanges ?? null,
     created_at: value.createdAt
   };
 }

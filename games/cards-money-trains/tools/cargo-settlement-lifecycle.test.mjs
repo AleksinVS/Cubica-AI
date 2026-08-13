@@ -234,14 +234,16 @@ test("six game-local generators preserve the complete cargo-settlement authoring
       activeSettlementLegField: "activeLegFromNodeId"
     }
   );
-  assert.equal(
-    actual.root.config.runtimeBlockers.includes(
-      "remaining reporting workflows"
-    ),
-    true
-  );
-  assert.equal(actual.root.logic.actions.length, 92);
-  assert.equal(Object.keys(actual.root.mechanics.plans).length, 92);
+  assert.equal(typeof actual.root.config.runtimeReady, "boolean");
+  if (actual.root.config.runtimeReady) {
+    assert.equal(actual.root.config.runtimeBlockers, undefined);
+  } else {
+    assert.deepEqual(actual.root.config.runtimeBlockers, [
+      "full facilitator UI and browser acceptance"
+    ]);
+  }
+  assert.equal(actual.root.logic.actions.length, 99);
+  assert.equal(Object.keys(actual.root.mechanics.plans).length, 99);
 });
 
 test("normal load derives ownership and journals the confirmed cargo relation", async () => {

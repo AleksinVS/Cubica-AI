@@ -1,6 +1,6 @@
 ---
 name: cubica
-description: Use only when the user explicitly invokes $cubica or explicitly asks for the Cubica autonomous workflow; then run development through a human-approved TSK plan, autonomous orchestration, bounded subagents, risk-based verification, and final acceptance.
+description: Use only when the user explicitly invokes $cubica; then run development through a human-approved TSK plan, autonomous orchestration, bounded subagents, risk-based verification, and final acceptance.
 ---
 
 # Cubica Autonomous Development

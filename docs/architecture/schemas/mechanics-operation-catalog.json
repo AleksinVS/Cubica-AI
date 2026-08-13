@@ -11,10 +11,10 @@
     },
     "core.entities.select": {
       "moduleId": "cubica.core", "kind": "query", "schemaRef": "https://cubica.platform/schemas/mechanics-plan.v1alpha1.json#/$defs/selectEntitiesStep",
-      "inputType": "Typed collection selector", "outputType": "Bounded ordered entity selection",
+      "inputType": "Typed entity or record-map collection selector; records admit declared logical fields but reject objectTypes and facets", "outputType": "Bounded typed collection selection with unchanged stable identifiers",
       "confidentiality": { "input": "declared-flow", "output": "joined-input" }, "integrity": "module-checked",
-      "reads": ["declared collection", "selector expressions"], "writes": [], "determinism": "state-deterministic", "orderPolicy": "Scan stable entity identifiers in canonical UTF-8 order.", "errorPolicy": "Abort when the declared result cardinality cannot be met.",
-      "cost": { "class": "bounded-linear", "formula": "At most the declared collection capacity." }, "errors": ["MECHANICS_CARDINALITY_MIN", "MECHANICS_CARDINALITY_MAX"],
+      "reads": ["declared entity or record-map collection", "declared logical fields", "selector expressions"], "writes": [], "determinism": "state-deterministic", "orderPolicy": "Scan stable collection identifiers in canonical UTF-8 order.", "errorPolicy": "Abort when the declared result cardinality cannot be met or a record selector uses entity-only objectTypes/facets.",
+      "cost": { "class": "bounded-linear", "formula": "At most the declared collection capacity plus bounded logical-field projection work." }, "errors": ["MECHANICS_CARDINALITY_MIN", "MECHANICS_CARDINALITY_MAX", "MECHANICS_COLLECTION_ITEM_SHAPE_MISMATCH"],
       "examples": [{ "op": "core.entities.select", "kind": "query" }], "counterexamples": [{ "reason": "Raw JSON paths are not selectors.", "value": { "op": "core.entities.select", "path": ["public"] } }], "conformanceTests": ["mechanics.registry.core.entities.select"]
     },
     "core.entities.each": {
@@ -27,9 +27,9 @@
     },
     "core.entities.order": {
       "moduleId": "cubica.ordering", "kind": "command", "schemaRef": "https://cubica.platform/schemas/mechanics-plan.v1alpha1.json#/$defs/orderEntitiesStep",
-      "inputType": "Prior bounded entity selection and typed lexicographic keys", "outputType": "Ordered entity selection and canonical full-equality groups",
+      "inputType": "Prior trusted bounded entity or record-map selection and typed lexicographic keys", "outputType": "Unchanged typed selection envelope with ordered stable identifiers and canonical full-equality groups",
       "confidentiality": { "input": "declared-flow", "output": "joined-input" }, "integrity": "module-checked",
-      "reads": ["prior entity selection", "declared current fields", "declared related collections", "protected server random provider when random tie-breaking is selected"], "writes": [], "determinism": "server-random", "orderPolicy": "Compare keys in authored order; place missing values absolutely; resolve only complete ties canonically or through one server-random choice per group and authored purpose id.", "errorPolicy": "Abort atomically on invalid selection, missing required values, incompatible joins, unsafe numeric aggregation, or unavailable random provider.",
+      "reads": ["prior trusted typed collection selection", "declared current fields", "declared related collections", "protected server random provider when random tie-breaking is selected"], "writes": [], "determinism": "server-random", "orderPolicy": "Compare keys in authored order; preserve stable map identifiers; place missing values absolutely; resolve only complete ties canonically or through one server-random choice per group and authored purpose id.", "errorPolicy": "Abort atomically on invalid selection, missing required values, incompatible joins, unsafe numeric aggregation, or unavailable random provider.",
       "cost": { "class": "bounded-n-log-n", "formula": "Selection maximum times key count and bounded stable-sort depth, plus declared related collection capacities and one bounded shuffle pass per complete tie group." }, "errors": ["MECHANICS_ORDER_SELECTION_INVALID", "MECHANICS_ORDER_SOURCE_CONDITIONAL", "MECHANICS_ORDER_FIELD_TYPE_UNSUPPORTED", "MECHANICS_ORDER_REFERENCE_INVALID", "MECHANICS_ORDER_VALUE_MISSING", "MECHANICS_ORDER_DECIMAL_OVERFLOW", "MECHANICS_RANDOM_PROVIDER_MISSING"],
       "examples": [{ "op": "core.entities.order", "kind": "command", "tieBreak": { "kind": "canonical-id" } }], "counterexamples": [{ "reason": "Client-provided identifier arrays are not trusted selections.", "value": { "op": "core.entities.order", "selection": ["a", "b"] } }], "conformanceTests": ["mechanics.registry.core.entities.order"]
     },

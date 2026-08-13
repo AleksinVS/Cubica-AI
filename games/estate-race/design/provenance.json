@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "1.0",
+  "gameId": "estate-race",
+  "createdAt": "2026-08-12",
+  "createdBy": "Cubica",
+  "origin": "original",
+  "license": "Cubica game-owned asset",
+  "externalAssets": [],
+  "externalFonts": [],
+  "artifacts": [
+    {
+      "path": "estate-race-board-reference.svg",
+      "kind": "reference-mockup",
+      "dimensions": {
+        "width": 1400,
+        "height": 1000
+      },
+      "sha256": "f492f69142368e03def533fe5aead099f67c1f037582072eaa6dc059fd7c250c",
+      "description": "Оригинальный композиционный и стилевой референс тёплой редакционной настольной карты Estate Race; не источник игровых чисел."
+    },
+    {
+      "path": "narrow-layout-intent.md",
+      "kind": "responsive-intent",
+      "description": "Game-owned намерение компоновки для узкого viewport без изменения общего Player Web."
+    }
+  ]
+}

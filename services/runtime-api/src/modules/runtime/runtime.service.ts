@@ -172,6 +172,7 @@ export class RuntimeService {
     return {
       response: {
         sessionId: responseSnapshot.sessionId,
+        participants: responseSnapshot.participants,
         version: responseSnapshot.version,
         state: projectedState,
         actionAvailability,

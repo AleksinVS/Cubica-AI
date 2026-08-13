@@ -18,9 +18,11 @@
 
 ## Status
 
-planned
+in_progress
 
-Status note: архитектура ADR-059 принята 2026-07-06, но отдельного разрешения на исполнение всего плана нет. Нужные фазы активируются игровым срезом или приоритетом PM. Фазы 1–2 не зависят от пакета настольных механик.
+Status note: архитектура ADR-059 принята 2026-07-06; S8 передан в исполнение
+2026-08-12. Реализация S8 продолжается и ожидает проверки основной командой;
+задача не объявляет milestone принятым и не утверждает прохождение тестов.
 ADR-058; сквозное доказательство (Phase 6) требует фикстурной игры
 `games/dice-track/` из `TSK-20260705-board-game-platform-capabilities`.
 
@@ -45,28 +47,29 @@ ADR-058; сквозное доказательство (Phase 6) требует 
 ## Why
 
 Сетевой мультиплеер — вторая модель доставки настольных игр и заявленная
-возможность платформы (`PROJECT_OVERVIEW.md`). Сейчас его нет совсем: сессии в
-памяти одного процесса, один `playerId`, обновления только ответом на своё
-действие.
+возможность платформы (`PROJECT_OVERVIEW.md`). S8 сначала закрепляет общую
+session-owned модель участников для локальной доставки; сетевой join/reconnect
+остаётся S10.
 
 ## Current Findings
 
-1. `services/runtime-api/src/modules/session/inMemorySessionStore.ts` —
-   единственное хранилище сессий (долг `TSK-20260518-session-persistence-hardening`).
-2. `session.service.ts` принимает один необязательный `playerId`; модели
-   участников нет.
-3. WebSocket/стриминга в `runtime-api` нет — клиент получает состояние только
-   ответом на собственный HTTP-запрос.
-4. Таблиц `game_sessions`/`session_events` нет — БД в контуре пока не используется.
-5. Персональная проекция не нужна была ранее (один игрок) — строитель
-   проекции не принимает наблюдателя.
+1. S8 не переносит участников в game state или manifest: session-owned модель
+   имеет публичный элемент `seatId:string`, `playerId:string`,
+   `kind:"human"|"agent"`, `joinState:"local"`.
+2. S8 создаёт только `human`/`local`; `kind:"agent"` — граница S9, network join
+   и reconnect — граница S10.
+3. Канонические actor-scoped projection и доступность действий переиспользуются;
+   `seatId` — стабильное место, `playerId` — actor/key в `state.players`.
+4. Остальные WebSocket, durable-session и network acceptance criteria остаются
+   последующими фазами и не считаются доказанными текущим статусом.
 
 ## Target State
 
 1. Сессии и события — в PostgreSQL по ADR-005/ADR-011; `InMemorySessionStore`
    остаётся только как test double.
-2. Модель participants: места из `config.players`, join-токены, `kind: human|agent`,
-   хотсит как `joinState: "local"`.
+2. Session-owned participants: `seatId:string`, `playerId:string`,
+   `kind: human|agent`, `joinState: "local"`; S8 создаёт только human/local,
+   без изменения game state/manifest.
 3. Действия проходят через `session_events` с последовательной обработкой и
    advisory-lock на сессию; `{{actor}}` в сетевом режиме — только из
    аутентифицированного участника.
@@ -117,9 +120,14 @@ ADR-058; сквозное доказательство (Phase 6) требует 
 
 ### Phase 2. Participants и join-токены
 
-1. Контракты и API: создание сессии с местами, выдача токенов, занятие места,
-   `kind: human|agent`, хотсит-режим `local`.
-2. Обновление OpenAPI + контрактные тесты.
+1. S8: принять session-owned элемент `seatId`/`playerId`/`kind`/`joinState`,
+   создавать только `human`/`local`, переиспользовать actor-scoped projection и
+   available actions; агентские места передать S9.
+2. Pre-production destructive cutover: удалить `game_sessions` и каскадные
+   session-owned principals/receipts/events/schedules; `game_bundles` сохранить.
+   Backfill и внешние DB-действия не выполняются.
+3. Обновление OpenAPI + контрактные тесты; join-токены и network lifecycle
+   остаются S10.
 
 ### Phase 3. Очередь и последовательная обработка
 
@@ -185,3 +193,6 @@ npx playwright test  # двухбраузерный e2e dice-track
 - 2026-07-05: задача создана вместе с ADR-059 (Proposed). Реализация не начата.
 - 2026-07-06: ADR-059 принят владельцем проекта (Accepted 2026-07-06).
   Реализация не начата.
+- 2026-08-12: S8 передан в исполнение. Session-owned участники, публичная форма
+  элемента и границы S9/S10 зафиксированы; реализация и проверки ожидают
+  подтверждения основной командой.

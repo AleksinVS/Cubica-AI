@@ -87,6 +87,7 @@ function createFixture(withEvent: boolean): {
     sessionId,
     gameId: "transaction-validation-fixture",
     bundleHash,
+    participants: [{ seatId: "p1", playerId: "p1", kind: "human", joinState: "local" }],
     state: { public: { count: 4 } },
     version: { sessionId, stateVersion: 4, lastEventSequence: 7 },
     createdAt: now,

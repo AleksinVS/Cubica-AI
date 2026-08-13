@@ -91,6 +91,7 @@ export interface AgentTurnServiceInput {
 
 export interface AgentTurnServiceResponse {
   readonly sessionId: string;
+  readonly participants: SessionRecord<RuntimeState>["participants"];
   readonly version: SessionRecord<RuntimeState>["version"];
   readonly state: RuntimeState;
   readonly actionAvailability: ReadonlyArray<SessionActionAvailability>;
@@ -158,6 +159,7 @@ export class AgentTurnService {
           committedState: false,
           response: {
             sessionId: current.sessionId,
+            participants: current.participants,
             version: current.version,
             state: projectActorState(current.state, bundle, viewerActorId),
             actionAvailability: projectSessionActionAvailability(current, bundle, {
@@ -260,6 +262,7 @@ export class AgentTurnService {
           committedState: false,
           response: {
             sessionId: current.sessionId,
+            participants: current.participants,
             version: current.version,
             state: projectActorState(current.state, bundle, viewerActorId),
             actionAvailability: projectSessionActionAvailability(current, bundle, {
@@ -323,6 +326,7 @@ export class AgentTurnService {
           committedState: false,
           response: {
             sessionId: current.sessionId,
+            participants: current.participants,
             version: current.version,
             state: projectActorState(current.state, bundle, viewerActorId),
             actionAvailability: projectSessionActionAvailability(current, bundle, {
@@ -355,6 +359,7 @@ export class AgentTurnService {
           committedState: false,
           response: {
             sessionId: current.sessionId,
+            participants: current.participants,
             version: current.version,
             state: projectActorState(current.state, bundle, viewerActorId),
             actionAvailability: projectSessionActionAvailability(current, bundle, {
@@ -437,6 +442,7 @@ export class AgentTurnService {
         refreshContext: { bundle, principal },
         response: {
           sessionId: nextSnapshot.sessionId,
+          participants: nextSnapshot.participants,
           version: nextSnapshot.version,
           state: projectActorState(nextSnapshot.state, bundle, nextViewerActorId),
           actionAvailability: projectSessionActionAvailability(nextSnapshot, bundle, {

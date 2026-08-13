@@ -96,6 +96,9 @@ test("deriveSessionStoreMode reflects an alternate store class name", () => {
     async readArchivedSession() {
       return null;
     }
+    async readPublicJournalSource() {
+      return null;
+    }
     async getImmutableBundle() {
       return null;
     }

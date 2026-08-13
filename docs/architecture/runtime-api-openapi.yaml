@@ -460,6 +460,45 @@
         }
       }
     },
+    "/sessions/{sessionId}/public-journal": {
+      "get": {
+        "tags": ["Sessions"],
+        "operationId": "getPublicGameplayJournal",
+        "summary": "Download the authenticated portable projection of confirmed public gameplay events.",
+        "x-cubica-scope": "public",
+        "security": [{ "SessionBearer": [] }],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/SessionId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Portable public gameplay journal JSON attachment.",
+            "headers": {
+              "Cache-Control": { "schema": { "type": "string", "const": "no-store" } },
+              "Content-Disposition": { "schema": { "type": "string" } }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./schemas/public-gameplay-journal.schema.json"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
     "/sessions/{sessionId}/preview-restore": {
       "post": {
         "tags": ["Sessions", "EditorPreview"],
@@ -940,15 +979,16 @@
     "schemas": {
       "ActionResponse": {
         "type": "object",
-        "required": ["sessionId", "version", "state", "actionAvailability", "receipt"],
+        "required": ["sessionId", "participants", "version", "state", "actionAvailability", "receipt"],
         "properties": {
           "sessionId": { "type": "string" },
+          "participants": { "$ref": "#/components/schemas/SessionParticipants" },
           "version": { "$ref": "#/components/schemas/SessionStateVersion" },
           "state": { "$ref": "#/components/schemas/JsonObject" },
           "actionAvailability": { "$ref": "#/components/schemas/SessionActionAvailabilityList" },
           "receipt": { "$ref": "#/components/schemas/PublicCommandReceipt" }
         },
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "SessionActionAvailability": {
         "type": "object",
@@ -980,9 +1020,10 @@
       },
       "AgentTurnResponse": {
         "type": "object",
-        "required": ["sessionId", "version", "state", "actionAvailability", "agentTurn", "receipt"],
+        "required": ["sessionId", "participants", "version", "state", "actionAvailability", "agentTurn", "receipt"],
         "properties": {
           "sessionId": { "type": "string" },
+          "participants": { "$ref": "#/components/schemas/SessionParticipants" },
           "version": { "$ref": "#/components/schemas/SessionStateVersion" },
           "state": { "$ref": "#/components/schemas/JsonObject" },
           "actionAvailability": { "$ref": "#/components/schemas/SessionActionAvailabilityList" },
@@ -1002,7 +1043,7 @@
             "items": { "$ref": "#/components/schemas/LocalPlayerWebPluginBundle" }
           }
         },
-        "additionalProperties": true
+        "additionalProperties": false
       },
       "ContentReloadResponse": {
         "type": "object",
@@ -1193,6 +1234,23 @@
           "enum": ["__proto__", "constructor", "prototype"]
         }
       },
+      "SessionParticipant": {
+        "description": "Stable server-owned seat binding. S8 creates only local human participants; agent remains reserved for the accepted S9 flow.",
+        "type": "object",
+        "required": ["seatId", "playerId", "kind", "joinState"],
+        "properties": {
+          "seatId": { "type": "string", "minLength": 1 },
+          "playerId": { "$ref": "#/components/schemas/PlayerId" },
+          "kind": { "enum": ["human", "agent"] },
+          "joinState": { "const": "local" }
+        },
+        "additionalProperties": false
+      },
+      "SessionParticipants": {
+        "type": "array",
+        "minItems": 1,
+        "items": { "$ref": "#/components/schemas/SessionParticipant" }
+      },
       "JsonObject": {
         "type": "object",
         "additionalProperties": true
@@ -1261,14 +1319,15 @@
           "targetEventSequence": { "type": "integer", "minimum": 0 },
           "reason": { "type": "string" }
         },
-        "additionalProperties": true
+        "additionalProperties": false
       },
       "RestorePreviewSessionResponse": {
         "type": "object",
-        "required": ["sessionId", "gameId", "version", "state", "actionAvailability", "restored"],
+        "required": ["sessionId", "gameId", "participants", "version", "state", "actionAvailability", "restored"],
         "properties": {
           "sessionId": { "type": "string" },
           "gameId": { "$ref": "#/components/schemas/GameId" },
+          "participants": { "$ref": "#/components/schemas/SessionParticipants" },
           "version": { "$ref": "#/components/schemas/SessionStateVersion" },
           "state": { "$ref": "#/components/schemas/JsonObject" },
           "actionAvailability": { "$ref": "#/components/schemas/SessionActionAvailabilityList" },
@@ -1278,22 +1337,27 @@
       },
       "SessionResponse": {
         "type": "object",
-        "required": ["sessionId", "gameId", "version", "state", "actionAvailability"],
+        "required": ["sessionId", "gameId", "participants", "version", "state", "actionAvailability"],
         "properties": {
           "sessionId": { "type": "string" },
           "gameId": { "$ref": "#/components/schemas/GameId" },
+          "participants": { "$ref": "#/components/schemas/SessionParticipants" },
           "version": { "$ref": "#/components/schemas/SessionStateVersion" },
           "state": { "$ref": "#/components/schemas/JsonObject" },
           "actionAvailability": { "$ref": "#/components/schemas/SessionActionAvailabilityList" }
         },
         "additionalProperties": false
       },
+      "PortablePublicGameplayJournal": {
+        "$ref": "./schemas/public-gameplay-journal.schema.json"
+      },
       "CreatedSessionResponse": {
         "type": "object",
-        "required": ["sessionId", "gameId", "version", "state", "actionAvailability", "credential"],
+        "required": ["sessionId", "gameId", "participants", "version", "state", "actionAvailability", "credential"],
         "properties": {
           "sessionId": { "type": "string" },
           "gameId": { "$ref": "#/components/schemas/GameId" },
+          "participants": { "$ref": "#/components/schemas/SessionParticipants" },
           "version": { "$ref": "#/components/schemas/SessionStateVersion" },
           "state": { "$ref": "#/components/schemas/JsonObject" },
           "actionAvailability": { "$ref": "#/components/schemas/SessionActionAvailabilityList" },

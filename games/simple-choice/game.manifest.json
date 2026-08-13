@@ -181,7 +181,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:605c44d4e6c0957ecfdf061922ecc539a8ac23b47f6a62f8c3bd5815f3318af6"
+      "definitionHash": "sha256:43a8086b08b1116b0e39eea896350faabd3e4152b28b0a369335d339f2b0a1d5"
     }
   },
   "mechanics": {
@@ -190,8 +190,8 @@
     "moduleLock": {
       "cubica.core": {
         "moduleId": "cubica.core",
-        "moduleVersion": "1.5.0",
-        "artifactHash": "sha256:0065bc8cbb8c8c732db316306899bd479f027403c6baa14ce6d69980bbc2417a"
+        "moduleVersion": "1.7.0",
+        "artifactHash": "sha256:761d448c64868585c5b859043fb9ea19279e1c9e8993c4692ac23e3495458452"
       }
     },
     "stateModel": {
@@ -603,7 +603,7 @@
     },
     "plans": {
       "choice.accept": {
-        "planHash": "sha256:4b76b7c0f1566314898c8d2a93d23bdd2618996ca282c66bfc06aa204b43c787",
+        "planHash": "sha256:d6659bd8e34a9b32e76f9b6564058592795640c6bad9a5ed512482ae266435d4",
         "transaction": {
           "steps": [
             {

@@ -7,7 +7,7 @@
  * an action.
  */
 
-import type { BoardProjection } from "./board-state.ts";
+import type { BoardProjection, MethodologyPauseView } from "./board-state.ts";
 
 export interface FacilitatorTeamSummary {
   readonly id: string;
@@ -46,6 +46,26 @@ const boundedText = (value: unknown, maximumLength: number): string | null => {
  */
 export function isFacilitatorHudPhase(phase: string): boolean {
   return phase === "reporting" || phase === "methodology-pause";
+}
+
+/**
+ * Surface only a Runtime-published active pause or the next due reminder.
+ * This orders public records for display; it does not decide pause eligibility.
+ */
+export function selectMethodologyPause(
+  projection: Pick<BoardProjection, "methodology" | "turnNumber">
+): MethodologyPauseView | null {
+  const methodology = projection.methodology;
+  if (!methodology) return null;
+  if (methodology.activePauseId) {
+    return methodology.pauses.find((pause) =>
+      pause.id === methodology.activePauseId) ?? null;
+  }
+  return methodology.pauses
+    .filter((pause) =>
+      (pause.status === "scheduled" || pause.status === "deferred")
+      && pause.dueTurn <= projection.turnNumber)
+    .sort((left, right) => left.dueTurn - right.dueTurn)[0] ?? null;
 }
 
 /**

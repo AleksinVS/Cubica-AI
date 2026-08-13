@@ -75,6 +75,7 @@ const loadManifest = async () =>
  * bundle rather than an unchecked Mechanics plan.
  */
 const republishFixtureHashes = (manifest) => {
+  const networkModelsHash = mechanicsSha256(manifest.networkModels ?? {});
   for (const [planId, plan] of Object.entries(manifest.mechanics.plans)) {
     plan.planHash = mechanicsSha256({
       apiVersion: manifest.mechanics.apiVersion,
@@ -82,7 +83,7 @@ const republishFixtureHashes = (manifest) => {
       moduleLock: manifest.mechanics.moduleLock,
       stateModel: manifest.mechanics.stateModel,
       objectModels: manifest.objectModels ?? {},
-      networkModels: manifest.networkModels ?? {},
+      networkModelsHash,
       planId,
       transaction: plan.transaction
     });
@@ -346,8 +347,8 @@ const prepareManualTariffScenario = async (manifest, carrierCoins = 10) => {
       originDepartureTurn: 0
     });
 
-    objects.teams[logisticsTeamId].coins = carrierCoins;
-    objects.teams[guildTeamId].coins = 10;
+    objects.teams[logisticsTeamId].attributes.coins = carrierCoins;
+    objects.teams[guildTeamId].attributes.coins = 10;
   });
 
   await selectWagon(session, loadedWagonId);
@@ -719,10 +720,13 @@ test("manual detach freezes loaded tariff at first deviation and bills every emp
 
   current = await session.store.getSession(session.sessionId);
   assert.equal(
-    current.state.public.objects.teams[logisticsTeamId].coins,
+    current.state.public.objects.teams[logisticsTeamId].attributes.coins,
     2
   );
-  assert.equal(current.state.public.objects.teams[guildTeamId].coins, 18);
+  assert.equal(
+    current.state.public.objects.teams[guildTeamId].attributes.coins,
+    18
+  );
   assert.equal(
     current.state.public.objects.wagons[loadedWagonId]
       .attributes.attachedVehicleId,

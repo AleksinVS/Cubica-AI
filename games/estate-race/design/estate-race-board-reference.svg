@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1000" viewBox="0 0 1400 1000" role="img" aria-labelledby="title desc">
+  <title id="title">Estate Race — редакционная настольная карта</title>
+  <desc id="desc">Оригинальный референс игрового поля: светлая бумага, глубокий зелёный и один медный акцент. Поле окружает центральный контекст хода и экономику участников.</desc>
+  <metadata>
+    {"origin":"original","owner":"Cubica","createdAt":"2026-08-12","externalAssets":[],"externalFonts":[]}
+  </metadata>
+  <defs>
+    <pattern id="paper-grid" width="64" height="64" patternUnits="userSpaceOnUse">
+      <path d="M64 0H0V64" fill="none" stroke="#6d8279" stroke-opacity=".11"/>
+    </pattern>
+    <style>
+      .serif{font-family:Georgia,'Times New Roman',serif;fill:#20322e}.sans{font-family:Arial,Helvetica,sans-serif;fill:#52615b}.cap{font-family:Arial,Helvetica,sans-serif;font-weight:700;letter-spacing:2px}.cell{fill:#faf5e9;stroke:#173f37;stroke-width:2}.special{fill:#e4d9c4}.soft{fill:#e0e5df}.risk{fill:#e7d0c1}.name{font-family:Georgia,'Times New Roman',serif;font-size:12px;font-weight:700;fill:#20322e;text-anchor:middle}.detail{font-family:Arial,Helvetica,sans-serif;font-size:9px;fill:#66736d;text-anchor:middle}.copper{fill:#b56f3c}.green{fill:#173f37}
+    </style>
+  </defs>
+
+  <rect width="1400" height="1000" fill="#f2ead9"/>
+  <rect width="1400" height="1000" fill="url(#paper-grid)"/>
+  <rect x="24" y="24" width="1352" height="952" rx="18" fill="none" stroke="#173f37" stroke-width="3"/>
+  <rect x="34" y="34" width="1332" height="932" rx="14" fill="none" stroke="#b56f3c"/>
+
+  <rect x="235" y="180" width="930" height="640" rx="8" fill="#faf5e9" fill-opacity=".98" stroke="#173f37" stroke-width="2"/>
+  <text x="700" y="265" text-anchor="middle" class="serif" font-size="48" font-weight="700" letter-spacing="7">ESTATE RACE</text>
+  <text x="700" y="305" text-anchor="middle" class="cap copper" font-size="14">ЭКОНОМИЧЕСКАЯ СТРАТЕГИЯ</text>
+  <text x="700" y="350" text-anchor="middle" class="cap" font-size="18" fill="#315d51">ХОД 12  ·  ИГРОК 2  ·  РЕШЕНИЕ О ПОКУПКЕ</text>
+  <line x1="370" y1="376" x2="1030" y2="376" stroke="#b56f3c"/>
+
+  <text x="700" y="416" text-anchor="middle" class="cap copper" font-size="13">РЕШЕНИЕ О СОБСТВЕННОСТИ</text>
+  <text x="700" y="463" text-anchor="middle" class="serif" font-size="30" font-weight="700">Медная улица</text>
+  <text x="700" y="507" text-anchor="middle" class="sans" font-size="18">Цена 160 монет  ·  аренда 24 монеты  ·  владелец не объявлен</text>
+  <text x="700" y="546" text-anchor="middle" class="sans" font-size="15">Последний бросок 〔2〕 〔3〕 · сумма 5</text>
+  <line x1="370" y1="580" x2="1030" y2="580" stroke="#6d8279" stroke-opacity=".45"/>
+  <text x="700" y="612" text-anchor="middle" class="cap" font-size="13" fill="#53665f">БАНК СТРОЕНИЙ  ·  ДОМА 30/32  ·  ОТЕЛИ 11/12</text>
+  <rect x="520" y="640" width="360" height="58" rx="4" class="green" stroke="#b56f3c" stroke-width="2"/>
+  <text x="700" y="677" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="19" font-weight="700" fill="#fffaf0">Купить объект</text>
+
+  <circle cx="330" cy="756" r="6" fill="#173f37"/><text x="344" y="752" class="sans" font-size="13" font-weight="700">Игрок 1</text><text x="344" y="772" class="sans" font-size="11">860 монет</text>
+  <circle cx="520" cy="756" r="6" fill="#b56f3c"/><text x="534" y="752" class="sans" font-size="13" font-weight="700">Игрок 2 · ход</text><text x="534" y="772" class="sans" font-size="11">1 040 монет</text>
+  <circle cx="735" cy="756" r="6" fill="#55766d"/><text x="749" y="752" class="sans" font-size="13">Игрок 3</text><text x="749" y="772" class="sans" font-size="11">720 монет</text>
+  <circle cx="925" cy="756" r="6" fill="#294f61"/><text x="939" y="752" class="sans" font-size="13">Игрок 4</text><text x="939" y="772" class="sans" font-size="11">930 монет</text>
+
+  <!-- Верхняя сторона маршрута -->
+  <g>
+    <rect class="cell risk" x="45" y="60" width="150" height="120" rx="8"/><text class="name" x="120" y="112">Под стражу</text><text class="detail" x="120" y="145">№ 30</text>
+    <rect class="cell" x="200" y="60" width="108" height="120" rx="8"/><rect class="copper" x="207" y="67" width="94" height="5"/><text class="name" x="254" y="112">Сиреневый</text><text class="detail" x="254" y="145">собственность</text>
+    <rect class="cell" x="312" y="60" width="108" height="120" rx="8"/><rect class="copper" x="319" y="67" width="94" height="5"/><text class="name" x="366" y="112">Энергия</text><text class="detail" x="366" y="145">служба</text>
+    <rect class="cell" x="424" y="60" width="108" height="120" rx="8"/><rect class="copper" x="431" y="67" width="94" height="5"/><text class="name" x="478" y="112">Театр</text><text class="detail" x="478" y="145">собственность</text>
+    <rect class="cell" x="536" y="60" width="108" height="120" rx="8"/><rect class="copper" x="543" y="67" width="94" height="5"/><text class="name" x="590" y="112">Мозаики</text><text class="detail" x="590" y="145">собственность</text>
+    <rect class="cell" x="648" y="60" width="108" height="120" rx="8"/><rect class="copper" x="655" y="67" width="94" height="5"/><text class="name" x="702" y="112">Западная</text><text class="detail" x="702" y="145">линия</text>
+    <rect class="cell" x="760" y="60" width="108" height="120" rx="8"/><rect class="copper" x="767" y="67" width="94" height="5"/><text class="name" x="814" y="112">Лазурная</text><text class="detail" x="814" y="145">собственность</text>
+    <rect class="cell" x="872" y="60" width="108" height="120" rx="8"/><rect class="copper" x="879" y="67" width="94" height="5"/><text class="name" x="926" y="112">Арки</text><text class="detail" x="926" y="145">собственность</text>
+    <rect class="cell soft" x="984" y="60" width="108" height="120" rx="8"/><text class="name" x="1038" y="112">Почта</text><text class="detail" x="1038" y="145">№ 22</text>
+    <rect class="cell" x="1096" y="60" width="108" height="120" rx="8"/><rect class="copper" x="1103" y="67" width="94" height="5"/><text class="name" x="1150" y="112">Керамика</text><text class="detail" x="1150" y="145">собственность</text>
+    <rect class="cell special" x="1209" y="60" width="146" height="120" rx="8"/><text class="name" x="1282" y="112">Городской парк</text><text class="detail" x="1282" y="145">№ 20</text>
+  </g>
+
+  <!-- Нижняя сторона маршрута -->
+  <g>
+    <rect class="cell special" x="45" y="820" width="150" height="120" rx="8"/><text class="name" x="120" y="870">Старт</text><text class="detail" x="120" y="904">маршрут</text>
+    <rect class="cell" x="200" y="820" width="108" height="120" rx="8"/><rect class="copper" x="207" y="827" width="94" height="5"/><text class="name" x="254" y="870">Янтарный</text><text class="detail" x="254" y="904">собственность</text>
+    <rect class="cell" x="312" y="820" width="108" height="120" rx="8"/><rect class="copper" x="319" y="827" width="94" height="5"/><text class="name" x="366" y="870">Липовая</text><text class="detail" x="366" y="904">собственность</text>
+    <rect class="cell soft" x="424" y="820" width="108" height="120" rx="8"/><text class="name" x="478" y="870">Курьер</text><text class="detail" x="478" y="904">открытая карта</text>
+    <rect class="cell risk" x="536" y="820" width="108" height="120" rx="8"/><text class="name" x="590" y="870">Содержание</text><text class="detail" x="590" y="904">сбор</text>
+    <rect class="cell" x="648" y="820" width="108" height="120" rx="8" stroke="#b56f3c" stroke-width="5"/><rect class="copper" x="655" y="827" width="94" height="5"/><text class="name" x="702" y="870">Медная</text><text class="detail" x="702" y="904">собственность</text>
+    <rect class="cell" x="760" y="820" width="108" height="120" rx="8"/><rect class="copper" x="767" y="827" width="94" height="5"/><text class="name" x="814" y="870">Восточная</text><text class="detail" x="814" y="904">линия</text>
+    <rect class="cell soft" x="872" y="820" width="108" height="120" rx="8"/><text class="name" x="926" y="870">Фонд</text><text class="detail" x="926" y="904">открытая карта</text>
+    <rect class="cell" x="984" y="820" width="108" height="120" rx="8"/><rect class="copper" x="991" y="827" width="94" height="5"/><text class="name" x="1038" y="870">Набережная</text><text class="detail" x="1038" y="904">собственность</text>
+    <rect class="cell" x="1096" y="820" width="108" height="120" rx="8"/><rect class="copper" x="1103" y="827" width="94" height="5"/><text class="name" x="1150" y="870">Часы</text><text class="detail" x="1150" y="904">собственность</text>
+    <rect class="cell special" x="1209" y="820" width="146" height="120" rx="8"/><text class="name" x="1282" y="870">Визит</text><text class="detail" x="1282" y="904">№ 10</text>
+  </g>
+
+  <!-- Боковые стороны маршрута: короткие редакционные метки сохраняют поле главным. -->
+  <g class="sans" font-size="11">
+    <rect class="cell" x="45" y="185" width="150" height="58" rx="6"/><text x="120" y="220" text-anchor="middle">Ветры</text>
+    <rect class="cell" x="45" y="247" width="150" height="58" rx="6"/><text x="120" y="282" text-anchor="middle">Причал</text>
+    <rect class="cell soft" x="45" y="309" width="150" height="58" rx="6"/><text x="120" y="344" text-anchor="middle">Касса</text>
+    <rect class="cell" x="45" y="371" width="150" height="58" rx="6"/><text x="120" y="406" text-anchor="middle">Галерея</text>
+    <rect class="cell" x="45" y="433" width="150" height="58" rx="6"/><text x="120" y="468" text-anchor="middle">Кольцевая</text>
+    <rect class="cell soft" x="45" y="495" width="150" height="58" rx="6"/><text x="120" y="530" text-anchor="middle">Маяк</text>
+    <rect class="cell" x="45" y="557" width="150" height="58" rx="6"/><text x="120" y="592" text-anchor="middle">Нефритовый</text>
+    <rect class="cell risk" x="45" y="619" width="150" height="58" rx="6"/><text x="120" y="654" text-anchor="middle">Благоустройство</text>
+    <rect class="cell" x="45" y="681" width="150" height="58" rx="6"/><text x="120" y="716" text-anchor="middle">Панорама</text>
+    <rect class="cell" x="45" y="743" width="150" height="72" rx="6"/><text x="120" y="783" text-anchor="middle">Маршрут к старту</text>
+
+    <rect class="cell" x="1209" y="185" width="146" height="58" rx="6"/><text x="1282" y="220" text-anchor="middle">Садовая</text>
+    <rect class="cell" x="1209" y="247" width="146" height="58" rx="6"/><text x="1282" y="282" text-anchor="middle">Фонари</text>
+    <rect class="cell soft" x="1209" y="309" width="146" height="58" rx="6"/><text x="1282" y="344" text-anchor="middle">Весть</text>
+    <rect class="cell" x="1209" y="371" width="146" height="58" rx="6"/><text x="1282" y="406" text-anchor="middle">Кленовый</text>
+    <rect class="cell" x="1209" y="433" width="146" height="58" rx="6"/><text x="1282" y="468" text-anchor="middle">Северная</text>
+    <rect class="cell" x="1209" y="495" width="146" height="58" rx="6"/><text x="1282" y="530" text-anchor="middle">Мастерские</text>
+    <rect class="cell" x="1209" y="557" width="146" height="58" rx="6"/><text x="1282" y="592" text-anchor="middle">Бумажный</text>
+    <rect class="cell" x="1209" y="619" width="146" height="58" rx="6"/><text x="1282" y="654" text-anchor="middle">Резервуары</text>
+    <rect class="cell" x="1209" y="681" width="146" height="58" rx="6"/><text x="1282" y="716" text-anchor="middle">Оранжерея</text>
+    <rect class="cell special" x="1209" y="743" width="146" height="72" rx="6"/><text x="1282" y="783" text-anchor="middle">К визиту</text>
+  </g>
+
+  <circle cx="676" cy="888" r="12" fill="#b56f3c" stroke="#faf5e9" stroke-width="4"/>
+  <circle cx="706" cy="888" r="10" fill="#173f37" stroke="#faf5e9" stroke-width="3"/>
+</svg>
