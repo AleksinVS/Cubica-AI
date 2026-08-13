@@ -25,6 +25,7 @@ describe('bounded Stage 2 cleanup job', () => {
     const client = {
       query: vi.fn(async (text: string, values?: unknown[]) => {
         queries.push({ text, values });
+        if (text.includes('SELECT session_user = current_user')) return { rows: [{ ready: true }] };
         return text.startsWith('SELECT * FROM product_context_shadow.cleanup_expired')
           ? { rows: [{ runs_deleted: 3, messages_tombstoned: 4, threads_tombstoned: 2 }] }
           : { rows: [] };
@@ -40,6 +41,7 @@ describe('bounded Stage 2 cleanup job', () => {
     });
     expect(queries).toEqual([
       { text: 'BEGIN', values: undefined },
+      { text: expect.stringContaining('SELECT session_user = current_user'), values: undefined },
       { text: 'SET LOCAL ROLE product_context_shadow_app', values: undefined },
       { text: 'SELECT * FROM product_context_shadow.cleanup_expired($1)', values: [25] },
       { text: 'COMMIT', values: undefined }
@@ -58,6 +60,7 @@ describe('bounded Stage 2 cleanup job', () => {
       query: vi.fn(async (text: string) => {
         queries.push(text);
         if (text === 'ROLLBACK' && rollbackFails) throw new Error('rollback failed');
+        if (text.includes('SELECT session_user = current_user')) return { rows: [{ ready: true }] };
         if (text.startsWith(failingPrefix)) throw new Error('cleanup failed');
         if (text.startsWith('SELECT * FROM product_context_shadow.cleanup_expired')) {
           return { rows: [{ runs_deleted: 0, messages_tombstoned: 0, threads_tombstoned: 0 }] };

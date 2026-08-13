@@ -9,12 +9,13 @@
  * test environment and unlinkable after that environment's key is destroyed.
  */
 
-const { createHash, createHmac } = require('node:crypto');
+const { createHash, createHmac, timingSafeEqual } = require('node:crypto');
 
 const DOCUMENT_ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/u;
 const NUMERIC_ID_PATTERN = /^[1-9][0-9]{0,18}$/u;
 const ALLOWED_TIERS = new Set(['test', 'staging']);
 const RECEIPT_TTL_MS = 5 * 60 * 1000;
+const WORKER_CLOCK_SKEW_MS = 60 * 1000;
 
 async function authorizeProductContextShadow({ strapi, user, body, env = process.env, now = new Date() }) {
   if (!user?.id) {
@@ -95,6 +96,31 @@ async function authorizeProductContextShadow({ strapi, user, body, env = process
   };
 }
 
+/** Reauthorizes a queued run from a separately authenticated worker, never a bearer. */
+async function reauthorizeProductContextShadowWorker({ strapi, body, signature, env = process.env, now = new Date() }) {
+  const config = readShadowAuthorizationConfig(env);
+  if (!config.ok) return deny(404, config.reason);
+  const key = env.CUBICA_PRODUCT_CONTEXT_SHADOW_REAUTHORIZATION_KEY || '';
+  if (Buffer.byteLength(key, 'utf8') < 32) return deny(404, 'worker_reauthorization_disabled');
+  if (!isExactWorkerRequest(body)) return deny(400, 'invalid_request');
+  const issuedAt = Date.parse(body.issuedAt);
+  if (!Number.isFinite(issuedAt) || Math.abs(new Date(now).getTime() - issuedAt) > WORKER_CLOCK_SKEW_MS) return deny(401, 'worker_request_expired');
+  const expectedPrincipal = buildShadowPrincipalRef(config.bindingKey, config.portalUserId);
+  if (body.gameDocumentId !== config.gameDocumentId || body.shadowPrincipalRef !== expectedPrincipal) return deny(403, 'worker_binding_changed');
+  const expected = createHmac('sha256', key).update(workerSignaturePayload(body), 'utf8').digest('hex');
+  if (typeof signature !== 'string' || !/^[a-f0-9]{64}$/u.test(signature) ||
+      !timingSafeEqual(Buffer.from(signature, 'hex'), Buffer.from(expected, 'hex'))) return deny(401, 'worker_signature_invalid');
+  return authorizeProductContextShadow({
+    strapi,
+    // Keep the configured identifier lossless; Strapi accepts its decimal
+    // representation and JavaScript numbers cannot represent every allowed DB id.
+    user: { id: config.portalUserId },
+    body: { gameDocumentId: config.gameDocumentId },
+    env,
+    now,
+  });
+}
+
 function readShadowAuthorizationConfig(env) {
   if (env.CUBICA_PRODUCT_CONTEXT_SHADOW_AUTHORIZATION !== 'true') {
     return { ok: false, reason: 'shadow_disabled' };
@@ -134,6 +160,21 @@ function isExactGameRequest(body) {
   return keys.length === 1 && keys[0] === 'gameDocumentId' && DOCUMENT_ID_PATTERN.test(body.gameDocumentId);
 }
 
+function isExactWorkerRequest(body) {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return false;
+  const keys = Object.keys(body).sort();
+  return JSON.stringify(keys) === JSON.stringify(['authorizationRevision', 'gameDocumentId', 'issuedAt', 'shadowPrincipalRef']) &&
+    DOCUMENT_ID_PATTERN.test(body.gameDocumentId) &&
+    /^cubica:\/\/shadow-principal\/v1\/[a-f0-9]{64}$/u.test(body.shadowPrincipalRef) &&
+    /^sha256:[a-f0-9]{64}$/u.test(body.authorizationRevision) &&
+    typeof body.issuedAt === 'string';
+}
+
+function workerSignaturePayload(body) {
+  return ['cubica-product-context-shadow-worker-reauthorization/v1', body.shadowPrincipalRef,
+    body.gameDocumentId, body.authorizationRevision, body.issuedAt].join('\0');
+}
+
 function buildShadowPrincipalRef(bindingKey, userId) {
   const digest = createHmac('sha256', bindingKey)
     .update(`cubica-portal-shadow-subject-v1\0${String(userId)}`, 'utf8')
@@ -155,6 +196,8 @@ function deny(status, reason) {
 
 module.exports = {
   authorizeProductContextShadow,
+  reauthorizeProductContextShadowWorker,
   buildShadowPrincipalRef,
   readShadowAuthorizationConfig,
+  workerSignaturePayload,
 };

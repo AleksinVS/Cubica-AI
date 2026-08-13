@@ -1,12 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { readFile } from "node:fs/promises";
 
 import { createLocalProductContextShadowHeaders } from "@/lib/product-context-shadow-forwarding";
 
 const mocks = vi.hoisted(() => ({
-  tasks: [] as Array<() => unknown | Promise<unknown>>,
   runShadow: vi.fn()
 }));
-vi.mock("next/server", () => ({ after: (task: () => unknown | Promise<unknown>) => mocks.tasks.push(task) }));
 vi.mock("@/lib/product-context-shadow", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/product-context-shadow")>();
   return { ...actual, runProductContextShadowPostResponse: mocks.runShadow };
@@ -14,8 +13,8 @@ vi.mock("@/lib/product-context-shadow", async (importOriginal) => {
 
 import { POST } from "./route";
 
-describe("local AG-UI post-response shadow hook", () => {
-  beforeEach(() => { mocks.tasks.length = 0; mocks.runShadow.mockReset(); });
+describe("local AG-UI durable shadow enqueue", () => {
+  beforeEach(() => { mocks.runShadow.mockReset(); });
   afterEach(() => { vi.unstubAllEnvs(); vi.restoreAllMocks(); });
 
   it.each([
@@ -34,8 +33,7 @@ describe("local AG-UI post-response shadow hook", () => {
     expect(shadow.status).toBe(baseline.status);
     expect([...shadow.headers.entries()]).toEqual([...baseline.headers.entries()]);
     expect(shadowBody).toContain("TEXT_MESSAGE_CONTENT");
-    expect(mocks.tasks).toHaveLength(1);
-    await expect(mocks.tasks[0]!()).resolves.toBeUndefined();
+    expect(mocks.runShadow).toHaveBeenCalledOnce();
     const calledJob = mocks.runShadow.mock.calls[0]?.[0] as {
       candidate: { userText: string; assistantText: string }
     };
@@ -43,16 +41,38 @@ describe("local AG-UI post-response shadow hook", () => {
     expect(calledJob.candidate.assistantText).not.toContain("forged client assistant");
   });
 
-  it("schedules nothing for missing or forged identity", async () => {
+  it("does not enqueue for missing or forged identity", async () => {
     enableShadowEnv();
     await POST(request(false));
-    expect(mocks.tasks).toHaveLength(0);
+    expect(mocks.runShadow).not.toHaveBeenCalled();
     const forged = request(false, {
       Authorization: "Bearer forged", "x-cubica-game-document-id": "game_doc_1",
       "x-cubica-product-context-shadow-attestation": "0".repeat(64)
     });
     await POST(forged);
-    expect(mocks.tasks).toHaveLength(0);
+    expect(mocks.runShadow).not.toHaveBeenCalled();
+  });
+
+  it("does not resolve POST until the bounded durable enqueue settles", async () => {
+    enableShadowEnv();
+    let release!: () => void;
+    const enqueue = new Promise<void>((resolve) => { release = resolve; });
+    mocks.runShadow.mockReturnValue(enqueue);
+    let settled = false;
+    const pending = POST(request(true)).then((response) => { settled = true; return response; });
+
+    await vi.waitFor(() => expect(mocks.runShadow).toHaveBeenCalledOnce());
+    expect(settled).toBe(false);
+    release();
+    const response = await pending;
+    expect(settled).toBe(true);
+    expect(await response.text()).toContain("TEXT_MESSAGE_CONTENT");
+  });
+
+  it("has no Next after callback dependency", async () => {
+    const source = await readFile("app/api/editor/agent/ag-ui/route.ts", "utf8");
+    expect(source).not.toContain('from "next/server"');
+    expect(source).not.toMatch(/\bafter\s*\(/u);
   });
 });
 

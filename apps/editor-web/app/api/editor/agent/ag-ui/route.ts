@@ -9,7 +9,6 @@
  */
 import { EventEncoder } from "@ag-ui/encoder";
 import { EventType, RunAgentInputSchema, type BaseEvent, type RunAgentInput } from "@ag-ui/core";
-import { after } from "next/server";
 
 import { EDITOR_AUTHORING_ASSISTANT_ID } from "@/lib/agent-assistant-registry";
 import { createLocalEditorAgentEvents } from "@/lib/editor-agent-local-backend";
@@ -20,9 +19,9 @@ import {
 } from "@/lib/product-context-shadow";
 
 export const runtime = "nodejs";
-// Next.js keeps `after()` work within this route budget; the shadow model call
-// is bounded to 45 seconds and cannot delay or alter the already-built reply.
-export const maxDuration = 60;
+// POST awaits only bounded Portal authorization and durable enqueue. Provider
+// and Git latency belongs to the independent worker process.
+export const maxDuration = 15;
 
 const textEncoder = new TextEncoder();
 
@@ -64,10 +63,11 @@ export async function POST(request: Request) {
   if (parsed.success) {
     const job = buildProductContextShadowJob(request.headers, extractProductContextShadowTurn(parsed.data, events));
     if (job !== null) {
-      after(async () => {
-        try { await runProductContextShadowPostResponse(job); }
-        catch { /* Shadow is observational and must never affect or disclose the primary turn. */ }
-      });
+      // The response bytes are already fixed, but the durable queue row must
+      // exist before control returns: a post-response callback can disappear
+      // when the web process is terminated immediately after the request.
+      try { await runProductContextShadowPostResponse(job); }
+      catch { /* Shadow is observational and must never alter or disclose the primary turn. */ }
     }
   }
   return response;
