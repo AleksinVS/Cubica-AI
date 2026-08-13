@@ -21,6 +21,12 @@
         "pointer": "/root/config"
       }
     ],
+    "/agentRuntime": [
+      {
+        "file": "games/estate-race/authoring/game.authoring.json",
+        "pointer": "/root/agentRuntime"
+      }
+    ],
     "/content": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
@@ -7131,6 +7137,7 @@
     "/actions/trade.propose",
     "/actions/turn.finish",
     "/actions/turn.roll",
+    "/agentRuntime",
     "/config",
     "/content",
     "/engine",
