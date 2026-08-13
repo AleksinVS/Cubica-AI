@@ -120,6 +120,10 @@ test("two authenticated principals receive isolated actor views of the same stat
     sessionId: "session-neutral",
     gameId: "neutral-game",
     bundleHash: "a".repeat(64),
+    participants: [
+      { seatId: "p1", playerId: "p1", kind: "human", joinState: "local" },
+      { seatId: "p2", playerId: "p2", kind: "human", joinState: "local" }
+    ],
     state: storedState,
     sessionRole: "player",
     version: { sessionId: "session-neutral", stateVersion: 3, lastEventSequence: 0 },

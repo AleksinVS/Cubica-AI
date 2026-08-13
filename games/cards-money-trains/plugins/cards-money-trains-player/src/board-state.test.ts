@@ -240,6 +240,97 @@ test("does not invent topology or actions when content is absent", () => {
   assert.equal(projection.currentLocomotiveId, null);
   assert.equal(projection.bounds, null);
   assert.equal(projection.currentNews, null);
+  assert.equal(projection.methodology, null);
+});
+
+test("projects only complete public methodology pause records", () => {
+  const projection = projectBoardSession({
+    state: {
+      public: {
+        methodology: {
+          activePauseId: "pause-first",
+          pauses: {
+            first: {
+              id: "pause-first",
+              title: "Первая учебная пауза",
+              timing: "15–30 минут",
+              prompts: ["Что вы наблюдаете?"],
+              status: "active",
+              dueTurn: 3
+            },
+            second: {
+              id: "pause-second",
+              title: "Вторая учебная пауза",
+              timing: "Около 30 минут",
+              prompts: ["Какова текущая ситуация?"],
+              status: "scheduled",
+              dueTurn: 5
+            }
+          }
+        }
+      }
+    }
+  });
+
+  assert.deepEqual(projection.methodology, {
+    activePauseId: "pause-first",
+    pauses: [{
+      id: "pause-first",
+      title: "Первая учебная пауза",
+      timing: "15–30 минут",
+      prompts: ["Что вы наблюдаете?"],
+      status: "active",
+      dueTurn: 3
+    }, {
+      id: "pause-second",
+      title: "Вторая учебная пауза",
+      timing: "Около 30 минут",
+      prompts: ["Какова текущая ситуация?"],
+      status: "scheduled",
+      dueTurn: 5
+    }]
+  });
+
+  const malformed = projectBoardSession({
+    state: {
+      public: {
+        methodology: {
+          activePauseId: "missing",
+          pauses: { first: { id: "pause-first" } }
+        }
+      }
+    }
+  });
+  assert.equal(malformed.methodology, null);
+
+  const partiallyMalformed = projectBoardSession({
+    state: {
+      public: {
+        methodology: {
+          activePauseId: null,
+          pauses: {
+            first: {
+              id: "pause-first",
+              title: "Первая учебная пауза",
+              timing: "15–30 минут",
+              prompts: ["x".repeat(241)],
+              status: "scheduled",
+              dueTurn: 3
+            },
+            second: {
+              id: "pause-second",
+              title: "Вторая учебная пауза",
+              timing: "Около 30 минут",
+              prompts: ["Какова текущая ситуация?"],
+              status: "scheduled",
+              dueTurn: 5
+            }
+          }
+        }
+      }
+    }
+  });
+  assert.equal(partiallyMalformed.methodology, null);
 });
 
 test("sanitizes the bounded server movement view without calculating a client order", () => {
@@ -547,6 +638,84 @@ test("projects setup placement and maintenance forms only from public objects", 
   for (const action of actions) {
     assert.equal("params" in action, false);
   }
+});
+
+test("projects every market and news-19 required input from public objects", () => {
+  const actionIds = [
+    "market.purchase.wagon",
+    "market.purchase.locomotive",
+    "market.sell.wagon",
+    "market.sell.locomotive",
+    "news.effect.19.prepare-team",
+    "news.effect.19.remove-locomotive",
+    "news.effect.19.remove-wagon"
+  ];
+  const session = {
+    actionAvailability: actionIds.map((actionId) => ({
+      actionId,
+      status: "parameter-dependent",
+      reasonCode: "parameters_required",
+      basisStateVersion: 5
+    })),
+    state: {
+      public: {
+        objects: {
+          teams: {
+            team: { attributes: { label: "Команда", coins: 10 } }
+          },
+          networkNodes: {
+            terminal: {
+              objectType: "transport.terminal",
+              attributes: { label: "Терминал", position: { x: 1, y: 2 } }
+            },
+            waypoint: {
+              objectType: "transport.waypoint",
+              attributes: { label: "Полустанок", position: { x: 3, y: 4 } }
+            }
+          },
+          locomotives: { loco: { attributes: {} } },
+          wagons: { wagon: { attributes: {} } }
+        },
+        board: {
+          availableActions: actionIds.map((actionId) => ({
+            id: actionId,
+            label: actionId,
+            actionId,
+            params: { stale: true }
+          }))
+        }
+      }
+    }
+  } as unknown as Parameters<typeof provideCardsMoneyTrainsAccessibleBoardActions>[0];
+
+  const byAction = new Map(
+    provideCardsMoneyTrainsAccessibleBoardActions(session)
+      .map((action) => [action.actionId, action])
+  );
+  const teamField = {
+    name: "teamId", label: "Команда", kind: "select" as const, required: true,
+    options: [{ value: "team", label: "Команда" }]
+  };
+  const terminalField = {
+    name: "stationId", label: "Терминал покупки", kind: "select" as const, required: true,
+    options: [{ value: "terminal", label: "Терминал" }]
+  };
+  const locomotiveField = {
+    name: "locomotiveId", label: "Локомотив", kind: "select" as const, required: true,
+    options: [{ value: "loco", label: "loco" }]
+  };
+  const wagonField = {
+    name: "wagonId", label: "Вагон", kind: "select" as const, required: true,
+    options: [{ value: "wagon", label: "wagon" }]
+  };
+  assert.deepEqual(byAction.get("market.purchase.wagon")?.fields, [teamField, terminalField]);
+  assert.deepEqual(byAction.get("market.purchase.locomotive")?.fields, [teamField, terminalField]);
+  assert.deepEqual(byAction.get("market.sell.wagon")?.fields, [wagonField]);
+  assert.deepEqual(byAction.get("market.sell.locomotive")?.fields, [locomotiveField]);
+  assert.deepEqual(byAction.get("news.effect.19.prepare-team")?.fields, [teamField]);
+  assert.deepEqual(byAction.get("news.effect.19.remove-locomotive")?.fields, [teamField, locomotiveField]);
+  assert.deepEqual(byAction.get("news.effect.19.remove-wagon")?.fields, [teamField, wagonField]);
+  for (const action of byAction.values()) assert.equal("params" in action, false);
 });
 
 test("keeps parameter-dependent and legacy actions but hides server-unavailable actions", () => {

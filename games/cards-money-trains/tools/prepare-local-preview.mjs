@@ -2,22 +2,24 @@
 /**
  * Prepare a launchable local preview of the real Cards Money Trains package.
  *
- * The normative package must remain `runtimeReady: false` until its visual
- * content gates close. This tool clones it under the already trusted
- * `.tmp/editor-worktrees` preview boundary, removes blockers only from that
- * disposable copy, and registers its immutable player bundle with runtime-api.
- * It never writes to the real manifest or converts mock content into game data.
+ * The normative package is already runtime-ready. This tool copies it under
+ * the already trusted `.tmp/editor-worktrees` preview boundary and registers
+ * its immutable player bundle with runtime-api. It never changes readiness or
+ * blockers, writes to the real manifest, or converts mock content into game data.
  */
 
 import { createHash } from "node:crypto";
 import {
   copyFileSync,
   mkdirSync,
-  readFileSync,
-  writeFileSync
+  readFileSync
 } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
+import {
+  assertReadyPreviewSourceManifest
+} from "./preview-source.mjs";
 
 const TOOL_ROOT = path.dirname(fileURLToPath(import.meta.url));
 const GAME_ROOT = path.resolve(TOOL_ROOT, "..");
@@ -37,9 +39,7 @@ const sourceManifestBytes = readFileSync(sourceManifestPath);
 const sourceManifest = JSON.parse(sourceManifestBytes.toString("utf8"));
 const sourceMetadata = JSON.parse(readFileSync(sourceMetadataPath, "utf8"));
 
-if (sourceManifest?.config?.runtimeReady !== false) {
-  throw new Error("Normative Cards Money Trains unexpectedly became runtime-ready.");
-}
+assertReadyPreviewSourceManifest(sourceManifest);
 
 const publishedBundle = sourceMetadata?.bundles?.find((candidate) =>
   candidate?.gameId === GAME_ID
@@ -71,13 +71,9 @@ const targetBundleRoot = path.join(contentRoot, "preview-plugin-bundles");
 mkdirSync(targetUiRoot, { recursive: true });
 mkdirSync(targetBundleRoot, { recursive: true });
 
-const previewManifest = structuredClone(sourceManifest);
-previewManifest.config.runtimeReady = true;
-delete previewManifest.config.runtimeBlockers;
-writeFileSync(
-  path.join(targetGameRoot, "game.manifest.json"),
-  `${JSON.stringify(previewManifest, null, 2)}\n`,
-  "utf8"
+copyFileSync(
+  sourceManifestPath,
+  path.join(targetGameRoot, "game.manifest.json")
 );
 copyFileSync(sourceUiPath, path.join(targetUiRoot, "ui.manifest.json"));
 
@@ -208,40 +204,45 @@ async function openPreviewBrowser({ playerUrl, contentSourceId }) {
   const close = async () => {
     if (browser.isConnected()) await browser.close();
   };
-  process.once("SIGINT", () => void close());
-  process.once("SIGTERM", () => void close());
+  const closeOnSignal = () => void close();
+  process.once("SIGINT", closeOnSignal);
+  process.once("SIGTERM", closeOnSignal);
 
-  const page = await browser.newPage({ viewport: null });
-  await page.goto(playerUrl.toString(), { waitUntil: "domcontentloaded" });
-  const session = await page.evaluate(async ({ gameId, sourceId }) => {
-    const response = await fetch("/api/runtime/sessions", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        gameId,
-        contentSourceId: sourceId
-      })
-    });
-    if (!response.ok) {
-      throw new Error(`Player Web rejected preview session creation (${response.status}).`);
+  try {
+    const page = await browser.newPage({ viewport: null });
+    await page.goto(playerUrl.toString(), { waitUntil: "domcontentloaded" });
+    const session = await page.evaluate(async ({ gameId, sourceId }) => {
+      const response = await fetch("/api/runtime/sessions", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          gameId,
+          contentSourceId: sourceId
+        })
+      });
+      if (!response.ok) {
+        throw new Error(`Player Web rejected preview session creation (${response.status}).`);
+      }
+      return response.json();
+    }, { gameId: GAME_ID, sourceId: contentSourceId });
+    if (typeof session?.sessionId !== "string") {
+      throw new Error("Player Web returned a preview session without sessionId.");
     }
-    return response.json();
-  }, { gameId: GAME_ID, sourceId: contentSourceId });
-  if (typeof session?.sessionId !== "string") {
-    await close();
-    throw new Error("Player Web returned a preview session without sessionId.");
-  }
 
-  const previewUrl = new URL("/", playerUrl);
-  previewUrl.searchParams.set("gameId", GAME_ID);
-  previewUrl.searchParams.set("preview", "1");
-  previewUrl.searchParams.set("sessionId", session.sessionId);
-  previewUrl.searchParams.set("contentSourceId", contentSourceId);
-  // Playwright accepts only a string here; a URL object fails the argument
-  // check and would abort the launch after the session has already been
-  // created, leaving a live session with no window attached to it.
-  await page.goto(previewUrl.toString(), { waitUntil: "domcontentloaded" });
-  console.log(`Preview opened: ${previewUrl}`);
-  console.log("Close the browser window or press Ctrl+C in this terminal to stop the preview browser.");
-  await new Promise((resolve) => browser.once("disconnected", resolve));
+    const previewUrl = new URL("/", playerUrl);
+    previewUrl.searchParams.set("gameId", GAME_ID);
+    previewUrl.searchParams.set("preview", "1");
+    previewUrl.searchParams.set("sessionId", session.sessionId);
+    previewUrl.searchParams.set("contentSourceId", contentSourceId);
+    // Playwright accepts only a string here; a URL object fails the argument
+    // check after the session has already been created.
+    await page.goto(previewUrl.toString(), { waitUntil: "domcontentloaded" });
+    console.log(`Preview opened: ${previewUrl}`);
+    console.log("Close the browser window or press Ctrl+C in this terminal to stop the preview browser.");
+    await new Promise((resolve) => browser.once("disconnected", resolve));
+  } finally {
+    process.removeListener("SIGINT", closeOnSignal);
+    process.removeListener("SIGTERM", closeOnSignal);
+    await close();
+  }
 }

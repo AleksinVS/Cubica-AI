@@ -213,19 +213,24 @@ const buildCountryContentAuthoring = (
   }
 
   root.content.data.countries = {
-    status: "author-confirmed-terminal-linking",
+    status: "author-confirmed-terminal-and-region-linking",
     publishable: true,
     terminalLinking: "complete-numbered-terminals-1-through-23",
-    polygonLinking: "pending-human-vector-review",
+    polygonLinking:
+      "author-confirmed-in-initial-network-with-regions-review",
     countries
   };
 
-  const blockers = new Set(root.config.runtimeBlockers);
+  const blockers = new Set(root.config.runtimeBlockers ?? []);
   blockers.delete("country and terminal content linking");
-  // The country catalogue does not make any unreviewed line into a polygon.
-  blockers.add("canonical region polygons");
-  root.config.runtimeBlockers = [...blockers];
-  root.config.runtimeReady = false;
+  blockers.delete("initial network state review");
+  blockers.delete("canonical region polygons");
+  if (root.config.runtimeReady === true && blockers.size === 0) {
+    delete root.config.runtimeBlockers;
+  } else {
+    root.config.runtimeBlockers = [...blockers];
+  }
+  if (!root.content.data.sessionCompletion) root.config.runtimeReady = false;
 
   return authoring;
 };

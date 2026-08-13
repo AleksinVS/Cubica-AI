@@ -2952,9 +2952,8 @@ const buildLifecycleAuthoring = (sourceAuthoring, intake) => {
   assertNetworkClosureTargetsExist(root);
   alignTechnicalNews11ReasonPatch(root);
 
-  root.config.runtimeReady = false;
-  root.config.runtimeBlockers = [
-    ...root.config.runtimeBlockers.filter(
+  if (!root.content.data.sessionCompletion) root.config.runtimeReady = false;
+  const remainingRuntimeBlockers = (root.config.runtimeBlockers ?? []).filter(
       (item) =>
         item !== "executable news effects 11-34" &&
         item !== "remaining executable news effects 11-22 and 26-29" &&
@@ -2967,8 +2966,12 @@ const buildLifecycleAuthoring = (sourceAuthoring, intake) => {
         item !== "remaining market, cargo selection sequencing, construction and reporting workflows" &&
         item !== "executable news effect mapping" &&
         item !== "cargo card multiplicity and executable deck"
-    )
-  ];
+    );
+  if (root.config.runtimeReady === true && remainingRuntimeBlockers.length === 0) {
+    delete root.config.runtimeBlockers;
+  } else {
+    root.config.runtimeBlockers = remainingRuntimeBlockers;
+  }
 
   root.objectTypes["transport.cargo"].facets.status = {
     initial: "hidden",
@@ -3781,8 +3784,8 @@ const buildLifecycleAuthoring = (sourceAuthoring, intake) => {
   ];
 
   root.content.data.cardLifecycle = {
-    status: "partially-confirmed-executable-draft",
-    publishable: false,
+    status: "confirmed-executable",
+    publishable: true,
     sourceFixture: "authoring/fixtures/cargo-news.intake.json",
     physicalCargoCardCount: 174,
     baseCargoCardCount: 112,

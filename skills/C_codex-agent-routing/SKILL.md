@@ -39,6 +39,7 @@ Use these logical roles and project profiles:
 | Scout | `scout` | Luna low | Narrow repository search and evidence gathering |
 | Luna worker | `luna-medium` | Luna medium | Bounded routine implementation, documentation, and focused verification with low architectural risk |
 | Deep Luna worker | `luna-high` | Luna high | Bounded non-critical work requiring deeper analysis or careful handling of edge cases |
+| Deepest Luna worker | `luna-xhigh` | Luna xhigh | Deepest bounded non-critical work when Luna high is insufficient but no Sol-owned high-error-cost decision is required |
 | Builder | `builder-low` | Terra low | Mechanical implementation from an exact plan |
 | Builder | `builder` | Terra medium | Ordinary feature and bug-fix implementation |
 | Complex builder | `builder_complex` | Sol high | Non-obvious or critical implementation and complex test design |
@@ -48,8 +49,9 @@ Use these logical roles and project profiles:
 | Critical reviewer | `critical-reviewer-high` | Sol high | Architecture, security, or high-error-cost review |
 
 The installed Luna model does not expose reasoning `none`; `scout` therefore
-uses its cheapest supported level, `low`. `luna-medium` and `luna-high` are
-general bounded worker profiles, not architecture or final-acceptance roles.
+uses its cheapest supported level, `low`. `luna-medium`, `luna-high`, and
+`luna-xhigh` are general bounded worker profiles, not architecture or
+final-acceptance roles.
 Every write made by a Luna worker requires subsequent review of the integrated
 diff by the primary agent or an independent reviewer.
 
@@ -59,7 +61,7 @@ and other high-error-cost decisions on Sol even when Luna high could complete
 the mechanical implementation. Escalate with this default ladder:
 
 ```text
-Luna low -> Luna medium -> Luna high -> Sol medium -> Sol high
+Luna low -> Luna medium -> Luna high -> Luna xhigh -> Sol medium -> Sol high
 ```
 
 Escalate only with a concrete blocker, failed criterion, risky uncertainty, or
@@ -132,11 +134,12 @@ Use Terra low for prescribed mechanical changes and Terra medium for new
 functions, connected changes across several files, business logic, error
 handling, or several acceptance criteria.
 
-Use `luna-medium` for routine bounded work and `luna-high` when that same
-non-critical scope needs deeper reasoning or careful edge-case handling. Do not
-use either Luna worker to approve architecture, security, public contracts, or
-final acceptance. Review every Luna-authored integrated diff before accepting
-it.
+Use `luna-medium` for routine bounded work, `luna-high` when that same
+non-critical scope needs deeper reasoning or careful edge-case handling, and
+`luna-xhigh` when Luna high is concretely insufficient but the task still does
+not cross a Sol-owned high-error-cost boundary. Do not use a Luna worker to
+approve architecture, security, public contracts, or final acceptance. Review
+every Luna-authored integrated diff before accepting it.
 
 Do not let a builder approve architecture. Route non-obvious logic, critical
 blocks, and non-obvious test design to `builder_complex` with Sol high.

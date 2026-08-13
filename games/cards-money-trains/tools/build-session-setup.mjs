@@ -1569,10 +1569,10 @@ const buildSessionSetupAuthoring = (sourceAuthoring, network) => {
     "logistics_company_count = locomotive_guild_count";
   root.content.data.rules.teams.contrastColorIds = contrastColorIds;
   root.content.data.sessionSetup = {
-    status: "executable-technical-draft",
-    publishable: false,
-    sourceNetwork: "annotations/initial-network.review.json",
-    networkUse: "technical placement only until author overlay confirmation",
+    status: "executable-author-confirmed-network",
+    publishable: true,
+    sourceNetwork: "annotations/initial-network-with-regions.review.json",
+    networkUse: "author-confirmed initial placement network",
     supportedTeamCounts,
     initialResources: {
       coinsPerTeam: 10,
@@ -1582,14 +1582,11 @@ const buildSessionSetupAuthoring = (sourceAuthoring, network) => {
     placement: {
       order: "server-random",
       controller: "facilitator",
-      targets: "open terminals in the main technical network",
+      targets: "open terminals in the author-confirmed main network",
       maximumLocomotivesPerTerminal: 2,
       advancesOnlyAfterAllCurrentTeamAssetsArePlaced: true
     },
-    unresolved: [
-      "dynamic-team-construction-contributions",
-      "author-confirmation-of-initial-network-overlay"
-    ]
+    unresolved: []
   };
   if (root.content.data.realOperatingTurnProof?.unresolved) {
     root.content.data.realOperatingTurnProof.unresolved =
@@ -1600,13 +1597,17 @@ const buildSessionSetupAuthoring = (sourceAuthoring, network) => {
       );
   }
 
-  const blockers = new Set(root.config.runtimeBlockers);
+  const blockers = new Set(root.config.runtimeBlockers ?? []);
   blockers.delete("team configuration and initial transport assets");
   blockers.delete("accessible free-text team-name entry");
   blockers.delete("R-28 even-team composition");
   blockers.delete("R-26 finite market stock or explicit no-extra-limit confirmation");
-  root.config.runtimeBlockers = [...blockers];
-  root.config.runtimeReady = false;
+  if (root.config.runtimeReady === true && blockers.size === 0) {
+    delete root.config.runtimeBlockers;
+  } else {
+    root.config.runtimeBlockers = [...blockers];
+  }
+  if (!root.content.data.sessionCompletion) root.config.runtimeReady = false;
 
   return authoring;
 };

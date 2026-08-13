@@ -168,7 +168,14 @@ test("server resolves the active actor from authenticated scope and authoritativ
     sessionId: "session-1",
     gameId: "neutral-game",
     bundleHash: "a".repeat(64),
-    state: { public: { turn: { activePlayerId: "p2" } } },
+    participants: [
+      { seatId: "p1", playerId: "p1", kind: "human" as const, joinState: "local" as const },
+      { seatId: "p2", playerId: "p2", kind: "human" as const, joinState: "local" as const }
+    ],
+    state: {
+      public: { turn: { order: ["p1", "p2"], activePlayerId: "p2" } },
+      players: { p1: {}, p2: {} }
+    },
     sessionRole: "player" as const,
     version: { sessionId: "session-1", stateVersion: 3, lastEventSequence: 3 },
     createdAt: new Date(),

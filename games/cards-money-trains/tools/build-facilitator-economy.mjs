@@ -755,6 +755,11 @@ const buildTeamExclude = (finalMovementPhase) => {
                 target: { endpoint: "public.session.phase" },
                 value: literal(finalMovementPhase)
               },
+              {
+                operation: "set",
+                target: { endpoint: "public.session.canRequestFinish" },
+                value: literal(false)
+              },
               ...(finalMovementPhase === "construction"
                 ? [{
                     operation: "set",

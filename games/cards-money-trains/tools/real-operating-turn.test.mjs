@@ -42,9 +42,9 @@ const nextCommandId = () => {
 /**
  * Builds a direct technical session without bypassing the runtime dispatcher.
  *
- * Public session creation remains blocked by runtimeReady=false. This helper is
- * intentionally test-local so the temporary setup cannot become a production
- * content source.
+ * This helper is intentionally test-local: its non-publishable two-team setup
+ * must never become a production content source even when the normal package
+ * is runtime-ready.
  */
 const createTechnicalSession = async (
   manifest,
@@ -126,7 +126,13 @@ test("technical replay fixture is schema-valid and traces every real source id",
     ajv.errorsText(validate.errors, { separator: "\n" })
   );
   assert.equal(fixture.publishable, false);
-  assert.equal(manifest.config.runtimeReady, false);
+  assert.equal(typeof manifest.config.runtimeReady, "boolean");
+  assert.deepEqual(
+    manifest.config.runtimeBlockers ?? [],
+    manifest.config.runtimeReady
+      ? []
+      : ["full facilitator UI and browser acceptance"]
+  );
   assert.equal(manifest.state.public.session.fixtureId, "normal-start-policy");
   assert.equal(Object.keys(manifest.state.public.objects.cargoOrders).length, 174);
   assert.ok(manifest.state.public.objects.cargoOrders[fixture.sourceIds.cargoId]);

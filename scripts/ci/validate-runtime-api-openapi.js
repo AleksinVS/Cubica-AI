@@ -78,6 +78,13 @@ const expectedOperations = [
     marker: 'requestUrl.pathname.startsWith("/sessions/")'
   },
   {
+    method: "get",
+    path: "/sessions/{sessionId}/public-journal",
+    operationId: "getPublicGameplayJournal",
+    tag: "Sessions",
+    marker: "public-journal"
+  },
+  {
     method: "post",
     path: "/sessions/{sessionId}/preview-restore",
     operationId: "restorePreviewSession",
@@ -319,11 +326,14 @@ function validateSchemaCoverage(spec) {
     "GameReadinessResponse",
     "HealthResponse",
     "PlayerFacingContent",
+    "PortablePublicGameplayJournal",
     "PublicCommandReceipt",
     "ReadinessResponse",
     "RestorePreviewSessionRequest",
     "RestorePreviewSessionResponse",
     "SessionResponse",
+    "SessionParticipant",
+    "SessionParticipants",
     "SessionStateVersion",
     "TransportRoadPreviewRequest",
     "TransportRoadPreviewResponse"
@@ -405,6 +415,30 @@ function validatePreciseRuntimeShapes(spec) {
     fail("PublicCommandReceipt.planHash must use the sha256:<64 lowercase hex> profile");
   }
 
+  const participant = spec.components.schemas.SessionParticipant;
+  if (
+    participant?.additionalProperties !== false ||
+    JSON.stringify(participant.required) !== JSON.stringify(["seatId", "playerId", "kind", "joinState"]) ||
+    JSON.stringify(participant.properties?.kind?.enum) !== JSON.stringify(["human", "agent"]) ||
+    participant.properties?.joinState?.const !== "local"
+  ) {
+    fail("SessionParticipant must remain the exact closed authoritative seat shape");
+  }
+  const participantRef = "#/components/schemas/SessionParticipants";
+  for (const schemaName of [
+    "ActionResponse",
+    "AgentTurnResponse",
+    "CreatedSessionResponse",
+    "RestorePreviewSessionResponse",
+    "SessionResponse"
+  ]) {
+    const responseSchema = spec.components.schemas[schemaName];
+    if (!responseSchema.required?.includes("participants") ||
+        responseSchema.properties?.participants?.$ref !== participantRef) {
+      fail(`${schemaName} must require authoritative session participants`);
+    }
+  }
+
   const bundle = spec.components.schemas.LocalPlayerWebPluginBundle;
   const required = new Set(Array.isArray(bundle?.required) ? bundle.required : []);
   for (const field of ["gameId", "pluginId", "apiVersion", "target", "contentHash", "filePath"]) {
@@ -442,6 +476,7 @@ function validateSessionTrustContract(spec) {
   }
   for (const [pathTemplate, method] of [
     ["/sessions/{sessionId}", "get"],
+    ["/sessions/{sessionId}/public-journal", "get"],
     ["/sessions/{sessionId}/preview-restore", "post"],
     ["/actions", "post"],
     ["/action-previews/transport-road", "post"],
@@ -466,6 +501,24 @@ function validateSessionTrustContract(spec) {
   }
 }
 
+function validatePublicJournalContract(spec) {
+  const schema = spec.components.schemas.PortablePublicGameplayJournal;
+  if (schema?.$ref !== "./schemas/public-gameplay-journal.schema.json") {
+    fail("PortablePublicGameplayJournal must reference the canonical public journal schema");
+  }
+  const operation = spec.paths?.["/sessions/{sessionId}/public-journal"]?.get;
+  if (operation?.responses?.["200"]?.content?.["application/json"]?.schema?.$ref !==
+      "./schemas/public-gameplay-journal.schema.json") {
+    fail("GET public journal must return the canonical public journal schema");
+  }
+  if (operation?.responses?.["413"]?.$ref !== "#/components/responses/PayloadTooLarge") {
+    fail("GET public journal must document the explicit 413 response");
+  }
+  if (operation?.responses?.["401"]?.$ref !== "#/components/responses/Unauthorized") {
+    fail("GET public journal must document 401 Unauthorized");
+  }
+}
+
 try {
   const spec = parseOpenApi();
   validateSpecShape(spec);
@@ -477,6 +530,7 @@ try {
   validateActionConcurrencyContract(spec);
   validateSessionTrustContract(spec);
   validatePreciseRuntimeShapes(spec);
+  validatePublicJournalContract(spec);
   console.log("validate-runtime-api-openapi: OK");
 } catch (error) {
   console.error("validate-runtime-api-openapi: failed");

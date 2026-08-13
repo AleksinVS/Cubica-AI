@@ -19,6 +19,7 @@ import type {
   SessionCommandTransactionInput,
   SessionEventRecord,
   SessionPrincipal,
+  SessionPublicJournalSource,
   SessionRecord,
   SessionStorePort,
   SessionSystemCommandTransaction,
@@ -41,6 +42,10 @@ import {
   SessionVersionConflictError,
   SessionWriteLockedError
 } from "./sessionStoreErrors.ts";
+import {
+  assertSessionParticipantsImmutable,
+  assertSessionParticipantsMatchState
+} from "./sessionParticipants.ts";
 
 interface StoredPrincipal {
   principal: SessionPrincipal;
@@ -61,6 +66,7 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
 
   async createSession(command: CreateSessionInput<TState>): Promise<CreatedSession<TState>> {
     assertBundleInput(command);
+    assertSessionParticipantsMatchState(command.participants, command.initialState, { allowAgents: false });
     const sessionId = randomUUID();
     const now = new Date();
     const existingBundle = this.bundles.get(command.immutableBundle.bundleHash);
@@ -80,6 +86,7 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
       gameId: command.gameId,
       bundleHash: command.immutableBundle.bundleHash,
       ...(command.contentSourceId === undefined ? {} : { contentSourceId: command.contentSourceId }),
+      participants: structuredClone(command.participants),
       state: structuredClone(command.initialState),
       ...(command.sessionRole === undefined ? {} : { sessionRole: command.sessionRole }),
       version: {
@@ -165,6 +172,32 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
     return this.buildArchivedAudit(session, storedPrincipal.principal, bundle);
   }
 
+  async readPublicJournalSource(
+    input: SessionAuthenticationInput,
+    limit: number
+  ): Promise<SessionPublicJournalSource<TState> | null> {
+    assertPublicJournalLimit(limit);
+    return this.withSessionLock(input.sessionId, async () => {
+      const session = this.sessions.get(input.sessionId);
+      const principal = this.findStoredPrincipal(input);
+      if (session === undefined || principal === undefined) return null;
+      const archivedAt = this.archivedAtBySessionId.get(input.sessionId);
+      if (archivedAt !== undefined && principal.principal.role !== "facilitator") return null;
+      const events: SessionEventRecord[] = [];
+      for (const event of this.eventsBySessionId.get(input.sessionId) ?? []) {
+        if (event.audience !== "public" || event.sequence > session.version.lastEventSequence) continue;
+        events.push(event);
+        if (events.length === limit) break;
+      }
+      return {
+        session: clone(session),
+        lifecycle: archivedAt === undefined ? "active" : "archived",
+        ...(archivedAt === undefined ? {} : { archivedAt: new Date(archivedAt) }),
+        events: clone(events)
+      };
+    });
+  }
+
   async getImmutableBundle(bundleHash: string): Promise<ImmutableGameBundle | null> {
     const bundle = this.bundles.get(bundleHash);
     return bundle === undefined ? null : clone(bundle);
@@ -205,6 +238,7 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
     }
     assertNextSessionVersion(session.sessionId, current, session);
     assertProtectedEventSequenceUnchanged(current, session);
+    assertSessionParticipantsImmutable(current, session);
     this.sessions.set(session.sessionId, clone(session));
     return clone(session);
   }
@@ -225,6 +259,7 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
         }
         assertNextSessionVersion(sessionId, current, operationResult.updatedSession);
         assertProtectedEventSequenceUnchanged(current, operationResult.updatedSession);
+        assertSessionParticipantsImmutable(current, operationResult.updatedSession);
         this.sessions.set(sessionId, clone(operationResult.updatedSession));
       }
 
@@ -275,6 +310,9 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
         receipt: operationResult.receipt,
         events: operationResult.events
       });
+      if (operationResult.updatedSession !== undefined) {
+        assertSessionParticipantsImmutable(current, operationResult.updatedSession);
+      }
       if ((operationResult.scheduleMutations?.length ?? 0) > 0 && (
         operationResult.receipt?.status !== "applied" || operationResult.updatedSession === undefined
       )) {
@@ -350,6 +388,9 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
         receipt: operationResult.receipt,
         events: operationResult.events
       });
+      if (operationResult.updatedSession !== undefined) {
+        assertSessionParticipantsImmutable(current, operationResult.updatedSession);
+      }
       if (operationResult.receipt !== undefined) {
         assertSystemReceiptPins(input, schedule, operationResult.receipt);
       }
@@ -430,6 +471,12 @@ function assertBundleInput<TState>(command: CreateSessionInput<TState>): void {
 
 function byteArraysEqual(left: Uint8Array, right: Uint8Array): boolean {
   return left.byteLength === right.byteLength && left.every((value, index) => value === right[index]);
+}
+
+function assertPublicJournalLimit(limit: number): void {
+  if (!Number.isSafeInteger(limit) || limit <= 0) {
+    throw new SessionStoreUnavailableError();
+  }
 }
 
 function commandReceiptKey(sessionId: string, principalId: string, commandId: string): string {

@@ -91,6 +91,20 @@ export interface BoardNewsView {
   readonly text: string | null;
 }
 
+export interface MethodologyPauseView {
+  readonly id: string;
+  readonly title: string;
+  readonly timing: string;
+  readonly prompts: readonly string[];
+  readonly status: "scheduled" | "active" | "deferred" | "completed";
+  readonly dueTurn: number;
+}
+
+export interface MethodologyView {
+  readonly activePauseId: string | null;
+  readonly pauses: readonly MethodologyPauseView[];
+}
+
 export interface BoardHighlightView {
   readonly id: string;
   readonly targetType: "node" | "edge";
@@ -145,6 +159,8 @@ export interface BoardProjection {
   /** Currently revealed news card, if the public game state exposes one. */
   readonly currentNewsId?: string | null;
   readonly currentNews?: BoardNewsView | null;
+  /** Public facilitator guidance; malformed entries are omitted fail-closed. */
+  readonly methodology?: MethodologyView | null;
   /**
    * Server-calculated terminal result, or `null` outside a valid finished phase.
    *
@@ -172,6 +188,11 @@ const finiteNumber = (value: unknown): number | null =>
 
 const text = (value: unknown): string | null =>
   typeof value === "string" && value.trim().length > 0 ? value : null;
+
+const boundedText = (value: unknown, maximumLength: number): string | null => {
+  const candidate = text(value);
+  return candidate !== null && candidate.length <= maximumLength ? candidate : null;
+};
 
 /** Keep the UI parser aligned with the manifest's bounded locomotive-order type. */
 const MAX_LOCOMOTIVE_ORDER_ITEMS = 64;
@@ -368,6 +389,47 @@ const readCurrentNews = (
   };
 };
 
+const METHODOLOGY_PAUSE_STATUSES: ReadonlySet<string> = new Set([
+  "scheduled", "active", "deferred", "completed"
+]);
+
+const readMethodology = (publicState: JsonRecord): MethodologyView | null => {
+  const methodology = isRecord(publicState.methodology) ? publicState.methodology : null;
+  if (!methodology) return null;
+  const pauses = isRecord(methodology.pauses) ? methodology.pauses : null;
+  if (!pauses) return null;
+  const parsed = [pauses.first, pauses.second].flatMap((raw): MethodologyPauseView[] => {
+    if (!isRecord(raw)) return [];
+    const id = text(raw.id);
+    const title = boundedText(raw.title, 120);
+    const timing = boundedText(raw.timing, 400);
+    const status = text(raw.status);
+    const dueTurn = finiteNumber(raw.dueTurn);
+    if (
+      !id || !title || !timing || !status || !METHODOLOGY_PAUSE_STATUSES.has(status)
+      || dueTurn === null || !Number.isInteger(dueTurn) || dueTurn < 1
+      || !Array.isArray(raw.prompts) || raw.prompts.length === 0 || raw.prompts.length > 8
+    ) return [];
+    const prompts = raw.prompts.map((prompt) => boundedText(prompt, 240));
+    if (prompts.some((prompt) => prompt === null)) return [];
+    return [{
+      id,
+      title,
+      timing,
+      prompts: prompts as string[],
+      status: status as MethodologyPauseView["status"],
+      dueTurn
+    }];
+  });
+  if (
+    parsed.length !== 2
+    || new Set(parsed.map((pause) => pause.id)).size !== parsed.length
+  ) return null;
+  const activePauseId = text(methodology.activePauseId);
+  if (activePauseId && !parsed.some((pause) => pause.id === activePauseId)) return null;
+  return { activePauseId, pauses: parsed };
+};
+
 const readHighlights = (board: JsonRecord): BoardHighlightView[] => {
   if (!Array.isArray(board.highlights)) return [];
   return board.highlights.flatMap((raw, index) => {
@@ -492,6 +554,7 @@ export function projectBoardSession(
     ...movement,
     currentNewsId,
     currentNews: readCurrentNews(publicState, currentNewsId),
+    methodology: readMethodology(publicState),
     finalResults: readFinalResults(publicState.finalResults, teams, phase)
   };
 }

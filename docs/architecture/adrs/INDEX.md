@@ -113,3 +113,4 @@ The following proposed decisions require explicit product-manager review before 
 | [ADR-100](100-region-road-planning-navigation-mesh.md) | Планирование дорог по областям, версия 3 — точная геометрия на навигационной сетке | Accepted |
 | [ADR-101](101-product-context-system-boundaries.md) | Границы продуктовой системы знаний | Accepted |
 | [ADR-102](102-ordered-bounded-iteration.md) | Упорядоченный обход и позиция в нём | Accepted |
+| [ADR-103](103-portable-public-gameplay-journal.md) | Переносимый журнал подтверждённых публичных событий | Accepted |

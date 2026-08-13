@@ -55,12 +55,7 @@
         "locale": "ru-RU"
       },
       "sessionMode": "facilitated",
-      "runtimeReady": false,
-      "runtimeBlockers": [
-        "initial network state review",
-        "canonical region polygons",
-        "remaining reporting workflows"
-      ]
+      "runtimeReady": true
     },
     "content": {
       "data": {
@@ -158,7 +153,7 @@
         ],
         "constructionActionIntent": {
           "status": "executable-author-confirmed-region-network",
-          "publishable": false,
+          "publishable": true,
           "road": {
             "actionId": "construction.road.build",
             "trustedInput": [
@@ -227,8 +222,8 @@
           "unresolved": []
         },
         "cardLifecycle": {
-          "status": "partially-confirmed-executable-draft",
-          "publishable": false,
+          "status": "confirmed-executable",
+          "publishable": true,
           "sourceFixture": "authoring/fixtures/cargo-news.intake.json",
           "physicalCargoCardCount": 174,
           "baseCargoCardCount": 112,
@@ -334,10 +329,10 @@
           }
         },
         "sessionSetup": {
-          "status": "executable-technical-draft",
-          "publishable": false,
-          "sourceNetwork": "annotations/initial-network.review.json",
-          "networkUse": "technical placement only until author overlay confirmation",
+          "status": "executable-author-confirmed-network",
+          "publishable": true,
+          "sourceNetwork": "annotations/initial-network-with-regions.review.json",
+          "networkUse": "author-confirmed initial placement network",
           "supportedTeamCounts": [
             4,
             5,
@@ -363,18 +358,15 @@
           "placement": {
             "order": "server-random",
             "controller": "facilitator",
-            "targets": "open terminals in the main technical network",
+            "targets": "open terminals in the author-confirmed main network",
             "maximumLocomotivesPerTerminal": 2,
             "advancesOnlyAfterAllCurrentTeamAssetsArePlaced": true
           },
-          "unresolved": [
-            "dynamic-team-construction-contributions",
-            "author-confirmation-of-initial-network-overlay"
-          ]
+          "unresolved": []
         },
         "operatingTurn": {
           "status": "executable-repeatable-market-cycle-with-construction",
-          "publishable": false,
+          "publishable": true,
           "supportedSetup": "confirmed team counts 4–12; even split equally, odd split with one extra logistics company",
           "firstTurnNews": "explicit skip without deck or random consumption",
           "maintenance": {
@@ -422,14 +414,11 @@
             "scope": "market-with-construction"
           },
           "boundary": "next-turn-news",
-          "unresolvedAfterBoundary": [
-            "author-confirmation-of-initial-network-overlay",
-            "reporting-and-reflection-content"
-          ]
+          "unresolvedAfterBoundary": []
         },
         "movementTurn": {
           "status": "executable-order-traversal-formation-through-settlement-boundary",
-          "publishable": false,
+          "publishable": true,
           "supportedSetup": "confirmed team counts 4–12; even split equally, odd split with one extra logistics company",
           "order": [
             "network-node-position-x-descending",
@@ -440,15 +429,12 @@
           "randomPurposeId": "locomotive-order",
           "savedForWholePhase": true,
           "actionPointsReset": 5,
-          "graphTraversal": "main-technical-review-network",
+          "graphTraversal": "main-author-confirmed-network",
           "graphTraversalActionPointCost": 1,
           "movementKeepsCurrentLocomotive": true,
           "explicitSkip": true,
           "boundary": "settlement",
-          "unresolvedAfterBoundary": [
-            "publishable-author-confirmed-network-overlay",
-            "remaining-reporting-workflows"
-          ]
+          "unresolvedAfterBoundary": []
         },
         "trainFormation": {
           "status": "executable-refresh-safe-group-attach",
@@ -479,7 +465,7 @@
         },
         "cargoSettlement": {
           "status": "executable-prioritized-selection-loading-and-atomic-delivery",
-          "publishable": false,
+          "publishable": true,
           "loadPhase": "cargo",
           "movementEntryPhase": "movement-order",
           "settlementPhase": "settlement",
@@ -526,7 +512,7 @@
         },
         "constructionCycle": {
           "status": "executable-on-author-confirmed-regions",
-          "publishable": false,
+          "publishable": true,
           "regionData": {
             "provenance": "author-confirmed partition of the real map (annotations/initial-network-with-regions.review.json), compiled by convert-map-annotation.mjs; see ADR-100",
             "geometryVersion": "guinea-regions-v1",
@@ -607,10 +593,10 @@
           }
         },
         "countries": {
-          "status": "author-confirmed-terminal-linking",
+          "status": "author-confirmed-terminal-and-region-linking",
           "publishable": true,
           "terminalLinking": "complete-numbered-terminals-1-through-23",
-          "polygonLinking": "pending-human-vector-review",
+          "polygonLinking": "author-confirmed-in-initial-network-with-regions-review",
           "countries": [
             {
               "id": "cmt-country-proud",
@@ -17246,21 +17232,21 @@
                   {
                     "operation": "set",
                     "target": {
-                      "endpoint": "public.construction.available"
-                    },
-                    "value": {
-                      "op": "value.literal",
-                      "value": true
-                    }
-                  },
-                  {
-                    "operation": "set",
-                    "target": {
                       "endpoint": "public.session.canRequestFinish"
                     },
                     "value": {
                       "op": "value.literal",
                       "value": false
+                    }
+                  },
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.construction.available"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": true
                     }
                   }
                 ]
@@ -27767,6 +27753,16 @@
                     "value": {
                       "op": "value.literal",
                       "value": "operations"
+                    }
+                  },
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.session.canRequestFinish"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": false
                     }
                   }
                 ]
@@ -38708,6 +38704,16 @@
                     "value": {
                       "op": "value.literal",
                       "value": "settlement"
+                    }
+                  },
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.session.canRequestFinish"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": false
                     }
                   }
                 ],
@@ -57933,6 +57939,16 @@
                     "value": {
                       "op": "value.literal",
                       "value": "reporting"
+                    }
+                  },
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.session.canRequestFinish"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": true
                     }
                   }
                 ]

@@ -158,12 +158,21 @@
           "status": "available"
         },
         "attributes": {
+          "id": "cargo-source-row-005",
+          "sourceRow": 5,
+          "sourceDeckLabel": "1 терминал",
           "networkId": "main",
           "fromNodeId": "terminal-1",
           "toNodeId": "terminal-9",
           "payout": 13,
+          "carrierWagonId": null,
+          "availableAtNodeId": "terminal-1",
+          "activeLegFromNodeId": "terminal-1",
+          "originDeparted": false,
+          "originDepartureTurn": 0,
           "settledRouteLength": null,
-          "holderTeamId": "white-logistics"
+          "holderTeamId": "white-logistics",
+          "maintenancePaidTurn": 0
         }
       }
     }

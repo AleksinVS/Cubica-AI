@@ -47,12 +47,7 @@
       "locale": "ru-RU"
     },
     "sessionMode": "facilitated",
-    "runtimeReady": false,
-    "runtimeBlockers": [
-      "initial network state review",
-      "canonical region polygons",
-      "remaining reporting workflows"
-    ]
+    "runtimeReady": true
   },
   "content": {
     "data": {
@@ -150,7 +145,7 @@
       ],
       "constructionActionIntent": {
         "status": "executable-author-confirmed-region-network",
-        "publishable": false,
+        "publishable": true,
         "road": {
           "actionId": "construction.road.build",
           "trustedInput": [
@@ -219,8 +214,8 @@
         "unresolved": []
       },
       "cardLifecycle": {
-        "status": "partially-confirmed-executable-draft",
-        "publishable": false,
+        "status": "confirmed-executable",
+        "publishable": true,
         "sourceFixture": "authoring/fixtures/cargo-news.intake.json",
         "physicalCargoCardCount": 174,
         "baseCargoCardCount": 112,
@@ -326,10 +321,10 @@
         }
       },
       "sessionSetup": {
-        "status": "executable-technical-draft",
-        "publishable": false,
-        "sourceNetwork": "annotations/initial-network.review.json",
-        "networkUse": "technical placement only until author overlay confirmation",
+        "status": "executable-author-confirmed-network",
+        "publishable": true,
+        "sourceNetwork": "annotations/initial-network-with-regions.review.json",
+        "networkUse": "author-confirmed initial placement network",
         "supportedTeamCounts": [
           4,
           5,
@@ -355,18 +350,15 @@
         "placement": {
           "order": "server-random",
           "controller": "facilitator",
-          "targets": "open terminals in the main technical network",
+          "targets": "open terminals in the author-confirmed main network",
           "maximumLocomotivesPerTerminal": 2,
           "advancesOnlyAfterAllCurrentTeamAssetsArePlaced": true
         },
-        "unresolved": [
-          "dynamic-team-construction-contributions",
-          "author-confirmation-of-initial-network-overlay"
-        ]
+        "unresolved": []
       },
       "operatingTurn": {
         "status": "executable-repeatable-market-cycle-with-construction",
-        "publishable": false,
+        "publishable": true,
         "supportedSetup": "confirmed team counts 4–12; even split equally, odd split with one extra logistics company",
         "firstTurnNews": "explicit skip without deck or random consumption",
         "maintenance": {
@@ -414,14 +406,11 @@
           "scope": "market-with-construction"
         },
         "boundary": "next-turn-news",
-        "unresolvedAfterBoundary": [
-          "author-confirmation-of-initial-network-overlay",
-          "reporting-and-reflection-content"
-        ]
+        "unresolvedAfterBoundary": []
       },
       "movementTurn": {
         "status": "executable-order-traversal-formation-through-settlement-boundary",
-        "publishable": false,
+        "publishable": true,
         "supportedSetup": "confirmed team counts 4–12; even split equally, odd split with one extra logistics company",
         "order": [
           "network-node-position-x-descending",
@@ -432,15 +421,12 @@
         "randomPurposeId": "locomotive-order",
         "savedForWholePhase": true,
         "actionPointsReset": 5,
-        "graphTraversal": "main-technical-review-network",
+        "graphTraversal": "main-author-confirmed-network",
         "graphTraversalActionPointCost": 1,
         "movementKeepsCurrentLocomotive": true,
         "explicitSkip": true,
         "boundary": "settlement",
-        "unresolvedAfterBoundary": [
-          "publishable-author-confirmed-network-overlay",
-          "remaining-reporting-workflows"
-        ]
+        "unresolvedAfterBoundary": []
       },
       "trainFormation": {
         "status": "executable-refresh-safe-group-attach",
@@ -471,7 +457,7 @@
       },
       "cargoSettlement": {
         "status": "executable-prioritized-selection-loading-and-atomic-delivery",
-        "publishable": false,
+        "publishable": true,
         "loadPhase": "cargo",
         "movementEntryPhase": "movement-order",
         "settlementPhase": "settlement",
@@ -518,7 +504,7 @@
       },
       "constructionCycle": {
         "status": "executable-on-author-confirmed-regions",
-        "publishable": false,
+        "publishable": true,
         "regionData": {
           "provenance": "author-confirmed partition of the real map (annotations/initial-network-with-regions.review.json), compiled by convert-map-annotation.mjs; see ADR-100",
           "geometryVersion": "guinea-regions-v1",
@@ -599,10 +585,10 @@
         }
       },
       "countries": {
-        "status": "author-confirmed-terminal-linking",
+        "status": "author-confirmed-terminal-and-region-linking",
         "publishable": true,
         "terminalLinking": "complete-numbered-terminals-1-through-23",
-        "polygonLinking": "pending-human-vector-review",
+        "polygonLinking": "author-confirmed-in-initial-network-with-regions-review",
         "countries": [
           {
             "id": "cmt-country-proud",
@@ -1114,7 +1100,7 @@
         "planRef": "settlement.phase.finish"
       },
       "invocation": "external",
-      "definitionHash": "sha256:0671c98bc96614fe1f848a0a044bf643363b18320afcdae8193235289423c4fd"
+      "definitionHash": "sha256:95dc563a453dac4ae98b010eb50e592ca5f407d622d1913d94880ed540fe6118"
     },
     "technical.news.apply.24": {
       "capabilityFamily": "runtime.server",
@@ -2320,7 +2306,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:ff34e2f2c2cc29d11a6989c056790ccaf7577bcc34fb49142f8e71c83ec30685"
+      "definitionHash": "sha256:a66f97771ea7b0c9af47d42fcad8a31872ff7a6cfc1821cb6a8fe6f439990b16"
     },
     "movement.locomotive.traverse": {
       "capabilityFamily": "runtime.server",
@@ -2540,7 +2526,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:8f6aeff05dc1bcf4bd0829200988eda358cfff1de9262edacf5d303d37e026a3"
+      "definitionHash": "sha256:a43b466154e40e4b83948223ea6f48c4fbe19650ec6a5412034d7e3320bd378e"
     },
     "cards.lifecycle.initialize": {
       "capabilityFamily": "runtime.server",
@@ -3792,7 +3778,7 @@
         "planRef": "construction.phase.finish"
       },
       "invocation": "external",
-      "definitionHash": "sha256:ec84f931215f9d0a4474b6c2f14e25c211f971b9a0e8b29e4238ea1b9716b45d"
+      "definitionHash": "sha256:09c734cbb6ffb07805368c4cf90850b045cbe3c8dd05243a61089aecd54c5381"
     }
   },
   "state": {
@@ -17089,7 +17075,7 @@
         }
       },
       "settlement.phase.finish": {
-        "planHash": "sha256:1ccff047769349285a14020f2ced9bcb69904862a263efe1a64d1ed05166fe27",
+        "planHash": "sha256:691c6ef5c6569f990940a653eb903df137775ce079d91b3d37f76522916f69d6",
         "transaction": {
           "steps": [
             {
@@ -17149,21 +17135,21 @@
                 {
                   "operation": "set",
                   "target": {
-                    "endpoint": "public.construction.available"
-                  },
-                  "value": {
-                    "op": "value.literal",
-                    "value": true
-                  }
-                },
-                {
-                  "operation": "set",
-                  "target": {
                     "endpoint": "public.session.canRequestFinish"
                   },
                   "value": {
                     "op": "value.literal",
                     "value": false
+                  }
+                },
+                {
+                  "operation": "set",
+                  "target": {
+                    "endpoint": "public.construction.available"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": true
                   }
                 }
               ]
@@ -28653,7 +28639,7 @@
         }
       },
       "movement.order.prepare": {
-        "planHash": "sha256:bfaf7139f74017c6c33f5f639271af92b521cee4e8b859a1d308f6a78a329550",
+        "planHash": "sha256:056883c4f3a7fc0bdedf6b3a211dda5ef4e8b6fb55f812de3efc10e078c512bc",
         "transaction": {
           "steps": [
             {
@@ -28868,6 +28854,16 @@
                   "value": {
                     "op": "value.literal",
                     "value": "operations"
+                  }
+                },
+                {
+                  "operation": "set",
+                  "target": {
+                    "endpoint": "public.session.canRequestFinish"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": false
                   }
                 }
               ]
@@ -39452,7 +39448,7 @@
         }
       },
       "movement.locomotive.skip": {
-        "planHash": "sha256:fca727229db785b3eda5ae2554dc761d9eec71a574d06b8a87d9c13e55c82d05",
+        "planHash": "sha256:50c86bdba722fda8cd8c4c9e89f09c49aba28a94dff6d66a5e6f33ede9219ca1",
         "transaction": {
           "steps": [
             {
@@ -39816,6 +39812,16 @@
                   "value": {
                     "op": "value.literal",
                     "value": "settlement"
+                  }
+                },
+                {
+                  "operation": "set",
+                  "target": {
+                    "endpoint": "public.session.canRequestFinish"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": false
                   }
                 }
               ],
@@ -58957,7 +58963,7 @@
         }
       },
       "construction.phase.finish": {
-        "planHash": "sha256:d3371d8081942bd87b03197a3721677ee0aa61c3912664fb6f12699b9214bc7b",
+        "planHash": "sha256:9f48958d16a8b5e8d7f1d395811ed6f08d53b2ec23c9ea4298699a452126f77b",
         "transaction": {
           "steps": [
             {
@@ -59092,6 +59098,16 @@
                   "value": {
                     "op": "value.literal",
                     "value": "reporting"
+                  }
+                },
+                {
+                  "operation": "set",
+                  "target": {
+                    "endpoint": "public.session.canRequestFinish"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": true
                   }
                 }
               ]

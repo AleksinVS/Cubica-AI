@@ -15,6 +15,7 @@ import type {
   SessionRole
 } from "@cubica/contracts-session";
 import { SessionAuthenticationError, SessionAuthorizationError } from "./sessionStoreErrors.ts";
+import { participantActorIds } from "./sessionParticipants.ts";
 
 const SESSION_CREDENTIAL_PATTERN = /^ses_[A-Za-z0-9_-]{43}$/u;
 
@@ -72,9 +73,16 @@ export function resolveSessionActor<TState>(
     throw new SessionAuthorizationError();
   }
 
+  const participantIds = participantActorIds(session);
   const activeActorId = readActiveActorId(session.state);
+  if (activeActorId !== undefined && !participantIds.includes(activeActorId)) {
+    throw new SessionAuthorizationError();
+  }
   if (principal.actorScope.kind === "all-session-actors") {
     return activeActorId;
+  }
+  if (principal.actorScope.actorIds.some((actorId) => !participantIds.includes(actorId))) {
+    throw new SessionAuthorizationError();
   }
   if (activeActorId !== undefined) {
     if (!principal.actorScope.actorIds.includes(activeActorId)) {
@@ -104,9 +112,16 @@ export function resolveSessionViewerActor<TState>(
   if (principal.sessionId !== session.sessionId) {
     throw new SessionAuthorizationError();
   }
+  const participantIds = participantActorIds(session);
   const activeActorId = readActiveActorId(session.state);
+  if (activeActorId !== undefined && !participantIds.includes(activeActorId)) {
+    throw new SessionAuthorizationError();
+  }
   if (principal.actorScope.kind === "all-session-actors") {
     return activeActorId;
+  }
+  if (principal.actorScope.actorIds.some((actorId) => !participantIds.includes(actorId))) {
+    throw new SessionAuthorizationError();
   }
   if (principal.actorScope.actorIds.length === 1) {
     return principal.actorScope.actorIds[0];

@@ -2102,7 +2102,7 @@ const buildOperatingTurnAuthoring = (sourceAuthoring) => {
     status: constructionReady
       ? "executable-repeatable-market-cycle-with-construction"
       : "executable-repeatable-market-no-build-cycle",
-    publishable: false,
+    publishable: true,
     supportedSetup:
       "confirmed team counts 4–12; even split equally, odd split with one extra logistics company",
     firstTurnNews: "explicit skip without deck or random consumption",
@@ -2151,13 +2151,14 @@ const buildOperatingTurnAuthoring = (sourceAuthoring) => {
     },
     boundary: "next-turn-news",
     unresolvedAfterBoundary: [
-      "author-confirmation-of-initial-network-overlay",
       ...(root.content.data.cardLifecycle?.unresolvedRuleNewsNumbers?.length
         ? ["remaining-news-effects"]
         : []),
       ...(cargoPriorityReady ? [] : ["cargo-selection-priority"]),
       ...(constructionReady ? [] : ["real-construction"]),
-      "reporting-and-reflection-content"
+      ...(root.content.data.sessionCompletion
+        ? []
+        : ["reporting-and-reflection-content"])
     ]
   };
   if (Array.isArray(root.content.data.cargoSettlement?.unresolvedBeforeFullTurn)) {
@@ -2167,7 +2168,7 @@ const buildOperatingTurnAuthoring = (sourceAuthoring) => {
       );
   }
 
-  const blockers = new Set(root.config.runtimeBlockers);
+  const blockers = new Set(root.config.runtimeBlockers ?? []);
   const broadPreMovementBlocker =
     "remaining market, movement, settlement, construction and reporting workflows";
   const precisePostOrderBlocker =
@@ -2187,7 +2188,7 @@ const buildOperatingTurnAuthoring = (sourceAuthoring) => {
   blockers.delete(postConstructionBlocker);
   blockers.delete(postCargoPriorityBlocker);
   blockers.delete(reportingOnlyBlocker);
-  if (root.content.data.movementTurn) {
+  if (!root.content.data.sessionCompletion && root.content.data.movementTurn) {
     // A later movement generator may already have proved ordering and the
     // explicit all-skip path, and perhaps real graph traversal as well.
     // Rebuilding this earlier slice must preserve the most precise proven
@@ -2214,11 +2215,15 @@ const buildOperatingTurnAuthoring = (sourceAuthoring) => {
     } else {
       blockers.add(precisePostOrderBlocker);
     }
-  } else {
+  } else if (!root.content.data.sessionCompletion) {
     blockers.add(broadPreMovementBlocker);
   }
-  root.config.runtimeBlockers = [...blockers];
-  root.config.runtimeReady = false;
+  if (root.config.runtimeReady === true && blockers.size === 0) {
+    delete root.config.runtimeBlockers;
+  } else {
+    root.config.runtimeBlockers = [...blockers];
+  }
+  if (!root.content.data.sessionCompletion) root.config.runtimeReady = false;
 
   return authoring;
 };

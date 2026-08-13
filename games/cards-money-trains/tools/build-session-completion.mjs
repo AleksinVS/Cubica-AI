@@ -642,38 +642,48 @@ const declareCompletionState = (root) => {
   }
 };
 
-/**
- * Keep the UI's existing availability flag aligned with the authoritative
- * phase. The runtime guard remains the security boundary; this derived flag
- * only prevents a visually active finish button during an unfinished round.
- */
-const synchronizeFinishAvailability = (root) => {
-  root.state.public.session.canRequestFinish = false;
-  for (const plan of Object.values(root.mechanics.plans)) {
+/** Capture foreign availability fragments so completion cannot rewrite them. */
+const foreignFinishAvailabilityPatches = (root) => Object.fromEntries(
+  Object.entries(root.mechanics.plans)
+    .filter(([planId]) => !finishActionIds.includes(planId))
+    .map(([planId, plan]) => [
+      planId,
+      plan.transaction.steps.flatMap((step) =>
+        (step.patches ?? []).filter(
+          (patch) =>
+            patch.target?.endpoint === "public.session.canRequestFinish"
+        )
+      )
+    ])
+);
+
+/** Fail closed when a phase owner omits or contradicts the derived UI flag. */
+const assertFinishAvailabilityAligned = (root) => {
+  for (const [planId, plan] of Object.entries(root.mechanics.plans)) {
     for (const step of plan.transaction.steps) {
       if (step.op !== "core.state.patch") continue;
-      const phasePatch = step.patches.find(
+      const phasePatch = (step.patches ?? []).find(
         (patch) =>
           patch.operation === "set"
           && patch.target?.endpoint === "public.session.phase"
           && patch.value?.op === "value.literal"
       );
       if (!phasePatch) continue;
-      const canRequest = phasePatch.value.value === "reporting";
-      const availabilityPatch = step.patches.find(
+      const availabilityPatches = step.patches.filter(
         (patch) =>
           patch.operation === "set"
           && patch.target?.endpoint === "public.session.canRequestFinish"
       );
-      if (availabilityPatch) {
-        availabilityPatch.value = literal(canRequest);
-      } else {
-        step.patches.push({
-          operation: "set",
-          target: { endpoint: "public.session.canRequestFinish" },
-          value: literal(canRequest)
-        });
-      }
+      assert.equal(
+        availabilityPatches.length,
+        1,
+        `${planId}/${step.id} must set canRequestFinish with its phase`
+      );
+      assert.deepEqual(
+        availabilityPatches[0].value,
+        literal(phasePatch.value.value === "reporting"),
+        `${planId}/${step.id} must align canRequestFinish with its phase`
+      );
     }
   }
 };
@@ -719,11 +729,17 @@ const replaceFinishActionsAndPlans = (root, generated) => {
 const buildSessionCompletionAuthoring = (sourceAuthoring) => {
   const authoring = structuredClone(sourceAuthoring);
   const root = authoring.root;
+  const preservedAvailability = foreignFinishAvailabilityPatches(root);
 
   declareCompletionState(root);
-  synchronizeFinishAvailability(root);
   const generated = [buildRequest(), buildCancel(), buildConfirm()];
   replaceFinishActionsAndPlans(root, generated);
+  assert.deepEqual(
+    foreignFinishAvailabilityPatches(root),
+    preservedAvailability,
+    "phase owners must retain their own finish-availability patches"
+  );
+  assertFinishAvailabilityAligned(root);
 
   root.content.data.sessionCompletion = {
     status: "executable-final-score-and-protected-completion",
@@ -737,10 +753,21 @@ const buildSessionCompletionAuthoring = (sourceAuthoring) => {
     immutableAfterCompletion: true
   };
 
-  const blockers = new Set(root.config.runtimeBlockers);
+  const blockers = new Set(root.config.runtimeBlockers ?? []);
   blockers.delete("remaining reporting workflows");
-  root.config.runtimeBlockers = [...blockers];
-  root.config.runtimeReady = false;
+  if (root.config.runtimeReady === true) {
+    assert.equal(
+      blockers.size,
+      0,
+      "a runtime-ready package cannot retain internal runtime blockers"
+    );
+    delete root.config.runtimeBlockers;
+  } else {
+    if (blockers.size === 0) {
+      blockers.add("full facilitator UI and browser acceptance");
+    }
+    root.config.runtimeBlockers = [...blockers];
+  }
 
   return authoring;
 };

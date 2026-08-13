@@ -698,6 +698,10 @@ const buildCargoFinishAction = () => {
             operation: "set",
             target: { endpoint: "public.session.phase" },
             value: literal("movement-order")
+          }, {
+            operation: "set",
+            target: { endpoint: "public.session.canRequestFinish" },
+            value: literal(false)
           }]
         }, {
           id: "journal",
@@ -789,6 +793,11 @@ const buildSettlementFinishAction = () => {
               operation: "set",
               target: { endpoint: "public.session.phase" },
               value: literal("construction")
+            },
+            {
+              operation: "set",
+              target: { endpoint: "public.session.canRequestFinish" },
+              value: literal(false)
             },
             {
               // The phase and the public control availability are separate
@@ -1055,7 +1064,7 @@ const buildCargoSettlementAuthoring = (sourceAuthoring) => {
 
   root.content.data.cargoSettlement = {
     status: "executable-prioritized-selection-loading-and-atomic-delivery",
-    publishable: false,
+    publishable: true,
     loadPhase: "cargo",
     movementEntryPhase: "movement-order",
     settlementPhase: "settlement",
@@ -1114,23 +1123,27 @@ const buildCargoSettlementAuthoring = (sourceAuthoring) => {
       && item !== "remaining-construction-and-reporting-workflows"
       && item !== "remaining-reporting-workflows"
     );
-    for (const item of [
-      "publishable-author-confirmed-network-overlay",
-      root.content.data.constructionCycle
-        ? marketReady
-          ? "remaining-reporting-workflows"
-          : "remaining-market-and-reporting-workflows"
-        : marketReady
-          ? "remaining-construction-and-reporting-workflows"
-          : "remaining-market-construction-and-reporting-workflows"
-    ]) {
-      if (!movementTurn.unresolvedAfterBoundary.includes(item)) {
-        movementTurn.unresolvedAfterBoundary.push(item);
+    if (root.content.data.sessionCompletion) {
+      movementTurn.unresolvedAfterBoundary = [];
+    } else {
+      for (const item of [
+        "publishable-author-confirmed-network-overlay",
+        root.content.data.constructionCycle
+          ? marketReady
+            ? "remaining-reporting-workflows"
+            : "remaining-market-and-reporting-workflows"
+          : marketReady
+            ? "remaining-construction-and-reporting-workflows"
+            : "remaining-market-construction-and-reporting-workflows"
+      ]) {
+        if (!movementTurn.unresolvedAfterBoundary.includes(item)) {
+          movementTurn.unresolvedAfterBoundary.push(item);
+        }
       }
     }
   }
 
-  const blockers = new Set(root.config.runtimeBlockers);
+  const blockers = new Set(root.config.runtimeBlockers ?? []);
   for (const blocker of broadRuntimeBlockers) blockers.delete(blocker);
   blockers.delete(preciseRuntimeBlocker);
   blockers.delete(postConstructionRuntimeBlocker);
@@ -1138,17 +1151,23 @@ const buildCargoSettlementAuthoring = (sourceAuthoring) => {
   blockers.delete(postCargoPriorityRuntimeBlocker);
   blockers.delete(postMarketConstructionRuntimeBlocker);
   blockers.delete(reportingOnlyRuntimeBlocker);
-  blockers.add(
-    root.content.data.constructionCycle
-      ? marketReady
-        ? reportingOnlyRuntimeBlocker
-        : postCargoPriorityRuntimeBlocker
-      : marketReady
-        ? postMarketConstructionRuntimeBlocker
-        : preConstructionPostCargoPriorityRuntimeBlocker
-  );
-  root.config.runtimeBlockers = [...blockers];
-  root.config.runtimeReady = false;
+  if (!root.content.data.sessionCompletion) {
+    blockers.add(
+      root.content.data.constructionCycle
+        ? marketReady
+          ? reportingOnlyRuntimeBlocker
+          : postCargoPriorityRuntimeBlocker
+        : marketReady
+          ? postMarketConstructionRuntimeBlocker
+          : preConstructionPostCargoPriorityRuntimeBlocker
+    );
+  }
+  if (root.config.runtimeReady === true && blockers.size === 0) {
+    delete root.config.runtimeBlockers;
+  } else {
+    root.config.runtimeBlockers = [...blockers];
+  }
+  if (!root.content.data.sessionCompletion) root.config.runtimeReady = false;
 
   return authoring;
 };

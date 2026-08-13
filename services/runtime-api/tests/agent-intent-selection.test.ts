@@ -93,6 +93,7 @@ const assertEntryRejectedBeforeAgentCall = async (options: {
   try {
     const created = await store.createSession({
       gameId: manifest.meta.id,
+      participants: [{ seatId: "p1", playerId: "p1", kind: "human", joinState: "local" }],
       initialState: structuredClone(manifest.state) as unknown as Record<string, unknown>,
       sessionRole: "facilitator",
       immutableBundle,
@@ -204,6 +205,7 @@ test("Agent Turn selects the canonical first intent regardless of manifest key i
   try {
     const created = await store.createSession({
       gameId,
+      participants: [{ seatId: "p1", playerId: "p1", kind: "human", joinState: "local" }],
       initialState: structuredClone(manifest.state) as unknown as Record<string, unknown>,
       sessionRole: "player",
       immutableBundle,
@@ -238,6 +240,7 @@ test("Agent Turn selects the canonical first intent regardless of manifest key i
     };
 
     assert.equal(first.agentTurn.selectedIntent?.actionId, "agent.choice.resolve");
+    assert.deepEqual(first.participants, created.session.participants);
     assert.deepEqual(first.agentTurn.selectedIntent?.params, {});
     assert.match(
       first.agentTurn.turnId,

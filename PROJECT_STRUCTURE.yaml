@@ -59,6 +59,7 @@ docs: # Архитектура, задачи, планирование
       095-non-failing-path-and-dynamic-score-selection.md: file # ADR-095: неаварийный типизированный результат поиска кратчайшего пути и подсчёт с ранжированием по доверенной ограниченной выборке вместо заранее перечисленных идентификаторов.
       096-bounded-random-stream-recovery.md: file # ADR-096: серверная криптографическая случайность без сохраняемого генератора; партия продолжается с игрового снимка, а воспроизводимый предпросмотр отложен как неподтверждённая гипотеза.
       101-product-context-system-boundaries.md: file # ADR-101: принятая граница продуктовой системы знаний с единой личностью, явной ролевой и игровой применимостью, единым конвертом оснований, PostgreSQL, Git-каноном Markdown и трёхэтапным внедрением.
+      103-portable-public-gameplay-journal.md: file # ADR-103: общий переносимый read-only журнал как безопасная schema-backed проекция подтверждённых публичных событий без ИИ-интерпретации.
       INDEX.md: file # Порождаемый сводный индекс архитектурных решений с номерами, названиями, статусами и отдельным списком решений, ожидающих рассмотрения PM.
     backend: directory... # Архитектурные материалы серверных компонентов и их операционных границ.
     engine: directory... # Подробные материалы универсального игрового движка и исполнения механик.
@@ -70,10 +71,13 @@ docs: # Архитектура, задачи, планирование
       044-estate-race-trade-obligation-and-bankruptcy.md: file # Estate Race S5: сделки, обязательства, ликвидность и банкротство банку или участнику.
       045-estate-race-terminal-local-game.md: file # Estate Race S6: game-owned terminal outcome, последний активный участник и полный локальный transcript.
       046-estate-race-product-surface-and-methodology.md: file # Estate Race S7: оригинальная публичная поверхность, визуальная система и необязательный обучающий режим.
+      047-estate-race-session-participants.md: file # Estate Race S8: общая session-owned модель локальных участников без сетевого lifecycle и игровых веток в платформе.
+      048-cards-money-trains-portable-public-journal.md: file # CMT: общий переносимый журнал подтверждённых публичных событий с безопасной выгрузкой без ИИ-интерпретации.
     metadata: directory... # Архитектура метаданных, аналитики и связанных событий.
     processes: directory... # Процессы сопровождения архитектуры и принятия технических решений.
     protocols: directory... # Межкомпонентные протоколы и форматы обмена платформы.
-    schemas: directory... # JSON Schema — декларативные источники истины контрактов Cubica.
+    schemas: # JSON Schema — декларативные источники истины контрактов Cubica.
+      public-gameplay-journal.schema.json: file # Канонический переносимый формат подтверждённых публичных событий одной игровой сессии.
     search: directory... # Архитектура поиска, индексации и извлечения проектных знаний.
     sql: directory... # SQL-схемы и запросы для принятых моделей хранения.
     .gitkeep: file # Служебный файл сохранения каталога в Git.
@@ -160,6 +164,7 @@ docs: # Архитектура, задачи, планирование
       TSK-20260801-cmt-test-suite-cost.md: file # Стоимость и устойчивость наборов проверок игры «Карты, деньги, поезда»: измеренная цена, устранение повторной работы и проверка на закреплённую случайность.
       TSK-20260803-portal-access-control.md: file # Восстановление контроля доступа в черновом контуре портала: проверка владельца заказа, закрытие свободной смены статуса, права ролей на стандартные маршруты и гигиена браузерного кода.
       TSK-20260806-product-knowledge-shadow-stage-1.md: file # План изолированной проверки ядра продуктовой системы знаний на синтетических данных без подключения к действующим помощникам; настоящий теневой запуск и включение остаются отдельными этапами.
+      TSK-20260812-portable-public-journal.md: file # Общий schema-backed переносимый журнал подтверждённых публичных событий с ограниченным Runtime API, безопасной выгрузкой Player Web и доказательством на CMT без ИИ-интерпретации.
     archive: directory... # Архив задач: старая иерархия milestones/epics/features/content-packs и завершенные TSK-файлы после внедрения новой системы. Содержимое не публикуется в PROJECT_STRUCTURE.yaml; описания ниже — метаданные для governance-проверок задач.
     artifacts: directory... # Постоянные артефакты рабочих задач. Для каждой задачи используется подкаталог с идентификатором задачи.
     AGENTS.md: file # Обязательные локальные правила подготовки исполнительской документации, выбора субагентов и заключительной проверки планов на упрощение.
@@ -234,7 +239,7 @@ packages: # Переиспользуемые платформенные паке
     ai: directory... # AI task, result, Cubica Surface, Agent Turn, execution-mode and Agent UI boundary contracts owned by Cubica rather than CopilotKit or AG-UI.
     manifest: directory... # Порождаемые из JSON Schema контракты игровых, UI и authoring-манифестов.
     runtime: directory... # Контракты команд, результатов и публичной границы игрового runtime.
-    session: directory... # Контракты сессий, участников, событий, квитанций и постоянного состояния.
+    session: directory... # Контракты сессий, участников, событий, квитанций, постоянного состояния и schema-backed переносимого публичного журнала.
     AGENTS.md: file # Локальные правила декларативных публичных контрактов, генерации производных типов и проверки совместимости.
   editor-engine: directory... # Framework-agnostic editor engine package for ADR-034 authoring manifest editing. It owns JSON document state, neutral graph projection, reverse projection intents, and deterministic diagnostics helpers.
   view-protocol: directory... # Framework-agnostic package with the Abstract View Protocol contracts (ADR-002: Presenter -> View commands) and JSON state patch utilities (RFC 7396 Merge Patch, RFC 6902 JSON Patch). Seed of the future extracted player core per ADR-064.

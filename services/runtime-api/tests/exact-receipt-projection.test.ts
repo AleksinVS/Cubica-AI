@@ -32,6 +32,10 @@ test("an exact retry keeps its receipt actor but projects the current viewer act
   try {
     const created = await store.createSession({
       gameId,
+      participants: [
+        { seatId: "p1", playerId: "p1", kind: "human", joinState: "local" },
+        { seatId: "p2", playerId: "p2", kind: "human", joinState: "local" }
+      ],
       initialState,
       sessionRole: "player",
       immutableBundle,

@@ -7,7 +7,8 @@
 а происхождение данных и права — [правила и происхождение](rules-and-rights-provenance.md).
 
 Статусы означают: `реализовано` — поведение есть в текущем коде и имеет
-свежую проверку; `запланировано` — правило назначено срезу и имеет критерий,
+свежую проверку; `в исполнении` — реализация начата, но принятие и свежая
+проверка ещё не заявлены; `запланировано` — правило назначено срезу и имеет критерий,
 но ещё не принято; `заблокировано` — дальнейшая работа зависит от явно
 указанного решения или внешнего результата. P-01 принято PM 2026-08-12:
 оригинальные наборы Estate Race — кандидаты публичного контента только после
@@ -48,8 +49,8 @@ provenance/hash и проверки баланса; публикация ими 
 | Последний активный участник становится победителем ровно один раз | S6 (GSR-045) | `state.players` bounded record-map, server-owned terminal outcome; `estate.finish-last-active-player` | итоговый экран, закрытие изменяющих действий | `3→2`, обе ветви `2→1`, multi-lot, exact retry и terminal rejection | реализовано; S6 завершён |
 | Локальная партия 2–6 игроков использует один manifest до terminal outcome | S6 (GSR-045) | один game manifest; поздняя допустимая фикстура задаётся до session creation, затем только Game Intents | responsive UI, DOM fallback и подтверждённый winner | начало/середина/поздняя/terminal fixtures, bounded transcript и production browser flow | реализовано для локального режима; долговечное PostgreSQL-восстановление остаётся внешней границей private invite network |
 | Тексты, карточки, mockups и методический слой подключаются к тем же состояниям | S7 (GSR-046) | content provenance + UI bindings; read-only projections и risk confirmations; game/UI authoring `0.7.0` | map-first адаптивное поле, карточки, keyboard/focus, reflection, game-owned design reference, responsive camera | package `49/49`, plugin `37/37` + typecheck, balance `3/3` (`PASS-for-closed-alpha`), production browser S0–S7 `8/8`, style-parity `PASS`; локальная accessibility matrix `PASS` на 1400x1000/768x1024/320x800 | реализовано; публикация и финальный баланс не объявлены |
-| Общая модель участников сохраняет actor boundary, персональную проекцию и доступные действия | S8 | общая `participants` model; actor-scoped projection; те же intents | локальная проекция и доступность действий | privacy, stale version и actor checks | запланировано |
-| ИИ получает только проекцию и доступные действия, а не состояние движка | S9 | agent seat/fallback declarations; agent action choice → обычный dispatcher | состояние ИИ и fallback | adversarial mock, invalid choice, ordered safe fallback, pause/human takeover при недоступном Agent Runtime | запланировано |
+| Общая модель участников сохраняет actor boundary, персональную проекцию и доступные действия | S8 | session-owned item `seatId:string`, `playerId:string`, `kind:human\|agent`, `joinState:local`; S8 создаёт только human/local; actor-scoped projection и те же intents | локальная проекция и доступность действий | privacy, stale version и actor checks | в исполнении; ожидает проверки |
+| ИИ получает только проекцию и доступные действия, а не состояние движка | S9 | зависит от принятого S8; agent seat/fallback declarations; agent action choice → обычный dispatcher | состояние ИИ и fallback | adversarial mock, invalid choice, ordered safe fallback, pause/human takeover при недоступном Agent Runtime | запланировано; зависит от S8 |
 | Private invite network сохраняет actor boundary и reconnect | S10 | authenticated invite-only participants, WebSocket projection, PostgreSQL version; те же intents | два браузерных контекста и reconnect state | spoofing/privacy, stale version, reconnect/resync | запланировано |
 | Каталог публикуется только после принятия содержания, ресурсов и режимов | S10 | immutable game bundle + provenance; release/catalog plan | утверждённое название, описание и preview | production build/E2E, rights and product acceptance | запланировано |
 
@@ -60,7 +61,7 @@ provenance/hash и проверки баланса; публикация ими 
 | P-01: оригинальный публичный кандидат | S7 | принято PM 2026-08-12; source-of-truth наборы имеют provenance/hash; balance `3/3` только `PASS-for-closed-alpha` | public local UI/content завершены для локальной приёмки; каталог не активируется | provenance/rights-record, balance review и будущая economy telemetry | принято; публикационные критерии остаются |
 | Финальное содержание и публикация в каталоге | S10 | P-01 разблокировал кандидатный пакет, но контент, UI и каталог ещё не приняты | production/catalog branding не объявляется готовым | content/provenance, balance и product acceptance | запланировано |
 | Private invite network | S10 | зависит от общей модели участников, AI-среза, ADR-059, durability и quotas; game manifest не меняется | network UI не активируется | platform task + PostgreSQL/concurrency/browser checks | заблокировано: внешняя платформа |
-| ИИ-места | S9 | зависит от общей модели участников и ADR-060; отдельную ветку runtime создавать нельзя | AI seat UI не активируется | adversarial projection/fallback checks | заблокировано: внешняя платформа |
+| ИИ-места | S9 | зависит от принятия S8-контракта и ADR-060; отдельную ветку runtime создавать нельзя | AI seat UI не активируется | adversarial projection/fallback checks | заблокировано: ожидает S8 |
 | Каталог и полное закрытие | S10 | зависит от P-01, S7, `LEGACY-0072` и `LEGACY-0068`; source of truth не расширяется | каталог не публикуется | milestone H/N/A и product/rights acceptance | заблокировано: зависимости |
 
 Visual reference SHA-256: `f492f69142368e03def533fe5aead099f67c1f037582072eaa6dc059fd7c250c`;
