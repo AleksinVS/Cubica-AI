@@ -8,12 +8,14 @@ import {
 type RuntimeState = Record<string, unknown>;
 
 /**
- * Derive local human seats only from the exact player actors materialized in
- * authoritative state. S8 never accepts a caller-supplied participant list.
+ * Derive local seats only from the exact player actors materialized in
+ * authoritative state. The last N become agents only after create-policy
+ * validation; callers never supply seat or player ids.
  */
 export function materializeLocalSessionParticipants(
   state: RuntimeState,
-  fallbackParticipantCount: number
+  fallbackParticipantCount: number,
+  agentSeatCount = 0
 ): ReadonlyArray<SessionParticipant> {
   if (!Number.isSafeInteger(fallbackParticipantCount) || fallbackParticipantCount < 1) {
     throw new Error("Local participant count must be a positive safe integer");
@@ -26,10 +28,14 @@ export function materializeLocalSessionParticipants(
   if (playerIds.length !== fallbackParticipantCount) {
     throw new Error("Authoritative player ids do not match the local participant count");
   }
-  return playerIds.map((playerId) => ({
+  if (!Number.isSafeInteger(agentSeatCount) || agentSeatCount < 0 || agentSeatCount > playerIds.length) {
+    throw new Error("Local agent seat count must fit the authoritative participant count");
+  }
+  const firstAgentIndex = playerIds.length - agentSeatCount;
+  return playerIds.map((playerId, index) => ({
     seatId: playerId,
     playerId,
-    kind: "human",
+    kind: index >= firstAgentIndex ? "agent" : "human",
     joinState: "local"
   }));
 }
@@ -70,7 +76,7 @@ export function assertSessionParticipantsImmutable<TState>(
   current: SessionRecord<TState>,
   updated: SessionRecord<TState>
 ): void {
-  assertSessionParticipantsMatchState(updated.participants, updated.state, { allowAgents: false });
+  assertSessionParticipantsMatchState(updated.participants, updated.state, { allowAgents: true });
   if (JSON.stringify(current.participants) !== JSON.stringify(updated.participants)) {
     throw new Error("Session participants cannot change during a snapshot update");
   }

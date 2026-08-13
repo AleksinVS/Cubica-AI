@@ -26,6 +26,21 @@ const repoRoot = path.resolve(__dirname, "..", "..");
  */
 const JOBS = [
   {
+    name: "create-session-request",
+    schema: path.join(repoRoot, "docs", "architecture", "runtime-api-openapi.yaml"),
+    schemaPath: ["components", "schemas", "CreateSessionRequest"],
+    output: path.join(repoRoot, "packages", "contracts", "session", "src", "generated", "create-session-request.ts"),
+    rootName: "CreateSessionRequest",
+    compileRoot: true
+  },
+  {
+    name: "create-session-request-schema",
+    schema: path.join(repoRoot, "docs", "architecture", "runtime-api-openapi.yaml"),
+    schemaPath: ["components", "schemas", "CreateSessionRequest"],
+    output: path.join(repoRoot, "packages", "contracts", "session", "src", "generated", "create-session-request.schema.json"),
+    outputKind: "json-schema"
+  },
+  {
     name: "session-participant",
     schema: path.join(repoRoot, "docs", "architecture", "runtime-api-openapi.yaml"),
     schemaPath: ["components", "schemas", "SessionParticipant"],

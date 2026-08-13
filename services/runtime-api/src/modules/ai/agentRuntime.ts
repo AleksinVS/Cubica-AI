@@ -523,7 +523,7 @@ function requireStoredAgentTurn(value: unknown): CubicaAgentTurnResult {
 function requireAgentRuntimeConfig(
   agentRuntime: GameManifestAgentRuntimeConfig | undefined,
   gameId: string
-): GameManifestAgentRuntimeConfig {
+): GameManifestAgentRuntimeConfig & { initialActionId: string } {
   if (agentRuntime?.required !== true) {
     throw new RequestValidationError(`Game "${gameId}" does not declare a required Agent Runtime.`);
   }
@@ -532,7 +532,10 @@ function requireAgentRuntimeConfig(
       `Game "${gameId}" does not allow Agent Runtime to select a published Game Intent.`
     );
   }
-  return agentRuntime;
+  if (typeof agentRuntime.initialActionId !== "string") {
+    throw new HttpError(409, `Game "${gameId}" does not declare an Agent Turn entry action.`);
+  }
+  return { ...agentRuntime, initialActionId: agentRuntime.initialActionId };
 }
 
 function buildAgentTurnInput(input: {
@@ -540,7 +543,7 @@ function buildAgentTurnInput(input: {
   readonly current: SessionRecord<RuntimeState>;
   readonly manifest: GameManifest;
   readonly bundle: GameBundle;
-  readonly agentRuntime: GameManifestAgentRuntimeConfig;
+  readonly agentRuntime: GameManifestAgentRuntimeConfig & { initialActionId: string };
   readonly executionMode: Exclude<GameManifestExecutionMode, "deterministic">;
   readonly actorId?: string;
   readonly sessionRole: "player" | "facilitator" | "assistant" | "observer";

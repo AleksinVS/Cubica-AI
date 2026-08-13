@@ -79,13 +79,18 @@ export class SessionService {
       throw new RequestValidationError("gameId is required to create a session");
     }
 
-    await assertGameLaunchReady({ gameId, contentSourceId: request.contentSourceId });
+    await assertGameLaunchReady({
+      gameId,
+      contentSourceId: request.contentSourceId,
+      agentSeatCount: request.agentSeatCount
+    });
     const bundle = await contentService.getBundle(gameId, request.contentSourceId);
     const declaredState = extractInitialState(bundle) as RuntimeState;
     const initialState = initializeTurnBasedSessionState(bundle.manifest, declaredState, {});
     const participants = materializeLocalSessionParticipants(
       initialState,
-      bundle.manifest.config.players.min
+      bundle.manifest.config.players.min,
+      request.agentSeatCount ?? 0
     );
     // A client never chooses its own trusted role. Facilitated mode is the one
     // current manifest rule that creates a facilitator controller.

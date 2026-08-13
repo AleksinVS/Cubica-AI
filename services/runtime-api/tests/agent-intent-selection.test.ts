@@ -105,7 +105,7 @@ const assertEntryRejectedBeforeAgentCall = async (options: {
         credentialSha256: access.principal.credentialSha256,
         request: {
           sessionId: created.session.sessionId,
-          actionId: manifest.agentRuntime!.initialActionId,
+          actionId: manifest.agentRuntime!.initialActionId!,
           commandId: `cli_${"E".repeat(22)}`,
           expectedStateVersion: 0,
           params: options.params ?? {}
@@ -124,7 +124,7 @@ test("Agent Turn entry intent passes role, params and Mechanics preconditions be
   await t.test("authenticated principal role cannot be replaced by session metadata", async () => {
     await assertEntryRejectedBeforeAgentCall({
       mutate: (manifest) => {
-        manifest.actions[manifest.agentRuntime!.initialActionId]!.allowedSessionRoles = ["facilitator"];
+        manifest.actions[manifest.agentRuntime!.initialActionId!]!.allowedSessionRoles = ["facilitator"];
       },
       message: /not available to this session role/u
     });
@@ -133,7 +133,7 @@ test("Agent Turn entry intent passes role, params and Mechanics preconditions be
   await t.test("action-specific params schema rejects the trigger", async () => {
     await assertEntryRejectedBeforeAgentCall({
       mutate: (manifest) => {
-        manifest.actions[manifest.agentRuntime!.initialActionId]!.paramsSchema = {
+        manifest.actions[manifest.agentRuntime!.initialActionId!]!.paramsSchema = {
           type: "object",
           additionalProperties: false,
           properties: {
@@ -149,7 +149,7 @@ test("Agent Turn entry intent passes role, params and Mechanics preconditions be
   await t.test("failed entry Mechanics assertion prevents the agent call", async () => {
     await assertEntryRejectedBeforeAgentCall({
       mutate: (manifest) => {
-        const entryAction = manifest.actions[manifest.agentRuntime!.initialActionId]!;
+        const entryAction = manifest.actions[manifest.agentRuntime!.initialActionId!]!;
         const entryPlan = manifest.mechanics.plans[entryAction.binding.planRef]!;
         const assertion = entryPlan.transaction.steps[0];
         assert.equal(assertion.op, "core.assert");
@@ -176,7 +176,7 @@ test("Agent Turn selects the canonical first intent regardless of manifest key i
   // Keep the trigger first and deliberately publish the later intent before
   // the earlier one. JSON object order can change when a manifest passes
   // through JSONB, so neither the catalog nor the mock agent may trust it.
-  const initialActionId = manifest.agentRuntime!.initialActionId;
+  const initialActionId = manifest.agentRuntime!.initialActionId!;
   const initialAction = manifest.actions[initialActionId]!;
   const canonicalFirstIntent = manifest.actions["agent.choice.resolve"]!;
   manifest.actions = {
@@ -213,7 +213,7 @@ test("Agent Turn selects the canonical first intent regardless of manifest key i
     });
     const request = {
       sessionId: created.session.sessionId,
-      actionId: manifest.agentRuntime!.initialActionId,
+      actionId: manifest.agentRuntime!.initialActionId!,
       commandId: `cli_${"A".repeat(22)}`,
       expectedStateVersion: 0,
       params: {}
@@ -268,7 +268,7 @@ test("Agent Turn selects the canonical first intent regardless of manifest key i
       result: unknown;
       audit: { triggerActionId: string; selectedActionId: string };
     };
-    assert.equal(stored.audit.triggerActionId, manifest.agentRuntime!.initialActionId);
+    assert.equal(stored.audit.triggerActionId, manifest.agentRuntime!.initialActionId!);
     assert.equal(stored.audit.selectedActionId, "agent.choice.resolve");
     assert.ok(JSON.stringify(stored.result).length < 64 * 1024);
     assert.equal(JSON.stringify(stored.result).includes("candidateState"), false);

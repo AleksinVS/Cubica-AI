@@ -1067,7 +1067,13 @@
         "required": ["gameId"],
         "properties": {
           "gameId": { "$ref": "#/components/schemas/GameId" },
-          "contentSourceId": { "$ref": "#/components/schemas/ContentSourceId" }
+          "contentSourceId": { "$ref": "#/components/schemas/ContentSourceId" },
+          "agentSeatCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 64,
+            "description": "Requested local agent seats. Runtime assigns the last N server-derived seats; omitted is equivalent to zero."
+          }
         },
         "additionalProperties": false
       },

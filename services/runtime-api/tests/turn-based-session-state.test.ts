@@ -4,6 +4,9 @@ import { createRequire } from "node:module";
 import { test } from "node:test";
 import type { CubicaMechanicsIRV1Alpha1, GameManifest, Step } from "@cubica/contracts-manifest";
 
+import {
+  validateAgentSeatSemanticReferences
+} from "../src/modules/content/manifestValidation.ts";
 import { initializeTurnBasedSessionState } from "../src/modules/session/turnBasedSessionState.ts";
 import { materializeLocalSessionParticipants } from "../src/modules/session/sessionParticipants.ts";
 
@@ -156,6 +159,20 @@ test("participant count outside manifest bounds is rejected", () => {
     }),
     /outside manifest bounds/u
   );
+});
+
+test("neutral agent-seat semantics reject an unknown fallback action", () => {
+  const base = createManifest();
+  const withSeats = (agentSeats: unknown): Record<string, unknown> => {
+    const manifest = structuredClone(base);
+    (manifest.config.players as unknown as Record<string, unknown>).agentSeats = agentSeats;
+    return manifest as unknown as Record<string, unknown>;
+  };
+  assert.throws(() => validateAgentSeatSemanticReferences(withSeats({
+    max: 1,
+    invalidAttemptLimit: 2,
+    deterministicFallbackCandidates: [{ actionId: "turn.unknown", params: {} }]
+  })), /unknown published action/u);
 });
 
 test("random deck manifests do not initialize persistent generator state", () => {

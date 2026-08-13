@@ -492,8 +492,16 @@ function validateSessionTrustContract(spec) {
   }
 
   const create = spec.components.schemas.CreateSessionRequest;
-  if (create.properties?.playerId !== undefined || create.additionalProperties !== false) {
+  if (
+    create.properties?.playerId !== undefined ||
+    create.properties?.participants !== undefined ||
+    create.additionalProperties !== false
+  ) {
     fail("CreateSessionRequest must not accept client-selected playerId or unknown fields");
+  }
+  const agentSeatCount = create.properties?.agentSeatCount;
+  if (agentSeatCount?.type !== "integer" || agentSeatCount.minimum !== 0 || agentSeatCount.maximum !== 64) {
+    fail("CreateSessionRequest.agentSeatCount must be an optional bounded non-negative integer");
   }
   const preview = spec.components.schemas.TransportRoadPreviewRequest;
   if (preview.properties?.playerId !== undefined) {

@@ -38,6 +38,13 @@ export type GameManifestConfig = {
   turnModel?: GameManifestTurnModel;
 };
 /**
+ * Bounded identifier safe for use as an own object key or JSON Pointer segment.
+ *
+ * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
+ * via the `definition` "GameManifestSafeIdentifier".
+ */
+export type GameManifestSafeIdentifier = string;
+/**
  * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
  * via the `definition` "GameManifestLocale".
  */
@@ -118,13 +125,6 @@ export type GameManifestObjectScope = "session";
  */
 export type GameManifestObjectVisibility = "public" | "secret";
 /**
- * Bounded identifier safe for use as an own object key or JSON Pointer segment.
- *
- * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
- * via the `definition` "GameManifestSafeIdentifier".
- */
-export type GameManifestSafeIdentifier = string;
-/**
  * Schema-first transport polyline. Runtime may derive intermediate points for a transaction, but every manifest-declared stored point uses the canonical coordinate contract; endpoints must match the owning graph nodes and consecutive points must differ, which semantic validation checks because JSON Schema cannot compare array entries.
  *
  * @minItems 2
@@ -173,8 +173,81 @@ export interface GameManifest {
  * via the `definition` "GameManifestPlayerConfig".
  */
 export interface GameManifestPlayerConfig {
+  agentSeats?: GameManifestAgentSeatConfig;
   max: number;
   min: number;
+}
+/**
+ * Optional local agent-seat policy. Runtime assigns the last requested seats and uses the ordered fallback candidates after bounded invalid selections.
+ *
+ * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
+ * via the `definition` "GameManifestAgentSeatConfig".
+ */
+export interface GameManifestAgentSeatConfig {
+  max: number;
+  invalidAttemptLimit: number;
+  /**
+   * @minItems 1
+   * @maxItems 8
+   */
+  deterministicFallbackCandidates:
+    | [GameManifestAgentSeatFallbackCandidate]
+    | [GameManifestAgentSeatFallbackCandidate, GameManifestAgentSeatFallbackCandidate]
+    | [
+        GameManifestAgentSeatFallbackCandidate,
+        GameManifestAgentSeatFallbackCandidate,
+        GameManifestAgentSeatFallbackCandidate
+      ]
+    | [
+        GameManifestAgentSeatFallbackCandidate,
+        GameManifestAgentSeatFallbackCandidate,
+        GameManifestAgentSeatFallbackCandidate,
+        GameManifestAgentSeatFallbackCandidate
+      ]
+    | [
+        GameManifestAgentSeatFallbackCandidate,
+        GameManifestAgentSeatFallbackCandidate,
+        GameManifestAgentSeatFallbackCandidate,
+        GameManifestAgentSeatFallbackCandidate,
+        GameManifestAgentSeatFallbackCandidate
+      ]
+    | [
+        GameManifestAgentSeatFallbackCandidate,
+        GameManifestAgentSeatFallbackCandidate,
+        GameManifestAgentSeatFallbackCandidate,
+        GameManifestAgentSeatFallbackCandidate,
+        GameManifestAgentSeatFallbackCandidate,
+        GameManifestAgentSeatFallbackCandidate
+      ]
+    | [
+        GameManifestAgentSeatFallbackCandidate,
+        GameManifestAgentSeatFallbackCandidate,
+        GameManifestAgentSeatFallbackCandidate,
+        GameManifestAgentSeatFallbackCandidate,
+        GameManifestAgentSeatFallbackCandidate,
+        GameManifestAgentSeatFallbackCandidate,
+        GameManifestAgentSeatFallbackCandidate
+      ]
+    | [
+        GameManifestAgentSeatFallbackCandidate,
+        GameManifestAgentSeatFallbackCandidate,
+        GameManifestAgentSeatFallbackCandidate,
+        GameManifestAgentSeatFallbackCandidate,
+        GameManifestAgentSeatFallbackCandidate,
+        GameManifestAgentSeatFallbackCandidate,
+        GameManifestAgentSeatFallbackCandidate,
+        GameManifestAgentSeatFallbackCandidate
+      ];
+}
+/**
+ * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
+ * via the `definition` "GameManifestAgentSeatFallbackCandidate".
+ */
+export interface GameManifestAgentSeatFallbackCandidate {
+  actionId: GameManifestSafeIdentifier;
+  params: {
+    [k: string]: string | number | boolean;
+  };
 }
 /**
  * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
@@ -307,7 +380,7 @@ export interface GameManifestAgentRuntimeConfig {
   /**
    * Published Game Intent dispatched to start an AI-driven or hybrid interaction. The compiler verifies that this action exists in the same immutable manifest.
    */
-  initialActionId: string;
+  initialActionId?: string;
   runtimeId?: string;
   required: boolean;
   allowedCapabilities: string[];

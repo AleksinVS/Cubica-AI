@@ -2,6 +2,11 @@ export type SessionId = string;
 export type PlayerId = string;
 export type EventId = string;
 export type * from "./generated/public-gameplay-journal.ts";
+export type { CreateSessionRequest } from "./generated/create-session-request.ts";
+export {
+  createSessionRequestValidationErrors,
+  validateCreateSessionRequestShape
+} from "./createSessionRequestValidation.ts";
 import type { SessionParticipant } from "./generated/session-participant.ts";
 export type { SessionParticipant } from "./generated/session-participant.ts";
 export { validateSessionParticipantsShape } from "./sessionParticipantValidation.ts";
@@ -116,15 +121,6 @@ export interface ArchivedSessionAudit<TState = unknown> {
   bundle: ImmutableGameBundle;
   events: ReadonlyArray<SessionEventRecord>;
   receipts: ReadonlyArray<SessionCommandReceipt>;
-}
-
-export interface CreateSessionRequest {
-  gameId?: string;
-  /**
-   * Optional runtime content source for editor preview sessions.
-   * Normal player sessions omit it and use the canonical published content.
-   */
-  contentSourceId?: string;
 }
 
 export interface CreateSessionInput<TState = unknown> {

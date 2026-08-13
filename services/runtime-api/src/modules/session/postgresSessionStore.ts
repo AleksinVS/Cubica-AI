@@ -234,7 +234,7 @@ export class PostgresSessionStore<TState = unknown> implements SessionStorePort<
 
   async createSession(input: CreateSessionInput<TState>): Promise<CreatedSession<TState>> {
     assertCreateInput(input);
-    assertSessionParticipantsMatchState(input.participants, input.initialState, { allowAgents: false });
+    assertSessionParticipantsMatchState(input.participants, input.initialState, { allowAgents: true });
     const sessionId = randomUUID();
     const now = new Date();
     let client: SessionDatabaseClient;

@@ -390,7 +390,7 @@ export type CubicaAgentFailurePolicy = "pause" | "retry" | "deterministicFallbac
 export interface CubicaAgentRuntimeManifestConfig {
   readonly agentId: string;
   /** Published action that is the only valid Agent Turn transport entry. */
-  readonly initialActionId: string;
+  readonly initialActionId?: string;
   readonly runtimeId?: string;
   readonly required: boolean;
   readonly allowedCapabilities: readonly string[];
@@ -1005,7 +1005,7 @@ export const executionModeConfigSchema = {
     agentRuntime: {
       type: "object",
       additionalProperties: false,
-      required: ["agentId", "initialActionId", "required", "allowedCapabilities", "surfaceCatalog", "failurePolicy"],
+      required: ["agentId", "required", "allowedCapabilities", "surfaceCatalog", "failurePolicy"],
       properties: {
         agentId: { type: "string", minLength: 1 },
         initialActionId: { type: "string", minLength: 1 },
@@ -1032,7 +1032,13 @@ export const executionModeConfigSchema = {
         required: ["executionMode"]
       },
       then: {
-        required: ["agentRuntime"]
+        required: ["agentRuntime"],
+        properties: {
+          agentRuntime: {
+            type: "object",
+            required: ["initialActionId"]
+          }
+        }
       }
     }
   ]

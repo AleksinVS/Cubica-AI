@@ -11,7 +11,11 @@
  * - Background workers (none exist in this block)
  */
 
-import type { GameManifestExecutionMode } from "@cubica/contracts-manifest";
+import type {
+  GameManifestAgentRuntimeConfig,
+  GameManifestAgentSeatConfig,
+  GameManifestExecutionMode
+} from "@cubica/contracts-manifest";
 import type { SessionStorePort } from "@cubica/contracts-session";
 import {
   buildAgentRuntimeUnavailableMessage,
@@ -286,6 +290,7 @@ export async function buildGameReadinessResponse(input: {
 export async function assertGameLaunchReady(input: {
   gameId: string;
   contentSourceId?: string;
+  agentSeatCount?: number;
 }): Promise<void> {
   const manifest = await loadGameManifest(input.gameId, input.contentSourceId);
   if (manifest.config.runtimeReady === false) {
@@ -300,8 +305,43 @@ export async function assertGameLaunchReady(input: {
       typeof manifest.agentRuntime.deterministicFallbackActionId === "string" &&
       manifest.agentRuntime.deterministicFallbackActionId.length > 0
     ) {
-      return;
+      // The game-wide AI entry flow has its accepted deterministic fallback.
+      // A seat-scoped agent session is checked separately below and still
+      // requires a reachable provider plus its own ordered candidates.
+    } else {
+      throw new HttpError(503, buildAgentRuntimeUnavailableMessage(input.gameId, agentRuntime));
     }
-    throw new HttpError(503, buildAgentRuntimeUnavailableMessage(input.gameId, agentRuntime));
+  }
+
+  assertAgentSeatLaunchReady({
+    gameId: input.gameId,
+    participantCount: manifest.config.players.min,
+    agentSeatCount: input.agentSeatCount,
+    agentSeats: manifest.config.players.agentSeats,
+    agentRuntime: manifest.agentRuntime
+  });
+}
+
+/** Session-scoped semantic checks layered on the canonical manifest/request shapes. */
+export function assertAgentSeatLaunchReady(input: {
+  gameId: string;
+  participantCount: number;
+  agentSeatCount?: number;
+  agentSeats?: GameManifestAgentSeatConfig;
+  agentRuntime?: GameManifestAgentRuntimeConfig;
+}): void {
+  if (input.agentSeatCount === undefined || input.agentSeatCount === 0) return;
+  if (input.agentSeats === undefined) {
+    throw new HttpError(400, `Game "${input.gameId}" does not declare local agent seats.`);
+  }
+  if (input.agentSeatCount > input.agentSeats.max || input.agentSeats.max > input.participantCount) {
+    throw new HttpError(
+      400,
+      `Requested agent seats must satisfy count <= declared maximum <= participant count (${input.participantCount}).`
+    );
+  }
+  const seatRuntime = checkAgentRuntimeReadiness(input.agentRuntime, { requireConfigured: true });
+  if (seatRuntime.status !== "ok") {
+    throw new HttpError(503, buildAgentRuntimeUnavailableMessage(input.gameId, seatRuntime));
   }
 }

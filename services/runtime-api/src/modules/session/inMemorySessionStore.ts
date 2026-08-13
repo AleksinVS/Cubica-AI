@@ -66,7 +66,7 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
 
   async createSession(command: CreateSessionInput<TState>): Promise<CreatedSession<TState>> {
     assertBundleInput(command);
-    assertSessionParticipantsMatchState(command.participants, command.initialState, { allowAgents: false });
+    assertSessionParticipantsMatchState(command.participants, command.initialState, { allowAgents: true });
     const sessionId = randomUUID();
     const now = new Date();
     const existingBundle = this.bundles.get(command.immutableBundle.bundleHash);

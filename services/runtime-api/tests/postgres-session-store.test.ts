@@ -168,6 +168,24 @@ test("PostgreSQL creates immutable bundle, session and hashed principal atomical
   assert.equal(sessionInsert?.values?.[5], JSON.stringify(persistedRow.participants));
 });
 
+test("PostgreSQL accepts server-authorized agent participants", async () => {
+  const agentParticipants = [{ seatId: "p1", playerId: "p1", kind: "agent" as const, joinState: "local" as const }];
+  const client = new ScriptedClient((text) => {
+    if (text.includes("INSERT INTO game_bundles")) return result([bundleRow], 1);
+    if (text.includes("INSERT INTO game_sessions")) {
+      return result([{ ...persistedRow, participants: agentParticipants }], 1);
+    }
+    if (text.includes("INSERT INTO session_principals")) return result([principalRow], 1);
+    return result([]);
+  });
+  const store = new PostgresSessionStore<Record<string, unknown>>(new ScriptedPool(client));
+  const created = await store.createSession({ ...createInput(), participants: agentParticipants });
+
+  assert.deepEqual(created.session.participants, agentParticipants);
+  const sessionInsert = client.queries.find(({ text }) => text.includes("INSERT INTO game_sessions"));
+  assert.equal(sessionInsert?.values?.[5], JSON.stringify(agentParticipants));
+});
+
 test("PostgreSQL session reads delegate participant shape to the canonical validator", async () => {
   for (const malformedParticipants of [
     {},

@@ -112,6 +112,65 @@ describe("shipped game manifests validate against game-manifest.schema.json", ()
     expect(gameManifestFiles.length).toBeGreaterThan(0);
   });
 
+  it("accepts a neutral deterministic agent-seat declaration without an AI entry action", () => {
+    const neutral = {
+      meta: {
+        id: "neutral-agent-seat-schema",
+        version: "1.0.0",
+        name: "Neutral agent seat schema",
+        description: "Schema fixture",
+        schemaVersion: "2.0.0"
+      },
+      config: {
+        players: {
+          min: 2,
+          max: 2,
+          agentSeats: {
+            max: 1,
+            invalidAttemptLimit: 2,
+            deterministicFallbackCandidates: [{ actionId: "turn.pass", params: {} }]
+          }
+        },
+        settings: { mode: "local", locale: "en" }
+      },
+      executionMode: "deterministic",
+      agentRuntime: {
+        agentId: "neutral-agent",
+        runtimeId: "mock",
+        required: false,
+        allowedCapabilities: ["selectPublishedIntent"],
+        surfaceCatalog: [],
+        failurePolicy: "pause",
+        contextExposurePolicy: {
+          publicState: true,
+          secretState: "none",
+          manifestProjection: ["/meta", "/actions"]
+        }
+      },
+      state: { public: {} },
+      actions: {},
+      mechanics: {}
+    };
+    expect(validateGameManifest(neutral)).toBe(true);
+
+    const missingFallback = structuredClone(neutral);
+    delete (missingFallback.config.players.agentSeats as Partial<{
+      deterministicFallbackCandidates: unknown;
+    }>).deterministicFallbackCandidates;
+    expect(validateGameManifest(missingFallback)).toBe(false);
+
+    const invalidAttemptLimit = structuredClone(neutral);
+    invalidAttemptLimit.config.players.agentSeats.invalidAttemptLimit = 0;
+    expect(validateGameManifest(invalidAttemptLimit)).toBe(false);
+
+    const excessiveFallbacks = structuredClone(neutral);
+    excessiveFallbacks.config.players.agentSeats.deterministicFallbackCandidates = Array.from(
+      { length: 9 },
+      (_, index) => ({ actionId: `turn.pass-${index}`, params: {} })
+    );
+    expect(validateGameManifest(excessiveFallbacks)).toBe(false);
+  });
+
   for (const filePath of gameManifestFiles) {
     it(`validates ${relative(repoRoot, filePath)}`, () => {
       const data = readJson(filePath);

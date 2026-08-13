@@ -4,6 +4,10 @@ import type {
   RestorePreviewSessionRequest,
   TransportRoadPreviewRequest
 } from "@cubica/contracts-session";
+import {
+  createSessionRequestValidationErrors,
+  validateCreateSessionRequestShape
+} from "@cubica/contracts-session";
 import type { AgentTurnRequest } from "../ai/agentRuntime.ts";
 import { RequestValidationError } from "../errors.ts";
 import Ajv2020Lib from "ajv/dist/2020.js";
@@ -71,32 +75,12 @@ const assertRequiredString: (value: unknown, path: string) => asserts value is s
 };
 
 export const parseCreateSessionRequest = (body: unknown): CreateSessionRequest => {
-  // WHY: `gameId` is REQUIRED to create a session. The manifest/content
-  // pipeline cannot resolve a game without it, and the downstream service used
-  // to throw a plain `Error` for a missing id which `httpServer.ts` maps to a
-  // misleading HTTP 500. Validating it here (the request-validation layer)
-  // surfaces the client mistake as a proper HTTP 400 instead. An undefined body
-  // is treated the same as a body with no `gameId`.
-  assertRecord(body ?? {}, "POST /sessions body");
-  const record = (body ?? {}) as JsonRecord;
-  const allowedKeys = new Set(["gameId", "contentSourceId"]);
-  const unexpectedKey = Object.keys(record).find((key) => !allowedKeys.has(key));
-  if (unexpectedKey) {
-    throw new RequestValidationError(`Session creation contains unsupported field "${unexpectedKey}"`);
+  if (!validateCreateSessionRequestShape(body)) {
+    throw new RequestValidationError(
+      `POST /sessions body does not match CreateSessionRequest: ${createSessionRequestValidationErrors()}`
+    );
   }
-
-  // Reject a missing/empty id with a clear "required" message. Any present but
-  // malformed id (wrong type, unsafe characters) still falls through to
-  // `assertGameId`, which reports the "must match <pattern>" contract.
-  if (record.gameId === undefined || record.gameId === null || record.gameId === "") {
-    throw new RequestValidationError("gameId is required and must be a non-empty string");
-  }
-  assertGameId(record.gameId, "gameId");
-  if (record.contentSourceId !== undefined) {
-    assertContentSourceId(record.contentSourceId, "contentSourceId");
-  }
-
-  return record as CreateSessionRequest;
+  return body;
 };
 
 export const parseDispatchActionRequest = (body: unknown): DispatchActionInput => {
