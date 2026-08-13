@@ -8,7 +8,9 @@ import {
   buildPlayerSessionProjection,
   projectPlayerSessionState
 } from "../src/modules/session/playerSessionProjection.ts";
-import { resolveSessionActor } from "../src/modules/session/sessionAuthentication.ts";
+import {
+  resolveSessionViewerActor
+} from "../src/modules/session/sessionAuthentication.ts";
 
 const stateModel = {
   types: {
@@ -116,7 +118,7 @@ test("stateModel projection returns public symbols and only the authenticated ac
 });
 
 test("two authenticated principals receive isolated actor views of the same state", () => {
-  const session: SessionRecord<typeof storedState> = {
+  const session: SessionRecord<Record<string, unknown>> = {
     sessionId: "session-neutral",
     gameId: "neutral-game",
     bundleHash: "a".repeat(64),
@@ -124,7 +126,13 @@ test("two authenticated principals receive isolated actor views of the same stat
       { seatId: "p1", playerId: "p1", kind: "human", joinState: "local" },
       { seatId: "p2", playerId: "p2", kind: "human", joinState: "local" }
     ],
-    state: storedState,
+    state: {
+      ...storedState,
+      public: {
+        ...storedState.public,
+        turn: { order: ["p1", "p2"], activePlayerId: "p1" }
+      }
+    },
     sessionRole: "player",
     version: { sessionId: "session-neutral", stateVersion: 3, lastEventSequence: 0 },
     createdAt: new Date("2026-07-16T00:00:00.000Z"),
@@ -142,12 +150,12 @@ test("two authenticated principals receive isolated actor views of the same stat
   const p1View = projectPlayerSessionState({
     state: session.state,
     stateModel,
-    actorPlayerId: resolveSessionActor(session, principalFor("principal-p1", "p1"))
+    actorPlayerId: resolveSessionViewerActor(session, principalFor("principal-p1", "p1"))
   });
   const p2View = projectPlayerSessionState({
     state: session.state,
     stateModel,
-    actorPlayerId: resolveSessionActor(session, principalFor("principal-p2", "p2"))
+    actorPlayerId: resolveSessionViewerActor(session, principalFor("principal-p2", "p2"))
   });
 
   assert.deepEqual(p1View.players, {

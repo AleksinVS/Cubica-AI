@@ -23,7 +23,7 @@ test("an exact retry keeps its receipt actor but projects the current viewer act
   // session test intentionally treats its top-level keys as opaque.
   const initialState = structuredClone(manifest.state) as unknown as Record<string, unknown>;
   const publicState = initialState.public as Record<string, unknown>;
-  publicState.turn = { activePlayerId: "p1" };
+  publicState.turn = { order: ["p1", "p2"], activePlayerId: "p1" };
   initialState.players = {
     p1: { privateValue: "only-p1" },
     p2: { privateValue: "only-p2" }

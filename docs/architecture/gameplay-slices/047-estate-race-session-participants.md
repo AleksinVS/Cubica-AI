@@ -79,8 +79,10 @@ roundtrip (`1/1`); миграция не подключается к неизв�
 - Estate Race доказывает через обычный Player/create-путь выбор 2–6 мест,
   setup и ротацию тем же manifest без правки правил игры;
 - game-agnostic (`10/10`) и player-core seam проверки не находят предметной
-  ветки. Полный CMT suite в приёмку S8 не входит; проверен representative
-  session-setup после обновления прямых consumers.
+  ветки; полный Runtime API (`371` успешно, `2` штатно пропущено), Player Web
+  (`280/280`) и production-сборка Player пройдены. Полный CMT suite в приёмку
+  S8 не входит; проверен representative session-setup после обновления прямых
+  consumers.
 
 ## Условия остановки
 
