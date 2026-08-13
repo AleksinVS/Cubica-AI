@@ -1,8 +1,9 @@
 /**
  * Focused proof for the author-confirmed country and terminal catalogue.
  *
- * The test checks the generated authoring and its two declarative inputs. It
- * does not treat the still-unreviewed vector line classification as geometry.
+ * The test checks the generated authoring and its two declarative inputs. The
+ * separate map-annotation checks remain authoritative for the confirmed
+ * country-labelled region geometry.
  */
 
 import assert from "node:assert/strict";
@@ -74,17 +75,25 @@ test("generated authoring stores narratives as content and only country ids on n
 
   const root = actual.root;
   const countries = root.content.data.countries;
-  assert.equal(countries.status, "author-confirmed-terminal-linking");
+  assert.equal(
+    countries.status,
+    "author-confirmed-terminal-and-region-linking"
+  );
   assert.equal(countries.publishable, true);
-  assert.equal(countries.polygonLinking, "pending-human-vector-review");
+  assert.equal(
+    countries.polygonLinking,
+    "author-confirmed-in-initial-network-with-regions-review"
+  );
   assert.deepEqual(
     countries.countries.map((country) => country.id),
     expectedCountryIds
   );
-  assert.ok(!root.config.runtimeBlockers.includes(
+  const runtimeBlockers = root.config.runtimeBlockers ?? [];
+  assert.ok(!runtimeBlockers.includes(
     "country and terminal content linking"
   ));
-  assert.ok(root.config.runtimeBlockers.includes("canonical region polygons"));
+  assert.ok(!runtimeBlockers.includes("initial network state review"));
+  assert.ok(!runtimeBlockers.includes("canonical region polygons"));
 
   assert.deepEqual(
     root.mechanics.stateModel.collections.networkNodes.fields.countryId,

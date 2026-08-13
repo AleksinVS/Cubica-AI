@@ -19,6 +19,7 @@ import { validateGameManifest } from "../../../services/runtime-api/src/modules/
 import { createImmutableBundleContent } from "../../../services/runtime-api/src/modules/content/immutableBundle.ts";
 import { dispatchRuntimeAction } from "../../../services/runtime-api/src/modules/runtime/actionDispatcher.ts";
 import { InMemorySessionStore } from "../../../services/runtime-api/src/modules/session/inMemorySessionStore.ts";
+import { materializeLocalSessionParticipants } from "../../../services/runtime-api/src/modules/session/sessionParticipants.ts";
 
 const Ajv = AjvImport.default ?? AjvImport;
 const toolsRoot = path.dirname(fileURLToPath(import.meta.url));
@@ -42,9 +43,9 @@ const nextCommandId = () => {
 /**
  * Builds a direct technical session without bypassing the runtime dispatcher.
  *
- * Public session creation remains blocked by runtimeReady=false. This helper is
- * intentionally test-local so the temporary setup cannot become a production
- * content source.
+ * This helper is intentionally test-local: its non-publishable two-team setup
+ * must never become a production content source even when the normal package
+ * is runtime-ready.
  */
 const createTechnicalSession = async (
   manifest,
@@ -69,6 +70,7 @@ const createTechnicalSession = async (
     gameId: manifest.meta.id,
     sessionRole: "facilitator",
     initialState: state,
+    participants: materializeLocalSessionParticipants(state, manifest.config.players.min),
     immutableBundle: createImmutableBundleContent(manifest.meta.id, manifest),
     principal: {
       principalId: "real-operating-turn-test-facilitator",
@@ -126,7 +128,13 @@ test("technical replay fixture is schema-valid and traces every real source id",
     ajv.errorsText(validate.errors, { separator: "\n" })
   );
   assert.equal(fixture.publishable, false);
-  assert.equal(manifest.config.runtimeReady, false);
+  assert.equal(typeof manifest.config.runtimeReady, "boolean");
+  assert.deepEqual(
+    manifest.config.runtimeBlockers ?? [],
+    manifest.config.runtimeReady
+      ? []
+      : ["full facilitator UI and browser acceptance"]
+  );
   assert.equal(manifest.state.public.session.fixtureId, "normal-start-policy");
   assert.equal(Object.keys(manifest.state.public.objects.cargoOrders).length, 174);
   assert.ok(manifest.state.public.objects.cargoOrders[fixture.sourceIds.cargoId]);
@@ -295,6 +303,7 @@ test("technical actions reject the ordinary normative fixture without mutation",
     gameId: manifest.meta.id,
     sessionRole: "facilitator",
     initialState: structuredClone(manifest.state),
+    participants: materializeLocalSessionParticipants(manifest.state, manifest.config.players.min),
     immutableBundle: createImmutableBundleContent(manifest.meta.id, manifest),
     principal: {
       principalId: "ordinary-fixture-test-facilitator",

@@ -36,6 +36,7 @@ const normalFixtureId = "normal-start-policy";
 const ownedActionPrefix = "methodology.pause.";
 const ownedBoardActionPrefix = "methodology-pause-";
 const ownedFlowStepId = "facilitator.methodology-pauses";
+const completionAvailabilityEndpoint = "public.session.canRequestFinish";
 const methodologyEventType = "game.methodology-pause-event";
 const methodologyEvents = {
   started: "methodology.pause.started",
@@ -255,6 +256,11 @@ const buildStart = (pause) => {
                 operation: "set",
                 target: { endpoint: "public.session.phase" },
                 value: literal("methodology-pause")
+              },
+              {
+                operation: "set",
+                target: { endpoint: completionAvailabilityEndpoint },
+                value: literal(false)
               }
             ]
           },
@@ -388,6 +394,11 @@ const buildComplete = (pause) => {
                 operation: "set",
                 target: { endpoint: "public.session.phase" },
                 value: literal("reporting")
+              },
+              {
+                operation: "set",
+                target: { endpoint: completionAvailabilityEndpoint },
+                value: literal(true)
               }
             ]
           },

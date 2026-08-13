@@ -32,6 +32,7 @@ import {
   type ContentService,
   type LocalPlayerWebPluginBundle
 } from "../content/contentService.ts";
+import { serializePublicGameplayJournal } from "../session/publicGameplayJournal.ts";
 import { buildGameReadinessResponse, buildReadinessResponse } from "../admin/health.ts";
 import {
   assertContentSourceId,
@@ -85,6 +86,19 @@ const SERVER_TIMING_METRICS = [
 const sendJson = (response: ServerResponse, statusCode: number, payload: unknown) => {
   response.writeHead(statusCode, { "Content-Type": "application/json; charset=utf-8" });
   response.end(JSON.stringify(payload));
+};
+
+const sendSerializedJson = (
+  response: ServerResponse,
+  statusCode: number,
+  serialized: string,
+  headers: Record<string, string>
+) => {
+  response.writeHead(statusCode, {
+    "Content-Type": "application/json; charset=utf-8",
+    ...headers
+  });
+  response.end(serialized);
 };
 
 /**
@@ -370,6 +384,21 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
         return;
       }
 
+      const publicJournalMatch = request.method === "GET" &&
+        requestUrl.pathname.match(/^\/sessions\/([^/]+)\/public-journal$/u);
+      if (publicJournalMatch) {
+        const sessionId = decodePathSegment(publicJournalMatch[1], "sessionId");
+        const journal = await sessionService.getPublicGameplayJournal(
+          sessionId,
+          requireBearerCredential(request.headers)
+        );
+        sendSerializedJson(response, 200, serializePublicGameplayJournal(journal), {
+          "Cache-Control": "no-store",
+          "Content-Disposition": 'attachment; filename="game-public-journal.json"'
+        });
+        return;
+      }
+
       if (request.method === "GET" && requestUrl.pathname.startsWith("/sessions/")) {
         const sessionId = requestUrl.pathname.slice("/sessions/".length);
         const snapshot = await sessionService.getSession(
@@ -532,6 +561,14 @@ function assertString(value: unknown, pathLabel: string): string {
     throw new HttpError(400, `${pathLabel} must be a non-empty string.`);
   }
   return value;
+}
+
+function decodePathSegment(value: string, pathLabel: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    throw new HttpError(400, `${pathLabel} must be a valid URL path segment.`);
+  }
 }
 
 function assertPluginId(value: string, pathLabel: string): void {

@@ -19,6 +19,7 @@ import { validateGameManifest } from "../../../services/runtime-api/src/modules/
 import { dispatchRuntimeAction } from "../../../services/runtime-api/src/modules/runtime/actionDispatcher.ts";
 import { planMinimumRegionRoad } from "../../../services/runtime-api/src/modules/runtime/regionRoadPlanner.ts";
 import { InMemorySessionStore } from "../../../services/runtime-api/src/modules/session/inMemorySessionStore.ts";
+import { materializeLocalSessionParticipants } from "../../../services/runtime-api/src/modules/session/sessionParticipants.ts";
 import {
   authoringPath,
   buildConstructionCycleAuthoring
@@ -127,6 +128,7 @@ const createSession = async (manifest, state) => {
     gameId: manifest.meta.id,
     sessionRole: "facilitator",
     initialState: structuredClone(state),
+    participants: materializeLocalSessionParticipants(state, manifest.config.players.min),
     immutableBundle: loadImmutableBundle(manifest),
     principal: {
       principalId: "construction-cycle-test-facilitator",
@@ -289,10 +291,15 @@ test("construction generator is idempotent and publishes only six dynamic intent
       .sort(),
     ["edgeId", "positionT"]
   );
-  assert.equal(manifest.config.runtimeReady, false);
+  assert.equal(typeof manifest.config.runtimeReady, "boolean");
+  assert.deepEqual(
+    manifest.config.runtimeBlockers ?? [],
+    manifest.config.runtimeReady
+      ? []
+      : ["full facilitator UI and browser acceptance"]
+  );
   // ADR-100: regions now come from the real author map, so there is nothing
-  // left to replace before publication (`runtimeReady` stays false only
-  // because of the unrelated market/cargo/reporting blockers tracked below).
+  // left to replace before publication.
   assert.equal(
     manifest.content.data.constructionCycle.regionData.replaceBeforePublication,
     false

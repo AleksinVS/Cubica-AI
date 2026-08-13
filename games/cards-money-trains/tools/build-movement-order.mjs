@@ -374,6 +374,11 @@ const buildPrepareOrder = () => {
                 operation: "set",
                 target: { endpoint: "public.session.phase" },
                 value: literal("operations")
+              },
+              {
+                operation: "set",
+                target: { endpoint: "public.session.canRequestFinish" },
+                value: literal(false)
               }
             ]
           },
@@ -1103,6 +1108,11 @@ const buildSkipCurrentLocomotive = (finalPhase = "construction") => {
                 target: { endpoint: "public.session.phase" },
                 value: literal(finalPhase)
               },
+              {
+                operation: "set",
+                target: { endpoint: "public.session.canRequestFinish" },
+                value: literal(false)
+              },
               ...(finalPhase === "construction"
                 ? [{
                     operation: "set",
@@ -1559,7 +1569,7 @@ const buildMovementOrderAuthoring = (sourceAuthoring) => {
       cargoSettlementReady
         ? "executable-order-traversal-formation-through-settlement-boundary"
         : "executable-order-real-graph-traversal-and-all-skip-through-construction-boundary",
-    publishable: false,
+    publishable: true,
     supportedSetup:
       "confirmed team counts 4–12; even split equally, odd split with one extra logistics company",
     order: [
@@ -1571,13 +1581,15 @@ const buildMovementOrderAuthoring = (sourceAuthoring) => {
     randomPurposeId: "locomotive-order",
     savedForWholePhase: true,
     actionPointsReset: 5,
-    graphTraversal: "main-technical-review-network",
+    graphTraversal: "main-author-confirmed-network",
     graphTraversalActionPointCost: 1,
     movementKeepsCurrentLocomotive: true,
     explicitSkip: true,
     boundary: cargoSettlementReady ? "settlement" : "construction",
-    unresolvedAfterBoundary: cargoSettlementReady
-      ? [
+    unresolvedAfterBoundary: root.content.data.sessionCompletion
+      ? []
+      : cargoSettlementReady
+        ? [
           "publishable-author-confirmed-network-overlay",
           cargoPriorityReady && root.content.data.constructionCycle
             ? marketReady
@@ -1590,8 +1602,8 @@ const buildMovementOrderAuthoring = (sourceAuthoring) => {
               : marketReady
                 ? "remaining-cargo-selection-construction-and-reporting-workflows"
                 : "remaining-market-cargo-selection-construction-and-reporting-workflows"
-        ]
-      : [
+          ]
+        : [
           trainFormationReady
             ? "loading-unloading-and-delivery"
             : "train-formation-loading-unloading-and-delivery",
@@ -1599,10 +1611,10 @@ const buildMovementOrderAuthoring = (sourceAuthoring) => {
           marketReady
             ? "remaining-settlement-and-construction-workflows"
             : "remaining-market-settlement-and-construction-workflows"
-        ]
+          ]
   };
 
-  const blockers = new Set(root.config.runtimeBlockers);
+  const blockers = new Set(root.config.runtimeBlockers ?? []);
   blockers.delete("remaining market, movement, settlement, construction and reporting workflows");
   blockers.delete(
     "remaining market, real graph movement, settlement, construction and reporting workflows"
@@ -1624,29 +1636,35 @@ const buildMovementOrderAuthoring = (sourceAuthoring) => {
   blockers.delete("remaining cargo selection, construction and reporting workflows");
   blockers.delete("remaining construction and reporting workflows");
   blockers.delete("remaining reporting workflows");
-  blockers.add(cargoSettlementReady
-    ? (
-        cargoPriorityReady && root.content.data.constructionCycle
-          ? marketReady
-            ? "remaining reporting workflows"
-            : "remaining market and reporting workflows"
-          : root.content.data.constructionCycle
+  if (!root.content.data.sessionCompletion) {
+    blockers.add(cargoSettlementReady
+      ? (
+          cargoPriorityReady && root.content.data.constructionCycle
             ? marketReady
-              ? "remaining cargo selection and reporting workflows"
-              : "remaining market, cargo selection sequencing and reporting workflows"
-            : marketReady
-              ? "remaining cargo selection, construction and reporting workflows"
-              : "remaining market, cargo selection sequencing, construction and reporting workflows"
-      )
-    : trainFormationReady
-      ? marketReady
-        ? "remaining cargo handling, settlement, construction and reporting workflows"
-        : "remaining market, cargo handling, settlement, construction and reporting workflows"
-      : marketReady
-        ? "remaining train formation, cargo handling, settlement, construction and reporting workflows"
-        : "remaining market, train formation, cargo handling, settlement, construction and reporting workflows");
-  root.config.runtimeBlockers = [...blockers];
-  root.config.runtimeReady = false;
+              ? "remaining reporting workflows"
+              : "remaining market and reporting workflows"
+            : root.content.data.constructionCycle
+              ? marketReady
+                ? "remaining cargo selection and reporting workflows"
+                : "remaining market, cargo selection sequencing and reporting workflows"
+              : marketReady
+                ? "remaining cargo selection, construction and reporting workflows"
+                : "remaining market, cargo selection sequencing, construction and reporting workflows"
+        )
+      : trainFormationReady
+        ? marketReady
+          ? "remaining cargo handling, settlement, construction and reporting workflows"
+          : "remaining market, cargo handling, settlement, construction and reporting workflows"
+        : marketReady
+          ? "remaining train formation, cargo handling, settlement, construction and reporting workflows"
+          : "remaining market, train formation, cargo handling, settlement, construction and reporting workflows");
+  }
+  if (root.config.runtimeReady === true && blockers.size === 0) {
+    delete root.config.runtimeBlockers;
+  } else {
+    root.config.runtimeBlockers = [...blockers];
+  }
+  if (!root.content.data.sessionCompletion) root.config.runtimeReady = false;
 
   return authoring;
 };

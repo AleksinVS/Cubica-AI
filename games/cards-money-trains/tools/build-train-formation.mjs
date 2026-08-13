@@ -1189,7 +1189,7 @@ const buildTrainFormationAuthoring = (sourceAuthoring) => {
     }
   }
 
-  const blockers = new Set(root.config.runtimeBlockers);
+  const blockers = new Set(root.config.runtimeBlockers ?? []);
   blockers.delete(
     "remaining market, train formation, cargo handling, settlement, construction and reporting workflows"
   );
@@ -1208,21 +1208,27 @@ const buildTrainFormationAuthoring = (sourceAuthoring) => {
     root.content.data.cardLifecycle?.cargoSelectionPriority !== undefined;
   const marketReady =
     root.content.data.operatingTurn?.market?.status === "executable";
-  blockers.add(cargoSettlementReady
-    ? (
-        cargoPriorityReady && root.content.data.constructionCycle
-          ? marketReady
-            ? "remaining reporting workflows"
-            : "remaining market and reporting workflows"
-          : root.content.data.constructionCycle
-            ? "remaining market, cargo selection sequencing and reporting workflows"
-            : cargoPriorityReady
-              ? "remaining market, construction and reporting workflows"
-              : "remaining market, cargo selection sequencing, construction and reporting workflows"
-      )
-    : "remaining market, cargo handling, settlement, construction and reporting workflows");
-  root.config.runtimeBlockers = [...blockers];
-  root.config.runtimeReady = false;
+  if (!root.content.data.sessionCompletion) {
+    blockers.add(cargoSettlementReady
+      ? (
+          cargoPriorityReady && root.content.data.constructionCycle
+            ? marketReady
+              ? "remaining reporting workflows"
+              : "remaining market and reporting workflows"
+            : root.content.data.constructionCycle
+              ? "remaining market, cargo selection sequencing and reporting workflows"
+              : cargoPriorityReady
+                ? "remaining market, construction and reporting workflows"
+                : "remaining market, cargo selection sequencing, construction and reporting workflows"
+        )
+      : "remaining market, cargo handling, settlement, construction and reporting workflows");
+  }
+  if (root.config.runtimeReady === true && blockers.size === 0) {
+    delete root.config.runtimeBlockers;
+  } else {
+    root.config.runtimeBlockers = [...blockers];
+  }
+  if (!root.content.data.sessionCompletion) root.config.runtimeReady = false;
 
   return authoring;
 };

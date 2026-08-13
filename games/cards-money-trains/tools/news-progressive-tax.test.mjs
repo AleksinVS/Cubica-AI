@@ -20,6 +20,7 @@ import { createImmutableBundleContent } from "../../../services/runtime-api/src/
 import { validateGameManifest } from "../../../services/runtime-api/src/modules/content/manifestValidation.ts";
 import { dispatchRuntimeAction } from "../../../services/runtime-api/src/modules/runtime/actionDispatcher.ts";
 import { InMemorySessionStore } from "../../../services/runtime-api/src/modules/session/inMemorySessionStore.ts";
+import { materializeLocalSessionParticipants } from "../../../services/runtime-api/src/modules/session/sessionParticipants.ts";
 import {
   authoringPath,
   buildLifecycleAuthoring
@@ -203,6 +204,7 @@ const createSession = async (manifest, initialState) => {
     gameId: manifest.meta.id,
     sessionRole: "facilitator",
     initialState,
+    participants: materializeLocalSessionParticipants(initialState, manifest.config.players.min),
     immutableBundle: createImmutableBundleContent(manifest.meta.id, manifest),
     principal: {
       principalId: "news-14-test-facilitator",
@@ -281,7 +283,7 @@ test("generators preserve the persistent news №14 contract idempotently", asyn
     rebuilt.root.logic.actions.some((action) => action.id === "news.effect.apply.14")
   );
   assert.deepEqual(
-    rebuilt.root.config.runtimeBlockers.filter((item) => /news effects/u.test(item)),
+    (rebuilt.root.config.runtimeBlockers ?? []).filter((item) => /news effects/u.test(item)),
     []
   );
 });

@@ -145,6 +145,73 @@ export async function forwardAuthenticatedRuntimeRequest(
 }
 
 /**
+ * Proxies a downloadable runtime document without converting its body to text.
+ * Public journal bytes are already canonical JSON from runtime-api; decoding
+ * and re-encoding them in the BFF could change Unicode or escape sequences.
+ */
+export async function forwardAuthenticatedRuntimeDownloadRequest(
+  request: NextRequest,
+  sessionId: string,
+  path: string,
+  init: RequestInit = { method: "GET" }
+): Promise<Response> {
+  const credential = request.cookies.get(runtimeCredentialCookieName(sessionId))?.value;
+  if (!credential) {
+    return NextResponse.json(
+      { error: "Runtime session credential is missing. Reopen or recreate the session." },
+      { status: 401 }
+    );
+  }
+
+  const headers = new Headers(init.headers);
+  headers.set("Authorization", `Bearer ${credential}`);
+  return proxyPublicJournalResponse(await requestRuntime(path, { ...init, headers }));
+}
+
+/**
+ * Keeps only the download headers needed by the public journal contract.
+ * Runtime diagnostics, cookies and internal identifiers must not cross BFF.
+ */
+export async function proxyPublicJournalResponse(upstream: Response): Promise<Response> {
+  const body = await upstream.arrayBuffer();
+  const headers = new Headers({
+    "Content-Type": sanitizePublicJournalContentType(upstream.headers.get("content-type")),
+    "Cache-Control": "no-store"
+  });
+  const contentDisposition = sanitizePublicJournalContentDisposition(
+    upstream.headers.get("content-disposition")
+  );
+  if (contentDisposition !== null) {
+    headers.set("Content-Disposition", contentDisposition);
+  }
+
+  return new Response(body, {
+    status: upstream.status,
+    headers
+  });
+}
+
+function sanitizePublicJournalContentType(value: string | null): string {
+  if (value !== null && /^application\/json(?:\s*;\s*charset=utf-8)?$/iu.test(value.trim())) {
+    return value.trim();
+  }
+  return "application/json; charset=utf-8";
+}
+
+function sanitizePublicJournalContentDisposition(value: string | null): string | null {
+  if (value === null || value.length > 512 || /[\r\n]/u.test(value)) {
+    return null;
+  }
+  const normalized = value.trim();
+  if (
+    !/^attachment;\s*filename(?:\*|)=(?:"[^"\r\n]{1,240}"|UTF-8''[A-Za-z0-9._~%+-]{1,240})$/u.test(normalized)
+  ) {
+    return null;
+  }
+  return normalized;
+}
+
+/**
  * Converts a credential-bearing create-session response into a browser-safe
  * snapshot and session-scoped HttpOnly cookie.
  */

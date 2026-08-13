@@ -3,6 +3,8 @@
   "profile-command.mjs": "Compact timing wrapper for local and CI verification commands; writes sanitized duration and exit metadata without command arguments or environment values.",
   "select-affected-tests.mjs": "Fail-closed changed-path selector for local verification and observational CI summaries; unknown or critical paths expand to the full safe suite.",
   "select-affected-tests.test.mjs": "Deterministic regression tests for affected-test mapping, path normalization and full-fallback safety.",
+  "validate-agent-instructions.mjs": "Validates active AGENTS instruction chains, byte budgets, local links, override precedence and generated CLAUDE.md parity.",
+  "validate-agent-instructions.test.mjs": "Isolated regression tests for agent instruction discovery, budgets, links and compatibility-copy drift.",
   "validate-agent-ui-boundaries.js": "Node.js validator for ADR-044 Agent UI import boundaries: CopilotKit and AG-UI imports are allowed only in approved adapter files.",
   "validate-prototype-audit-status.js": "Node.js validator for ADR-050 prototype audit status records emitted by the weekly audit workflow.",
   "validate-runtime-api-openapi.js": "Node.js validator for ADR-051 runtime-api OpenAPI contract shape, endpoint drift and future extraction spec classification.",

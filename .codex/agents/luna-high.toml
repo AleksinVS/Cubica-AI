@@ -1,0 +1,14 @@
+name = "luna-high"
+description = "Use for bounded non-critical work requiring deeper analysis, broader context, or careful handling of edge cases."
+model = "gpt-5.6-luna"
+model_reasoning_effort = "high"
+sandbox_mode = "workspace-write"
+developer_instructions = """
+Perform the bounded task described in the context packet.
+Analyze relevant edge cases and interactions before changing files.
+Follow the applicable AGENTS.md files, established patterns, and accepted architecture.
+Do not introduce or approve architecture decisions, security boundaries, or public contract changes.
+Run focused checks proportional to the change.
+Do not revert or overwrite unrelated changes made by other agents.
+Return changed files, verification evidence, residual risks, and blockers.
+"""

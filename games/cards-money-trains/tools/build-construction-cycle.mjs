@@ -798,7 +798,8 @@ const buildPhaseFinish = () => {
             ["public.construction.totalPledged", literal(0)],
             ["public.construction.mode", literal(null)],
             ["public.construction.available", literal(false)],
-            ["public.session.phase", literal("reporting")]
+            ["public.session.phase", literal("reporting")],
+            ["public.session.canRequestFinish", literal(true)]
           ]),
           {
             id: "journal",
@@ -1280,7 +1281,7 @@ const buildConstructionCycleAuthoring = async (sourceAuthoring) => {
 
   root.content.data.constructionActionIntent = {
     status: "executable-author-confirmed-region-network",
-    publishable: false,
+    publishable: true,
     road: {
       actionId: "construction.road.build",
       trustedInput: ["fromNodeId", "toNodeId"],
@@ -1299,7 +1300,7 @@ const buildConstructionCycleAuthoring = async (sourceAuthoring) => {
   };
   root.content.data.constructionCycle = {
     status: "executable-on-author-confirmed-regions",
-    publishable: false,
+    publishable: true,
     regionData: {
       provenance:
         "author-confirmed partition of the real map (annotations/" +
@@ -1337,20 +1338,26 @@ const buildConstructionCycleAuthoring = async (sourceAuthoring) => {
   const reportingOnlyBlocker = "remaining reporting workflows";
   const marketReady =
     root.content.data.operatingTurn?.market?.status === "executable";
-  const blockers = new Set(root.config.runtimeBlockers);
+  const blockers = new Set(root.config.runtimeBlockers ?? []);
   blockers.delete(broadBlocker);
   blockers.delete(preciseBlocker);
   blockers.delete(postCargoPriorityBlocker);
   blockers.delete(reportingOnlyBlocker);
-  blockers.add(
-    root.content.data.cardLifecycle?.cargoSelectionPriority
-      ? marketReady
-        ? reportingOnlyBlocker
-        : postCargoPriorityBlocker
-      : preciseBlocker
-  );
-  root.config.runtimeBlockers = [...blockers];
-  root.config.runtimeReady = false;
+  if (!root.content.data.sessionCompletion) {
+    blockers.add(
+      root.content.data.cardLifecycle?.cargoSelectionPriority
+        ? marketReady
+          ? reportingOnlyBlocker
+          : postCargoPriorityBlocker
+        : preciseBlocker
+    );
+  }
+  if (root.config.runtimeReady === true && blockers.size === 0) {
+    delete root.config.runtimeBlockers;
+  } else {
+    root.config.runtimeBlockers = [...blockers];
+  }
+  if (!root.content.data.sessionCompletion) root.config.runtimeReady = false;
   return authoring;
 };
 

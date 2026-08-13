@@ -17,6 +17,7 @@ import { createImmutableBundleContent } from "../../../services/runtime-api/src/
 import { validateGameManifest } from "../../../services/runtime-api/src/modules/content/manifestValidation.ts";
 import { dispatchRuntimeAction } from "../../../services/runtime-api/src/modules/runtime/actionDispatcher.ts";
 import { InMemorySessionStore } from "../../../services/runtime-api/src/modules/session/inMemorySessionStore.ts";
+import { materializeLocalSessionParticipants } from "../../../services/runtime-api/src/modules/session/sessionParticipants.ts";
 import {
   buildLifecycleAuthoring
 } from "./build-card-lifecycle.mjs";
@@ -55,6 +56,7 @@ const createSession = async (manifest) => {
     gameId: manifest.meta.id,
     sessionRole: "facilitator",
     initialState: structuredClone(manifest.state),
+    participants: materializeLocalSessionParticipants(manifest.state, manifest.config.players.min),
     immutableBundle: createImmutableBundleContent(manifest.meta.id, manifest),
     principal: {
       principalId: "session-setup-test-facilitator",
@@ -67,17 +69,27 @@ const createSession = async (manifest) => {
   return { store, sessionId: created.session.sessionId };
 };
 
-const dispatch = async ({ store, sessionId, actionId, params = {} }) => {
+const dispatch = async ({
+  store,
+  sessionId,
+  actionId,
+  params = {},
+  commandId = nextCommandId(),
+  expectedStateVersion,
+  random
+}) => {
   const current = await store.getSession(sessionId);
   return dispatchRuntimeAction({
     sessionStore: store,
     credentialSha256,
     admissionController,
+    ...(random === undefined ? {} : { random }),
     input: {
       sessionId,
       actionId,
-      commandId: nextCommandId(),
-      expectedStateVersion: current.version.stateVersion,
+      commandId,
+      expectedStateVersion:
+        expectedStateVersion ?? current.version.stateVersion,
       params
     }
   });
@@ -151,9 +163,10 @@ const addConfirmedComposition = async (session, composition) => {
   }
 };
 
-const finalize = (session) => dispatch({
+const finalize = (session, options = {}) => dispatch({
   ...session,
-  actionId: "session.setup.finalize"
+  actionId: "session.setup.finalize",
+  ...options
 });
 
 const publicObjects = (session) => session.state.public.objects;
@@ -224,8 +237,29 @@ test("setup and card generators are idempotent and keep teams as entities", asyn
   }
   assert.equal(root.mechanics.macros["cmt.construction.road"], undefined);
   assert.equal(root.mechanics.macros["cmt.construction.waypoint"], undefined);
-  assert.equal(root.config.runtimeReady, false);
-  assert.equal(root.content.data.sessionSetup.publishable, false);
+  assert.equal(typeof root.config.runtimeReady, "boolean");
+  assert.equal(
+    root.content.data.sessionSetup.status,
+    "executable-author-confirmed-network"
+  );
+  assert.equal(root.content.data.sessionSetup.publishable, true);
+  assert.equal(
+    root.content.data.sessionSetup.sourceNetwork,
+    "annotations/initial-network-with-regions.review.json"
+  );
+  assert.equal(
+    root.content.data.sessionSetup.networkUse,
+    "author-confirmed initial placement network"
+  );
+  assert.deepEqual(root.content.data.sessionSetup.unresolved, []);
+  const runtimeBlockers = root.config.runtimeBlockers ?? [];
+  if (root.config.runtimeReady) {
+    assert.deepEqual(runtimeBlockers, []);
+  } else {
+    assert.deepEqual(runtimeBlockers, [
+      "full facilitator UI and browser acceptance"
+    ]);
+  }
   assert.deepEqual(
     root.content.data.sessionSetup.supportedTeamCounts,
     supportedTeamCounts
@@ -236,22 +270,16 @@ test("setup and card generators are idempotent and keep teams as entities", asyn
     "logistics_company_count = locomotive_guild_count"
   );
   assert.equal(
-    root.config.runtimeBlockers.includes("accessible free-text team-name entry"),
+    runtimeBlockers.includes("accessible free-text team-name entry"),
     false
   );
   assert.equal(
-    root.config.runtimeBlockers.includes("R-28 even-team composition"),
+    runtimeBlockers.includes("R-28 even-team composition"),
     false
   );
   assert.equal(
-    root.config.runtimeBlockers.includes(
+    runtimeBlockers.includes(
       "R-26 finite market stock or explicit no-extra-limit confirmation"
-    ),
-    false
-  );
-  assert.equal(
-    root.content.data.sessionSetup.unresolved.includes(
-      "accessible-free-text-team-name-field"
     ),
     false
   );
@@ -388,22 +416,36 @@ test("all confirmed 4–12 team compositions finalize and wrong parity fails clo
   assert.equal(afterRejected.state.public.session.phase, "setup");
 });
 
-test("the same seed and setup commands reproduce the same random placement order", async () => {
+test("an exact finalize retry returns its receipt without sampling a new placement order", async () => {
   const manifest = await loadManifest();
-  const first = await createSession(manifest);
-  const second = await createSession(manifest);
-  await addOddComposition(first, 5);
-  await addOddComposition(second, 5);
-  assert.equal((await finalize(first)).result.ok, true);
-  assert.equal((await finalize(second)).result.ok, true);
-  const [firstState, secondState] = await Promise.all([
-    first.store.getSession(first.sessionId),
-    second.store.getSession(second.sessionId)
-  ]);
-  assert.deepEqual(
-    firstState.state.public.setup.placementOrder,
-    secondState.state.public.setup.placementOrder
-  );
+  const session = await createSession(manifest);
+  await addOddComposition(session, 5);
+  const before = await session.store.getSession(session.sessionId);
+  const commandId = nextCommandId();
+  let randomCallCount = 0;
+  const request = {
+    commandId,
+    expectedStateVersion: before.version.stateVersion,
+    random: {
+      sampleRange: () => {
+        randomCallCount += 1;
+        return 0;
+      }
+    }
+  };
+
+  const first = await finalize(session, request);
+  assert.equal(first.result.ok, true);
+  assert.equal(randomCallCount, 4);
+  const afterFirst = await session.store.getSession(session.sessionId);
+
+  const retry = await finalize(session, request);
+  assert.deepEqual(retry.receipt, first.receipt);
+  assert.equal(retry.committedState, false);
+  assert.equal(randomCallCount, 4);
+  const afterRetry = await session.store.getSession(session.sessionId);
+  assert.equal(afterRetry.version.stateVersion, afterFirst.version.stateVersion);
+  assert.deepEqual(afterRetry.state, afterFirst.state);
 });
 
 test("the thirteenth team is rejected without a partial team or asset", async () => {

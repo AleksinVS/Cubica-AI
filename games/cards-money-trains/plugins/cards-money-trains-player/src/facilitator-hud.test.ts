@@ -7,7 +7,8 @@ import {
   buildFacilitatorTeamSummaries,
   facilitatorTeamSummaryLabel,
   isFacilitatorHudPhase,
-  readFinalReflectionGuide
+  readFinalReflectionGuide,
+  selectMethodologyPause
 } from "./facilitator-hud.ts";
 
 test("shows the facilitator HUD only at discussion boundaries", () => {
@@ -88,4 +89,35 @@ test("reads only the bounded confirmed final-reflection guide", () => {
       questions: content.finalReflectionGuide.questions.slice(0, 4)
     }
   }), null);
+});
+
+test("selects active or due public methodology guidance without inventing a pause", () => {
+  const methodology = {
+    activePauseId: "second",
+    pauses: [{
+      id: "first",
+      title: "Первая учебная пауза",
+      timing: "15–30 минут",
+      prompts: ["Что вы наблюдаете?"],
+      status: "deferred" as const,
+      dueTurn: 3
+    }, {
+      id: "second",
+      title: "Вторая учебная пауза",
+      timing: "Около 30 минут",
+      prompts: ["Какова текущая ситуация?"],
+      status: "active" as const,
+      dueTurn: 5
+    }]
+  };
+  assert.equal(selectMethodologyPause({ methodology, turnNumber: 3 })?.id, "second");
+  assert.equal(selectMethodologyPause({
+    methodology: { ...methodology, activePauseId: null },
+    turnNumber: 3
+  })?.id, "first");
+  assert.equal(selectMethodologyPause({
+    methodology: { ...methodology, activePauseId: null },
+    turnNumber: 2
+  }), null);
+  assert.equal(selectMethodologyPause({ methodology: null, turnNumber: 99 }), null);
 });

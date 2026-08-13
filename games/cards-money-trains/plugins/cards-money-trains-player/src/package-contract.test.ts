@@ -54,7 +54,8 @@ test("compiled manifest exposes safe setup and server-owned movement controls", 
   assert.equal(regionData.replaceBeforePublication, false);
   assert.equal(regionData.geometryVersion, "guinea-regions-v1");
   assert.equal(typeof regionData.provenance, "string");
-  assert.equal(config.runtimeReady, false);
+  assert.equal(config.runtimeReady, true);
+  assert.equal(Object.hasOwn(config, "runtimeBlockers"), false);
   assert.deepEqual(
     (actions["construction.road.build"]?.paramsSchema as Record<string, unknown>)
       ?.required,

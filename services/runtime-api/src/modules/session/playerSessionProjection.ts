@@ -9,6 +9,7 @@
  * symbols belonging to another actor never leave runtime.
  */
 import type {
+  RecordCollectionModel,
   StateModel,
   StorageLocation,
   StorageSegment
@@ -77,7 +78,11 @@ export function buildPlayerSessionProjection(
     const audienceTarget = symbol.audienceRef === "actor"
       ? actorAudienceState
       : publicAudienceState;
-    for (const expanded of expandStorage(source, symbol.storage, actorMode)) {
+    const expandedValues = symbol.audienceRef === "public" &&
+      isWholePlayersPublicRecordMap(symbol)
+      ? expandDeclaredPublicRecordMap(source, symbol)
+      : expandStorage(source, symbol.storage, actorMode);
+    for (const expanded of expandedValues) {
       // An actor-labelled symbol without an actor placeholder cannot be tied
       // to a particular viewer. Failing closed avoids exposing a shared path
       // merely because a manifest accidentally assigned it an actor label.
@@ -115,6 +120,49 @@ export function buildPlayerSessionProjection(
   mergeRecords(state, actorAudienceState);
   delete state.secret;
   return { state, publicAudienceState, actorAudienceState };
+}
+
+/**
+ * A whole-player public record-map is logically broad but physically shares
+ * each participant record with separately declared actor-private leaves.
+ * Copy only its stored public field paths, so even a corrupt undeclared sibling
+ * cannot cross the deny-by-default projection boundary.
+ */
+function expandDeclaredPublicRecordMap(
+  source: RuntimeState,
+  collection: RecordCollectionModel
+): ExpandedValue[] {
+  const players = source.players;
+  if (!isRecord(players)) return [];
+  const output: ExpandedValue[] = [];
+  const storedPaths = Object.entries(collection.fields)
+    .sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0)
+    .flatMap(([, field]) => "storage" in field && field.storage.kind === "path"
+      ? [field.storage.path]
+      : []);
+  for (const actorKey of safeOwnKeys(players)) {
+    const actorRecord = players[actorKey];
+    for (const path of storedPaths) {
+      walkStorage(
+        actorRecord,
+        path,
+        0,
+        ["players", actorKey],
+        [actorKey],
+        { kind: "all" },
+        output
+      );
+    }
+  }
+  return output;
+}
+
+function isWholePlayersPublicRecordMap(
+  symbol: StateModel["endpoints"][string] | StateModel["collections"][string]
+): symbol is RecordCollectionModel {
+  return "itemShape" in symbol && symbol.itemShape === "record" &&
+    symbol.audienceRef === "public" && symbol.stableKey === "map-key" &&
+    symbol.storage.root === "players" && symbol.storage.segments.length === 0;
 }
 
 type ActorExpansion =

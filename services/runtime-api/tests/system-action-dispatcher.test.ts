@@ -207,6 +207,7 @@ async function createStoredFixture(
   const store = new InMemorySessionStore<Record<string, unknown>>();
   const created = await store.createSession({
     gameId: manifest.meta.id,
+    participants: [{ seatId: "p1", playerId: "p1", kind: "human", joinState: "local" }],
     initialState: structuredClone(manifest.state) as unknown as Record<string, unknown>,
     immutableBundle,
     principal: access.principal

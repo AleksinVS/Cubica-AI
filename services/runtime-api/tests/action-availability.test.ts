@@ -348,6 +348,7 @@ const snapshot: SessionRecord<RuntimeState> = {
   sessionId: "session-neutral",
   gameId: bundle.gameId,
   bundleHash: bundle.bundleHash,
+  participants: [{ seatId: "p1", playerId: "p1", kind: "human", joinState: "local" }],
   sessionRole: "player",
   version: { sessionId: "session-neutral", stateVersion: 0, lastEventSequence: 0 },
   state: {

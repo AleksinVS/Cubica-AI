@@ -6,10 +6,13 @@ import { NextRequest } from "next/server";
 import playerWebConfig from "../../next.config";
 import { POST as resolvePortalRuntimeSession } from "../../app/api/portal/runtime-session/route";
 import { POST as restorePreviewRuntimeSession } from "../../app/api/runtime/sessions/[sessionId]/route";
+import { GET as downloadPublicJournal } from "../../app/api/runtime/sessions/[sessionId]/public-journal/route";
 import {
   browserSessionResponse,
   forwardAuthenticatedRuntimeRequest,
+  forwardAuthenticatedRuntimeDownloadRequest,
   proxyRuntimeResponse,
+  proxyPublicJournalResponse,
   readBoundedBrowserRuntimeBody,
   runtimeCredentialCookieIsSecure,
   runtimeCredentialCookieName
@@ -121,6 +124,84 @@ describe("runtime BFF credential handoff", () => {
     expect(response.status).toBe(200);
     const upstreamInit = fetchMock.mock.calls[0]?.[1] as RequestInit;
     expect(new Headers(upstreamInit.headers).get("Authorization")).toBe("Bearer secret-bearer");
+  });
+
+  it("downloads exact journal bytes with the matching credential and strict headers", async () => {
+    const journal = JSON.stringify({
+      format: "cubica.public-gameplay-journal",
+      schemaVersion: "1.0.0",
+      summary: "Публичное событие 🚂",
+      entries: [{ data: { label: "Привет, мир" } }]
+    });
+    const bytes = new TextEncoder().encode(journal);
+    const fetchMock = vi.fn().mockResolvedValue(new Response(bytes, {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json; charset=utf-8",
+        "Content-Disposition": 'attachment; filename="journal.json"',
+        "Cache-Control": "no-store",
+        "Set-Cookie": "runtime-secret=must-not-cross",
+        "X-Runtime-Internal": "must-not-cross"
+      }
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+    const cookieName = runtimeCredentialCookieName("session/1");
+    const request = new NextRequest("http://player-web.local/api/runtime/sessions/session%2F1/public-journal", {
+      headers: { Cookie: `${cookieName}=secret-bearer` }
+    });
+
+    const response = await downloadPublicJournal(request, {
+      params: Promise.resolve({ sessionId: "session/1" })
+    });
+
+    expect(response.status).toBe(200);
+    expect(new Uint8Array(await response.arrayBuffer())).toEqual(bytes);
+    expect(response.headers.get("Content-Type")).toBe("application/json; charset=utf-8");
+    expect(response.headers.get("Content-Disposition")).toBe('attachment; filename="journal.json"');
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+    expect(response.headers.get("Set-Cookie")).toBeNull();
+    expect(response.headers.get("X-Runtime-Internal")).toBeNull();
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.objectContaining({ pathname: "/sessions/session%2F1/public-journal" }),
+      expect.objectContaining({ method: "GET" })
+    );
+    const upstreamInit = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    expect(new Headers(upstreamInit.headers).get("Authorization")).toBe("Bearer secret-bearer");
+  });
+
+  it("does not fetch a journal without its session credential", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const request = new NextRequest("http://player-web.local/api/runtime/sessions/session-1/public-journal");
+
+    const response = await forwardAuthenticatedRuntimeDownloadRequest(
+      request,
+      "session-1",
+      "/sessions/session-1/public-journal"
+    );
+
+    expect(response.status).toBe(401);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("preserves error bytes while dropping invalid or unexpected download headers", async () => {
+    const bytes = new TextEncoder().encode('{"error":"Ошибка 🚫"}');
+    const response = await proxyPublicJournalResponse(new Response(bytes, {
+      status: 503,
+      headers: {
+        "Content-Type": "text/plain",
+        "Content-Disposition": "inline; filename=secret.txt",
+        "Cache-Control": "public, max-age=60",
+        "X-Principal-Id": "must-not-cross"
+      }
+    }));
+
+    expect(response.status).toBe(503);
+    expect(new Uint8Array(await response.arrayBuffer())).toEqual(bytes);
+    expect(response.headers.get("Content-Type")).toBe("application/json; charset=utf-8");
+    expect(response.headers.get("Content-Disposition")).toBeNull();
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+    expect(response.headers.get("X-Principal-Id")).toBeNull();
   });
 
   it("restores preview state through the active session's HttpOnly credential", async () => {

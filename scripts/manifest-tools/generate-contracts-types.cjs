@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Schema → TypeScript generator for manifest contracts (ADR-056).
+ * Schema → TypeScript generator for schema-backed public contracts (ADR-056).
  *
  * Direction of truth: JSON Schema is the single source of truth for manifest
  * structures. This tool compiles the canonical schemas into committed
@@ -10,6 +10,7 @@
  *   node scripts/manifest-tools/generate-contracts-types.cjs            # write artifact
  *   node scripts/manifest-tools/generate-contracts-types.cjs --check    # fail on drift
  *   node scripts/manifest-tools/generate-contracts-types.cjs --quiet    # suppress OK log
+ *   node scripts/manifest-tools/generate-contracts-types.cjs --job=name # run one named job
  */
 
 const fs = require("node:fs");
@@ -19,18 +20,35 @@ const { compile } = require("json-schema-to-typescript");
 const repoRoot = path.resolve(__dirname, "..", "..");
 
 /**
- * One generation job: a source JSON Schema and the committed TS artifact.
- * Adding more manifest schemas here (for example ui-manifest) extends parity
- * coverage without touching the drift-check wiring.
+ * One generation job: a source JSON Schema or OpenAPI component and the
+ * committed TS artifact. Adding another schema-backed public contract extends
+ * parity coverage without touching the drift-check wiring.
  */
 const JOBS = [
   {
+    name: "session-participant",
+    schema: path.join(repoRoot, "docs", "architecture", "runtime-api-openapi.yaml"),
+    schemaPath: ["components", "schemas", "SessionParticipant"],
+    output: path.join(repoRoot, "packages", "contracts", "session", "src", "generated", "session-participant.ts"),
+    rootName: "SessionParticipant",
+    compileRoot: true
+  },
+  {
+    name: "session-participants-schema",
+    schema: path.join(repoRoot, "docs", "architecture", "runtime-api-openapi.yaml"),
+    schemaPath: ["components", "schemas", "SessionParticipants"],
+    output: path.join(repoRoot, "packages", "contracts", "session", "src", "generated", "session-participants.schema.json"),
+    outputKind: "json-schema"
+  },
+  {
+    name: "game-intent",
     schema: path.join(repoRoot, "docs", "architecture", "schemas", "game-intent.schema.json"),
     output: path.join(repoRoot, "packages", "contracts", "manifest", "src", "generated", "game-intent.ts"),
     rootName: "GameIntentSchemaDefs",
     validationOnlyAllOfDefinitions: ["GameManifestStringActionParamSchema"]
   },
   {
+    name: "game-manifest",
     schema: path.join(repoRoot, "docs", "architecture", "schemas", "game-manifest.schema.json"),
     output: path.join(repoRoot, "packages", "contracts", "manifest", "src", "generated", "game-manifest.ts"),
     rootName: "GameManifestSchemaDefs",
@@ -38,15 +56,25 @@ const JOBS = [
     validationOnlyAllOfDefinitions: ["GameManifest"]
   },
   {
+    name: "game-assets",
     schema: path.join(repoRoot, "docs", "architecture", "schemas", "game-assets.schema.json"),
     output: path.join(repoRoot, "packages", "contracts", "manifest", "src", "generated", "game-assets.ts"),
     rootName: "GameAssetsSchemaDefs"
   },
   {
+    name: "mechanics-plan",
     schema: path.join(repoRoot, "docs", "architecture", "schemas", "mechanics-plan.schema.json"),
     output: path.join(repoRoot, "packages", "contracts", "manifest", "src", "generated", "mechanics-plan.ts"),
     rootName: "MechanicsPlan",
     compileRoot: true
+  },
+  {
+    name: "public-gameplay-journal",
+    schema: path.join(repoRoot, "docs", "architecture", "schemas", "public-gameplay-journal.schema.json"),
+    output: path.join(repoRoot, "packages", "contracts", "session", "src", "generated", "public-gameplay-journal.ts"),
+    rootName: "PortablePublicGameplayJournal",
+    compileRoot: true,
+    validationOnlyRootAllOf: true
   }
 ];
 
@@ -102,6 +130,12 @@ const COMPILE_OPTIONS = {
  */
 function normalizeSchemaForTypeGeneration(schema, job) {
   const normalized = structuredClone(schema);
+  if (job.validationOnlyRootAllOf) {
+    if (!Object.prototype.hasOwnProperty.call(normalized, "allOf")) {
+      throw new Error(`Type-generation normalization cannot find root allOf in ${job.schema}`);
+    }
+    delete normalized.allOf;
+  }
   const definitions = normalized.definitions || normalized.$defs || {};
   for (const definitionName of job.validationOnlyAllOfDefinitions || []) {
     const definition = definitions[definitionName];
@@ -124,12 +158,32 @@ function normalizeSchemaForTypeGeneration(schema, job) {
  * 1:1 to the type names, preserving discoverability.
  */
 async function generateOne(job) {
-  const schema = normalizeSchemaForTypeGeneration(
-    JSON.parse(fs.readFileSync(job.schema, "utf8")),
-    job
-  );
+  const sourceDocument = JSON.parse(fs.readFileSync(job.schema, "utf8"));
+  let source = sourceDocument;
+  for (const segment of job.schemaPath || []) {
+    source = source?.[segment];
+  }
+  if (!source || typeof source !== "object") {
+    throw new Error(`Type-generation source is missing in ${job.schema}`);
+  }
+  source = structuredClone(source);
+  if (job.schemaPath) {
+    source = inlineOpenApiComponentRefs(source, sourceDocument);
+  }
+  if (job.outputKind === "json-schema") {
+    return `${JSON.stringify(source, null, 2)}\n`;
+  }
+  const schema = normalizeSchemaForTypeGeneration(source, job);
+  const compileOptions = job.schemaPath
+    ? {
+        ...COMPILE_OPTIONS,
+        bannerComment: BANNER
+          .replace("canonical JSON Schema in docs/architecture/schemas/", "canonical OpenAPI component in docs/architecture/runtime-api-openapi.yaml")
+          .replace("npm run generate:contracts", `node scripts/manifest-tools/generate-contracts-types.cjs --job=${job.name}`)
+      }
+    : COMPILE_OPTIONS;
   if (job.compileRoot) {
-    return compile(schema, job.rootName, COMPILE_OPTIONS);
+    return compile(schema, job.rootName, compileOptions);
   }
   const definitionsKey = schema.definitions ? "definitions" : "$defs";
   const definitions = schema[definitionsKey] || {};
@@ -137,7 +191,7 @@ async function generateOne(job) {
     $schema: schema.$schema || "http://json-schema.org/draft-07/schema#",
     [definitionsKey]: definitions
   };
-  const generated = await compile(bundle, job.rootName, COMPILE_OPTIONS);
+  const generated = await compile(bundle, job.rootName, compileOptions);
   if (!job.composeDelegatedContracts) return generated;
 
   // The draft-07 manifest envelope delegates both actor-facing Game Intents and
@@ -162,13 +216,36 @@ async function generateOne(job) {
   return composed;
 }
 
+function inlineOpenApiComponentRefs(value, document) {
+  if (Array.isArray(value)) return value.map((entry) => inlineOpenApiComponentRefs(entry, document));
+  if (!value || typeof value !== "object") return value;
+  if (typeof value.$ref === "string" && value.$ref.startsWith("#/components/schemas/")) {
+    const name = value.$ref.slice("#/components/schemas/".length);
+    const target = document.components?.schemas?.[name];
+    if (!target) throw new Error(`OpenAPI component reference is missing: ${value.$ref}`);
+    return inlineOpenApiComponentRefs(structuredClone(target), document);
+  }
+  return Object.fromEntries(Object.entries(value).map(([key, entry]) => [
+    key,
+    inlineOpenApiComponentRefs(entry, document)
+  ]));
+}
+
 async function run() {
   const args = new Set(process.argv.slice(2));
   const check = args.has("--check");
   const quiet = args.has("--quiet");
+  const jobArg = process.argv.slice(2).find((arg) => arg.startsWith("--job="));
+  const selectedJob = jobArg?.slice("--job=".length);
+  const jobs = selectedJob === undefined
+    ? JOBS
+    : JOBS.filter((job) => job.name === selectedJob);
+  if (selectedJob !== undefined && jobs.length !== 1) {
+    throw new Error(`Unknown generation job: ${selectedJob}`);
+  }
 
   let drifted = false;
-  for (const job of JOBS) {
+  for (const job of jobs) {
     const generated = await generateOne(job);
     const relOutput = path.relative(repoRoot, job.output).replace(/\\/g, "/");
 
@@ -178,7 +255,7 @@ async function run() {
         drifted = true;
         console.error(
           `generate-contracts-types: DRIFT in ${relOutput}. ` +
-            `The committed TypeScript no longer matches the JSON Schema. ` +
+          `The committed artifact no longer matches its canonical schema. ` +
             `Run "npm run generate:contracts" and commit the result.`
         );
       }

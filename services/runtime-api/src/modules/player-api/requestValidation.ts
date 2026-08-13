@@ -141,6 +141,11 @@ export const parseRestorePreviewSessionRequest = (
   body: unknown
 ): RestorePreviewSessionRequest<Record<string, unknown>> => {
   assertRecord(body, "POST /sessions/:id/preview-restore body");
+  const allowedKeys = new Set(["state", "version", "targetEventSequence", "reason"]);
+  const unexpectedKey = Object.keys(body).find((key) => !allowedKeys.has(key));
+  if (unexpectedKey) {
+    throw new RequestValidationError(`Preview restore contains unsupported field "${unexpectedKey}"`);
+  }
   const state = body.state;
   const version = body.version;
   assertRecord(state, "state");

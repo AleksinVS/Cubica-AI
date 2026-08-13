@@ -34,7 +34,7 @@ When upstream changed, compare the changed candidate with its stored snapshot, r
 ```bash
 node skills/C_external-skill-adapter/scripts/validate-external-skills.mjs
 node --test skills/C_external-skill-adapter/scripts/external-skill-adapter.test.mjs
-python3 /home/abc/ai-agents/skills/.system/skill-creator/scripts/quick_validate.py <skill-directory>
+python3 /home/abc/ai-agents/.codex/skills/.system/skill-creator/scripts/quick_validate.py <skill-directory>
 ```
 
 Use `--refresh-source-hashes` only after reviewing changed project policy sections. Use `--refresh-artifact-hashes` only after reviewing the upstream snapshot and active materialized skill.

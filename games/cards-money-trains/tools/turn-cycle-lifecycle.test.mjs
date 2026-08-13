@@ -18,6 +18,7 @@ import { createImmutableBundleContent } from "../../../services/runtime-api/src/
 import { validateGameManifest } from "../../../services/runtime-api/src/modules/content/manifestValidation.ts";
 import { dispatchRuntimeAction } from "../../../services/runtime-api/src/modules/runtime/actionDispatcher.ts";
 import { InMemorySessionStore } from "../../../services/runtime-api/src/modules/session/inMemorySessionStore.ts";
+import { materializeLocalSessionParticipants } from "../../../services/runtime-api/src/modules/session/sessionParticipants.ts";
 import { buildCargoSettlementAuthoring } from "./build-cargo-settlement.mjs";
 import {
   authoringPath,
@@ -51,6 +52,7 @@ const createSession = async (manifest) => {
     gameId: manifest.meta.id,
     sessionRole: "facilitator",
     initialState: structuredClone(manifest.state),
+    participants: materializeLocalSessionParticipants(manifest.state, manifest.config.players.min),
     immutableBundle: createImmutableBundleContent(manifest.meta.id, manifest),
     principal: {
       principalId: "turn-cycle-test-facilitator",
@@ -135,11 +137,11 @@ test("turn-cycle intents and flow remain closed, unique and composition-safe", a
   const root = rebuilt.root;
   const actionIds = root.logic.actions.map((candidate) => candidate.id);
   const planIds = Object.keys(root.mechanics.plans);
-  // The source stays bounded at 92 intents after adding four repeatable market
-  // actions and the staged news №19/28/29 workflows. Keep this count explicit
+  // The source stays bounded at 99 intents after the accepted facilitator,
+  // reporting and completion workflows. Keep this count explicit
   // so a generator cannot silently restore per-terminal, per-team or
   // per-vehicle action duplication.
-  assert.equal(actionIds.length, 92);
+  assert.equal(actionIds.length, 99);
   assert.equal(new Set(actionIds).size, actionIds.length);
   assert.equal(new Set(planIds).size, planIds.length);
 

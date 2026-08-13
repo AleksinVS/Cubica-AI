@@ -10,6 +10,7 @@ import type { GameSession } from "@/types/game-state";
 import { createDefaultGameConfig, createDefaultGameConfigData } from "./game-config";
 import { GamePresenter } from "./game-presenter";
 import { ReactViewGateway } from "./react-view-gateway";
+import * as runtimeClient from "./runtime-client";
 import {
   loadPendingRuntimeCommand,
   savePendingRuntimeCommand
@@ -26,6 +27,12 @@ const turnSession = (
     stateVersion: 1,
     lastEventSequence: 0
   },
+  participants: Object.keys(players ?? { p1: {} }).map((playerId) => ({
+    seatId: playerId,
+    playerId,
+    kind: "human" as const,
+    joinState: "local" as const
+  })),
   actionAvailability: [],
   state: {
     ...(players === undefined ? {} : { players }),
@@ -124,6 +131,46 @@ describe("GamePresenter session recovery", () => {
 });
 
 describe("GamePresenter board action serialization", () => {
+  it("preserves participants from an Agent Turn response", async () => {
+    const content = neutralContent("neutral-agent-turn");
+    const initialSession = { ...turnSession("p1"), gameId: content.gameId };
+    const participants = [
+      { seatId: "seat-local", playerId: "p1", kind: "human" as const, joinState: "local" as const },
+      { seatId: "seat-agent", playerId: "p2", kind: "agent" as const, joinState: "local" as const }
+    ];
+    const agentTurn = vi.spyOn(runtimeClient, "runAgentTurn").mockResolvedValue({
+      sessionId: initialSession.sessionId,
+      participants,
+      version: { ...initialSession.version, stateVersion: 2, lastEventSequence: 1 },
+      state: { public: { turn: { activePlayerId: "p2" } }, secret: {} },
+      actionAvailability: [],
+      agentTurn: {
+        schemaVersion: "1.0.0",
+        turnId: "turn-test",
+        agentId: "agent-test",
+        ok: true,
+        audit: { source: "mock", createdAt: "2026-08-13T00:00:00.000Z" }
+      }
+    });
+    const presenter = new GamePresenter({
+      gateway: new ReactViewGateway(),
+      content,
+      config: createDefaultGameConfig(createDefaultGameConfigData(content))
+    });
+    Reflect.set(presenter, "session", initialSession);
+    Reflect.set(presenter, "booting", false);
+
+    await presenter.handleSurfaceAction({
+      id: "agent-turn",
+      kind: "agentTurn",
+      target: "turn.advance",
+      sideEffectPolicy: "system-approved"
+    });
+
+    expect(presenter.sessionSnapshot?.participants).toEqual(participants);
+    agentTurn.mockRestore();
+  });
+
   it("sends one request per state version and unlocks after the response", async () => {
     const content: PlayerFacingContent = {
       gameId: "neutral-board",
@@ -296,6 +343,46 @@ describe("GamePresenter board action serialization", () => {
     await presenter.handleBoardAction("state.replace");
 
     expect(presenter.sessionSnapshot?.state).toEqual({ public: { current: true }, secret: {} });
+  });
+});
+
+describe("GamePresenter Agent Turn snapshots", () => {
+  it("preserves participants from the Agent Turn response", async () => {
+    const content = neutralContent("neutral-agent-turn-participants");
+    const initialSession = turnSession("p1");
+    const participants = initialSession.participants;
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      sessionId: initialSession.sessionId,
+      participants,
+      version: {
+        ...initialSession.version,
+        stateVersion: 2,
+        lastEventSequence: 1
+      },
+      state: initialSession.state,
+      actionAvailability: [],
+      agentTurn: { surface: null }
+    }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" }
+    })));
+
+    const presenter = new GamePresenter({
+      gateway: new ReactViewGateway(),
+      content,
+      config: createDefaultGameConfig(createDefaultGameConfigData(content))
+    });
+    Reflect.set(presenter, "session", initialSession);
+    Reflect.set(presenter, "booting", false);
+
+    await presenter.handleSurfaceAction({
+      id: "agent-turn",
+      kind: "agentTurn",
+      target: "agent.continue",
+      sideEffectPolicy: "system-approved"
+    });
+
+    expect(presenter.sessionSnapshot?.participants).toEqual(participants);
   });
 });
 

@@ -18,13 +18,12 @@
 
 ## Status
 
-blocked
+planned
 
-Status note: ADR-060 принят 2026-07-06; задача ожидает завершения turn-flow фаз.
-`TSK-20260705-board-game-platform-capabilities` (ADR-058). НЕ требует сетевого
-мультиплеера: агентское место работает уже в хотсит-сессии; от
-`TSK-20260705-multiplayer-runtime-realization` берётся только модель
-participants (Phase 2), которую можно реализовать и первой из двух задач.
+Status note: ADR-060 принят 2026-07-06; S8-контракт из
+`TSK-20260705-multiplayer-runtime-realization` принят 2026-08-13, поэтому S9
+разблокирован и запланирован следующим. Агентское место остаётся границей S9;
+эта задача ещё не реализует agent seat и не требует network join.
 
 ## Understanding
 
@@ -36,7 +35,7 @@ participants (Phase 2), которую можно реализовать и пе
 
 ## Architecture Source
 
-- `docs/architecture/adrs/060-agent-controlled-players.md` (Proposed)
+- `docs/architecture/adrs/060-agent-controlled-players.md` (Accepted)
 - ADR-046 (system-initiated Agent Turn, failure policy), ADR-047 (safety gates),
   ADR-058 (turn flow), ADR-059 (participants, персональная проекция)
 - `games/ai-driven-choice/` + mock Agent Runtime — образец opt-in адаптера
@@ -59,12 +58,16 @@ participants (Phase 2), которую можно реализовать и пе
    surface/actions, но не «выбор действия из реестра».
 3. Mock Agent Runtime (opt-in) существует для `ai-driven-choice` — расширяемый
    образец для агент-игрока.
-4. Модель participants с `kind: "agent"` заложена в ADR-059, но не реализована.
+4. S8 фиксирует session-owned participants с публичной формой
+   `seatId:string`, `playerId:string`, `kind:"human"|"agent"`,
+   `joinState:"local"`; S8 создаёт только human/local. Agent seat создаётся
+   только в S9 после принятия S8.
 
 ## Target State
 
-1. Платформенная проекция `availableActions(sessionId, playerId)` с кэшем по
-   `state_version`; используется агентом и доступна UI/eval-контуру.
+1. Переиспользуется принятая в S8 actor-scoped проекция
+   `availableActions(sessionId, playerId)` с кэшем по `state_version`; она
+   доступна агенту и UI/eval-контуру.
 2. Сессия может создать место `kind: "agent"` (в пределах
    `config.players.agentSeats` манифеста); readiness gate требует объявленного
    fallback-действия.
@@ -118,8 +121,8 @@ participants (Phase 2), которую можно реализовать и пе
 
 ### Phase 3. Агентское место и планировщик
 
-1. Создание места `kind: "agent"` (participants из ADR-059 §2.3 — реализовать
-   здесь, если задача мультиплеера ещё не дала её).
+1. Создание места `kind: "agent"` после принятия S8-контракта; session-owned
+   participants не дублируются в этой задаче.
 2. Системный Agent Turn на ходе агента; исполнение выбора обычным путём;
    event log записи.
 
@@ -162,8 +165,8 @@ npx playwright test  # e2e человек vs mock-агент
 
 - Перечисление guards на каждый ход может быть дорогим при больших реестрах —
   кэш по `state_version` обязателен с Phase 1, бюджет фиксируется тестом.
-- Двойная реализация participants (эта задача vs мультиплеер) — исключить
-  явной координацией в Phase 0/3.
+- S9 не дублирует participants: он принимает S8-контракт и добавляет только
+  агентскую семантику поверх общей модели.
 - Соблазн «подкрутить» честность (дать агенту больше информации ради силы
   игры) — запрещено ADR-060 §2.5; любые исключения только новым ADR.
 
@@ -172,3 +175,6 @@ npx playwright test  # e2e человек vs mock-агент
 - 2026-07-05: задача создана вместе с ADR-060 (Proposed). Реализация не начата.
 - 2026-07-06: ADR-060 принят владельцем проекта (Accepted 2026-07-06).
   Реализация не начата.
+- 2026-08-13: S8-контракт принят, поэтому S9 переведён из `blocked` в
+  `planned`; agent seat, Agent Turn choice, fallback и eval остаются
+  нереализованными границами S9, network join/reconnect — S10.

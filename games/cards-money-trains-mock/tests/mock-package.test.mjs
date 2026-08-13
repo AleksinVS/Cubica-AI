@@ -17,6 +17,7 @@ import { createImmutableBundleContent } from "../../../services/runtime-api/src/
 import { dispatchRuntimeAction } from "../../../services/runtime-api/src/modules/runtime/actionDispatcher.ts";
 import { createCanonicalReplayFingerprint } from "../../../services/runtime-api/src/modules/runtime/replayFingerprint.ts";
 import { InMemorySessionStore } from "../../../services/runtime-api/src/modules/session/inMemorySessionStore.ts";
+import { materializeLocalSessionParticipants } from "../../../services/runtime-api/src/modules/session/sessionParticipants.ts";
 import {
   toManifestFragment,
   toReviewOverlaySvg,
@@ -50,6 +51,7 @@ const createFacilitatorSession = async (manifest, initialState = structuredClone
     gameId: manifest.meta.id,
     sessionRole: "facilitator",
     initialState,
+    participants: materializeLocalSessionParticipants(initialState, manifest.config.players.min),
     immutableBundle,
     principal: {
       principalId: "mock-test-facilitator",

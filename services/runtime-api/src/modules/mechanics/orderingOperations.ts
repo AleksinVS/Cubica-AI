@@ -1,5 +1,5 @@
 /**
- * Universal bounded lexicographic ordering for typed entity selections.
+ * Universal bounded lexicographic ordering for typed collection selections.
  *
  * The module knows only collections, logical field identifiers, equality
  * joins and authored random-purpose identifiers. Game concepts such as turns, vehicles or
@@ -80,7 +80,7 @@ export function executeOrderingOperation(step: OrderStep, context: MechanicsExec
     if (error instanceof MechanicsExecutionError) {
       throw new MechanicsExecutionError(
         "MECHANICS_ORDER_SELECTION_INVALID",
-        "Ordering requires a valid unique entity selection",
+        "Ordering requires a valid unique typed collection selection",
         step.id
       );
     }
@@ -88,21 +88,13 @@ export function executeOrderingOperation(step: OrderStep, context: MechanicsExec
   }
   const selectedCollection = collectionEntries(context, selection.collectionId);
   charge(context, "scannedEntities", selectedCollection.entries.length);
-  if (selectedCollection.model.itemShape === "record") {
-    throw new MechanicsExecutionError(
-      "MECHANICS_ORDER_SELECTION_INVALID",
-      "Entity ordering requires a selection from an entity collection",
-      step.id
-    );
-  }
-
   const selectedById = new Map(selectedCollection.entries);
   const selected = selection.ids.map((id) => {
     const entity = selectedById.get(id);
     if (!entity) {
       throw new MechanicsExecutionError(
         "MECHANICS_ORDER_SELECTION_INVALID",
-        `Selected entity "${id}" is unavailable`,
+        `Selected collection item "${id}" is unavailable`,
         step.id
       );
     }

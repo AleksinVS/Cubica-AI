@@ -14,7 +14,7 @@ import path from "node:path";
 import { after, before, test } from "node:test";
 import { fileURLToPath } from "node:url";
 import type { PlayerFacingContent } from "@cubica/contracts-manifest";
-import type { PublicSessionCommandReceipt } from "@cubica/contracts-session";
+import type { PublicSessionCommandReceipt, SessionParticipant } from "@cubica/contracts-session";
 
 import { createRuntimeApiServer } from "../src/modules/player-api/httpServer.ts";
 import { InMemorySessionStore } from "../src/modules/session/inMemorySessionStore.ts";
@@ -89,6 +89,7 @@ type SessionState = {
 type SessionResponse = {
   sessionId: string;
   gameId: string;
+  participants: SessionParticipant[];
   version: SessionVersion;
   state: SessionState;
 };
@@ -99,6 +100,7 @@ type CreateSessionResponse = SessionResponse & {
 
 type ActionResponse = {
   sessionId: string;
+  participants: SessionParticipant[];
   version: SessionVersion;
   state: SessionState;
   receipt: PublicSessionCommandReceipt;
@@ -189,6 +191,9 @@ const createSession = async (body: Record<string, unknown> = {}) => {
   assert.equal(session.gameId, gameId);
   assert.equal(typeof session.sessionId, "string");
   assert.equal(typeof session.credential, "string");
+  assert.deepEqual(session.participants, [
+    { seatId: "p1", playerId: "p1", kind: "human", joinState: "local" }
+  ]);
   sessionCredentials.set(session.sessionId, session.credential);
 
   return session;
@@ -473,7 +478,7 @@ test("POST /sessions allows explicit deterministic fallback when Agent Runtime i
   assert.equal(body.gameId, "simple-choice");
 });
 
-test("runtimeReady blocks the incomplete normative package without exposing authoring blockers", async () => {
+test("runtimeReady admits the complete normative package without exposing authoring blockers", async () => {
   const { response: readinessResponse, body: readiness } = await requestJson<{
     ready: boolean;
     dependencies: {
@@ -484,19 +489,19 @@ test("runtimeReady blocks the incomplete normative package without exposing auth
     };
   }>("/games/cards-money-trains/readiness");
 
-  assert.equal(readinessResponse.status, 503);
-  assert.equal(readiness.ready, false);
-  assert.equal(readiness.dependencies.gameContent.status, "error");
-  assert.equal(readiness.dependencies.gameContent.message, "Game content is not ready for runtime sessions.");
+  assert.equal(readinessResponse.status, 200);
+  assert.equal(readiness.ready, true);
+  assert.equal(readiness.dependencies.gameContent.status, "ok");
+  assert.equal(readiness.dependencies.gameContent.message, undefined);
   assert.equal(JSON.stringify(readiness).includes("runtimeBlockers"), false);
 
-  const { response: sessionResponse, body: sessionError } = await requestJson<{ error: string }>("/sessions", {
+  const { response: sessionResponse, body: session } = await requestJson<{ gameId: string }>("/sessions", {
     method: "POST",
     body: JSON.stringify({ gameId: "cards-money-trains" })
   });
-  assert.equal(sessionResponse.status, 409);
-  assert.equal(sessionError.error, "Game \"cards-money-trains\" is not ready to start a runtime session.");
-  assert.equal(sessionError.error.includes("runtimeBlockers"), false);
+  assert.equal(sessionResponse.status, 201);
+  assert.equal(session.gameId, "cards-money-trains");
+  assert.equal(JSON.stringify(session).includes("runtimeBlockers"), false);
 });
 
 // Agent Turn command execution is covered by agent-intent-selection.test.ts,
@@ -656,6 +661,7 @@ test("simple-choice creates a session and dispatches a manifest action", async (
 
   assert.equal(actionResponse.status, 200);
   const actionBody = action as ActionResponse;
+  assert.deepEqual(actionBody.participants, session.participants);
   assert.equal(actionBody.state.public.timeline.screenId, "result");
   assert.equal(actionBody.state.public.timeline.stepIndex, 1);
   assert.equal(actionBody.state.public.metrics?.score, 1);
@@ -778,12 +784,31 @@ test("POST /actions exact retry of a random command does not sample again", asyn
       gameId: "estate-race"
     });
     assert.equal(created.response.status, 201, JSON.stringify(created.body));
+    const setup = await randomRequest<ActionResponse>(
+      "/actions",
+      {
+        sessionId: created.body.sessionId,
+        actionId: "session.setup.finalize",
+        commandId: nextCommandId(),
+        expectedStateVersion: created.body.version.stateVersion,
+        params: {}
+      },
+      created.body.credential
+    );
+    assert.equal(setup.response.status, 200, JSON.stringify(setup.body));
+    assert.equal(setup.body.receipt.status, "applied");
+    const setupSampleCalls = sampleCalls;
+    // Setup owns participant ordering and every declared deck shuffle. This
+    // test needs only their completed baseline; the roll below must add two
+    // dice samples once and its exact retry must add none.
+    assert.ok(setupSampleCalls > 0);
+
     const commandId = nextCommandId();
     const command = {
       sessionId: created.body.sessionId,
       actionId: "turn.roll",
       commandId,
-      expectedStateVersion: created.body.version.stateVersion,
+      expectedStateVersion: setup.body.version.stateVersion,
       params: {}
     };
 
@@ -793,7 +818,8 @@ test("POST /actions exact retry of a random command does not sample again", asyn
       created.body.credential
     );
     assert.equal(accepted.response.status, 200, JSON.stringify(accepted.body));
-    assert.equal(sampleCalls, 2);
+    assert.equal(accepted.body.receipt.status, "applied");
+    assert.equal(sampleCalls, setupSampleCalls + 2);
     assert.deepEqual((accepted.body.state as any).public.board.lastRoll.values, [1, 1]);
 
     const repeated = await randomRequest<ActionResponse>(
@@ -804,7 +830,8 @@ test("POST /actions exact retry of a random command does not sample again", asyn
     assert.equal(repeated.response.status, 200, JSON.stringify(repeated.body));
     assert.deepEqual(repeated.body.receipt, accepted.body.receipt);
     assert.deepEqual(repeated.body.state, accepted.body.state);
-    assert.equal(sampleCalls, 2);
+    assert.deepEqual(repeated.body.version, accepted.body.version);
+    assert.equal(sampleCalls, setupSampleCalls + 2);
   } finally {
     await randomApi.close();
   }
@@ -1349,6 +1376,7 @@ test("POST /sessions/:id/preview-restore rewinds only editor preview sessions", 
   assert.equal(restoreResponse.status, 200);
   assert.equal(restored.restored, true);
   assert.equal(restored.sessionId, initial.sessionId);
+  assert.deepEqual(restored.participants, initial.participants);
   assert.equal(restored.version.stateVersion, 2);
   assert.equal(restored.version.lastEventSequence, 1);
   assert.equal(restored.state.public.timeline.screenId, "intro");

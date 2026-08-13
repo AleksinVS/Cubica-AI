@@ -831,6 +831,25 @@ function safeIntegerSum(left: number, right: number, stepId: string): number {
 
 function selectEntities(step: Extract<Step, { op: "core.entities.select" }>, context: MechanicsExecutionContext): EntitySelection {
   const collection = collectionEntries(context, step.selector.collection);
+  // Schema-valid selectors share one structural shape for entity and record
+  // collections. Only declared logical fields apply to records; fail closed on
+  // entity-only concepts even if an untrusted caller bypassed publication.
+  if (collection.model.itemShape === "record") {
+    if (step.selector.objectTypes !== undefined) {
+      throw new MechanicsExecutionError(
+        "MECHANICS_COLLECTION_ITEM_SHAPE_MISMATCH",
+        "Record collection selectors cannot declare objectTypes",
+        step.id
+      );
+    }
+    if (step.selector.facets !== undefined) {
+      throw new MechanicsExecutionError(
+        "MECHANICS_COLLECTION_ITEM_SHAPE_MISMATCH",
+        "Record collection selectors cannot declare facets",
+        step.id
+      );
+    }
+  }
   const within = step.selector.within
     ? new Set(requireSelection(context.results.get(step.selector.within.stepId), step.id).ids)
     : undefined;
@@ -876,7 +895,9 @@ function matchesAttributeConditions(
 ): boolean {
   return Object.entries(fields ?? {}).every(([field, condition]) => {
     charge(context, "algorithmWork", derivedCollectionFieldReadWork(item.model, field));
-    const current = readEntityField(item.model, item.entity, "attribute", field);
+    const current = item.model.itemShape === "record"
+      ? readCollectionField(item.model, item.entity, field)
+      : readEntityField(item.model, item.entity, "attribute", field);
     if ("operator" in condition) {
       const expected = evaluateExpression(condition.value, context, item);
       if (condition.operator === "contains") return Array.isArray(current) && current.some((value) => isDeepStrictEqual(value, expected));

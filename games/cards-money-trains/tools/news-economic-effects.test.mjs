@@ -18,6 +18,7 @@ import { createImmutableBundleContent } from "../../../services/runtime-api/src/
 import { validateGameManifest } from "../../../services/runtime-api/src/modules/content/manifestValidation.ts";
 import { dispatchRuntimeAction } from "../../../services/runtime-api/src/modules/runtime/actionDispatcher.ts";
 import { InMemorySessionStore } from "../../../services/runtime-api/src/modules/session/inMemorySessionStore.ts";
+import { materializeLocalSessionParticipants } from "../../../services/runtime-api/src/modules/session/sessionParticipants.ts";
 import { contrastColorIds } from "./build-session-setup.mjs";
 
 const toolsRoot = path.dirname(fileURLToPath(import.meta.url));
@@ -46,6 +47,7 @@ const createSession = async (manifest) => {
     gameId: manifest.meta.id,
     sessionRole: "facilitator",
     initialState: structuredClone(manifest.state),
+    participants: materializeLocalSessionParticipants(manifest.state, manifest.config.players.min),
     immutableBundle: createImmutableBundleContent(manifest.meta.id, manifest),
     principal: {
       principalId: "news-economic-effects-test-facilitator",
@@ -240,16 +242,20 @@ const incidentOpenEdgeId = (state, locomotiveId) => {
 test("news №16 atomically charges only balances above fifteen and resolves once", async () => {
   const manifest = await loadManifest();
   const session = await createSession(manifest);
-  await addTeam(session, "logistics_company", 0);
-  await addTeam(session, "locomotive_guild", 1);
-  await addTeam(session, "logistics_company", 2);
+  await addOddFiveTeamComposition(session);
   await initializeCards(session);
+  const finalized = await dispatch({
+    ...session,
+    actionId: "session.setup.finalize"
+  });
+  assert.equal(finalized.result.ok, true);
+  await placeAllAssets(session);
 
   let teamIds;
   await updateScenario(session, (state) => {
     teamIds = Object.keys(state.public.objects.teams).sort();
-    assert.equal(teamIds.length, 3);
-    const balances = [16, 15, 20];
+    assert.equal(teamIds.length, 5);
+    const balances = [16, 15, 20, 15, 15];
     teamIds.forEach((teamId, index) => {
       state.public.objects.teams[teamId].attributes.coins = balances[index];
     });
@@ -271,7 +277,7 @@ test("news №16 atomically charges only balances above fifteen and resolves onc
     teamIds.map(
       (teamId) => after.state.public.objects.teams[teamId].attributes.coins
     ),
-    [11, 15, 15]
+    [11, 15, 15, 15, 15]
   );
   assert.equal(after.state.public.news.currentCardId, null);
   assert.equal(after.state.public.news.status, "resolved");

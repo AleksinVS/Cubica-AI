@@ -24,6 +24,7 @@ import { ManifestRenderer } from "@/components/manifest/manifest-renderer";
 import { SafeModeRenderer } from "@/components/safe-mode-renderer";
 import { CubicaSurfaceRenderer } from "@/components/surface/cubica-surface-renderer";
 import { RuntimeStatusPanel } from "@/components/runtime-status-panel";
+import { PublicJournalDownload } from "@/components/public-journal-download";
 import {
   useEditorPreviewBridge,
   type EditorPreviewCompletedAction,
@@ -477,6 +478,7 @@ export function GamePlayer({
 
   return (
     <main ref={rootRef} className="shell game-player-root" style={rootStyle}>
+      <PublicJournalDownload sessionId={state.sessionId} runtimeStatus={state.runtimeStatus} />
       {activeManifestPanel && !keepsMapBehindPanel ? (
         <ManifestRenderer
           screenDefinition={activeManifestPanel}

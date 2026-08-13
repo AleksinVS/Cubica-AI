@@ -26,9 +26,24 @@ test("PostgreSQL state, command receipt and event ledger survive a store restart
     path.resolve(testDirectory, "../migrations/002_authenticated_command_ledger.up.sql"),
     "utf8"
   );
+  const migration003 = await readFile(
+    path.resolve(testDirectory, "../migrations/003_system_schedules.up.sql"),
+    "utf8"
+  );
+  const migration004 = await readFile(
+    path.resolve(testDirectory, "../migrations/004_session_participants.up.sql"),
+    "utf8"
+  );
+  const migration005 = await readFile(
+    path.resolve(testDirectory, "../migrations/005_session_event_metric_changes.up.sql"),
+    "utf8"
+  );
   const setupPool = new Pool({ connectionString: databaseUrl });
   await setupPool.query(migration001);
   await setupPool.query(migration002);
+  await setupPool.query(migration003);
+  await setupPool.query(migration004);
+  await setupPool.query(migration005);
   await setupPool.end();
 
   const firstPool = new Pool({ connectionString: databaseUrl });
@@ -41,6 +56,7 @@ test("PostgreSQL state, command receipt and event ledger survive a store restart
     gameId: "persistence-integration-fixture",
     contentSourceId: "preview-source",
     sessionRole: "facilitator",
+    participants: [{ seatId: "p1", playerId: "p1", kind: "human", joinState: "local" }],
     initialState: { public: { step: 1 } },
     immutableBundle,
     principal: {
@@ -142,6 +158,7 @@ test("PostgreSQL state, command receipt and event ledger survive a store restart
   assert.equal(restored?.version.stateVersion, 1);
   assert.equal(restored?.contentSourceId, "preview-source");
   assert.equal(restored?.sessionRole, "facilitator");
+  assert.deepEqual(restored?.participants, created.session.participants);
   assert.equal(restored?.version.lastEventSequence, 1);
   assert.equal((await secondStore.authenticateSession({
     sessionId: created.session.sessionId,

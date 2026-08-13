@@ -37,7 +37,7 @@ if (!operationCatalogValidation.valid) {
     .map((error) => `${error.pointer || "/"} ${error.message}`)
     .join("; ")}`);
 }
-const SHARED_KERNEL_VERSION = "mechanics-shared-kernel-v11";
+const SHARED_KERNEL_VERSION = "mechanics-shared-kernel-v13";
 /**
  * Shared trusted Mechanics corpus.
  *
@@ -184,8 +184,8 @@ function hashModuleArtifact(descriptor, moduleCorpusHash, sharedKernel = undefin
 const rawDescriptors = [
   {
     moduleId: "cubica.core",
-    moduleVersion: "1.5.0",
-    behaviorVersion: "mechanics-core-v1alpha1-8",
+    moduleVersion: "1.7.0",
+    behaviorVersion: "mechanics-core-v1alpha1-10",
     dependencies: [],
     operations: [
       "core.assert",
@@ -210,7 +210,7 @@ const rawDescriptors = [
   },
   {
     moduleId: "cubica.random",
-    moduleVersion: "1.1.0",
+    moduleVersion: "1.1.2",
     behaviorVersion: "mechanics-random-v1alpha1-6",
     dependencies: ["cubica.core"],
     operations: ["random.dice.roll"],
@@ -218,8 +218,8 @@ const rawDescriptors = [
   },
   {
     moduleId: "cubica.ordering",
-    moduleVersion: "1.2.0",
-    behaviorVersion: "mechanics-ordering-v5",
+    moduleVersion: "1.4.0",
+    behaviorVersion: "mechanics-ordering-v7",
     dependencies: ["cubica.core", "cubica.random"],
     operations: ["core.entities.order"],
     algorithmVersions: {
@@ -229,7 +229,7 @@ const rawDescriptors = [
   },
   {
     moduleId: "cubica.system",
-    moduleVersion: "1.0.5",
+    moduleVersion: "1.0.7",
     behaviorVersion: "mechanics-system-v1alpha1-2",
     dependencies: ["cubica.core"],
     operations: ["system.schedule.register", "system.schedule.cancel"],
@@ -237,7 +237,7 @@ const rawDescriptors = [
   },
   {
     moduleId: "cubica.deck",
-    moduleVersion: "1.3.0",
+    moduleVersion: "1.3.2",
     behaviorVersion: "mechanics-deck-v1alpha1-9",
     dependencies: ["cubica.random"],
     operations: ["deck.shuffle", "deck.draw", "deck.extract", "deck.return", "deck.insert"],
@@ -245,7 +245,7 @@ const rawDescriptors = [
   },
   {
     moduleId: "cubica.graph",
-    moduleVersion: "2.4.0",
+    moduleVersion: "2.4.2",
     behaviorVersion: "mechanics-region-graph-v1alpha1-10",
     // No dependency on cubica.random any more: version 2 of the region path
     // algorithm decides the route by geometry, so nothing here is drawn at
@@ -269,7 +269,7 @@ const rawDescriptors = [
   },
   {
     moduleId: "cubica.relations",
-    moduleVersion: "1.0.5",
+    moduleVersion: "1.0.7",
     behaviorVersion: "mechanics-relation-v1alpha1-3",
     dependencies: ["cubica.core"],
     operations: ["relation.attach", "relation.detach"],
@@ -861,6 +861,130 @@ const PRE_DUAL_RANDOM_PROVIDER_BLOCKED_ARTIFACTS = Object.freeze([
 ]);
 
 /**
+ * Exact shared-kernel-v11 artifacts immediately before record-map selections
+ * became valid inputs to the common ordering operation.
+ *
+ * Core selection and ordering behavior change in v12. The remaining modules
+ * receive artifact-only patch versions because the shared admission corpus is
+ * part of every exact lock; their behavior and algorithm identities stay
+ * unchanged. The v11 executor is unavailable, so these identities remain
+ * recognised archive history rather than aliases to current code.
+ */
+const PRE_RECORD_MAP_ORDER_BLOCKED_ARTIFACTS = Object.freeze([
+  {
+    moduleId: "cubica.core",
+    moduleVersion: "1.5.0",
+    artifactHash: "sha256:0065bc8cbb8c8c732db316306899bd479f027403c6baa14ce6d69980bbc2417a",
+    algorithmVersions: {}
+  },
+  {
+    moduleId: "cubica.random",
+    moduleVersion: "1.1.0",
+    artifactHash: "sha256:9eca705021658ba8cf6cfd34b84364f28acf008ab54c6588729d08befce12d10",
+    algorithmVersions: { randomProvider: "server-crypto-random-v1" }
+  },
+  {
+    moduleId: "cubica.ordering",
+    moduleVersion: "1.2.0",
+    artifactHash: "sha256:cf917bc7a194795681d479b8154d363e1299fb8d4103b08362a8df2a28a43b20",
+    algorithmVersions: {
+      ordering: "lexicographic-bounded-v1",
+      tieBreak: "canonical-groups-server-crypto-random-v1"
+    }
+  },
+  {
+    moduleId: "cubica.system",
+    moduleVersion: "1.0.5",
+    artifactHash: "sha256:e66e15ab255e22a2ddf104f07480497048ab1a93e9e7a273362756df82c3db9e",
+    algorithmVersions: {}
+  },
+  {
+    moduleId: "cubica.deck",
+    moduleVersion: "1.3.0",
+    artifactHash: "sha256:f0c2c85018625d43262646e4c725a9e6b729bf477b1495a53761f61a60207b7f",
+    algorithmVersions: { shuffle: "fisher-yates-server-crypto-random-v1" }
+  },
+  {
+    moduleId: "cubica.graph",
+    moduleVersion: "2.4.0",
+    artifactHash: "sha256:04aee4076c66b07187addf69df5cd4e4b993faff4316a326d1b90d98898c2d82",
+    algorithmVersions: {
+      regionPath: "region-segment-minimum-v3",
+      edgePosition: "polyline-arc-length-v1",
+      regionMembership: "closed-polygon-all-memberships-v3",
+      geometryFingerprint: "canonical-json-sha256-v1"
+    }
+  },
+  {
+    moduleId: "cubica.relations",
+    moduleVersion: "1.0.5",
+    artifactHash: "sha256:0b7cacfa993d254b4b4e002cbf79bad6885788d45d49c616a560fea530459dc2",
+    algorithmVersions: {}
+  }
+]);
+
+/**
+ * Exact shared-kernel-v12 artifacts immediately before actor-private leaves
+ * became admissible beside a whole-player public record map.
+ *
+ * The frozen v12 executor corpus is unavailable. These triples remain
+ * archive-only diagnostic identities under ADR-086 and must never alias the
+ * v13 checker or executor.
+ */
+const PRE_ACTOR_PRIVATE_LEAF_BLOCKED_ARTIFACTS = Object.freeze([
+  {
+    moduleId: "cubica.core",
+    moduleVersion: "1.6.0",
+    artifactHash: "sha256:201e2615cecd392f6b60a9064609dd2325a0957613cdd6bfdb360717dbfad529",
+    algorithmVersions: {}
+  },
+  {
+    moduleId: "cubica.random",
+    moduleVersion: "1.1.1",
+    artifactHash: "sha256:82874667a23abfc02646dfa3d414e9568ce3d55d3d82db6488d7bf770d523968",
+    algorithmVersions: { randomProvider: "server-crypto-random-v1" }
+  },
+  {
+    moduleId: "cubica.ordering",
+    moduleVersion: "1.3.0",
+    artifactHash: "sha256:27491a4d2c549952333a4a125358b2126b5345938aef7f62f3d098d3403e865c",
+    algorithmVersions: {
+      ordering: "lexicographic-bounded-v1",
+      tieBreak: "canonical-groups-server-crypto-random-v1"
+    }
+  },
+  {
+    moduleId: "cubica.system",
+    moduleVersion: "1.0.6",
+    artifactHash: "sha256:7c5eb18aee95f25bfb0a65f56b88161dbe8b36113d527a7a193aa64dec271952",
+    algorithmVersions: {}
+  },
+  {
+    moduleId: "cubica.deck",
+    moduleVersion: "1.3.1",
+    artifactHash: "sha256:343beb3c52d4228b26204ecfb3ff44d2791488ad4524ae1d9af570deb3217cff",
+    algorithmVersions: { shuffle: "fisher-yates-server-crypto-random-v1" }
+  },
+  {
+    moduleId: "cubica.graph",
+    moduleVersion: "2.4.1",
+    artifactHash: "sha256:eb1326573fe028b0bad7ce0e0d8375d10800221df6ad47a8083bf992e7b406f5",
+    algorithmVersions: {
+      regionPath: "region-segment-minimum-v3",
+      edgePosition: "polyline-arc-length-v1",
+      regionMembership: "closed-polygon-all-memberships-v3",
+      geometryFingerprint: "canonical-json-sha256-v1"
+    }
+  },
+  {
+    moduleId: "cubica.relations",
+    moduleVersion: "1.0.6",
+    artifactHash: "sha256:602a32f2b8b01c8e4ef1b623fbf2d815e2bf5a37708906accbfcec05ae460bc9",
+    algorithmVersions: {}
+  }
+]);
+
+/**
  * Production registry contains the exact current snapshot and recognises the
  * last pre-registry locks as blocked history. The latter are not executable:
  * their frozen source corpus was not retained, so pretending otherwise would
@@ -872,6 +996,16 @@ const MECHANICS_ARTIFACT_REGISTRY = createMechanicsArtifactRegistry([
     state: "available",
     validationProfileId: "mechanics-v1alpha1-current",
     executorProfileId: "mechanics-runtime-current"
+  })),
+  ...PRE_ACTOR_PRIVATE_LEAF_BLOCKED_ARTIFACTS.map((artifact) => ({
+    ...artifact,
+    state: "blocked",
+    reason: "pre-actor-private-leaf executable corpus is unavailable; dependent pre-release sessions are archive-only"
+  })),
+  ...PRE_RECORD_MAP_ORDER_BLOCKED_ARTIFACTS.map((artifact) => ({
+    ...artifact,
+    state: "blocked",
+    reason: "pre-record-map-order executable corpus is unavailable; dependent pre-release sessions are archive-only"
   })),
   ...PRE_DUAL_RANDOM_PROVIDER_BLOCKED_ARTIFACTS.map((artifact) => ({
     ...artifact,
@@ -992,11 +1126,13 @@ module.exports = {
   MODULE_REGISTRY,
   OPERATION_CATALOG,
   OPERATION_MODULES,
+  PRE_ACTOR_PRIVATE_LEAF_BLOCKED_ARTIFACTS,
   PRE_DUAL_RANDOM_PROVIDER_BLOCKED_ARTIFACTS,
   PRE_DYNAMIC_SCORE_BLOCKED_ARTIFACTS,
   PRE_LOGARITHMIC_RANDOM_ADVANCE_BLOCKED_ARTIFACTS,
   PRE_RANDOM_STREAM_SNAPSHOT_BLOCKED_ARTIFACTS,
   PRE_PARAMETERIZED_DECK_BLOCKED_ARTIFACTS,
+  PRE_RECORD_MAP_ORDER_BLOCKED_ARTIFACTS,
   PRE_FINITE_NUMBER_BLOCKED_ARTIFACTS,
   SHARED_KERNEL_FILES,
   SHARED_KERNEL_HASH,

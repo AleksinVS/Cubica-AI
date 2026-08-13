@@ -5,6 +5,7 @@ import { test } from "node:test";
 import type { CubicaMechanicsIRV1Alpha1, GameManifest, Step } from "@cubica/contracts-manifest";
 
 import { initializeTurnBasedSessionState } from "../src/modules/session/turnBasedSessionState.ts";
+import { materializeLocalSessionParticipants } from "../src/modules/session/sessionParticipants.ts";
 
 const require = createRequire(import.meta.url);
 const { recommendedModuleLock } = require("../../../scripts/manifest-tools/mechanics-modules.cjs") as {
@@ -114,6 +115,19 @@ test("participant template expands into isolated p1..pN state and an initial tur
   const players = state.players as Record<string, Record<string, any>>;
   players.p1.metrics.score = 1;
   assert.equal(players.p2.metrics.score, 10, "participant objects must not share nested references");
+});
+
+test("neutral single-participant non-turn manifest gets metadata without player-scoped state", () => {
+  const manifest = createManifest();
+  manifest.config.players = { min: 1, max: 1 };
+  delete manifest.config.turnModel;
+  delete manifest.state.playersTemplate;
+  const state = initializeTurnBasedSessionState(manifest, declaredState(manifest));
+
+  assert.equal("players" in state, false);
+  assert.deepEqual(materializeLocalSessionParticipants(state, manifest.config.players.min), [
+    { seatId: "p1", playerId: "p1", kind: "human", joinState: "local" }
+  ]);
 });
 
 test("authored random state is removed unconditionally", () => {

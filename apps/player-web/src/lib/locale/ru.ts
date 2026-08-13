@@ -42,6 +42,9 @@ export const ru = {
   /** Panel button: move history */
   journal: "журнал ходов",
 
+  /** Download the server-authoritative public gameplay journal */
+  downloadJournal: "Скачать журнал",
+
   /** Panel button: hint */
   hint: "подсказка",
 

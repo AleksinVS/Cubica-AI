@@ -19,6 +19,7 @@ import { createImmutableBundleContent } from "../../../services/runtime-api/src/
 import { validateGameManifest } from "../../../services/runtime-api/src/modules/content/manifestValidation.ts";
 import { dispatchRuntimeAction } from "../../../services/runtime-api/src/modules/runtime/actionDispatcher.ts";
 import { InMemorySessionStore } from "../../../services/runtime-api/src/modules/session/inMemorySessionStore.ts";
+import { materializeLocalSessionParticipants } from "../../../services/runtime-api/src/modules/session/sessionParticipants.ts";
 import { buildLifecycleAuthoring } from "./build-card-lifecycle.mjs";
 import { buildConstructionCycleAuthoring } from "./build-construction-cycle.mjs";
 import {
@@ -143,6 +144,7 @@ const createSession = async (manifest) => {
     gameId: manifest.meta.id,
     sessionRole: "facilitator",
     initialState: structuredClone(manifest.state),
+    participants: materializeLocalSessionParticipants(manifest.state, manifest.config.players.min),
     immutableBundle: loadImmutableBundle(manifest),
     principal: {
       principalId: "operating-turn-test-facilitator",
@@ -418,13 +420,16 @@ test("setup, card, and operating-turn generators compose idempotently", async ()
   );
 
   const root = actual.root;
-  assert.equal(root.config.runtimeReady, false);
-  assert.match(
-    root.config.runtimeBlockers.join("\n"),
-    /remaining reporting workflows/u
+  assert.equal(typeof root.config.runtimeReady, "boolean");
+  const runtimeBlockers = root.config.runtimeBlockers ?? [];
+  assert.deepEqual(
+    runtimeBlockers,
+    root.config.runtimeReady
+      ? []
+      : ["full facilitator UI and browser acceptance"]
   );
   assert.doesNotMatch(
-    root.config.runtimeBlockers.join("\n"),
+    runtimeBlockers.join("\n"),
     /remaining market/u
   );
   assert.equal(root.content.data.operatingTurn.market.status, "executable");
@@ -465,13 +470,15 @@ test("late formation and construction rebuilds preserve the resolved market bloc
 
   assert.deepEqual(buildTrainFormationAuthoring(fixedPoint), fixedPoint);
   assert.deepEqual(await buildConstructionCycleAuthoring(fixedPoint), fixedPoint);
-  assert.ok(
-    fixedPoint.root.config.runtimeBlockers.includes(
-      "remaining reporting workflows"
-    )
+  const runtimeBlockers = fixedPoint.root.config.runtimeBlockers ?? [];
+  assert.deepEqual(
+    runtimeBlockers,
+    fixedPoint.root.config.runtimeReady
+      ? []
+      : ["full facilitator UI and browser acceptance"]
   );
   assert.doesNotMatch(
-    fixedPoint.root.config.runtimeBlockers.join("\n"),
+    runtimeBlockers.join("\n"),
     /remaining market/u
   );
 });

@@ -19,6 +19,7 @@ import { createImmutableBundleContent } from "../../../services/runtime-api/src/
 import { validateGameManifest } from "../../../services/runtime-api/src/modules/content/manifestValidation.ts";
 import { dispatchRuntimeAction } from "../../../services/runtime-api/src/modules/runtime/actionDispatcher.ts";
 import { InMemorySessionStore } from "../../../services/runtime-api/src/modules/session/inMemorySessionStore.ts";
+import { materializeLocalSessionParticipants } from "../../../services/runtime-api/src/modules/session/sessionParticipants.ts";
 import { buildLifecycleAuthoring } from "./build-card-lifecycle.mjs";
 import {
   authoringPath,
@@ -131,6 +132,7 @@ const createSession = async (manifest, initialState) => {
     gameId: manifest.meta.id,
     sessionRole: "facilitator",
     initialState: structuredClone(initialState),
+    participants: materializeLocalSessionParticipants(initialState, manifest.config.players.min),
     immutableBundle: createImmutableBundleContent(manifest.meta.id, manifest),
     principal: {
       principalId: "cargo-settlement-test-facilitator",
@@ -234,14 +236,16 @@ test("six game-local generators preserve the complete cargo-settlement authoring
       activeSettlementLegField: "activeLegFromNodeId"
     }
   );
-  assert.equal(
-    actual.root.config.runtimeBlockers.includes(
-      "remaining reporting workflows"
-    ),
-    true
-  );
-  assert.equal(actual.root.logic.actions.length, 92);
-  assert.equal(Object.keys(actual.root.mechanics.plans).length, 92);
+  assert.equal(typeof actual.root.config.runtimeReady, "boolean");
+  if (actual.root.config.runtimeReady) {
+    assert.equal(actual.root.config.runtimeBlockers, undefined);
+  } else {
+    assert.deepEqual(actual.root.config.runtimeBlockers, [
+      "full facilitator UI and browser acceptance"
+    ]);
+  }
+  assert.equal(actual.root.logic.actions.length, 99);
+  assert.equal(Object.keys(actual.root.mechanics.plans).length, 99);
 });
 
 test("normal load derives ownership and journals the confirmed cargo relation", async () => {

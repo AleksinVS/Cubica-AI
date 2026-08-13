@@ -332,10 +332,90 @@
           "const": "transport.cargo"
         },
         "facets": {
-          "type": "object"
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status"
+          ],
+          "properties": {
+            "status": {
+              "const": "available"
+            }
+          }
         },
         "attributes": {
-          "type": "object"
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "sourceRow",
+            "sourceDeckLabel",
+            "networkId",
+            "fromNodeId",
+            "toNodeId",
+            "payout",
+            "holderTeamId",
+            "carrierWagonId",
+            "availableAtNodeId",
+            "activeLegFromNodeId",
+            "originDeparted",
+            "originDepartureTurn",
+            "settledRouteLength",
+            "maintenancePaidTurn"
+          ],
+          "properties": {
+            "id": {
+              "const": "cargo-source-row-005"
+            },
+            "sourceRow": {
+              "const": 5
+            },
+            "sourceDeckLabel": {
+              "const": "1 терминал"
+            },
+            "networkId": {
+              "const": "main"
+            },
+            "fromNodeId": {
+              "const": "terminal-1"
+            },
+            "toNodeId": {
+              "const": "terminal-9"
+            },
+            "payout": {
+              "const": 13
+            },
+            "holderTeamId": {
+              "const": "white-logistics"
+            },
+            "carrierWagonId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "availableAtNodeId": {
+              "const": "terminal-1"
+            },
+            "activeLegFromNodeId": {
+              "const": "terminal-1"
+            },
+            "originDeparted": {
+              "const": false
+            },
+            "originDepartureTurn": {
+              "const": 0
+            },
+            "settledRouteLength": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "maintenancePaidTurn": {
+              "const": 0
+            }
+          }
         }
       }
     },

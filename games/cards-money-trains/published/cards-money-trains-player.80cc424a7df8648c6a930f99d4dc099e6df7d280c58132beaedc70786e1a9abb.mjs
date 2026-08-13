@@ -200,6 +200,7 @@ const createCardsMoneyTrainsScene = (context) => {
         facilitatorFinalResultsButton = null;
         facilitatorEconomyButton = null;
         facilitatorHudExpanded = true;
+        selectedMethodologyPause = null;
         /** Full reflection text is a local read-only overlay opened from the HUD. */
         reflectionGuideLayer = null;
         reflectionGuideBackdrop = null;
@@ -601,16 +602,7 @@ const createCardsMoneyTrainsScene = (context) => {
             this.reflectionGuideTitle = title;
             this.reflectionGuideBody = body;
             this.reflectionGuideClose = close;
-            if (finalReflectionGuide) {
-                body.setText([
-                    `Подготовка команд: ${finalReflectionGuide.preparationMinutes.min}–${finalReflectionGuide.preparationMinutes.max} минут`,
-                    `Выступление каждой команды: до ${finalReflectionGuide.presentationMinutesMax} минут`,
-                    "",
-                    ...finalReflectionGuide.questions.map((question, index) => `${index + 1}. ${question}`),
-                    "",
-                    `После выступлений сформулируйте ${finalReflectionGuide.conclusionCount.min}–${finalReflectionGuide.conclusionCount.max} общих вывода.`
-                ]);
-            }
+            this.populateReflectionGuide();
             this.layoutReflectionGuidePanel();
         }
         /**
@@ -779,12 +771,14 @@ const createCardsMoneyTrainsScene = (context) => {
         reconcileFacilitatorHud(projection) {
             const finalResults = projection.finalResults ?? null;
             const economyCorrector = (0, economy_corrector_ts_1.projectEconomyCorrector)(projection);
+            this.selectedMethodologyPause = (0, facilitator_hud_ts_1.selectMethodologyPause)(projection);
             const visible = (0, facilitator_hud_ts_1.isFacilitatorHudPhase)(projection.phase)
                 || finalResults !== null
                 || economyCorrector !== null;
             this.facilitatorHudLayer?.setVisible(visible);
             this.facilitatorFinalResultsButton?.setVisible(finalResults !== null);
             this.facilitatorEconomyButton?.setVisible(economyCorrector !== null);
+            this.facilitatorMethodologyButton?.setVisible(finalReflectionGuide !== null || this.selectedMethodologyPause !== null);
             if (!visible) {
                 this.hideReflectionGuide();
                 this.hideFinalResults();
@@ -804,6 +798,10 @@ const createCardsMoneyTrainsScene = (context) => {
             }
             this.facilitatorTeamCount = summaries.length;
             this.layoutFacilitatorHud();
+            if (this.reflectionGuideLayer?.visible) {
+                this.populateReflectionGuide();
+                this.layoutReflectionGuidePanel();
+            }
             if (economyCorrector) {
                 const activeTeamIds = new Set(economyCorrector.rows.map((row) => row.teamId));
                 for (const teamId of this.economyDrafts.keys()) {
@@ -887,13 +885,39 @@ const createCardsMoneyTrainsScene = (context) => {
         }
         /** Open only local immutable guidance; no Runtime command is dispatched. */
         showReflectionGuide() {
-            if (!finalReflectionGuide || !this.reflectionGuideLayer)
+            if ((!finalReflectionGuide && !this.selectedMethodologyPause)
+                || !this.reflectionGuideLayer)
                 return;
             this.hideCountryInformation();
             this.hideFinalResults();
             this.hideEconomyCorrector();
+            this.populateReflectionGuide();
             this.layoutReflectionGuidePanel();
             this.reflectionGuideLayer.setVisible(true);
+        }
+        /** Combine current public pause guidance with the immutable final guide. */
+        populateReflectionGuide() {
+            const title = this.reflectionGuideTitle;
+            const body = this.reflectionGuideBody;
+            if (!title || !body)
+                return;
+            const pause = this.selectedMethodologyPause;
+            title.setText(pause?.title ?? "Итоговая рефлексия");
+            const pauseLines = pause ? [
+                pause.timing,
+                "",
+                ...pause.prompts.map((prompt, index) => `${index + 1}. ${prompt}`)
+            ] : [];
+            const finalLines = finalReflectionGuide ? [
+                ...(pauseLines.length > 0 ? ["", "Итоговая рефлексия"] : []),
+                `Подготовка команд: ${finalReflectionGuide.preparationMinutes.min}–${finalReflectionGuide.preparationMinutes.max} минут`,
+                `Выступление каждой команды: до ${finalReflectionGuide.presentationMinutesMax} минут`,
+                "",
+                ...finalReflectionGuide.questions.map((question, index) => `${index + 1}. ${question}`),
+                "",
+                `После выступлений сформулируйте ${finalReflectionGuide.conclusionCount.min}–${finalReflectionGuide.conclusionCount.max} общих вывода.`
+            ] : [];
+            body.setText([...pauseLines, ...finalLines]);
         }
         /** Close the local methodology surface without touching session state. */
         hideReflectionGuide() {
@@ -2887,6 +2911,22 @@ const SETUP_LOCOMOTIVE_PLACE_ACTION_ID = "session.setup.place.locomotive";
 const MAINTENANCE_LOCOMOTIVE_ACTION_ID = "maintenance.pay.locomotive";
 const MAINTENANCE_WAGON_ACTION_ID = "maintenance.pay.wagon";
 const MAINTENANCE_CARGO_ACTION_ID = "maintenance.pay.held-cargo";
+const MARKET_PURCHASE_WAGON_ACTION_ID = "market.purchase.wagon";
+const MARKET_PURCHASE_LOCOMOTIVE_ACTION_ID = "market.purchase.locomotive";
+const MARKET_SELL_WAGON_ACTION_ID = "market.sell.wagon";
+const MARKET_SELL_LOCOMOTIVE_ACTION_ID = "market.sell.locomotive";
+const NEWS_EFFECT_19_PREPARE_TEAM_ACTION_ID = "news.effect.19.prepare-team";
+const NEWS_EFFECT_19_REMOVE_LOCOMOTIVE_ACTION_ID = "news.effect.19.remove-locomotive";
+const NEWS_EFFECT_19_REMOVE_WAGON_ACTION_ID = "news.effect.19.remove-wagon";
+const REQUIRED_INPUT_ACTION_IDS = new Set([
+    MARKET_PURCHASE_WAGON_ACTION_ID,
+    MARKET_PURCHASE_LOCOMOTIVE_ACTION_ID,
+    MARKET_SELL_WAGON_ACTION_ID,
+    MARKET_SELL_LOCOMOTIVE_ACTION_ID,
+    NEWS_EFFECT_19_PREPARE_TEAM_ACTION_ID,
+    NEWS_EFFECT_19_REMOVE_LOCOMOTIVE_ACTION_ID,
+    NEWS_EFFECT_19_REMOVE_WAGON_ACTION_ID
+]);
 const ECONOMY_ADJUST_CREDIT_ACTION_ID = "facilitator.economy.adjust.credit";
 const ECONOMY_ADJUST_DEBIT_ACTION_ID = "facilitator.economy.adjust.debit";
 const ECONOMY_LOAN_ISSUE_ACTION_ID = "facilitator.economy.loan.issue";
@@ -2966,6 +3006,10 @@ const placedTeamSelectOptions = (projection) => selectOptions(projection.teams
  * illegal choices from an otherwise public node list.
  */
 const stationSelectOptions = (projection) => selectOptions(projection.nodes);
+/** Purchases accept only public terminals; Runtime owns all remaining checks. */
+const terminalSelectOptions = (projection) => selectOptions(projection.nodes.filter((node) => node.objectType === "transport.terminal"));
+/** Public teams are input aids, never a client-side role or phase decision. */
+const teamSelectOptions = (projection) => selectOptions(projection.teams.map((team) => ({ id: team.id, label: team.label })));
 /**
  * Offer decks exist only for the numbered terminals 1–23.
  *
@@ -3098,6 +3142,68 @@ const actionFields = (action, projection) => {
                 kind: "select",
                 required: true,
                 options: visibleCargoSelectOptions(projection)
+            }];
+    }
+    if (action.actionId === MARKET_PURCHASE_WAGON_ACTION_ID
+        || action.actionId === MARKET_PURCHASE_LOCOMOTIVE_ACTION_ID) {
+        return [{
+                name: "teamId",
+                label: "Команда",
+                kind: "select",
+                required: true,
+                options: teamSelectOptions(projection)
+            }, {
+                name: "stationId",
+                label: "Терминал покупки",
+                kind: "select",
+                required: true,
+                options: terminalSelectOptions(projection)
+            }];
+    }
+    if (action.actionId === MARKET_SELL_WAGON_ACTION_ID) {
+        return [{
+                name: "wagonId",
+                label: "Вагон",
+                kind: "select",
+                required: true,
+                options: wagonSelectOptions(projection)
+            }];
+    }
+    if (action.actionId === MARKET_SELL_LOCOMOTIVE_ACTION_ID) {
+        return [{
+                name: "locomotiveId",
+                label: "Локомотив",
+                kind: "select",
+                required: true,
+                options: locomotiveSelectOptions(projection)
+            }];
+    }
+    if (action.actionId === NEWS_EFFECT_19_PREPARE_TEAM_ACTION_ID) {
+        return [{
+                name: "teamId",
+                label: "Команда",
+                kind: "select",
+                required: true,
+                options: teamSelectOptions(projection)
+            }];
+    }
+    if (action.actionId === NEWS_EFFECT_19_REMOVE_LOCOMOTIVE_ACTION_ID
+        || action.actionId === NEWS_EFFECT_19_REMOVE_WAGON_ACTION_ID) {
+        const removesLocomotive = action.actionId === NEWS_EFFECT_19_REMOVE_LOCOMOTIVE_ACTION_ID;
+        return [{
+                name: "teamId",
+                label: "Команда",
+                kind: "select",
+                required: true,
+                options: teamSelectOptions(projection)
+            }, {
+                name: removesLocomotive ? "locomotiveId" : "wagonId",
+                label: removesLocomotive ? "Локомотив" : "Вагон",
+                kind: "select",
+                required: true,
+                options: removesLocomotive
+                    ? locomotiveSelectOptions(projection)
+                    : wagonSelectOptions(projection)
             }];
     }
     if (ECONOMY_ACTION_IDS.has(action.actionId)) {
@@ -3263,6 +3369,7 @@ const actionFields = (action, projection) => {
 };
 /** Cargo workflows accept only their explicit form fields, never hidden defaults. */
 const omitsFixedParams = (actionId) => EXPLICIT_FORM_ACTION_IDS.has(actionId)
+    || REQUIRED_INPUT_ACTION_IDS.has(actionId)
     || PARAMETERLESS_LIFECYCLE_ACTION_IDS.has(actionId)
     || ECONOMY_ACTION_IDS.has(actionId)
     || actionId.startsWith("news.effect.apply.")
@@ -3330,6 +3437,10 @@ const final_results_presentation_ts_1 = __pluginRequire("src/final-results-prese
 const isRecord = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
 const finiteNumber = (value) => typeof value === "number" && Number.isFinite(value) ? value : null;
 const text = (value) => typeof value === "string" && value.trim().length > 0 ? value : null;
+const boundedText = (value, maximumLength) => {
+    const candidate = text(value);
+    return candidate !== null && candidate.length <= maximumLength ? candidate : null;
+};
 /** Keep the UI parser aligned with the manifest's bounded locomotive-order type. */
 const MAX_LOCOMOTIVE_ORDER_ITEMS = 64;
 /**
@@ -3513,6 +3624,48 @@ const readCurrentNews = (publicState, currentNewsId) => {
         text: text(attributes.text)
     };
 };
+const METHODOLOGY_PAUSE_STATUSES = new Set([
+    "scheduled", "active", "deferred", "completed"
+]);
+const readMethodology = (publicState) => {
+    const methodology = isRecord(publicState.methodology) ? publicState.methodology : null;
+    if (!methodology)
+        return null;
+    const pauses = isRecord(methodology.pauses) ? methodology.pauses : null;
+    if (!pauses)
+        return null;
+    const parsed = [pauses.first, pauses.second].flatMap((raw) => {
+        if (!isRecord(raw))
+            return [];
+        const id = text(raw.id);
+        const title = boundedText(raw.title, 120);
+        const timing = boundedText(raw.timing, 400);
+        const status = text(raw.status);
+        const dueTurn = finiteNumber(raw.dueTurn);
+        if (!id || !title || !timing || !status || !METHODOLOGY_PAUSE_STATUSES.has(status)
+            || dueTurn === null || !Number.isInteger(dueTurn) || dueTurn < 1
+            || !Array.isArray(raw.prompts) || raw.prompts.length === 0 || raw.prompts.length > 8)
+            return [];
+        const prompts = raw.prompts.map((prompt) => boundedText(prompt, 240));
+        if (prompts.some((prompt) => prompt === null))
+            return [];
+        return [{
+                id,
+                title,
+                timing,
+                prompts: prompts,
+                status: status,
+                dueTurn
+            }];
+    });
+    if (parsed.length !== 2
+        || new Set(parsed.map((pause) => pause.id)).size !== parsed.length)
+        return null;
+    const activePauseId = text(methodology.activePauseId);
+    if (activePauseId && !parsed.some((pause) => pause.id === activePauseId))
+        return null;
+    return { activePauseId, pauses: parsed };
+};
 const readHighlights = (board) => {
     if (!Array.isArray(board.highlights))
         return [];
@@ -3631,6 +3784,7 @@ function projectBoardSession(session) {
         ...movement,
         currentNewsId,
         currentNews: readCurrentNews(publicState, currentNewsId),
+        methodology: readMethodology(publicState),
         finalResults: (0, final_results_presentation_ts_1.readFinalResults)(publicState.finalResults, teams, phase)
     };
 }
@@ -4708,6 +4862,7 @@ __pluginDefine("src/facilitator-hud.ts", (exports, module) => {
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.isFacilitatorHudPhase = isFacilitatorHudPhase;
+exports.selectMethodologyPause = selectMethodologyPause;
 exports.buildFacilitatorTeamSummaries = buildFacilitatorTeamSummaries;
 exports.readFinalReflectionGuide = readFinalReflectionGuide;
 exports.facilitatorTeamSummaryLabel = facilitatorTeamSummaryLabel;
@@ -4728,6 +4883,22 @@ const boundedText = (value, maximumLength) => {
  */
 function isFacilitatorHudPhase(phase) {
     return phase === "reporting" || phase === "methodology-pause";
+}
+/**
+ * Surface only a Runtime-published active pause or the next due reminder.
+ * This orders public records for display; it does not decide pause eligibility.
+ */
+function selectMethodologyPause(projection) {
+    const methodology = projection.methodology;
+    if (!methodology)
+        return null;
+    if (methodology.activePauseId) {
+        return methodology.pauses.find((pause) => pause.id === methodology.activePauseId) ?? null;
+    }
+    return methodology.pauses
+        .filter((pause) => (pause.status === "scheduled" || pause.status === "deferred")
+        && pause.dueTurn <= projection.turnNumber)
+        .sort((left, right) => left.dueTurn - right.dueTurn)[0] ?? null;
 }
 /**
  * Count only vehicles whose current public owner is an existing team.

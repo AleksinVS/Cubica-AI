@@ -728,6 +728,7 @@ export class GamePresenter {
     this.session = {
       sessionId: next.sessionId,
       gameId: this.config.gameId,
+      participants: next.participants,
       version: next.version,
       state: next.state,
       actionAvailability: next.actionAvailability
