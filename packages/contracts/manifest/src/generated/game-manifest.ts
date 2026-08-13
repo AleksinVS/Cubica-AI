@@ -188,56 +188,12 @@ export interface GameManifestAgentSeatConfig {
   invalidAttemptLimit: number;
   /**
    * @minItems 1
-   * @maxItems 8
+   * @maxItems 73
    */
-  deterministicFallbackCandidates:
-    | [GameManifestAgentSeatFallbackCandidate]
-    | [GameManifestAgentSeatFallbackCandidate, GameManifestAgentSeatFallbackCandidate]
-    | [
-        GameManifestAgentSeatFallbackCandidate,
-        GameManifestAgentSeatFallbackCandidate,
-        GameManifestAgentSeatFallbackCandidate
-      ]
-    | [
-        GameManifestAgentSeatFallbackCandidate,
-        GameManifestAgentSeatFallbackCandidate,
-        GameManifestAgentSeatFallbackCandidate,
-        GameManifestAgentSeatFallbackCandidate
-      ]
-    | [
-        GameManifestAgentSeatFallbackCandidate,
-        GameManifestAgentSeatFallbackCandidate,
-        GameManifestAgentSeatFallbackCandidate,
-        GameManifestAgentSeatFallbackCandidate,
-        GameManifestAgentSeatFallbackCandidate
-      ]
-    | [
-        GameManifestAgentSeatFallbackCandidate,
-        GameManifestAgentSeatFallbackCandidate,
-        GameManifestAgentSeatFallbackCandidate,
-        GameManifestAgentSeatFallbackCandidate,
-        GameManifestAgentSeatFallbackCandidate,
-        GameManifestAgentSeatFallbackCandidate
-      ]
-    | [
-        GameManifestAgentSeatFallbackCandidate,
-        GameManifestAgentSeatFallbackCandidate,
-        GameManifestAgentSeatFallbackCandidate,
-        GameManifestAgentSeatFallbackCandidate,
-        GameManifestAgentSeatFallbackCandidate,
-        GameManifestAgentSeatFallbackCandidate,
-        GameManifestAgentSeatFallbackCandidate
-      ]
-    | [
-        GameManifestAgentSeatFallbackCandidate,
-        GameManifestAgentSeatFallbackCandidate,
-        GameManifestAgentSeatFallbackCandidate,
-        GameManifestAgentSeatFallbackCandidate,
-        GameManifestAgentSeatFallbackCandidate,
-        GameManifestAgentSeatFallbackCandidate,
-        GameManifestAgentSeatFallbackCandidate,
-        GameManifestAgentSeatFallbackCandidate
-      ];
+  deterministicFallbackCandidates: [
+    GameManifestAgentSeatFallbackCandidate,
+    ...GameManifestAgentSeatFallbackCandidate[]
+  ];
 }
 /**
  * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema

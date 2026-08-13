@@ -163,12 +163,22 @@ describe("shipped game manifests validate against game-manifest.schema.json", ()
     invalidAttemptLimit.config.players.agentSeats.invalidAttemptLimit = 0;
     expect(validateGameManifest(invalidAttemptLimit)).toBe(false);
 
-    const excessiveFallbacks = structuredClone(neutral);
-    excessiveFallbacks.config.players.agentSeats.deterministicFallbackCandidates = Array.from(
-      { length: 9 },
+    const maximumFallbacks = structuredClone(neutral);
+    maximumFallbacks.config.players.agentSeats.deterministicFallbackCandidates = Array.from(
+      { length: 73 },
       (_, index) => ({ actionId: `turn.pass-${index}`, params: {} })
     );
+    expect(validateGameManifest(maximumFallbacks)).toBe(true);
+
+    const excessiveFallbacks = structuredClone(maximumFallbacks);
+    excessiveFallbacks.config.players.agentSeats.deterministicFallbackCandidates.push({
+      actionId: "turn.pass-73",
+      params: {}
+    });
     expect(validateGameManifest(excessiveFallbacks)).toBe(false);
+    expect(formatErrors(validateGameManifest)).toContain(
+      "/config/players/agentSeats/deterministicFallbackCandidates must NOT have more than 73 items"
+    );
   });
 
   for (const filePath of gameManifestFiles) {

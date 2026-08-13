@@ -84,8 +84,16 @@ test("the same bounded driver handles a session whose initial active participant
   }
 });
 
-test("invalid provider selections never mutate and ordered fallback commits the first valid candidate once", async () => {
+test("73 ordered fallbacks reject ordinary guard and parameter failures before the final atomic commit", async () => {
   let calls = 0;
+  const fallbacks = Array.from(
+    { length: 72 },
+    (_, index) => index % 2 === 0
+      ? { actionId: "turn.only-human", params: {} }
+      : { actionId: "turn.with-param", params: {} }
+  );
+  fallbacks.push({ actionId: "turn.to-human", params: {} });
+  assert.equal(fallbacks.length, 73);
   const fixture = await createFixture(async (input) => {
     calls += 1;
     return calls === 1
@@ -93,21 +101,31 @@ test("invalid provider selections never mutate and ordered fallback commits the 
       : selected(input, "turn.with-param");
   }, {
     invalidAttemptLimit: 2,
-    fallbacks: [
-      { actionId: "turn.only-human", params: {} },
-      { actionId: "turn.to-human", params: {} }
-    ]
+    fallbacks
   });
   try {
+    const command = humanCommand(fixture.sessionId);
     const result = await fixture.runtime.dispatch({
       sessionStore: fixture.store,
       accessToken: fixture.access.accessToken,
-      input: humanCommand(fixture.sessionId)
+      input: command
     });
     assert.equal(calls, 2);
     assert.equal(result.response.version.stateVersion, 2);
-    assert.equal(readCount(result.response.state), 2, "only human action and one fallback may commit");
+    assert.equal(
+      readCount(result.response.state),
+      2,
+      "rejected candidate states must not leak a partial mutation"
+    );
     assert.equal(activePlayer(result.response.state), "p1");
+
+    const retry = await fixture.runtime.dispatch({
+      sessionStore: fixture.store,
+      accessToken: fixture.access.accessToken,
+      input: command
+    });
+    assert.equal(calls, 2, "the exact receipt must suppress provider and fallback replay");
+    assert.deepEqual(retry.response, result.response);
   } finally {
     await fixture.store.close();
   }

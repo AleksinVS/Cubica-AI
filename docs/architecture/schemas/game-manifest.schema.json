@@ -1216,7 +1216,7 @@
         "deterministicFallbackCandidates": {
           "type": "array",
           "minItems": 1,
-          "maxItems": 8,
+          "maxItems": 73,
           "items": {
             "$ref": "#/definitions/GameManifestAgentSeatFallbackCandidate"
           }
