@@ -12,7 +12,9 @@ export type ProductKnowledgeContracts =
   | ConversationTurn
   | ModelGatewayRequest
   | ModelGatewayResult
-  | ShadowContentFreeMetric;
+  | ShadowContentFreeMetric
+  | ShadowEvaluationManifest
+  | ShadowEvaluationReport;
 export type SchemaVersion = '1.0.0';
 export type RoleScope = 'developer' | 'facilitator' | 'global';
 export type CubicaUri = string;
@@ -143,6 +145,7 @@ export type ModelGatewayResult = {
   outcome: 'proposal' | 'no_change';
   proposal: ExactPatchProposal | null;
 };
+export type ShadowEvaluationReview = boolean | null;
 
 export interface KnowledgePage {
   schema_version: SchemaVersion;
@@ -331,13 +334,96 @@ export interface ShadowContentFreeMetric {
     | 'gateway_malformed'
     | 'gateway_oversize'
     | 'gateway_error'
+    | 'gateway_retry_scheduled'
+    | 'gateway_blocked'
     | 'gateway_outcome_unknown';
   duration_ms: number;
   input_bytes: number;
   output_bytes: number;
   proposal_operation_count: number;
+  attempt_number?: number;
   authorization_revision: Sha256;
   external_processing_policy_ref: string;
   external_processing_policy_revision: string;
   recorded_at: string;
+}
+export interface ShadowEvaluationManifest {
+  schema_version: SchemaVersion;
+  shadow_principal_ref: CubicaUri;
+  /**
+   * @minItems 1
+   * @maxItems 1
+   */
+  applies_to: ShadowGameUri[];
+  expected_git_head: string;
+  /**
+   * @minItems 5
+   * @maxItems 5
+   */
+  scenarios: ShadowEvaluationScenario[];
+}
+export interface ShadowEvaluationScenario {
+  category:
+    | 'transient_conversation'
+    | 'existing_fact'
+    | 'unconfirmed_agent_suggestion'
+    | 'confirmed_new_knowledge'
+    | 'correction';
+  stable_turn_key: string;
+}
+export interface ShadowEvaluationReport {
+  schema_version: SchemaVersion;
+  status: 'ready' | 'awaiting_review' | 'ready_for_cleanup' | 'hard_stopped' | 'completed';
+  /**
+   * @minItems 5
+   * @maxItems 5
+   */
+  scenarios: ShadowEvaluationScenarioReport[];
+  git_unchanged: boolean;
+  cleanup: ShadowEvaluationCleanup;
+}
+export interface ShadowEvaluationScenarioReport {
+  category:
+    | 'transient_conversation'
+    | 'existing_fact'
+    | 'unconfirmed_agent_suggestion'
+    | 'confirmed_new_knowledge'
+    | 'correction';
+  expected_outcome: 'no_change' | 'proposal';
+  actual_outcome:
+    | 'pending'
+    | 'no_change'
+    | 'proposal'
+    | 'gateway_error'
+    | 'schema_error'
+    | 'authorization_error'
+    | 'mismatch'
+    | 'git_drift'
+    | 'unavailable';
+  review_expected_outcome: ShadowEvaluationReview;
+  review_all_and_only_confirmed_facts: ShadowEvaluationReview;
+  review_correct_page_minimal_patch: ShadowEvaluationReview;
+  review_no_duplicate_contradiction_unrelated_rewrite: ShadowEvaluationReview;
+  operation_count: number;
+  duration_ms: number;
+  input_bytes: number;
+  output_bytes: number;
+  git_unchanged: boolean;
+}
+export interface ShadowEvaluationCleanup {
+  started: boolean;
+  initial_runs: number;
+  initial_metrics: number;
+  initial_messages: number;
+  initial_threads: number;
+  active_runs: number;
+  active_metrics: number;
+  active_messages: number;
+  active_threads: number;
+  active_text_bytes: number;
+  runs_deleted: number;
+  metrics_deleted: number;
+  messages_tombstoned: number;
+  threads_tombstoned: number;
+  passed: boolean;
 }

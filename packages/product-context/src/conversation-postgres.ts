@@ -27,7 +27,8 @@ const METRICS = 'product_context_shadow.shadow_metrics';
 const cubicaRefPattern = /^cubica:\/\/[a-z][a-z0-9-]*(?:\/[A-Za-z0-9._~-]+)+$/;
 
 export type ShadowRunOutcome = ShadowContentFreeMetric['outcome'];
-export type ShadowRunStatus = 'pending' | 'calling_model' | 'succeeded' | 'denied' | 'failed';
+export type TerminalShadowRunOutcome = Exclude<ShadowRunOutcome, 'success' | 'no_change' | 'disabled' | 'gateway_retry_scheduled'>;
+export type ShadowRunStatus = 'pending' | 'leased' | 'calling_model' | 'retry_wait' | 'succeeded' | 'denied' | 'failed' | 'blocked';
 
 export interface ShadowRunRecord {
   readonly runId: string;
@@ -70,8 +71,13 @@ export interface ShadowConversationStore {
   createRun(receipt: ShadowAuthorizationReceipt, turn: ConversationTurn, retainedUntil: Date): Promise<ShadowRunRecord>;
   claimRun(ownerRef: string, runId: string, requestId: string, leaseMs: number, now?: Date): Promise<ClaimRunResult>;
   completeRun(ownerRef: string, runId: string, result: ModelGatewayResult, outcome: Extract<ShadowRunOutcome, 'success' | 'no_change'>, metric: ShadowContentFreeMetric, now?: Date): Promise<ShadowRunRecord>;
-  failRun(ownerRef: string, runId: string, outcome: Exclude<ShadowRunOutcome, 'success' | 'no_change' | 'disabled'>, metric: ShadowContentFreeMetric, now?: Date): Promise<ShadowRunRecord>;
+  failRun(ownerRef: string, runId: string, outcome: TerminalShadowRunOutcome, metric: ShadowContentFreeMetric, now?: Date): Promise<ShadowRunRecord>;
   cleanupExpired(limit?: number): Promise<ShadowCleanupResult>;
+}
+
+/** Atomic enqueue port; implementations must commit the turn and run together. */
+export interface AtomicShadowEnqueueStore {
+  appendExactTurnAndCreateRun(input: AppendExactTurnInput, receipt: ShadowAuthorizationReceipt): Promise<ShadowRunRecord>;
 }
 
 export interface ClaimRunResult { readonly kind: 'claimed' | 'in_progress' | 'terminal'; readonly run: ShadowRunRecord; }
@@ -89,14 +95,30 @@ export class PostgresConversationStore implements ShadowConversationStore {
     if (!Number.isSafeInteger(maxRequestBytes) || maxRequestBytes <= 0) throw new TypeError('A positive request byte limit is required.');
   }
 
+  async appendExactTurnAndCreateRun(input: AppendExactTurnInput, receipt: ShadowAuthorizationReceipt): Promise<ShadowRunRecord> {
+    assertAppendInput(input, this.maxRequestBytes);
+    assertReceipt(receipt);
+    if (receipt.shadow_principal_ref !== input.ownerRef || receipt.applies_to[0] !== input.gameRef) {
+      throw new ConversationConflictError();
+    }
+    const now = input.now ?? new Date();
+    if (input.retainedUntil.getTime() <= now.getTime()) throw new TypeError('Retention must end after creation.');
+    return this.withPrincipal(input.ownerRef, async (client) => {
+      const turn = await this.appendExactTurnInTransaction(client, input, now);
+      return this.createRunInTransaction(client, receipt, turn, input.retainedUntil);
+    });
+  }
+
   async appendExactTurn(input: AppendExactTurnInput): Promise<ConversationTurn> {
     assertAppendInput(input, this.maxRequestBytes);
     const now = input.now ?? new Date();
     if (input.retainedUntil.getTime() <= now.getTime()) throw new TypeError('Retention must end after creation.');
-    const user = messageIdentity(input, 'user', input.userBytes);
-    const agent = messageIdentity(input, 'agent', input.agentBytes);
+    return this.withPrincipal(input.ownerRef, (client) => this.appendExactTurnInTransaction(client, input, now));
+  }
 
-    return this.withPrincipal(input.ownerRef, async (client) => {
+  private async appendExactTurnInTransaction(client: PoolClient, input: AppendExactTurnInput, now: Date): Promise<ConversationTurn> {
+      const user = messageIdentity(input, 'user', input.userBytes);
+      const agent = messageIdentity(input, 'agent', input.agentBytes);
       await client.query(`
         INSERT INTO ${THREADS} AS thread (thread_ref, owner_ref, game_ref, retained_until, created_at, updated_at)
         VALUES ($1, $2, $3, $4, $5, $5)
@@ -147,7 +169,6 @@ export class PostgresConversationStore implements ShadowConversationStore {
         SELECT * FROM ${MESSAGES} WHERE thread_ref = $1 AND stable_turn_key = $2 ORDER BY sequence
       `, [input.threadRef, input.stableTurnKey]);
       return turnFromRows(input.threadRef, input.stableTurnKey, inserted.rows);
-    });
   }
 
   async rereadExactTurn(ownerRef: string, turn: ConversationTurn): Promise<ConversationTurn | null> {
@@ -182,9 +203,12 @@ export class PostgresConversationStore implements ShadowConversationStore {
   async createRun(receipt: ShadowAuthorizationReceipt, turn: ConversationTurn, retainedUntil: Date): Promise<ShadowRunRecord> {
     assertReceipt(receipt);
     assertTurn(turn);
-    const ownerRef = receipt.shadow_principal_ref;
-    const runId = `shadowrun_${digestId(`${ownerRef}\n${turn.stable_turn_key}`)}`;
-    return this.withPrincipal(ownerRef, async (client) => {
+    return this.withPrincipal(receipt.shadow_principal_ref, (client) => this.createRunInTransaction(client, receipt, turn, retainedUntil));
+  }
+
+  private async createRunInTransaction(client: PoolClient, receipt: ShadowAuthorizationReceipt, turn: ConversationTurn, retainedUntil: Date): Promise<ShadowRunRecord> {
+      const ownerRef = receipt.shadow_principal_ref;
+      const runId = `shadowrun_${digestId(`${ownerRef}\n${turn.stable_turn_key}`)}`;
       await client.query(`
         INSERT INTO ${RUNS} (
           run_id, owner_ref, thread_ref, stable_turn_key, authorization_revision,
@@ -204,10 +228,9 @@ export class PostgresConversationStore implements ShadowConversationStore {
       if (run.runId !== runId || !sameReceiptAuthorization(run.receipt, receipt) || !runMatchesTurn(run, turn)) throw new ConversationConflictError();
       if (isTerminal(run.status)) {
         const terminalMetric = await client.query(`SELECT metric_id FROM ${METRICS} WHERE run_id = $1`, [run.runId]);
-        if (terminalMetric.rowCount !== 1) throw new ConversationUnavailableError();
+        if ((terminalMetric.rowCount ?? 0) < 1) throw new ConversationUnavailableError();
       }
       return run;
-    });
   }
 
   async claimRun(ownerRef: string, runId: string, requestId: string, leaseMs: number, now = new Date()): Promise<ClaimRunResult> {
@@ -266,7 +289,7 @@ export class PostgresConversationStore implements ShadowConversationStore {
     });
   }
 
-  async failRun(ownerRef: string, runId: string, outcome: Exclude<ShadowRunOutcome, 'success' | 'no_change' | 'disabled'>, metric: ShadowContentFreeMetric, now = new Date()): Promise<ShadowRunRecord> {
+  async failRun(ownerRef: string, runId: string, outcome: TerminalShadowRunOutcome, metric: ShadowContentFreeMetric, now = new Date()): Promise<ShadowRunRecord> {
     assertMetric(metric, runId, outcome);
     const status = outcome === 'policy_denied' || outcome === 'authorization_changed' ? 'denied' : 'failed';
     return this.withPrincipal(ownerRef, async (client) => {
@@ -284,6 +307,7 @@ export class PostgresConversationStore implements ShadowConversationStore {
     let discard = false;
     try {
       await client.query('BEGIN'); began = true;
+      await verifyDedicatedShadowAppLogin(client);
       await client.query('SET LOCAL ROLE product_context_shadow_app');
       const result = await client.query<{ runs_deleted: number; messages_tombstoned: number; threads_tombstoned: number }>(
         'SELECT * FROM product_context_shadow.cleanup_expired($1)', [limit]
@@ -305,6 +329,7 @@ export class PostgresConversationStore implements ShadowConversationStore {
     try {
       await client.query('BEGIN');
       began = true;
+      await verifyDedicatedShadowAppLogin(client);
       await client.query('SET LOCAL ROLE product_context_shadow_app');
       await client.query("SELECT set_config('cubica.shadow_principal_ref', $1, true)", [ownerRef]);
       const value = await work(client);
@@ -321,6 +346,20 @@ export class PostgresConversationStore implements ShadowConversationStore {
       client.release(discard);
     }
   }
+}
+
+async function verifyDedicatedShadowAppLogin(client: PoolClient): Promise<void> {
+  const result = await client.query<{ ready: boolean }>(`
+    SELECT session_user = current_user AND login.rolcanlogin AND NOT login.rolsuper AND
+      NOT login.rolcreatedb AND NOT login.rolcreaterole AND NOT login.rolreplication AND
+      NOT login.rolbypassrls AND NOT login.rolinherit AND
+      (SELECT count(*) = 1 AND bool_and(granted.rolname = 'product_context_shadow_app')
+       FROM pg_auth_members AS membership
+       JOIN pg_roles AS granted ON granted.oid = membership.roleid
+       WHERE membership.member = login.oid) AS ready
+    FROM pg_roles AS login WHERE login.rolname = session_user
+  `);
+  if (result.rows[0]?.ready !== true) throw new Error('Dedicated shadow app login is required.');
 }
 
 interface MessageRow {
@@ -404,7 +443,7 @@ async function terminalizeRun(
   client: PoolClient,
   run: RunRow,
   status: 'denied' | 'failed',
-  outcome: Exclude<ShadowRunOutcome, 'success' | 'no_change' | 'disabled'>,
+  outcome: TerminalShadowRunOutcome,
   metric: ShadowContentFreeMetric,
   now: Date
 ): Promise<ShadowRunRecord> {
@@ -437,7 +476,7 @@ async function insertMetric(client: PoolClient, ownerRef: string, metric: Shadow
   ]);
 }
 
-function metricFromRun(run: RunRow, outcome: Exclude<ShadowRunOutcome, 'success' | 'no_change' | 'disabled'>, requestId: string | null, now: Date): ShadowContentFreeMetric {
+function metricFromRun(run: RunRow, outcome: TerminalShadowRunOutcome, requestId: string | null, now: Date): ShadowContentFreeMetric {
   return {
     schema_version: '1.0.0', metric_id: `metric_${digestId(run.run_id)}`, run_id: run.run_id,
     request_id: requestId, outcome, duration_ms: 0, input_bytes: 0, output_bytes: 0,
@@ -453,7 +492,7 @@ function assertMetric(metric: ShadowContentFreeMetric, runId: string, outcome: S
       metric.run_id !== runId || metric.outcome !== outcome) throw new TypeError('Invalid content-free metric.');
 }
 
-function isTerminal(status: ShadowRunStatus): boolean { return status === 'succeeded' || status === 'denied' || status === 'failed'; }
+function isTerminal(status: ShadowRunStatus): boolean { return status === 'succeeded' || status === 'denied' || status === 'failed' || status === 'blocked'; }
 
 function messageIdentity(input: AppendExactTurnInput, actor: 'user' | 'agent', bytes: Uint8Array) {
   return {

@@ -4,8 +4,11 @@ const assert = require('node:assert/strict');
 const test = require('node:test');
 const {
   authorizeProductContextShadow,
+  reauthorizeProductContextShadowWorker,
   buildShadowPrincipalRef,
+  workerSignaturePayload,
 } = require('../src/utils/product-context-shadow-authorization');
+const { createHmac } = require('node:crypto');
 const shadowRoutes = require('../src/api/product-context/routes/01-shadow-authorization');
 
 const enabledEnv = {
@@ -17,6 +20,7 @@ const enabledEnv = {
   CUBICA_PRODUCT_CONTEXT_SHADOW_PORTAL_USER_ID: '7',
   CUBICA_PRODUCT_CONTEXT_SHADOW_GAME_DOCUMENT_ID: 'game-1',
   CUBICA_PRODUCT_CONTEXT_SHADOW_DEVELOPER_ROLE_ID: '2',
+  CUBICA_PRODUCT_CONTEXT_SHADOW_REAUTHORIZATION_KEY: 'w'.repeat(32),
 };
 
 function strapiWith({ portalUser = null, game = null } = {}) {
@@ -150,12 +154,45 @@ test('binding is deterministic per user and separates users', () => {
   assert.notEqual(buildShadowPrincipalRef(key, 1), buildShadowPrincipalRef(key, 2));
 });
 
+test('worker HMAC reauthorization rereads blocked, role and ownership without a bearer', async () => {
+  const now = new Date('2026-08-09T12:00:00.000Z');
+  const body = {
+    shadowPrincipalRef: buildShadowPrincipalRef(enabledEnv.CUBICA_PRODUCT_CONTEXT_SHADOW_BINDING_KEY, 7),
+    gameDocumentId: 'game-1', authorizationRevision: `sha256:${'a'.repeat(64)}`, issuedAt: now.toISOString(),
+  };
+  const signature = createHmac('sha256', enabledEnv.CUBICA_PRODUCT_CONTEXT_SHADOW_REAUTHORIZATION_KEY).update(workerSignaturePayload(body)).digest('hex');
+  const portalUser = { id: 7, role: { id: 2 } };
+  const game = { documentId: 'game-1', developed_by: { id: 7 } };
+  const strapi = strapiWith({ portalUser, game });
+  assert.equal((await reauthorizeProductContextShadowWorker({ strapi, body, signature, env: enabledEnv, now })).status, 200);
+  portalUser.blocked = true;
+  assert.equal((await reauthorizeProductContextShadowWorker({ strapi, body, signature, env: enabledEnv, now })).status, 401);
+  portalUser.blocked = false; portalUser.role = { id: 3 };
+  assert.equal((await reauthorizeProductContextShadowWorker({ strapi, body, signature, env: enabledEnv, now })).body.reason, 'developer_role_required');
+  portalUser.role = { id: 2 }; game.developed_by = { id: 8 };
+  assert.equal((await reauthorizeProductContextShadowWorker({ strapi, body, signature, env: enabledEnv, now })).body.reason, 'game_not_owned');
+});
+
+test('worker reauthorization rejects forged, expired, or bearer-shaped requests', async () => {
+  const now = new Date('2026-08-09T12:00:00.000Z');
+  const body = { shadowPrincipalRef: buildShadowPrincipalRef(enabledEnv.CUBICA_PRODUCT_CONTEXT_SHADOW_BINDING_KEY, 7), gameDocumentId:'game-1', authorizationRevision:`sha256:${'a'.repeat(64)}`, issuedAt:now.toISOString() };
+  const strapi = strapiWith({ portalUser:{ id:7,role:{id:2} }, game:{ documentId:'game-1',developed_by:{id:7} } });
+  assert.equal((await reauthorizeProductContextShadowWorker({ strapi, body, signature:'0'.repeat(64), env:enabledEnv, now })).status, 401);
+  const expired = { ...body, issuedAt:new Date(now.getTime()-120_000).toISOString() };
+  const expiredSignature = createHmac('sha256',enabledEnv.CUBICA_PRODUCT_CONTEXT_SHADOW_REAUTHORIZATION_KEY).update(workerSignaturePayload(expired)).digest('hex');
+  assert.equal((await reauthorizeProductContextShadowWorker({ strapi, body:expired, signature:expiredSignature, env:enabledEnv, now })).status, 401);
+  assert.equal((await reauthorizeProductContextShadowWorker({ strapi, body:{...body,authorization:'Bearer secret'}, signature:'0'.repeat(64), env:enabledEnv, now })).status, 400);
+});
+
 test('Strapi route keeps authentication enabled without a generated role-permission scope', async () => {
-  assert.equal(shadowRoutes.routes.length, 1);
+  assert.equal(shadowRoutes.routes.length, 2);
   const route = shadowRoutes.routes[0];
   assert.equal(typeof route.handler, 'function');
   assert.notEqual(route.config?.auth, false);
   assert.equal(route.config?.auth?.scope, undefined);
+  const workerRoute = shadowRoutes.routes[1];
+  assert.equal(workerRoute.path, '/product-context/shadow-worker-reauthorization');
+  assert.equal(workerRoute.config.auth, false);
 
   const originalStrapi = global.strapi;
   const marker = { status: 200 };
@@ -168,12 +205,18 @@ test('Strapi route keeps authentication enabled without a generated role-permiss
           receivedContext = ctx;
           return marker;
         },
+        shadowWorkerReauthorization(ctx) {
+          receivedContext = ctx;
+          return marker;
+        },
       };
     },
   };
   const context = { state: { user: { id: 7 } } };
   try {
     assert.equal(await route.handler(context), marker);
+    assert.equal(receivedContext, context);
+    assert.equal(await workerRoute.handler(context), marker);
     assert.equal(receivedContext, context);
   } finally {
     global.strapi = originalStrapi;

@@ -9,10 +9,14 @@
 import { validateProductKnowledgeContract, verifyExactPatchProposalHash } from './contracts.ts';
 import type { ModelGatewayRequest, ModelGatewayResult } from './generated/product-knowledge.ts';
 
-export type ModelGatewayErrorCode = 'policy_denied' | 'invalid_request' | 'timeout' | 'oversize_output' | 'malformed_output' | 'transport_error';
+export type ModelGatewayErrorCode = 'policy_denied' | 'invalid_request' | 'timeout' | 'oversize_output' | 'malformed_output' | 'transport_error' | 'outcome_unknown';
 
 export class ModelGatewayError extends Error {
-  constructor(readonly code: ModelGatewayErrorCode) {
+  constructor(
+    readonly code: ModelGatewayErrorCode,
+    readonly providerCode: string | null = null,
+    readonly httpStatus: number | null = null
+  ) {
     super(`Shadow model gateway failed: ${code}.`);
     this.name = 'ModelGatewayError';
   }
