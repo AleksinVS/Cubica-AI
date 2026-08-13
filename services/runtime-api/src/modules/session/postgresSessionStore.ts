@@ -19,7 +19,6 @@ import type {
   SessionCommandTransactionInput,
   SessionEventRecord,
   SessionPrincipal,
-  SessionParticipant,
   SessionPublicJournalSource,
   SessionRecord,
   SessionRole,
@@ -1327,13 +1326,20 @@ function requireSingleRow<TRow extends QueryResultRow>(result: QueryResult<TRow>
 }
 
 function mapSessionRow<TState>(row: SessionRow): SessionRecord<TState> {
+  const participants = structuredClone(row.participants);
+  const state = row.state as TState;
+  try {
+    assertSessionParticipantsMatchState(participants, state, { allowAgents: true });
+  } catch {
+    throw new SessionStoreUnavailableError();
+  }
   const session: SessionRecord<TState> = {
     sessionId: row.session_id,
     gameId: row.game_id,
     bundleHash: row.bundle_hash,
     ...(row.content_source_id === null ? {} : { contentSourceId: row.content_source_id }),
-    participants: parseSessionParticipants(row.participants),
-    state: row.state as TState,
+    participants,
+    state,
     ...(row.session_role === null ? {} : { sessionRole: row.session_role }),
     version: {
       sessionId: row.session_id,
@@ -1343,11 +1349,6 @@ function mapSessionRow<TState>(row: SessionRow): SessionRecord<TState> {
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at)
   };
-  try {
-    assertSessionParticipantsMatchState(session.participants, session.state, { allowAgents: true });
-  } catch {
-    throw new SessionStoreUnavailableError();
-  }
   return session;
 }
 
@@ -1447,11 +1448,6 @@ function parseActorScope(value: unknown): SessionPrincipal["actorScope"] {
     return { kind: "listed-actors", actorIds: requireStringArray(record.actorIds) };
   }
   throw new SessionStoreUnavailableError();
-}
-
-function parseSessionParticipants(value: unknown): ReadonlyArray<SessionParticipant> {
-  if (!Array.isArray(value)) throw new SessionStoreUnavailableError();
-  return structuredClone(value) as ReadonlyArray<SessionParticipant>;
 }
 
 function requireRecord(value: unknown): Record<string, unknown> {

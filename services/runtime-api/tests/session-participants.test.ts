@@ -147,7 +147,7 @@ test("migration 004 deletes sessions before the required column and preserves bu
   assert.ok(up.indexOf("DELETE FROM game_sessions") < up.indexOf("DROP COLUMN player_id"));
   assert.match(up, /DROP COLUMN player_id/u);
   assert.doesNotMatch(up, /DELETE FROM game_bundles/u);
-  assert.match(up, /jsonb_typeof\(participants\) = 'array'/u);
+  assert.doesNotMatch(up, /CHECK|jsonb_typeof|jsonb_array_length/u);
   assert.doesNotMatch(up, /seatId|playerId|joinState/u);
   assert.match(ledger, /REFERENCES game_sessions\(id\) ON DELETE CASCADE/u);
   assert.match(schedules, /REFERENCES game_sessions\(id, bundle_hash\) ON DELETE CASCADE/u);
