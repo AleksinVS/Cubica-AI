@@ -65,6 +65,7 @@ function session(sequence: number): GameSession {
   return {
     sessionId: "session-1",
     gameId: content.gameId,
+    participants: [{ seatId: "p1", playerId: "p1", kind: "human", joinState: "local" }],
     version: {
       sessionId: "session-1",
       stateVersion: sequence,

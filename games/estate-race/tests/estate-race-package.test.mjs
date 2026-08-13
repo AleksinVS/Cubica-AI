@@ -24,6 +24,7 @@ import { dispatchRuntimeAction } from "../../../services/runtime-api/src/modules
 import { projectSessionActionAvailability } from "../../../services/runtime-api/src/modules/runtime/actionAvailability.ts";
 import { InMemorySessionStore } from "../../../services/runtime-api/src/modules/session/inMemorySessionStore.ts";
 import { buildPlayerSessionProjection } from "../../../services/runtime-api/src/modules/session/playerSessionProjection.ts";
+import { materializeLocalSessionParticipants } from "../../../services/runtime-api/src/modules/session/sessionParticipants.ts";
 import { initializeTurnBasedSessionState } from "../../../services/runtime-api/src/modules/session/turnBasedSessionState.ts";
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -93,6 +94,7 @@ const createReplay = async (mutateState, {
     gameId: manifest.meta.id,
     sessionRole: "player",
     initialState,
+    participants: materializeLocalSessionParticipants(initialState, participantCount),
     immutableBundle,
     principal: {
       principalId: "estate-race-test-controller",

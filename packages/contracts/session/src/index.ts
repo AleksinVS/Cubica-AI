@@ -4,6 +4,7 @@ export type EventId = string;
 export type * from "./generated/public-gameplay-journal.ts";
 import type { SessionParticipant } from "./generated/session-participant.ts";
 export type { SessionParticipant } from "./generated/session-participant.ts";
+export { validateSessionParticipantsShape } from "./sessionParticipantValidation.ts";
 export type SessionRole = "player" | "facilitator" | "assistant" | "observer";
 export type SessionPrincipalId = string;
 

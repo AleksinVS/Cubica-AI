@@ -18,12 +18,12 @@
 
 ## Status
 
-blocked
+planned
 
-Status note: ADR-060 принят 2026-07-06; S9 заблокирован до принятия S8-контракта
-из `TSK-20260705-multiplayer-runtime-realization`. S8 уже исполняется и не
-является полностью нереализованной зависимостью; агентское место остаётся
-границей S9 и работает в хотсит-сессии без требования network join.
+Status note: ADR-060 принят 2026-07-06; S8-контракт из
+`TSK-20260705-multiplayer-runtime-realization` принят 2026-08-13, поэтому S9
+разблокирован и запланирован следующим. Агентское место остаётся границей S9;
+эта задача ещё не реализует agent seat и не требует network join.
 
 ## Understanding
 
@@ -35,7 +35,7 @@ Status note: ADR-060 принят 2026-07-06; S9 заблокирован до �
 
 ## Architecture Source
 
-- `docs/architecture/adrs/060-agent-controlled-players.md` (Proposed)
+- `docs/architecture/adrs/060-agent-controlled-players.md` (Accepted)
 - ADR-046 (system-initiated Agent Turn, failure policy), ADR-047 (safety gates),
   ADR-058 (turn flow), ADR-059 (participants, персональная проекция)
 - `games/ai-driven-choice/` + mock Agent Runtime — образец opt-in адаптера
@@ -175,5 +175,6 @@ npx playwright test  # e2e человек vs mock-агент
 - 2026-07-05: задача создана вместе с ADR-060 (Proposed). Реализация не начата.
 - 2026-07-06: ADR-060 принят владельцем проекта (Accepted 2026-07-06).
   Реализация не начата.
-- 2026-08-12: S9 оставлен заблокированным до принятия S8-контракта; S8 уже в
-  исполнении. Agent seat остаётся S9, network join/reconnect — S10.
+- 2026-08-13: S8-контракт принят, поэтому S9 переведён из `blocked` в
+  `planned`; agent seat, Agent Turn choice, fallback и eval остаются
+  нереализованными границами S9, network join/reconnect — S10.

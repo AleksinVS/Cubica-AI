@@ -82,6 +82,10 @@ describe("default game config", () => {
     const state = config.resolveGameState(simpleChoiceContent, {
       sessionId: "s1",
       gameId: "simple-choice",
+      participants: [
+        { seatId: "p1", playerId: "p1", kind: "human", joinState: "local" },
+        { seatId: "p2", playerId: "p2", kind: "human", joinState: "local" },
+      ],
       version: { sessionId: "s1", stateVersion: 1, lastEventSequence: 0 },
       participants: [
         { seatId: "p1", playerId: "p1", kind: "human", joinState: "local" },
@@ -232,6 +236,7 @@ describe("default game config", () => {
     const state = config.resolveGameState(content, {
       sessionId: "s1",
       gameId: "simple-choice",
+      participants: [{ seatId: "p1", playerId: "p1", kind: "human", joinState: "local" }],
       version: { sessionId: "s1", stateVersion: 1, lastEventSequence: 0 },
       participants: [{ seatId: "p1", playerId: "p1", kind: "human", joinState: "local" }],
       actionAvailability: [],
@@ -311,6 +316,7 @@ describe("default game config", () => {
     const state = config.resolveGameState(content, {
       sessionId: "s1",
       gameId: "simple-choice",
+      participants: [{ seatId: "p1", playerId: "p1", kind: "human", joinState: "local" }],
       version: { sessionId: "s1", stateVersion: 1, lastEventSequence: 0 },
       participants: [{ seatId: "p1", playerId: "p1", kind: "human", joinState: "local" }],
       actionAvailability: [],

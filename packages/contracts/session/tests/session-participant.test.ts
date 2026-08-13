@@ -1,5 +1,8 @@
 import fs from "node:fs";
-import type { SessionParticipant } from "../src/index.ts";
+import {
+  validateSessionParticipantsShape,
+  type SessionParticipant
+} from "../src/index.ts";
 
 const openApi = JSON.parse(fs.readFileSync(new URL(
   "../../../../docs/architecture/runtime-api-openapi.yaml",
@@ -37,5 +40,27 @@ describe("session participant contract parity", () => {
       expect(schema.required).toContain("participants");
       expect(schema.properties.participants.$ref).toBe("#/components/schemas/SessionParticipants");
     }
+  });
+
+  it("executes the generated canonical shape at the package boundary", () => {
+    expect(validateSessionParticipantsShape([{
+      seatId: "seat-a",
+      playerId: "actor-a",
+      kind: "human",
+      joinState: "local"
+    }])).toBe(true);
+    expect(validateSessionParticipantsShape([{
+      seatId: "seat-a",
+      playerId: "__proto__",
+      kind: "human",
+      joinState: "local"
+    }])).toBe(false);
+    expect(validateSessionParticipantsShape([{
+      seatId: "seat-a",
+      playerId: "actor-a",
+      kind: "human",
+      joinState: "local",
+      extra: true
+    }])).toBe(false);
   });
 });
