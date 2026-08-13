@@ -737,9 +737,11 @@ worker и не открывает второй путь к модели или �
 - Final verification: после актуализации от `main` полный
   `verify:product-context` прошёл 236/236, Editor — 20/20, Portal — 13/13.
   Повторно прошли product-context и Editor typecheck, schema generation,
-  isolation, routing, agent instructions, структура и `git diff --check`.
+  isolation, legacy, routing, agent instructions, структура и
+  `git diff --check`.
   Полный `verify:canonical` не запускался: обязательный low-memory preflight
-  дважды остановил Next.js-сборки при 19% свободного swap и пороге 20%, а
-  отдельный `verify:legacy` выявил уже присутствующее в текущем `main`
-  рассогласование статуса `TSK-20260705-agent-controlled-players` (`planned` в
-  задаче, `blocked` в `NEXT_STEPS.md`). Процессы и swap хоста не изменялись.
+  дважды остановил Next.js-сборки при 19% свободного swap и пороге 20%.
+  Выявленное после merge рассогласование статуса
+  `TSK-20260705-agent-controlled-players` исправлено перемещением уже
+  разблокированной `planned`-задачи из `Blocked` в `Next`; повторный
+  `verify:legacy` прошёл. Процессы и swap хоста не изменялись.
