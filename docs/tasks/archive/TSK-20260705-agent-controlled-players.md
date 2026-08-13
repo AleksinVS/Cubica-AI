@@ -18,12 +18,12 @@
 
 ## Status
 
-planned
+done
 
-Status note: ADR-060 принят 2026-07-06; S8-контракт из
-`TSK-20260705-multiplayer-runtime-realization` принят 2026-08-13, поэтому S9
-разблокирован и запланирован следующим. Агентское место остаётся границей S9;
-эта задача ещё не реализует agent seat и не требует network join.
+Status note: ADR-060 принят 2026-07-06; S8-контракт принят 2026-08-13. S9
+реализован и принят локально по GSR-049. Полный terminal match, реальный
+provider и network join не входят в доказанную границу и остаются следующими
+этапами.
 
 ## Understanding
 
@@ -65,19 +65,17 @@ Status note: ADR-060 принят 2026-07-06; S8-контракт из
 
 ## Target State
 
-1. Переиспользуется принятая в S8 actor-scoped проекция
-   `availableActions(sessionId, playerId)` с кэшем по `state_version`; она
-   доступна агенту и UI/eval-контуру.
-2. Сессия может создать место `kind: "agent"` (в пределах
-   `config.players.agentSeats` манифеста); readiness gate требует объявленного
-   fallback-действия.
+1. Переиспользуется принятая в S8 actor-scoped проекция и canonical availability.
+2. Схема манифеста объявляет `agentSeats`; локальная сессия передаёт только
+   `agentSeatCount`, а последние N серверных мест становятся агентскими.
 3. Планировщик: ход очереди у агентского места → системный Agent Turn с
    персональной проекцией + списком действий; ответ — `actionId`+аргументы;
    исполнение через обычный детерминированный путь/очередь.
-4. Политика отказов: повторы с диагностикой → детерминированный fallback;
-   недоступность Agent Runtime → failure policy ADR-046.
-5. Ходы агента в event log и replay-транскриптах; evaluation fixtures
-   легальности/разумности.
+4. Политика отказов: ограниченные повторы и упорядоченный fallback до 73;
+   недоступность Agent Runtime → `paused`/`facilitatorTakeover` с четырьмя
+   кодами причин.
+5. Ходы агента в event log и replay-транскриптах; семь фиксированных eval
+   fixtures легальности и ограниченной разумности.
 
 ## Scope
 
@@ -87,9 +85,9 @@ Status note: ADR-060 принят 2026-07-06; S8-контракт из
 - Расширение манифест-схемы: `config.players.agentSeats`, fallback-действие
   (через контур ADR-056).
 - Планировщик агентских ходов + политика отказов + readiness gate.
-- Mock-агент «случайное легальное действие» для тестов/фикстур.
-- Доказательство: хотсит-партия `dice-track` человек против mock-агента; replay
-  и eval fixtures.
+- Локальный mock/provider seam и нейтральное доказательство 73 кандидатов.
+- Доказательство: bounded human+agent transcript Estate Race; replay и eval
+  fixtures.
 
 ## Non-Goals
 
@@ -133,9 +131,10 @@ Status note: ADR-060 принят 2026-07-06; S8-контракт из
 
 ### Phase 5. Доказательство и eval
 
-1. Mock-агент «случайное легальное действие»; хотсит-партия `dice-track`
-   человек vs агент до победителя (e2e).
-2. Replay-транскрипт партии с агентом; evaluation fixtures легальности.
+1. Локальный mock/provider seam, bounded transcript и нейтральная проверка
+   73→commit / 74→schema rejection.
+2. Replay-транскрипт и семь evaluation fixtures: purchase, auction, jail,
+   building, trade, liquidity, bankruptcy.
 
 ### Phase 6. Closeout
 
@@ -143,13 +142,14 @@ Status note: ADR-060 принят 2026-07-06; S8-контракт из
 
 ## Acceptance
 
-- Хотсит-партия `dice-track` человек против mock-агента доигрывается до
-  победителя без вмешательства.
+- Estate Race сохраняет deterministic режим; bounded human+agent transcript
+  подтверждает projection, secret isolation, intents, receipt retry и fallback.
 - Принудительно невалидный выбор агента (тестовый adversarial mock) не меняет
   состояние и приводит к fallback после лимита повторов.
 - Агент не получает `state.secret`, чужих приватных полей и порядка колод
   (тест на вход Agent Turn).
-- Replay партии с агентом воспроизводится бит-в-бит.
+- Exact command receipt повторяется без повторного сканирования; terminal full
+  match не заявляется.
 - `verify:canonical`, contracts parity, game-agnostic инвариант — зелёные.
 
 ## Validation
@@ -158,7 +158,7 @@ Status note: ADR-060 принят 2026-07-06; S8-контракт из
 npm run generate:contracts && npm run verify:contracts-schema-parity
 cd services/runtime-api && npm run typecheck && npm test
 npm run verify:canonical
-npx playwright test  # e2e человек vs mock-агент
+# полный E2E и реальный provider не входят в S9 acceptance
 ```
 
 ## Risks
@@ -175,6 +175,7 @@ npx playwright test  # e2e человек vs mock-агент
 - 2026-07-05: задача создана вместе с ADR-060 (Proposed). Реализация не начата.
 - 2026-07-06: ADR-060 принят владельцем проекта (Accepted 2026-07-06).
   Реализация не начата.
-- 2026-08-13: S8-контракт принят, поэтому S9 переведён из `blocked` в
-  `planned`; agent seat, Agent Turn choice, fallback и eval остаются
-  нереализованными границами S9, network join/reconnect — S10.
+- 2026-08-13: S8-контракт принят; S9 реализован локально и зафиксирован
+  GSR-049. PM-approved fallback расширен с 8 до 73 кандидатов. Реальный
+  provider, полный terminal match и network join/reconnect не входят в
+  принятие; S10 остаётся сетевой границей.

@@ -8,5 +8,6 @@
   "045-estate-race-terminal-local-game.md": "Estate Race S6: game-owned terminal outcome, последний активный участник и полный локальный transcript.",
   "046-estate-race-product-surface-and-methodology.md": "Estate Race S7: оригинальная публичная поверхность, визуальная система и необязательный обучающий режим.",
   "047-estate-race-session-participants.md": "Estate Race S8: общая session-owned модель локальных участников без сетевого lifecycle и игровых веток в платформе.",
-  "048-cards-money-trains-portable-public-journal.md": "CMT: общий переносимый журнал подтверждённых публичных событий с безопасной выгрузкой без ИИ-интерпретации."
+  "048-cards-money-trains-portable-public-journal.md": "CMT: общий переносимый журнал подтверждённых публичных событий с безопасной выгрузкой без ИИ-интерпретации.",
+  "049-estate-race-local-agent-seat.md": "Estate Race S9: одно локальное агентское место, actor-scoped Game Intent, bounded fallback и fail-closed Player Web."
 }
