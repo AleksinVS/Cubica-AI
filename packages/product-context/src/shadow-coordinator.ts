@@ -9,7 +9,7 @@ import { createHash } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 
 import { validateProductKnowledgeContract } from './contracts.ts';
-import type { ShadowConversationStore, ShadowRunOutcome } from './conversation-postgres.ts';
+import type { ShadowConversationStore, ShadowRunOutcome, TerminalShadowRunOutcome } from './conversation-postgres.ts';
 import { ModelGatewayError, type ModelGateway } from './model-gateway.ts';
 import type {
   ConversationMessage,
@@ -46,7 +46,7 @@ export interface ShadowTurnInput {
 export type ShadowCoordinatorResult =
   | { readonly status: 'disabled' | 'in_progress' }
   | { readonly status: 'completed'; readonly runId: string; readonly result: ModelGatewayResult; readonly duplicate: boolean }
-  | { readonly status: 'denied' | 'failed'; readonly runId: string | null; readonly outcome: Exclude<ShadowRunOutcome, 'success' | 'no_change' | 'disabled'> };
+  | { readonly status: 'denied' | 'failed'; readonly runId: string | null; readonly outcome: TerminalShadowRunOutcome };
 
 const allowedEnvironments = new Set(['test', 'staging']);
 const MODEL_LEASE_SAFETY_MARGIN_MS = 5_000;
@@ -102,7 +102,7 @@ export class ShadowCoordinator {
     });
     const run = await this.store.createRun(receipt, turn, retainedUntil);
     if (run.status === 'succeeded' && run.result) return { status: 'completed', runId: run.runId, result: run.result, duplicate: true };
-    if (run.status === 'denied' || run.status === 'failed') return { status: run.status, runId: run.runId, outcome: run.outcome as Exclude<ShadowRunOutcome, 'success' | 'no_change' | 'disabled'> };
+    if (run.status === 'denied' || run.status === 'failed' || run.status === 'blocked') return { status: run.status === 'blocked' ? 'failed' : run.status, runId: run.runId, outcome: run.outcome as TerminalShadowRunOutcome };
     const claim = await this.store.claimRun(receipt.shadow_principal_ref, run.runId, requestId, this.modelLeaseMs, this.now());
     if (claim.kind === 'in_progress') return { status: 'in_progress' };
     if (claim.kind === 'terminal') return terminalResult(claim.run);
@@ -144,7 +144,7 @@ export class ShadowCoordinator {
     receipt: ShadowAuthorizationReceipt,
     runId: string,
     requestId: string | null,
-    outcome: Exclude<ShadowRunOutcome, 'success' | 'no_change' | 'disabled'>,
+    outcome: TerminalShadowRunOutcome,
     durationMs: number,
     inputBytes: number,
     outputBytes: number
@@ -250,7 +250,7 @@ function metric(receipt: ShadowAuthorizationReceipt, runId: string, requestId: s
     recorded_at: now.toISOString()
   };
 }
-function gatewayOutcome(error: unknown): Exclude<ShadowRunOutcome, 'success' | 'no_change' | 'disabled'> {
+function gatewayOutcome(error: unknown): TerminalShadowRunOutcome {
   if (!(error instanceof ModelGatewayError)) return 'gateway_error';
   if (error.code === 'policy_denied') return 'policy_denied';
   if (error.code === 'timeout') return 'gateway_timeout';
@@ -265,8 +265,8 @@ function requestIdFor(ownerRef: string, stableTurnKey: string): string {
 }
 function terminalResult(run: import('./conversation-postgres.ts').ShadowRunRecord): ShadowCoordinatorResult {
   if (run.status === 'succeeded' && run.result) return { status: 'completed', runId: run.runId, result: run.result, duplicate: true };
-  if (run.status === 'denied' || run.status === 'failed') {
-    return { status: run.status, runId: run.runId, outcome: run.outcome as Exclude<ShadowRunOutcome, 'success' | 'no_change' | 'disabled'> };
+  if (run.status === 'denied' || run.status === 'failed' || run.status === 'blocked') {
+    return { status: run.status === 'blocked' ? 'failed' : run.status, runId: run.runId, outcome: run.outcome as TerminalShadowRunOutcome };
   }
   return { status: 'in_progress' };
 }

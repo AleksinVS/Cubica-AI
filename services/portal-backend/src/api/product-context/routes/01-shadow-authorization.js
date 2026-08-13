@@ -17,5 +17,13 @@ module.exports = {
       handler: (ctx) => global.strapi.controller(SHADOW_CONTROLLER_UID).shadowAuthorization(ctx),
       config: {},
     },
+    {
+      method: 'POST',
+      path: '/product-context/shadow-worker-reauthorization',
+      handler: (ctx) => global.strapi.controller(SHADOW_CONTROLLER_UID).shadowWorkerReauthorization(ctx),
+      // Authentication is the request HMAC checked by the controller. Portal
+      // bearer middleware is deliberately bypassed for the worker endpoint.
+      config: { auth: false },
+    },
   ],
 };

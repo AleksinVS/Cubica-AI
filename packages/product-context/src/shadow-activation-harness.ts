@@ -8,7 +8,7 @@ import { Pool } from 'pg';
 import { PostgresConversationStore } from './conversation-postgres.ts';
 import { ReadOnlyKnowledgeGit } from './git.ts';
 import type { ModelGateway, ModelGatewayCall } from './model-gateway.ts';
-import { ShadowCoordinator } from './shadow-coordinator.ts';
+import { enqueueShadowTurn, PostgresShadowWorkerStore, ShadowAsyncWorker } from './shadow-async-queue.ts';
 import { safeShadowDatabaseUrl } from './shadow-database-url.ts';
 import type { ModelGatewayRequest, ShadowAuthorizationReceipt } from './generated/product-knowledge.ts';
 
@@ -37,7 +37,9 @@ const expectedPolicies = [
 ] as const;
 const expectedAllPolicies = [
   ...expectedPolicies, 'conversation_threads_cleanup_policy',
-  'conversation_messages_cleanup_policy', 'shadow_runs_cleanup_policy'
+  'conversation_messages_cleanup_policy', 'shadow_runs_cleanup_policy',
+  'shadow_threads_worker_owner_policy', 'shadow_messages_worker_owner_policy',
+  'shadow_runs_worker_owner_policy', 'shadow_metrics_worker_owner_policy'
 ] as const;
 // The rehearsal targets PostgreSQL 17 and rejects any catalog-level change to
 // the principal partition instead of trying to infer whether a drift is safe.
@@ -45,6 +47,7 @@ const ownerPolicyExpression = "(owner_ref = NULLIF(current_setting('cubica.shado
 
 export interface SyntheticShadowActivationConfig {
   readonly databaseUrl: string;
+  readonly workerDatabaseUrl: string;
   readonly knowledgeRepository: string;
   readonly environment: 'test' | 'staging';
 }
@@ -68,19 +71,21 @@ export class SyntheticShadowActivationError extends Error {
 /** Resolves only the fixed, local-only rehearsal configuration. */
 export function syntheticShadowActivationConfig(env: NodeJS.ProcessEnv): SyntheticShadowActivationConfig {
   const runtime = safeShadowDatabaseUrl(env.CUBICA_PRODUCT_CONTEXT_SHADOW_DATABASE_URL);
+  const workerRuntime = safeShadowDatabaseUrl(env.CUBICA_PRODUCT_CONTEXT_SHADOW_WORKER_DATABASE_URL);
   const environment = env.CUBICA_DEPLOYMENT_TIER;
   const knowledgeRepository = env.CUBICA_PRODUCT_CONTEXT_SHADOW_KNOWLEDGE_REPOSITORY ?? '';
-  if (!runtime || !isLoopbackDatabaseUrl(runtime) || (environment !== 'test' && environment !== 'staging') ||
+  if (!runtime || !workerRuntime || runtime === workerRuntime || !isLoopbackDatabaseUrl(runtime) || !isLoopbackDatabaseUrl(workerRuntime) || (environment !== 'test' && environment !== 'staging') ||
       !isRepositoryTmpPath(knowledgeRepository)) throw new SyntheticShadowActivationError();
-  return Object.freeze({ databaseUrl: runtime, knowledgeRepository, environment });
+  return Object.freeze({ databaseUrl: runtime, workerDatabaseUrl: workerRuntime, knowledgeRepository, environment });
 }
 
 /** Verifies the deployed runtime login and opens the existing Git repository read-only. */
 export async function preflightSyntheticShadowActivation(config: SyntheticShadowActivationConfig): Promise<{ readonly ready: true }> {
   const pool = runtimePool(config.databaseUrl);
+  const workerPool = runtimePool(config.workerDatabaseUrl);
   let git: ReadOnlyKnowledgeGit | undefined;
   try {
-    await verifyDatabaseReadiness(pool);
+    await verifyDatabaseReadiness(pool, workerPool);
     git = await openContainedKnowledgeGit(config.knowledgeRepository);
     git.head();
     return Object.freeze({ ready: true });
@@ -89,6 +94,7 @@ export async function preflightSyntheticShadowActivation(config: SyntheticShadow
   } finally {
     await git?.close().catch(() => undefined);
     await pool.end().catch(() => undefined);
+    await workerPool.end().catch(() => undefined);
   }
 }
 
@@ -96,23 +102,26 @@ export async function preflightSyntheticShadowActivation(config: SyntheticShadow
 export async function runSyntheticShadowActivation(config: SyntheticShadowActivationConfig): Promise<SyntheticShadowActivationResult> {
   await preflightSyntheticShadowActivation(config);
   const pool = runtimePool(config.databaseUrl);
+  const workerPool = runtimePool(config.workerDatabaseUrl);
   let git: ReadOnlyKnowledgeGit | undefined;
   try {
     git = await openContainedKnowledgeGit(config.knowledgeRepository);
     const before = git.head();
     const gateway = new SyntheticNoChangeGateway();
-    const coordinator = new ShadowCoordinator(
-      new PostgresConversationStore(pool),
-      { timeoutMs: 1_000, current: async () => receipt },
-      gateway,
-      { enabled: true, environment: config.environment, retentionMs: 60 * 60 * 1_000 }
+    const retainedUntil = new Date(Date.now() + 60 * 60 * 1_000);
+    const enqueueStore = new PostgresConversationStore(pool);
+    const input = { receipt, threadRef, stableTurnKey, userBytes, agentBytes, retainedUntil };
+    const pending = await enqueueShadowTurn(enqueueStore, input);
+    const worker = new ShadowAsyncWorker(
+      new PostgresShadowWorkerStore(workerPool),
+      { current: async () => receipt }, async () => gateway,
+      { leaseMs: 10_000, authorizationTimeoutMs: 1_000, retryBaseMs: 1_000 }
     );
-    const input = { authorizationReceipt: receipt, threadRef, stableTurnKey, userBytes, agentBytes };
-    const first = await coordinator.run(input);
-    const retry = await coordinator.run(input);
+    const workerOutcome = await worker.runOne();
+    const retry = await enqueueShadowTurn(enqueueStore, input);
     const after = git.head();
-    if (first.status !== 'completed' || first.result.outcome !== 'no_change' || first.duplicate ||
-        retry.status !== 'completed' || retry.result.outcome !== 'no_change' || !retry.duplicate ||
+    if (pending.status !== 'pending' || workerOutcome !== 'completed' ||
+        retry.status !== 'succeeded' || retry.result?.outcome !== 'no_change' ||
         gateway.calls !== 1 || before !== after) throw new SyntheticShadowActivationError();
     return Object.freeze({
       ready: true, outcome: 'no_change', firstDuplicate: false, retryDuplicate: true,
@@ -123,6 +132,7 @@ export async function runSyntheticShadowActivation(config: SyntheticShadowActiva
   } finally {
     await git?.close().catch(() => undefined);
     await pool.end().catch(() => undefined);
+    await workerPool.end().catch(() => undefined);
   }
 }
 
@@ -146,7 +156,7 @@ function runtimePool(connectionString: string): Pool {
   return new Pool({ connectionString, max: 2, connectionTimeoutMillis: 2_000, idleTimeoutMillis: 2_000, allowExitOnIdle: true });
 }
 
-async function verifyDatabaseReadiness(pool: Pool): Promise<void> {
+async function verifyDatabaseReadiness(pool: Pool, workerPool: Pool): Promise<void> {
   const role = await pool.query<{
     rolcanlogin: boolean; rolsuper: boolean; rolcreatedb: boolean; rolcreaterole: boolean;
     rolreplication: boolean; rolbypassrls: boolean; rolinherit: boolean;
@@ -196,7 +206,11 @@ async function verifyDatabaseReadiness(pool: Pool): Promise<void> {
             ('shadow_metrics', 'shadow_metrics_owner_policy', 'product_context_shadow_app', 'owner'),
             ('conversation_threads', 'conversation_threads_cleanup_policy', 'product_context_shadow_cleanup', 'cleanup'),
             ('conversation_messages', 'conversation_messages_cleanup_policy', 'product_context_shadow_cleanup', 'cleanup'),
-            ('shadow_runs', 'shadow_runs_cleanup_policy', 'product_context_shadow_cleanup', 'cleanup')
+            ('shadow_runs', 'shadow_runs_cleanup_policy', 'product_context_shadow_cleanup', 'cleanup'),
+            ('conversation_threads', 'shadow_threads_worker_owner_policy', 'product_context_shadow_worker_owner', 'cleanup'),
+            ('conversation_messages', 'shadow_messages_worker_owner_policy', 'product_context_shadow_worker_owner', 'cleanup'),
+            ('shadow_runs', 'shadow_runs_worker_owner_policy', 'product_context_shadow_worker_owner', 'cleanup'),
+            ('shadow_metrics', 'shadow_metrics_worker_owner_policy', 'product_context_shadow_worker_owner', 'cleanup')
           ) AS expected(table_name, policy_name, role_name, kind)
           JOIN pg_namespace AS policy_schema ON policy_schema.nspname = 'product_context_shadow'
           JOIN pg_class AS policy_table ON policy_table.relnamespace = policy_schema.oid AND policy_table.relname = expected.table_name
@@ -232,7 +246,7 @@ async function verifyDatabaseReadiness(pool: Pool): Promise<void> {
           ) FROM (VALUES
             ('conversation_threads', true),
             ('conversation_messages', true),
-            ('shadow_runs', true),
+            ('shadow_runs', false),
             ('shadow_metrics', false)
           ) AS grants(name, allow_update)
           JOIN pg_namespace AS deployed_schema ON deployed_schema.nspname = 'product_context_shadow'
@@ -249,16 +263,19 @@ async function verifyDatabaseReadiness(pool: Pool): Promise<void> {
             to_regprocedure('product_context_shadow.enforce_shadow_run_contract()'), 'EXECUTE'), true) AND
           COALESCE(has_function_privilege('product_context_shadow_app',
             to_regprocedure('product_context_shadow.cleanup_expired(integer)'), 'EXECUTE'), false) AND
-          (SELECT count(*) = 4 AND bool_and(CASE
+          (SELECT count(*) = 10 AND bool_and(CASE
               WHEN deployed_function.proname = 'cleanup_expired'
                 THEN pg_get_userbyid(deployed_function.proowner) = 'product_context_shadow_cleanup'
+              WHEN deployed_function.proname LIKE 'worker_%'
+                THEN pg_get_userbyid(deployed_function.proowner) = 'product_context_shadow_worker_owner'
               ELSE pg_get_userbyid(deployed_function.proowner) NOT IN
-                ('product_context_shadow_app', 'product_context_shadow_cleanup', session_user)
+                ('product_context_shadow_app', 'product_context_shadow_cleanup', 'product_context_shadow_worker', session_user)
             END)
             FROM pg_proc AS deployed_function
             JOIN pg_namespace AS function_schema ON function_schema.oid = deployed_function.pronamespace
             WHERE function_schema.nspname = 'product_context_shadow' AND deployed_function.proname IN
-              ('enforce_thread_contract', 'enforce_message_contract', 'enforce_shadow_run_contract', 'cleanup_expired')) AS functions_ready,
+              ('enforce_thread_contract', 'enforce_message_contract', 'enforce_shadow_run_contract', 'cleanup_expired',
+               'worker_claim', 'worker_reread', 'worker_mark_calling', 'worker_retry', 'worker_terminal', 'worker_complete')) AS functions_ready,
         current_user = 'product_context_shadow_app' AND
           NOT (SELECT rolsuper OR rolcreatedb OR rolcreaterole OR rolreplication OR rolbypassrls OR rolcanlogin OR rolinherit
                FROM pg_roles WHERE rolname = 'product_context_shadow_app') AND
@@ -275,6 +292,41 @@ async function verifyDatabaseReadiness(pool: Pool): Promise<void> {
   } finally {
     client.release();
   }
+
+  const workerRole = await workerPool.query<{
+    rolcanlogin:boolean; rolsuper:boolean; rolcreatedb:boolean; rolcreaterole:boolean;
+    rolreplication:boolean; rolbypassrls:boolean; rolinherit:boolean;
+    member:boolean; forbidden_memberships:number;
+  }>(`
+    SELECT login.rolcanlogin, login.rolsuper, login.rolcreatedb, login.rolcreaterole,
+      login.rolreplication, login.rolbypassrls, login.rolinherit,
+      pg_has_role(login.rolname, 'product_context_shadow_worker', 'MEMBER') AS member,
+      (SELECT count(*)::int FROM pg_auth_members AS membership
+       JOIN pg_roles AS granted ON granted.oid=membership.roleid
+       WHERE membership.member=login.oid AND granted.rolname <> 'product_context_shadow_worker') AS forbidden_memberships
+    FROM pg_roles AS login WHERE login.rolname=current_user
+  `);
+  const workerLogin=workerRole.rows[0];
+  if(!workerLogin||!workerLogin.rolcanlogin||workerLogin.rolsuper||workerLogin.rolcreatedb||workerLogin.rolcreaterole||
+    workerLogin.rolreplication||workerLogin.rolbypassrls||workerLogin.rolinherit||!workerLogin.member||workerLogin.forbidden_memberships!==0)throw new Error();
+  const workerClient=await workerPool.connect();
+  try{
+    await workerClient.query('BEGIN READ ONLY');
+    await workerClient.query('SET LOCAL ROLE product_context_shadow_worker');
+    const workerReady=await workerClient.query<{ready:boolean}>(`
+      SELECT NOT has_schema_privilege(current_user,'product_context_shadow','CREATE')
+        AND NOT EXISTS (
+          SELECT 1 FROM (VALUES ('conversation_threads'),('conversation_messages'),('shadow_runs'),('shadow_metrics')) AS table_name(name)
+          WHERE has_table_privilege(current_user,format('product_context_shadow.%I',name),'SELECT,INSERT,UPDATE,DELETE')
+        )
+        AND (SELECT count(*)=6 AND bool_and(has_function_privilege(current_user,deployed.oid,'EXECUTE'))
+          FROM pg_proc AS deployed JOIN pg_namespace AS namespace ON namespace.oid=deployed.pronamespace
+          WHERE namespace.nspname='product_context_shadow' AND deployed.proname IN
+            ('worker_claim','worker_reread','worker_mark_calling','worker_retry','worker_terminal','worker_complete')) AS ready
+    `);
+    if(workerReady.rows[0]?.ready!==true)throw new Error();
+    await workerClient.query('ROLLBACK');
+  }catch(error){await workerClient.query('ROLLBACK').catch(()=>undefined);throw error;}finally{workerClient.release();}
 }
 
 function isRepositoryTmpPath(value: string): boolean {

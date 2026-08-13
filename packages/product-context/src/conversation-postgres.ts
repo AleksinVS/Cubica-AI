@@ -27,7 +27,8 @@ const METRICS = 'product_context_shadow.shadow_metrics';
 const cubicaRefPattern = /^cubica:\/\/[a-z][a-z0-9-]*(?:\/[A-Za-z0-9._~-]+)+$/;
 
 export type ShadowRunOutcome = ShadowContentFreeMetric['outcome'];
-export type ShadowRunStatus = 'pending' | 'calling_model' | 'succeeded' | 'denied' | 'failed';
+export type TerminalShadowRunOutcome = Exclude<ShadowRunOutcome, 'success' | 'no_change' | 'disabled' | 'gateway_retry_scheduled'>;
+export type ShadowRunStatus = 'pending' | 'leased' | 'calling_model' | 'retry_wait' | 'succeeded' | 'denied' | 'failed' | 'blocked';
 
 export interface ShadowRunRecord {
   readonly runId: string;
@@ -70,7 +71,7 @@ export interface ShadowConversationStore {
   createRun(receipt: ShadowAuthorizationReceipt, turn: ConversationTurn, retainedUntil: Date): Promise<ShadowRunRecord>;
   claimRun(ownerRef: string, runId: string, requestId: string, leaseMs: number, now?: Date): Promise<ClaimRunResult>;
   completeRun(ownerRef: string, runId: string, result: ModelGatewayResult, outcome: Extract<ShadowRunOutcome, 'success' | 'no_change'>, metric: ShadowContentFreeMetric, now?: Date): Promise<ShadowRunRecord>;
-  failRun(ownerRef: string, runId: string, outcome: Exclude<ShadowRunOutcome, 'success' | 'no_change' | 'disabled'>, metric: ShadowContentFreeMetric, now?: Date): Promise<ShadowRunRecord>;
+  failRun(ownerRef: string, runId: string, outcome: TerminalShadowRunOutcome, metric: ShadowContentFreeMetric, now?: Date): Promise<ShadowRunRecord>;
   cleanupExpired(limit?: number): Promise<ShadowCleanupResult>;
 }
 
@@ -204,7 +205,7 @@ export class PostgresConversationStore implements ShadowConversationStore {
       if (run.runId !== runId || !sameReceiptAuthorization(run.receipt, receipt) || !runMatchesTurn(run, turn)) throw new ConversationConflictError();
       if (isTerminal(run.status)) {
         const terminalMetric = await client.query(`SELECT metric_id FROM ${METRICS} WHERE run_id = $1`, [run.runId]);
-        if (terminalMetric.rowCount !== 1) throw new ConversationUnavailableError();
+        if ((terminalMetric.rowCount ?? 0) < 1) throw new ConversationUnavailableError();
       }
       return run;
     });
@@ -266,7 +267,7 @@ export class PostgresConversationStore implements ShadowConversationStore {
     });
   }
 
-  async failRun(ownerRef: string, runId: string, outcome: Exclude<ShadowRunOutcome, 'success' | 'no_change' | 'disabled'>, metric: ShadowContentFreeMetric, now = new Date()): Promise<ShadowRunRecord> {
+  async failRun(ownerRef: string, runId: string, outcome: TerminalShadowRunOutcome, metric: ShadowContentFreeMetric, now = new Date()): Promise<ShadowRunRecord> {
     assertMetric(metric, runId, outcome);
     const status = outcome === 'policy_denied' || outcome === 'authorization_changed' ? 'denied' : 'failed';
     return this.withPrincipal(ownerRef, async (client) => {
@@ -404,7 +405,7 @@ async function terminalizeRun(
   client: PoolClient,
   run: RunRow,
   status: 'denied' | 'failed',
-  outcome: Exclude<ShadowRunOutcome, 'success' | 'no_change' | 'disabled'>,
+  outcome: TerminalShadowRunOutcome,
   metric: ShadowContentFreeMetric,
   now: Date
 ): Promise<ShadowRunRecord> {
@@ -437,7 +438,7 @@ async function insertMetric(client: PoolClient, ownerRef: string, metric: Shadow
   ]);
 }
 
-function metricFromRun(run: RunRow, outcome: Exclude<ShadowRunOutcome, 'success' | 'no_change' | 'disabled'>, requestId: string | null, now: Date): ShadowContentFreeMetric {
+function metricFromRun(run: RunRow, outcome: TerminalShadowRunOutcome, requestId: string | null, now: Date): ShadowContentFreeMetric {
   return {
     schema_version: '1.0.0', metric_id: `metric_${digestId(run.run_id)}`, run_id: run.run_id,
     request_id: requestId, outcome, duration_ms: 0, input_bytes: 0, output_bytes: 0,
@@ -453,7 +454,7 @@ function assertMetric(metric: ShadowContentFreeMetric, runId: string, outcome: S
       metric.run_id !== runId || metric.outcome !== outcome) throw new TypeError('Invalid content-free metric.');
 }
 
-function isTerminal(status: ShadowRunStatus): boolean { return status === 'succeeded' || status === 'denied' || status === 'failed'; }
+function isTerminal(status: ShadowRunStatus): boolean { return status === 'succeeded' || status === 'denied' || status === 'failed' || status === 'blocked'; }
 
 function messageIdentity(input: AppendExactTurnInput, actor: 'user' | 'agent', bytes: Uint8Array) {
   return {

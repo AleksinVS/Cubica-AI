@@ -161,7 +161,15 @@ export class ZaiCodingPlanModelGateway implements ModelGateway {
         body: body.buffer,
         signal: controller.signal
       });
-      if (!response.ok) throw new ModelGatewayError('malformed_output');
+      if (!response.ok) {
+        const output = await readBounded(response, this.maxResponseBytes);
+        const providerCode = providerErrorCode(output);
+        if (providerCode !== null) throw new ModelGatewayError('malformed_output', providerCode, response.status);
+        // An unclassified 5xx may have accepted work before the connection
+        // failed, so it must never be automatically repeated.
+        if (response.status >= 500) throw new ModelGatewayError('outcome_unknown', null, response.status);
+        throw new ModelGatewayError('malformed_output', null, response.status);
+      }
       const output = await readBounded(response, this.maxResponseBytes);
       let envelope: unknown;
       try { envelope = JSON.parse(decoder.decode(output)); }
@@ -175,6 +183,18 @@ export class ZaiCodingPlanModelGateway implements ModelGateway {
       clearTimeout(timer);
     }
   }
+}
+
+function providerErrorCode(bytes: Uint8Array): string | null {
+  try {
+    const value = JSON.parse(decoder.decode(bytes)) as unknown;
+    if (!isRecord(value)) return null;
+    const direct = value.code;
+    const nested = isRecord(value.error) ? value.error.code : null;
+    const code = direct ?? nested;
+    return typeof code === 'number' && Number.isSafeInteger(code) ? String(code) :
+      typeof code === 'string' && /^[0-9]{4}$/u.test(code) ? code : null;
+  } catch { return null; }
 }
 
 function validateFactoryOptions(options: ZaiCodingPlanModelGatewayOptions): void {

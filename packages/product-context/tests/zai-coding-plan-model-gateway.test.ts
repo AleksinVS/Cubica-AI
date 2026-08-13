@@ -217,6 +217,14 @@ describe('Z.AI coding-plan shadow gateway', () => {
     expect(close).toHaveBeenCalledOnce();
   });
 
+  it('extracts only the bounded official provider error code for worker policy', async () => {
+    mockGrounding();
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ error: { code: 1303, message: 'provider secret' } }), { status: 503 }));
+    const error = await gateway(fetchImpl).call(request).catch((caught) => caught);
+    expect(error).toMatchObject({ code: 'malformed_output', providerCode: '1303', httpStatus: 503 });
+    expect(String(error)).not.toContain('provider secret');
+  });
+
   it.each([
     ['HTTP error', async () => new Response('provider secret', { status: 500 })],
     ['missing model', async () => new Response(JSON.stringify({ choices: [] }))],
@@ -229,7 +237,7 @@ describe('Z.AI coding-plan shadow gateway', () => {
   ] as const)('fails closed on provider envelope variant: %s', async (_label, fetchImpl) => {
     mockGrounding();
     const error = await gateway(fetchImpl).call(request).catch((caught) => caught);
-    expect(error).toMatchObject({ code: 'malformed_output' });
+    expect(error).toMatchObject({ code: _label === 'HTTP error' ? 'outcome_unknown' : 'malformed_output' });
     expect(String(error)).not.toMatch(/provider secret|\{bad/u);
   });
 

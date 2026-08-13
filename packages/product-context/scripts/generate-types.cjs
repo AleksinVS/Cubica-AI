@@ -34,7 +34,7 @@ async function main() {
       "KnowledgePage", "ExactPatchProposal", "DecisionEnvelope", "ImpactAssessment",
       "KnowledgeWriteOperation", "SemanticReviewResult", "ShadowAuthorizationReceipt",
       "ConversationMessage", "ConversationTurn", "ModelGatewayRequest", "ModelGatewayResult",
-      "ShadowContentFreeMetric"
+      "ShadowContentFreeMetric", "ShadowEvaluationManifest", "ShadowEvaluationReport"
     ].map((name) => ({ $ref: `#/definitions/${name}` })),
     definitions: converted.$defs
   };

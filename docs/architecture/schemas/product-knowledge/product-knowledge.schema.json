@@ -15,7 +15,9 @@
     { "$ref": "#/$defs/ConversationTurn" },
     { "$ref": "#/$defs/ModelGatewayRequest" },
     { "$ref": "#/$defs/ModelGatewayResult" },
-    { "$ref": "#/$defs/ShadowContentFreeMetric" }
+    { "$ref": "#/$defs/ShadowContentFreeMetric" },
+    { "$ref": "#/$defs/ShadowEvaluationManifest" },
+    { "$ref": "#/$defs/ShadowEvaluationReport" }
   ],
   "$defs": {
     "SchemaVersion": { "type": "string", "const": "1.0.0" },
@@ -135,15 +137,100 @@
         "metric_id": { "type": "string", "pattern": "^metric_[A-Za-z0-9_-]+$" },
         "run_id": { "type": "string", "pattern": "^shadowrun_[A-Za-z0-9_-]+$" },
         "request_id": { "type": ["string", "null"], "pattern": "^modelreq_[A-Za-z0-9_-]+$" },
-        "outcome": { "type": "string", "enum": ["success", "no_change", "disabled", "policy_denied", "authorization_changed", "message_changed", "message_deleted", "retention_expired", "gateway_timeout", "gateway_malformed", "gateway_oversize", "gateway_error", "gateway_outcome_unknown"] },
+        "outcome": { "type": "string", "enum": ["success", "no_change", "disabled", "policy_denied", "authorization_changed", "message_changed", "message_deleted", "retention_expired", "gateway_timeout", "gateway_malformed", "gateway_oversize", "gateway_error", "gateway_retry_scheduled", "gateway_blocked", "gateway_outcome_unknown"] },
         "duration_ms": { "type": "integer", "minimum": 0 },
         "input_bytes": { "type": "integer", "minimum": 0 },
         "output_bytes": { "type": "integer", "minimum": 0 },
         "proposal_operation_count": { "type": "integer", "minimum": 0, "maximum": 20 },
+        "attempt_number": { "type": "integer", "minimum": 1, "maximum": 8 },
         "authorization_revision": { "$ref": "#/$defs/Sha256" },
         "external_processing_policy_ref": { "type": "string", "minLength": 1, "maxLength": 240 },
         "external_processing_policy_revision": { "type": "string", "minLength": 1, "maxLength": 240 },
         "recorded_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "ShadowEvaluationScenario": {
+      "type": "object", "additionalProperties": false,
+      "required": ["category", "stable_turn_key"],
+      "properties": {
+        "category": { "type": "string", "enum": ["transient_conversation", "existing_fact", "unconfirmed_agent_suggestion", "confirmed_new_knowledge", "correction"] },
+        "stable_turn_key": { "type": "string", "minLength": 16, "maxLength": 200 }
+      }
+    },
+    "ShadowEvaluationManifest": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "shadow_principal_ref", "applies_to", "expected_git_head", "scenarios"],
+      "properties": {
+        "schema_version": { "$ref": "#/$defs/SchemaVersion" },
+        "shadow_principal_ref": { "$ref": "#/$defs/CubicaUri" },
+        "applies_to": { "type": "array", "minItems": 1, "maxItems": 1, "items": { "$ref": "#/$defs/ShadowGameUri" } },
+        "expected_git_head": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+        "scenarios": {
+          "type": "array", "minItems": 5, "maxItems": 5,
+          "prefixItems": [
+            { "type": "object", "additionalProperties": false, "required": ["category", "stable_turn_key"], "properties": { "category": { "const": "transient_conversation" }, "stable_turn_key": { "type": "string", "minLength": 16, "maxLength": 200 } } },
+            { "type": "object", "additionalProperties": false, "required": ["category", "stable_turn_key"], "properties": { "category": { "const": "existing_fact" }, "stable_turn_key": { "type": "string", "minLength": 16, "maxLength": 200 } } },
+            { "type": "object", "additionalProperties": false, "required": ["category", "stable_turn_key"], "properties": { "category": { "const": "unconfirmed_agent_suggestion" }, "stable_turn_key": { "type": "string", "minLength": 16, "maxLength": 200 } } },
+            { "type": "object", "additionalProperties": false, "required": ["category", "stable_turn_key"], "properties": { "category": { "const": "confirmed_new_knowledge" }, "stable_turn_key": { "type": "string", "minLength": 16, "maxLength": 200 } } },
+            { "type": "object", "additionalProperties": false, "required": ["category", "stable_turn_key"], "properties": { "category": { "const": "correction" }, "stable_turn_key": { "type": "string", "minLength": 16, "maxLength": 200 } } }
+          ],
+          "items": { "$ref": "#/$defs/ShadowEvaluationScenario" }
+        }
+      }
+    },
+    "ShadowEvaluationReview": {
+      "type": ["boolean", "null"]
+    },
+    "ShadowEvaluationScenarioReport": {
+      "type": "object", "additionalProperties": false,
+      "required": ["category", "expected_outcome", "actual_outcome", "review_expected_outcome", "review_all_and_only_confirmed_facts", "review_correct_page_minimal_patch", "review_no_duplicate_contradiction_unrelated_rewrite", "operation_count", "duration_ms", "input_bytes", "output_bytes", "git_unchanged"],
+      "properties": {
+        "category": { "type": "string", "enum": ["transient_conversation", "existing_fact", "unconfirmed_agent_suggestion", "confirmed_new_knowledge", "correction"] },
+        "expected_outcome": { "type": "string", "enum": ["no_change", "proposal"] },
+        "actual_outcome": { "type": "string", "enum": ["pending", "no_change", "proposal", "gateway_error", "schema_error", "authorization_error", "mismatch", "git_drift", "unavailable"] },
+        "review_expected_outcome": { "$ref": "#/$defs/ShadowEvaluationReview" },
+        "review_all_and_only_confirmed_facts": { "$ref": "#/$defs/ShadowEvaluationReview" },
+        "review_correct_page_minimal_patch": { "$ref": "#/$defs/ShadowEvaluationReview" },
+        "review_no_duplicate_contradiction_unrelated_rewrite": { "$ref": "#/$defs/ShadowEvaluationReview" },
+        "operation_count": { "type": "integer", "minimum": 0, "maximum": 20 },
+        "duration_ms": { "type": "integer", "minimum": 0 },
+        "input_bytes": { "type": "integer", "minimum": 0 },
+        "output_bytes": { "type": "integer", "minimum": 0 },
+        "git_unchanged": { "type": "boolean" }
+      }
+    },
+    "ShadowEvaluationCleanup": {
+      "type": "object", "additionalProperties": false,
+      "required": ["started", "initial_runs", "initial_metrics", "initial_messages", "initial_threads", "active_runs", "active_metrics", "active_messages", "active_threads", "active_text_bytes", "runs_deleted", "metrics_deleted", "messages_tombstoned", "threads_tombstoned", "passed"],
+      "properties": {
+        "started": { "type": "boolean" },
+        "initial_runs": { "type": "integer", "minimum": 0 },
+        "initial_metrics": { "type": "integer", "minimum": 0 },
+        "initial_messages": { "type": "integer", "minimum": 0 },
+        "initial_threads": { "type": "integer", "minimum": 0 },
+        "active_runs": { "type": "integer", "minimum": 0 },
+        "active_metrics": { "type": "integer", "minimum": 0 },
+        "active_messages": { "type": "integer", "minimum": 0 },
+        "active_threads": { "type": "integer", "minimum": 0 },
+        "active_text_bytes": { "type": "integer", "minimum": 0 },
+        "runs_deleted": { "type": "integer", "minimum": 0 },
+        "metrics_deleted": { "type": "integer", "minimum": 0 },
+        "messages_tombstoned": { "type": "integer", "minimum": 0 },
+        "threads_tombstoned": { "type": "integer", "minimum": 0 },
+        "passed": { "type": "boolean" }
+      }
+    },
+    "ShadowEvaluationReport": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "status", "scenarios", "git_unchanged", "cleanup"],
+      "properties": {
+        "schema_version": { "$ref": "#/$defs/SchemaVersion" },
+        "status": { "type": "string", "enum": ["ready", "awaiting_review", "ready_for_cleanup", "hard_stopped", "completed"] },
+        "scenarios": { "type": "array", "minItems": 5, "maxItems": 5, "prefixItems": [
+          { "$ref": "#/$defs/ShadowEvaluationScenarioReport" }, { "$ref": "#/$defs/ShadowEvaluationScenarioReport" }, { "$ref": "#/$defs/ShadowEvaluationScenarioReport" }, { "$ref": "#/$defs/ShadowEvaluationScenarioReport" }, { "$ref": "#/$defs/ShadowEvaluationScenarioReport" }
+        ], "items": { "$ref": "#/$defs/ShadowEvaluationScenarioReport" } },
+        "git_unchanged": { "type": "boolean" },
+        "cleanup": { "$ref": "#/$defs/ShadowEvaluationCleanup" }
       }
     },
     "SourceRef": {
