@@ -603,7 +603,7 @@ BEGIN
     'run', to_jsonb(selected_run),
     'messages', COALESCE(jsonb_agg(
       (to_jsonb(message) - 'content_bytes') || jsonb_build_object(
-        'content_base64', CASE WHEN message.content_bytes IS NULL THEN NULL ELSE encode(message.content_bytes, 'base64') END
+        'content_base64', CASE WHEN message.content_bytes IS NULL THEN NULL ELSE replace(replace(encode(message.content_bytes, 'base64'), chr(10), ''), chr(13), '') END
       ) ORDER BY message.sequence
     ), '[]'::jsonb)
   ) INTO payload
@@ -664,7 +664,7 @@ BEGIN
     'run', to_jsonb(run_row),
     'messages', COALESCE(jsonb_agg(
       (to_jsonb(message) - 'content_bytes') || jsonb_build_object(
-        'content_base64', CASE WHEN message.content_bytes IS NULL THEN NULL ELSE encode(message.content_bytes, 'base64') END
+        'content_base64', CASE WHEN message.content_bytes IS NULL THEN NULL ELSE replace(replace(encode(message.content_bytes, 'base64'), chr(10), ''), chr(13), '') END
       ) ORDER BY message.sequence
     ), '[]'::jsonb)
   ) INTO payload
@@ -762,7 +762,7 @@ BEGIN
     'run', to_jsonb(run_row),
     'messages', jsonb_agg(
       (to_jsonb(message) - 'content_bytes') || jsonb_build_object(
-        'content_base64', encode(message.content_bytes, 'base64')
+        'content_base64', replace(replace(encode(message.content_bytes, 'base64'), chr(10), ''), chr(13), '')
       ) ORDER BY message.sequence)
   ) INTO payload
   FROM product_context_shadow.conversation_messages AS message

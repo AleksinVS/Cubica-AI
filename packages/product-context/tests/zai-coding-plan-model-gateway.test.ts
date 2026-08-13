@@ -16,6 +16,8 @@ const agentText = 'I can phrase that as updated body.';
 const userRef = 'cubica://shadow-thread/demo/message/user';
 const agentRef = 'cubica://shadow-thread/demo/message/agent';
 const pagePath = 'notes/existing.md';
+const trustedTimestamp = '2026-08-10T10:05:00.000Z';
+const trustedNow = Date.parse(trustedTimestamp);
 const existingPage = page('Original body\n');
 const expectedSystemPrompt = [
   'Return only one JSON object matching Cubica ModelGatewayResult schema version 1.0.0; never use keys such as answer, result, or explanation.',
@@ -29,6 +31,7 @@ const expectedSystemPrompt = [
   'A proposal must target one non-index Markdown page, use exact anchors, preserve valid page metadata, and cite only supplied message refs.',
   'When user evidence establishes a new subject not covered by a snapshot page, use one create_file operation at an absent path instead of changing an existing page.',
   'For create_file, new_text must be a complete Markdown page: --- then one JSON front-matter object then --- then a non-empty body. Front matter must contain only schema_version "1.0.0"; type "decision", "preference", "constraint", or "note"; non-empty title and description; an ISO date-time timestamp; a unique cubica_id matching knw_[A-Za-z0-9_-]+; role_scope "developer"; source_refs containing every operation source and at least one supplied user evidence or confirmation; and applies_to containing exactly the sole user-JSON applies_to value. Optional fields are subject_key, depends_on, and state "active" or "disputed".',
+  'For a proposal that creates or changes a page, the final page timestamp must equal knowledge_timestamp from the user JSON exactly; never copy, infer, or invent a timestamp. no_change does not require a page timestamp.',
   'For an existing page update, never replace the entire file or delete and recreate it; use the smallest local exact operations whose old_text is a unique substring.',
   'An existing page update must preserve cubica_id and every existing front-matter source_refs entry, add every operation source_refs entry to the final front matter, and change only metadata or body text required by the current evidence.',
   'Agent messages may supply wording or context only; user evidence or confirmation is required.',
@@ -62,6 +65,7 @@ describe('Z.AI coding-plan shadow gateway', () => {
       expect(init?.headers).toEqual({ authorization: 'Bearer test-key', 'content-type': 'application/json' });
       const groundingPayload = {
         schema_version: '1.0.0', request_id: request.request_id, applies_to: request.applies_to,
+        knowledge_timestamp: trustedTimestamp,
         snapshot: { commit, index: snapshot.index, pages: [{ path: pagePath, content: existingPage }] },
         messages: [
           { message_ref: userRef, actor: 'user', revision: request.messages[0]!.revision, content_hash: request.messages[0]!.content_hash, text: userText },
@@ -86,7 +90,9 @@ describe('Z.AI coding-plan shadow gateway', () => {
       return responseFor(result);
     });
 
-    await expect(gateway(fetchImpl).call(request)).resolves.toMatchObject({ result: { outcome: 'no_change' } });
+    const now = vi.fn().mockReturnValueOnce(trustedNow).mockReturnValueOnce(trustedNow + 1_234);
+    await expect(gateway(fetchImpl, { now }).call(request)).resolves.toMatchObject({ result: { outcome: 'no_change' }, durationMs: 1_234 });
+    expect(now).toHaveBeenCalledTimes(2);
     expect(fetchImpl).toHaveBeenCalledOnce();
     expect(open).toHaveBeenCalledOnce();
     expect(close).toHaveBeenCalledOnce();
@@ -114,7 +120,7 @@ describe('Z.AI coding-plan shadow gateway', () => {
     const { close } = mockGrounding();
     const createdPath = 'notes/new-subject.md';
     const createdPage = page('New subject body\n', [{ ref: userRef, use: 'confirmation' }], {
-      title: 'New subject', description: 'Confirmed knowledge about a new subject.', cubica_id: 'knw_new_subject'
+      title: 'New subject', description: 'Confirmed knowledge about a new subject.', cubica_id: 'knw_new_subject', timestamp: trustedTimestamp
     });
     const proposal: ExactPatchProposal = {
       ...providerProposal(),
@@ -140,6 +146,42 @@ describe('Z.AI coding-plan shadow gateway', () => {
     expect(call.result.proposal?.patch_hash).not.toBe(proposal.patch_hash);
     expect(fetchImpl).toHaveBeenCalledOnce();
     expect(close).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    ['invented timestamp', '2026-08-10T10:05:01.000Z'],
+    ['copied snapshot timestamp', '2026-08-10T10:00:00Z']
+  ])('rejects a create_file with %s', async (_label, timestamp) => {
+    mockGrounding();
+    const proposal: ExactPatchProposal = {
+      ...providerProposal(),
+      operations: [{
+        kind: 'create_file', path: 'notes/new-subject.md', new_text: page('New subject body\n', [{ ref: userRef, use: 'confirmation' }], {
+          title: 'New subject', description: 'Confirmed knowledge about a new subject.', cubica_id: 'knw_new_subject', timestamp
+        }),
+        reason: 'Capture the user-confirmed new subject', source_refs: [{ ref: userRef, use: 'confirmation' }]
+      }]
+    };
+    await expect(gateway(async () => responseFor({ schema_version: '1.0.0', request_id: request.request_id, outcome: 'proposal', proposal })).call(request))
+      .rejects.toMatchObject({ code: 'malformed_output' });
+  });
+
+  it.each([
+    ['unchanged timestamp', '2026-08-10T10:00:00Z'],
+    ['incorrect timestamp', '2026-08-10T10:05:01.000Z']
+  ])('rejects an update with %s', async (_label, timestamp) => {
+    mockGrounding();
+    const proposal = providerProposal();
+    proposal.operations[1]!.new_text = `"timestamp":"${timestamp}"`;
+    await expect(gateway(async () => responseFor({ schema_version: '1.0.0', request_id: request.request_id, outcome: 'proposal', proposal })).call(request))
+      .rejects.toMatchObject({ code: 'malformed_output' });
+  });
+
+  it('fails closed when the trusted clock cannot produce an ISO timestamp', async () => {
+    mockGrounding();
+    const fetchImpl = vi.fn();
+    await expect(gateway(fetchImpl, { now: () => Number.NaN }).call(request)).rejects.toMatchObject({ code: 'transport_error' });
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -322,6 +364,12 @@ describe('Z.AI coding-plan shadow gateway', () => {
         old_text: 'Original unique body anchor', old_text_hash: hash,
         new_text: 'Updated durable body', expected_matches: 1,
         reason: 'Capture the current user correction', source_refs: [{ ref: userRef, use: 'evidence' }]
+      },
+      {
+        kind: 'replace_exact', path: pagePath, base_file_hash: hash,
+        old_text: '"timestamp":"2026-08-10T10:00:00Z"', old_text_hash: hash,
+        new_text: `"timestamp":"${trustedTimestamp}"`, expected_matches: 1,
+        reason: 'Record the trusted semantic-change time', source_refs: [{ ref: userRef, use: 'evidence' }]
       }
     ];
 
@@ -332,7 +380,8 @@ describe('Z.AI coding-plan shadow gateway', () => {
       proposal: {
         operations: [
           { kind: 'replace_exact', old_text: originalSources, new_text: `"source_refs":${JSON.stringify(finalSources)}`, expected_matches: 1 },
-          { kind: 'replace_exact', old_text: 'Original unique body anchor', new_text: 'Updated durable body', expected_matches: 1 }
+          { kind: 'replace_exact', old_text: 'Original unique body anchor', new_text: 'Updated durable body', expected_matches: 1 },
+          { kind: 'replace_exact', old_text: '"timestamp":"2026-08-10T10:00:00Z"', new_text: `"timestamp":"${trustedTimestamp}"`, expected_matches: 1 }
         ]
       }
     });
@@ -430,7 +479,7 @@ function gateway(fetchImpl: typeof fetch | ((input: string | URL | Request, init
 
 function openGateway(fetchImpl: typeof fetch | ((input: string | URL | Request, init?: RequestInit) => Promise<Response>), overrides: Partial<ZaiCodingPlanModelGatewayOptions> = {}) {
   return ZaiCodingPlanModelGateway.open({
-    apiKey: 'test-key', grounding: config(), requestBinding: binding(), fetchImpl: fetchImpl as typeof fetch, ...overrides
+    apiKey: 'test-key', grounding: config(), requestBinding: binding(), fetchImpl: fetchImpl as typeof fetch, now: () => trustedNow, ...overrides
   });
 }
 
@@ -473,6 +522,11 @@ function providerProposal(): ExactPatchProposal {
       kind: 'replace_exact', path: pagePath, base_file_hash: hash, old_text: 'Original body', old_text_hash: hash,
       new_text: 'Updated body', expected_matches: 1, reason: 'Capture the user correction',
       source_refs: [{ ref: userRef, use: 'evidence' }]
+    }, {
+      kind: 'replace_exact', path: pagePath, base_file_hash: hash,
+      old_text: '"timestamp":"2026-08-10T10:00:00Z"', old_text_hash: hash,
+      new_text: `"timestamp":"${trustedTimestamp}"`, expected_matches: 1, reason: 'Record the trusted semantic-change time',
+      source_refs: [{ ref: userRef, use: 'evidence' }]
     }]
   };
 }
@@ -495,7 +549,7 @@ function snapshotFor(content: string): ShadowKnowledgeSnapshot {
 function page(
   body: string,
   sourceRefs = [{ ref: userRef, use: 'evidence' }],
-  overrides: Partial<{ title: string; description: string; cubica_id: string }> = {}
+  overrides: Partial<{ title: string; description: string; cubica_id: string; timestamp: string }> = {}
 ): string {
   return `---\n${JSON.stringify({
     schema_version: '1.0.0', type: 'note', title: 'Existing', description: 'Existing description',

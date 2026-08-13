@@ -61,6 +61,7 @@ const stateModel = {
 
 const storedState = {
   public: {
+    turn: { order: ["p1", "p2"] },
     score: 7,
     profile: {
       displayName: "Neutral session",
