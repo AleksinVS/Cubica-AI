@@ -352,6 +352,25 @@ describe('persistent shadow evaluator', () => {
       await expect(stat(f.paths.manifestPath)).rejects.toMatchObject({ code: 'ENOENT' });
     } finally { await rm(f.dir, { recursive: true, force: true }); }
   });
+  it('preserves a diagnostic claim and manifest when exact-zero cleanup finds Git drift', async () => {
+    const f = await fixture(); try {
+      await persistProposalMismatch(f);
+      (f.deps as { reviewer: ShadowEvaluatorDeps['reviewer'] }).reviewer = {
+        review: async (): Promise<readonly [boolean, boolean, boolean, boolean]> => { throw new Error('operator crashed'); }
+      };
+      await expect(reviewShadowEvaluation(f.deps)).rejects.toThrow('did not complete');
+      const claim = `${f.paths.reportPath}.semantic-review-claimed`;
+      const zeroDb: ShadowEvaluatorDatabase = {
+        inspect: async () => snapshot([]),
+        cleanup: async () => ({ runsDeleted: 0, metricsDeleted: 0, messagesTombstoned: 0, threadsTombstoned: 0 })
+      };
+      (f.deps as { readGitHead: ShadowEvaluatorDeps['readGitHead'] }).readGitHead = async () => 'b'.repeat(40);
+      const result = await cleanupShadowEvaluation({ ...f.deps, db: zeroDb });
+      expect(result).toMatchObject({ status: 'hard_stopped', git_unchanged: false, cleanup: { passed: true } });
+      expect((await stat(claim)).isDirectory()).toBe(true);
+      expect((await stat(f.paths.manifestPath)).isFile()).toBe(true);
+    } finally { await rm(f.dir, { recursive: true, force: true }); }
+  });
   it('preserves the existing successful awaiting-review transition', async () => {
     const f = await fixture(); try {
       const review = vi.fn(async () => [true, true, true, true] as const);

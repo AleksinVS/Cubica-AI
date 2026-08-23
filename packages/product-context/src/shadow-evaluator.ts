@@ -300,7 +300,7 @@ export async function cleanupShadowEvaluation(deps: ShadowEvaluatorDeps): Promis
   const gitUnchanged = (await deps.readGitHead()) === manifest.expected_git_head;
   report = { ...report, status: report.status === 'hard_stopped' || !gitUnchanged ? 'hard_stopped' : passed ? 'completed' : 'ready_for_cleanup', cleanup: { ...report.cleanup, active_runs: final.activeRuns, active_metrics: final.activeMetrics, active_messages: final.activeMessages, active_threads: final.activeThreads, active_text_bytes: final.activeTextBytes, runs_deleted: Math.max(0, report.cleanup.initial_runs - final.activeRuns), metrics_deleted: Math.max(0, report.cleanup.initial_metrics - final.activeMetrics), messages_tombstoned: Math.max(0, report.cleanup.initial_messages - final.activeMessages), threads_tombstoned: Math.max(0, report.cleanup.initial_threads - final.activeThreads), passed }, git_unchanged: gitUnchanged, scenarios: gitUnchanged ? report.scenarios : report.scenarios.map((scenario) => ({ ...scenario, git_unchanged: false })) };
   await writeShadowEvaluationReport(deps.paths, report);
-  if (passed) {
+  if (passed && gitUnchanged) {
     await removeSemanticMismatchReviewClaim(deps.paths);
     await removeManifest(deps.paths, digest);
   }

@@ -995,6 +995,6 @@ worker и не открывает второй путь к модели или �
 - Scope: JSON Schema, generated types, PostgreSQL, ACL, retention, prompt,
   gateway и provider не менялись. Следующий `existing_fact` обязан быть
   одноязычным с seed-страницей; межъязычный случай оценивается отдельно.
-- Verification: focused evaluator 39/39, package typecheck и diff-check прошли.
+- Verification: focused evaluator 40/40, package typecheck и diff-check прошли.
   Новый внешний вызов всё ещё требует отдельного решения PM и Sol-high
   preactivation.
