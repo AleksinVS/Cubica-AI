@@ -14,15 +14,33 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
+import {
+  buildAcceptedAgentTurnEventLogEntry,
+  validateAgentEvaluationFixture,
+  validateAgentReplayTranscript,
+  validateAgentTurnResult
+} from "@cubica/contracts-ai";
+import { AgentSeatDriver } from "../../../services/runtime-api/src/modules/ai/agentSeatDriver.ts";
+import {
+  AgentTurnService,
+  buildAgentSeatTurnInput
+} from "../../../services/runtime-api/src/modules/ai/agentRuntime.ts";
 import { validateGameManifest } from "../../../services/runtime-api/src/modules/content/manifestValidation.ts";
 import {
   getPublishedPlayerWebPluginBundleSource,
   loadPlayerFacingContent
 } from "../../../services/runtime-api/src/modules/content/contentService.ts";
 import { createImmutableBundleContent } from "../../../services/runtime-api/src/modules/content/immutableBundle.ts";
-import { dispatchRuntimeAction } from "../../../services/runtime-api/src/modules/runtime/actionDispatcher.ts";
+import {
+  dispatchRuntimeAction,
+  executePublishedGameIntentCandidate
+} from "../../../services/runtime-api/src/modules/runtime/actionDispatcher.ts";
 import { projectSessionActionAvailability } from "../../../services/runtime-api/src/modules/runtime/actionAvailability.ts";
+import { BoundedInMemoryCommandAdmissionController } from "../../../services/runtime-api/src/modules/runtime/commandAdmission.ts";
+import { RuntimeService } from "../../../services/runtime-api/src/modules/runtime/runtime.service.ts";
 import { InMemorySessionStore } from "../../../services/runtime-api/src/modules/session/inMemorySessionStore.ts";
+import { createLocalSessionAccess } from "../../../services/runtime-api/src/modules/session/sessionAuthentication.ts";
+import { createAgentSeatCommandId } from "../../../services/runtime-api/src/modules/session/commandIdentity.ts";
 import { buildPlayerSessionProjection } from "../../../services/runtime-api/src/modules/session/playerSessionProjection.ts";
 import { materializeLocalSessionParticipants } from "../../../services/runtime-api/src/modules/session/sessionParticipants.ts";
 import { initializeTurnBasedSessionState } from "../../../services/runtime-api/src/modules/session/turnBasedSessionState.ts";
@@ -1819,6 +1837,7 @@ test("jail pay, doubles, failed attempts, and third-attempt obligations are atom
     }
   });
   const beforePoorThird = await poorThird.store.getSession(poorThird.session.sessionId);
+  assert.equal(beforePoorThird.state.players.p1.flags.thirdJailMovePending, false);
   const thirdCommandId = createTestCommandId();
   const thirdFailure = await act(poorThird, "jail.roll", {}, {
     commandId: thirdCommandId,
@@ -1839,12 +1858,14 @@ test("jail pay, doubles, failed attempts, and third-attempt obligations are atom
   await act(poorThird, "obligation.resolve");
   afterPoorThird = await poorThird.store.getSession(poorThird.session.sessionId);
   assert.equal(afterPoorThird.state.public.turn.phase, "jail");
+  assert.equal(afterPoorThird.state.players.p1.flags.thirdJailMovePending, true);
   assert.deepEqual(afterPoorThird.state.public.board.availableActions.map((item) => item.actionId), ["jail.third.move"]);
   await act(poorThird, "jail.third.move");
   afterPoorThird = await poorThird.store.getSession(poorThird.session.sessionId);
   assert.equal(afterPoorThird.state.players.p1.metrics.cash, 44);
   assert.equal(afterPoorThird.state.players.p1.metrics.position, 13);
   assert.equal(afterPoorThird.state.players.p1.flags.inJail, false);
+  assert.equal(afterPoorThird.state.players.p1.flags.thirdJailMovePending, false);
   assert.equal(afterPoorThird.state.public.turn.phase, "acquire");
 });
 
@@ -2797,6 +2818,440 @@ test("a principal scoped to another actor cannot execute the active turn", async
   assert.deepEqual(after.state, before.state);
   assert.equal(after.version.stateVersion, before.version.stateVersion);
   assert.equal(replay.randomCallCount, 0);
+});
+
+const estateAgentSelection = (input, actionId, params = {}) => ({
+  schemaVersion: "1.0.0",
+  turnId: input.turnId,
+  agentId: input.agentId,
+  ok: true,
+  selectedIntent: { actionId, params },
+  audit: { source: "mock", createdAt: "2026-08-13T12:00:00.000Z" }
+});
+
+const estateAgentFixture = async (mutateState, { phase, participantCount = 2 } = {}) => {
+  const manifest = await loadManifest();
+  const state = initializeTurnBasedSessionState(manifest, structuredClone(manifest.state), {
+    participantCount
+  });
+  state.public.setupComplete = true;
+  state.public.turn.order = Object.keys(state.players);
+  state.public.turn.activePlayerId = "p1";
+  state.public.turn.phase = phase;
+  state.public.board.availableActions = [];
+  mutateState?.(state);
+  const immutableBundle = createImmutableBundleContent(manifest.meta.id, manifest);
+  const store = new InMemorySessionStore();
+  const access = createLocalSessionAccess("player");
+  const created = await store.createSession({
+    gameId: manifest.meta.id,
+    sessionRole: "player",
+    initialState: state,
+    participants: [
+      { seatId: "p1", playerId: "p1", kind: "human", joinState: "local" },
+      { seatId: "p2", playerId: "p2", kind: "agent", joinState: "local" }
+    ],
+    immutableBundle,
+    principal: access.principal
+  });
+  return {
+    manifest,
+    bundle: { gameId: manifest.meta.id, bundleHash: immutableBundle.bundleHash, manifest },
+    store,
+    access,
+    sessionId: created.session.sessionId
+  };
+};
+
+test("S9 manifest keeps Estate deterministic and declares the exact safe 73-entry policy", async () => {
+  const manifest = await loadManifest();
+  assert.equal(manifest.meta.version, "0.8.0");
+  assert.equal(manifest.executionMode ?? "deterministic", "deterministic");
+  assert.equal(manifest.config.players.agentSeats.max, 1);
+  assert.equal(manifest.config.players.agentSeats.invalidAttemptLimit, 2);
+  assert.equal(manifest.agentRuntime.runtimeId, "mock");
+  assert.deepEqual(manifest.agentRuntime.allowedCapabilities, ["selectPublishedIntent"]);
+  assert.deepEqual(manifest.agentRuntime.contextExposurePolicy, {
+    publicState: true,
+    secretState: "none",
+    manifestProjection: ["/meta", "/actions"]
+  });
+
+  const candidates = manifest.config.players.agentSeats.deterministicFallbackCandidates;
+  assert.equal(candidates.length, 73);
+  assert.equal(new Set(candidates.map(({ actionId }) => actionId)).size, 19);
+  assert.ok(candidates.every(({ actionId }) => Object.hasOwn(manifest.actions, actionId)));
+  assert.deepEqual(candidates.slice(0, 16), [
+    { actionId: "turn.roll", params: {} },
+    { actionId: "property.decline", params: {} },
+    { actionId: "property.rent", params: {} },
+    { actionId: "property.auction.pass", params: {} },
+    { actionId: "property.build.pass", params: {} },
+    { actionId: "property.build.auction.pass", params: {} },
+    { actionId: "tax.pay", params: {} },
+    { actionId: "jail.third.move", params: {} },
+    { actionId: "jail.pay", params: {} },
+    { actionId: "turn.finish", params: {} },
+    { actionId: "trade.cancel", params: {} },
+    { actionId: "trade.decline", params: {} },
+    { actionId: "trade.card.claim", params: {} },
+    { actionId: "mortgage.transfer.keep", params: {} },
+    { actionId: "liquidation.card.claim", params: {} },
+    { actionId: "obligation.resolve", params: {} }
+  ]);
+  const expectedSellIds = Object.values(manifest.state.public.objects.boardCells)
+    .filter(({ attributes }) => attributes.kind === "estate")
+    .map(({ attributes }) => attributes.id);
+  const expectedMortgageIds = Object.values(manifest.state.public.objects.boardCells)
+    .filter(({ attributes }) => ["estate", "transit", "utility"].includes(attributes.kind))
+    .map(({ attributes }) => attributes.id);
+  assert.deepEqual(
+    candidates.filter(({ actionId }) => actionId === "property.sell").map(({ params }) => params.cellId),
+    expectedSellIds
+  );
+  assert.deepEqual(
+    candidates.filter(({ actionId }) => actionId === "property.mortgage").map(({ params }) => params.cellId),
+    expectedMortgageIds
+  );
+  assert.deepEqual(
+    candidates.filter(({ actionId }) => actionId === "bankruptcy.declare").map(({ params }) => params),
+    [
+      { heldCardId: "", heldCardId2: "" },
+      { heldCardId: "event-exit", heldCardId2: "" },
+      { heldCardId: "fund-exit", heldCardId2: "" },
+      { heldCardId: "", heldCardId2: "event-exit" },
+      { heldCardId: "", heldCardId2: "fund-exit" },
+      { heldCardId: "event-exit", heldCardId2: "fund-exit" },
+      { heldCardId: "fund-exit", heldCardId2: "event-exit" }
+    ]
+  );
+});
+
+test("S9 jail fallback distinguishes an ordinary third attempt from paid forced movement", async () => {
+  for (const attempts of [0, 1, 2]) {
+    for (const cash of [100, 49, 0]) {
+      const replay = await createPhaseReplay((state) => {
+        state.players.p1.flags.inJail = true;
+        state.players.p1.metrics.position = 10;
+        state.players.p1.metrics.jailAttempts = attempts;
+        state.players.p1.metrics.cash = cash;
+        state.public.board.lastRoll = { values: [1, 2], total: 3, isDouble: false };
+        state.public.obligation.status = "idle";
+      }, { phase: "jail" });
+      const before = await replay.store.getSession(replay.session.sessionId);
+      assert.equal(before.state.players.p1.flags.thirdJailMovePending, false);
+      await assertRejectedAction(act(replay, "jail.third.move"), /JAIL_THIRD_MOVE_UNAVAILABLE/);
+      const paid = await act(replay, "jail.pay");
+      assert.equal(paid.result.ok, true, JSON.stringify(paid.result));
+      const current = await replay.store.getSession(replay.session.sessionId);
+      assert.equal(current.state.players.p1.flags.thirdJailMovePending, false);
+      if (cash >= 50) {
+        assert.equal(current.state.public.turn.phase, "roll");
+        assert.equal(current.state.players.p1.flags.inJail, false);
+      } else {
+        assert.equal(current.state.public.turn.phase, "obligation");
+        assert.equal(current.state.public.obligation.reason, "jail-pay");
+        assert.equal(current.state.public.obligation.amount, 50);
+        if (attempts === 2 && cash === 0) {
+          const bankruptcy = await act(replay, "bankruptcy.declare", { heldCardId: "", heldCardId2: "" });
+          assert.equal(bankruptcy.result.ok, true, JSON.stringify(bankruptcy.result));
+        }
+      }
+    }
+  }
+
+  const replay = await createPhaseReplay((state) => {
+    state.players.p1.flags.inJail = true;
+    state.players.p1.metrics.position = 10;
+    state.players.p1.metrics.jailAttempts = 2;
+    state.players.p1.metrics.cash = 49;
+    state.public.board.lastRoll = { values: [4, 5], total: 9, isDouble: false };
+    state.public.obligation.status = "idle";
+    state.public.objects.boardCells["cell-01"].attributes.ownerPlayerId = "p1";
+  }, { phase: "jail", samples: [0, 1] });
+  const ordinaryThird = await replay.store.getSession(replay.session.sessionId);
+  assert.equal(ordinaryThird.state.players.p1.flags.thirdJailMovePending, false);
+  await assertRejectedAction(act(replay, "jail.third.move"), /JAIL_THIRD_MOVE_UNAVAILABLE/);
+
+  const rollCommandId = createTestCommandId();
+  const rolled = await act(replay, "jail.roll", {}, {
+    commandId: rollCommandId,
+    expectedStateVersion: ordinaryThird.version.stateVersion
+  });
+  const rollRetry = await act(replay, "jail.roll", {}, {
+    commandId: rollCommandId,
+    expectedStateVersion: ordinaryThird.version.stateVersion
+  });
+  assert.deepEqual(rollRetry.receipt, rolled.receipt);
+  assert.equal(replay.randomCallCount, 2, "the third attempt consumes one two-die roll");
+  await act(replay, "property.mortgage", { cellId: "cell-01" });
+  await act(replay, "obligation.resolve");
+
+  const pending = await replay.store.getSession(replay.session.sessionId);
+  assert.equal(pending.state.public.turn.phase, "jail");
+  assert.equal(pending.state.players.p1.flags.inJail, true);
+  assert.equal(pending.state.players.p1.metrics.jailAttempts, 2);
+  assert.equal(pending.state.players.p1.flags.thirdJailMovePending, true);
+  assert.equal(pending.state.public.obligation.status, "idle");
+  assert.equal(pending.state.players.p1.metrics.cash, 44);
+
+  await assertRejectedAction(act(replay, "jail.pay"), /JAIL_ACTION_UNAVAILABLE/);
+  await assertRejectedAction(act(replay, "jail.roll"), /JAIL_ROLL_UNAVAILABLE/);
+  const afterRejected = await replay.store.getSession(replay.session.sessionId);
+  assert.deepEqual(afterRejected.state, pending.state, "blocked pay/roll cannot double-charge or mutate forced movement");
+  assert.equal(replay.randomCallCount, 2, "a fourth jail roll is rejected before RNG");
+
+  const moveCommandId = createTestCommandId();
+  const moved = await act(replay, "jail.third.move", {}, {
+    commandId: moveCommandId,
+    expectedStateVersion: pending.version.stateVersion
+  });
+  const moveRetry = await act(replay, "jail.third.move", {}, {
+    commandId: moveCommandId,
+    expectedStateVersion: pending.version.stateVersion
+  });
+  assert.deepEqual(moveRetry.receipt, moved.receipt);
+  assert.equal(replay.randomCallCount, 2, "forced movement reuses the committed third roll");
+  const afterMove = await replay.store.getSession(replay.session.sessionId);
+  assert.equal(afterMove.state.players.p1.metrics.cash, 44, "the jail fee is charged exactly once");
+  assert.equal(afterMove.state.players.p1.metrics.position, 13);
+  assert.equal(afterMove.state.players.p1.flags.inJail, false);
+  assert.equal(afterMove.state.players.p1.flags.thirdJailMovePending, false);
+  assert.notEqual(afterMove.state.public.turn.phase, "jail");
+});
+
+test("S9 fixed-state evaluation fixtures validate selected intent legality without claiming strategic strength", async () => {
+  const fixtureDocument = JSON.parse(await readFile(
+    path.join(packageRoot, "tests", "estate-race-agent-evaluation-fixtures.json"),
+    "utf8"
+  ));
+  assert.equal(fixtureDocument.fixtures.length, 7);
+  assert.ok(fixtureDocument.fixtures.every((fixture) =>
+    fixture.notStrategicBenchmark === true && /not|no |only|is not/iu.test(fixture.boundedReasonableness)
+  ));
+
+  const scenarios = {
+    purchase: async () => createPhaseReplay((state) => {
+      state.players.p1.metrics.position = 1;
+      state.players.p1.metrics.cash = 1200;
+    }, { phase: "acquire" }),
+    auction: async () => {
+      const replay = await createPhaseReplay((state) => {
+        state.players.p1.metrics.position = 1;
+      }, { phase: "acquire" });
+      await act(replay, "property.decline");
+      return replay;
+    },
+    "jail-exit": async () => createPhaseReplay((state) => {
+      state.players.p1.flags.inJail = true;
+      state.players.p1.metrics.position = 10;
+      state.players.p1.objects.heldExitCardId = "event-exit";
+      installDecks(state, {
+        eventOrder: eventCardIds.filter((cardId) => cardId !== "event-exit"),
+        eventHeld: ["event-exit"]
+      });
+    }, { phase: "jail" }),
+    building: async () => createPhaseReplay((state) => {
+      s4PrepareOwnedGroup(state, { cellId: "cell-01", owner: "p1", tier: 0 });
+    }, { phase: "finish" }),
+    trade: async () => createPhaseReplay((state) => {
+      state.public.turn.activePlayerId = "p2";
+    }, { phase: "finish" }),
+    liquidity: async () => {
+      const replay = await createPhaseReplay((state) => {
+        state.players.p1.metrics.position = 1;
+        state.players.p1.metrics.cash = 0;
+        state.public.board.lastRoll = { values: [3, 4], total: 7, isDouble: false };
+        state.public.objects.boardCells["cell-01"].attributes.ownerPlayerId = "p2";
+        state.public.objects.boardCells["cell-05"].attributes.ownerPlayerId = "p1";
+      }, { phase: "rent" });
+      await act(replay, "property.rent");
+      return replay;
+    },
+    bankruptcy: async () => {
+      const replay = await createPhaseReplay((state) => {
+        state.players.p1.metrics.position = 1;
+        state.players.p1.metrics.cash = 0;
+        state.players.p1.objects.heldExitCardId = "event-exit";
+        state.players.p1.objects.heldExitCardId2 = "fund-exit";
+        state.public.board.lastRoll = { values: [3, 4], total: 7, isDouble: false };
+        state.public.objects.boardCells["cell-01"].attributes.ownerPlayerId = "p2";
+        installDecks(state, {
+          eventOrder: eventCardIds.filter((cardId) => cardId !== "event-exit"),
+          eventHeld: ["event-exit"],
+          fundOrder: fundCardIds.filter((cardId) => cardId !== "fund-exit"),
+          fundHeld: ["fund-exit"]
+        });
+      }, { participantCount: 3, phase: "rent" });
+      await act(replay, "property.rent");
+      return replay;
+    }
+  };
+
+  for (const fixture of fixtureDocument.fixtures) {
+    const replay = await scenarios[fixture.scenario]();
+    const snapshot = await replay.store.getSession(replay.session.sessionId);
+    const actorId = snapshot.state.public.turn.activePlayerId;
+    const input = buildAgentSeatTurnInput({
+      current: snapshot,
+      manifest: replay.manifest,
+      bundle: replay.bundle,
+      agentRuntime: replay.manifest.agentRuntime,
+      actorId
+    });
+    const evaluation = {
+      schemaVersion: "1.0.0",
+      fixtureId: fixture.fixtureId,
+      gameId: "estate-race",
+      title: fixture.title,
+      input,
+      expected: { ok: true, requiredActionId: fixture.expectedIntent.actionId },
+      audit: { createdAt: "2026-08-13T12:00:00.000Z", owner: "estate-race" }
+    };
+    assert.equal(validateAgentEvaluationFixture(evaluation).ok, true, fixture.fixtureId);
+    assert.ok(input.availableIntents.some(({ actionId }) => actionId === fixture.expectedIntent.actionId));
+    const result = estateAgentSelection(input, fixture.expectedIntent.actionId, fixture.expectedIntent.params);
+    assert.equal(validateAgentTurnResult(result, { availableIntents: input.availableIntents }).ok, true);
+    const executed = await executePublishedGameIntentCandidate({
+      bundle: replay.bundle,
+      state: snapshot.state,
+      sessionId: snapshot.sessionId,
+      actionId: fixture.expectedIntent.actionId,
+      params: fixture.expectedIntent.params,
+      actorPlayerId: actorId,
+      sessionRole: "player",
+      now: new Date("2026-08-13T12:00:00.000Z")
+    });
+    assert.equal(executed.result.ok, true, `${fixture.fixtureId}: ${JSON.stringify(executed.result)}`);
+    assert.ok(executed.candidateState, fixture.fixtureId);
+  }
+});
+
+test("S9 bounded human-vs-agent transcript uses ordinary intents, isolated projection, durable receipt and safe fallback", async () => {
+  let providerCalls = 0;
+  let capturedInput;
+  let capturedResult;
+  const fixture = await estateAgentFixture((state) => {
+    state.players.p1.metrics.position = 1;
+    state.players.p1.objects.heldExitCardId = "event-exit";
+    installDecks(state, {
+      eventOrder: eventCardIds.filter((cardId) => cardId !== "event-exit"),
+      eventHeld: ["event-exit"]
+    });
+  }, { phase: "acquire" });
+  const admission = new BoundedInMemoryCommandAdmissionController();
+  const turnService = new AgentTurnService(admission, async (input) => {
+    providerCalls += 1;
+    capturedInput = structuredClone(input);
+    capturedResult = estateAgentSelection(input, "property.auction.pass");
+    return capturedResult;
+  });
+  const runtime = new RuntimeService(admission, undefined, new AgentSeatDriver(turnService));
+  const command = {
+    sessionId: fixture.sessionId,
+    expectedStateVersion: 0,
+    actionId: "property.decline",
+    commandId: `cli_${"E".repeat(22)}`,
+    params: {}
+  };
+  const first = await runtime.dispatch({
+    sessionStore: fixture.store,
+    accessToken: fixture.access.accessToken,
+    input: command
+  });
+  assert.equal(providerCalls, 1);
+  assert.equal(first.response.version.stateVersion, 2);
+  assert.equal(first.response.state.public.turn.activePlayerId, "p1");
+  assert.equal(first.response.state.public.turn.phase, "auction");
+  assert.equal(capturedInput.executionMode, "deterministic");
+  assert.equal(capturedInput.playerId, "p2");
+  assert.equal(capturedInput.stateScope.secret, undefined);
+  assert.equal(JSON.stringify(capturedInput).includes("decks"), false);
+  assert.equal(capturedInput.stateScope.public.players.p1.objects.heldExitCardId, undefined);
+  assert.equal(capturedInput.stateScope.public.players.p1.objects.heldExitCardId2, undefined);
+  assert.equal(capturedInput.stateScope.actor.objects.heldExitCardId, null);
+  assert.equal(capturedInput.stateScope.actor.objects.heldExitCardId2, null);
+  assert.ok(capturedInput.availableIntents.some(({ actionId }) => actionId === "property.auction.pass"));
+  assert.deepEqual(capturedResult.selectedIntent, { actionId: "property.auction.pass", params: {} });
+
+  const agentCommandId = createAgentSeatCommandId(fixture.sessionId, "p2", 1);
+  const agentReceipt = await fixture.store.getCommandReceipt({
+    sessionId: fixture.sessionId,
+    credentialSha256: fixture.access.principal.credentialSha256,
+    commandId: agentCommandId
+  });
+  assert.equal(agentReceipt.status, "applied");
+  assert.equal(agentReceipt.audit.commandKind, "agent-turn");
+  assert.equal(agentReceipt.audit.selectedActionId, "property.auction.pass");
+
+  const retry = await runtime.dispatch({
+    sessionStore: fixture.store,
+    accessToken: fixture.access.accessToken,
+    input: command
+  });
+  assert.equal(providerCalls, 1);
+  assert.deepEqual(retry.response.receipt, first.response.receipt);
+  assert.equal(retry.response.version.stateVersion, 2);
+
+  const transcript = {
+    schemaVersion: "1.0.0",
+    transcriptId: "estate-race-human-agent-auction-v1",
+    gameId: "estate-race",
+    sessionId: fixture.sessionId,
+    createdAt: "2026-08-13T12:00:00.000Z",
+    entries: [buildAcceptedAgentTurnEventLogEntry({
+      eventId: "estate-agent-auction-pass",
+      input: capturedInput,
+      result: capturedResult,
+      recordedAt: "2026-08-13T12:00:00.000Z"
+    })],
+    redaction: {
+      secretStateIncluded: false,
+      policy: "ordinary-actor-projection-only",
+      redactedPaths: ["/stateScope/secret", "/state/secret", "/state/players/p1"]
+    }
+  };
+  assert.equal(validateAgentReplayTranscript(transcript).ok, true);
+
+  let invalidCalls = 0;
+  const fallbackFixture = await estateAgentFixture((state) => {
+    state.public.turn.phase = "auction";
+    state.public.turn.activePlayerId = "p2";
+    state.public.auction = {
+      resumePlayerId: "p1",
+      cellId: "cell-01",
+      currentBid: 0,
+      minimumIncrement: 10,
+      leaderPlayerId: ""
+    };
+    state.players.p1.objects.bidderStatus = "eligible";
+    state.players.p2.objects.bidderStatus = "eligible";
+  }, { phase: "auction" });
+  const fallbackDriver = new AgentSeatDriver(new AgentTurnService(
+    new BoundedInMemoryCommandAdmissionController(),
+    async (input) => {
+      invalidCalls += 1;
+      return estateAgentSelection(input, "unpublished.intent");
+    }
+  ));
+  const driven = await fallbackDriver.drive({
+    sessionStore: fallbackFixture.store,
+    credentialSha256: fallbackFixture.access.principal.credentialSha256,
+    sessionId: fallbackFixture.sessionId
+  });
+  assert.equal(invalidCalls, 2);
+  assert.equal(driven.agentControl, undefined);
+  assert.equal(driven.snapshot.version.stateVersion, 1);
+  assert.equal(driven.snapshot.state.public.turn.activePlayerId, "p1");
+  assert.equal(driven.snapshot.state.public.turn.phase, "auction");
+  const fallbackReceipt = await fallbackFixture.store.getCommandReceipt({
+    sessionId: fallbackFixture.sessionId,
+    credentialSha256: fallbackFixture.access.principal.credentialSha256,
+    commandId: createAgentSeatCommandId(fallbackFixture.sessionId, "p2", 0)
+  });
+  assert.equal(fallbackReceipt.status, "applied");
+  assert.equal(fallbackReceipt.audit.commandKind, "agent-turn");
+  assert.equal(fallbackReceipt.audit.selectedActionId, "property.auction.pass");
 });
 
 test("player-facing repository publishes the web screen and immutable field plugin", async () => {

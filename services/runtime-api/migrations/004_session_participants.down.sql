@@ -4,6 +4,5 @@
 DELETE FROM game_sessions;
 
 ALTER TABLE game_sessions
-  DROP CONSTRAINT IF EXISTS game_sessions_participants_array_check,
   DROP COLUMN IF EXISTS participants,
   ADD COLUMN player_id TEXT;

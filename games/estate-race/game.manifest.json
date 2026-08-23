@@ -1,7 +1,7 @@
 {
   "meta": {
     "id": "estate-race",
-    "version": "0.7.0",
+    "version": "0.8.0",
     "name": "Estate Race",
     "description": "Доступная экономическая стратегия о выборе момента для покупки, развития и переговоров.",
     "author": "Cubica",
@@ -17,7 +17,426 @@
   "config": {
     "players": {
       "min": 2,
-      "max": 6
+      "max": 6,
+      "agentSeats": {
+        "max": 1,
+        "invalidAttemptLimit": 2,
+        "deterministicFallbackCandidates": [
+          {
+            "actionId": "turn.roll",
+            "params": {}
+          },
+          {
+            "actionId": "property.decline",
+            "params": {}
+          },
+          {
+            "actionId": "property.rent",
+            "params": {}
+          },
+          {
+            "actionId": "property.auction.pass",
+            "params": {}
+          },
+          {
+            "actionId": "property.build.pass",
+            "params": {}
+          },
+          {
+            "actionId": "property.build.auction.pass",
+            "params": {}
+          },
+          {
+            "actionId": "tax.pay",
+            "params": {}
+          },
+          {
+            "actionId": "jail.third.move",
+            "params": {}
+          },
+          {
+            "actionId": "jail.pay",
+            "params": {}
+          },
+          {
+            "actionId": "turn.finish",
+            "params": {}
+          },
+          {
+            "actionId": "trade.cancel",
+            "params": {}
+          },
+          {
+            "actionId": "trade.decline",
+            "params": {}
+          },
+          {
+            "actionId": "trade.card.claim",
+            "params": {}
+          },
+          {
+            "actionId": "mortgage.transfer.keep",
+            "params": {}
+          },
+          {
+            "actionId": "liquidation.card.claim",
+            "params": {}
+          },
+          {
+            "actionId": "obligation.resolve",
+            "params": {}
+          },
+          {
+            "actionId": "property.sell",
+            "params": {
+              "cellId": "cell-01"
+            }
+          },
+          {
+            "actionId": "property.sell",
+            "params": {
+              "cellId": "cell-02"
+            }
+          },
+          {
+            "actionId": "property.sell",
+            "params": {
+              "cellId": "cell-05"
+            }
+          },
+          {
+            "actionId": "property.sell",
+            "params": {
+              "cellId": "cell-08"
+            }
+          },
+          {
+            "actionId": "property.sell",
+            "params": {
+              "cellId": "cell-09"
+            }
+          },
+          {
+            "actionId": "property.sell",
+            "params": {
+              "cellId": "cell-11"
+            }
+          },
+          {
+            "actionId": "property.sell",
+            "params": {
+              "cellId": "cell-13"
+            }
+          },
+          {
+            "actionId": "property.sell",
+            "params": {
+              "cellId": "cell-14"
+            }
+          },
+          {
+            "actionId": "property.sell",
+            "params": {
+              "cellId": "cell-16"
+            }
+          },
+          {
+            "actionId": "property.sell",
+            "params": {
+              "cellId": "cell-18"
+            }
+          },
+          {
+            "actionId": "property.sell",
+            "params": {
+              "cellId": "cell-19"
+            }
+          },
+          {
+            "actionId": "property.sell",
+            "params": {
+              "cellId": "cell-21"
+            }
+          },
+          {
+            "actionId": "property.sell",
+            "params": {
+              "cellId": "cell-23"
+            }
+          },
+          {
+            "actionId": "property.sell",
+            "params": {
+              "cellId": "cell-24"
+            }
+          },
+          {
+            "actionId": "property.sell",
+            "params": {
+              "cellId": "cell-26"
+            }
+          },
+          {
+            "actionId": "property.sell",
+            "params": {
+              "cellId": "cell-27"
+            }
+          },
+          {
+            "actionId": "property.sell",
+            "params": {
+              "cellId": "cell-29"
+            }
+          },
+          {
+            "actionId": "property.sell",
+            "params": {
+              "cellId": "cell-31"
+            }
+          },
+          {
+            "actionId": "property.sell",
+            "params": {
+              "cellId": "cell-32"
+            }
+          },
+          {
+            "actionId": "property.sell",
+            "params": {
+              "cellId": "cell-34"
+            }
+          },
+          {
+            "actionId": "property.sell",
+            "params": {
+              "cellId": "cell-37"
+            }
+          },
+          {
+            "actionId": "property.sell",
+            "params": {
+              "cellId": "cell-39"
+            }
+          },
+          {
+            "actionId": "property.mortgage",
+            "params": {
+              "cellId": "cell-01"
+            }
+          },
+          {
+            "actionId": "property.mortgage",
+            "params": {
+              "cellId": "cell-02"
+            }
+          },
+          {
+            "actionId": "property.mortgage",
+            "params": {
+              "cellId": "cell-05"
+            }
+          },
+          {
+            "actionId": "property.mortgage",
+            "params": {
+              "cellId": "cell-06"
+            }
+          },
+          {
+            "actionId": "property.mortgage",
+            "params": {
+              "cellId": "cell-08"
+            }
+          },
+          {
+            "actionId": "property.mortgage",
+            "params": {
+              "cellId": "cell-09"
+            }
+          },
+          {
+            "actionId": "property.mortgage",
+            "params": {
+              "cellId": "cell-11"
+            }
+          },
+          {
+            "actionId": "property.mortgage",
+            "params": {
+              "cellId": "cell-12"
+            }
+          },
+          {
+            "actionId": "property.mortgage",
+            "params": {
+              "cellId": "cell-13"
+            }
+          },
+          {
+            "actionId": "property.mortgage",
+            "params": {
+              "cellId": "cell-14"
+            }
+          },
+          {
+            "actionId": "property.mortgage",
+            "params": {
+              "cellId": "cell-15"
+            }
+          },
+          {
+            "actionId": "property.mortgage",
+            "params": {
+              "cellId": "cell-16"
+            }
+          },
+          {
+            "actionId": "property.mortgage",
+            "params": {
+              "cellId": "cell-18"
+            }
+          },
+          {
+            "actionId": "property.mortgage",
+            "params": {
+              "cellId": "cell-19"
+            }
+          },
+          {
+            "actionId": "property.mortgage",
+            "params": {
+              "cellId": "cell-21"
+            }
+          },
+          {
+            "actionId": "property.mortgage",
+            "params": {
+              "cellId": "cell-23"
+            }
+          },
+          {
+            "actionId": "property.mortgage",
+            "params": {
+              "cellId": "cell-24"
+            }
+          },
+          {
+            "actionId": "property.mortgage",
+            "params": {
+              "cellId": "cell-25"
+            }
+          },
+          {
+            "actionId": "property.mortgage",
+            "params": {
+              "cellId": "cell-26"
+            }
+          },
+          {
+            "actionId": "property.mortgage",
+            "params": {
+              "cellId": "cell-27"
+            }
+          },
+          {
+            "actionId": "property.mortgage",
+            "params": {
+              "cellId": "cell-28"
+            }
+          },
+          {
+            "actionId": "property.mortgage",
+            "params": {
+              "cellId": "cell-29"
+            }
+          },
+          {
+            "actionId": "property.mortgage",
+            "params": {
+              "cellId": "cell-31"
+            }
+          },
+          {
+            "actionId": "property.mortgage",
+            "params": {
+              "cellId": "cell-32"
+            }
+          },
+          {
+            "actionId": "property.mortgage",
+            "params": {
+              "cellId": "cell-34"
+            }
+          },
+          {
+            "actionId": "property.mortgage",
+            "params": {
+              "cellId": "cell-35"
+            }
+          },
+          {
+            "actionId": "property.mortgage",
+            "params": {
+              "cellId": "cell-37"
+            }
+          },
+          {
+            "actionId": "property.mortgage",
+            "params": {
+              "cellId": "cell-39"
+            }
+          },
+          {
+            "actionId": "bankruptcy.declare",
+            "params": {
+              "heldCardId": "",
+              "heldCardId2": ""
+            }
+          },
+          {
+            "actionId": "bankruptcy.declare",
+            "params": {
+              "heldCardId": "event-exit",
+              "heldCardId2": ""
+            }
+          },
+          {
+            "actionId": "bankruptcy.declare",
+            "params": {
+              "heldCardId": "fund-exit",
+              "heldCardId2": ""
+            }
+          },
+          {
+            "actionId": "bankruptcy.declare",
+            "params": {
+              "heldCardId": "",
+              "heldCardId2": "event-exit"
+            }
+          },
+          {
+            "actionId": "bankruptcy.declare",
+            "params": {
+              "heldCardId": "",
+              "heldCardId2": "fund-exit"
+            }
+          },
+          {
+            "actionId": "bankruptcy.declare",
+            "params": {
+              "heldCardId": "event-exit",
+              "heldCardId2": "fund-exit"
+            }
+          },
+          {
+            "actionId": "bankruptcy.declare",
+            "params": {
+              "heldCardId": "fund-exit",
+              "heldCardId2": "event-exit"
+            }
+          }
+        ]
+      }
     },
     "settings": {
       "mode": "local-hotseat",
@@ -44,6 +463,24 @@
         "liquidationMortgage",
         "liquidationClaim",
         "terminal"
+      ]
+    }
+  },
+  "agentRuntime": {
+    "agentId": "estate-race-local-opponent",
+    "runtimeId": "mock",
+    "required": false,
+    "allowedCapabilities": [
+      "selectPublishedIntent"
+    ],
+    "surfaceCatalog": [],
+    "failurePolicy": "deterministicFallback",
+    "contextExposurePolicy": {
+      "publicState": true,
+      "secretState": "none",
+      "manifestProjection": [
+        "/meta",
+        "/actions"
       ]
     }
   },
@@ -233,7 +670,8 @@
         "jailAttempts": 0
       },
       "flags": {
-        "inJail": false
+        "inJail": false,
+        "thirdJailMovePending": false
       },
       "objects": {
         "bidderStatus": "idle",
@@ -1928,7 +2366,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:d146075730e8e046e514b3a7e5c6a3890a93d41be88918fd6a1877056d67739f"
+      "definitionHash": "sha256:b94447649b0cc977819cf514f7cd10d9f76927f0b3047427a598d1759d455436"
     },
     "turn.roll": {
       "capabilityFamily": "runtime.server",
@@ -1948,7 +2386,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:50cf64b57e4b78b4dba183beb2c1542477e4a9c8e387c2e5b0720588775641c1"
+      "definitionHash": "sha256:71eb007922963518fd2d79d693cee5eefb8319f52600042296c3bb30eb656ff6"
     },
     "property.buy": {
       "capabilityFamily": "runtime.server",
@@ -1968,7 +2406,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:22518cf3c26b4eaacece584e535d93bf9f8adb1aabcdacec8890d95b22d27a11"
+      "definitionHash": "sha256:a7951d624acb4187479688a48cbf93da2ee8cf61ef84c593ea8ea6c176ed645d"
     },
     "property.decline": {
       "capabilityFamily": "runtime.server",
@@ -1988,7 +2426,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:6463344aaca8d89716ab4f89d178aaa1eb397543d5f7c4b0c4f31ff5019582a1"
+      "definitionHash": "sha256:bda8d5bb8beb7cbc4980019ba94816bd98569c53634c4db953216155d10c6ca8"
     },
     "property.rent": {
       "capabilityFamily": "runtime.server",
@@ -2008,7 +2446,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:7b95a1e611616b979c20200f559ec7bf54ae54afedb3815d739c52dfa193af69"
+      "definitionHash": "sha256:00b84a7fb2058c40ac845a9e35d247637e33f597b248592cdfdbbcd8b6bcb1e1"
     },
     "property.auction.bid": {
       "capabilityFamily": "runtime.server",
@@ -2036,7 +2474,7 @@
         "planRef": "property.auction.bid"
       },
       "invocation": "external",
-      "definitionHash": "sha256:94b4a94f01e639d593bf173d92208097b00a84c9ccb7cc071c78e6dc7692a834"
+      "definitionHash": "sha256:dca2245a5bafa361d7790f19823830fa5b2c42e69bb9084b16d52310789fec90"
     },
     "property.auction.pass": {
       "capabilityFamily": "runtime.server",
@@ -2056,7 +2494,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:d683828fbffc14bed0abff22371b60a2d45cc65ea5725e64960aae66132a6c11"
+      "definitionHash": "sha256:6a11b99b0450a023291f372958b9d7f7249d9a85d449a0886145f1e50dfaab83"
     },
     "property.build": {
       "capabilityFamily": "runtime.server",
@@ -2084,7 +2522,7 @@
         "planRef": "property.build"
       },
       "invocation": "external",
-      "definitionHash": "sha256:911d3d9dddd3d76cf4c6ea0d439341728c93c4da76f22e4c7d561671fb04a34a"
+      "definitionHash": "sha256:198cb64bbc510b09204d24b48b32ca020d51489b0e3a312ee3bc25ce418b8081"
     },
     "property.build.request": {
       "capabilityFamily": "runtime.server",
@@ -2112,7 +2550,7 @@
         "planRef": "property.build.request"
       },
       "invocation": "external",
-      "definitionHash": "sha256:338d95e0865eb04b5719a7bd839c9d7137d5a08459e380c7c4dad2c64253fb38"
+      "definitionHash": "sha256:96f87f4a54818248a94fc32a777bf9da395da43a1bf95d3d894988b67119d1dd"
     },
     "property.build.pass": {
       "capabilityFamily": "runtime.server",
@@ -2132,7 +2570,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:be97da05b8d92589a936505b639b46f8e8e22d7105f897abbae355ca66697499"
+      "definitionHash": "sha256:d6c30aa8e6e08c61175ebf73270232ad2c8871138f00429aef88e7512e8bd0ed"
     },
     "property.build.auction.bid": {
       "capabilityFamily": "runtime.server",
@@ -2160,7 +2598,7 @@
         "planRef": "property.build.auction.bid"
       },
       "invocation": "external",
-      "definitionHash": "sha256:f8273f701b241b499206c341479e3e7f7380ae71d04a907ce3b4ffd1570fd045"
+      "definitionHash": "sha256:d6e3bd2f160499b79d72872d70e639da60ce94938e0355d52f5b42e2422f02b5"
     },
     "property.build.auction.pass": {
       "capabilityFamily": "runtime.server",
@@ -2180,7 +2618,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:0296fe9c0f3d0220605929f965f0265ddfd290824af9f606f3c92ada9efd96c1"
+      "definitionHash": "sha256:2dca125b9c3e23137dcdfce7527bafce8785231ab1194f709ea1fb0e1b6e7e24"
     },
     "property.sell": {
       "capabilityFamily": "runtime.server",
@@ -2208,7 +2646,7 @@
         "planRef": "property.sell"
       },
       "invocation": "external",
-      "definitionHash": "sha256:826a58cfb53f1f889a2cb0dff16348ce93fe312b4975c55622680dbfe9e41a95"
+      "definitionHash": "sha256:1fd269ae5eadfebbfff3f9158fe6b62c68573f2e78bb5782cace8834447d9c9c"
     },
     "property.mortgage": {
       "capabilityFamily": "runtime.server",
@@ -2236,7 +2674,7 @@
         "planRef": "property.mortgage"
       },
       "invocation": "external",
-      "definitionHash": "sha256:2731d31a3026414ca755b8fb403e4b2cd2e5ec449ed24cfd06308751d838f524"
+      "definitionHash": "sha256:7899495340de4333307fef4429ec2ee8b78b8ea31423ff457f3ea9a0b58d07e2"
     },
     "property.redeem": {
       "capabilityFamily": "runtime.server",
@@ -2264,7 +2702,7 @@
         "planRef": "property.redeem"
       },
       "invocation": "external",
-      "definitionHash": "sha256:aa8c488e3221121ea0d094daaf2b64ddee13bfd82eb11b42f56a93360aa8871a"
+      "definitionHash": "sha256:f734d5ea9b03b8429d6949189c5cc07957a99654568b2c5d439581ed306269fb"
     },
     "tax.pay": {
       "capabilityFamily": "runtime.server",
@@ -2284,7 +2722,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:9fc271e5059abf7a8659707756483247b9263c0ac67db5bfc832d14c45cf4d19"
+      "definitionHash": "sha256:f9c295489778a1a2fb8e85e9cb5e1cb9713cb430703b4aeff98b78b23a7541ee"
     },
     "jail.pay": {
       "capabilityFamily": "runtime.server",
@@ -2304,7 +2742,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:01edc68f587e325b6378ee43ededae30dc3752b0d8f1c63ee3d12049ca847680"
+      "definitionHash": "sha256:820f5527abf04045feccf2aee02a3777007e9870833eca26629030532ee85ff4"
     },
     "jail.card.use.event": {
       "capabilityFamily": "runtime.server",
@@ -2324,7 +2762,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:cd96922be39bf055f7d0e13e6332f1b1d6d9131c488c8ecd6d7a19e2d898be6e"
+      "definitionHash": "sha256:7d7ca58027eaceabba916aadc79b9ceee1e17fa77da2249f53d2096b78a6d72b"
     },
     "jail.roll": {
       "capabilityFamily": "runtime.server",
@@ -2344,7 +2782,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:dda26d197b08ae11d8d1867ae2cfa5ff23987cb4c7f669bee681094c41598da4"
+      "definitionHash": "sha256:df6a5e585d1512bdf1c712df917ba97d0fe8c440aeb6ce8fccda67973d35aaad"
     },
     "jail.third.move": {
       "capabilityFamily": "runtime.server",
@@ -2364,7 +2802,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:f15b17bbf2f6b322b12a3b23531387f3b3e5aab088785e8d5c1d18be0a37f17f"
+      "definitionHash": "sha256:9709ed6da21ad698065f9958e03b26b79786a12fdb3876044fdb2a9560961264"
     },
     "turn.finish": {
       "capabilityFamily": "runtime.server",
@@ -2384,7 +2822,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:82310a90d1f9ac7ef9a460a1000d5ca03edd095dcfe525c6900a50651e326e46"
+      "definitionHash": "sha256:98d069bf9e4890b704eeb8f47107764391cf46d8f06d1492cc9a94e6c42a1403"
     },
     "trade.open": {
       "capabilityFamily": "runtime.server",
@@ -2412,7 +2850,7 @@
         "planRef": "trade.open"
       },
       "invocation": "external",
-      "definitionHash": "sha256:5285b3007f50a9f3557f253b6a57f0767b010218e8785142de7f668eab9a13ed"
+      "definitionHash": "sha256:b49fbf3b0ce9e8c1bae41f8a5b9deef71019e1c3de846abf866c85abb768872b"
     },
     "trade.cash.set": {
       "capabilityFamily": "runtime.server",
@@ -2446,7 +2884,7 @@
         "planRef": "trade.cash.set"
       },
       "invocation": "external",
-      "definitionHash": "sha256:4b829a23663b19a9918dd6b0c4af1d5f92d97078f6a96e374c78e12d8d5b4a80"
+      "definitionHash": "sha256:c0b700e1bef340f44a4e66dc653a440a34b94e4539aeec6df1b6797da65f821d"
     },
     "trade.asset.set": {
       "capabilityFamily": "runtime.server",
@@ -2480,7 +2918,7 @@
         "planRef": "trade.asset.set"
       },
       "invocation": "external",
-      "definitionHash": "sha256:e2d215237509a80e1fab82bb3a6649d5c0cf4b4949c8b301d39b0fc14b78fe83"
+      "definitionHash": "sha256:dc003470b57af5dd452de7c26e622d6ecd9602982288202d86bc23f464799de7"
     },
     "trade.asset.remove": {
       "capabilityFamily": "runtime.server",
@@ -2508,7 +2946,7 @@
         "planRef": "trade.asset.remove"
       },
       "invocation": "external",
-      "definitionHash": "sha256:a484738d016c1e90992ba86e8bd7cb53c9aff6b86b6313069ef8123e4af91b5f"
+      "definitionHash": "sha256:313c51a3448c12d0f7a408c85b8bd4da108d0852d2acaf6f9eeca1e73bd8198a"
     },
     "trade.card.offer": {
       "capabilityFamily": "runtime.server",
@@ -2536,7 +2974,7 @@
         "planRef": "trade.card.offer"
       },
       "invocation": "external",
-      "definitionHash": "sha256:79a8be5a7d875788aa064c308838b35dc62dafcd317beced0514a30a3a87e8cc"
+      "definitionHash": "sha256:6f178add6ecbfc5fd30781f9c0931fc4243d7c447dd5667305ff04dd7357bc1e"
     },
     "trade.card.offer.remove": {
       "capabilityFamily": "runtime.server",
@@ -2556,7 +2994,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:cb19ef11ac61fcd834af50aa23c36132321586d6f4f5d3dc7fede287c2d07dc0"
+      "definitionHash": "sha256:f4a0dc0cd8b20fd1ef87f44120411b377bb95f709068a5e61226fe3fc753a319"
     },
     "trade.card.request": {
       "capabilityFamily": "runtime.server",
@@ -2584,7 +3022,7 @@
         "planRef": "trade.card.request"
       },
       "invocation": "external",
-      "definitionHash": "sha256:764632890593f1f9363aaaeb7c86c2c0a3f181e3149e64378652470e786f5700"
+      "definitionHash": "sha256:086676cb5d1e50d44d7c0ee787b93d13f98d20d2700b539596c573bc07ab274e"
     },
     "trade.card.request.remove": {
       "capabilityFamily": "runtime.server",
@@ -2604,7 +3042,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:a9dac39e5405def0d900574a45bba9418bbc7f5448b34c455439bf709b63cf59"
+      "definitionHash": "sha256:0c49ea87257148918b12aff6d9c44145e29f7f0739913a9b0925401297e3e01e"
     },
     "trade.propose": {
       "capabilityFamily": "runtime.server",
@@ -2624,7 +3062,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:2be85f5a6d07e6af52c78169d7019f154d3040b11ae2cb765b966134ca0cf4ee"
+      "definitionHash": "sha256:7a94cb1d084c9eec45155086253b1714481104017a52212b728f80a363b1be7a"
     },
     "trade.accept": {
       "capabilityFamily": "runtime.server",
@@ -2644,7 +3082,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:711ff4c9059f6b118e338baf4e13d5a8b446d11cf824f972e5c19963ccb80b3c"
+      "definitionHash": "sha256:b0d38e630782c69eb7ae104db24cbe5aa225157b62d554c7e93aabd59a406684"
     },
     "trade.decline": {
       "capabilityFamily": "runtime.server",
@@ -2664,7 +3102,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:fb9df3bb18de7112a15e14e8f2642a52016386ee8ac1210c7b4c19942cbbc4c1"
+      "definitionHash": "sha256:92bd1b770ae05c91333dda824ae75faee5f76d8d5afd294572db73b49182f478"
     },
     "trade.cancel": {
       "capabilityFamily": "runtime.server",
@@ -2684,7 +3122,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:45a6fc5654b3afba4572c67771a202ce1a1fa58ba63cdde56b8b2d4bd227bdb5"
+      "definitionHash": "sha256:14fb75e3374dedf5d6d03be2c5e724d380c8ec708dc0d491658204f106ed95fe"
     },
     "trade.card.claim": {
       "capabilityFamily": "runtime.server",
@@ -2704,7 +3142,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:e09968740a0e2c677367d898bae5ea4c3de0f351f1e92e2eb000a01565b34611"
+      "definitionHash": "sha256:78bbe6a480e27dfdb32e5a4412b8a3b266d3abf5bee95ce3475a1243b38fb04c"
     },
     "obligation.resolve": {
       "capabilityFamily": "runtime.server",
@@ -2724,7 +3162,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:a03789dc73e3cde5a72c50ba1618ad2bc3e96fac6738042342cd69029ef71402"
+      "definitionHash": "sha256:70ffd0eef35dc67ee67c4b89ebf93c6b1ad20c964b192a904a9004183d15431a"
     },
     "bankruptcy.declare": {
       "capabilityFamily": "runtime.server",
@@ -2756,7 +3194,7 @@
         ]
       },
       "invocation": "external",
-      "definitionHash": "sha256:95bae4c37929183906c8c783190dfe930aac455820201e8a49279e803a2ba9e2"
+      "definitionHash": "sha256:d726065c61efaefe748616c090936b91182a5731f4426772b546a02b20c7a56d"
     },
     "jail.card.use.fund": {
       "capabilityFamily": "runtime.server",
@@ -2776,7 +3214,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:c374a40215defe7b321455964ceab34c6bf325c66483e1bfe033e8571d011927"
+      "definitionHash": "sha256:c6b24861c29e6a848530f9e2a1ee9eff29365b5841d040b9e4bd7af88c0477fc"
     },
     "mortgage.transfer.redeem": {
       "capabilityFamily": "runtime.server",
@@ -2796,7 +3234,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:e4b454847d584676a776bf61bfbda5689f7d6b83990e7f44e6f4627f584a73ac"
+      "definitionHash": "sha256:ba46d1ee883358a728cbcf347aedd899bb4b498bcf2d7613b5d8a6c49062eadf"
     },
     "mortgage.transfer.keep": {
       "capabilityFamily": "runtime.server",
@@ -2816,7 +3254,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:87a216c68827a3c0e80140dd03387c3e2d08d67f90b13c2bd683ddd4cdc5a1cb"
+      "definitionHash": "sha256:0b9b165bb8bad95509e0bad8c06f677cae06d337c067de832adebf78c549f045"
     },
     "liquidation.card.claim": {
       "capabilityFamily": "runtime.server",
@@ -2836,7 +3274,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:d4bc1443533e018aacd10fb57c1effdd88d798de77cdbfc28e66487fc7f04e72"
+      "definitionHash": "sha256:7f50e5918115c7870d2caf8c0f40f035bd0e3a6e979d3a895697b2c2809fbc9b"
     }
   },
   "mechanics": {
@@ -2846,12 +3284,12 @@
       "cubica.core": {
         "moduleId": "cubica.core",
         "moduleVersion": "1.7.0",
-        "artifactHash": "sha256:761d448c64868585c5b859043fb9ea19279e1c9e8993c4692ac23e3495458452"
+        "artifactHash": "sha256:9bb6aa772e68c5fb36d5ee35e4f3b577bb5e97ed7ac93a3cb7998a8c8f92276b"
       },
       "cubica.random": {
         "moduleId": "cubica.random",
         "moduleVersion": "1.1.2",
-        "artifactHash": "sha256:ef6fb6243f20f918329eba09f9437ebe5c708091c5f3a8d7986ef4935cde7a55",
+        "artifactHash": "sha256:bdd540e60f77005d6758cef85d9c9f2d8d9fa8dc6da46753e2efa952e1eb49aa",
         "algorithmVersions": {
           "randomProvider": "server-crypto-random-v1"
         }
@@ -2859,7 +3297,7 @@
       "cubica.ordering": {
         "moduleId": "cubica.ordering",
         "moduleVersion": "1.4.0",
-        "artifactHash": "sha256:9a681f174a2c820da787835ca27059b7c970a6b8cf93ab508b7ca825d102acfb",
+        "artifactHash": "sha256:de5e195bba1b1a1cda730e97622f54c7ac59067ad3401c0fa4e4e4ba9d70204d",
         "algorithmVersions": {
           "ordering": "lexicographic-bounded-v1",
           "tieBreak": "canonical-groups-server-crypto-random-v1"
@@ -2868,7 +3306,7 @@
       "cubica.deck": {
         "moduleId": "cubica.deck",
         "moduleVersion": "1.3.2",
-        "artifactHash": "sha256:334ac7a221b9b761a00b2589ec2fb593ad74be6a86744d3b1cb38ebefe1a32fc",
+        "artifactHash": "sha256:a3bf58bc5a877437595b6d770441c812dd6b7ef47ed8229f5d127597f4b57b6a",
         "algorithmVersions": {
           "shuffle": "fisher-yates-server-crypto-random-v1"
         }
@@ -3756,6 +4194,21 @@
           "valueType": "core.integer",
           "access": "read-write"
         },
+        "actor.flags.thirdJailMovePending": {
+          "audienceRef": "public",
+          "storage": {
+            "root": "players",
+            "segments": [
+              {
+                "context": "actor"
+              },
+              "flags",
+              "thirdJailMovePending"
+            ]
+          },
+          "valueType": "core.boolean",
+          "access": "read-write"
+        },
         "participant.flags.inJail": {
           "audienceRef": "public",
           "storage": {
@@ -4236,6 +4689,17 @@
                 "path": [
                   "flags",
                   "inJail"
+                ]
+              },
+              "valueType": "core.boolean",
+              "access": "read-only"
+            },
+            "thirdJailMovePending": {
+              "storage": {
+                "kind": "path",
+                "path": [
+                  "flags",
+                  "thirdJailMovePending"
                 ]
               },
               "valueType": "core.boolean",
@@ -4838,7 +5302,7 @@
     },
     "plans": {
       "session.setup.finalize": {
-        "planHash": "sha256:72f3f33911a97effeddc440c46810f7d9b6a65b5753a92af23c8008cf2a6c984",
+        "planHash": "sha256:0bf244f0473d8239d6df2bb2f8c74285788357a27bc68ce06e8fd1d99aa70692",
         "transaction": {
           "steps": [
             {
@@ -5004,7 +5468,7 @@
         }
       },
       "turn.roll": {
-        "planHash": "sha256:f937741259b91c3a3e6efcfc5bbb1de032e7faf50d6c03cad6cacb5257398fc4",
+        "planHash": "sha256:3ccd9dd5454c7c57cf14f3f0f3ba0e106ae13458cbb36fb45f6094f750bed744",
         "transaction": {
           "steps": [
             {
@@ -5289,6 +5753,16 @@
                   "value": {
                     "op": "value.literal",
                     "value": true
+                  }
+                },
+                {
+                  "operation": "set",
+                  "target": {
+                    "endpoint": "actor.flags.thirdJailMovePending"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": false
                   }
                 },
                 {
@@ -6026,6 +6500,16 @@
                   "value": {
                     "op": "value.literal",
                     "value": true
+                  }
+                },
+                {
+                  "operation": "set",
+                  "target": {
+                    "endpoint": "actor.flags.thirdJailMovePending"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": false
                   }
                 },
                 {
@@ -8602,6 +9086,16 @@
                 {
                   "operation": "set",
                   "target": {
+                    "endpoint": "actor.flags.thirdJailMovePending"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": false
+                  }
+                },
+                {
+                  "operation": "set",
+                  "target": {
                     "endpoint": "actor.metrics.jailAttempts"
                   },
                   "value": {
@@ -11123,6 +11617,16 @@
                   "value": {
                     "op": "value.literal",
                     "value": true
+                  }
+                },
+                {
+                  "operation": "set",
+                  "target": {
+                    "endpoint": "actor.flags.thirdJailMovePending"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": false
                   }
                 },
                 {
@@ -14020,6 +14524,16 @@
                 {
                   "operation": "set",
                   "target": {
+                    "endpoint": "actor.flags.thirdJailMovePending"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": false
+                  }
+                },
+                {
+                  "operation": "set",
+                  "target": {
                     "endpoint": "actor.metrics.jailAttempts"
                   },
                   "value": {
@@ -15121,7 +15635,7 @@
         }
       },
       "property.buy": {
-        "planHash": "sha256:89f11e4c47a4bf06d7826fdfb6a7cb59e662089855f3153ed001796e959ed15e",
+        "planHash": "sha256:44762930e99c3b7748d2027b924a68235ff4fa2cd82fd41dec3a4584c2b12457",
         "transaction": {
           "steps": [
             {
@@ -15397,7 +15911,7 @@
         }
       },
       "property.decline": {
-        "planHash": "sha256:760c0a1449a64ec97124e25883a5efb77e9101d1000a906a920b6d1eeb950fec",
+        "planHash": "sha256:fb88dfcade200503133810a191eecb2a9e287414c800e11d5dda8568e9b006bb",
         "transaction": {
           "steps": [
             {
@@ -15753,7 +16267,7 @@
         }
       },
       "property.rent": {
-        "planHash": "sha256:ebf116c2d08651beb86ec1142005957e06a15d5ef7ed06f1bbd8c7845895f6fd",
+        "planHash": "sha256:799554a009936657d13fca3788c2cb11a8a8053fc7b91423f63a6ef05da75143",
         "transaction": {
           "steps": [
             {
@@ -17492,7 +18006,7 @@
         }
       },
       "property.auction.bid": {
-        "planHash": "sha256:1c1a94ca806cf55c64d656ec48db3ec0fe2c9d63cee167951919c5dcb81ab8ee",
+        "planHash": "sha256:f6771aae00b1b5d9d001227e9900b0ea08dd6d989791c9cd9701f3da79243c2f",
         "transaction": {
           "steps": [
             {
@@ -18957,7 +19471,7 @@
         }
       },
       "property.auction.pass": {
-        "planHash": "sha256:bb5ab4db68777f5a2c193b6f33e6f5570f7541693a4f11cf92b5135798510a72",
+        "planHash": "sha256:68541f72cba0f7d05d51a0fc6d4c08cc32859579470fc21237ec09b5b5b491bb",
         "transaction": {
           "steps": [
             {
@@ -20428,7 +20942,7 @@
         }
       },
       "property.build": {
-        "planHash": "sha256:1153bf6bf85437fc96a652922f874fb47ddbfc45d7208f68d29c80f801838511",
+        "planHash": "sha256:30cce64d755938e996502cc55068d3d631e26e6053ab0bcf01ab9eba4c4ea572",
         "transaction": {
           "steps": [
             {
@@ -22854,7 +23368,7 @@
         }
       },
       "property.build.request": {
-        "planHash": "sha256:10c6fe8c85e27541d087c2c7f07135b9b3fbf795439f1445443f5b827f5fef52",
+        "planHash": "sha256:147201a7f0bf497a3053326cb862252bd37fc2487ae831234222d1e519d1adca",
         "transaction": {
           "steps": [
             {
@@ -25055,7 +25569,7 @@
         }
       },
       "property.build.pass": {
-        "planHash": "sha256:20490dc034528929dc7b8479771ea82ad9b5660448e8ca893f8b81bc74cae165",
+        "planHash": "sha256:26ca635df55684a85f66a3af32c94908baeb7d83ef42131a262a92a7a29fc78b",
         "transaction": {
           "steps": [
             {
@@ -26892,7 +27406,7 @@
         }
       },
       "property.build.auction.bid": {
-        "planHash": "sha256:da2af9a063231ffae9d308c6a58edc8b90be0eb878b16238a2f27a17d491ae96",
+        "planHash": "sha256:6cb51bb4069080de0db6359a450baf7b3c221281f809f8c50699ffa9450363c9",
         "transaction": {
           "steps": [
             {
@@ -29341,7 +29855,7 @@
         }
       },
       "property.build.auction.pass": {
-        "planHash": "sha256:2c33f445ff6ef4e637898c825006c6ff52242a03a51925321808e2dfa2427d51",
+        "planHash": "sha256:e36311c46aa859af72267540c88c618de95f731cb7b9bb587bdcf1265b065129",
         "transaction": {
           "steps": [
             {
@@ -31688,7 +32202,7 @@
         }
       },
       "property.sell": {
-        "planHash": "sha256:56ab7ffd068450fad78b69644df2eee04516a4589a54022a87e1e34e98265915",
+        "planHash": "sha256:851274628250e13f476310afac7b983304618332091a3ada8e28c962ac3e1511",
         "transaction": {
           "steps": [
             {
@@ -32297,7 +32811,7 @@
         }
       },
       "property.mortgage": {
-        "planHash": "sha256:ed3cc48d49c69008e9e2dad69332c6a7c39001cd455a3f545e18cfbba9f8ffb4",
+        "planHash": "sha256:dbe55dec57a0b6888f5fc688ab291370a31d42b087885f76856025579ce951ed",
         "transaction": {
           "steps": [
             {
@@ -32579,7 +33093,7 @@
         }
       },
       "property.redeem": {
-        "planHash": "sha256:d4960e4f31bfa7c8ab55628dbd35769073964f3e3c99ca5880a506e2d426a359",
+        "planHash": "sha256:9e3471a5c90a2365f565e29e03be5adaa426bd596e5c350d5d0dedb110ad98e8",
         "transaction": {
           "steps": [
             {
@@ -32690,7 +33204,7 @@
         }
       },
       "tax.pay": {
-        "planHash": "sha256:9e34d9a7a56312f9b71011dea86413463bb23cc2a88c37539c945896cf3640e4",
+        "planHash": "sha256:7ae44d39e2f397baf947557598f097cef3ad954237b50c7505c2f3b12412f0df",
         "transaction": {
           "steps": [
             {
@@ -33071,7 +33585,7 @@
         }
       },
       "turn.finish": {
-        "planHash": "sha256:2f3f16487e572901bfad3d51fbb2d72e17c3a02619c00e5b4dc7ce20089984a3",
+        "planHash": "sha256:be9c0a52481bcda2a174554ecea035b602fa153d8bb487282844a3f2791ca94a",
         "transaction": {
           "steps": [
             {
@@ -33441,7 +33955,7 @@
         }
       },
       "jail.pay": {
-        "planHash": "sha256:74c108b0a7cd3477aba52b0f82964421e6c9b84d6d231f4685344801488a8948",
+        "planHash": "sha256:35bda2a23edef1de66897da1d89a83220e27fc258ff9a5d20042ffaf456b835c",
         "transaction": {
           "steps": [
             {
@@ -33473,6 +33987,20 @@
                     "right": {
                       "op": "value.literal",
                       "value": true
+                    }
+                  },
+                  {
+                    "op": "predicate.compare",
+                    "operator": "eq",
+                    "left": {
+                      "op": "value.state",
+                      "ref": {
+                        "endpoint": "actor.flags.thirdJailMovePending"
+                      }
+                    },
+                    "right": {
+                      "op": "value.literal",
+                      "value": false
                     }
                   }
                 ]
@@ -33703,6 +34231,16 @@
                 {
                   "operation": "set",
                   "target": {
+                    "endpoint": "actor.flags.thirdJailMovePending"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": false
+                  }
+                },
+                {
+                  "operation": "set",
+                  "target": {
                     "endpoint": "actor.metrics.jailAttempts"
                   },
                   "value": {
@@ -33789,7 +34327,7 @@
         }
       },
       "jail.card.use.event": {
-        "planHash": "sha256:3d38843bbdcdf3b3ba58eb4927b604462d668295ba1b8b374ab6b7d097f0b55f",
+        "planHash": "sha256:5180dfc548859ef77eb461f0c5a1dfe5cd92961e7ec3cc1dda6648963b5ae0ec",
         "transaction": {
           "steps": [
             {
@@ -33956,6 +34494,16 @@
                 {
                   "operation": "set",
                   "target": {
+                    "endpoint": "actor.flags.thirdJailMovePending"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": false
+                  }
+                },
+                {
+                  "operation": "set",
+                  "target": {
                     "endpoint": "actor.metrics.jailAttempts"
                   },
                   "value": {
@@ -34014,7 +34562,7 @@
         }
       },
       "jail.roll": {
-        "planHash": "sha256:b08b27b7568a1be1743c3839e73c781574997283effec65944c0ec80c4bac59b",
+        "planHash": "sha256:2b2db65bc7f37c6074ae528292f779d4095448cb67861f6c85d6d078429d5529",
         "transaction": {
           "steps": [
             {
@@ -34047,6 +34595,20 @@
                     "right": {
                       "op": "value.literal",
                       "value": true
+                    }
+                  },
+                  {
+                    "op": "predicate.compare",
+                    "operator": "eq",
+                    "left": {
+                      "op": "value.state",
+                      "ref": {
+                        "endpoint": "actor.flags.thirdJailMovePending"
+                      }
+                    },
+                    "right": {
+                      "op": "value.literal",
+                      "value": false
                     }
                   }
                 ]
@@ -34374,6 +34936,16 @@
                   "operation": "set",
                   "target": {
                     "endpoint": "actor.flags.inJail"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": false
+                  }
+                },
+                {
+                  "operation": "set",
+                  "target": {
+                    "endpoint": "actor.flags.thirdJailMovePending"
                   },
                   "value": {
                     "op": "value.literal",
@@ -35236,6 +35808,16 @@
                   "value": {
                     "op": "value.literal",
                     "value": true
+                  }
+                },
+                {
+                  "operation": "set",
+                  "target": {
+                    "endpoint": "actor.flags.thirdJailMovePending"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": false
                   }
                 },
                 {
@@ -37812,6 +38394,16 @@
                 {
                   "operation": "set",
                   "target": {
+                    "endpoint": "actor.flags.thirdJailMovePending"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": false
+                  }
+                },
+                {
+                  "operation": "set",
+                  "target": {
                     "endpoint": "actor.metrics.jailAttempts"
                   },
                   "value": {
@@ -40333,6 +40925,16 @@
                   "value": {
                     "op": "value.literal",
                     "value": true
+                  }
+                },
+                {
+                  "operation": "set",
+                  "target": {
+                    "endpoint": "actor.flags.thirdJailMovePending"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": false
                   }
                 },
                 {
@@ -43230,6 +43832,16 @@
                 {
                   "operation": "set",
                   "target": {
+                    "endpoint": "actor.flags.thirdJailMovePending"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": false
+                  }
+                },
+                {
+                  "operation": "set",
+                  "target": {
                     "endpoint": "actor.metrics.jailAttempts"
                   },
                   "value": {
@@ -44671,7 +45283,7 @@
         }
       },
       "jail.third.move": {
-        "planHash": "sha256:0063cd8a28df15fde35b04a14d306e7adf46dbff7de1971815a0f15396698b4e",
+        "planHash": "sha256:ab55341496d49e90dfdb3dfd232c0e8bdab5dc3d7325edde749454211842f2ca",
         "transaction": {
           "steps": [
             {
@@ -44699,6 +45311,20 @@
                       "op": "value.state",
                       "ref": {
                         "endpoint": "actor.flags.inJail"
+                      }
+                    },
+                    "right": {
+                      "op": "value.literal",
+                      "value": true
+                    }
+                  },
+                  {
+                    "op": "predicate.compare",
+                    "operator": "eq",
+                    "left": {
+                      "op": "value.state",
+                      "ref": {
+                        "endpoint": "actor.flags.thirdJailMovePending"
                       }
                     },
                     "right": {
@@ -44834,6 +45460,16 @@
                   "operation": "set",
                   "target": {
                     "endpoint": "actor.flags.inJail"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": false
+                  }
+                },
+                {
+                  "operation": "set",
+                  "target": {
+                    "endpoint": "actor.flags.thirdJailMovePending"
                   },
                   "value": {
                     "op": "value.literal",
@@ -45564,6 +46200,16 @@
                   "value": {
                     "op": "value.literal",
                     "value": true
+                  }
+                },
+                {
+                  "operation": "set",
+                  "target": {
+                    "endpoint": "actor.flags.thirdJailMovePending"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": false
                   }
                 },
                 {
@@ -48140,6 +48786,16 @@
                 {
                   "operation": "set",
                   "target": {
+                    "endpoint": "actor.flags.thirdJailMovePending"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": false
+                  }
+                },
+                {
+                  "operation": "set",
+                  "target": {
                     "endpoint": "actor.metrics.jailAttempts"
                   },
                   "value": {
@@ -50661,6 +51317,16 @@
                   "value": {
                     "op": "value.literal",
                     "value": true
+                  }
+                },
+                {
+                  "operation": "set",
+                  "target": {
+                    "endpoint": "actor.flags.thirdJailMovePending"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": false
                   }
                 },
                 {
@@ -53558,6 +54224,16 @@
                 {
                   "operation": "set",
                   "target": {
+                    "endpoint": "actor.flags.thirdJailMovePending"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": false
+                  }
+                },
+                {
+                  "operation": "set",
+                  "target": {
                     "endpoint": "actor.metrics.jailAttempts"
                   },
                   "value": {
@@ -54642,7 +55318,7 @@
         }
       },
       "trade.open": {
-        "planHash": "sha256:4fe1a88070160f8a54b0c07705faa4be6834fe62a3fc1456a539e7ca13f736c1",
+        "planHash": "sha256:c51b77344fc52c1fef4137cbfd1115135b3a19155640870be4aa67f7a5314322",
         "transaction": {
           "steps": [
             {
@@ -54825,7 +55501,7 @@
         }
       },
       "trade.cash.set": {
-        "planHash": "sha256:48116c4e1cec0a6ba915c0ffd83f36abf3f3fd4f71e4b79b51edaada372b5b91",
+        "planHash": "sha256:14b93e3516c2ea4291b01acf087afcddea094bfb1eef6116ae995fb0f98a8ac1",
         "transaction": {
           "steps": [
             {
@@ -54956,7 +55632,7 @@
         }
       },
       "trade.asset.set": {
-        "planHash": "sha256:16e0112cd7284df23d0c5a74f987d94bc97821ab061b4190e652c887696135cf",
+        "planHash": "sha256:d96138331258b3d09b2bbe549b67fbae413b971906f7ae4336b4546cfeb66d18",
         "transaction": {
           "steps": [
             {
@@ -55270,7 +55946,7 @@
         }
       },
       "trade.asset.remove": {
-        "planHash": "sha256:cd6019ecc0987460b46a9903bd3ce33579f205bacf8a45abc869aaae3bf774c7",
+        "planHash": "sha256:7e4655893c3413cd26ac289a308d943344df28f4fe76c9f7f03f1cdf8516ac6d",
         "transaction": {
           "steps": [
             {
@@ -55388,7 +56064,7 @@
         }
       },
       "trade.card.offer": {
-        "planHash": "sha256:3ad8f0734e41092f5769fa90e1db8e55a8fe6440c65c2843f494158830770c7c",
+        "planHash": "sha256:a1e5e93c544bbd4a460a98a74c587e4b45453a310887e354b038c65a45a61624",
         "transaction": {
           "steps": [
             {
@@ -55644,7 +56320,7 @@
         }
       },
       "trade.card.offer.remove": {
-        "planHash": "sha256:033e81abcd0546f49cb3d5b4228c55753e64eb943adb00b0f25157a189a3086b",
+        "planHash": "sha256:03c4bd5473fb8db4675c7171c2997cb26b19631a11060fdd6ba6757683d8adee",
         "transaction": {
           "steps": [
             {
@@ -55874,7 +56550,7 @@
         }
       },
       "trade.card.request": {
-        "planHash": "sha256:2e0c14b59b52943f49febd6c189a54826a9f005f2b9c53cb3ab7c23774ba2e2f",
+        "planHash": "sha256:c38b1f4077a45402b3aecebcd2c77a48cfb0aa1117a8e5462e34eedbbf528551",
         "transaction": {
           "steps": [
             {
@@ -56021,7 +56697,7 @@
         }
       },
       "trade.card.request.remove": {
-        "planHash": "sha256:045b2f025e2e0734b2321d8d21180087643928876d05b48a2ada8cf12cc068bf",
+        "planHash": "sha256:d40f56d7255e6bbc7acfd215afc4cb56c4d2ed583d3c636d3973da3ef9cb6504",
         "transaction": {
           "steps": [
             {
@@ -56108,7 +56784,7 @@
         }
       },
       "trade.propose": {
-        "planHash": "sha256:a186874f10f083255d691393d21f9a56fbfe2cba026ebfca01f56d17603e77a1",
+        "planHash": "sha256:01b343e22e75d75b7dd7fd949adbc690d7ee50d62d694c1696a441d3323f4768",
         "transaction": {
           "steps": [
             {
@@ -56481,7 +57157,7 @@
         }
       },
       "trade.accept": {
-        "planHash": "sha256:59a4d0016a30929393423d888619900e10a1995b543aa6fb862f4904d8d61217",
+        "planHash": "sha256:983e5346456f554e7234201ce1082906404c9012bddeb20a92dc90928699ddda",
         "transaction": {
           "steps": [
             {
@@ -57587,7 +58263,7 @@
         }
       },
       "trade.decline": {
-        "planHash": "sha256:be81638d6dfe7015610b550a0f0def7db375ada7cbb2d120bca7ffc88c526212",
+        "planHash": "sha256:0549c7ad63527bfc6b5722a1c0411e47763dc7782227d469bd4a714d3896c07c",
         "transaction": {
           "steps": [
             {
@@ -57979,7 +58655,7 @@
         }
       },
       "trade.cancel": {
-        "planHash": "sha256:a5b6d7ffd8572b4f0376efc34aba1027c9167e7766a1df10d30a967a6450b50b",
+        "planHash": "sha256:dfc9f5c31360f9d617961e10c8f79cf1161d160a8ed37ab1a587a8013dd0481e",
         "transaction": {
           "steps": [
             {
@@ -58406,7 +59082,7 @@
         }
       },
       "trade.card.claim": {
-        "planHash": "sha256:cf82991294058a3e0f551288d75e334479877305dbba15bc9d494a24e1054441",
+        "planHash": "sha256:0ba9254daa38445aded36b60030baa05bcf72e673789ba52278f4fc8fa452a2e",
         "transaction": {
           "steps": [
             {
@@ -58763,7 +59439,7 @@
         }
       },
       "obligation.resolve": {
-        "planHash": "sha256:5d4a732c00378eb796268bfe763ed8415f58f3f0172ed8bd1e428329ca6f8b96",
+        "planHash": "sha256:c6440d1107087d49fb559cc40e31628a28f4d6886cbf83fab5b32fb92d2e8425",
         "transaction": {
           "steps": [
             {
@@ -60483,6 +61159,16 @@
                 {
                   "operation": "set",
                   "target": {
+                    "endpoint": "actor.flags.thirdJailMovePending"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": true
+                  }
+                },
+                {
+                  "operation": "set",
+                  "target": {
                     "endpoint": "public.obligation.status"
                   },
                   "value": {
@@ -60624,6 +61310,16 @@
                   "operation": "set",
                   "target": {
                     "endpoint": "actor.flags.inJail"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": false
+                  }
+                },
+                {
+                  "operation": "set",
+                  "target": {
+                    "endpoint": "actor.flags.thirdJailMovePending"
                   },
                   "value": {
                     "op": "value.literal",
@@ -60776,7 +61472,7 @@
         }
       },
       "bankruptcy.declare": {
-        "planHash": "sha256:59f5e96260c30f39b43c20066adc09d563254599912670f5411aa1cc8e1a04c0",
+        "planHash": "sha256:05b3a25c6d2a38d511512d4e96e9168930778aca594f65d29ae6fdcee253753c",
         "transaction": {
           "steps": [
             {
@@ -62907,7 +63603,7 @@
         }
       },
       "jail.card.use.fund": {
-        "planHash": "sha256:d90d20a1446b404c6b621a03f9d8d19eee24007b631c6494d475d57baa0af7ef",
+        "planHash": "sha256:8084cdfd052cda567398d2c5c2883e859aff25f41a0e8707d30f51e9d28eea98",
         "transaction": {
           "steps": [
             {
@@ -63074,6 +63770,16 @@
                 {
                   "operation": "set",
                   "target": {
+                    "endpoint": "actor.flags.thirdJailMovePending"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": false
+                  }
+                },
+                {
+                  "operation": "set",
+                  "target": {
                     "endpoint": "actor.metrics.jailAttempts"
                   },
                   "value": {
@@ -63132,7 +63838,7 @@
         }
       },
       "mortgage.transfer.redeem": {
-        "planHash": "sha256:a9f493c0265b4aa7040adb4d9bffbb68f9c088d560cfbe353e316f9c3c92ba68",
+        "planHash": "sha256:759b7ca82d63f82fcec238e1e240f8d49cddba94156b1aa85ed8e05e276de157",
         "transaction": {
           "steps": [
             {
@@ -64103,7 +64809,7 @@
         }
       },
       "mortgage.transfer.keep": {
-        "planHash": "sha256:faba6201d12a7beaa154af606a3da1371303144fca908345e0a2941cd346b105",
+        "planHash": "sha256:e70a61f76ed5087b428ca75b5cf3c7ae2eed37791cf4ded0227d4560f3526e17",
         "transaction": {
           "steps": [
             {
@@ -65134,7 +65840,7 @@
         }
       },
       "liquidation.card.claim": {
-        "planHash": "sha256:eafe1a78b9293eb9ff8cd1116f25d02fefd053b796763b4e621e6352ad9d73ca",
+        "planHash": "sha256:b25a2e4a1ce7022e64c1f53c8b8bb9c68b86ad450f026ef13b4cf88943daf823",
         "transaction": {
           "steps": [
             {

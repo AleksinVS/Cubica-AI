@@ -56,6 +56,21 @@ const JOBS = [
     outputKind: "json-schema"
   },
   {
+    name: "agent-control",
+    schema: path.join(repoRoot, "docs", "architecture", "runtime-api-openapi.yaml"),
+    schemaPath: ["components", "schemas", "AgentControl"],
+    output: path.join(repoRoot, "packages", "contracts", "session", "src", "generated", "agent-control.ts"),
+    rootName: "AgentControl",
+    compileRoot: true
+  },
+  {
+    name: "agent-control-schema",
+    schema: path.join(repoRoot, "docs", "architecture", "runtime-api-openapi.yaml"),
+    schemaPath: ["components", "schemas", "AgentControl"],
+    output: path.join(repoRoot, "packages", "contracts", "session", "src", "generated", "agent-control.schema.json"),
+    outputKind: "json-schema"
+  },
+  {
     name: "game-intent",
     schema: path.join(repoRoot, "docs", "architecture", "schemas", "game-intent.schema.json"),
     output: path.join(repoRoot, "packages", "contracts", "manifest", "src", "generated", "game-intent.ts"),

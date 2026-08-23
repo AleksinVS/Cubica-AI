@@ -20,6 +20,7 @@ import type {
   SessionStorePort
 } from "@cubica/contracts-session";
 import { assertGameLaunchReady } from "../admin/health.ts";
+import { AgentSeatDriver, projectAgentControl } from "../ai/agentSeatDriver.ts";
 import { contentService } from "../content/contentService.ts";
 import {
   extractInitialState,
@@ -53,6 +54,7 @@ type RuntimeState = Record<string, unknown>;
 
 interface SessionServiceOptions {
   sessionStore: SessionStorePort<RuntimeState>;
+  agentSeatDriver?: AgentSeatDriver;
 }
 
 export interface AuthenticatedSessionAccess {
@@ -72,9 +74,11 @@ export type AuthenticatedArchivedSessionAccess = ArchivedSessionAudit<RuntimeSta
 
 export class SessionService {
   private readonly sessionStore: SessionStorePort<RuntimeState>;
+  private readonly agentSeatDriver?: AgentSeatDriver;
 
   constructor(options: SessionServiceOptions) {
     this.sessionStore = options.sessionStore;
+    this.agentSeatDriver = options.agentSeatDriver;
   }
 
   async createSession(request: CreateSessionRequest): Promise<CreateSessionResponse<RuntimeState>> {
@@ -83,7 +87,12 @@ export class SessionService {
       throw new RequestValidationError("gameId is required to create a session");
     }
 
-    await assertGameLaunchReady({ gameId, contentSourceId: request.contentSourceId });
+    await assertGameLaunchReady({
+      gameId,
+      contentSourceId: request.contentSourceId,
+      participantCount: request.participantCount,
+      agentSeatCount: request.agentSeatCount
+    });
     const bundle = await contentService.getBundle(gameId, request.contentSourceId);
     const declaredState = extractInitialState(bundle) as RuntimeState;
     let initialState: RuntimeState;
@@ -101,7 +110,8 @@ export class SessionService {
     }
     const participants = materializeLocalSessionParticipants(
       initialState,
-      participantCount
+      participantCount,
+      request.agentSeatCount ?? 0
     );
     // A client never chooses its own trusted role. Facilitated mode is the one
     // current manifest rule that creates a facilitator controller.
@@ -118,7 +128,54 @@ export class SessionService {
       immutableBundle: toImmutableGameBundle(bundle),
       principal: localAccess.principal
     });
-    const snapshot = created.session;
+    let driven: Awaited<ReturnType<AgentSeatDriver["drive"]>> | undefined;
+    let recovered: {
+      snapshot: SessionRecord<RuntimeState>;
+      agentControl?: Awaited<ReturnType<typeof projectAgentControl>>;
+    } | undefined;
+    if (this.agentSeatDriver !== undefined) {
+      try {
+        driven = await this.agentSeatDriver.drive({
+          sessionStore: this.sessionStore,
+          credentialSha256: localAccess.principal.credentialSha256,
+          sessionId: created.session.sessionId
+        });
+      } catch (error) {
+        // Session creation and one-time credential handoff already committed.
+        // A post-commit driver fault must not strand that credential.
+        console.error(
+          `[agent-seat] initial bounded driver failed for session ${created.session.sessionId}:`,
+          error instanceof Error ? error.message : String(error)
+        );
+        try {
+          const authoritative = await this.sessionStore.getSession(created.session.sessionId);
+          if (authoritative !== null) {
+            recovered = { snapshot: authoritative };
+            try {
+              const agentControl = await projectAgentControl({
+                sessionStore: this.sessionStore,
+                credentialSha256: localAccess.principal.credentialSha256,
+                snapshot: authoritative
+              });
+              if (agentControl !== undefined) {
+                recovered.agentControl = agentControl;
+              }
+            } catch (projectionError) {
+              console.error(
+                `[agent-seat] receipt-derived control projection failed for session ${created.session.sessionId}:`,
+                projectionError instanceof Error ? projectionError.message : String(projectionError)
+              );
+            }
+          }
+        } catch (reloadError) {
+          console.error(
+            `[agent-seat] authoritative reload failed for session ${created.session.sessionId}:`,
+            reloadError instanceof Error ? reloadError.message : String(reloadError)
+          );
+        }
+      }
+    }
+    const snapshot = driven?.snapshot ?? recovered?.snapshot ?? created.session;
     const actorPlayerId = resolveSessionViewerActor(snapshot, created.principal);
 
     return {
@@ -135,6 +192,9 @@ export class SessionService {
         ...(actorPlayerId === undefined ? {} : { actorPlayerId }),
         sessionRole: created.principal.role
       }),
+      ...((driven?.agentControl ?? recovered?.agentControl) === undefined
+        ? {}
+        : { agentControl: driven?.agentControl ?? recovered?.agentControl }),
       credential: localAccess.accessToken
     };
   }
@@ -142,6 +202,11 @@ export class SessionService {
   async getSession(sessionId: SessionId, accessToken: string): Promise<GetSessionResponse<RuntimeState>> {
     const { snapshot, principal, bundle } = await this.authenticateSessionAccess(sessionId, accessToken);
     const actorPlayerId = resolveSessionViewerActor(snapshot, principal);
+    const agentControl = await projectAgentControl({
+      sessionStore: this.sessionStore,
+      credentialSha256: hashSessionCredential(accessToken),
+      snapshot
+    });
     return {
       sessionId: snapshot.sessionId,
       gameId: snapshot.gameId,
@@ -155,7 +220,8 @@ export class SessionService {
       actionAvailability: projectSessionActionAvailability(snapshot, bundle, {
         ...(actorPlayerId === undefined ? {} : { actorPlayerId }),
         sessionRole: principal.role
-      })
+      }),
+      ...(agentControl === undefined ? {} : { agentControl })
     };
   }
 

@@ -19,7 +19,6 @@ import type {
   SessionCommandTransactionInput,
   SessionEventRecord,
   SessionPrincipal,
-  SessionParticipant,
   SessionPublicJournalSource,
   SessionRecord,
   SessionRole,
@@ -231,7 +230,7 @@ export class PostgresSessionStore<TState = unknown> implements SessionStorePort<
 
   async createSession(input: CreateSessionInput<TState>): Promise<CreatedSession<TState>> {
     assertCreateInput(input);
-    assertSessionParticipantsMatchState(input.participants, input.initialState, { allowAgents: false });
+    assertSessionParticipantsMatchState(input.participants, input.initialState, { allowAgents: true });
     const sessionId = randomUUID();
     const now = new Date();
     let client: SessionDatabaseClient;
@@ -339,6 +338,27 @@ export class PostgresSessionStore<TState = unknown> implements SessionStorePort<
         [input.sessionId, input.credentialSha256]
       );
       return result.rows[0] === undefined ? null : mapPrincipalRow(result.rows[0]);
+    } catch (error) {
+      throw mapDatabaseOperationalError(error);
+    }
+  }
+
+  async getCommandReceipt(input: SessionCommandTransactionInput): Promise<SessionCommandReceipt | null> {
+    try {
+      const result = await this.pool.query<ReceiptRow>(
+        `${SELECT_RECEIPT}
+         WHERE session_id = $1 AND command_id = $3
+           AND principal_id = (
+             SELECT principal_id FROM session_principals
+             WHERE session_id = $1 AND credential_sha256 = $2
+           )
+           AND EXISTS (
+             SELECT 1 FROM game_sessions
+             WHERE id = $1 AND archived_at IS NULL AND bundle_hash IS NOT NULL
+           )`,
+        [input.sessionId, input.credentialSha256, input.commandId]
+      );
+      return result.rows[0] === undefined ? null : mapReceiptRow(result.rows[0]);
     } catch (error) {
       throw mapDatabaseOperationalError(error);
     }
@@ -567,7 +587,17 @@ export class PostgresSessionStore<TState = unknown> implements SessionStorePort<
         currentSession: current,
         principal,
         bundle: mapBundleRow(bundleRow),
-        ...(existingReceipt === undefined ? {} : { existingReceipt })
+        ...(existingReceipt === undefined ? {} : { existingReceipt }),
+        getCommandReceipt: async (commandId) => {
+          const receipt = await queryClient<ReceiptRow>(
+            client,
+            input.sessionId,
+            `${SELECT_RECEIPT}
+             WHERE session_id = $1 AND principal_id = $2 AND command_id = $3`,
+            [input.sessionId, principal.principalId, commandId]
+          );
+          return receipt.rows[0] === undefined ? null : mapReceiptRow(receipt.rows[0]);
+        }
       });
 
       assertCommandTransactionResult({
@@ -669,7 +699,17 @@ export class PostgresSessionStore<TState = unknown> implements SessionStorePort<
         principal,
         bundle: mapBundleRow(bundleRow),
         schedule,
-        ...(existingReceipt === undefined ? {} : { existingReceipt })
+        ...(existingReceipt === undefined ? {} : { existingReceipt }),
+        getCommandReceipt: async (commandId) => {
+          const receipt = await queryClient<ReceiptRow>(
+            client,
+            input.sessionId,
+            `${SELECT_RECEIPT}
+             WHERE session_id = $1 AND principal_id = $2 AND command_id = $3`,
+            [input.sessionId, principal.principalId, commandId]
+          );
+          return receipt.rows[0] === undefined ? null : mapReceiptRow(receipt.rows[0]);
+        }
       });
       assertSystemDisposition(existingReceipt, operationResult);
       assertCommandTransactionResult({
@@ -1340,13 +1380,20 @@ function requireSingleRow<TRow extends QueryResultRow>(result: QueryResult<TRow>
 }
 
 function mapSessionRow<TState>(row: SessionRow): SessionRecord<TState> {
+  const participants = structuredClone(row.participants);
+  const state = row.state as TState;
+  try {
+    assertSessionParticipantsMatchState(participants, state, { allowAgents: true });
+  } catch {
+    throw new SessionStoreUnavailableError();
+  }
   const session: SessionRecord<TState> = {
     sessionId: row.session_id,
     gameId: row.game_id,
     bundleHash: row.bundle_hash,
     ...(row.content_source_id === null ? {} : { contentSourceId: row.content_source_id }),
-    participants: parseSessionParticipants(row.participants),
-    state: row.state as TState,
+    participants,
+    state,
     ...(row.session_role === null ? {} : { sessionRole: row.session_role }),
     version: {
       sessionId: row.session_id,
@@ -1356,11 +1403,6 @@ function mapSessionRow<TState>(row: SessionRow): SessionRecord<TState> {
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at)
   };
-  try {
-    assertSessionParticipantsMatchState(session.participants, session.state, { allowAgents: true });
-  } catch {
-    throw new SessionStoreUnavailableError();
-  }
   return session;
 }
 
@@ -1476,11 +1518,6 @@ function parseActorScope(value: unknown): SessionPrincipal["actorScope"] {
     return { kind: "listed-actors", actorIds: requireStringArray(record.actorIds) };
   }
   throw new SessionStoreUnavailableError();
-}
-
-function parseSessionParticipants(value: unknown): ReadonlyArray<SessionParticipant> {
-  if (!Array.isArray(value)) throw new SessionStoreUnavailableError();
-  return structuredClone(value) as ReadonlyArray<SessionParticipant>;
 }
 
 function requireRecord(value: unknown): Record<string, unknown> {

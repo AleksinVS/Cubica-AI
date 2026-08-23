@@ -31,7 +31,7 @@ import type { GameConfig } from "@/presenter/game-config";
 import { resolveScreenKey as resolveScreenKeyDefault, resolveLayoutModeFromRouting, resolveDesignLayoutMode } from "@/lib/screen-router";
 import { normalizePlayerLayoutMode } from "@/lib/player-layout-mode";
 import type { ClientRequest } from "@/presenter/types";
-import type { PlayerRuntimeStatus, PlayerState } from "@/presenter/types";
+import type { PlayerRuntimeStatus, PlayerState, PlayerSessionSetup } from "@/presenter/types";
 import type { CubicaJsonValue, CubicaSurface, CubicaSurfaceAction } from "@cubica/contracts-ai";
 import type { GameManifestAgentFailurePolicy } from "@cubica/contracts-manifest";
 import type { TransportRoadPreviewResponse } from "@cubica/contracts-session";
@@ -47,13 +47,9 @@ import {
   type RuntimeActionEnvelope,
   type RuntimeAgentTurnEnvelope
 } from "@/presenter/command-outbox";
+import { normalizeAgentControl } from "@/presenter/agent-control-validation";
 
 export type { ClientRequest, PlayerState } from "@/presenter/types";
-
-export interface ParticipantCountBounds {
-  readonly min: number;
-  readonly max: number;
-}
 
 /**
  * Generic Presenter для игрового Web-плеера.
@@ -90,7 +86,8 @@ export class GamePresenter {
   private launchContext: PortalLaunchContext | null = null;
   private contentSourceId: string | undefined;
   private deterministicFallbackActive = false;
-  private readonly requestParticipantCount?: (bounds: ParticipantCountBounds) => Promise<number>;
+  private sessionSetup: PlayerSessionSetup | null = null;
+  private readonly sessionSetupEnabled: boolean;
 
   constructor(options: {
     gateway: ReactViewGateway;
@@ -98,14 +95,14 @@ export class GamePresenter {
     gameUi?: GamePlayerUiContent;
     config: GameConfig;
     contentSourceId?: string;
-    requestParticipantCount?: (bounds: ParticipantCountBounds) => Promise<number>;
+    sessionSetupEnabled?: boolean;
   }) {
     this.gateway = options.gateway;
     this.content = options.content;
     this.gameUi = options.gameUi;
     this.config = options.config;
     this.contentSourceId = options.contentSourceId;
-    this.requestParticipantCount = options.requestParticipantCount;
+    this.sessionSetupEnabled = options.sessionSetupEnabled ?? true;
   }
 
   /**
@@ -199,6 +196,9 @@ export class GamePresenter {
       runtimeStatusReason: this.runtimeStatusReason,
       runtimeFailurePolicy: this.runtimeFailurePolicy,
       agentRuntimeRequired: this.content.agentRuntime?.required === true,
+      participants: this.session?.participants ?? [],
+      agentControl: normalizeAgentControl(this.session?.agentControl),
+      sessionSetup: this.sessionSetup,
       error: this.error,
       errorStatus: this.errorStatus,
       booting: this.booting,
@@ -262,9 +262,8 @@ export class GamePresenter {
           // credential. A command tied to that inaccessible session can never
           // be recovered and must not block the fresh local session.
           clearPendingRuntimeCommand(storedSessionId);
-          // A stale local id cannot be safely mapped back to its old setup
-          // choice without a new storage protocol; preserve recovery by using
-          // the manifest minimum for this one fallback path.
+          // Its former setup is not authenticated client state. The accepted
+          // recovery path creates a manifest-minimum all-human replacement.
           const data = await this.createSession();
           this.session = { ...data, gameId: this.config.gameId };
           if (typeof window !== "undefined") {
@@ -275,7 +274,12 @@ export class GamePresenter {
           await this.recoverPendingCommandOrEnsureAiSurface();
         }
       } else {
-        const data = await this.createFreshSession();
+        const setup = this.getSessionSetup();
+        if (setup !== null) {
+          this.sessionSetup = setup;
+          return;
+        }
+        const data = await this.createSession();
         this.session = { ...data, gameId: this.config.gameId };
         if (typeof window !== "undefined") {
           window.localStorage.setItem(this.config.storageKey, data.sessionId);
@@ -299,6 +303,13 @@ export class GamePresenter {
    * Сбрасывает игру: удаляет localStorage и создаёт новую сессию.
    */
   async resetGame(): Promise<void> {
+    const declaredSetup = this.getSessionSetup();
+    const resetOptions = this.session === null
+      ? undefined
+      : {
+          participantCount: this.session.participants.length,
+          agentSeatCount: this.session.participants.filter((participant) => participant.kind === "agent").length
+        };
     this.booting = true;
     this.runtimeStatus = "booting";
     this.runtimeStatusReason = null;
@@ -306,6 +317,7 @@ export class GamePresenter {
     this.deterministicFallbackActive = false;
     this.clearError();
     this.agentSurface = null;
+    this.sessionSetup = null;
     if (typeof window !== "undefined") {
       const storageKey = this.launchContext
         ? launchScopedStorageKey(this.config.storageKey, this.launchContext)
@@ -318,7 +330,13 @@ export class GamePresenter {
       }
       const data = this.launchContext
         ? await bindPortalLaunchSession(this.launchContext)
-        : await this.createSession(this.session?.participants.length);
+        : this.session === null && declaredSetup !== null
+          ? null
+          : await this.createSession(resetOptions);
+      if (data === null) {
+        this.sessionSetup = declaredSetup;
+        return;
+      }
       this.session = { ...data, gameId: data.gameId || this.config.gameId };
       if (typeof window !== "undefined") {
         const storageKey = this.launchContext
@@ -335,6 +353,68 @@ export class GamePresenter {
       if (this.runtimeStatus === "booting") {
         this.runtimeStatus = this.session === null ? "unavailable" : "ready";
       }
+      await this.syncView();
+    }
+  }
+
+  /** Starts a session after the generic local seat setup was confirmed. */
+  async createSessionFromSetup(selection: {
+    participantCount: number;
+    agentSeatCount: number;
+  }): Promise<void> {
+    if (this.booting || this.session !== null || this.sessionSetup === null) {
+      return;
+    }
+
+    const setup = this.sessionSetup;
+    if (!isValidSessionSetupSelection(selection, setup)) {
+      return;
+    }
+
+    this.booting = true;
+    this.runtimeStatus = "booting";
+    this.runtimeStatusReason = null;
+    this.clearError();
+    this.sessionSetup = null;
+    await this.syncView();
+
+    try {
+      if (!(await this.ensureLaunchReady())) {
+        this.sessionSetup = setup;
+        return;
+      }
+      const data = await this.createSession(selection);
+      this.session = { ...data, gameId: data.gameId || this.config.gameId };
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(this.config.storageKey, data.sessionId);
+      }
+      this.clearError();
+      await this.recoverPendingCommandOrEnsureAiSurface();
+    } catch (err) {
+      this.sessionSetup = setup;
+      this.captureError(err, "Failed to create player session");
+    } finally {
+      this.booting = false;
+      if (this.runtimeStatus === "booting") {
+        this.runtimeStatus = this.session === null ? "unavailable" : "ready";
+      }
+      await this.syncView();
+    }
+  }
+
+  /** Refreshes the authoritative session snapshot through a safe GET. */
+  async refreshSession(): Promise<void> {
+    if (this.session === null || this.booting || this.isPending) {
+      return;
+    }
+    try {
+      const refreshed = await resumeSession(this.session.sessionId);
+      this.session = { ...refreshed, gameId: this.config.gameId };
+      this.agentSurface = null;
+      this.clearError();
+    } catch (error) {
+      this.captureError(error, "Failed to refresh player session");
+    } finally {
       await this.syncView();
     }
   }
@@ -582,20 +662,34 @@ export class GamePresenter {
       (this.content.executionMode === "ai-driven" || this.content.executionMode === "hybrid");
   }
 
-  private async createFreshSession(): Promise<GameSession> {
-    const bounds = this.content.playerConfig;
-    const participantCount = bounds.min < bounds.max && this.requestParticipantCount !== undefined
-      ? await this.requestParticipantCount({ min: bounds.min, max: bounds.max })
-      : undefined;
-    return this.createSession(participantCount);
-  }
-
-  private createSession(participantCount?: number): Promise<GameSession> {
+  private createSession(options?: { participantCount?: number; agentSeatCount?: number }): Promise<GameSession> {
     return createNewSessionWithOptions({
       gameId: this.config.gameId,
       contentSourceId: this.contentSourceId,
-      ...(participantCount === undefined ? {} : { participantCount })
+      ...options
     }) as Promise<GameSession>;
+  }
+
+  private getSessionSetup(): PlayerSessionSetup | null {
+    if (!this.sessionSetupEnabled) return null;
+    const playerConfig = this.content.playerConfig;
+    const agentSeats = playerConfig.agentSeats;
+    const minParticipants = Number.isInteger(playerConfig.min) && playerConfig.min > 0
+      ? playerConfig.min
+      : 1;
+    const maxParticipants = Number.isInteger(playerConfig.max) && playerConfig.max >= minParticipants
+      ? playerConfig.max
+      : minParticipants;
+    const maxAgentSeats = agentSeats !== undefined && Number.isInteger(agentSeats.max) && agentSeats.max > 0
+      ? Math.min(agentSeats.max, maxParticipants)
+      : 0;
+    if (minParticipants === maxParticipants && maxAgentSeats === 0) return null;
+    return {
+      participantCount: minParticipants,
+      minParticipants,
+      maxParticipants,
+      maxAgentSeats
+    };
   }
 
   /**
@@ -751,7 +845,8 @@ export class GamePresenter {
       participants: next.participants,
       version: next.version,
       state: next.state,
-      actionAvailability: next.actionAvailability
+      actionAvailability: next.actionAvailability,
+      ...(next.agentControl === undefined ? {} : { agentControl: next.agentControl })
     };
     this.agentSurface = next.agentTurn.surface ?? null;
     this.runtimeStatus = "ready";
@@ -813,6 +908,18 @@ function surfacePayloadToRecord(payload: CubicaJsonValue | undefined): Record<st
     return payload as Record<string, unknown>;
   }
   return { value: payload };
+}
+
+function isValidSessionSetupSelection(
+  selection: { participantCount: number; agentSeatCount: number },
+  setup: PlayerSessionSetup
+): boolean {
+  return Number.isInteger(selection.participantCount) &&
+    selection.participantCount >= setup.minParticipants &&
+    selection.participantCount <= setup.maxParticipants &&
+    Number.isInteger(selection.agentSeatCount) &&
+    selection.agentSeatCount >= 0 &&
+    selection.agentSeatCount <= Math.min(setup.maxAgentSeats, selection.participantCount);
 }
 
 function isSupportedPlayerSurfaceAction(

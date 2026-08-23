@@ -28,6 +28,18 @@ test("neutral local materializer preserves authoritative two-seat turn order", (
   ]);
 });
 
+test("neutral local materializer assigns the last requested seat to an agent without changing actor coverage", () => {
+  const state = {
+    public: { turn: { order: ["p1", "p2"], activePlayerId: "p1" } },
+    players: { p1: { score: 0 }, p2: { score: 0 } }
+  };
+  assert.deepEqual(materializeLocalSessionParticipants(state, 2, 1), [
+    { seatId: "p1", playerId: "p1", kind: "human", joinState: "local" },
+    { seatId: "p2", playerId: "p2", kind: "agent", joinState: "local" }
+  ]);
+  assert.deepEqual(Object.keys(state.players), state.public.turn.order);
+});
+
 test("neutral non-turn session gets metadata without inventing player-scoped state", () => {
   const state = { public: { screen: "ready" }, secret: {} };
   const result = materializeLocalSessionParticipants(state, 1);
@@ -82,10 +94,10 @@ test("semantic validation rejects partial or contradictory player-turn shapes", 
   }
 });
 
-test("S8 store creation rejects an agent participant", async () => {
+test("in-memory store accepts a server-authorized agent participant", async () => {
   const store = new InMemorySessionStore<Record<string, unknown>>();
   const bundle = createImmutableBundleContent("neutral-agent-seat-fixture", {});
-  await assert.rejects(store.createSession({
+  const created = await store.createSession({
     gameId: "neutral-agent-seat-fixture",
     initialState: { public: {} },
     participants: [{ ...participants[0], kind: "agent" }],
@@ -97,7 +109,26 @@ test("S8 store creation rejects an agent participant", async () => {
       actorScope: { kind: "all-session-actors" },
       credentialSha256: "a".repeat(64)
     }
-  }), /invalid or duplicate/u);
+  });
+  assert.deepEqual(created.session.participants, [{ ...participants[0], kind: "agent" }]);
+});
+
+test("in-memory store still rejects malformed server participant metadata", async () => {
+  const store = new InMemorySessionStore<Record<string, unknown>>();
+  const bundle = createImmutableBundleContent("neutral-malformed-seat-fixture", {});
+  await assert.rejects(store.createSession({
+    gameId: "neutral-malformed-seat-fixture",
+    initialState: { public: {} },
+    participants: [{ ...participants[0], kind: "agent", extra: true }] as any,
+    immutableBundle: bundle,
+    principal: {
+      principalId: "principal-local",
+      kind: "local-controller",
+      role: "player",
+      actorScope: { kind: "all-session-actors" },
+      credentialSha256: "a".repeat(64)
+    }
+  }), /canonical schema/u);
 });
 
 test("in-memory store rejects participant mutation across a snapshot update", async () => {
@@ -150,6 +181,21 @@ test("create request accepts only a positive integer participantCount", () => {
   }
 });
 
+test("untrusted create request accepts only schema-valid local agent seat counts", () => {
+  assert.deepEqual(parseCreateSessionRequest({ gameId: "neutral-game" }), { gameId: "neutral-game" });
+  assert.deepEqual(parseCreateSessionRequest({ gameId: "neutral-game", agentSeatCount: 0 }), {
+    gameId: "neutral-game",
+    agentSeatCount: 0
+  });
+  assert.deepEqual(parseCreateSessionRequest({ gameId: "neutral-game", agentSeatCount: 1 }), {
+    gameId: "neutral-game",
+    agentSeatCount: 1
+  });
+  for (const agentSeatCount of [-1, 1.5, 65, "1"]) {
+    assert.throws(() => parseCreateSessionRequest({ gameId: "neutral-game", agentSeatCount }));
+  }
+});
+
 test("migration 004 deletes sessions before the required column and preserves bundles", async () => {
   const up = await readFile(new URL("../migrations/004_session_participants.up.sql", import.meta.url), "utf8");
   const down = await readFile(new URL("../migrations/004_session_participants.down.sql", import.meta.url), "utf8");
@@ -160,7 +206,7 @@ test("migration 004 deletes sessions before the required column and preserves bu
   assert.ok(up.indexOf("DELETE FROM game_sessions") < up.indexOf("DROP COLUMN player_id"));
   assert.match(up, /DROP COLUMN player_id/u);
   assert.doesNotMatch(up, /DELETE FROM game_bundles/u);
-  assert.match(up, /jsonb_typeof\(participants\) = 'array'/u);
+  assert.doesNotMatch(up, /CHECK|jsonb_typeof|jsonb_array_length/u);
   assert.doesNotMatch(up, /seatId|playerId|joinState/u);
   assert.match(ledger, /REFERENCES game_sessions\(id\) ON DELETE CASCADE/u);
   assert.match(schedules, /REFERENCES game_sessions\(id, bundle_hash\) ON DELETE CASCADE/u);

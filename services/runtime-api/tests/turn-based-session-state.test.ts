@@ -8,6 +8,7 @@ import {
   initializeTurnBasedSessionState,
   resolveParticipantCount
 } from "../src/modules/session/turnBasedSessionState.ts";
+import { validateAgentSeatSemanticReferences } from "../src/modules/content/manifestValidation.ts";
 import { materializeLocalSessionParticipants } from "../src/modules/session/sessionParticipants.ts";
 
 const require = createRequire(import.meta.url);
@@ -168,6 +169,20 @@ test("participant bounds are enforced for manifests without a player template", 
     () => resolveParticipantCount(manifest, 1),
     /outside manifest bounds/u
   );
+});
+
+test("neutral agent-seat semantics reject an unknown fallback action", () => {
+  const base = createManifest();
+  const withSeats = (agentSeats: unknown): Record<string, unknown> => {
+    const manifest = structuredClone(base);
+    (manifest.config.players as unknown as Record<string, unknown>).agentSeats = agentSeats;
+    return manifest as unknown as Record<string, unknown>;
+  };
+  assert.throws(() => validateAgentSeatSemanticReferences(withSeats({
+    max: 1,
+    invalidAttemptLimit: 2,
+    deterministicFallbackCandidates: [{ actionId: "turn.unknown", params: {} }]
+  })), /unknown published action/u);
 });
 
 test("random deck manifests do not initialize persistent generator state", () => {

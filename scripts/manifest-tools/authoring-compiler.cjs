@@ -1981,6 +1981,7 @@ function assertAgentRuntimeInitialAction(manifest, sourceFile) {
     "game v2 root.agentRuntime"
   );
   const actionId = agentRuntime.initialActionId;
+  if (actionId === undefined) return;
   const actions = hasPlainObject(manifest.actions) ? manifest.actions : {};
   if (typeof actionId !== "string" || !Object.prototype.hasOwnProperty.call(actions, actionId)) {
     throw new CompileError(

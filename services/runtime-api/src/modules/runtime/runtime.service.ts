@@ -6,6 +6,8 @@ import type {
   TransportRoadPreviewRequest,
   TransportRoadPreviewResponse
 } from "@cubica/contracts-session";
+import { AgentSeatDriver, projectAgentControl } from "../ai/agentSeatDriver.ts";
+import { AgentTurnService } from "../ai/agentRuntime.ts";
 import type { RuntimeActionResult } from "@cubica/contracts-runtime";
 import type { SessionStorePort } from "@cubica/contracts-session";
 import { loadImmutableGameBundle } from "../content/manifestLoader.ts";
@@ -75,13 +77,16 @@ export interface RuntimeServiceTransportRoadPreviewOptions {
 export class RuntimeService {
   private readonly admissionController: CommandAdmissionController;
   private readonly random?: SessionRandomProviderInput;
+  private readonly agentSeatDriver: AgentSeatDriver;
 
   constructor(
     admissionController: CommandAdmissionController = new BoundedInMemoryCommandAdmissionController(),
-    random?: SessionRandomProviderInput
+    random?: SessionRandomProviderInput,
+    agentSeatDriver: AgentSeatDriver = new AgentSeatDriver(new AgentTurnService(admissionController))
   ) {
     this.admissionController = admissionController;
     this.random = random;
+    this.agentSeatDriver = agentSeatDriver;
   }
 
   async dispatch(options: RuntimeServiceDispatchOptions): Promise<RuntimeServiceDispatchResult> {
@@ -154,6 +159,34 @@ export class RuntimeService {
       }
     }
 
+    try {
+      const driven = await this.agentSeatDriver.drive({
+        sessionStore: options.sessionStore,
+        credentialSha256,
+        sessionId: responseSnapshot.sessionId
+      });
+      responseSnapshot = driven.snapshot;
+      const latestPrincipal = await options.sessionStore.authenticateSession({
+        sessionId: responseSnapshot.sessionId,
+        credentialSha256
+      });
+      if (latestPrincipal !== null) {
+        responseActorPlayerId = resolveSessionViewerActor(responseSnapshot, latestPrincipal);
+        responseSessionRole = latestPrincipal.role;
+      }
+    } catch (error) {
+      console.error(
+        `[agent-seat] bounded driver failed for session ${responseSnapshot.sessionId}:`,
+        error instanceof Error ? error.message : String(error)
+      );
+    }
+
+    const agentControl = await projectAgentControl({
+      sessionStore: options.sessionStore,
+      credentialSha256,
+      snapshot: responseSnapshot
+    });
+
     const projectionStartedAt = performance.now();
     const projectedState = projectPlayerSessionState({
       state: responseSnapshot.state,
@@ -176,6 +209,7 @@ export class RuntimeService {
         version: responseSnapshot.version,
         state: projectedState,
         actionAvailability,
+        ...(agentControl === undefined ? {} : { agentControl }),
         receipt
       },
       result,

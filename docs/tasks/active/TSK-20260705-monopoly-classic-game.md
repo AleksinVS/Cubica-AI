@@ -202,10 +202,9 @@ not_required
    игровом пакете.
 8. **S7:** public local UI/content и методический слой; затем принятая общая
    модель `participants` и actor-scoped available actions S8 по ADR-059.
-9. **S9:** локальные AI-места после принятия S8 без форка манифеста: персональная
-   проекция, доступные действия, ограниченные невалидные попытки и
-   упорядоченный безопасный fallback; недоступный Agent Runtime ставит игру
-   на паузу и предлагает передачу хода человеку.
+9. **S9:** локальные AI-места после принятия S8 без форка манифеста: schema-first
+   `agentSeats`, `agentSeatCount`, персональная проекция, доступные действия,
+   ограниченные невалидные попытки и fallback до 73; S9 принят локально.
 10. **S10:** private invite network v1 (без public rooms, matchmaking и
     spectators), затем каталог, продуктовая приёмка и закрытие программы.
 
@@ -253,9 +252,10 @@ npx playwright test apps/player-web/e2e/estate-race.spec.ts --project=chromium
 | GSR-043: строения, залог и дефицит банка | done | Уровни 0–5, физический запас 32/12, равномерность, залог/выкуп, карточная оценка и shortage-аукцион приняты replay, plugin и production browser flow. |
 | GSR-044: сделки, обязательства и банкротство | done | Атомарные сделки, ликвидность, обе судьбы банкротства, заложенные активы, две удерживаемые карты и банковские аукционы приняты replay, plugin и production browser flow без изменения общей платформы. |
 | GSR-045: победитель и terminal outcome | done | Последний active участник объявляется ровно один раз после завершения ликвидации; terminal snapshot закрывает действия, bounded transcript и production browser flow приняты без изменения общей платформы. |
-| Полная локальная техническая партия | done | Правила S0–S6 используют один manifest от setup до terminal outcome; S7 завершил локальную продуктовую поверхность. S8 принят отдельно; S9 и S10 остаются следующими срезами. |
+| Полная локальная техническая партия | done | Правила S0–S6 используют один manifest от setup до terminal outcome; S7 завершил локальную продуктовую поверхность. S8 и локальный S9 приняты отдельно; S10 остаётся следующим сетевым срезом. |
 | S7: public local UI/content | done | GSR-046 принят: game/UI authoring `0.7.0`, map-first UI, game-owned design reference, responsive camera, production browser S0–S7 `8/8`, style-parity `PASS`, локальная accessibility matrix `PASS` на 1400x1000/768x1024/320x800; package `49/49`, plugin `37/37` + typecheck, balance `3/3` (`PASS-for-closed-alpha`). Публикация и финальный экономический баланс не объявлены. |
 | GSR-047 / S8: session-owned participants | done | Session-owned `human`/`local` participants, actor-scoped projection and participant propagation приняты. Canonical contracts/OpenAPI, contracts `7/7`, runtime session/PostgreSQL `42/42`, player-web `50/50`, disposable PostgreSQL restart roundtrip `1/1`, game-agnostic `10/10` и player-core seam — `PASS`; полный CMT suite не заявляется. |
+| GSR-049 / S9: local agent seat | done | Локальная граница: schema-first `agentSeats`, local `agentSeatCount`, system-owned Agent Turn через ordinary projection/availability/Intent, bounded fallback 73, exact receipts, `agentControl`, Estate Race 53/53 + balance 3/3 + compiler, 7 eval fixtures и bounded transcript приняты. Реальный provider, terminal full match и network остаются residual. |
 
 ## Artifacts
 
@@ -270,6 +270,7 @@ npx playwright test apps/player-web/e2e/estate-race.spec.ts --project=chromium
 - `docs/architecture/gameplay-slices/044-estate-race-trade-obligation-and-bankruptcy.md` — завершённая граница S5: сделки, обязательства, ликвидность и обе судьбы банкротства.
 - `docs/architecture/gameplay-slices/045-estate-race-terminal-local-game.md` — завершённая граница S6: последний активный участник, terminal outcome и ограниченный локальный transcript.
 - `docs/architecture/gameplay-slices/047-estate-race-session-participants.md` — завершённая граница S8: session-owned participants и actor-scoped local delivery.
+- `docs/architecture/gameplay-slices/049-estate-race-local-agent-seat.md` — завершённая локальная граница S9: agent seat, bounded fallback, receipts и fail-closed Player Web.
 - `docs/tasks/artifacts/TSK-20260705-monopoly-classic-game/product-specification.md` — продуктовый сценарий и интерфейс.
 - `docs/tasks/artifacts/TSK-20260705-monopoly-classic-game/rules-and-rights-provenance.md` — источники и границы прав.
 - `docs/tasks/artifacts/TSK-20260705-monopoly-classic-game/traceability-matrix.md` — связь требований с реализацией и тестами.
@@ -494,6 +495,8 @@ npx playwright test apps/player-web/e2e/estate-race.spec.ts --project=chromium
   runtime session/PostgreSQL 42/42, player-web 50/50, disposable PostgreSQL
   restart roundtrip 1/1, game-agnostic 10/10 и player-core seam — `PASS`.
   Pre-release cutover сохраняет bundles; проверка использовала только
-  одноразовую локальную базу, полный CMT suite не заявляется. S9 — следующий
-  запланированный срез, S10 — последующая
-  private invite network граница.
+  одноразовую локальную базу, полный CMT suite не заявляется.
+- 2026-08-13: GSR-049/S9 принят локально: нейтральное доказательство 73
+  кандидатов, Estate Race 53/53, balance 3/3, compiler, семь eval fixtures и
+  bounded human+agent transcript. Реальный provider, full terminal match и
+  S10 private invite network остаются вне этой приёмки.

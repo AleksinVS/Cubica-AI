@@ -122,6 +122,9 @@ export const parseCreateSessionRequest = (body: unknown): CreateSessionRequest =
   if (errors.some((error) => error.instancePath === "/participantCount")) {
     throw new RequestValidationError("participantCount must be a positive integer");
   }
+  if (errors.some((error) => error.instancePath === "/agentSeatCount")) {
+    throw new RequestValidationError("agentSeatCount must be an integer between 0 and 64");
+  }
 
   const rootTypeError = errors.find((error) => error.instancePath === "" && error.keyword === "type");
   if (rootTypeError) {

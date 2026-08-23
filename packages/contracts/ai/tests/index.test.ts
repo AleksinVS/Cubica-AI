@@ -546,18 +546,14 @@ describe("Agent Turn validation", () => {
     }
   });
 
-  it("rejects deterministic mode for Agent Turn input", () => {
+  it("accepts deterministic mode for the runtime-authorized system agent-seat path", () => {
     const result = validateAgentTurnInput({
       ...validAgentTurnInput,
       executionMode: "deterministic"
     });
 
-    expect(result.ok).toBe(false);
-    expect(result.diagnostics).toContainEqual(
-      expect.objectContaining({
-        code: "schema.enum"
-      })
-    );
+    expect(result.ok).toBe(true);
+    expect(result.value?.executionMode).toBe("deterministic");
   });
 
   it("accepts a valid Agent Turn result with a CubicaSurface", () => {
@@ -900,6 +896,22 @@ describe("Execution mode validation", () => {
     expect(result.ok).toBe(true);
   });
 
+  it("accepts a deterministic seat-scoped provider without an AI entry action", () => {
+    const result = validateExecutionModeConfig({
+      executionMode: "deterministic",
+      agentRuntime: {
+        agentId: "scenario-agent",
+        runtimeId: "mock",
+        required: false,
+        allowedCapabilities: ["selectPublishedIntent"],
+        surfaceCatalog: [],
+        failurePolicy: "pause"
+      }
+    });
+
+    expect(result.ok).toBe(true);
+  });
+
   it("requires Agent Runtime configuration for AI-driven games", () => {
     const result = validateExecutionModeConfig({ executionMode: "ai-driven" });
 
@@ -909,6 +921,22 @@ describe("Execution mode validation", () => {
         code: "schema.required"
       })
     );
+  });
+
+  it("requires the Agent Turn entry action for AI-driven games", () => {
+    const result = validateExecutionModeConfig({
+      executionMode: "ai-driven",
+      agentRuntime: {
+        agentId: "scenario-agent",
+        required: true,
+        allowedCapabilities: ["selectPublishedIntent"],
+        surfaceCatalog: [],
+        failurePolicy: "pause"
+      }
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.diagnostics).toContainEqual(expect.objectContaining({ code: "schema.required" }));
   });
 
   it("requires AI-driven configuration to allow published Game Intent selection", () => {

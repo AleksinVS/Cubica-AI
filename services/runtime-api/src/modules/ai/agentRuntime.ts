@@ -99,6 +99,11 @@ export interface AgentTurnServiceResponse {
   readonly receipt: PublicSessionCommandReceipt;
 }
 
+export type AgentRuntimeRunner = (
+  input: CubicaAgentTurnInput,
+  agentRuntime: GameManifestAgentRuntimeConfig
+) => Promise<CubicaAgentTurnResult>;
+
 interface AgentTurnTransactionOutcome {
   readonly committedState: boolean;
   readonly response: AgentTurnServiceResponse;
@@ -114,11 +119,33 @@ interface AgentTurnTransactionOutcome {
  */
 export class AgentTurnService {
   private readonly admissionController: CommandAdmissionController;
+  private readonly agentRuntimeRunner: AgentRuntimeRunner;
+  private readonly injectedAgentRuntimeRunner: boolean;
 
   constructor(
-    admissionController: CommandAdmissionController = new BoundedInMemoryCommandAdmissionController()
+    admissionController: CommandAdmissionController = new BoundedInMemoryCommandAdmissionController(),
+    agentRuntimeRunner: AgentRuntimeRunner = runConfiguredAgentRuntime
   ) {
     this.admissionController = admissionController;
+    this.agentRuntimeRunner = agentRuntimeRunner;
+    this.injectedAgentRuntimeRunner = agentRuntimeRunner !== runConfiguredAgentRuntime;
+  }
+
+  /** Internal provider seam used by the server-owned local agent-seat driver. */
+  async selectSeatIntent(
+    input: CubicaAgentTurnInput,
+    agentRuntime: GameManifestAgentRuntimeConfig
+  ): Promise<CubicaAgentTurnResult> {
+    return this.agentRuntimeRunner(input, agentRuntime);
+  }
+
+  getAdmissionController(): CommandAdmissionController {
+    return this.admissionController;
+  }
+
+  isSeatRuntimeConfigured(agentRuntime: GameManifestAgentRuntimeConfig): boolean {
+    return this.injectedAgentRuntimeRunner ||
+      checkAgentRuntimeReadiness(agentRuntime, { requireConfigured: true }).status === "ok";
   }
 
   async runTurn(input: AgentTurnServiceInput): Promise<AgentTurnServiceResponse> {
@@ -229,7 +256,7 @@ export class AgentTurnService {
       // can replace this with a reviewed pre-call estimate through this seam.
       costUnits: 1
     });
-    const agentTurn = await runConfiguredAgentRuntime(turnInput, agentRuntime);
+    const agentTurn = await this.agentRuntimeRunner(turnInput, agentRuntime);
     const resultValidation = validateAgentTurnResult(agentTurn, {
       catalog: defaultCubicaSurfaceCatalog,
       targetChannel: "web",
@@ -504,26 +531,29 @@ export class AgentTurnService {
 function requireStoredAgentTurn(value: unknown): CubicaAgentTurnResult {
   try {
     const stored = requireDurableCommandResult(value, "agent-turn").value;
-    if (
-      typeof stored !== "object" || stored === null || Array.isArray(stored) ||
-      typeof (stored as { ok?: unknown }).ok !== "boolean"
-    ) {
-      throw new Error("invalid stored Agent Turn result");
-    }
     // The result was fully validated before it entered the receipt. Exact
     // retry reads that pinned format, not today's catalog or provider policy;
     // otherwise a compatible platform upgrade could make an applied command
     // impossible to replay without risking a second model invocation.
-    return structuredClone(stored) as CubicaAgentTurnResult;
+    return requireStoredAgentTurnResult(stored);
   } catch {
     throw new SessionStoreUnavailableError();
   }
 }
 
+/** Shared pinned-format check for durable Agent Turn payloads and seat envelopes. */
+export function requireStoredAgentTurnResult(value: unknown): CubicaAgentTurnResult {
+  if (
+    typeof value !== "object" || value === null || Array.isArray(value) ||
+    typeof (value as { ok?: unknown }).ok !== "boolean"
+  ) throw new Error("invalid stored Agent Turn result");
+  return structuredClone(value) as CubicaAgentTurnResult;
+}
+
 function requireAgentRuntimeConfig(
   agentRuntime: GameManifestAgentRuntimeConfig | undefined,
   gameId: string
-): GameManifestAgentRuntimeConfig {
+): GameManifestAgentRuntimeConfig & { initialActionId: string } {
   if (agentRuntime?.required !== true) {
     throw new RequestValidationError(`Game "${gameId}" does not declare a required Agent Runtime.`);
   }
@@ -532,7 +562,10 @@ function requireAgentRuntimeConfig(
       `Game "${gameId}" does not allow Agent Runtime to select a published Game Intent.`
     );
   }
-  return agentRuntime;
+  if (typeof agentRuntime.initialActionId !== "string") {
+    throw new HttpError(409, `Game "${gameId}" does not declare an Agent Turn entry action.`);
+  }
+  return { ...agentRuntime, initialActionId: agentRuntime.initialActionId };
 }
 
 function buildAgentTurnInput(input: {
@@ -540,7 +573,7 @@ function buildAgentTurnInput(input: {
   readonly current: SessionRecord<RuntimeState>;
   readonly manifest: GameManifest;
   readonly bundle: GameBundle;
-  readonly agentRuntime: GameManifestAgentRuntimeConfig;
+  readonly agentRuntime: GameManifestAgentRuntimeConfig & { initialActionId: string };
   readonly executionMode: Exclude<GameManifestExecutionMode, "deterministic">;
   readonly actorId?: string;
   readonly sessionRole: "player" | "facilitator" | "assistant" | "observer";
@@ -592,10 +625,55 @@ function buildAgentTurnInput(input: {
   };
 }
 
+/** Build the fair player projection for a system-initiated deterministic seat turn. */
+export function buildAgentSeatTurnInput(input: {
+  readonly current: SessionRecord<RuntimeState>;
+  readonly manifest: GameManifest;
+  readonly bundle: GameBundle;
+  readonly agentRuntime: GameManifestAgentRuntimeConfig;
+  readonly actorId: string;
+}): CubicaAgentTurnInput {
+  const playerProjection = buildPlayerSessionProjection({
+    state: input.current.state,
+    stateModel: input.bundle.manifest.mechanics.stateModel,
+    actorPlayerId: input.actorId
+  });
+  const publicState = buildAgentPublicStateScope(playerProjection.publicAudienceState);
+  const actorState = buildAgentActorStateScope(playerProjection.actorAudienceState, input.actorId);
+  const executionMode = input.manifest.executionMode ?? "deterministic";
+  const availableIntents = buildAvailableGameIntents(
+    input.current,
+    input.bundle,
+    undefined,
+    input.actorId,
+    "player"
+  );
+  return {
+    schemaVersion: "1.0.0",
+    turnId: createId("seat-turn"),
+    sessionId: input.current.sessionId,
+    gameId: input.current.gameId,
+    playerId: input.actorId,
+    agentId: input.agentRuntime.agentId,
+    executionMode,
+    trigger: { kind: "systemEvent", eventType: "agentSeatTurn" },
+    stateScope: { public: publicState, actor: actorState },
+    manifestProjection: buildManifestProjection(
+      input.manifest,
+      input.agentRuntime,
+      executionMode,
+      availableIntents
+    ),
+    availableIntents,
+    surfaceCatalog: input.agentRuntime.surfaceCatalog,
+    correlationId: createId("correlation")
+  };
+}
+
 function buildManifestProjection(
   manifest: GameManifest,
   agentRuntime: GameManifestAgentRuntimeConfig,
-  executionMode: Exclude<GameManifestExecutionMode, "deterministic">,
+  executionMode: GameManifestExecutionMode,
   availableIntents: readonly CubicaPublishedGameIntent[]
 ): JsonRecord {
   return {
@@ -616,7 +694,7 @@ function buildManifestProjection(
 function buildAvailableGameIntents(
   current: SessionRecord<RuntimeState>,
   bundle: GameBundle,
-  initialActionId: string,
+  excludedActionId: string | undefined,
   actorPlayerId: string | undefined,
   sessionRole: "player" | "facilitator" | "assistant" | "observer"
 ): CubicaPublishedGameIntent[] {
@@ -629,7 +707,7 @@ function buildAvailableGameIntents(
 
   return listManifestActionDefinitions(bundle)
     .filter((definition) => definition.invocation === "external")
-    .filter((definition) => definition.actionId !== initialActionId)
+    .filter((definition) => definition.actionId !== excludedActionId)
     .filter((definition) => availability.get(definition.actionId) !== "unavailable")
     .map((definition) => {
       const displayName = definition.raw.displayName;
@@ -663,7 +741,8 @@ function runMockAgentRuntime(input: CubicaAgentTurnInput): CubicaAgentTurnResult
     : `Agent Runtime accepted player action "${input.trigger.actionId}".`;
   const selectedIntent = input.availableIntents[0];
   const initialActionId = input.trigger.actionId;
-  if (selectedIntent === undefined || initialActionId === undefined) {
+  if (selectedIntent === undefined ||
+      (initialActionId === undefined && input.executionMode !== "deterministic")) {
     return {
       schemaVersion: "1.0.0",
       turnId: input.turnId,
@@ -692,7 +771,7 @@ function runMockAgentRuntime(input: CubicaAgentTurnInput): CubicaAgentTurnResult
       actionId: selectedIntent.actionId,
       params: {}
     },
-    surface: canRenderChoiceList
+    surface: canRenderChoiceList && initialActionId !== undefined
       ? {
           schemaVersion: "1.0.0",
           surfaceId: `surface-${input.turnId}`,

@@ -73,6 +73,7 @@ docs: # Архитектура, задачи, планирование
       046-estate-race-product-surface-and-methodology.md: file # Estate Race S7: оригинальная публичная поверхность, визуальная система и необязательный обучающий режим.
       047-estate-race-session-participants.md: file # Estate Race S8: общая session-owned модель локальных участников без сетевого lifecycle и игровых веток в платформе.
       048-cards-money-trains-portable-public-journal.md: file # CMT: общий переносимый журнал подтверждённых публичных событий с безопасной выгрузкой без ИИ-интерпретации.
+      049-estate-race-local-agent-seat.md: file # Estate Race S9: одно локальное агентское место, actor-scoped Game Intent, bounded fallback и fail-closed Player Web.
     metadata: directory... # Архитектура метаданных, аналитики и связанных событий.
     processes: directory... # Процессы сопровождения архитектуры и принятия технических решений.
     protocols: directory... # Межкомпонентные протоколы и форматы обмена платформы.
@@ -142,7 +143,6 @@ docs: # Архитектура, задачи, планирование
       TSK-20260518-runtime-repository-boundary-and-readiness.md: file # План укрепления runtime repository boundary и честной readiness-проверки game content.
       TSK-20260518-session-persistence-hardening.md: file # План production-ready session persistence вместо runtime-only in-memory store.
       TSK-20260520-project-review-remediation.md: file # Планово-исполнительская задача по исправлению находок ревью проекта от 2026-05-20.
-      TSK-20260705-agent-controlled-players.md: file # План ИИ-игроков как агентских мест с валидируемыми действиями и безопасным резервным поведением.
       TSK-20260705-monopoly-classic-game.md: file # Исполнительная программа Estate Race: полная локальная экономическая игра последовательными срезами, затем сеть и ИИ-места без изменения игрового манифеста.
       TSK-20260705-multiplayer-runtime-realization.md: file # План сетевого мультиплеера: постоянные сессии, участники, очередь событий и WebSocket-доставка.
       TSK-20260706-conveyor-mini-game.md: file # План фикстурной игры «Мини-конвейер» для доказательства общего канала клиентской симуляции.
@@ -224,7 +224,8 @@ games: # Пакеты игр и связанные ресурсы
     plugins: directory... # Подключаемые клиентские модули Estate Race; игровое состояние и правила остаются в манифесте и Runtime API.
     published: directory... # Неизменяемый собранный клиентский модуль Estate Race и реестр его адресуемой по содержимому версии.
     scripts: directory... # Детерминированные игровые отчёты Estate Race, вычисляемые непосредственно из исходного авторинга.
-    tests: directory... # Сквозные runtime-проверки первого игрового среза Estate Race с воспроизводимым зерном случайности.
+    tests: # Сквозные runtime-проверки Estate Race, включая игровые правила, локальное агентское место, фиксированные evaluation-сценарии и воспроизводимые квитанции.
+      estate-race-agent-evaluation-fixtures.json: file # Ограниченные game-owned ожидания выбора для покупки, аукциона, тюрьмы, застройки, сделки, ликвидности и банкротства; не эталон общей стратегической силы.
     ui: directory... # Скомпилированные клиентские манифесты Estate Race, сгруппированные по каналам.
   simple-choice: # Minimal game-agnostic fixture used to prove that runtime-api and player-web can run a second game without a custom web plugin.
     assets: directory... # Исходные (SSOT) ассеты игры simple-choice для канала ADR-063/ADR-091: реестр assets.json, изображения и game-owned таблицы стилей.

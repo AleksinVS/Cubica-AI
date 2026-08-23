@@ -18,6 +18,24 @@ test("deterministic games remain ready without any Agent Runtime dependency", ()
   });
 });
 
+test("a seat-scoped dependency requires the same configured runtime without changing game execution mode", () => {
+  const previous = process.env.CUBICA_ENABLE_MOCK_AGENT_RUNTIME;
+  try {
+    delete process.env.CUBICA_ENABLE_MOCK_AGENT_RUNTIME;
+    assert.equal(checkAgentRuntimeReadiness(undefined, { requireConfigured: true }).status, "error");
+    const seatRuntime = requiredRuntime("mock");
+    seatRuntime.required = false;
+    delete seatRuntime.initialActionId;
+    assert.equal(checkAgentRuntimeReadiness(seatRuntime, { requireConfigured: true }).status, "error");
+
+    process.env.CUBICA_ENABLE_MOCK_AGENT_RUNTIME = "true";
+    assert.equal(checkAgentRuntimeReadiness(seatRuntime, { requireConfigured: true }).status, "ok");
+  } finally {
+    if (previous === undefined) delete process.env.CUBICA_ENABLE_MOCK_AGENT_RUNTIME;
+    else process.env.CUBICA_ENABLE_MOCK_AGENT_RUNTIME = previous;
+  }
+});
+
 test("the mock adapter is opt-in and a required unknown adapter fails closed", () => {
   const previous = process.env.CUBICA_ENABLE_MOCK_AGENT_RUNTIME;
   try {

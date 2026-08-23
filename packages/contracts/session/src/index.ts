@@ -2,7 +2,7 @@ export type SessionId = string;
 export type PlayerId = string;
 export type EventId = string;
 export type * from "./generated/public-gameplay-journal.ts";
-import type { CreateSessionRequest as GeneratedCreateSessionRequest } from "./generated/create-session-request.ts";
+export type { CreateSessionRequest } from "./generated/create-session-request.ts";
 import type { SessionParticipant } from "./generated/session-participant.ts";
 export type { SessionParticipant } from "./generated/session-participant.ts";
 export { validateSessionParticipantsShape } from "./sessionParticipantValidation.ts";
@@ -10,6 +10,9 @@ export {
   getCreateSessionRequestValidationErrors,
   validateCreateSessionRequestShape
 } from "./createSessionRequestValidation.ts";
+import type { AgentControl } from "./generated/agent-control.ts";
+export type { AgentControl } from "./generated/agent-control.ts";
+export { validateAgentControlShape } from "./agentControlValidation.ts";
 export type SessionRole = "player" | "facilitator" | "assistant" | "observer";
 export type SessionPrincipalId = string;
 
@@ -123,8 +126,6 @@ export interface ArchivedSessionAudit<TState = unknown> {
   receipts: ReadonlyArray<SessionCommandReceipt>;
 }
 
-export type CreateSessionRequest = GeneratedCreateSessionRequest;
-
 export interface CreateSessionInput<TState = unknown> {
   gameId: string;
   contentSourceId?: string;
@@ -205,6 +206,7 @@ export interface CreateSessionResponse<TState = unknown> {
   version: SessionStateVersion;
   state: TState;
   actionAvailability: Array<SessionActionAvailability>;
+  agentControl?: AgentControl;
   /** Returned only by direct creation so a trusted BFF can store and hand it off. */
   credential: string;
 }
@@ -413,6 +415,8 @@ export interface SessionCommandTransactionContext<TState = unknown> {
   principal: SessionPrincipal;
   bundle: ImmutableGameBundle;
   existingReceipt?: SessionCommandReceipt;
+  /** Exact principal-scoped lookup on the same locked transaction snapshot. */
+  getCommandReceipt(commandId: string): Promise<SessionCommandReceipt | null>;
 }
 
 export interface SessionCommandTransactionResult<TState, TResult> {
@@ -445,6 +449,7 @@ export interface DispatchActionResponse<TState = unknown> {
   version: SessionStateVersion;
   state: TState;
   actionAvailability: Array<SessionActionAvailability>;
+  agentControl?: AgentControl;
   receipt: PublicSessionCommandReceipt;
 }
 
@@ -596,6 +601,8 @@ export interface SessionStorePort<TState = unknown> {
     input: SessionCommandTransactionInput,
     operation: SessionCommandTransaction<TState, TResult>
   ): Promise<TResult>;
+  /** Bounded authenticated lookup of one exact durable logical command. */
+  getCommandReceipt(input: SessionCommandTransactionInput): Promise<SessionCommandReceipt | null>;
   /**
    * Execute a scheduler delivery through a trusted internal-only boundary.
    * The command prefix is never treated as authentication.
@@ -625,6 +632,7 @@ export interface SessionResponse<TState = unknown> {
   version: SessionStateVersion;
   state: TState;
   actionAvailability: Array<SessionActionAvailability>;
+  agentControl?: AgentControl;
 }
 
 /**
@@ -637,6 +645,7 @@ export interface ActionResponse<TState = unknown> {
   version: SessionStateVersion;
   state: TState;
   actionAvailability: Array<SessionActionAvailability>;
+  agentControl?: AgentControl;
   receipt: PublicSessionCommandReceipt;
 }
 

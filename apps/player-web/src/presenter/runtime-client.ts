@@ -163,6 +163,7 @@ export async function createNewSessionWithOptions(input: {
   readonly gameId: string;
   readonly contentSourceId?: string;
   readonly participantCount?: number;
+  readonly agentSeatCount?: number;
 }): Promise<SessionSnapshot> {
   const response = await fetch("/api/runtime/sessions", {
     method: "POST",
@@ -171,7 +172,8 @@ export async function createNewSessionWithOptions(input: {
     body: JSON.stringify({
       gameId: input.gameId,
       ...(input.contentSourceId === undefined ? {} : { contentSourceId: input.contentSourceId }),
-      ...(input.participantCount === undefined ? {} : { participantCount: input.participantCount })
+      ...(input.participantCount === undefined ? {} : { participantCount: input.participantCount }),
+      ...(input.agentSeatCount === undefined ? {} : { agentSeatCount: input.agentSeatCount })
     })
   });
   if (!response.ok) {

@@ -673,7 +673,7 @@ export interface PlayerFacingContent {
 export interface PlayerFacingAgentRuntimeConfig {
   agentId?: string;
   /** Published Game Intent the player channel sends for the first AI turn. */
-  initialActionId: string;
+  initialActionId?: string;
   runtimeId?: string;
   required: boolean;
   failurePolicy: GameManifestAgentFailurePolicy;

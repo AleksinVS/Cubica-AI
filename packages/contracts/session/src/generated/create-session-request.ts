@@ -18,4 +18,8 @@ export interface CreateSessionRequest {
    * Optional number of local participants. Runtime checks this against the published manifest bounds.
    */
   participantCount?: number;
+  /**
+   * Requested local agent seats. Runtime assigns the last N server-derived seats; omitted is equivalent to zero.
+   */
+  agentSeatCount?: number;
 }

@@ -42,9 +42,11 @@ export function isMockAgentRuntimeEnabled(env: NodeJS.ProcessEnv = process.env):
  * infrastructure is absent.
  */
 export function checkAgentRuntimeReadiness(
-  agentRuntime: GameManifestAgentRuntimeConfig | undefined
+  agentRuntime: GameManifestAgentRuntimeConfig | undefined,
+  options: { requireConfigured?: boolean } = {}
 ): AgentRuntimeReadinessResult {
-  if (agentRuntime?.required !== true) {
+  const required = options.requireConfigured === true || agentRuntime?.required === true;
+  if (!required) {
     return {
       status: "ok",
       required: false,
@@ -52,7 +54,7 @@ export function checkAgentRuntimeReadiness(
     };
   }
 
-  if (agentRuntime.runtimeId === MOCK_AGENT_RUNTIME_ID && isMockAgentRuntimeEnabled()) {
+  if (agentRuntime?.runtimeId === MOCK_AGENT_RUNTIME_ID && isMockAgentRuntimeEnabled()) {
     return {
       status: "ok",
       required: true,
@@ -67,10 +69,10 @@ export function checkAgentRuntimeReadiness(
     status: "error",
     required: true,
     mode: "missing",
-    agentId: agentRuntime.agentId,
-    runtimeId: agentRuntime.runtimeId,
-    failurePolicy: agentRuntime.failurePolicy,
-    reason: agentRuntime.runtimeId === MOCK_AGENT_RUNTIME_ID
+    ...(agentRuntime?.agentId === undefined ? {} : { agentId: agentRuntime.agentId }),
+    ...(agentRuntime?.runtimeId === undefined ? {} : { runtimeId: agentRuntime.runtimeId }),
+    ...(agentRuntime?.failurePolicy === undefined ? {} : { failurePolicy: agentRuntime.failurePolicy }),
+    reason: agentRuntime?.runtimeId === MOCK_AGENT_RUNTIME_ID
       ? "Mock Agent Runtime requires CUBICA_ENABLE_MOCK_AGENT_RUNTIME=true."
       : "Agent Runtime adapter is not configured in this runtime-api migration slice."
   };

@@ -170,6 +170,7 @@ const validateSemanticReferences = (manifest: JsonRecord) => {
   }
 
   const actions = isRecord(manifest.actions) ? manifest.actions : {};
+  validateAgentSeatSemanticReferences(manifest, actions);
   for (const [actionId, rawAction] of Object.entries(actions)) {
     if (!isRecord(rawAction)) continue;
     const paramsSchema = isRecord(rawAction.paramsSchema) ? rawAction.paramsSchema : {};
@@ -207,6 +208,29 @@ const validateSemanticReferences = (manifest: JsonRecord) => {
       }
     }
 
+  }
+};
+
+/** Cross-field agent-seat references which JSON Schema cannot relate to sibling catalogs. */
+export const validateAgentSeatSemanticReferences = (
+  manifest: JsonRecord,
+  actions: JsonRecord = isRecord(manifest.actions) ? manifest.actions : {}
+): void => {
+  const config = isRecord(manifest.config) ? manifest.config : {};
+  const players = isRecord(config.players) ? config.players : {};
+  const agentSeats = isRecord(players.agentSeats) ? players.agentSeats : undefined;
+  if (agentSeats) {
+    const fallbackCandidates = Array.isArray(agentSeats.deterministicFallbackCandidates)
+      ? agentSeats.deterministicFallbackCandidates
+      : [];
+    for (const candidate of fallbackCandidates) {
+      const actionId = isRecord(candidate) ? candidate.actionId : undefined;
+      if (typeof actionId === "string" && !Object.prototype.hasOwnProperty.call(actions, actionId)) {
+        throw new ManifestValidationError(
+          `Agent-seat fallback candidate references unknown published action "${actionId}"`
+        );
+      }
+    }
   }
 };
 

@@ -16,6 +16,12 @@
       "type": "integer",
       "minimum": 1,
       "description": "Optional number of local participants. Runtime checks this against the published manifest bounds."
+    },
+    "agentSeatCount": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 64,
+      "description": "Requested local agent seats. Runtime assigns the last N server-derived seats; omitted is equivalent to zero."
     }
   },
   "additionalProperties": false

@@ -6,7 +6,4 @@ DELETE FROM game_sessions;
 
 ALTER TABLE game_sessions
   DROP COLUMN player_id,
-  ADD COLUMN participants JSONB NOT NULL,
-  ADD CONSTRAINT game_sessions_participants_array_check CHECK (
-    jsonb_typeof(participants) = 'array' AND jsonb_array_length(participants) > 0
-  );
+  ADD COLUMN participants JSONB NOT NULL;

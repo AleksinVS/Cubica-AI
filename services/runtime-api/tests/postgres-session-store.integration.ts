@@ -164,6 +164,11 @@ test("PostgreSQL state, command receipt and event ledger survive a store restart
     sessionId: created.session.sessionId,
     credentialSha256
   }))?.principalId, principalId);
+  assert.equal((await secondStore.getCommandReceipt({
+    sessionId: created.session.sessionId,
+    credentialSha256,
+    commandId
+  }))?.receiptId, receiptId);
   assert.deepEqual(await secondStore.getSessionEvents(created.session.sessionId), [commandEvent]);
   assert.deepEqual(await secondStore.getSessionEvents(created.session.sessionId, 1), []);
 

@@ -2,6 +2,7 @@
 
 export type {
   ActionResponse,
+  AgentControl,
   ArchivedSessionAudit,
   CreatedSession,
   CreateSessionCommand,

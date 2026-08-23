@@ -41,8 +41,9 @@ import { applyGameStylesheetLinks } from "@/lib/game-stylesheet-links";
 import type { PlayerLayoutMode } from "@/lib/player-layout-mode";
 import { createManifestActionAdapter } from "@/lib/manifest-action-adapter";
 import { restorePreviewSession } from "@/presenter/runtime-client";
-import { SessionSetup } from "@/components/session-setup";
-import type { ParticipantCountBounds } from "@/presenter/game-presenter";
+import { SessionSetupPanel } from "@/components/session-setup-panel";
+import { SessionParticipants } from "@/components/session-participants";
+import { AgentControlPanel } from "@/components/agent-control-panel";
 
 export type { PlayerFacingMockup as GameMockup };
 
@@ -137,20 +138,6 @@ export function GamePlayer({
   const [lastCompletedPreviewAction, setLastCompletedPreviewAction] = useState<EditorPreviewCompletedAction | undefined>(
     undefined
   );
-  const [participantSetup, setParticipantSetup] = useState<ParticipantCountBounds | null>(null);
-  const participantSetupResolverRef = useRef<((participantCount: number) => void) | null>(null);
-  const requestParticipantCount = useCallback((bounds: ParticipantCountBounds) => {
-    setParticipantSetup(bounds);
-    return new Promise<number>((resolve) => {
-      participantSetupResolverRef.current = resolve;
-    });
-  }, []);
-  const confirmParticipantCount = useCallback((participantCount: number) => {
-    const resolve = participantSetupResolverRef.current;
-    participantSetupResolverRef.current = null;
-    setParticipantSetup(null);
-    resolve?.(participantCount);
-  }, []);
 
   useEffect(() => {
     if (!needsGameAssets) {
@@ -277,7 +264,9 @@ export function GamePlayer({
       gameUi,
       config: fullConfig,
       contentSourceId,
-      requestParticipantCount: editorPreviewMode ? undefined : requestParticipantCount
+      // Editor preview already owns a concrete runtime session. Showing the
+      // local-player setup there would replace that authoritative preview.
+      sessionSetupEnabled: !editorPreviewMode
     });
     presenterRef.current = presenter;
 
@@ -340,7 +329,7 @@ export function GamePlayer({
       unsubscribe();
       presenterRef.current = null;
     };
-  }, [content, contentSourceId, editorPreviewMode, gameUi, fullConfig, initialSessionId, playerPluginState.status, requestParticipantCount]);
+  }, [content, contentSourceId, gameUi, fullConfig, initialSessionId, playerPluginState.status]);
 
   const handleAction = async (actionId: string, payload?: Record<string, unknown>) => {
     const presenter = presenterRef.current;
@@ -412,6 +401,14 @@ export function GamePlayer({
     void presenter.boot();
   };
 
+  const handleSessionSetup = (selection: { participantCount: number; agentSeatCount: number }) => {
+    void presenterRef.current?.createSessionFromSetup(selection);
+  };
+
+  const handleRefreshAgentControl = () => {
+    void presenterRef.current?.refreshSession();
+  };
+
   const handleSurfaceAction = (action: Parameters<GamePresenter["handleSurfaceAction"]>[0]) => {
     const presenter = presenterRef.current;
     if (!presenter) return;
@@ -458,16 +455,6 @@ export function GamePlayer({
     );
   }
 
-  if (participantSetup) {
-    return (
-      <SessionSetup
-        min={participantSetup.min}
-        max={participantSetup.max}
-        onConfirm={confirmParticipantCount}
-      />
-    );
-  }
-
   if (!state || playerPluginState.status === "loading") {
     return (
       <main ref={rootRef} className="shell game-player-root" style={rootStyle}>
@@ -475,6 +462,19 @@ export function GamePlayer({
           <div className="loading-spinner" />
           <span>{t.loading}</span>
         </div>
+      </main>
+    );
+  }
+
+  if (state.sessionSetup) {
+    return (
+      <main ref={rootRef} className="shell game-player-root" style={rootStyle}>
+        <SessionSetupPanel
+          setup={state.sessionSetup}
+          isPending={state.booting}
+          error={state.error}
+          onSubmit={handleSessionSetup}
+        />
       </main>
     );
   }
@@ -493,6 +493,24 @@ export function GamePlayer({
     );
   }
 
+  const agentControl = state.agentControl;
+  if (agentControl.kind === "invalid") {
+    return (
+      <main ref={rootRef} className="shell game-player-root" style={rootStyle}>
+        <SessionParticipants participants={state.participants} />
+        <AgentControlPanel invalid onRefresh={handleRefreshAgentControl} />
+      </main>
+    );
+  }
+  if (agentControl.kind === "valid" && agentControl.value.status === "paused") {
+    return (
+      <main ref={rootRef} className="shell game-player-root" style={rootStyle}>
+        <SessionParticipants participants={state.participants} />
+        <AgentControlPanel control={agentControl.value} onRefresh={handleRefreshAgentControl} />
+      </main>
+    );
+  }
+
   const metrics = state.metrics;
   const activeManifestPanel = state.activePanel ? gameUi?.panels?.[state.activePanel] : undefined;
   const activeManifestScreen = screenKey ? gameUi?.screens[screenKey] : undefined;
@@ -505,6 +523,10 @@ export function GamePlayer({
 
   return (
     <main ref={rootRef} className="shell game-player-root" style={rootStyle}>
+      <SessionParticipants participants={state.participants} />
+      {agentControl.kind === "valid" && agentControl.value.status === "facilitatorTakeover" ? (
+        <AgentControlPanel control={agentControl.value} onRefresh={handleRefreshAgentControl} />
+      ) : null}
       <PublicJournalDownload sessionId={state.sessionId} runtimeStatus={state.runtimeStatus} />
       {activeManifestPanel && !keepsMapBehindPanel ? (
         <ManifestRenderer

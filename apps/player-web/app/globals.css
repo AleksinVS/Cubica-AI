@@ -199,6 +199,128 @@ select {
   margin: 0;
 }
 
+.session-setup-panel,
+.session-participants,
+.agent-control-panel {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 14px;
+  width: min(100%, 720px);
+  margin: 0 auto;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(18px);
+}
+
+.session-setup-panel {
+  align-self: center;
+}
+
+.session-setup-panel h1,
+.agent-control-panel h1,
+.session-participants h2 {
+  margin: 0;
+}
+
+.session-setup-panel p,
+.agent-control-panel p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.session-setup-field {
+  display: grid;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.session-setup-field select {
+  width: 100%;
+  padding: 10px 12px;
+  color: var(--text);
+  background: var(--bg-soft);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.session-setup-choice {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.session-setup-choice legend {
+  margin-bottom: 2px;
+  font-weight: 600;
+}
+
+.session-setup-choice label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.session-setup-submit {
+  justify-self: start;
+  align-self: start;
+}
+
+.session-participants {
+  width: min(100%, 720px);
+  padding: 16px 20px;
+}
+
+.session-participants ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.session-participants li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+
+.session-participant-kind {
+  color: var(--accent);
+  font-size: 0.85em;
+}
+
+.agent-control-panel {
+  width: min(100%, 920px);
+}
+
+.agent-control-paused {
+  border-color: rgba(255, 211, 106, 0.45);
+}
+
+.agent-control-takeover {
+  border-color: rgba(87, 214, 177, 0.42);
+}
+
+@media (max-width: 640px) {
+  .session-setup-panel,
+  .session-participants,
+  .agent-control-panel {
+    padding: 18px;
+    border-radius: 18px;
+  }
+}
+
 .fallback-card {
   gap: 14px;
 }
@@ -1083,86 +1205,6 @@ button.button-helper-arrow:focus-visible {
   background: transparent;
 }
 
-.session-setup {
-  display: grid;
-  place-items: center;
-  padding: 2rem;
-}
-
-.session-setup-panel {
-  width: min(32rem, 100%);
-  padding: 2rem;
-  border: 1px solid rgba(170, 227, 255, 0.24);
-  border-radius: 1rem;
-  background: rgba(11, 31, 51, 0.86);
-  box-shadow: 0 1.5rem 3rem rgba(0, 0, 0, 0.22);
-}
-
-.session-setup-kicker {
-  margin: 0 0 0.5rem;
-  color: var(--accent);
-  font-size: 0.8rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.session-setup-panel h1 {
-  margin: 0;
-  color: var(--text);
-  font-size: clamp(1.5rem, 4vw, 2.25rem);
-}
-
-.session-setup-panel p:not(.session-setup-kicker) {
-  color: var(--muted);
-  line-height: 1.5;
-}
-
-.session-setup-panel form {
-  display: grid;
-  gap: 0.65rem;
-  margin-top: 1.5rem;
-}
-
-.session-setup-panel label {
-  color: var(--text);
-  font-weight: 600;
-}
-
-.session-setup-panel select,
-.session-setup-panel button {
-  min-height: 2.75rem;
-  border-radius: 0.55rem;
-  font: inherit;
-}
-
-.session-setup-panel select {
-  padding: 0 0.75rem;
-  border: 1px solid rgba(170, 227, 255, 0.38);
-  background: rgba(6, 22, 37, 0.9);
-  color: var(--text);
-}
-
-.session-setup-panel button {
-  margin-top: 0.45rem;
-  border: 1px solid var(--accent);
-  background: var(--accent);
-  color: #071825;
-  cursor: pointer;
-  font-weight: 700;
-}
-
-.session-setup-panel button:hover,
-.session-setup-panel button:focus-visible {
-  filter: brightness(1.08);
-}
-
-.session-setup-panel select:focus-visible,
-.session-setup-panel button:focus-visible {
-  outline: 3px solid rgba(170, 227, 255, 0.55);
-  outline-offset: 2px;
-}
-
 .public-journal-download {
   position: absolute;
   top: 20px;
@@ -1210,8 +1252,8 @@ button.button-helper-arrow:focus-visible {
 @media (max-width: 900px) {
   .game-player-root:has(.game-renderer--map-first) > .public-journal-download {
     top: 0.75rem;
-    right: auto;
-    left: 0.75rem;
+    right: 0.75rem;
+    left: auto;
   }
 }
 
@@ -1867,6 +1909,16 @@ button.button-helper-arrow:focus-visible {
   padding: 0;
   overflow: hidden;
   overscroll-behavior: none;
+}
+
+.game-player-root:has(> .session-participants):has(.game-renderer--map-first) {
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.game-player-root:has(> .session-participants):has(.game-renderer--map-first) > .game-renderer--map-first {
+  min-height: 0;
+  height: 100% !important;
 }
 
 .game-renderer.game-renderer--map-first {

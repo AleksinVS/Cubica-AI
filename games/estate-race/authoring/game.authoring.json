@@ -9,7 +9,7 @@
     "_semantics": "Локальная экономическая игра для 2–6 участников на полном авторском сорокаклеточном маршруте.",
     "meta": {
       "id": "estate-race",
-      "version": "0.7.0",
+      "version": "0.8.0",
       "name": "Estate Race",
       "description": "Доступная экономическая стратегия о выборе момента для покупки, развития и переговоров.",
       "author": "Cubica",
@@ -25,7 +25,86 @@
     "config": {
       "players": {
         "min": 2,
-        "max": 6
+        "max": 6,
+        "agentSeats": {
+          "max": 1,
+          "invalidAttemptLimit": 2,
+          "deterministicFallbackCandidates": [
+            { "actionId": "turn.roll", "params": {} },
+            { "actionId": "property.decline", "params": {} },
+            { "actionId": "property.rent", "params": {} },
+            { "actionId": "property.auction.pass", "params": {} },
+            { "actionId": "property.build.pass", "params": {} },
+            { "actionId": "property.build.auction.pass", "params": {} },
+            { "actionId": "tax.pay", "params": {} },
+            { "actionId": "jail.third.move", "params": {} },
+            { "actionId": "jail.pay", "params": {} },
+            { "actionId": "turn.finish", "params": {} },
+            { "actionId": "trade.cancel", "params": {} },
+            { "actionId": "trade.decline", "params": {} },
+            { "actionId": "trade.card.claim", "params": {} },
+            { "actionId": "mortgage.transfer.keep", "params": {} },
+            { "actionId": "liquidation.card.claim", "params": {} },
+            { "actionId": "obligation.resolve", "params": {} },
+            { "actionId": "property.sell", "params": { "cellId": "cell-01" } },
+            { "actionId": "property.sell", "params": { "cellId": "cell-02" } },
+            { "actionId": "property.sell", "params": { "cellId": "cell-05" } },
+            { "actionId": "property.sell", "params": { "cellId": "cell-08" } },
+            { "actionId": "property.sell", "params": { "cellId": "cell-09" } },
+            { "actionId": "property.sell", "params": { "cellId": "cell-11" } },
+            { "actionId": "property.sell", "params": { "cellId": "cell-13" } },
+            { "actionId": "property.sell", "params": { "cellId": "cell-14" } },
+            { "actionId": "property.sell", "params": { "cellId": "cell-16" } },
+            { "actionId": "property.sell", "params": { "cellId": "cell-18" } },
+            { "actionId": "property.sell", "params": { "cellId": "cell-19" } },
+            { "actionId": "property.sell", "params": { "cellId": "cell-21" } },
+            { "actionId": "property.sell", "params": { "cellId": "cell-23" } },
+            { "actionId": "property.sell", "params": { "cellId": "cell-24" } },
+            { "actionId": "property.sell", "params": { "cellId": "cell-26" } },
+            { "actionId": "property.sell", "params": { "cellId": "cell-27" } },
+            { "actionId": "property.sell", "params": { "cellId": "cell-29" } },
+            { "actionId": "property.sell", "params": { "cellId": "cell-31" } },
+            { "actionId": "property.sell", "params": { "cellId": "cell-32" } },
+            { "actionId": "property.sell", "params": { "cellId": "cell-34" } },
+            { "actionId": "property.sell", "params": { "cellId": "cell-37" } },
+            { "actionId": "property.sell", "params": { "cellId": "cell-39" } },
+            { "actionId": "property.mortgage", "params": { "cellId": "cell-01" } },
+            { "actionId": "property.mortgage", "params": { "cellId": "cell-02" } },
+            { "actionId": "property.mortgage", "params": { "cellId": "cell-05" } },
+            { "actionId": "property.mortgage", "params": { "cellId": "cell-06" } },
+            { "actionId": "property.mortgage", "params": { "cellId": "cell-08" } },
+            { "actionId": "property.mortgage", "params": { "cellId": "cell-09" } },
+            { "actionId": "property.mortgage", "params": { "cellId": "cell-11" } },
+            { "actionId": "property.mortgage", "params": { "cellId": "cell-12" } },
+            { "actionId": "property.mortgage", "params": { "cellId": "cell-13" } },
+            { "actionId": "property.mortgage", "params": { "cellId": "cell-14" } },
+            { "actionId": "property.mortgage", "params": { "cellId": "cell-15" } },
+            { "actionId": "property.mortgage", "params": { "cellId": "cell-16" } },
+            { "actionId": "property.mortgage", "params": { "cellId": "cell-18" } },
+            { "actionId": "property.mortgage", "params": { "cellId": "cell-19" } },
+            { "actionId": "property.mortgage", "params": { "cellId": "cell-21" } },
+            { "actionId": "property.mortgage", "params": { "cellId": "cell-23" } },
+            { "actionId": "property.mortgage", "params": { "cellId": "cell-24" } },
+            { "actionId": "property.mortgage", "params": { "cellId": "cell-25" } },
+            { "actionId": "property.mortgage", "params": { "cellId": "cell-26" } },
+            { "actionId": "property.mortgage", "params": { "cellId": "cell-27" } },
+            { "actionId": "property.mortgage", "params": { "cellId": "cell-28" } },
+            { "actionId": "property.mortgage", "params": { "cellId": "cell-29" } },
+            { "actionId": "property.mortgage", "params": { "cellId": "cell-31" } },
+            { "actionId": "property.mortgage", "params": { "cellId": "cell-32" } },
+            { "actionId": "property.mortgage", "params": { "cellId": "cell-34" } },
+            { "actionId": "property.mortgage", "params": { "cellId": "cell-35" } },
+            { "actionId": "property.mortgage", "params": { "cellId": "cell-37" } },
+            { "actionId": "property.mortgage", "params": { "cellId": "cell-39" } },
+            { "actionId": "bankruptcy.declare", "params": { "heldCardId": "", "heldCardId2": "" } },
+            { "actionId": "bankruptcy.declare", "params": { "heldCardId": "event-exit", "heldCardId2": "" } },
+            { "actionId": "bankruptcy.declare", "params": { "heldCardId": "fund-exit", "heldCardId2": "" } },
+            { "actionId": "bankruptcy.declare", "params": { "heldCardId": "", "heldCardId2": "event-exit" } },
+            { "actionId": "bankruptcy.declare", "params": { "heldCardId": "", "heldCardId2": "fund-exit" } },
+            { "actionId": "bankruptcy.declare", "params": { "heldCardId": "event-exit", "heldCardId2": "fund-exit" } },
+            { "actionId": "bankruptcy.declare", "params": { "heldCardId": "fund-exit", "heldCardId2": "event-exit" } }
+          ]
+        }
       },
       "settings": {
         "mode": "local-hotseat",
@@ -52,6 +131,24 @@
           "liquidationMortgage",
           "liquidationClaim",
           "terminal"
+        ]
+      }
+    },
+    "agentRuntime": {
+      "agentId": "estate-race-local-opponent",
+      "runtimeId": "mock",
+      "required": false,
+      "allowedCapabilities": [
+        "selectPublishedIntent"
+      ],
+      "surfaceCatalog": [],
+      "failurePolicy": "deterministicFallback",
+      "contextExposurePolicy": {
+        "publicState": true,
+        "secretState": "none",
+        "manifestProjection": [
+          "/meta",
+          "/actions"
         ]
       }
     },
@@ -241,7 +338,8 @@
           "jailAttempts": 0
         },
         "flags": {
-          "inJail": false
+          "inJail": false,
+          "thirdJailMovePending": false
         },
         "objects": {
           "bidderStatus": "idle",
@@ -3700,6 +3798,21 @@
             "valueType": "core.integer",
             "access": "read-write"
           },
+          "actor.flags.thirdJailMovePending": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "players",
+              "segments": [
+                {
+                  "context": "actor"
+                },
+                "flags",
+                "thirdJailMovePending"
+              ]
+            },
+            "valueType": "core.boolean",
+            "access": "read-write"
+          },
           "participant.flags.inJail": {
             "audienceRef": "public",
             "storage": {
@@ -4180,6 +4293,17 @@
                   "path": [
                     "flags",
                     "inJail"
+                  ]
+                },
+                "valueType": "core.boolean",
+                "access": "read-only"
+              },
+              "thirdJailMovePending": {
+                "storage": {
+                  "kind": "path",
+                  "path": [
+                    "flags",
+                    "thirdJailMovePending"
                   ]
                 },
                 "valueType": "core.boolean",
@@ -5231,6 +5355,16 @@
                     "value": {
                       "op": "value.literal",
                       "value": true
+                    }
+                  },
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "actor.flags.thirdJailMovePending"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": false
                     }
                   },
                   {
@@ -12883,6 +13017,20 @@
                         "op": "value.literal",
                         "value": true
                       }
+                    },
+                    {
+                      "op": "predicate.compare",
+                      "operator": "eq",
+                      "left": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "actor.flags.thirdJailMovePending"
+                        }
+                      },
+                      "right": {
+                        "op": "value.literal",
+                        "value": false
+                      }
                     }
                   ]
                 },
@@ -13103,6 +13251,16 @@
                     "operation": "set",
                     "target": {
                       "endpoint": "actor.flags.inJail"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": false
+                    }
+                  },
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "actor.flags.thirdJailMovePending"
                     },
                     "value": {
                       "op": "value.literal",
@@ -13364,6 +13522,16 @@
                   {
                     "operation": "set",
                     "target": {
+                      "endpoint": "actor.flags.thirdJailMovePending"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": false
+                    }
+                  },
+                  {
+                    "operation": "set",
+                    "target": {
                       "endpoint": "actor.metrics.jailAttempts"
                     },
                     "value": {
@@ -13454,6 +13622,20 @@
                       "right": {
                         "op": "value.literal",
                         "value": true
+                      }
+                    },
+                    {
+                      "op": "predicate.compare",
+                      "operator": "eq",
+                      "left": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "actor.flags.thirdJailMovePending"
+                        }
+                      },
+                      "right": {
+                        "op": "value.literal",
+                        "value": false
                       }
                     }
                   ]
@@ -13753,6 +13935,16 @@
                     "operation": "set",
                     "target": {
                       "endpoint": "actor.flags.inJail"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": false
+                    }
+                  },
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "actor.flags.thirdJailMovePending"
                     },
                     "value": {
                       "op": "value.literal",
@@ -14405,6 +14597,12 @@
                     {
                       "op": "predicate.compare",
                       "operator": "eq",
+                      "left": { "op": "value.state", "ref": { "endpoint": "actor.flags.thirdJailMovePending" } },
+                      "right": { "op": "value.literal", "value": true }
+                    },
+                    {
+                      "op": "predicate.compare",
+                      "operator": "eq",
                       "left": { "op": "value.state", "ref": { "endpoint": "actor.metrics.jailAttempts" } },
                       "right": { "op": "value.literal", "value": 2 }
                     },
@@ -14470,6 +14668,11 @@
                   {
                     "operation": "set",
                     "target": { "endpoint": "actor.flags.inJail" },
+                    "value": { "op": "value.literal", "value": false }
+                  },
+                  {
+                    "operation": "set",
+                    "target": { "endpoint": "actor.flags.thirdJailMovePending" },
                     "value": { "op": "value.literal", "value": false }
                   },
                   {
@@ -20291,6 +20494,11 @@
                 "patches": [
                   {
                     "operation": "set",
+                    "target": { "endpoint": "actor.flags.thirdJailMovePending" },
+                    "value": { "op": "value.literal", "value": true }
+                  },
+                  {
+                    "operation": "set",
                     "target": { "endpoint": "public.obligation.status" },
                     "value": { "op": "value.literal", "value": "idle" }
                   },
@@ -20379,6 +20587,16 @@
                     "operation": "set",
                     "target": {
                       "endpoint": "actor.flags.inJail"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": false
+                    }
+                  },
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "actor.flags.thirdJailMovePending"
                     },
                     "value": {
                       "op": "value.literal",
@@ -22640,6 +22858,16 @@
                     "operation": "set",
                     "target": {
                       "endpoint": "actor.flags.inJail"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": false
+                    }
+                  },
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "actor.flags.thirdJailMovePending"
                     },
                     "value": {
                       "op": "value.literal",
@@ -29185,6 +29413,16 @@
                 {
                   "operation": "set",
                   "target": {
+                    "endpoint": "actor.flags.thirdJailMovePending"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": false
+                  }
+                },
+                {
+                  "operation": "set",
+                  "target": {
                     "endpoint": "actor.metrics.jailAttempts"
                   },
                   "value": {
@@ -31581,6 +31819,16 @@
                   "value": {
                     "op": "value.literal",
                     "value": true
+                  }
+                },
+                {
+                  "operation": "set",
+                  "target": {
+                    "endpoint": "actor.flags.thirdJailMovePending"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": false
                   }
                 },
                 {
