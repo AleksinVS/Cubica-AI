@@ -28,8 +28,10 @@ in_progress
 - Владелец: Platform Team.
 - Создана: 2026-08-09.
 - Stage 1 принят PM и слит в `main` коммитом `928f2ee`.
-- Текущее состояние после нового разрешённого окна 2026-08-13: Stage 2 остаётся
-  `in_progress`, Stage 3, чтение, применение и Git остаются закрыты.
+- Текущее состояние после окна DR-13 2026-08-23: Stage 2 остаётся
+  `in_progress`; три отрицательных категории доказаны, первый положительный
+  сценарий остановлен `gateway_malformed`, пятый не запускался. Stage 3,
+  чтение, применение и Git остаются закрыты.
 
 ## Parent
 
@@ -86,6 +88,11 @@ approved
   зарегистрированы для пересмотра. Они не расширяют разрешение на внешний
   прогон. Общая identity, активное чтение, подтверждение и Git-запись всё ещё
   требуют отдельного решения PM.
+- PM 2026-08-23 одобрил DR-12: обязательный `manifest_digest` равен `sha256:`
+  плюс SHA-256 точных байтов manifest и проверяется maintained evaluator на
+  каждом lifecycle entry и перед удалением manifest. DR-12 прошёл Sol-high
+  preactivation review и реальный cleanup. Одноразовое разрешение DR-13
+  израсходовано; любой новый внешний вызов требует нового решения PM.
 
 ## Architecture Source
 
@@ -198,7 +205,7 @@ approved
 | Контракты, ConversationStore и gateway | Sol high | done | Server-only foundation; retention, crash recovery без опасного повтора и атомарные terminal result + metric проверены на PostgreSQL 17 |
 | Portal authorization adapter | Sol high | done | Настоящая Portal-аутентификация и право разработчика без client identity |
 | Editor post-response hook и изоляция | Sol high | done | Единственная разрешённая server-only точка shadow; основной ответ неизменен |
-| Оценка и rollback | Sol high | in_progress | Новое окно подтвердило три `no_change` и один create proposal, но proposal нарушил критерий «все и только подтверждённые факты»; correction не вызывался, поэтому update-путь и Stage 3 остаются закрыты |
+| Оценка и rollback | Sol high | in_progress | Окно DR-13 подтвердило 3/3 `no_change`; первый положительный сценарий завершился fail-closed `gateway_malformed`, пятый не вызывался. Cleanup доказал exact zero и неизменный Git; положительные пути и Stage 3 остаются закрыты |
 | Независимое security review | Sol high | done | Три приёмочных прохода и две волны исправлений закрыли все Critical/High/Medium замечания; итог — ACCEPT merge-ready для выключенного Stage 2 |
 | Read-only wiki и запуск cleanup | Sol high | done | Серверно закреплённый снимок bare Git и одноразовая ограниченная cleanup-команда прошли независимый security review |
 | Z.AI Coding Plan adapter | Sol high + Luna medium с обязательным Sol high review | code_ready | Фиксированные endpoint/model, полный read-only снимок HEAD и строгая серверная проверка ответа подтверждены mock-матрицей и синтетическим сетевым прогоном; пользовательские данные не передавались |
@@ -207,7 +214,7 @@ approved
 | Архитектура устойчивого синтеза | основной агент + Sol high architecture review | done | Приняты PostgreSQL-очередь на базе `shadow_runs`, one-shot CLI worker, служебная повторная авторизация Portal и отсутствие нового broker/микросервиса |
 | Асинхронная очередь, worker и границы безопасности | Sol high critical implementation | done | Миграция 003 без удаления данных, с заменой ограничений/политик и добавлением queue state; безопасная аренда, повторная авторизация без bearer, фиксированные SQL-функции, полная классификация ошибок и проверки конкуренции/crash recovery приняты основным агентом |
 | Постоянный evaluator/runner | Luna high implementation → tests → Luna high critic → Luna correction → основной агент | done | Поддерживаемая непроизводственная команда наблюдает только уже поставленные штатным Editor/Portal-контуром ходы, передаёт worker точный target owner/game/stable key и запускает каждый ход одной попыткой; пять категорий идут в фиксированном порядке, отчёт атомарно сохраняется после каждого сценария, локальная проверка идёт через `/dev/tty`, поддерживаются resume, hard stop и cleanup; второй путь постановки задания не создаётся |
-| Финальная приёмка Stage 2 async | основной агент + независимый Sol high review | in_progress | Пакетная, PostgreSQL, Editor, Portal, schema, isolation и документационная приёмка прошли; partial canonical evidence: baseline fixtures repaired, but full canonical verification safely stopped at/before Player Web production build by low-memory/resource contention; primary rerun remains required |
+| Финальная приёмка Stage 2 async | основной агент + независимый Sol high review | done | Пакетная, PostgreSQL, Editor, Portal, schema, isolation и документационная приёмка прошли; DR-12 и activation-контур приняты Sol high. Semantic quality остаётся отдельным незавершённым воротом после `gateway_malformed` в DR-13 |
 
 После слияния PM разрешил Luna, включая `low`. Luna low выполнил только узкое
 чтение репозитория и перечислил готовые примитивы; проектирование, код,
@@ -841,3 +848,80 @@ worker и не открывает второй путь к модели или �
   correction. Permanent model timeout и retries остаются pending. Decision
   registry обновлён: разовое 45s authorization consumed, trusted timestamp
   implemented, trigger — новая approved full five-scenario rerun.
+
+### 2026-08-13 — основной AI agent, подготовка воспроизводимого полного повтора
+
+- Baseline: ветка повторно актуализирована на текущий `main`. Каноническая
+  проверка завершена без изменения кода: после ограничения времени одной
+  terminal-сессии оставшаяся точная цепочка прошла Player production build,
+  view-protocol 6/6, editor-engine 192/192 и Editor production build. Вместе с
+  уже завершёнными Runtime API и Player gates это закрывает прежнее partial
+  evidence; чужие процессы и настройки хоста не менялись.
+- Disposable contour: подготовлена последовательная схема ровно пяти
+  сценариев `enqueue-next -> run-next -> review`. Все target, receipt и
+  retention проверяются до каждого enqueue; пять будущих run заранее не
+  создаются. Контур остаётся только под `.tmp`, не вызывает provider до
+  явного gate и не создаёт второй scheduler, queue или storage.
+- Crash recovery: cleanup сначала отбирает только истёкший по времени
+  PostgreSQL run, затем использует отдельный credential-free executor поверх
+  существующего exact-target claim. Executor не получает Portal/Z.AI keys;
+  terminal housekeeping коммитится, а неожиданно доступная аренда откатывается
+  в той же транзакции. После этого evaluator требует ровно terminal state и
+  одну metric. Ручного SQL-пути, новой миграции, роли или сервиса не добавлено.
+- Evidence: полный набор `verify:product-context` покрыт 270/270 на чистой
+  одноразовой PostgreSQL 17, включая evaluator 21/21 и
+  activation/security/concurrency 42/42 с pending/leased/calling recovery без
+  Portal и provider; typecheck, generated-types check и `git diff --check`
+  прошли, БД удалена. Первый узкий повтор был корректно отклонён
+  preflight из-за ошибочно добавленного оператором `sslmode=disable` в
+  loopback URL; повтор с каноническим URL без query-параметров прошёл полностью,
+  производственный код ради этого не менялся.
+- Sol high remediation: независимая приёмка обнаружила разрыв между
+  app-inspection и обычным worker claim при теоретическом откате часов
+  PostgreSQL. Recovery отделён от обычного worker на уровне capabilities:
+  cleanup-конфигурация проходит без Portal/Z.AI credentials, а claimable
+  target даёт rollback вместо аренды. Новый отрицательный тест и реальный
+  PostgreSQL executor вошли в итоговые 270/270; provider calls на этапе
+  локальной приёмки остались 0.
+- DR-12/DR-13 decision status: DR-12 прошёл свежую Sol-high preactivation
+  приёмку. DR-13 израсходован последующим окном 2026-08-23; его результат
+  зафиксирован ниже. Stage 3 остаётся закрыт.
+- Current PM decisions (2026-08-23): DR-12 is accepted, implemented and
+  verified. The maintained report binds to the exact manifest
+  bytes with required `manifest_digest = sha256:` plus SHA-256; evaluator checks
+  it at every lifecycle entry and before manifest removal. DR-13 was consumed
+  by exactly one window using Z.AI Coding Plan `glm-4.7`,
+  model timeout 45000 ms, Portal auth timeout 5000 ms, lease 60000 ms,
+  retention 300000 ms, `maxAttempts=1`, no retry, one developer, one game, one
+  policy and hard stop on first unsafe result. Stage 3 remains closed.
+
+- Simplification review: the maintained report is now the single manifest
+  binding, so the temporary digest sidecar, its env key, and duplicate checks
+  were removed. Existing evaluator, queue, and capability-separated cleanup
+  remain the only execution components; no new service, table, schema boundary,
+  or retry path was introduced.
+
+### 2026-08-23 — основной AI agent, окно DR-13 и exact-zero cleanup
+
+- Gate: Sol-high preactivation review завершился `ACCEPT` без High/Medium.
+  Локальный contour подтвердил exact manifest binding, одну policy, read-only
+  bare Git, отдельные app/worker LOGIN и отсутствие retry. Для запуска
+  maintained CLI явно добавлен режим `vite-node --script`; без него import-safe
+  entry point не выполнялся при package-script запуске.
+- Window: выполнено ровно четыре provider call. Три отрицательные категории
+  вернули `no_change` и каждая прошла ручную рубрику 4/4. Четвёртый вызов —
+  явно подтверждённое новое долговременное решение — завершился terminal
+  `gateway_malformed` с одной metric. Hard stop исключил пятый scenario и
+  любые повторы; proposal не применялся, Git HEAD не менялся.
+- Observability: прежний evaluator записывал общий `mismatch`, хотя БД хранила
+  `gateway_malformed`. Локальная реализация теперь сохраняет уже существующий
+  `schema_error` вместо его свёртки в `mismatch`; отдельный тест защищает это
+  поведение. Более детальная причина внутри `gateway_malformed` неизвестна,
+  потому что raw provider payload намеренно не хранится. Возможное расширение
+  бесконтентного enum зарегистрировано как DR-15 и требует решения PM.
+- Cleanup: после retention credential-free cleanup удалил 4 run и 4 metric,
+  tombstoned 8 сообщений и 4 thread. Итог: 0 active runs, metrics, messages,
+  threads и text bytes; `cleanup.passed=true`, Git неизменён, manifest удалён.
+- Verdict: DR-13 израсходован, semantic matrix не принята, Stage 3 закрыт.
+  Новый внешний вызов, correction-only прогон или изменение provider/model
+  требуют нового явного решения; текущие timeout не становятся default.

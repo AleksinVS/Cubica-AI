@@ -217,6 +217,27 @@ export class PostgresShadowWorkerStore implements ShadowWorkerStore {
     });
   }
 
+  /** Commits only terminal housekeeping; an unexpectedly claimable lease is rolled back. */
+  async terminalizeExpiredTarget(leaseMs: number, maxAttempts: number, now = new Date()): Promise<boolean> {
+    if (!this.target) throw new TypeError('An exact recovery target is required.');
+    if (!Number.isSafeInteger(leaseMs) || leaseMs <= 0) throw new TypeError('A positive lease is required.');
+    if (!Number.isSafeInteger(maxAttempts) || maxAttempts !== 1) throw new TypeError('Recovery requires exactly one attempt.');
+    try {
+      await this.transaction(async (client) => {
+        const result = await client.query<{ payload: WorkerPayload | null }>(
+          'SELECT product_context_shadow.worker_claim($1,$2,$3,$4,$5,$6) AS payload',
+          [leaseMs, maxAttempts, now.toISOString(), this.target!.ownerRef,
+            this.target!.gameRef, this.target!.stableTurnKey]
+        );
+        if (result.rows[0]?.payload) throw new UnsafeRecoveryClaimError();
+      });
+      return true;
+    } catch (error) {
+      if (error instanceof UnsafeRecoveryClaimError) return false;
+      throw error;
+    }
+  }
+
   async prepareCall(lease: ShadowWorkerLease, requestId: string, callLeaseMs: number, now = new Date()): Promise<ConversationTurn> {
     if (!Number.isSafeInteger(callLeaseMs) || callLeaseMs <= 0) throw new TypeError('A positive call lease is required.');
     const turn = await this.transaction(async (client) => {
@@ -291,6 +312,8 @@ export class PostgresShadowWorkerStore implements ShadowWorkerStore {
     } finally { client.release(discard); }
   }
 }
+
+class UnsafeRecoveryClaimError extends Error {}
 
 interface WorkerRunRow {
   run_id: string; owner_ref: string; thread_ref: string; stable_turn_key: string; authorization_revision: string;

@@ -9,9 +9,9 @@
   "scripts": {
     "generate:types": "node scripts/generate-types.cjs",
     "generate:types:check": "node scripts/generate-types.cjs --check",
-    "cleanup:shadow": "../../node_modules/.bin/vite-node scripts/run-shadow-cleanup.ts",
-    "worker:shadow": "../../node_modules/.bin/vite-node scripts/run-shadow-worker.ts",
-    "evaluate:shadow": "../../node_modules/.bin/vite-node scripts/run-shadow-evaluator.ts",
+    "cleanup:shadow": "../../node_modules/.bin/vite-node --script scripts/run-shadow-cleanup.ts",
+    "worker:shadow": "../../node_modules/.bin/vite-node --script scripts/run-shadow-worker.ts",
+    "evaluate:shadow": "../../node_modules/.bin/vite-node --script scripts/run-shadow-evaluator.ts",
     "preflight:shadow:synthetic": "../../node_modules/.bin/vite-node scripts/run-shadow-synthetic.ts preflight --synthetic-only --deny-external-processing",
     "run:shadow:synthetic": "../../node_modules/.bin/vite-node scripts/run-shadow-synthetic.ts run --synthetic-only --deny-external-processing",
     "typecheck": "tsc --noEmit",

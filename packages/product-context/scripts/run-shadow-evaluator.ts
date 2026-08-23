@@ -3,7 +3,7 @@
 import { open as openFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { Pool, type PoolClient } from 'pg';
-import { runShadowWorkerOnce, readShadowWorkerConfig } from './run-shadow-worker.ts';
+import { runShadowWorkerOnce, runShadowWorkerRecoveryOnce, readShadowWorkerConfig, readShadowWorkerRecoveryConfig } from './run-shadow-worker.ts';
 import { safeShadowDatabaseUrl } from '../src/shadow-database-url.ts';
 import {
   cleanupShadowEvaluation, preflightShadowEvaluation, readShadowEvaluationManifest,
@@ -36,7 +36,16 @@ export class PostgresShadowEvaluatorDatabase implements ShadowEvaluatorDatabase 
           COALESCE(metric.duration_ms, 0) AS duration_ms,
           COALESCE(metric.input_bytes, 0) AS input_bytes,
           COALESCE(metric.output_bytes, 0) AS output_bytes,
-          COALESCE(metric.metric_count, 0) AS metric_count
+          COALESCE(metric.metric_count, 0) AS metric_count,
+          CASE
+            WHEN run.status = 'calling_model' AND run.lease_expires_at <= clock_timestamp()
+              THEN 'expired_calling_model'
+            WHEN run.status IN ('pending', 'retry_wait', 'leased') AND run.retained_until <= clock_timestamp()
+              THEN 'retention_expired'
+            WHEN run.status = 'leased' AND run.attempts >= 1 AND run.lease_expires_at <= clock_timestamp()
+              THEN 'attempts_exhausted'
+            ELSE NULL
+          END AS cleanup_recovery
         FROM product_context_shadow.shadow_runs AS run
         JOIN product_context_shadow.conversation_threads AS thread ON thread.thread_ref = run.thread_ref AND thread.owner_ref = run.owner_ref
         LEFT JOIN LATERAL (
@@ -53,7 +62,7 @@ export class PostgresShadowEvaluatorDatabase implements ShadowEvaluatorDatabase 
           (SELECT count(*) FROM product_context_shadow.conversation_threads WHERE status = 'active') AS active_threads,
           (SELECT COALESCE(sum(octet_length(content_bytes)), 0) FROM product_context_shadow.conversation_messages WHERE content_bytes IS NOT NULL) AS active_text_bytes`);
       return {
-        runs: runs.rows.map((row) => ({ ownerRef: String(row.owner_ref), gameRef: String(row.game_ref), receiptPrincipal: String(row.receipt_principal), receiptGame: String(row.receipt_game), messageCount: Number(row.message_count), liveMessageCount: Number(row.live_message_count), stableTurnKey: String(row.stable_turn_key), status: row.status, outcome: row.outcome_code, operationCount: Number(row.operation_count), durationMs: Number(row.duration_ms), inputBytes: Number(row.input_bytes), outputBytes: Number(row.output_bytes), metricCount: Number(row.metric_count) })),
+        runs: runs.rows.map((row) => ({ ownerRef: String(row.owner_ref), gameRef: String(row.game_ref), receiptPrincipal: String(row.receipt_principal), receiptGame: String(row.receipt_game), messageCount: Number(row.message_count), liveMessageCount: Number(row.live_message_count), stableTurnKey: String(row.stable_turn_key), status: row.status, outcome: row.outcome_code, operationCount: Number(row.operation_count), durationMs: Number(row.duration_ms), inputBytes: Number(row.input_bytes), outputBytes: Number(row.output_bytes), metricCount: Number(row.metric_count), cleanupRecovery: cleanupRecovery(row.cleanup_recovery) })),
         activeRuns: Number(counts.rows[0]?.active_runs ?? 0), activeMetrics: Number(counts.rows[0]?.active_metrics ?? 0), activeMessages: Number(counts.rows[0]?.active_messages ?? 0), activeThreads: Number(counts.rows[0]?.active_threads ?? 0), activeTextBytes: Number(counts.rows[0]?.active_text_bytes ?? 0)
       };
     });
@@ -101,6 +110,10 @@ export class PostgresShadowEvaluatorDatabase implements ShadowEvaluatorDatabase 
   }
 }
 
+function cleanupRecovery(value: unknown): 'retention_expired' | 'expired_calling_model' | 'attempts_exhausted' | null {
+  return value === 'retention_expired' || value === 'expired_calling_model' || value === 'attempts_exhausted' ? value : null;
+}
+
 async function verifyAppLogin(client: PoolClient): Promise<void> {
   const result = await client.query(`SELECT r.rolcanlogin AND NOT r.rolsuper AND NOT r.rolcreatedb AND NOT r.rolcreaterole AND NOT r.rolreplication AND NOT r.rolbypassrls AND NOT r.rolinherit
       AND (SELECT count(*) = 1 AND bool_and(granted.rolname = 'product_context_shadow_app')
@@ -116,7 +129,7 @@ export function readShadowEvaluatorCliConfig(env: NodeJS.ProcessEnv = process.en
   const workerDatabaseUrl = safeShadowDatabaseUrl(env.CUBICA_PRODUCT_CONTEXT_SHADOW_WORKER_DATABASE_URL);
   const cleanupLimit = integer(env.CUBICA_PRODUCT_CONTEXT_SHADOW_CLEANUP_BATCH_LIMIT, 1, 1000);
   const cleanupMaxPasses = integer(env.CUBICA_PRODUCT_CONTEXT_SHADOW_EVALUATOR_CLEANUP_MAX_PASSES, 1, 1000);
-  const worker = readShadowWorkerConfig(env);
+  const worker = mode === 'cleanup' ? readShadowWorkerRecoveryConfig(env) : readShadowWorkerConfig(env);
   if (env.CUBICA_PRODUCT_CONTEXT_SHADOW_EVALUATOR_ENABLED !== 'true' || !['test', 'staging'].includes(env.CUBICA_DEPLOYMENT_TIER ?? '') || !appDatabaseUrl || !workerDatabaseUrl || appDatabaseUrl === workerDatabaseUrl || !worker || worker.maxAttempts !== 1 || (mode === 'cleanup' && (cleanupLimit === null || cleanupMaxPasses === null))) return null;
   return { appDatabaseUrl, workerDatabaseUrl, cleanupLimit: cleanupLimit ?? 0, cleanupMaxPasses: cleanupMaxPasses ?? 0 };
 }
@@ -149,6 +162,7 @@ export async function main(env: NodeJS.ProcessEnv = process.env): Promise<number
     const deps: ShadowEvaluatorDeps = {
       db: new PostgresShadowEvaluatorDatabase(pool, manifest.shadow_principal_ref, manifest.applies_to[0]!),
       worker: async (target) => runShadowWorkerOnce(env, target),
+      recoveryWorker: async (target) => runShadowWorkerRecoveryOnce(env, target),
       readGitHead: async () => { const { ReadOnlyKnowledgeGit } = await import('../src/git.ts'); const git = await ReadOnlyKnowledgeGit.open(env.CUBICA_PRODUCT_CONTEXT_SHADOW_KNOWLEDGE_REPOSITORY!); try { return git.head(); } finally { await git.close(); } },
       workerConfig: { evaluationEnabled: true, deploymentTier: env.CUBICA_DEPLOYMENT_TIER ?? '', maxAttempts: 1 },
       paths: { manifestPath, reportPath, worktreePath }, reviewer: mode === 'review' ? new TtyReviewer() : undefined,

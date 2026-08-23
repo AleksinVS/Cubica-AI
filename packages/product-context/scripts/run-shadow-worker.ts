@@ -49,6 +49,22 @@ export async function runShadowWorkerOnce(
   } finally { await pool.end(); }
 }
 
+/** Runs only DB-clock terminal housekeeping and has no Portal or model capability. */
+export async function runShadowWorkerRecoveryOnce(
+  env: NodeJS.ProcessEnv,
+  target: ShadowWorkerTarget
+): Promise<'terminalized' | 'unsafe'> {
+  const config = readShadowWorkerRecoveryConfig(env);
+  if (!config) throw new Error('Explicit bounded shadow recovery configuration is required.');
+  const pool = new Pool({ connectionString: config.databaseUrl, max: 1, connectionTimeoutMillis: 2_000, idleTimeoutMillis: 10_000, statement_timeout: config.databaseStatementTimeoutMs, lock_timeout: config.databaseLockTimeoutMs, allowExitOnIdle: true });
+  try {
+    await verifyWorkerLogin(pool);
+    const safe = await new PostgresShadowWorkerStore(pool, target)
+      .terminalizeExpiredTarget(config.leaseMs, 1);
+    return safe ? 'terminalized' : 'unsafe';
+  } finally { await pool.end(); }
+}
+
 export async function verifyWorkerLogin(pool: Pool): Promise<void> {
   const result = await pool.query<{ ready: boolean }>(`
     SELECT login.rolcanlogin AND NOT login.rolsuper AND NOT login.rolcreatedb AND
@@ -64,6 +80,16 @@ export async function verifyWorkerLogin(pool: Pool): Promise<void> {
 }
 
 export interface ShadowWorkerConfig { databaseUrl:string; portalUrl:string; reauthorizationKey:string; apiKey:string; knowledgeRepository:string; modelTimeoutMs:number; authorizationTimeoutMs:number; leaseMs:number; retryBaseMs:number; maxAttempts:number; maxRequestBytes:number; maxResponseBytes:number; databaseStatementTimeoutMs:number; databaseLockTimeoutMs:number; }
+export interface ShadowWorkerRecoveryConfig { databaseUrl:string; leaseMs:number; maxAttempts:1; databaseStatementTimeoutMs:number; databaseLockTimeoutMs:number; }
+export function readShadowWorkerRecoveryConfig(env:NodeJS.ProcessEnv):ShadowWorkerRecoveryConfig|null {
+  const databaseUrl=safeShadowDatabaseUrl(env.CUBICA_PRODUCT_CONTEXT_SHADOW_WORKER_DATABASE_URL);
+  const leaseMs=integer(env.CUBICA_PRODUCT_CONTEXT_SHADOW_WORKER_LEASE_MS,5_001,120_000);
+  const maxAttempts=integer(env.CUBICA_PRODUCT_CONTEXT_SHADOW_MAX_ATTEMPTS,1,1);
+  const databaseStatementTimeoutMs=integer(env.CUBICA_PRODUCT_CONTEXT_SHADOW_WORKER_DATABASE_STATEMENT_TIMEOUT_MS,100,30_000);
+  const databaseLockTimeoutMs=integer(env.CUBICA_PRODUCT_CONTEXT_SHADOW_WORKER_DATABASE_LOCK_TIMEOUT_MS,100,10_000);
+  if(!['test','staging'].includes(env.CUBICA_DEPLOYMENT_TIER??'')||!databaseUrl||leaseMs===null||maxAttempts!==1||databaseStatementTimeoutMs===null||databaseLockTimeoutMs===null||databaseLockTimeoutMs>databaseStatementTimeoutMs)return null;
+  return {databaseUrl,leaseMs,maxAttempts:1,databaseStatementTimeoutMs,databaseLockTimeoutMs};
+}
 export function readShadowWorkerConfig(env:NodeJS.ProcessEnv):ShadowWorkerConfig|null {
   const databaseUrl=safeShadowDatabaseUrl(env.CUBICA_PRODUCT_CONTEXT_SHADOW_WORKER_DATABASE_URL);
   const portalBase=safeUrl(env.CUBICA_PORTAL_API_URL); const key=env.CUBICA_PRODUCT_CONTEXT_SHADOW_REAUTHORIZATION_KEY??'';
