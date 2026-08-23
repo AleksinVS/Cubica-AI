@@ -6,6 +6,7 @@
   "features/": "Архив старых feature-файлов.",
   "milestones/": "Архив старых вех релизов и фаз.",
   "README-legacy-task-system.md": "Старые правила многоуровневой системы задач, сохраненные для исторического контекста.",
+  "TSK-20260705-agent-controlled-players.md": "Завершённый план ИИ-игроков как агентских мест с валидируемыми действиями и безопасным резервным поведением.",
   "TSK-20260518-architecture-repair-and-task-system-migration.md": "Замененный план восстановления архитектурных проверок и миграции системы задач на ADR-031, сохраненный для истории.",
   "TSK-20260518-json-schema-strict-validation.md": "План перевода manifest validation на строгий Ajv-режим без императивного дрейфа.",
   "TSK-20260518-workspace-project-references-cleanup.md": "План классификации workspace, scaffold и TypeScript project reference gaps.",

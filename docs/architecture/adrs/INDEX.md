@@ -71,7 +71,7 @@ The following proposed decisions require explicit product-manager review before 
 | [ADR-057](057-preview-first-editor-ux-architecture.md) | Preview-First Editor UX Architecture (Unified Entity, Prompt Projection Editing, Editor Caching) | Accepted |
 | [ADR-058](058-turn-based-board-game-platform-capabilities.md) | Платформенные возможности пошаговых настольных игр | Accepted (2026-07-06) |
 | [ADR-059](059-multiplayer-realization-in-modular-monolith.md) | Реализация мультиплеера в модульном монолите runtime-api | Accepted (2026-07-06) |
-| [ADR-060](060-agent-controlled-players.md) | Игроки под управлением ИИ-агента (ИИ-оппоненты) | Accepted (2026-07-06) |
+| [ADR-060](060-agent-controlled-players.md) | Игроки под управлением ИИ-агента (ИИ-оппоненты) | Accepted (2026-07-06; concrete S9 contract amended 2026-08-13) |
 | [ADR-061](061-action-parameters.md) | Параметры действий манифеста (action parameters) | Accepted (2026-07-06) |
 | [ADR-062](062-realtime-client-simulation-and-phaser-channel.md) | Класс игр «клиентская симуляция реального времени» и Phaser-канал доставки | Accepted (2026-07-06) |
 | [ADR-063](063-game-asset-channel.md) | Канал игровых ассетов (game asset channel) | Accepted (2026-07-06); amended 2026-07-19 (см. [Поправка 2026-07-19](#поправка-2026-07-19-лимиты--рекомендации-тип-css)) |

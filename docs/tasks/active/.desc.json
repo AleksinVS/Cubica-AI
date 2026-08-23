@@ -5,7 +5,6 @@
   "TSK-20260518-runtime-repository-boundary-and-readiness.md": "План укрепления runtime repository boundary и честной readiness-проверки game content.",
   "TSK-20260518-session-persistence-hardening.md": "План production-ready session persistence вместо runtime-only in-memory store.",
   "TSK-20260520-project-review-remediation.md": "Планово-исполнительская задача по исправлению находок ревью проекта от 2026-05-20.",
-  "TSK-20260705-agent-controlled-players.md": "План ИИ-игроков как агентских мест с валидируемыми действиями и безопасным резервным поведением.",
   "TSK-20260705-monopoly-classic-game.md": "Исполнительная программа Estate Race: полная локальная экономическая игра последовательными срезами, затем сеть и ИИ-места без изменения игрового манифеста.",
   "TSK-20260705-multiplayer-runtime-realization.md": "План сетевого мультиплеера: постоянные сессии, участники, очередь событий и WebSocket-доставка.",
   "TSK-20260706-conveyor-mini-game.md": "План фикстурной игры «Мини-конвейер» для доказательства общего канала клиентской симуляции.",

@@ -18,17 +18,14 @@
 
 ## Status
 
-in_progress
+awaiting_approval
 
 Status note: архитектура ADR-059 принята 2026-07-06; S8 реализован и принят
-2026-08-13. Canonical generated contracts и OpenAPI — `PASS`, contracts
-typecheck и 7/7 тестов — `PASS`, runtime typecheck и focused session/PostgreSQL
-проверки — 42/42, player-web typecheck и focused suites — 50/50. Disposable
-PostgreSQL migrations 001–005 и store restart roundtrip — 1/1. Полный CMT suite
-не заявляется: проверен representative session-setup после обновления прямых
-CMT store consumers. S9 остаётся следующим срезом, S10 — запланированной
-сетевой границей.
-ADR-058; сквозное доказательство (Phase 6) требует фикстурной игры
+2026-08-13; S9 интегрирован в `main` 2026-08-23. S10 заблокирован до решения PM
+о lifecycle приглашения и места, аутентификации WebSocket и точном
+snapshot/resync-протоколе. Рекомендация и альтернативы вынесены в
+`docs/tasks/artifacts/TSK-20260705-monopoly-classic-game/s10-private-invite-architecture-decision.md`.
+Сквозное доказательство (Phase 6) требует фикстурной игры
 `games/dice-track/` из `TSK-20260705-board-game-platform-capabilities`.
 
 ## Understanding
@@ -61,12 +58,15 @@ session-owned модель участников для локальной дос
 1. S8 не переносит участников в game state или manifest: session-owned модель
    имеет публичный элемент `seatId:string`, `playerId:string`,
    `kind:"human"|"agent"`, `joinState:"local"`.
-2. S8 создаёт только `human`/`local`; `kind:"agent"` — граница S9, network join
-   и reconnect — граница S10.
+2. S8 создаёт `human`/`local`, а принятый S9 добавляет локальный
+   `kind:"agent"`; network join и reconnect остаются границей S10.
 3. Канонические actor-scoped projection и доступность действий переиспользуются;
    `seatId` — стабильное место, `playerId` — actor/key в `state.players`.
 4. Остальные WebSocket, durable-session и network acceptance criteria остаются
    последующими фазами и не считаются доказанными текущим статусом.
+5. ADR-059 не фиксирует срок/одноразовость join-токена, допустимый переход
+   `joinState`, браузерную WebSocket-аутентификацию и точные кадры resync. Это
+   публичные и защитные границы, требующие решения PM до реализации S10.
 
 ## Target State
 
@@ -116,14 +116,14 @@ session-owned модель участников для локальной дос
 1. Ревью/принятие; решить судьбу `TSK-20260518-session-persistence-hardening`
    (поглощение фазой 1).
 
-### Phase 1. PostgreSQL session store
+### Phase 1. PostgreSQL session store — done
 
 1. Миграции `game_sessions` (+`state_version`, `last_event_sequence`) и
    `session_events` по ADR-005/ADR-011.
 2. Store-реализация, конфигурация окружения, локальный docker-compose для БД.
 3. Все текущие тесты зелёные на новом store; InMemory — test double.
 
-### Phase 2. Participants и join-токены
+### Phase 2. Participants — S8 done; join-токены ожидают S10
 
 1. S8: принять session-owned элемент `seatId`/`playerId`/`kind`/`joinState`,
    создавать только `human`/`local`, переиспользовать actor-scoped projection и
@@ -134,7 +134,7 @@ session-owned модель участников для локальной дос
 3. Обновление OpenAPI + контрактные тесты; join-токены и network lifecycle
    остаются S10.
 
-### Phase 3. Очередь и последовательная обработка
+### Phase 3. Последовательная HTTP-обработка — done
 
 1. Запись действий в `session_events`, воркер с advisory-lock, транзакционное
    применение (state + version + status события).
@@ -145,25 +145,44 @@ session-owned модель участников для локальной дос
 
 ### Phase 4. WebSocket delivery
 
-1. Endpoint подписки, аутентификация токеном, рассылка после каждого
-   применённого события.
-2. Схема сообщений в `packages/contracts/session`; протокол-док.
+1. **Architecture gate — основной агент, Sol high, высокий риск:** после
+   решения PM уточнить ADR-059 и зафиксировать lifecycle invite/claim,
+   realtime-аутентификацию и full-snapshot протокол. До этого пункта реализация
+   S10 не начинается.
+2. **Contracts — Luna medium, ограниченный schema-first блок:** OpenAPI,
+   JSON Schema, генерируемые типы и негативные contract tests; основной агент
+   проверяет публичную границу и generated drift.
+3. **Runtime invite/claim — Luna high, security-sensitive реализация по уже
+   принятому контракту:** hash-only токены, атомарное занятие места, principal
+   scope и PostgreSQL tests. Основной агент выполняет security review.
+4. **WebSocket delivery — Luna high:** аутентификация коротким ticket,
+   персональный полный snapshot после commit, версии и reconnect. Gameplay
+   commands остаются в HTTP.
 
-### Phase 5. Персональные проекции
+### Phase 5. Персональные проекции — done в S8/S9, переиспользовать
 
 1. `viewerPlayerId` в строителе проекции; фильтрация по `visibility` (ADR-058);
    тесты на отсутствие утечки `secret`/чужих приватных полей/порядка колод.
 
 ### Phase 6. Интеграция player-web и e2e
 
-1. Подписка, применение версий, реконнект-ресинхронизация, экран «ожидание хода».
-2. E2E (Playwright, два контекста браузера): партия `games/dice-track/` по сети
-   от начала до победителя.
+1. **Player Web — Luna medium:** занятие места по ссылке, BFF handoff,
+   подписка, применение версий, реконнект-ресинхронизация и экран ожидания хода.
+2. **Независимая критика — Luna high:** негативные пути token replay,
+   actor spoofing, stale version, disconnect/restart; исправления выполняет
+   Luna в том же ограниченном контуре, окончательную оценку делает основной
+   агент.
+3. **Приёмка — основной агент, Sol high:** Playwright с двумя контекстами
+   браузера, партия `games/dice-track/` от подключения до победителя и
+   restart/resync на PostgreSQL.
 
 ### Phase 7. Closeout
 
 1. Обновить `PROJECT_ARCHITECTURE.md`, `NEXT_STEPS.md`, debt-log
    (`InMemorySessionStore`), Handoff Log.
+2. Упростить итоговую схему: подтвердить отсутствие отдельного gateway,
+   persistent presence, WebSocket gameplay commands, delta-sync и второго
+   владельца состояния; любое расширение вернуть на решение PM.
 
 ## Acceptance
 
@@ -186,12 +205,15 @@ npx playwright test  # двухбраузерный e2e dice-track
 
 ## Risks
 
-- Первая реальная БД в контуре: миграции/локальная среда могут затормозить
-  смежные задачи — держать docker-compose и CI-настройку в Phase 1, не позже.
-- WebSocket в dev-стеке Next.js/прокси редактора: проверить проксирование в
-  editor preview рано (spike в Phase 4).
-- Поглощение `TSK-20260518-session-persistence-hardening` требует явной
-  синхронизации статусов, иначе появится двойной трекинг одного долга.
+- Ошибка в claim transaction способна выдать одно место двум principal или
+  оставить использованный токен действующим; обязательны PostgreSQL race и
+  replay tests до UI-интеграции.
+- WebSocket нельзя аутентифицировать долговечным credential в URL. Принятый
+  BFF handoff требует отдельного короткоживущего ticket и негативных тестов на
+  replay/expiry до рассылки первого snapshot.
+- Реестр соединений живёт в одном runtime-процессе и теряется при рестарте.
+  Это ожидаемое поведение первого среза, поэтому restart/resync является
+  обязательной приёмкой, а не последующим улучшением.
 
 ## Handoff Log
 
@@ -205,3 +227,8 @@ npx playwright test  # двухбраузерный e2e dice-track
   restart roundtrip 1/1. Pre-release cutover сохраняет immutable bundles и
   был проверен только на одноразовой локальной базе; полный CMT suite не
   является частью этой приёмки.
+- 2026-08-23: S9 интегрирован в актуальный `main`. Репозиторная разведка S10
+  подтвердила готовность PostgreSQL, principals, actor-scoped projection и
+  HTTP command path, но обнаружила недоопределённые public/security границы
+  join-токена, seat claim и WebSocket. Подготовлен пакет решения PM; S10
+  остановлен на architecture gate без изменения контрактов.
