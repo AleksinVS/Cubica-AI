@@ -21,25 +21,23 @@
 in_progress
 
 Status note: архитектура ADR-059 принята 2026-07-06; S8 и S9 приняты локально.
-Реализация S10/GSR-050 private-invite network v1 существует, но production two-browser E2E
-и primary visual acceptance ещё ожидаются. Полный runtime result — 395 pass /
-2 skipped / 0 fail, contracts-session — 16/16, player-web — 332/332,
-typechecks/API contract gate — green, disposable PostgreSQL restart — 1/1.
-Каталог и публичная публикация остаются отдельными продуктовыми воротами.
-ADR-058; S10 proof ограничен Estate Race двумя browser contexts по GSR-050.
-Оставшиеся network gates — production two-browser E2E как финальная проверка SSE
-и primary visual acceptance; Phase 7 — отдельный документационный closeout,
-включая синхронизацию TSK-20260518 и debt-log.
+Durable capability + SSE-реализация S10/GSR-050 исправлена и проверяется как
+кандидат, но несовместима с ранее принятым one-time claim + WebSocket-пакетом и
+не отменяет его. Следующий gate — решение PM о согласовании архитектурных
+границ. Production two-browser E2E и primary visual acceptance выполняются
+после этого решения; каталог и публичная публикация остаются отдельными
+продуктовыми воротами.
 
 ## Understanding
 
 Работа понята так: реализовать принятую модель мультиплеера (ADR-011:
 immutable journal подтверждённых фактов `session_events`, `state_version`,
 последовательная обработка, broadcast) внутри
-модульного монолита `runtime-api` по решениям ADR-059: PostgreSQL-хранилище
-сессий как предусловие, immutable session-owned participants, creation-only
-private invites и SSE с последующим аутентифицированным полным GET/resync.
-Игровые манифесты при этом не меняются.
+модульного монолита `runtime-api`. Принятая ADR-059 сохраняет WebSocket-границу,
+а текущая ветка реализует альтернативный кандидат: PostgreSQL-хранилище,
+immutable session-owned participants, creation-only durable private invites и
+SSE с последующим аутентифицированным полным GET/resync. Игровые манифесты при
+этом не меняются; выбор между границами остаётся за PM.
 
 ## Architecture Source
 
@@ -62,14 +60,15 @@ session-owned модель участников для локальной дос
 
 1. S8 не переносит участников в game state или manifest: session-owned модель
    имеет публичный элемент `seatId:string`, `playerId:string`,
-   `kind:"human"|"agent"`, `joinState:"local"`.
+   `kind:"human"|"agent"`, `joinState:"local"|"private-invite"` в текущем
+   кандидате; S8 исторически создавал только `local`.
 2. S8 создаёт только `human`/`local`; `kind:"agent"` — граница S9, network join
    и reconnect — граница S10.
 3. Канонические actor-scoped projection и доступность действий переиспользуются;
    `seatId` — стабильное место, `playerId` — actor/key в `state.players`.
-4. S10 network delivery существует в bounded v1; production two-browser E2E и
-   primary visual acceptance остаются pending и не считаются доказанными текущим
-   статусом.
+4. S10 network delivery существует как bounded candidate; сначала требуется PM
+   reconciliation с принятым пакетом, затем production two-browser E2E и
+   primary visual acceptance.
 
 ## Target State
 
@@ -218,10 +217,12 @@ npx playwright test  # final SSE verification: bounded Estate Race two-context p
   restart roundtrip 1/1. Pre-release cutover сохраняет immutable bundles и
   был проверен только на одноразовой локальной базе; полный CMT suite не
   является частью этой приёмки.
-- 2026-08-23: GSR-050/S10 private-invite network v1 получил реализацию в границе ADR-059:
+- 2026-08-23: GSR-050/S10 private-invite network v1 получил альтернативную
+  durable+SSE-реализацию, не являющуюся принятой поправкой ADR-059:
   runtime 395 pass / 2 skipped / 0 fail, contracts-session 16/16, player-web
   332/332, typechecks/API contract gate green, disposable PostgreSQL restart
   1/1. Production two-browser E2E и primary visual acceptance остаются pending;
-  production two-browser E2E является финальной проверкой SSE; Phase 7 остаётся
-  отдельным документационным closeout с синхронизацией TSK-20260518 и debt-log.
+  перед production two-browser E2E требуется PM reconciliation с принятым
+  one-time+WebSocket-пакетом; Phase 7 остаётся отдельным документационным
+  closeout с синхронизацией TSK-20260518 и debt-log.
   Catalog/publication не входят в этот статус.
