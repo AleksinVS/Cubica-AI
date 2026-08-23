@@ -536,6 +536,10 @@ function validateSessionTrustContract(spec) {
   if (agentSeatCount?.type !== "integer" || agentSeatCount.minimum !== 0 || agentSeatCount.maximum !== 64) {
     fail("CreateSessionRequest.agentSeatCount must be an optional bounded non-negative integer");
   }
+  const participantCount = create.properties?.participantCount;
+  if (participantCount?.type !== "integer" || participantCount.minimum !== 1) {
+    fail("CreateSessionRequest.participantCount must remain an optional positive integer");
+  }
   const accessMode = create.properties?.accessMode;
   if (
     JSON.stringify(accessMode?.enum) !== JSON.stringify(["local", "private-invite"]) ||
@@ -552,15 +556,23 @@ function validateSessionTrustContract(spec) {
   if (!privateAgentExclusion) {
     fail("CreateSessionRequest must reject private-invite sessions with positive agentSeatCount");
   }
+  const privatePreviewExclusion = Array.isArray(create.allOf) && create.allOf.some((constraint) =>
+    constraint?.not?.required?.includes("accessMode") &&
+    constraint.not.required.includes("contentSourceId") &&
+    constraint.not.properties?.accessMode?.const === "private-invite"
+  );
+  if (!privatePreviewExclusion) {
+    fail("CreateSessionRequest must reject private-invite sessions with contentSourceId");
+  }
 
   const invite = spec.components.schemas.PrivateSessionInvite;
   if (
     invite?.additionalProperties !== false ||
-    JSON.stringify(invite.required) !== JSON.stringify(["seatId", "playerId", "credential"]) ||
-    invite.properties?.playerId?.$ref !== "#/components/schemas/PlayerId" ||
+    JSON.stringify(invite.required) !== JSON.stringify(["credential"]) ||
+    Object.keys(invite.properties ?? {}).length !== 1 ||
     invite.properties?.credential?.$ref !== "#/components/schemas/SessionCredential"
   ) {
-    fail("PrivateSessionInvite must remain the exact closed seat capability shape");
+    fail("PrivateSessionInvite must remain the exact closed credential-only capability shape");
   }
   if (
     spec.components.schemas.PrivateSessionInvites?.minItems !== 1 ||
@@ -600,6 +612,10 @@ function validateSessionTrustContract(spec) {
     ?.content?.["text/event-stream"]?.schema;
   if (eventStream?.$ref !== "#/components/schemas/SessionVersionNotification") {
     fail("GET session events must stream canonical SessionVersionNotification payloads");
+  }
+  if (spec.paths?.["/sessions/{sessionId}/events"]?.get?.responses?.["429"]?.$ref !==
+      "#/components/responses/TooManyRequests") {
+    fail("GET session events must declare bounded-capacity HTTP 429");
   }
   const preview = spec.components.schemas.TransportRoadPreviewRequest;
   if (preview.properties?.playerId !== undefined) {
