@@ -34,8 +34,6 @@ interface RuntimeSnapshot {
     readonly joinState: string;
   }>;
   readonly privateInvites?: ReadonlyArray<{
-    readonly seatId: string;
-    readonly playerId: string;
     readonly credential: string;
   }>;
   readonly receipt?: {
@@ -93,12 +91,12 @@ test.describe("Estate Race private network", { tag: "@player" }, () => {
         { seatId: "p2", playerId: "p2", kind: "human", joinState: "private-invite" }
       ]);
       expect(created.privateInvites).toHaveLength(1);
-      expect(created.privateInvites?.[0]).toMatchObject({ seatId: "p2", playerId: "p2" });
+      expect(Object.keys(created.privateInvites?.[0] ?? {})).toEqual(["credential"]);
       expect(created).not.toHaveProperty("credential");
 
       await expectBoardAction(hostPage, "Определить порядок");
       const copyButton = hostPage.getByRole("button", {
-        name: "Скопировать ссылку для места p2, p2"
+        name: "Скопировать ссылку-приглашение 1"
       });
       await expect(copyButton).toBeVisible();
       await copyButton.click();
@@ -110,8 +108,8 @@ test.describe("Estate Race private network", { tag: "@player" }, () => {
       expect(inviteUrl.hash).toMatch(/^#invite\?sessionId=/u);
       const fragment = new URLSearchParams(inviteUrl.hash.slice("#invite?".length));
       expect(fragment.get("sessionId")).toBe(created.sessionId);
-      expect(fragment.get("seatId")).toBe("p2");
-      expect(fragment.get("playerId")).toBe("p2");
+      expect(fragment.has("seatId")).toBe(false);
+      expect(fragment.has("playerId")).toBe(false);
       expect(fragment.get("credential")).toMatch(/^ses_[A-Za-z0-9_-]{43}$/u);
       expect(inviteUrl.search).not.toContain("credential");
 

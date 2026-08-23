@@ -241,6 +241,53 @@ describe("GamePresenter session recovery", () => {
     expect(presenter.playerState.sessionSetup).not.toBeNull();
   });
 
+  it("keeps replacement private invite links after resetting a private session", async () => {
+    const content: PlayerFacingContent = {
+      ...neutralContent("neutral-private-reset"),
+      playerConfig: { min: 2, max: 2 }
+    };
+    const privateParticipants = turnSession("p1").participants.map((participant) => ({
+      ...participant,
+      joinState: "private-invite" as const
+    }));
+    const session = (sessionId: string): GameSession => ({
+      ...turnSession("p1"),
+      sessionId,
+      gameId: content.gameId,
+      participants: privateParticipants,
+      version: { sessionId, stateVersion: 0, lastEventSequence: 0 }
+    });
+    const firstInvite = { credential: `ses_${"a".repeat(43)}` };
+    const replacementInvite = { credential: `ses_${"b".repeat(43)}` };
+    const createSession = vi.spyOn(runtimeClient, "createNewSessionWithOptions")
+      .mockResolvedValueOnce({ ...session("session-private-first"), privateInvites: [firstInvite] })
+      .mockResolvedValueOnce({ ...session("session-private-replacement"), privateInvites: [replacementInvite] });
+    const presenter = new GamePresenter({
+      gateway: new ReactViewGateway(),
+      content,
+      config: createDefaultGameConfig(createDefaultGameConfigData(content))
+    });
+    await presenter.boot();
+    await presenter.createSessionFromSetup({
+      participantCount: 2,
+      agentSeatCount: 0,
+      accessMode: "private-invite"
+    });
+    expect(presenter.playerState.privateInvites).toEqual([firstInvite]);
+
+    await presenter.resetGame();
+
+    expect(createSession).toHaveBeenCalledTimes(2);
+    expect(createSession.mock.calls[1]?.[0]).toMatchObject({
+      gameId: content.gameId,
+      participantCount: 2,
+      agentSeatCount: 0,
+      accessMode: "private-invite"
+    });
+    expect(presenter.sessionSnapshot?.sessionId).toBe("session-private-replacement");
+    expect(presenter.playerState.privateInvites).toEqual([replacementInvite]);
+  });
+
   it("offers private invites for a ranged published setup but explicitly disables them in editor preview", async () => {
     const content: PlayerFacingContent = {
       ...neutralContent("neutral-ranged-setup"),

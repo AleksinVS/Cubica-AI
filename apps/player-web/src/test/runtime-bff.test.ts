@@ -525,6 +525,7 @@ describe("runtime BFF credential handoff", () => {
       status,
       headers: {
         "Content-Type": "text/event-stream",
+        ...(status === 429 ? { "Retry-After": "1" } : {}),
         "Set-Cookie": "runtime-secret=must-not-cross",
         "X-Internal": "must-not-cross"
       }
@@ -544,6 +545,7 @@ describe("runtime BFF credential handoff", () => {
     expect(response.headers.get("Cache-Control")).toBe("no-store");
     expect(response.headers.get("Set-Cookie")).toBeNull();
     expect(response.headers.get("X-Internal")).toBeNull();
+    expect(response.headers.get("Retry-After")).toBe(status === 429 ? "1" : null);
     expect(await response.json()).toEqual({ error: "Session event stream is unavailable." });
   });
 

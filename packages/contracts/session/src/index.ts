@@ -372,7 +372,7 @@ export interface SessionAuthenticationInput {
  * the public-journal limits.
  */
 export interface SessionPublicJournalSource<TState = unknown> {
-  session: SessionRecord<TState>;
+  session: Pick<SessionRecord<TState>, "sessionId" | "gameId" | "version" | "createdAt">;
   lifecycle: "active" | "archived";
   archivedAt?: Date;
   events: ReadonlyArray<SessionEventRecord>;

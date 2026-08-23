@@ -165,6 +165,7 @@ test("private capabilities are seat-scoped and SSE carries only resync cursors",
   assert.equal((await first.reader.read()).done, true);
   const overCapacity = await authenticated(`/sessions/${localCreated.sessionId}/events`, localCreated.credential);
   assert.equal(overCapacity.status, 429);
+  assert.equal(overCapacity.headers.get("retry-after"), "1");
   await replacement.reader.cancel();
   await second.reader.cancel();
   await waitFor(() => eventHub.size === 0);

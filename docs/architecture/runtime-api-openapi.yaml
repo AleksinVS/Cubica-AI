@@ -970,10 +970,10 @@
         }
       },
       "TooManyRequests": {
-        "description": "The authenticated principal/session exceeded the new-command rate limit or Agent Turn cost quota. Exact retries of an existing command receipt do not consume this budget.",
+        "description": "The authenticated principal/session exceeded a bounded admission limit, including new-command rate, Agent Turn cost or active event-stream capacity. Exact retries of an existing command receipt do not consume command budget.",
         "headers": {
           "Retry-After": {
-            "description": "Minimum number of whole seconds before this admission window can accept another new command.",
+            "description": "Minimum number of whole seconds before retrying the limited operation.",
             "required": true,
             "schema": { "type": "integer", "minimum": 1 }
           }

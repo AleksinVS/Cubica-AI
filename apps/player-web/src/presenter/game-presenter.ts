@@ -394,6 +394,9 @@ export class GamePresenter {
         this.sessionSetup = declaredSetup;
         return;
       }
+      this.privateInvites = "privateInvites" in data
+        ? (data as CreatedPrivateSession).privateInvites ?? []
+        : [];
       this.session = { ...data, gameId: data.gameId || this.config.gameId };
       this.attachSessionEvents();
       if (typeof window !== "undefined") {

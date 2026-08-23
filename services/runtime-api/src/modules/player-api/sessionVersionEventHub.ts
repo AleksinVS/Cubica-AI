@@ -187,7 +187,12 @@ function subscriptionKey(sessionId: string, principalId: string): string {
   return JSON.stringify([sessionId, principalId]);
 }
 
+/** Deterministic client retry hint for the process-local stream admission cap. */
+export const SESSION_VERSION_STREAM_RETRY_AFTER_SECONDS = 1;
+
 export class SessionVersionStreamCapacityError extends Error {
+  readonly retryAfterSeconds = SESSION_VERSION_STREAM_RETRY_AFTER_SECONDS;
+
   constructor() {
     super("Session event stream capacity is exhausted");
     this.name = "SessionVersionStreamCapacityError";

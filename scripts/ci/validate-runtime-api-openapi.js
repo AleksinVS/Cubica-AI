@@ -617,6 +617,14 @@ function validateSessionTrustContract(spec) {
       "#/components/responses/TooManyRequests") {
     fail("GET session events must declare bounded-capacity HTTP 429");
   }
+  const retryAfter = spec.components.responses?.TooManyRequests?.headers?.["Retry-After"];
+  if (
+    retryAfter?.required !== true ||
+    retryAfter.schema?.type !== "integer" ||
+    retryAfter.schema.minimum !== 1
+  ) {
+    fail("TooManyRequests must require a positive integer Retry-After header");
+  }
   const preview = spec.components.schemas.TransportRoadPreviewRequest;
   if (preview.properties?.playerId !== undefined) {
     fail("Protected preview requests must not accept client-selected playerId");

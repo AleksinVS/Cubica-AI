@@ -408,6 +408,7 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
           sessionVersionEventHub.subscribe(response, access.version, access.principalId);
         } catch (error) {
           if (error instanceof SessionVersionStreamCapacityError) {
+            response.setHeader("Retry-After", String(error.retryAfterSeconds));
             throw new HttpError(429, error.message);
           }
           throw error;
