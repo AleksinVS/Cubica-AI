@@ -8,6 +8,9 @@ import type {
 } from "@/types/game-state";
 import {
   createNewSessionWithOptions,
+  importPrivateInvite,
+  subscribeSessionVersions,
+  type CreatedPrivateSession,
   resumeSession,
   dispatchAction as dispatchRuntimeAction,
   getGameReadiness,
@@ -34,7 +37,10 @@ import type { ClientRequest } from "@/presenter/types";
 import type { PlayerRuntimeStatus, PlayerState, PlayerSessionSetup } from "@/presenter/types";
 import type { CubicaJsonValue, CubicaSurface, CubicaSurfaceAction } from "@cubica/contracts-ai";
 import type { GameManifestAgentFailurePolicy } from "@cubica/contracts-manifest";
-import type { TransportRoadPreviewResponse } from "@cubica/contracts-session";
+import {
+  validateSessionVersionNotificationShape,
+  type TransportRoadPreviewResponse
+} from "@cubica/contracts-session";
 import {
   clearPendingRuntimeCommand,
   createRuntimeActionEnvelope,
@@ -48,6 +54,8 @@ import {
   type RuntimeAgentTurnEnvelope
 } from "@/presenter/command-outbox";
 import { normalizeAgentControl } from "@/presenter/agent-control-validation";
+import type { PrivateSessionInvite } from "@cubica/contracts-session";
+import { parsePrivateInviteFragment } from "@/lib/private-invite-fragment";
 
 export type { ClientRequest, PlayerState } from "@/presenter/types";
 
@@ -87,6 +95,13 @@ export class GamePresenter {
   private contentSourceId: string | undefined;
   private deterministicFallbackActive = false;
   private sessionSetup: PlayerSessionSetup | null = null;
+  private privateInvites: ReadonlyArray<PrivateSessionInvite> = [];
+  private unsubscribeSessionEvents: (() => void) | null = null;
+  private refreshPromise: Promise<void> | null = null;
+  private pendingCursor: { stateVersion: number; lastEventSequence: number } | null = null;
+  private resyncRequired = false;
+  private sessionLifecycle = 0;
+  private previewMode = false;
 
   constructor(options: {
     gateway: ReactViewGateway;
@@ -94,12 +109,14 @@ export class GamePresenter {
     gameUi?: GamePlayerUiContent;
     config: GameConfig;
     contentSourceId?: string;
+    editorPreviewMode?: boolean;
   }) {
     this.gateway = options.gateway;
     this.content = options.content;
     this.gameUi = options.gameUi;
     this.config = options.config;
     this.contentSourceId = options.contentSourceId;
+    this.previewMode = options.editorPreviewMode === true;
   }
 
   /**
@@ -196,6 +213,7 @@ export class GamePresenter {
       participants: this.session?.participants ?? [],
       agentControl: normalizeAgentControl(this.session?.agentControl),
       sessionSetup: this.sessionSetup,
+      privateInvites: this.privateInvites,
       error: this.error,
       errorStatus: this.errorStatus,
       booting: this.booting,
@@ -209,6 +227,12 @@ export class GamePresenter {
    * Выполняет начальную загрузку сессии.
    */
   async boot(): Promise<void> {
+    const lifecycle = ++this.sessionLifecycle;
+    this.stopSessionEvents();
+    // A private-invite credential is a bearer capability. Remove every
+    // invite-prefixed fragment synchronously, including malformed ones, before
+    // readiness or any other network request can yield control.
+    const privateInvite = takePrivateInviteFragment();
     this.booting = true;
     this.runtimeStatus = "booting";
     this.runtimeStatusReason = null;
@@ -221,13 +245,16 @@ export class GamePresenter {
       if (!(await this.ensureLaunchReady())) {
         return;
       }
+      if (!this.isCurrentSessionLifecycle(lifecycle)) return;
 
       const portalLaunchContext = readPortalLaunchContext();
 
       if (portalLaunchContext) {
         const data = await bindPortalLaunchSession(portalLaunchContext);
+        if (!this.isCurrentSessionLifecycle(lifecycle)) return;
         this.launchContext = portalLaunchContext;
         this.session = { ...data, gameId: data.gameId || this.config.gameId };
+        this.attachSessionEvents();
         if (typeof window !== "undefined") {
           window.localStorage.setItem(
             launchScopedStorageKey(this.config.storageKey, portalLaunchContext),
@@ -235,6 +262,16 @@ export class GamePresenter {
           );
         }
         this.clearError();
+        await this.recoverPendingCommandOrEnsureAiSurface();
+        return;
+      }
+
+      if (privateInvite) {
+        const data = await importPrivateInvite(privateInvite);
+        if (!this.isCurrentSessionLifecycle(lifecycle)) return;
+        this.session = { ...data, gameId: data.gameId || this.config.gameId };
+        this.attachSessionEvents();
+        window.localStorage.setItem(this.config.storageKey, data.sessionId);
         await this.recoverPendingCommandOrEnsureAiSurface();
         return;
       }
@@ -247,7 +284,9 @@ export class GamePresenter {
       if (storedSessionId) {
         try {
           const data = await resumeSession(storedSessionId);
+          if (!this.isCurrentSessionLifecycle(lifecycle)) return;
           this.session = { ...data, gameId: this.config.gameId };
+          this.attachSessionEvents();
           this.agentSurface = null;
           this.clearError();
           await this.recoverPendingCommandOrEnsureAiSurface();
@@ -264,7 +303,9 @@ export class GamePresenter {
             return;
           }
           const data = await this.createSession();
+          if (!this.isCurrentSessionLifecycle(lifecycle)) return;
           this.session = { ...data, gameId: this.config.gameId };
+          this.attachSessionEvents();
           if (typeof window !== "undefined") {
             window.localStorage.setItem(this.config.storageKey, data.sessionId);
           }
@@ -278,7 +319,9 @@ export class GamePresenter {
           return;
         }
         const data = await this.createSession();
+        if (!this.isCurrentSessionLifecycle(lifecycle)) return;
         this.session = { ...data, gameId: this.config.gameId };
+        this.attachSessionEvents();
         if (typeof window !== "undefined") {
           window.localStorage.setItem(this.config.storageKey, data.sessionId);
         }
@@ -287,13 +330,17 @@ export class GamePresenter {
         await this.recoverPendingCommandOrEnsureAiSurface();
       }
     } catch (err) {
-      this.captureError(err, "Failed to initialize player");
+      if (this.isCurrentSessionLifecycle(lifecycle)) {
+        this.captureError(err, "Failed to initialize player");
+      }
     } finally {
+      if (!this.isCurrentSessionLifecycle(lifecycle)) return;
       this.booting = false;
       if (this.runtimeStatus === "booting") {
         this.runtimeStatus = this.session === null ? "unavailable" : "ready";
       }
       await this.syncView();
+      await this.drainPendingRefresh();
     }
   }
 
@@ -301,6 +348,8 @@ export class GamePresenter {
    * Сбрасывает игру: удаляет localStorage и создаёт новую сессию.
    */
   async resetGame(): Promise<void> {
+    const lifecycle = ++this.sessionLifecycle;
+    this.stopSessionEvents();
     const declaredSetup = this.getSessionSetup();
     this.booting = true;
     this.runtimeStatus = "booting";
@@ -310,9 +359,8 @@ export class GamePresenter {
     this.clearError();
     this.agentSurface = null;
     this.sessionSetup = null;
-    if (declaredSetup !== null) {
-      this.session = null;
-    }
+    this.privateInvites = [];
+    this.session = null;
     if (typeof window !== "undefined") {
       const storageKey = this.launchContext
         ? launchScopedStorageKey(this.config.storageKey, this.launchContext)
@@ -324,16 +372,19 @@ export class GamePresenter {
         this.sessionSetup = declaredSetup;
         return;
       }
+      if (!this.isCurrentSessionLifecycle(lifecycle)) return;
       const data = this.launchContext
         ? await bindPortalLaunchSession(this.launchContext)
         : declaredSetup !== null
           ? null
           : await this.createSession();
+      if (!this.isCurrentSessionLifecycle(lifecycle)) return;
       if (data === null) {
         this.sessionSetup = declaredSetup;
         return;
       }
       this.session = { ...data, gameId: data.gameId || this.config.gameId };
+      this.attachSessionEvents();
       if (typeof window !== "undefined") {
         const storageKey = this.launchContext
           ? launchScopedStorageKey(this.config.storageKey, this.launchContext)
@@ -343,25 +394,31 @@ export class GamePresenter {
       this.clearError();
       await this.recoverPendingCommandOrEnsureAiSurface();
     } catch (err) {
-      this.captureError(err, "Failed to reset player");
+      if (this.isCurrentSessionLifecycle(lifecycle)) {
+        this.captureError(err, "Failed to reset player");
+      }
     } finally {
+      if (!this.isCurrentSessionLifecycle(lifecycle)) return;
       this.booting = false;
       if (this.runtimeStatus === "booting") {
         this.runtimeStatus = this.session === null ? "unavailable" : "ready";
       }
       await this.syncView();
+      await this.drainPendingRefresh();
     }
   }
 
   /** Starts a session after the generic local seat setup was confirmed. */
   async createSessionFromSetup(selection: {
     agentSeatCount: number;
+    accessMode?: "local" | "private-invite";
   }): Promise<void> {
     if (this.booting || this.session !== null || this.sessionSetup === null) {
       return;
     }
 
     const setup = this.sessionSetup;
+    const lifecycle = this.sessionLifecycle;
     if (!isValidSessionSetupSelection(selection, setup)) {
       return;
     }
@@ -378,41 +435,83 @@ export class GamePresenter {
         this.sessionSetup = setup;
         return;
       }
+      if (!this.isCurrentSessionLifecycle(lifecycle)) return;
       const data = await this.createSession(
-        selection.agentSeatCount > 0 ? selection : undefined
+        selection.agentSeatCount > 0 || selection.accessMode === "private-invite"
+          ? selection
+          : undefined
       );
+      if (!this.isCurrentSessionLifecycle(lifecycle)) return;
+      this.privateInvites = data.privateInvites ?? [];
       this.session = { ...data, gameId: data.gameId || this.config.gameId };
+      this.attachSessionEvents();
       if (typeof window !== "undefined") {
         window.localStorage.setItem(this.config.storageKey, data.sessionId);
       }
       this.clearError();
       await this.recoverPendingCommandOrEnsureAiSurface();
     } catch (err) {
+      if (!this.isCurrentSessionLifecycle(lifecycle)) return;
       this.sessionSetup = setup;
       this.captureError(err, "Failed to create player session");
     } finally {
+      if (!this.isCurrentSessionLifecycle(lifecycle)) return;
       this.booting = false;
       if (this.runtimeStatus === "booting") {
         this.runtimeStatus = this.session === null ? "unavailable" : "ready";
       }
       await this.syncView();
+      await this.drainPendingRefresh();
     }
   }
 
   /** Refreshes the authoritative session snapshot through a safe GET. */
   async refreshSession(): Promise<void> {
-    if (this.session === null || this.booting || this.isPending) {
+    if (this.session === null) {
       return;
     }
+    if (this.booting || this.isPending) return;
+    if (this.refreshPromise !== null) return this.refreshPromise;
+
+    const lifecycle = this.sessionLifecycle;
+    const sessionId = this.session.sessionId;
+    this.refreshPromise = (async () => {
+      try {
+        do {
+          // Clear before the request so a reconnect observed while the GET is
+          // in flight schedules one more repair pass instead of being erased.
+          this.resyncRequired = false;
+          const refreshed = await resumeSession(sessionId);
+          if (!this.isCurrentSessionLifecycle(lifecycle) || this.session?.sessionId !== sessionId || this.booting) {
+            return;
+          }
+          this.session = { ...refreshed, gameId: this.config.gameId };
+          this.agentSurface = null;
+          this.clearError();
+          if (!isNewerSessionCursor(this.pendingCursor, this.session.version)) {
+            this.pendingCursor = null;
+          }
+        } while (
+          (this.resyncRequired || this.pendingCursor !== null) &&
+          !this.booting &&
+          !this.isPending
+        );
+      } catch (error) {
+        if (!this.isCurrentSessionLifecycle(lifecycle) || this.session?.sessionId !== sessionId) return;
+        // A failed GET must not spin forever against the same cursor. A later
+        // EventSource notification or an explicit retry can safely try again.
+        this.pendingCursor = null;
+        this.resyncRequired = false;
+        this.captureError(error, "Failed to refresh player session");
+      } finally {
+        if (this.isCurrentSessionLifecycle(lifecycle)) await this.syncView();
+      }
+    })();
     try {
-      const refreshed = await resumeSession(this.session.sessionId);
-      this.session = { ...refreshed, gameId: this.config.gameId };
-      this.agentSurface = null;
-      this.clearError();
-    } catch (error) {
-      this.captureError(error, "Failed to refresh player session");
+      await this.refreshPromise;
     } finally {
-      await this.syncView();
+      this.refreshPromise = null;
+      await this.drainPendingRefresh();
     }
   }
 
@@ -465,6 +564,7 @@ export class GamePresenter {
     } finally {
       this.isPending = false;
       await this.syncView();
+      await this.drainPendingRefresh();
     }
   }
 
@@ -507,6 +607,7 @@ export class GamePresenter {
     } finally {
       this.isPending = false;
       await this.syncView();
+      await this.drainPendingRefresh();
     }
   }
 
@@ -583,12 +684,23 @@ export class GamePresenter {
     } finally {
       this.isPending = false;
       await this.syncView();
+      await this.drainPendingRefresh();
     }
   }
 
   /**
    * Отправляет текущее состояние в View через gateway.
    */
+  private async drainPendingRefresh(): Promise<void> {
+    if (this.session === null || this.booting || this.isPending || this.refreshPromise !== null) return;
+    if (!this.resyncRequired && this.pendingCursor === null) return;
+    if (!this.resyncRequired && !isNewerSessionCursor(this.pendingCursor, this.session.version)) {
+      this.pendingCursor = null;
+      return;
+    }
+    await this.refreshSession();
+  }
+
   private async syncView(): Promise<void> {
     const state = this.playerState;
     const commands: ViewCommand[] = [
@@ -659,28 +771,61 @@ export class GamePresenter {
       (this.content.executionMode === "ai-driven" || this.content.executionMode === "hybrid");
   }
 
-  private createSession(options?: { agentSeatCount?: number }): Promise<GameSession> {
+  private createSession(options?: { agentSeatCount?: number; accessMode?: "local" | "private-invite" }): Promise<CreatedPrivateSession> {
     return createNewSessionWithOptions({
       gameId: this.config.gameId,
       contentSourceId: this.contentSourceId,
       ...options
-    }) as Promise<GameSession>;
+    });
+  }
+
+  private attachSessionEvents(): void {
+    this.stopSessionEvents();
+    if (this.session === null) return;
+    const lifecycle = this.sessionLifecycle;
+    const sessionId = this.session.sessionId;
+    this.pendingCursor = null;
+    this.unsubscribeSessionEvents = subscribeSessionVersions(sessionId, (notification, requiresResync = false) => {
+      if (!this.isCurrentSessionLifecycle(lifecycle) || this.session?.sessionId !== sessionId) return;
+      if (!validateSessionVersionNotificationShape(notification)) return;
+      const current = this.session?.version;
+      const baseline = this.pendingCursor ?? current;
+      if (requiresResync) this.resyncRequired = true;
+      if (isNewerSessionCursor(notification, baseline)) {
+        this.pendingCursor = notification;
+      } else if (!requiresResync) {
+        return;
+      }
+      if (this.booting || this.isPending || this.refreshPromise !== null) return;
+      void this.refreshSession();
+    });
+  }
+
+  private stopSessionEvents(): void {
+    this.unsubscribeSessionEvents?.();
+    this.unsubscribeSessionEvents = null;
+    this.pendingCursor = null;
+    this.resyncRequired = false;
+  }
+
+  private isCurrentSessionLifecycle(lifecycle: number): boolean {
+    return lifecycle === this.sessionLifecycle;
   }
 
   private getSessionSetup(): PlayerSessionSetup | null {
     const playerConfig = this.content.playerConfig;
+    const minParticipants = Number.isInteger(playerConfig.min) && playerConfig.min > 0 ? playerConfig.min : 1;
     const agentSeats = playerConfig.agentSeats;
-    if (agentSeats === undefined || !Number.isInteger(agentSeats.max) || agentSeats.max < 1) {
+    const maxAgentSeats = agentSeats !== undefined && Number.isInteger(agentSeats.max) && agentSeats.max > 0
+      ? Math.min(agentSeats.max, minParticipants) : 0;
+    if (maxAgentSeats < 1 && minParticipants < 2) {
       return null;
     }
-
-    const minParticipants = Number.isInteger(playerConfig.min) && playerConfig.min > 0
-      ? playerConfig.min
-      : 1;
     return {
       participantCount: minParticipants,
       minParticipants,
-      maxAgentSeats: Math.min(agentSeats.max, minParticipants)
+      maxAgentSeats,
+      privateInviteAvailable: !this.previewMode && this.contentSourceId === undefined && minParticipants >= 2
     };
   }
 
@@ -890,6 +1035,33 @@ export class GamePresenter {
       this.runtimeStatus = "unavailable";
     }
   }
+
+  dispose(): void {
+    this.sessionLifecycle += 1;
+    this.stopSessionEvents();
+  }
+
+  dismissPrivateInvites(): void {
+    this.privateInvites = [];
+    void this.syncView();
+  }
+}
+
+function takePrivateInviteFragment(): ReturnType<typeof parsePrivateInviteFragment> {
+  if (typeof window === "undefined" || !window.location.hash.startsWith("#invite?")) return null;
+  const invite = parsePrivateInviteFragment(window.location.hash);
+  window.history.replaceState({}, "", `${window.location.pathname}${window.location.search}`);
+  return invite;
+}
+
+function isNewerSessionCursor(
+  candidate: { readonly stateVersion: number; readonly lastEventSequence: number } | null,
+  baseline: { readonly stateVersion: number; readonly lastEventSequence: number } | null | undefined
+): candidate is { readonly stateVersion: number; readonly lastEventSequence: number } {
+  return candidate !== null && baseline !== null && baseline !== undefined && (
+    candidate.stateVersion > baseline.stateVersion ||
+    (candidate.stateVersion === baseline.stateVersion && candidate.lastEventSequence > baseline.lastEventSequence)
+  );
 }
 
 function surfacePayloadToRecord(payload: CubicaJsonValue | undefined): Record<string, unknown> {
@@ -903,12 +1075,13 @@ function surfacePayloadToRecord(payload: CubicaJsonValue | undefined): Record<st
 }
 
 function isValidSessionSetupSelection(
-  selection: { agentSeatCount: number },
+  selection: { agentSeatCount: number; accessMode?: "local" | "private-invite" },
   setup: PlayerSessionSetup
 ): boolean {
   return Number.isInteger(selection.agentSeatCount) &&
     selection.agentSeatCount >= 0 &&
-    selection.agentSeatCount <= Math.min(setup.maxAgentSeats, setup.participantCount);
+    selection.agentSeatCount <= Math.min(setup.maxAgentSeats, setup.participantCount) &&
+    (selection.accessMode !== "private-invite" || (setup.privateInviteAvailable === true && selection.agentSeatCount === 0));
 }
 
 function isSupportedPlayerSurfaceAction(

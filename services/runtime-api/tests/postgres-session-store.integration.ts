@@ -67,6 +67,33 @@ test("PostgreSQL state, command receipt and event ledger survive a store restart
       credentialSha256
     }
   });
+  const privatePrincipalId = "44444444-4444-4444-8444-444444444444";
+  const privateGuestPrincipalId = "55555555-5555-4555-8555-555555555555";
+  const privateCredentialSha256 = "6".repeat(64);
+  const privateGuestCredentialSha256 = "7".repeat(64);
+  const privateCreated = await firstStore.createSession({
+    gameId: "persistence-integration-fixture",
+    participants: [
+      { seatId: "p1", playerId: "p1", kind: "human", joinState: "private-invite" },
+      { seatId: "p2", playerId: "p2", kind: "human", joinState: "private-invite" }
+    ],
+    initialState: { public: { step: 1 } },
+    immutableBundle,
+    principal: {
+      principalId: privatePrincipalId,
+      kind: "participant",
+      role: "player",
+      actorScope: { kind: "listed-actors", actorIds: ["p1"] },
+      credentialSha256: privateCredentialSha256
+    },
+    additionalPrincipals: [{
+      principalId: privateGuestPrincipalId,
+      kind: "participant",
+      role: "player",
+      actorScope: { kind: "listed-actors", actorIds: ["p2"] },
+      credentialSha256: privateGuestCredentialSha256
+    }]
+  });
   const receiptId = randomUUID();
   const eventId = `${created.session.sessionId}:1`;
   const committedAt = new Date();
@@ -164,6 +191,14 @@ test("PostgreSQL state, command receipt and event ledger survive a store restart
     sessionId: created.session.sessionId,
     credentialSha256
   }))?.principalId, principalId);
+  assert.deepEqual((await secondStore.authenticateSession({
+    sessionId: privateCreated.session.sessionId,
+    credentialSha256: privateCredentialSha256
+  }))?.actorScope, { kind: "listed-actors", actorIds: ["p1"] });
+  assert.deepEqual((await secondStore.authenticateSession({
+    sessionId: privateCreated.session.sessionId,
+    credentialSha256: privateGuestCredentialSha256
+  }))?.actorScope, { kind: "listed-actors", actorIds: ["p2"] });
   assert.equal((await secondStore.getCommandReceipt({
     sessionId: created.session.sessionId,
     credentialSha256,
@@ -186,5 +221,6 @@ test("PostgreSQL state, command receipt and event ledger survive a store restart
   assert.deepEqual(replayed, commandReceipt.result);
   assert.equal((await secondStore.getSessionEvents(created.session.sessionId)).length, 1);
   await secondPool.query("DELETE FROM game_sessions WHERE id = $1", [created.session.sessionId]);
+  await secondPool.query("DELETE FROM game_sessions WHERE id = $1", [privateCreated.session.sessionId]);
   await secondStore.close();
 });

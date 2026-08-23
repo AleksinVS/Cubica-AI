@@ -52,4 +52,5 @@ They complement ADRs instead of replacing them.
 - `GSR-046` - Estate Race: самостоятельная оригинальная публичная поверхность, единая визуальная система и необязательный read-only обучающий режим; S7 завершён без нового движка правил.
 - `GSR-047` - Estate Race: session-owned локальные participants отделяют место от игрового actor, используют существующие проекцию и availability и готовят S9 без WebSocket, join lifecycle или игровых веток в платформе.
 - `GSR-049` - Estate Race: локальное агентское место использует actor-scoped Game Intent, bounded fallback до 73 кандидатов, receipt-derived control и fail-closed Player Web; S9 завершён локально.
+- `GSR-050` - Estate Race: private-invite network v1 с immutable session-owned participants, hash-only credentials и SSE+authenticated GET/resync; реализация существует, финальная production two-browser E2E и primary visual acceptance ещё ожидаются.
 - `GSR-048` - «Карты, деньги, поезда»: общий переносимый JSON-журнал строится из подтверждённых публичных событий, скачивается через credential-holding BFF и доказывается настоящей погрузкой груза без ИИ-интерпретации.

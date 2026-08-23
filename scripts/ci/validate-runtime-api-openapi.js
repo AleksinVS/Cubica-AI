@@ -79,6 +79,13 @@ const expectedOperations = [
   },
   {
     method: "get",
+    path: "/sessions/{sessionId}/events",
+    operationId: "streamSessionVersionNotifications",
+    tag: "Sessions",
+    marker: "sessionEventsMatch"
+  },
+  {
+    method: "get",
     path: "/sessions/{sessionId}/public-journal",
     operationId: "getPublicGameplayJournal",
     tag: "Sessions",
@@ -328,6 +335,8 @@ function validateSchemaCoverage(spec) {
     "HealthResponse",
     "PlayerFacingContent",
     "PortablePublicGameplayJournal",
+    "PrivateSessionInvite",
+    "PrivateSessionInvites",
     "PublicCommandReceipt",
     "ReadinessResponse",
     "RestorePreviewSessionRequest",
@@ -335,7 +344,9 @@ function validateSchemaCoverage(spec) {
     "SessionResponse",
     "SessionParticipant",
     "SessionParticipants",
+    "SessionCredential",
     "SessionStateVersion",
+    "SessionVersionNotification",
     "TransportRoadPreviewRequest",
     "TransportRoadPreviewResponse"
   ];
@@ -421,7 +432,8 @@ function validatePreciseRuntimeShapes(spec) {
     participant?.additionalProperties !== false ||
     JSON.stringify(participant.required) !== JSON.stringify(["seatId", "playerId", "kind", "joinState"]) ||
     JSON.stringify(participant.properties?.kind?.enum) !== JSON.stringify(["human", "agent"]) ||
-    participant.properties?.joinState?.const !== "local"
+    JSON.stringify(participant.properties?.joinState?.enum) !==
+      JSON.stringify(["local", "private-invite"])
   ) {
     fail("SessionParticipant must remain the exact closed authoritative seat shape");
   }
@@ -496,6 +508,7 @@ function validateSessionTrustContract(spec) {
   }
   for (const [pathTemplate, method] of [
     ["/sessions/{sessionId}", "get"],
+    ["/sessions/{sessionId}/events", "get"],
     ["/sessions/{sessionId}/public-journal", "get"],
     ["/sessions/{sessionId}/preview-restore", "post"],
     ["/actions", "post"],
@@ -522,6 +535,71 @@ function validateSessionTrustContract(spec) {
   const agentSeatCount = create.properties?.agentSeatCount;
   if (agentSeatCount?.type !== "integer" || agentSeatCount.minimum !== 0 || agentSeatCount.maximum !== 64) {
     fail("CreateSessionRequest.agentSeatCount must be an optional bounded non-negative integer");
+  }
+  const accessMode = create.properties?.accessMode;
+  if (
+    JSON.stringify(accessMode?.enum) !== JSON.stringify(["local", "private-invite"]) ||
+    accessMode.default !== "local"
+  ) {
+    fail("CreateSessionRequest.accessMode must preserve local default and allow only private-invite");
+  }
+  const privateAgentExclusion = Array.isArray(create.allOf) && create.allOf.some((constraint) =>
+    constraint?.not?.required?.includes("accessMode") &&
+    constraint.not.required.includes("agentSeatCount") &&
+    constraint.not.properties?.accessMode?.const === "private-invite" &&
+    constraint.not.properties?.agentSeatCount?.minimum === 1
+  );
+  if (!privateAgentExclusion) {
+    fail("CreateSessionRequest must reject private-invite sessions with positive agentSeatCount");
+  }
+
+  const invite = spec.components.schemas.PrivateSessionInvite;
+  if (
+    invite?.additionalProperties !== false ||
+    JSON.stringify(invite.required) !== JSON.stringify(["seatId", "playerId", "credential"]) ||
+    invite.properties?.playerId?.$ref !== "#/components/schemas/PlayerId" ||
+    invite.properties?.credential?.$ref !== "#/components/schemas/SessionCredential"
+  ) {
+    fail("PrivateSessionInvite must remain the exact closed seat capability shape");
+  }
+  if (
+    spec.components.schemas.PrivateSessionInvites?.minItems !== 1 ||
+    spec.components.schemas.PrivateSessionInvites?.items?.$ref !==
+      "#/components/schemas/PrivateSessionInvite"
+  ) {
+    fail("PrivateSessionInvites must be a non-empty collection of canonical PrivateSessionInvite entries");
+  }
+  if (spec.components.schemas.CreatedSessionResponse?.properties?.privateInvites?.$ref !==
+      "#/components/schemas/PrivateSessionInvites") {
+    fail("CreatedSessionResponse must expose optional creation-only privateInvites");
+  }
+  for (const schemaName of [
+    "ActionResponse",
+    "AgentTurnResponse",
+    "RestorePreviewSessionResponse",
+    "SessionResponse"
+  ]) {
+    const properties = spec.components.schemas[schemaName]?.properties;
+    if (properties?.credential !== undefined || properties?.privateInvites !== undefined) {
+      fail(`${schemaName} must not expose creation-only session credentials`);
+    }
+  }
+
+  const notification = spec.components.schemas.SessionVersionNotification;
+  if (
+    notification?.additionalProperties !== false ||
+    JSON.stringify(notification.required) !== JSON.stringify(["stateVersion", "lastEventSequence"]) ||
+    notification.properties?.stateVersion?.type !== "integer" ||
+    notification.properties.stateVersion.minimum !== 0 ||
+    notification.properties?.lastEventSequence?.type !== "integer" ||
+    notification.properties.lastEventSequence.minimum !== 0
+  ) {
+    fail("SessionVersionNotification must remain the exact closed non-negative cursor shape");
+  }
+  const eventStream = spec.paths?.["/sessions/{sessionId}/events"]?.get?.responses?.["200"]
+    ?.content?.["text/event-stream"]?.schema;
+  if (eventStream?.$ref !== "#/components/schemas/SessionVersionNotification") {
+    fail("GET session events must stream canonical SessionVersionNotification payloads");
   }
   const preview = spec.components.schemas.TransportRoadPreviewRequest;
   if (preview.properties?.playerId !== undefined) {

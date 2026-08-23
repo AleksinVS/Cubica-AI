@@ -43,6 +43,7 @@ import {
   SessionWriteLockedError
 } from "./sessionStoreErrors.ts";
 import {
+  assertCreationPrincipalsMatchParticipants,
   assertSessionParticipantsImmutable,
   assertSessionParticipantsMatchState
 } from "./sessionParticipants.ts";
@@ -67,6 +68,9 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
   async createSession(command: CreateSessionInput<TState>): Promise<CreatedSession<TState>> {
     assertBundleInput(command);
     assertSessionParticipantsMatchState(command.participants, command.initialState, { allowAgents: true });
+    const additionalPrincipals = command.additionalPrincipals ?? [];
+    const creationPrincipals = [command.principal, ...additionalPrincipals];
+    assertCreationPrincipalsMatchParticipants(creationPrincipals, command.participants);
     const sessionId = randomUUID();
     const now = new Date();
     const existingBundle = this.bundles.get(command.immutableBundle.bundleHash);
@@ -97,24 +101,24 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
       createdAt: now,
       updatedAt: now
     };
-    const principal: SessionPrincipal = {
-      principalId: command.principal.principalId,
-      sessionId,
-      kind: command.principal.kind,
-      role: command.principal.role,
-      actorScope: structuredClone(command.principal.actorScope),
-      createdAt: now
-    };
+    const storedPrincipals = creationPrincipals.map((input) => ({
+      principal: {
+        principalId: input.principalId,
+        sessionId,
+        kind: input.kind,
+        role: input.role,
+        actorScope: structuredClone(input.actorScope),
+        createdAt: now
+      } satisfies SessionPrincipal,
+      credentialSha256: input.credentialSha256
+    }));
 
     // All writes happen only after every invariant has been checked, which is
     // the in-memory equivalent of committing one database transaction.
     this.bundles.set(bundle.bundleHash, bundle);
     this.sessions.set(sessionId, snapshot);
-    this.principalsBySessionId.set(sessionId, [{
-      principal,
-      credentialSha256: command.principal.credentialSha256
-    }]);
-    return { session: clone(snapshot), principal: clone(principal) };
+    this.principalsBySessionId.set(sessionId, storedPrincipals);
+    return { session: clone(snapshot), principal: clone(storedPrincipals[0].principal) };
   }
 
   async getSession(sessionId: string): Promise<SessionRecord<TState> | null> {

@@ -7,7 +7,8 @@ import {
   previewTransportRoad,
   runAgentTurn,
   RuntimeClientError,
-  shouldRetainPendingRuntimeCommand
+  shouldRetainPendingRuntimeCommand,
+  subscribeSessionVersions
 } from "./runtime-client";
 
 describe("runtime-client", () => {
@@ -59,6 +60,63 @@ describe("runtime-client", () => {
     expect(body).toEqual({ gameId: "neutral-game" });
     expect(body).not.toHaveProperty("participantCount");
     expect(body).not.toHaveProperty("agentSeatCount");
+  });
+
+  it("keeps session boot usable when the browser environment has no EventSource", () => {
+    vi.stubGlobal("EventSource", undefined);
+    const onVersion = vi.fn();
+
+    const unsubscribe = subscribeSessionVersions("session-1", onVersion);
+
+    expect(unsubscribe).toBeTypeOf("function");
+    expect(() => unsubscribe()).not.toThrow();
+    expect(onVersion).not.toHaveBeenCalled();
+  });
+
+  it("parses only valid version events and closes the EventSource subscription", () => {
+    const listeners = new Map<string, EventListener>();
+    const close = vi.fn();
+    const openedUrls: string[] = [];
+    class EventSourceStub {
+      constructor(url: string | URL) {
+        openedUrls.push(String(url));
+      }
+
+      addEventListener(type: string, listener: EventListenerOrEventListenerObject) {
+        listeners.set(type, typeof listener === "function"
+          ? listener
+          : (event) => listener.handleEvent(event));
+      }
+
+      close() {
+        close();
+      }
+    }
+    vi.stubGlobal("EventSource", EventSourceStub);
+    const onVersion = vi.fn();
+
+    const unsubscribe = subscribeSessionVersions("session/one", onVersion);
+    const emitOpen = () => listeners.get("open")?.(new Event("open"));
+    const emitVersion = (data: string) => listeners.get("version")?.(
+      new MessageEvent("version", { data })
+    );
+    emitVersion("{");
+    emitVersion(JSON.stringify({ stateVersion: -1, lastEventSequence: 0 }));
+    // Ordering belongs to GamePresenter. The transport forwards every valid
+    // cursor, including one that may be stale relative to local state.
+    emitVersion(JSON.stringify({ stateVersion: 0, lastEventSequence: 0 }));
+    emitVersion(JSON.stringify({ stateVersion: 2, lastEventSequence: 4 }));
+    emitOpen();
+    emitVersion(JSON.stringify({ stateVersion: 2, lastEventSequence: 4 }));
+    unsubscribe();
+
+    expect(openedUrls).toEqual(["/api/runtime/sessions/session%2Fone/events"]);
+    expect(onVersion.mock.calls).toEqual([
+      [{ stateVersion: 0, lastEventSequence: 0 }, true],
+      [{ stateVersion: 2, lastEventSequence: 4 }, false],
+      [{ stateVersion: 2, lastEventSequence: 4 }, true]
+    ]);
+    expect(close).toHaveBeenCalledTimes(1);
   });
 
   it("preserves runtime-api error bodies for failed session creation", async () => {

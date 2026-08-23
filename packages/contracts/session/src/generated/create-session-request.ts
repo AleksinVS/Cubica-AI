@@ -15,6 +15,10 @@ export interface CreateSessionRequest {
   gameId: string;
   contentSourceId?: string;
   /**
+   * Session access model. Omitted remains the backward-compatible local controller mode.
+   */
+  accessMode?: "local" | "private-invite";
+  /**
    * Requested local agent seats. Runtime assigns the last N server-derived seats; omitted is equivalent to zero.
    */
   agentSeatCount?: number;

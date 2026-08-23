@@ -94,6 +94,7 @@ export const ru = {
   participantModeLabel: "Тип участников",
   humanOnlyChoice: "Только люди",
   agentSeatChoice: "Добавить ИИ-участника",
+  privateInviteChoice: "Пригласить участников по ссылке",
   agentSeatCountLabel: "Количество ИИ-участников",
   startSession: "Начать игру",
   participantsTitle: "Участники",

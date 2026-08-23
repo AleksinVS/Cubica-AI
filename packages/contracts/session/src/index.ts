@@ -10,6 +10,13 @@ export {
 import type { SessionParticipant } from "./generated/session-participant.ts";
 export type { SessionParticipant } from "./generated/session-participant.ts";
 export { validateSessionParticipantsShape } from "./sessionParticipantValidation.ts";
+import type { PrivateSessionInvite } from "./generated/private-session-invite.ts";
+export type { PrivateSessionInvite } from "./generated/private-session-invite.ts";
+export type { SessionVersionNotification } from "./generated/session-version-notification.ts";
+export {
+  validatePrivateSessionInvitesShape,
+  validateSessionVersionNotificationShape
+} from "./sessionNetworkValidation.ts";
 import type { AgentControl } from "./generated/agent-control.ts";
 export type { AgentControl } from "./generated/agent-control.ts";
 export { validateAgentControlShape } from "./agentControlValidation.ts";
@@ -134,6 +141,8 @@ export interface CreateSessionInput<TState = unknown> {
   sessionRole?: SessionRole;
   immutableBundle: CreateImmutableGameBundleInput;
   principal: CreateSessionPrincipalInput;
+  /** Additional seat-scoped credential digests persisted in the same creation transaction. */
+  additionalPrincipals?: ReadonlyArray<CreateSessionPrincipalInput>;
 }
 
 /** Session and principal records created atomically by a store adapter. */
@@ -209,10 +218,15 @@ export interface CreateSessionResponse<TState = unknown> {
   agentControl?: AgentControl;
   /** Returned only by direct creation so a trusted BFF can store and hand it off. */
   credential: string;
+  /** Durable seat capabilities disclosed only by direct private-invite creation. */
+  privateInvites?: ReadonlyArray<PrivateSessionInvite>;
 }
 
-/** Public session projection returned after the one-time credential handoff. */
-export type GetSessionResponse<TState = unknown> = Omit<CreateSessionResponse<TState>, "credential">;
+/** Public session projection returned after the creation-only credential handoff. */
+export type GetSessionResponse<TState = unknown> = Omit<
+  CreateSessionResponse<TState>,
+  "credential" | "privateInvites"
+>;
 
 export interface DispatchActionInput {
   sessionId: SessionId;

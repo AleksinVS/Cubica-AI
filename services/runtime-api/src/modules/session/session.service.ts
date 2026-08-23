@@ -35,6 +35,7 @@ import { projectSessionActionAvailability } from "../runtime/actionAvailability.
 import { projectPlayerSessionState } from "./playerSessionProjection.ts";
 import {
   createLocalSessionAccess,
+  createParticipantSessionAccess,
   hashSessionCredential,
   resolveSessionViewerActor
 } from "./sessionAuthentication.ts";
@@ -44,7 +45,10 @@ import {
   buildPublicGameplayJournal,
   MAX_PUBLIC_JOURNAL_ENTRIES
 } from "./publicGameplayJournal.ts";
-import { materializeLocalSessionParticipants } from "./sessionParticipants.ts";
+import {
+  materializeLocalSessionParticipants,
+  materializePrivateSessionParticipants
+} from "./sessionParticipants.ts";
 
 type RuntimeState = Record<string, unknown>;
 
@@ -91,17 +95,31 @@ export class SessionService {
     const bundle = await contentService.getBundle(gameId, request.contentSourceId);
     const declaredState = extractInitialState(bundle) as RuntimeState;
     const initialState = initializeTurnBasedSessionState(bundle.manifest, declaredState, {});
-    const participants = materializeLocalSessionParticipants(
-      initialState,
-      bundle.manifest.config.players.min,
-      request.agentSeatCount ?? 0
-    );
+    const privateInvite = request.accessMode === "private-invite";
+    if (privateInvite && bundle.manifest.config.players.min < 2) {
+      throw new RequestValidationError("Private-invite sessions require at least one guest participant");
+    }
+    const participants = privateInvite
+      ? materializePrivateSessionParticipants(initialState, bundle.manifest.config.players.min)
+      : materializeLocalSessionParticipants(
+          initialState,
+          bundle.manifest.config.players.min,
+          request.agentSeatCount ?? 0
+        );
     // A client never chooses its own trusted role. Facilitated mode is the one
     // current manifest rule that creates a facilitator controller.
     const sessionRole = bundle.manifest.config.sessionMode === "facilitated"
       ? "facilitator"
       : "player";
-    const localAccess = createLocalSessionAccess(sessionRole);
+    const participantAccess = privateInvite
+      ? participants.map(({ playerId }, index) => createParticipantSessionAccess(
+          playerId,
+          index === 0 ? sessionRole : "player"
+        ))
+      : [];
+    const localAccess = privateInvite
+      ? participantAccess[0]
+      : createLocalSessionAccess(sessionRole);
     const created = await this.sessionStore.createSession({
       gameId,
       ...(request.contentSourceId === undefined ? {} : { contentSourceId: request.contentSourceId }),
@@ -109,7 +127,8 @@ export class SessionService {
       participants,
       sessionRole,
       immutableBundle: toImmutableGameBundle(bundle),
-      principal: localAccess.principal
+      principal: localAccess.principal,
+      ...(privateInvite ? { additionalPrincipals: participantAccess.slice(1).map(({ principal }) => principal) } : {})
     });
     let driven: Awaited<ReturnType<AgentSeatDriver["drive"]>> | undefined;
     if (this.agentSeatDriver !== undefined) {
@@ -146,7 +165,14 @@ export class SessionService {
         sessionRole: created.principal.role
       }),
       ...(driven?.agentControl === undefined ? {} : { agentControl: driven.agentControl }),
-      credential: localAccess.accessToken
+      credential: localAccess.accessToken,
+      ...(privateInvite ? {
+        privateInvites: participantAccess.slice(1).map(({ accessToken }, index) => ({
+          seatId: participants[index + 1].seatId,
+          playerId: participants[index + 1].playerId,
+          credential: accessToken
+        }))
+      } : {})
     };
   }
 

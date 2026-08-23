@@ -2,7 +2,7 @@
   "type": "array",
   "minItems": 1,
   "items": {
-    "description": "Stable server-owned seat binding. S8 creates only local human participants; agent remains reserved for the accepted S9 flow.",
+    "description": "Stable immutable server-owned seat binding. Invite-bound human participants use exactly the private-invite join binding; no presence or mutable join lifecycle is represented here.",
     "type": "object",
     "required": [
       "seatId",
@@ -34,9 +34,30 @@
         ]
       },
       "joinState": {
-        "const": "local"
+        "enum": [
+          "local",
+          "private-invite"
+        ]
       }
     },
+    "allOf": [
+      {
+        "not": {
+          "required": [
+            "kind",
+            "joinState"
+          ],
+          "properties": {
+            "kind": {
+              "const": "agent"
+            },
+            "joinState": {
+              "const": "private-invite"
+            }
+          }
+        }
+      }
+    ],
     "additionalProperties": false
   }
 }

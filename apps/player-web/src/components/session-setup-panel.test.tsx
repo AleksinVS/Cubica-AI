@@ -36,4 +36,19 @@ describe("SessionSetupPanel", () => {
     expect(screen.getByRole("alert").textContent).toContain("Сессия не создана");
     expect(screen.getByRole("button", { name: "Загрузка..." }).hasAttribute("disabled")).toBe(true);
   });
+
+  it("submits the explicit private-invite mode without an agent seat", () => {
+    const onSubmit = vi.fn();
+    render(<SessionSetupPanel
+      setup={{ ...setup, privateInviteAvailable: true }}
+      isPending={false}
+      error={null}
+      onSubmit={onSubmit}
+    />);
+
+    fireEvent.click(screen.getByLabelText("Пригласить участников по ссылке"));
+    fireEvent.click(screen.getByRole("button", { name: "Начать игру" }));
+
+    expect(onSubmit).toHaveBeenCalledWith({ agentSeatCount: 0, accessMode: "private-invite" });
+  });
 });

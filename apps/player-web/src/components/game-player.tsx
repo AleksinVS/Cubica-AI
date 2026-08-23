@@ -44,6 +44,7 @@ import { restorePreviewSession } from "@/presenter/runtime-client";
 import { SessionSetupPanel } from "@/components/session-setup-panel";
 import { SessionParticipants } from "@/components/session-participants";
 import { AgentControlPanel } from "@/components/agent-control-panel";
+import { buildPrivateInviteFragment } from "@/lib/private-invite-fragment";
 
 export type { PlayerFacingMockup as GameMockup };
 
@@ -263,7 +264,8 @@ export function GamePlayer({
       content,
       gameUi,
       config: fullConfig,
-      contentSourceId
+      contentSourceId,
+      editorPreviewMode
     });
     presenterRef.current = presenter;
 
@@ -324,6 +326,7 @@ export function GamePlayer({
 
     return () => {
       unsubscribe();
+      presenter.dispose();
       presenterRef.current = null;
     };
   }, [content, contentSourceId, gameUi, fullConfig, initialSessionId, playerPluginState.status]);
@@ -398,7 +401,7 @@ export function GamePlayer({
     void presenter.boot();
   };
 
-  const handleSessionSetup = (selection: { agentSeatCount: number }) => {
+  const handleSessionSetup = (selection: { agentSeatCount: number; accessMode?: "local" | "private-invite" }) => {
     void presenterRef.current?.createSessionFromSetup(selection);
   };
 
@@ -520,6 +523,7 @@ export function GamePlayer({
 
   return (
     <main ref={rootRef} className="shell game-player-root" style={rootStyle}>
+      {state.privateInvites.length > 0 ? <PrivateInvitePanel gameId={content.gameId} sessionId={state.sessionId ?? ""} invites={state.privateInvites} onDismiss={() => presenterRef.current?.dismissPrivateInvites()} /> : null}
       <SessionParticipants participants={state.participants} />
       {agentControl.kind === "valid" && agentControl.value.status === "facilitatorTakeover" ? (
         <AgentControlPanel control={agentControl.value} onRefresh={handleRefreshAgentControl} />
@@ -619,4 +623,33 @@ export function GamePlayer({
       {state.error ? <div className="error inline-error">{state.error}</div> : null}
     </main>
   );
+}
+
+function PrivateInvitePanel({ gameId, sessionId, invites, onDismiss }: { gameId: string; sessionId: string; invites: ReadonlyArray<{ seatId: string; playerId: string; credential: string }>; onDismiss: () => void }) {
+  const [message, setMessage] = useState<string | null>(null);
+  return <aside className="session-invite-panel" aria-labelledby="session-invite-title">
+    <div className="session-invite-panel__heading">
+      <div>
+        <h2 id="session-invite-title">Ссылки для приглашения</h2>
+        <p>Каждая ссылка управляет только указанным местом. Передавайте её лично участнику.</p>
+      </div>
+      <button className="session-invite-panel__close" type="button" onClick={onDismiss}>Закрыть</button>
+    </div>
+    <div className="session-invite-panel__list">
+      {invites.map((invite) => {
+        const query = new URLSearchParams({ gameId });
+        const link = `${window.location.origin}${window.location.pathname}?${query.toString()}${buildPrivateInviteFragment({ sessionId, invite })}`;
+        const label = `Скопировать ссылку для места ${invite.seatId}, ${invite.playerId}`;
+        return <div className="session-invite-panel__seat" key={invite.seatId}>
+          <span><strong>Место {invite.seatId}</strong><small>Участник {invite.playerId}</small></span>
+          <button type="button" aria-label={label} onClick={() => {
+            const clipboard = typeof navigator !== "undefined" ? navigator.clipboard : undefined;
+            if (!clipboard) { setMessage("Не удалось скопировать ссылку"); return; }
+            void clipboard.writeText(link).then(() => setMessage("Ссылка скопирована")).catch(() => setMessage("Не удалось скопировать ссылку"));
+          }}>Скопировать</button>
+        </div>;
+      })}
+    </div>
+    {message ? <p className="session-invite-panel__status" role="status" aria-live="polite">{message}</p> : null}
+  </aside>;
 }

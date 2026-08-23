@@ -17,7 +17,7 @@ describe("session participant contract parity", () => {
     expect(schema.additionalProperties).toBe(false);
     expect(schema.required).toEqual(["seatId", "playerId", "kind", "joinState"]);
     expect(schema.properties.kind.enum).toEqual(["human", "agent"]);
-    expect(schema.properties.joinState.const).toBe("local");
+    expect(schema.properties.joinState.enum).toEqual(["local", "private-invite"]);
 
     const participant = {
       seatId: "seat-a",
@@ -50,6 +50,12 @@ describe("session participant contract parity", () => {
       joinState: "local"
     }])).toBe(true);
     expect(validateSessionParticipantsShape([{
+      seatId: "seat-b",
+      playerId: "actor-b",
+      kind: "human",
+      joinState: "private-invite"
+    }])).toBe(true);
+    expect(validateSessionParticipantsShape([{
       seatId: "seat-a",
       playerId: "__proto__",
       kind: "human",
@@ -61,6 +67,18 @@ describe("session participant contract parity", () => {
       kind: "human",
       joinState: "local",
       extra: true
+    }])).toBe(false);
+    expect(validateSessionParticipantsShape([{
+      seatId: "seat-a",
+      playerId: "actor-a",
+      kind: "human",
+      joinState: "pending"
+    }])).toBe(false);
+    expect(validateSessionParticipantsShape([{
+      seatId: "seat-a",
+      playerId: "actor-a",
+      kind: "agent",
+      joinState: "private-invite"
     }])).toBe(false);
   });
 });

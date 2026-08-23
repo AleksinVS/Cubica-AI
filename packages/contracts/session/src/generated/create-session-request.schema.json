@@ -12,6 +12,15 @@
       "type": "string",
       "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]{2,80}$"
     },
+    "accessMode": {
+      "type": "string",
+      "enum": [
+        "local",
+        "private-invite"
+      ],
+      "default": "local",
+      "description": "Session access model. Omitted remains the backward-compatible local controller mode."
+    },
     "agentSeatCount": {
       "type": "integer",
       "minimum": 0,
@@ -19,5 +28,25 @@
       "description": "Requested local agent seats. Runtime assigns the last N server-derived seats; omitted is equivalent to zero."
     }
   },
+  "allOf": [
+    {
+      "not": {
+        "required": [
+          "accessMode",
+          "agentSeatCount"
+        ],
+        "properties": {
+          "accessMode": {
+            "type": "string",
+            "const": "private-invite"
+          },
+          "agentSeatCount": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    }
+  ],
   "additionalProperties": false
 }

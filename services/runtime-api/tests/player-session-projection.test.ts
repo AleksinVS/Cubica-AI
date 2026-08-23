@@ -8,7 +8,7 @@ import {
   buildPlayerSessionProjection,
   projectPlayerSessionState
 } from "../src/modules/session/playerSessionProjection.ts";
-import { resolveSessionActor } from "../src/modules/session/sessionAuthentication.ts";
+import { resolveSessionViewerActor } from "../src/modules/session/sessionAuthentication.ts";
 
 const stateModel = {
   types: {
@@ -62,6 +62,7 @@ const stateModel = {
 const storedState = {
   public: {
     score: 7,
+    turn: { order: ["p1", "p2"], activePlayerId: "p1" },
     profile: {
       displayName: "Neutral session",
       internalToken: "must-not-leave-runtime"
@@ -142,12 +143,12 @@ test("two authenticated principals receive isolated actor views of the same stat
   const p1View = projectPlayerSessionState({
     state: session.state,
     stateModel,
-    actorPlayerId: resolveSessionActor(session, principalFor("principal-p1", "p1"))
+    actorPlayerId: resolveSessionViewerActor(session, principalFor("principal-p1", "p1"))
   });
   const p2View = projectPlayerSessionState({
     state: session.state,
     stateModel,
-    actorPlayerId: resolveSessionActor(session, principalFor("principal-p2", "p2"))
+    actorPlayerId: resolveSessionViewerActor(session, principalFor("principal-p2", "p2"))
   });
 
   assert.deepEqual(p1View.players, {

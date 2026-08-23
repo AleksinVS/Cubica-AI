@@ -1,6 +1,7 @@
 import type { AgentSurfaceState } from "@/types/game-state";
 import type { GameManifestAgentFailurePolicy, GameMetricView } from "@cubica/contracts-manifest";
 import type { AgentControl, SessionParticipant } from "@cubica/contracts-session";
+import type { PrivateSessionInvite } from "@cubica/contracts-session";
 import type { PlayerLayoutMode } from "@/lib/player-layout-mode";
 
 /**
@@ -35,6 +36,7 @@ export type PlayerSessionSetup = {
   participantCount: number;
   minParticipants: number;
   maxAgentSeats: number;
+  privateInviteAvailable?: boolean;
 };
 
 export type NormalizedAgentControl =
@@ -70,6 +72,7 @@ export type PlayerState = Record<string, unknown> & {
   participants: ReadonlyArray<SessionParticipant>;
   agentControl: NormalizedAgentControl;
   sessionSetup: PlayerSessionSetup | null;
+  privateInvites: ReadonlyArray<PrivateSessionInvite>;
 
   /* Runtime log entries for journal renderer */
   log: Array<Record<string, unknown>>;

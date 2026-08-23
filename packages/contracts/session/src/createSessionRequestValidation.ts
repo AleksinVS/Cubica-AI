@@ -1,15 +1,11 @@
 import Ajv2020Lib from "ajv/dist/2020.js";
 import type { ValidateFunction } from "ajv";
-import { readFileSync } from "node:fs";
 import type { CreateSessionRequest } from "./generated/create-session-request.ts";
+import { createSessionRequestSchema } from "./generated/create-session-request.schema.ts";
 
 const Ajv2020 = (Ajv2020Lib as any).default || Ajv2020Lib;
-const schema = JSON.parse(readFileSync(
-  new URL("./generated/create-session-request.schema.json", import.meta.url),
-  "utf8"
-)) as object;
 const validate = new Ajv2020({ allErrors: true, strict: true })
-  .compile(schema) as ValidateFunction<CreateSessionRequest>;
+  .compile(createSessionRequestSchema as object) as ValidateFunction<CreateSessionRequest>;
 
 /** OpenAPI owns the complete untrusted create-session envelope shape. */
 export function validateCreateSessionRequestShape(value: unknown): value is CreateSessionRequest {

@@ -46,6 +46,7 @@ import {
   SessionWriteLockedError
 } from "./sessionStoreErrors.ts";
 import {
+  assertCreationPrincipalsMatchParticipants,
   assertSessionParticipantsImmutable,
   assertSessionParticipantsMatchState
 } from "./sessionParticipants.ts";
@@ -235,6 +236,9 @@ export class PostgresSessionStore<TState = unknown> implements SessionStorePort<
   async createSession(input: CreateSessionInput<TState>): Promise<CreatedSession<TState>> {
     assertCreateInput(input);
     assertSessionParticipantsMatchState(input.participants, input.initialState, { allowAgents: true });
+    const additionalPrincipals = input.additionalPrincipals ?? [];
+    const creationPrincipals = [input.principal, ...additionalPrincipals];
+    assertCreationPrincipalsMatchParticipants(creationPrincipals, input.participants);
     const sessionId = randomUUID();
     const now = new Date();
     let client: SessionDatabaseClient;
@@ -289,27 +293,31 @@ export class PostgresSessionStore<TState = unknown> implements SessionStorePort<
           JSON.stringify(input.initialState)
         ]
       );
-      const principalWrite = await queryClient<PrincipalRow>(
-        client,
-        sessionId,
-        `INSERT INTO session_principals (
-           principal_id, session_id, principal_kind, session_role,
-           actor_scope, credential_sha256
-         ) VALUES ($1, $2, $3, $4, $5::jsonb, $6)
-         RETURNING principal_id, session_id, principal_kind, session_role, actor_scope, created_at`,
-        [
-          input.principal.principalId,
+      let primaryPrincipalWrite: QueryResult<PrincipalRow> | undefined;
+      for (const [index, principal] of creationPrincipals.entries()) {
+        const principalWrite = await queryClient<PrincipalRow>(
+          client,
           sessionId,
-          input.principal.kind,
-          input.principal.role,
-          JSON.stringify(input.principal.actorScope),
-          input.principal.credentialSha256
-        ]
-      );
+          `INSERT INTO session_principals (
+             principal_id, session_id, principal_kind, session_role,
+             actor_scope, credential_sha256
+           ) VALUES ($1, $2, $3, $4, $5::jsonb, $6)
+           RETURNING principal_id, session_id, principal_kind, session_role, actor_scope, created_at`,
+          [
+            principal.principalId,
+            sessionId,
+            principal.kind,
+            principal.role,
+            JSON.stringify(principal.actorScope),
+            principal.credentialSha256
+          ]
+        );
+        if (index === 0) primaryPrincipalWrite = principalWrite;
+      }
       await queryClient(client, sessionId, "COMMIT");
       return {
         session: mapSessionRow<TState>(requireSingleRow(sessionWrite)),
-        principal: mapPrincipalRow(requireSingleRow(principalWrite))
+        principal: mapPrincipalRow(requireSingleRow(primaryPrincipalWrite!))
       };
     } catch (error) {
       if (transactionStarted) {

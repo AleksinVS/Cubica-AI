@@ -3,6 +3,7 @@ import type { CubicaAgentTurnResult } from "@cubica/contracts-ai";
 import type {
   TransportRoadPreviewResponse
 } from "@cubica/contracts-session";
+import { validateSessionVersionNotificationShape, type PrivateSessionInvite, type SessionVersionNotification } from "@cubica/contracts-session";
 import type {
   RuntimeActionEnvelope,
   RuntimeAgentTurnEnvelope
@@ -163,7 +164,8 @@ export async function createNewSessionWithOptions(input: {
   readonly gameId: string;
   readonly contentSourceId?: string;
   readonly agentSeatCount?: number;
-}): Promise<SessionSnapshot> {
+  readonly accessMode?: "local" | "private-invite";
+}): Promise<CreatedPrivateSession> {
   const response = await fetch("/api/runtime/sessions", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -171,13 +173,53 @@ export async function createNewSessionWithOptions(input: {
     body: JSON.stringify({
       gameId: input.gameId,
       ...(input.contentSourceId === undefined ? {} : { contentSourceId: input.contentSourceId }),
-      ...(input.agentSeatCount === undefined ? {} : { agentSeatCount: input.agentSeatCount })
+      ...(input.agentSeatCount === undefined ? {} : { agentSeatCount: input.agentSeatCount }),
+      ...(input.accessMode === undefined ? {} : { accessMode: input.accessMode })
     })
   });
   if (!response.ok) {
     throw await readRuntimeError(response, `Failed to create session: ${response.status}`);
   }
   return parseJson<SessionSnapshot>(response);
+}
+
+export type CreatedPrivateSession = SessionSnapshot & { readonly privateInvites?: ReadonlyArray<PrivateSessionInvite> };
+
+export async function importPrivateInvite(input: { sessionId: string; invite: PrivateSessionInvite }): Promise<CreatedPrivateSession> {
+  const response = await fetch("/api/runtime/sessions/import", {
+    method: "POST", headers: { "Content-Type": "application/json" }, credentials: "same-origin", body: JSON.stringify(input)
+  });
+  if (!response.ok) throw await readRuntimeError(response, "Invite link is not available.");
+  return parseJson<CreatedPrivateSession>(response);
+}
+
+export function subscribeSessionVersions(
+  sessionId: string,
+  onVersion: (notification: SessionVersionNotification, requiresResync?: boolean) => void
+): () => void {
+  // Session boot remains usable in browser-like preview/test environments that
+  // do not implement EventSource. Authoritative POST responses and manual GET
+  // refresh still work; real browsers attach the stream below.
+  if (typeof EventSource === "undefined") return () => undefined;
+  const source = new EventSource(`/api/runtime/sessions/${encodeURIComponent(sessionId)}/events`);
+  let connectionRequiresResync = true;
+  source.addEventListener("open", () => {
+    // EventSource reuses the same object across reconnects. The first version
+    // event after each connection repairs any commit missed during the HTTP
+    // snapshot-to-subscription handoff.
+    connectionRequiresResync = true;
+  });
+  source.addEventListener("version", (event) => {
+    try {
+      const payload = JSON.parse((event as MessageEvent).data) as unknown;
+      if (validateSessionVersionNotificationShape(payload)) {
+        const requiresResync = connectionRequiresResync;
+        connectionRequiresResync = false;
+        onVersion(payload, requiresResync);
+      }
+    } catch { /* reconnecting EventSource remains authoritative */ }
+  });
+  return () => source.close();
 }
 
 /**

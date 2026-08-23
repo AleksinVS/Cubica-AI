@@ -12,7 +12,7 @@
  */
 
 /**
- * Stable server-owned seat binding. S8 creates only local human participants; agent remains reserved for the accepted S9 flow.
+ * Stable immutable server-owned seat binding. Invite-bound human participants use exactly the private-invite join binding; no presence or mutable join lifecycle is represented here.
  */
 export interface SessionParticipant {
   seatId: string;
@@ -21,5 +21,5 @@ export interface SessionParticipant {
    */
   playerId: string;
   kind: "human" | "agent";
-  joinState: "local";
+  joinState: "local" | "private-invite";
 }

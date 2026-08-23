@@ -1,0 +1,19 @@
+{
+  "description": "Minimal SSE notification that tells a client to reload its authenticated personal projection over REST.",
+  "type": "object",
+  "required": [
+    "stateVersion",
+    "lastEventSequence"
+  ],
+  "properties": {
+    "stateVersion": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "lastEventSequence": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "additionalProperties": false
+}

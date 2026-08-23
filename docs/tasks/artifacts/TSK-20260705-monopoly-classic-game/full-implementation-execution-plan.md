@@ -126,7 +126,7 @@ Agent Runtime недоступен, локальная партия ставит
 | Завершение | `done` | обязательства, банкротство, передача активов, server-owned победа и S7-объяснение итога | — |
 | Интерфейс | `done` | map-first Web UI, Phaser-поле, DOM-действия, responsive camera, style-parity и локальная accessibility matrix S7 | Каталожная и продуктовая приёмка S10; публикация не объявлена |
 | Методика | `done` | read-only материалы участника/ведущего, компетенции, рефлексия и product review S7 | Каталожная приёмка S10; публикация не объявлена |
-| Сеть | `partial` | PostgreSQL, блокировка, версии и долговечные квитанции; S8 session-owned participants реализован и принят | S10 private invite join, персональная доставка, WebSocket, reconnect |
+| Сеть | `in_progress` | PostgreSQL, блокировка, версии и долговечные квитанции; S8/S9 приняты; реализация S10/GSR-050 private-invite v1 существует | production two-browser E2E и primary visual acceptance; catalog/publication separate |
 | ИИ-места | `done` | Локальная граница GSR-049: schema-first `agentSeats`, local `agentSeatCount`, ordinary projection/availability/Intent, fallback до 73, exact receipts, `agentControl`, семь eval fixtures и bounded transcript | real provider, full terminal match и network lifecycle |
 
 Перед началом каждого среза основной агент повторяет только затронутую часть
@@ -415,19 +415,26 @@ fixtures для покупки, аукциона, выхода из тюрьмы
 Выход: adversarial mock не меняет состояние напрямую, не видит секреты и не
 зависает; replay хода ИИ использует сохранённую квитанцию; milestone A принят.
 
-### S10. Private invite network, каталог и закрытие программы
+### S10. Private invite network
 
-Включает private invite network v1 без публичных комнат, matchmaking и
-наблюдателей, затем финальное название, описание, проверенные ресурсы,
-методику, фикстуры предпросмотра, поддерживаемые режимы, ограничения
-длительности и правила архивирования старых пакетов. Для public network до
-запуска нужны exact-version durability и quotas; закрытая alpha может
-архивировать несовместимые сессии. `LEGACY-0072` и `LEGACY-0068` закрыты до
-каталожной публикации.
+Private invite network v1 существует по GSR-050 без публичных комнат, matchmaking
+и наблюдателей. Production two-browser E2E и primary visual acceptance остаются
+pending; это единственные финальные gates network-части S10.
 
-Выход: milestone H/N/A и продуктовая приёмка отмечены в корневом TSK,
+Выход:
+network milestone N отмечен в корневом TSK,
 трассировка не содержит незакрытых обязательных правил, документация не
 противоречит коду, временные артефакты удалены, `NEXT_STEPS.md` обновлён.
+
+### Catalog/public release — отдельный product stream
+
+Каталог/public release требует отдельного финального названия, описания,
+проверенных ресурсов, методики, фикстур предпросмотра, поддерживаемых режимов,
+ограничений длительности и правил архивирования старых пакетов. Для public
+network до запуска нужны exact-version durability и quotas; закрытая alpha может
+архивировать несовместимые сессии. Gates этого потока — права, баланс,
+продуктовая приёмка и технический долг; `LEGACY-0072` и `LEGACY-0068` должны
+быть закрыты до каталожной публикации.
 
 ## 6. Распределение между агентами
 
@@ -463,7 +470,7 @@ fixtures для покупки, аукциона, выхода из тюрьмы
 | E7 | mockups, визуальное сравнение, архитектурное и итоговое review | critical-reviewer-high / основной агент | Sol high | PM принимает продуктовую визуальную поверхность |
 | E8 | средние/поздние фикстуры и обычные тесты по принятому test design | `luna-high` | Luna high | test design Sol high; replay/package/plugin |
 | E9 | механический прогон точных команд и сбор кратких результатов | scout/QA | Luna low | без изменения файлов и без вердикта |
-| E10 | participants, WebSocket, авторизация, reconnect и конкуренция ADR-059 | builder_complex | Sol high | отдельная платформенная задача; security/concurrency review Sol high |
+| E10 | participants, private invites, SSE+authenticated GET/resync, авторизация, reconnect и конкуренция ADR-059 | builder_complex | Sol high | отдельная платформенная задача; security/concurrency review Sol high |
 | E11 | agent action choice, scheduler, fallback, секреты и eval ADR-060 | builder_complex | Sol high | отдельная платформенная задача; adversarial review Sol high |
 | E12 | игровая стратегия ИИ и методический контекст по готовому контракту | `luna-high` | Luna high | не меняет runtime; evaluation acceptance Sol high |
 
@@ -548,7 +555,8 @@ schema parity, typecheck runtime и всех найденных потребит
 
 - место и actor определяются аутентифицированным runtime, не телом команды;
 - чужое место, устаревшая версия и повтор изменённой команды отклоняются;
-- персональная проекция и сообщения WebSocket не раскрывают чужие секреты;
+- персональная проекция и SSE-сигналы (с последующим authenticated GET) не
+  раскрывают чужие секреты;
 - локальный и будущий сетевой режим используют одинаковые Game Intents и plans.
 
 ### 7.4. Общая приёмка ИИ — milestone A
@@ -564,7 +572,8 @@ schema parity, typecheck runtime и всех найденных потребит
 
 ### 7.5. Приёмка private invite network — milestone N
 
-- приглашение ограничивает v1 private invite network; public rooms, matchmaking
+- приглашение ограничивает v1 private invite network; lifecycle/table, WebSocket,
+  rooms, presence, matchmaking,
   и spectators отсутствуют;
 - reconnect выполняет полную ресинхронизацию и продолжает ту же PostgreSQL-
   сессию;

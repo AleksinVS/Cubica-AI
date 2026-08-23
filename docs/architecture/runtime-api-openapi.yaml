@@ -410,7 +410,7 @@
         },
         "responses": {
           "201": {
-            "description": "Runtime session was created. The one-time credential is intended for immediate BFF handoff and is not returned by later reads.",
+            "description": "Runtime session was created. Durable host and private-invite credentials are disclosed only in this direct response for immediate trusted-BFF handoff; later reads and actions never return them.",
             "content": {
               "application/json": {
                 "schema": {
@@ -450,6 +450,39 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SessionResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/sessions/{sessionId}/events": {
+      "get": {
+        "tags": ["Sessions"],
+        "operationId": "streamSessionVersionNotifications",
+        "summary": "Stream authenticated session-version notifications.",
+        "description": "Each Server-Sent Event carries only a SessionVersionNotification JSON payload. After every notification and after reconnect, the client performs an authenticated GET /sessions/{sessionId} for the complete current personal projection; this stream never carries state projections or deltas.",
+        "x-cubica-scope": "public",
+        "security": [{ "SessionBearer": [] }],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/SessionId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "One-way Server-Sent Events stream of version notifications.",
+            "headers": {
+              "Cache-Control": { "schema": { "type": "string", "const": "no-store" } }
+            },
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionVersionNotification"
                 }
               }
             }
@@ -707,7 +740,7 @@
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "opaque 32-byte session credential",
-        "description": "Credential returned exactly once by POST /sessions. Runtime stores only its SHA-256 digest."
+        "description": "A durable host or seat-scoped private-invite credential disclosed exactly once by POST /sessions. Runtime stores only its SHA-256 digest."
       }
     },
     "parameters": {
@@ -1082,6 +1115,12 @@
         "properties": {
           "gameId": { "$ref": "#/components/schemas/GameId" },
           "contentSourceId": { "$ref": "#/components/schemas/ContentSourceId" },
+          "accessMode": {
+            "type": "string",
+            "enum": ["local", "private-invite"],
+            "default": "local",
+            "description": "Session access model. Omitted remains the backward-compatible local controller mode."
+          },
           "agentSeatCount": {
             "type": "integer",
             "minimum": 0,
@@ -1089,6 +1128,17 @@
             "description": "Requested local agent seats. Runtime assigns the last N server-derived seats; omitted is equivalent to zero."
           }
         },
+        "allOf": [
+          {
+            "not": {
+              "required": ["accessMode", "agentSeatCount"],
+              "properties": {
+                "accessMode": { "type": "string", "const": "private-invite" },
+                "agentSeatCount": { "type": "integer", "minimum": 1 }
+              }
+            }
+          }
+        ],
         "additionalProperties": false
       },
       "DependencyCheckResult": {
@@ -1255,21 +1305,52 @@
         }
       },
       "SessionParticipant": {
-        "description": "Stable server-owned seat binding. S8 creates only local human participants; agent remains reserved for the accepted S9 flow.",
+        "description": "Stable immutable server-owned seat binding. Invite-bound human participants use exactly the private-invite join binding; no presence or mutable join lifecycle is represented here.",
         "type": "object",
         "required": ["seatId", "playerId", "kind", "joinState"],
         "properties": {
           "seatId": { "type": "string", "minLength": 1 },
           "playerId": { "$ref": "#/components/schemas/PlayerId" },
           "kind": { "enum": ["human", "agent"] },
-          "joinState": { "const": "local" }
+          "joinState": { "enum": ["local", "private-invite"] }
         },
+        "allOf": [
+          {
+            "not": {
+              "required": ["kind", "joinState"],
+              "properties": {
+                "kind": { "const": "agent" },
+                "joinState": { "const": "private-invite" }
+              }
+            }
+          }
+        ],
         "additionalProperties": false
       },
       "SessionParticipants": {
         "type": "array",
         "minItems": 1,
         "items": { "$ref": "#/components/schemas/SessionParticipant" }
+      },
+      "SessionCredential": {
+        "type": "string",
+        "pattern": "^ses_[A-Za-z0-9_-]{43}$"
+      },
+      "PrivateSessionInvite": {
+        "description": "Creation-only durable capability for exactly one invite-bound seat.",
+        "type": "object",
+        "required": ["seatId", "playerId", "credential"],
+        "properties": {
+          "seatId": { "type": "string", "minLength": 1 },
+          "playerId": { "$ref": "#/components/schemas/PlayerId" },
+          "credential": { "$ref": "#/components/schemas/SessionCredential" }
+        },
+        "additionalProperties": false
+      },
+      "PrivateSessionInvites": {
+        "type": "array",
+        "minItems": 1,
+        "items": { "$ref": "#/components/schemas/PrivateSessionInvite" }
       },
       "JsonObject": {
         "type": "object",
@@ -1383,9 +1464,10 @@
           "state": { "$ref": "#/components/schemas/JsonObject" },
           "actionAvailability": { "$ref": "#/components/schemas/SessionActionAvailabilityList" },
           "agentControl": { "$ref": "#/components/schemas/AgentControl" },
-          "credential": {
-            "type": "string",
-            "pattern": "^ses_[A-Za-z0-9_-]{43}$"
+          "credential": { "$ref": "#/components/schemas/SessionCredential" },
+          "privateInvites": {
+            "$ref": "#/components/schemas/PrivateSessionInvites",
+            "description": "Creation-only seat capabilities returned for private-invite sessions; absent for the backward-compatible local mode."
           }
         },
         "additionalProperties": false
@@ -1420,6 +1502,16 @@
         "required": ["sessionId", "stateVersion", "lastEventSequence"],
         "properties": {
           "sessionId": { "type": "string" },
+          "stateVersion": { "type": "integer", "minimum": 0 },
+          "lastEventSequence": { "type": "integer", "minimum": 0 }
+        },
+        "additionalProperties": false
+      },
+      "SessionVersionNotification": {
+        "description": "Minimal SSE notification that tells a client to reload its authenticated personal projection over REST.",
+        "type": "object",
+        "required": ["stateVersion", "lastEventSequence"],
+        "properties": {
           "stateVersion": { "type": "integer", "minimum": 0 },
           "lastEventSequence": { "type": "integer", "minimum": 0 }
         },

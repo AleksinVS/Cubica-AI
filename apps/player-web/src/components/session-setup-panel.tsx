@@ -6,12 +6,13 @@ interface SessionSetupPanelProps {
   readonly setup: PlayerSessionSetup;
   readonly isPending: boolean;
   readonly error: string | null;
-  readonly onSubmit: (selection: { agentSeatCount: number }) => void;
+  readonly onSubmit: (selection: { agentSeatCount: number; accessMode?: "local" | "private-invite" }) => void;
 }
 
 export function SessionSetupPanel({ setup, isPending, error, onSubmit }: SessionSetupPanelProps) {
   const t = useLocale();
   const [agentSeatCount, setAgentSeatCount] = useState(0);
+  const [privateInvite, setPrivateInvite] = useState(false);
 
   const maxAgentSeats = Math.min(setup.maxAgentSeats, setup.participantCount);
   const boundedAgentSeatCount = Math.min(agentSeatCount, maxAgentSeats);
@@ -31,8 +32,8 @@ export function SessionSetupPanel({ setup, isPending, error, onSubmit }: Session
           <input
             type="radio"
             name="participant-mode"
-            checked={boundedAgentSeatCount === 0}
-            onChange={() => setAgentSeatCount(0)}
+            checked={!privateInvite && boundedAgentSeatCount === 0}
+            onChange={() => { setPrivateInvite(false); setAgentSeatCount(0); }}
             disabled={isPending}
           />
           {t.humanOnlyChoice}
@@ -41,12 +42,16 @@ export function SessionSetupPanel({ setup, isPending, error, onSubmit }: Session
           <input
             type="radio"
             name="participant-mode"
-            checked={boundedAgentSeatCount > 0}
-            onChange={() => setAgentSeatCount(1)}
+            checked={!privateInvite && boundedAgentSeatCount > 0}
+            onChange={() => { setPrivateInvite(false); setAgentSeatCount(1); }}
             disabled={isPending || maxAgentSeats < 1}
           />
           {t.agentSeatChoice}
         </label>
+        {setup.privateInviteAvailable === true ? <label>
+          <input type="radio" name="participant-mode" checked={privateInvite} onChange={() => { setPrivateInvite(true); setAgentSeatCount(0); }} disabled={isPending} />
+          {t.privateInviteChoice}
+        </label> : null}
       </fieldset>
 
       {boundedAgentSeatCount > 0 ? (
@@ -69,7 +74,7 @@ export function SessionSetupPanel({ setup, isPending, error, onSubmit }: Session
         className="action-button session-setup-submit"
         type="button"
         disabled={isPending}
-        onClick={() => onSubmit({ agentSeatCount: boundedAgentSeatCount })}
+        onClick={() => onSubmit({ agentSeatCount: boundedAgentSeatCount, ...(privateInvite ? { accessMode: "private-invite" } : {}) })}
       >
         {isPending ? t.loading : t.startSession}
       </button>

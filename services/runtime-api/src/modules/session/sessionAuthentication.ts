@@ -24,6 +24,13 @@ export interface NewLocalSessionAccess {
   principal: CreateSessionPrincipalInput;
 }
 
+export interface NewParticipantSessionAccess extends NewLocalSessionAccess {
+  principal: CreateSessionPrincipalInput & {
+    kind: "participant";
+    actorScope: { kind: "listed-actors"; actorIds: readonly [string] };
+  };
+}
+
 /** Create a local-controller principal backed by 32 random credential bytes. */
 export function createLocalSessionAccess(role: SessionRole): NewLocalSessionAccess {
   const accessToken = `ses_${randomBytes(32).toString("base64url")}`;
@@ -34,6 +41,24 @@ export function createLocalSessionAccess(role: SessionRole): NewLocalSessionAcce
       kind: "local-controller",
       role,
       actorScope: { kind: "all-session-actors" },
+      credentialSha256: hashSessionCredential(accessToken)
+    }
+  };
+}
+
+/** Mint one durable capability that can act and view exactly one participant. */
+export function createParticipantSessionAccess(
+  playerId: string,
+  role: SessionRole = "player"
+): NewParticipantSessionAccess {
+  const accessToken = `ses_${randomBytes(32).toString("base64url")}`;
+  return {
+    accessToken,
+    principal: {
+      principalId: randomUUID(),
+      kind: "participant",
+      role,
+      actorScope: { kind: "listed-actors", actorIds: [playerId] },
       credentialSha256: hashSessionCredential(accessToken)
     }
   };

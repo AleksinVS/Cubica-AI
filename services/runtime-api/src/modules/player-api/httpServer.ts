@@ -34,6 +34,10 @@ import {
   type LocalPlayerWebPluginBundle
 } from "../content/contentService.ts";
 import { serializePublicGameplayJournal } from "../session/publicGameplayJournal.ts";
+import {
+  SessionVersionEventHub,
+  SessionVersionStreamCapacityError
+} from "./sessionVersionEventHub.ts";
 import { buildGameReadinessResponse, buildReadinessResponse } from "../admin/health.ts";
 import {
   assertContentSourceId,
@@ -57,6 +61,8 @@ export interface RuntimeApiServerOptions {
   assetContentService?: Pick<ContentService, "getGameAssetIndex" | "getGameAssetFile" | "getGameStylesheetSource">;
   /** Shared command/Agent-Turn admission boundary for this runtime process. */
   commandAdmissionController?: CommandAdmissionController;
+  /** Process-local notification seam; production uses one bounded hub. */
+  sessionVersionEventHub?: SessionVersionEventHub;
 }
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../../../");
@@ -191,6 +197,7 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
   const agentTurnService = new AgentTurnService(commandAdmissionController);
   const agentSeatDriver = new AgentSeatDriver(agentTurnService);
   const sessionService = new SessionService({ sessionStore, agentSeatDriver });
+  const sessionVersionEventHub = options.sessionVersionEventHub ?? new SessionVersionEventHub();
   const runtimeService = new RuntimeService(
     commandAdmissionController,
     options.random,
@@ -384,7 +391,27 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
           accessToken,
           parseRestorePreviewSessionRequest(body)
         );
+        publishSessionVersionSafely(sessionVersionEventHub, snapshot.version);
         sendJson(response, 200, snapshot);
+        return;
+      }
+
+      const sessionEventsMatch = request.method === "GET" &&
+        requestUrl.pathname.match(/^\/sessions\/([^/]+)\/events$/u);
+      if (sessionEventsMatch) {
+        const sessionId = decodePathSegment(sessionEventsMatch[1], "sessionId");
+        const snapshot = await sessionService.getSession(
+          sessionId,
+          requireBearerCredential(request.headers)
+        );
+        try {
+          sessionVersionEventHub.subscribe(response, snapshot.version);
+        } catch (error) {
+          if (error instanceof SessionVersionStreamCapacityError) {
+            throw new HttpError(429, error.message);
+          }
+          throw error;
+        }
         return;
       }
 
@@ -428,6 +455,7 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
         if (serverTiming !== undefined) {
           response.setHeader("Server-Timing", serverTiming);
         }
+        publishSessionVersionSafely(sessionVersionEventHub, dispatchResponse.version);
         sendJson(response, 200, dispatchResponse);
         return;
       }
@@ -452,6 +480,7 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
           request: requestBody
         });
 
+        publishSessionVersionSafely(sessionVersionEventHub, agentTurnResponse.version);
         sendJson(response, 200, agentTurnResponse);
         return;
       }
@@ -500,6 +529,7 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
         return;
       }
       closed = true;
+      sessionVersionEventHub.close();
       if (server.listening) {
         await new Promise<void>((resolve, reject) => {
           server.close((error) => error ? reject(error) : resolve());
@@ -508,6 +538,22 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
       await sessionStore.close();
     }
   };
+}
+
+function publishSessionVersionSafely(
+  hub: SessionVersionEventHub,
+  version: { sessionId: string; stateVersion: number; lastEventSequence: number }
+): void {
+  try {
+    hub.publish(version);
+  } catch (error) {
+    // A notification is never part of the gameplay transaction. Clients
+    // recover from any delivery fault with an authenticated full snapshot.
+    console.error(
+      `[session-events] post-commit notification failed for ${version.sessionId}:`,
+      error instanceof Error ? error.message : String(error)
+    );
+  }
 }
 
 function assertEditorPreviewContentRoot(contentRoot: string): string {

@@ -5,6 +5,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 import playerWebConfig from "../../next.config";
 import { POST as resolvePortalRuntimeSession } from "../../app/api/portal/runtime-session/route";
+import { POST as importPrivateInviteSession } from "../../app/api/runtime/sessions/import/route";
+import { GET as subscribeRuntimeSessionEvents } from "../../app/api/runtime/sessions/[sessionId]/events/route";
 import { POST as restorePreviewRuntimeSession } from "../../app/api/runtime/sessions/[sessionId]/route";
 import { GET as downloadPublicJournal } from "../../app/api/runtime/sessions/[sessionId]/public-journal/route";
 import {
@@ -24,6 +26,21 @@ afterEach(() => {
 });
 
 describe("runtime BFF credential handoff", () => {
+  const privateInvite = {
+    seatId: "seat-2",
+    playerId: "player-2",
+    credential: `ses_${"a".repeat(43)}`
+  } as const;
+
+  const importRequest = (body: string | Record<string, unknown>): NextRequest => new NextRequest(
+    "http://player-web.local/api/runtime/sessions/import",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: typeof body === "string" ? body : JSON.stringify(body)
+    }
+  );
+
   it("keeps every browser runtime path behind an explicit local route handler", async () => {
     const configuredRewrites = playerWebConfig.rewrites === undefined
       ? []
@@ -319,5 +336,166 @@ describe("runtime BFF credential handoff", () => {
     const deceptiveResponse = await resolvePortalRuntimeSession(deceptiveLength);
     expect(deceptiveResponse.status).toBe(413);
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["malformed JSON", "{"],
+    ["invalid invite shape", JSON.stringify({ sessionId: "session-1", invite: { seatId: "seat-2" } })]
+  ])("rejects %s before contacting runtime for private invite import", async (_label, body) => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await importPrivateInviteSession(importRequest(body));
+
+    expect(response.status).toBe(400);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects an oversized private invite import body with 413 before parsing", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const oversized = JSON.stringify({
+      sessionId: "session-1",
+      invite: { ...privateInvite, credential: `ses_${"a".repeat(256 * 1024)}` }
+    });
+
+    const response = await importPrivateInviteSession(importRequest(oversized));
+
+    expect(response.status).toBe(413);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("imports the canonical invite shape, strips private fields and sets the session cookie", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      sessionId: "session-1",
+      gameId: "neutral-game",
+      participants: [{ seatId: privateInvite.seatId, playerId: privateInvite.playerId, joinState: "private-invite" }],
+      credential: "upstream-secret-must-not-win",
+      privateInvites: [privateInvite],
+      state: { public: {}, secret: {} }
+    }), { status: 200, headers: { "Content-Type": "application/json" } }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await importPrivateInviteSession(importRequest({
+      sessionId: "session-1",
+      invite: privateInvite
+    }));
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload).not.toHaveProperty("credential");
+    expect(payload).not.toHaveProperty("privateInvites");
+    expect(payload).toMatchObject({ sessionId: "session-1", gameId: "neutral-game" });
+    const cookie = response.headers.get("set-cookie") ?? "";
+    expect(cookie).toContain(`${runtimeCredentialCookieName("session-1")}=${privateInvite.credential}`);
+    expect(cookie).toMatch(/HttpOnly/iu);
+    expect(cookie).toMatch(/SameSite=strict/iu);
+    expect(cookie).toContain("Path=/api/runtime");
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.objectContaining({ pathname: "/sessions/session-1" }),
+      expect.objectContaining({ method: "GET" })
+    );
+    const upstreamInit = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    expect(new Headers(upstreamInit.headers).get("Authorization")).toBe(`Bearer ${privateInvite.credential}`);
+  });
+
+  it.each([
+    [401, 401],
+    [403, 401],
+    [429, 429],
+    [500, 500]
+  ])("maps private invite upstream HTTP %s to the browser status %s", async (upstreamStatus, expectedStatus) => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ error: "internal detail" }), {
+      status: upstreamStatus,
+      headers: { "Set-Cookie": "runtime-secret=must-not-cross" }
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await importPrivateInviteSession(importRequest({
+      sessionId: "session-1",
+      invite: privateInvite
+    }));
+
+    expect(response.status).toBe(expectedStatus);
+    expect(await response.json()).toEqual({ error: "Invite link is not available." });
+    expect(response.headers.get("Set-Cookie")).toBeNull();
+  });
+
+  it("returns 401 when the SSE credential cookie is missing", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const request = new NextRequest("http://player-web.local/api/runtime/sessions/session-1/events");
+
+    const response = await subscribeRuntimeSessionEvents(request, {
+      params: Promise.resolve({ sessionId: "session-1" })
+    });
+
+    expect(response.status).toBe(401);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("returns safe JSON and no-store when the upstream SSE request fails", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ error: "secret upstream detail" }), {
+      status: 503,
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Set-Cookie": "runtime-secret=must-not-cross",
+        "X-Internal": "must-not-cross"
+      }
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+    const cookieName = runtimeCredentialCookieName("session-1");
+    const request = new NextRequest("http://player-web.local/api/runtime/sessions/session-1/events", {
+      headers: { Cookie: `${cookieName}=secret-bearer` }
+    });
+
+    const response = await subscribeRuntimeSessionEvents(request, {
+      params: Promise.resolve({ sessionId: "session-1" })
+    });
+
+    expect(response.status).toBe(503);
+    expect(response.headers.get("Content-Type")).toBe("application/json; charset=utf-8");
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+    expect(response.headers.get("Set-Cookie")).toBeNull();
+    expect(response.headers.get("X-Internal")).toBeNull();
+    expect(await response.json()).toEqual({ error: "Session event stream is unavailable." });
+  });
+
+  it("preserves a successful SSE body as a stream with event-stream and no-store headers", async () => {
+    const upstreamBody = new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode(
+          `event: version\ndata: ${JSON.stringify({ stateVersion: 2, lastEventSequence: 4 })}\n\n`
+        ));
+        controller.close();
+      }
+    });
+    const fetchMock = vi.fn().mockResolvedValue(new Response(upstreamBody, {
+      status: 200,
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "private",
+        "Set-Cookie": "runtime-secret=must-not-cross"
+      }
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+    const cookieName = runtimeCredentialCookieName("session-1");
+    const request = new NextRequest("http://player-web.local/api/runtime/sessions/session-1/events", {
+      headers: { Cookie: `${cookieName}=secret-bearer` }
+    });
+
+    const response = await subscribeRuntimeSessionEvents(request, {
+      params: Promise.resolve({ sessionId: "session-1" })
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Content-Type")).toBe("text/event-stream");
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+    expect(response.headers.get("Connection")).toBe("keep-alive");
+    expect(response.headers.get("Set-Cookie")).toBeNull();
+    expect(await response.text()).toContain("event: version");
+    const upstreamInit = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    expect(new Headers(upstreamInit.headers).get("Authorization")).toBe("Bearer secret-bearer");
+    expect(new Headers(upstreamInit.headers).get("Accept")).toBe("text/event-stream");
   });
 });

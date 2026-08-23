@@ -349,6 +349,93 @@ describe("GamePlayer S1 DOM Rendering", () => {
     localStorage.clear();
   });
 
+  it("renders accessible private invite links and copies the canonical player URL", async () => {
+    const originalEventSource = globalThis.EventSource;
+    const originalClipboard = Object.getOwnPropertyDescriptor(navigator, "clipboard");
+    const close = vi.fn();
+    class EventSourceStub {
+      constructor(_url: string | URL) {}
+      addEventListener() {}
+      close = close;
+    }
+    Object.defineProperty(globalThis, "EventSource", {
+      configurable: true,
+      writable: true,
+      value: EventSourceStub
+    });
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText }
+    });
+    window.history.replaceState({}, "", "/play?source=editor");
+    const invite = {
+      seatId: "seat-2",
+      playerId: "player-2",
+      credential: `ses_${"a".repeat(43)}`
+    } as const;
+    const inviteContent: PlayerFacingContent = {
+      ...mockContent,
+      gameId: "neutral-private-panel",
+      playerConfig: { min: 2, max: 6 }
+    };
+    (global.fetch as any).mockResolvedValue(new Response(JSON.stringify({
+      sessionId: "session-private",
+      gameId: inviteContent.gameId,
+      participants: [{
+        seatId: invite.seatId,
+        playerId: invite.playerId,
+        kind: "human",
+        joinState: "private-invite"
+      }],
+      privateInvites: [invite],
+      version: { sessionId: "session-private", stateVersion: 0, lastEventSequence: 0 },
+      state: { public: {}, secret: {} },
+      actionAvailability: []
+    }), { status: 201 }));
+
+    try {
+      render(
+        <GamePlayer
+          config={createDefaultGameConfigData(inviteContent)}
+          runtimeApiUrl="http://localhost:8080"
+          content={inviteContent}
+          mockups={[]}
+          editorPreviewMode={false}
+        />
+      );
+
+      fireEvent.click(await screen.findByLabelText("Пригласить участников по ссылке"));
+      fireEvent.click(screen.getByRole("button", { name: "Начать игру" }));
+      const panel = await screen.findByRole("complementary", { name: "Ссылки для приглашения" });
+      expect(panel.textContent).toContain("Место seat-2");
+      expect(panel.textContent).toContain("Участник player-2");
+
+      const copyButton = screen.getByRole("button", {
+        name: "Скопировать ссылку для места seat-2, player-2"
+      });
+      fireEvent.click(copyButton);
+      await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+      expect(writeText).toHaveBeenCalledWith(
+        `${window.location.origin}/play?gameId=${inviteContent.gameId}` +
+        `#invite?sessionId=session-private&seatId=seat-2&playerId=player-2&credential=${invite.credential}`
+      );
+      expect((await screen.findByRole("status")).textContent).toContain("Ссылка скопирована");
+
+      writeText.mockRejectedValueOnce(new Error("clipboard denied"));
+      fireEvent.click(copyButton);
+      await waitFor(() => expect(screen.getByRole("status").textContent)
+        .toContain("Не удалось скопировать ссылку"));
+      expect(writeText).toHaveBeenCalledTimes(2);
+    } finally {
+      if (originalEventSource === undefined) Reflect.deleteProperty(globalThis, "EventSource");
+      else Object.defineProperty(globalThis, "EventSource", { configurable: true, writable: true, value: originalEventSource });
+      if (originalClipboard === undefined) Reflect.deleteProperty(navigator, "clipboard");
+      else Object.defineProperty(navigator, "clipboard", originalClipboard);
+      window.history.replaceState({}, "", "/");
+    }
+  });
+
   it("shows a paused runtime status when required Agent Runtime is unavailable", async () => {
     const fetchMock = vi.fn((url: string) => {
       if (url.includes("/api/runtime/games/ai-driven-choice/readiness")) {

@@ -20,24 +20,26 @@
 
 in_progress
 
-Status note: архитектура ADR-059 принята 2026-07-06; S8 реализован и принят
-2026-08-13. Canonical generated contracts и OpenAPI — `PASS`, contracts
-typecheck и 7/7 тестов — `PASS`, runtime typecheck и focused session/PostgreSQL
-проверки — 42/42, player-web typecheck и focused suites — 50/50. Disposable
-PostgreSQL migrations 001–005 и store restart roundtrip — 1/1. Полный CMT suite
-не заявляется: проверен representative session-setup после обновления прямых
-CMT store consumers. S9 остаётся следующим срезом, S10 — запланированной
-сетевой границей.
-ADR-058; сквозное доказательство (Phase 6) требует фикстурной игры
-`games/dice-track/` из `TSK-20260705-board-game-platform-capabilities`.
+Status note: архитектура ADR-059 принята 2026-07-06; S8 и S9 приняты локально.
+Реализация S10/GSR-050 private-invite network v1 существует, но production two-browser E2E
+и primary visual acceptance ещё ожидаются. Полный runtime result — 395 pass /
+2 skipped / 0 fail, contracts-session — 16/16, player-web — 332/332,
+typechecks/API contract gate — green, disposable PostgreSQL restart — 1/1.
+Каталог и публичная публикация остаются отдельными продуктовыми воротами.
+ADR-058; S10 proof ограничен Estate Race двумя browser contexts по GSR-050.
+Оставшиеся network gates — production two-browser E2E как финальная проверка SSE
+и primary visual acceptance; Phase 7 — отдельный документационный closeout,
+включая синхронизацию TSK-20260518 и debt-log.
 
 ## Understanding
 
-Работа понята так: реализовать принятую модель мультиплеера (ADR-011: очередь
-`session_events`, `state_version`, последовательная обработка, broadcast) внутри
+Работа понята так: реализовать принятую модель мультиплеера (ADR-011:
+immutable journal подтверждённых фактов `session_events`, `state_version`,
+последовательная обработка, broadcast) внутри
 модульного монолита `runtime-api` по решениям ADR-059: PostgreSQL-хранилище
-сессий как предусловие, модель участников с join-токенами, WebSocket-доставка
-персональных проекций. Игровые манифесты при этом не меняются.
+сессий как предусловие, immutable session-owned participants, creation-only
+private invites и SSE с последующим аутентифицированным полным GET/resync.
+Игровые манифесты при этом не меняются.
 
 ## Architecture Source
 
@@ -65,22 +67,24 @@ session-owned модель участников для локальной дос
    и reconnect — граница S10.
 3. Канонические actor-scoped projection и доступность действий переиспользуются;
    `seatId` — стабильное место, `playerId` — actor/key в `state.players`.
-4. Остальные WebSocket, durable-session и network acceptance criteria остаются
-   последующими фазами и не считаются доказанными текущим статусом.
+4. S10 network delivery существует в bounded v1; production two-browser E2E и
+   primary visual acceptance остаются pending и не считаются доказанными текущим
+   статусом.
 
 ## Target State
 
 1. Сессии и события — в PostgreSQL по ADR-005/ADR-011; `InMemorySessionStore`
    остаётся только как test double.
 2. Session-owned participants: `seatId:string`, `playerId:string`,
-   `kind: human|agent`, `joinState: "local"`; S8 создаёт только human/local,
-   без изменения game state/manifest.
-3. Действия проходят через `session_events` с последовательной обработкой и
-   advisory-lock на сессию; `{{actor}}` в сетевом режиме — только из
-   аутентифицированного участника.
-4. WebSocket endpoint: подписка по сессии+токену, сообщения с `state_version`,
-   `last_event_sequence` и персональной проекцией; протокол описан схемой в
-   `packages/contracts/session` + протокол-док рядом с OpenAPI.
+   `kind: human|agent`, `joinState: "local"|"private-invite"`; S8 сам создавал
+   только `human`/`local`, без изменения game state/manifest.
+3. Действия проходят через последовательную HTTP-транзакцию с блокировкой строки
+   сессии PostgreSQL через `SELECT FOR UPDATE NOWAIT`; `session_events` — только
+   immutable journal подтверждённых фактов. `{{actor}}` в сетевом режиме — только
+   из аутентифицированного участника.
+4. SSE endpoint: подписка по сессии+credential, передающая только
+   `{stateVersion,lastEventSequence}`; клиент получает полную
+   аутентифицированную проекцию через GET/resync.
 5. `player-web` умеет: занять место по ссылке-приглашению, играть свой ход,
    получать чужие ходы пушем, реконнект с полной ресинхронизацией.
 
@@ -89,9 +93,12 @@ session-owned модель участников для локальной дос
 - Схема БД + миграции (`game_sessions`, `session_events`), конфигурация подключения.
 - Session store на PostgreSQL; выбор и снятие долга `InMemorySessionStore`
   (поглощает `TSK-20260518-session-persistence-hardening` — отметить в нём).
-- Participants/join API (+OpenAPI update по ADR-051).
-- Обработчик очереди, блокировки, жизненный цикл событий (таймауты/попытки).
-- WebSocket delivery module + контракт сообщений.
+- Participants API + creation-only invite handoff (OpenAPI update по ADR-051);
+  invite lifecycle/table в v1 исключены.
+- Последовательные HTTP-команды с блокировкой строки сессии через
+  `SELECT FOR UPDATE NOWAIT`; queue transport, worker и жизненный цикл очереди
+  (таймауты/попытки) в текущий scope не входят и остаются будущим решением.
+- SSE delivery module + authenticated full GET/resync.
 - Параметр наблюдателя в строителе player-facing проекции (ADR-019 + ADR-058 §2.3).
 - Интеграция `player-web` (подписка, версии, реконнект) и e2e-доказательство.
 
@@ -123,7 +130,7 @@ session-owned модель участников для локальной дос
 2. Store-реализация, конфигурация окружения, локальный docker-compose для БД.
 3. Все текущие тесты зелёные на новом store; InMemory — test double.
 
-### Phase 2. Participants и join-токены
+### Phase 2. Participants и invite handoff
 
 1. S8: принять session-owned элемент `seatId`/`playerId`/`kind`/`joinState`,
    создавать только `human`/`local`, переиспользовать actor-scoped projection и
@@ -131,23 +138,26 @@ session-owned модель участников для локальной дос
 2. Pre-production destructive cutover: удалить `game_sessions` и каскадные
    session-owned principals/receipts/events/schedules; `game_bundles` сохранить.
    Backfill и внешние DB-действия не выполняются.
-3. Обновление OpenAPI + контрактные тесты; join-токены и network lifecycle
-   остаются S10.
+3. Обновление OpenAPI + контрактные тесты; creation-only invite handoff входит
+   в S10, а invite lifecycle/table исключены из v1.
 
-### Phase 3. Очередь и последовательная обработка
+### Phase 3. Последовательные HTTP-команды и блокировка строки
 
-1. Запись действий в `session_events`, воркер с advisory-lock, транзакционное
-   применение (state + version + status события).
+1. HTTP-команда в транзакции захватывает строку сессии через
+   `SELECT FOR UPDATE NOWAIT`, затем применяет изменение и записывает
+   `session_events` (state + version + status события).
 2. Резолвинг `{{actor}}` из участника; отклонение действий не в свой ход
    существующими guard-механизмами.
-3. Тесты конкуренции: два одновременных действия → последовательное применение,
-   проигравшее отклонено управляемо.
+3. Тесты конкуренции: два одновременных HTTP-действия → одно получает блокировку,
+   второе управляемо отклоняется по `NOWAIT`; queue transport, worker и их
+   таймауты/попытки находятся вне текущей фазы и scope и могут быть рассмотрены
+   отдельным будущим решением.
 
-### Phase 4. WebSocket delivery
+### Phase 4. SSE delivery
 
-1. Endpoint подписки, аутентификация токеном, рассылка после каждого
-   применённого события.
-2. Схема сообщений в `packages/contracts/session`; протокол-док.
+1. Endpoint подписки, аутентификация credential, одна post-commit notification
+   с версией и sequence после committed session mutation.
+2. Полный аутентифицированный GET/resync после сигнала SSE.
 
 ### Phase 5. Персональные проекции
 
@@ -157,8 +167,10 @@ session-owned модель участников для локальной дос
 ### Phase 6. Интеграция player-web и e2e
 
 1. Подписка, применение версий, реконнект-ресинхронизация, экран «ожидание хода».
-2. E2E (Playwright, два контекста браузера): партия `games/dice-track/` по сети
-   от начала до победителя.
+2. Bounded Estate Race proof (два browser context) как финальная проверка SSE:
+   host/private guest handoff,
+   one authoritative setup + active actor action, peer SSE-triggered full GET,
+   spoof rejection, stale-version rejection, privacy, page reload/resync.
 
 ### Phase 7. Closeout
 
@@ -167,10 +179,11 @@ session-owned модель участников для локальной дос
 
 ## Acceptance
 
-- Партия `dice-track` двумя браузерами по сети: ходы доставляются пушем,
-  `{{actor}}` подделать нельзя (действие за чужое место → управляемая ошибка).
-- Рестарт `runtime-api` посреди партии: клиенты реконнектятся и продолжают
-  с последнего зафиксированного состояния.
+- Estate Race двумя browser contexts: host/private guest handoff, authoritative
+  setup и active actor action, peer SSE-triggered full GET, spoof/stale-version
+  rejection, privacy и page reload/resync.
+- Disposable PostgreSQL restart proof остаётся отдельной проверкой store; browser
+  restart continuation не является требованием v1.
 - Тест конкуренции проходит; replay-тест пакета ADR-058 проходит на
   PostgreSQL-хранилище.
 - Никаких game-specific веток; `verify:canonical` зелёный; OpenAPI drift check
@@ -181,15 +194,15 @@ session-owned модель участников для локальной дос
 ```text
 cd services/runtime-api && npm run typecheck && npm test
 npm run verify:canonical
-npx playwright test  # двухбраузерный e2e dice-track
+npx playwright test  # final SSE verification: bounded Estate Race two-context proof (pending)
 ```
 
 ## Risks
 
 - Первая реальная БД в контуре: миграции/локальная среда могут затормозить
   смежные задачи — держать docker-compose и CI-настройку в Phase 1, не позже.
-- WebSocket в dev-стеке Next.js/прокси редактора: проверить проксирование в
-  editor preview рано (spike в Phase 4).
+- SSE и production two-browser E2E требуют финальной проверки в реальном
+  браузерном контуре; primary visual acceptance также остаётся pending.
 - Поглощение `TSK-20260518-session-persistence-hardening` требует явной
   синхронизации статусов, иначе появится двойной трекинг одного долга.
 
@@ -205,3 +218,10 @@ npx playwright test  # двухбраузерный e2e dice-track
   restart roundtrip 1/1. Pre-release cutover сохраняет immutable bundles и
   был проверен только на одноразовой локальной базе; полный CMT suite не
   является частью этой приёмки.
+- 2026-08-23: GSR-050/S10 private-invite network v1 получил реализацию в границе ADR-059:
+  runtime 395 pass / 2 skipped / 0 fail, contracts-session 16/16, player-web
+  332/332, typechecks/API contract gate green, disposable PostgreSQL restart
+  1/1. Production two-browser E2E и primary visual acceptance остаются pending;
+  production two-browser E2E является финальной проверкой SSE; Phase 7 остаётся
+  отдельным документационным closeout с синхронизацией TSK-20260518 и debt-log.
+  Catalog/publication не входят в этот статус.

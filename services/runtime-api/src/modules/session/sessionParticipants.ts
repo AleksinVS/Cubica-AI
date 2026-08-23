@@ -1,6 +1,7 @@
 /** Neutral materialization and semantic validation of authoritative session seats. */
 import {
   validateSessionParticipantsShape,
+  type CreateSessionPrincipalInput,
   type SessionParticipant,
   type SessionRecord
 } from "@cubica/contracts-session";
@@ -37,6 +38,18 @@ export function materializeLocalSessionParticipants(
     playerId,
     kind: index >= firstAgentIndex ? "agent" : "human",
     joinState: "local"
+  }));
+}
+
+/** Derive immutable invite-bound human seats from authoritative player actors. */
+export function materializePrivateSessionParticipants(
+  state: RuntimeState,
+  participantCount: number
+): ReadonlyArray<SessionParticipant> {
+  return materializeLocalSessionParticipants(state, participantCount).map((participant) => ({
+    ...participant,
+    kind: "human",
+    joinState: "private-invite"
   }));
 }
 
@@ -85,6 +98,69 @@ export function assertSessionParticipantsImmutable<TState>(
 export function participantActorIds<TState>(session: SessionRecord<TState>): ReadonlyArray<string> {
   assertSessionParticipantsMatchState(session.participants, session.state, { allowAgents: true });
   return session.participants.map((participant) => participant.playerId);
+}
+
+/** Validate a complete creation-time principal set before any store write. */
+export function assertCreationPrincipalsMatchParticipants(
+  principals: ReadonlyArray<CreateSessionPrincipalInput>,
+  participants: ReadonlyArray<SessionParticipant>
+): void {
+  if (principals.length < 1) {
+    throw new Error("A session must have at least one principal");
+  }
+
+  const participantIds = new Set(participants.map(({ playerId }) => playerId));
+  const principalIds = new Set<string>();
+  const credentialDigests = new Set<string>();
+  for (const principal of principals) {
+    if (
+      principalIds.has(principal.principalId) ||
+      credentialDigests.has(principal.credentialSha256) ||
+      !/^[a-f0-9]{64}$/u.test(principal.credentialSha256)
+    ) {
+      throw new Error("Session principals must have unique ids and credential digests");
+    }
+    principalIds.add(principal.principalId);
+    credentialDigests.add(principal.credentialSha256);
+
+    if (principal.actorScope.kind === "listed-actors") {
+      if (
+        principal.actorScope.actorIds.length !== 1 ||
+        !participantIds.has(principal.actorScope.actorIds[0])
+      ) {
+        throw new Error("A participant principal must be scoped to exactly one session actor");
+      }
+    }
+  }
+
+  const privateParticipantCount = participants.filter(
+    ({ joinState }) => joinState === "private-invite"
+  ).length;
+  if (privateParticipantCount > 0 && privateParticipantCount !== participants.length) {
+    throw new Error("A session cannot mix local and private-invite participants");
+  }
+  if (privateParticipantCount === 0) {
+    if (
+      principals.length !== 1 ||
+      principals[0].kind !== "local-controller" ||
+      principals[0].actorScope.kind !== "all-session-actors"
+    ) {
+      throw new Error("Local sessions require one all-session-actors local-controller principal");
+    }
+    return;
+  }
+
+  const participantPrincipals = principals.filter(({ kind }) => kind === "participant");
+  if (
+    participantPrincipals.length !== principals.length ||
+    participantPrincipals.length !== participants.length ||
+    participantPrincipals.some(({ actorScope }) => actorScope.kind !== "listed-actors") ||
+    new Set(participantPrincipals.map(({ actorScope }) =>
+      actorScope.kind === "listed-actors" ? actorScope.actorIds[0] : ""
+    )).size !== participants.length
+  ) {
+    throw new Error("Private session principals must map one-to-one onto participants");
+  }
 }
 
 function readAuthoritativePlayerIds(state: unknown): string[] | undefined {

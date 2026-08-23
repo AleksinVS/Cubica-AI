@@ -168,6 +168,156 @@ test("PostgreSQL creates immutable bundle, session and hashed principal atomical
   assert.equal(sessionInsert?.values?.[5], JSON.stringify(persistedRow.participants));
 });
 
+test("PostgreSQL persists every private participant principal in the creation transaction", async () => {
+  const privateParticipants = [
+    { seatId: "p1", playerId: "p1", kind: "human" as const, joinState: "private-invite" as const },
+    { seatId: "p2", playerId: "p2", kind: "human" as const, joinState: "private-invite" as const }
+  ];
+  const secondPrincipalId = "44444444-4444-4444-8444-444444444444";
+  const secondDigest = "c".repeat(64);
+  const client = new ScriptedClient((text, values) => {
+    if (text.includes("INSERT INTO game_bundles")) return result([bundleRow], 1);
+    if (text.includes("INSERT INTO game_sessions")) {
+      return result([{ ...persistedRow, participants: privateParticipants }], 1);
+    }
+    if (text.includes("INSERT INTO session_principals")) {
+      return result([{
+        ...principalRow,
+        principal_id: values?.[0],
+        principal_kind: "participant",
+        session_role: "player",
+        actor_scope: JSON.parse(String(values?.[4]))
+      }], 1);
+    }
+    return result([]);
+  });
+  const store = new PostgresSessionStore<Record<string, unknown>>(new ScriptedPool(client));
+  const created = await store.createSession({
+    ...createInput(),
+    sessionRole: "player",
+    participants: privateParticipants,
+    principal: {
+      principalId,
+      kind: "participant",
+      role: "player",
+      actorScope: { kind: "listed-actors", actorIds: ["p1"] },
+      credentialSha256
+    },
+    additionalPrincipals: [{
+      principalId: secondPrincipalId,
+      kind: "participant",
+      role: "player",
+      actorScope: { kind: "listed-actors", actorIds: ["p2"] },
+      credentialSha256: secondDigest
+    }]
+  });
+
+  assert.equal(created.principal.principalId, principalId);
+  const principalInserts = client.queries.filter(({ text }) => text.includes("INSERT INTO session_principals"));
+  assert.equal(principalInserts.length, 2);
+  assert.deepEqual(principalInserts.map(({ values }) => values?.[5]), [credentialSha256, secondDigest]);
+  assert.deepEqual(client.queries.map(({ text }) => firstSqlWord(text)), [
+    "BEGIN", "INSERT", "INSERT", "INSERT", "INSERT", "COMMIT"
+  ]);
+});
+
+test("PostgreSQL rejects invalid local and private principal models before opening a transaction", async () => {
+  const invalidInputs: Array<CreateSessionInput<Record<string, unknown>>> = [
+    {
+      ...createInput(),
+      principal: { ...createInput().principal, kind: "facilitator" }
+    },
+    {
+      ...createInput(),
+      additionalPrincipals: [{
+        ...createInput().principal,
+        principalId: "44444444-4444-4444-8444-444444444444",
+        credentialSha256: "c".repeat(64)
+      }]
+    },
+    {
+      ...createInput(),
+      participants: [{ seatId: "p1", playerId: "p1", kind: "human", joinState: "private-invite" }]
+    },
+    {
+      ...createInput(),
+      participants: [
+        { seatId: "p1", playerId: "p1", kind: "human", joinState: "private-invite" },
+        { seatId: "p2", playerId: "p2", kind: "human", joinState: "private-invite" }
+      ],
+      principal: {
+        ...createInput().principal,
+        kind: "participant",
+        actorScope: { kind: "listed-actors", actorIds: ["p1"] }
+      },
+      additionalPrincipals: [{
+        ...createInput().principal,
+        principalId: "44444444-4444-4444-8444-444444444444",
+        kind: "participant",
+        actorScope: { kind: "listed-actors", actorIds: ["p1"] },
+        credentialSha256: "c".repeat(64)
+      }]
+    },
+    {
+      ...createInput(),
+      participants: [{ seatId: "p1", playerId: "p1", kind: "agent", joinState: "private-invite" }],
+      principal: {
+        ...createInput().principal,
+        kind: "participant",
+        actorScope: { kind: "listed-actors", actorIds: ["p1"] }
+      }
+    }
+  ];
+
+  for (const input of invalidInputs) {
+    const client = new ScriptedClient(() => result([]));
+    const store = new PostgresSessionStore<Record<string, unknown>>(new ScriptedPool(client));
+    await assert.rejects(
+      store.createSession(input),
+      /Local sessions require|map one-to-one onto participants|canonical schema/u
+    );
+    assert.deepEqual(client.queries, []);
+  }
+});
+
+test("PostgreSQL rolls back the whole private creation when one principal insert fails", async () => {
+  let principalInsertCount = 0;
+  const client = new ScriptedClient((text) => {
+    if (text.includes("INSERT INTO game_bundles")) return result([bundleRow], 1);
+    if (text.includes("INSERT INTO game_sessions")) return result([persistedRow], 1);
+    if (text.includes("INSERT INTO session_principals")) {
+      principalInsertCount += 1;
+      if (principalInsertCount === 2) throw Object.assign(new Error("duplicate"), { code: "23505" });
+      return result([{ ...principalRow, principal_kind: "participant", session_role: "player" }], 1);
+    }
+    return result([]);
+  });
+  const store = new PostgresSessionStore<Record<string, unknown>>(new ScriptedPool(client));
+  await assert.rejects(store.createSession({
+    ...createInput(),
+    participants: [
+      { seatId: "p1", playerId: "p1", kind: "human", joinState: "private-invite" },
+      { seatId: "p2", playerId: "p2", kind: "human", joinState: "private-invite" }
+    ],
+    principal: {
+      principalId,
+      kind: "participant",
+      role: "player",
+      actorScope: { kind: "listed-actors", actorIds: ["p1"] },
+      credentialSha256
+    },
+    additionalPrincipals: [{
+      principalId: "44444444-4444-4444-8444-444444444444",
+      kind: "participant",
+      role: "player",
+      actorScope: { kind: "listed-actors", actorIds: ["p2"] },
+      credentialSha256: "c".repeat(64)
+    }]
+  }), SessionStoreUnavailableError);
+  assert.equal(client.queries.at(-1)?.text, "ROLLBACK");
+  assert.equal(client.queries.some(({ text }) => firstSqlWord(text) === "COMMIT"), false);
+});
+
 test("PostgreSQL accepts server-authorized agent participants", async () => {
   const agentParticipants = [{ seatId: "p1", playerId: "p1", kind: "agent" as const, joinState: "local" as const }];
   const client = new ScriptedClient((text) => {

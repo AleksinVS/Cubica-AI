@@ -12,7 +12,7 @@ const openApi = JSON.parse(fs.readFileSync(new URL(
 };
 
 describe("create-session request contract parity", () => {
-  it("derives the optional bounded agent seat count from the closed OpenAPI component", () => {
+  it("keeps omitted access mode backward-compatible with local creation", () => {
     const schema = openApi.components.schemas.CreateSessionRequest;
     expect(schema.required).toEqual(["gameId"]);
     expect(schema.additionalProperties).toBe(false);
@@ -21,6 +21,10 @@ describe("create-session request contract parity", () => {
       minimum: 0,
       maximum: 64
     });
+    expect(schema.properties.accessMode).toMatchObject({
+      enum: ["local", "private-invite"],
+      default: "local"
+    });
 
     const request = { gameId: "neutral-game", agentSeatCount: 1 } satisfies CreateSessionRequest;
     expect(request.agentSeatCount).toBe(1);
@@ -28,12 +32,21 @@ describe("create-session request contract parity", () => {
 
   it("executes the generated shape for omitted, zero and positive counts", () => {
     expect(validateCreateSessionRequestShape({ gameId: "neutral-game" })).toBe(true);
+    expect(validateCreateSessionRequestShape({ gameId: "neutral-game", accessMode: "local" })).toBe(true);
+    expect(validateCreateSessionRequestShape({
+      gameId: "neutral-game",
+      accessMode: "local",
+      agentSeatCount: 1
+    })).toBe(true);
+    expect(validateCreateSessionRequestShape({ gameId: "neutral-game", accessMode: "private-invite" })).toBe(true);
     expect(validateCreateSessionRequestShape({ gameId: "neutral-game", agentSeatCount: 0 })).toBe(true);
     expect(validateCreateSessionRequestShape({ gameId: "neutral-game", agentSeatCount: 1 })).toBe(true);
     for (const invalid of [
       { gameId: "neutral-game", agentSeatCount: -1 },
       { gameId: "neutral-game", agentSeatCount: 1.5 },
       { gameId: "neutral-game", agentSeatCount: 65 },
+      { gameId: "neutral-game", accessMode: "public" },
+      { gameId: "neutral-game", accessMode: "private-invite", agentSeatCount: 1 },
       { gameId: "neutral-game", participants: [] }
     ]) {
       expect(validateCreateSessionRequestShape(invalid)).toBe(false);

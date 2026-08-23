@@ -31,7 +31,8 @@ const JOBS = [
     schemaPath: ["components", "schemas", "CreateSessionRequest"],
     output: path.join(repoRoot, "packages", "contracts", "session", "src", "generated", "create-session-request.ts"),
     rootName: "CreateSessionRequest",
-    compileRoot: true
+    compileRoot: true,
+    validationOnlyRootAllOf: true
   },
   {
     name: "create-session-request-schema",
@@ -41,12 +42,21 @@ const JOBS = [
     outputKind: "json-schema"
   },
   {
+    name: "create-session-request-schema-module",
+    schema: path.join(repoRoot, "docs", "architecture", "runtime-api-openapi.yaml"),
+    schemaPath: ["components", "schemas", "CreateSessionRequest"],
+    output: path.join(repoRoot, "packages", "contracts", "session", "src", "generated", "create-session-request.schema.ts"),
+    outputKind: "typescript-schema",
+    exportName: "createSessionRequestSchema"
+  },
+  {
     name: "session-participant",
     schema: path.join(repoRoot, "docs", "architecture", "runtime-api-openapi.yaml"),
     schemaPath: ["components", "schemas", "SessionParticipant"],
     output: path.join(repoRoot, "packages", "contracts", "session", "src", "generated", "session-participant.ts"),
     rootName: "SessionParticipant",
-    compileRoot: true
+    compileRoot: true,
+    validationOnlyRootAllOf: true
   },
   {
     name: "session-participants-schema",
@@ -54,6 +64,60 @@ const JOBS = [
     schemaPath: ["components", "schemas", "SessionParticipants"],
     output: path.join(repoRoot, "packages", "contracts", "session", "src", "generated", "session-participants.schema.json"),
     outputKind: "json-schema"
+  },
+  {
+    name: "session-participants-schema-module",
+    schema: path.join(repoRoot, "docs", "architecture", "runtime-api-openapi.yaml"),
+    schemaPath: ["components", "schemas", "SessionParticipants"],
+    output: path.join(repoRoot, "packages", "contracts", "session", "src", "generated", "session-participants.schema.ts"),
+    outputKind: "typescript-schema",
+    exportName: "sessionParticipantsSchema"
+  },
+  {
+    name: "private-session-invite",
+    schema: path.join(repoRoot, "docs", "architecture", "runtime-api-openapi.yaml"),
+    schemaPath: ["components", "schemas", "PrivateSessionInvite"],
+    output: path.join(repoRoot, "packages", "contracts", "session", "src", "generated", "private-session-invite.ts"),
+    rootName: "PrivateSessionInvite",
+    compileRoot: true
+  },
+  {
+    name: "private-session-invites-schema",
+    schema: path.join(repoRoot, "docs", "architecture", "runtime-api-openapi.yaml"),
+    schemaPath: ["components", "schemas", "PrivateSessionInvites"],
+    output: path.join(repoRoot, "packages", "contracts", "session", "src", "generated", "private-session-invites.schema.json"),
+    outputKind: "json-schema"
+  },
+  {
+    name: "private-session-invites-schema-module",
+    schema: path.join(repoRoot, "docs", "architecture", "runtime-api-openapi.yaml"),
+    schemaPath: ["components", "schemas", "PrivateSessionInvites"],
+    output: path.join(repoRoot, "packages", "contracts", "session", "src", "generated", "private-session-invites.schema.ts"),
+    outputKind: "typescript-schema",
+    exportName: "privateSessionInvitesSchema"
+  },
+  {
+    name: "session-version-notification",
+    schema: path.join(repoRoot, "docs", "architecture", "runtime-api-openapi.yaml"),
+    schemaPath: ["components", "schemas", "SessionVersionNotification"],
+    output: path.join(repoRoot, "packages", "contracts", "session", "src", "generated", "session-version-notification.ts"),
+    rootName: "SessionVersionNotification",
+    compileRoot: true
+  },
+  {
+    name: "session-version-notification-schema",
+    schema: path.join(repoRoot, "docs", "architecture", "runtime-api-openapi.yaml"),
+    schemaPath: ["components", "schemas", "SessionVersionNotification"],
+    output: path.join(repoRoot, "packages", "contracts", "session", "src", "generated", "session-version-notification.schema.json"),
+    outputKind: "json-schema"
+  },
+  {
+    name: "session-version-notification-schema-module",
+    schema: path.join(repoRoot, "docs", "architecture", "runtime-api-openapi.yaml"),
+    schemaPath: ["components", "schemas", "SessionVersionNotification"],
+    output: path.join(repoRoot, "packages", "contracts", "session", "src", "generated", "session-version-notification.schema.ts"),
+    outputKind: "typescript-schema",
+    exportName: "sessionVersionNotificationSchema"
   },
   {
     name: "agent-control",
@@ -69,6 +133,14 @@ const JOBS = [
     schemaPath: ["components", "schemas", "AgentControl"],
     output: path.join(repoRoot, "packages", "contracts", "session", "src", "generated", "agent-control.schema.json"),
     outputKind: "json-schema"
+  },
+  {
+    name: "agent-control-schema-module",
+    schema: path.join(repoRoot, "docs", "architecture", "runtime-api-openapi.yaml"),
+    schemaPath: ["components", "schemas", "AgentControl"],
+    output: path.join(repoRoot, "packages", "contracts", "session", "src", "generated", "agent-control.schema.ts"),
+    outputKind: "typescript-schema",
+    exportName: "agentControlSchema"
   },
   {
     name: "game-intent",
@@ -202,6 +274,21 @@ async function generateOne(job) {
   }
   if (job.outputKind === "json-schema") {
     return `${JSON.stringify(source, null, 2)}\n`;
+  }
+  if (job.outputKind === "typescript-schema") {
+    if (typeof job.exportName !== "string" || !/^[A-Za-z_$][A-Za-z0-9_$]*$/u.test(job.exportName)) {
+      throw new Error(`TypeScript schema module exportName is invalid for ${job.name}`);
+    }
+    return [
+      "/* eslint-disable */",
+      "/**",
+      " * GENERATED FILE — DO NOT EDIT BY HAND.",
+      " * Derived from the canonical OpenAPI component in",
+      " * docs/architecture/runtime-api-openapi.yaml (ADR-025, ADR-056).",
+      " */",
+      `export const ${job.exportName} = ${JSON.stringify(source, null, 2)} as const;`,
+      ""
+    ].join("\n");
   }
   const schema = normalizeSchemaForTypeGeneration(source, job);
   const compileOptions = job.schemaPath

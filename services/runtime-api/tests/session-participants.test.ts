@@ -8,9 +8,17 @@ import {
 } from "../src/modules/player-api/requestValidation.ts";
 import { InMemorySessionStore } from "../src/modules/session/inMemorySessionStore.ts";
 import {
+  assertCreationPrincipalsMatchParticipants,
   assertSessionParticipantsMatchState,
-  materializeLocalSessionParticipants
+  materializeLocalSessionParticipants,
+  materializePrivateSessionParticipants
 } from "../src/modules/session/sessionParticipants.ts";
+import {
+  createLocalSessionAccess,
+  createParticipantSessionAccess,
+  resolveSessionActor,
+  resolveSessionViewerActor
+} from "../src/modules/session/sessionAuthentication.ts";
 
 const participants = [
   { seatId: "p1", playerId: "p1", kind: "human" as const, joinState: "local" as const },
@@ -38,6 +46,155 @@ test("neutral local materializer assigns the last requested seat to an agent wit
     { seatId: "p2", playerId: "p2", kind: "agent", joinState: "local" }
   ]);
   assert.deepEqual(Object.keys(state.players), state.public.turn.order);
+});
+
+test("neutral private materializer creates immutable human invite bindings without a presence lifecycle", () => {
+  const state = {
+    public: { turn: { order: ["p2", "p1"], activePlayerId: "p2" } },
+    players: { p1: {}, p2: {} }
+  };
+  assert.deepEqual(materializePrivateSessionParticipants(state, 2), [
+    { seatId: "p2", playerId: "p2", kind: "human", joinState: "private-invite" },
+    { seatId: "p1", playerId: "p1", kind: "human", joinState: "private-invite" }
+  ]);
+});
+
+test("private creation principals map one-to-one to actors and store only credential digests", async () => {
+  const state = {
+    public: { turn: { order: ["p1", "p2"], activePlayerId: "p1" } },
+    players: { p1: { privateNote: "one" }, p2: { privateNote: "two" } }
+  };
+  const privateParticipants = materializePrivateSessionParticipants(state, 2);
+  const first = createParticipantSessionAccess("p1", "facilitator");
+  const second = createParticipantSessionAccess("p2");
+  assertCreationPrincipalsMatchParticipants([first.principal, second.principal], privateParticipants);
+
+  const store = new InMemorySessionStore<Record<string, unknown>>();
+  const bundle = createImmutableBundleContent("neutral-private-session-fixture", {});
+  const created = await store.createSession({
+    gameId: "neutral-private-session-fixture",
+    initialState: state,
+    participants: privateParticipants,
+    immutableBundle: bundle,
+    principal: first.principal,
+    additionalPrincipals: [second.principal]
+  });
+  const authenticatedFirst = await store.authenticateSession({
+    sessionId: created.session.sessionId,
+    credentialSha256: first.principal.credentialSha256
+  });
+  const authenticatedSecond = await store.authenticateSession({
+    sessionId: created.session.sessionId,
+    credentialSha256: second.principal.credentialSha256
+  });
+  assert.deepEqual(authenticatedFirst?.actorScope, { kind: "listed-actors", actorIds: ["p1"] });
+  assert.deepEqual(authenticatedSecond?.actorScope, { kind: "listed-actors", actorIds: ["p2"] });
+  assert.equal(authenticatedFirst?.role, "facilitator");
+  assert.equal(authenticatedSecond?.role, "player");
+  assert.equal(resolveSessionActor(created.session, authenticatedFirst!), "p1");
+  assert.throws(() => resolveSessionActor(created.session, authenticatedSecond!));
+  assert.equal(resolveSessionViewerActor(created.session, authenticatedSecond!), "p2");
+  assert.equal(await store.authenticateSession({
+    sessionId: created.session.sessionId,
+    credentialSha256: "f".repeat(64)
+  }), null);
+  assert.doesNotMatch(JSON.stringify(store), /ses_/u);
+});
+
+test("invalid additional principals fail before an in-memory session becomes visible", async () => {
+  const privateParticipants = [
+    { seatId: "p1", playerId: "p1", kind: "human" as const, joinState: "private-invite" as const },
+    { seatId: "p2", playerId: "p2", kind: "human" as const, joinState: "private-invite" as const }
+  ];
+  const first = createParticipantSessionAccess("p1");
+  const wrongPrincipalKind = createLocalSessionAccess("player");
+  const duplicate = { ...createParticipantSessionAccess("p2").principal, credentialSha256: first.principal.credentialSha256 };
+  const duplicateId = { ...createParticipantSessionAccess("p2").principal, principalId: first.principal.principalId };
+  const duplicateActor = createParticipantSessionAccess("p1").principal;
+  const store = new InMemorySessionStore<Record<string, unknown>>();
+  const bundle = createImmutableBundleContent("neutral-private-atomicity-fixture", {});
+  await assert.rejects(store.createSession({
+    gameId: "neutral-private-atomicity-fixture",
+    initialState: { public: {} },
+    participants: privateParticipants,
+    immutableBundle: bundle,
+    principal: wrongPrincipalKind.principal
+  }), /map one-to-one onto participants/u);
+  await assert.rejects(store.createSession({
+    gameId: "neutral-private-atomicity-fixture",
+    initialState: { public: {} },
+    participants: privateParticipants,
+    immutableBundle: bundle,
+    principal: first.principal,
+    additionalPrincipals: [duplicate]
+  }), /unique ids and credential digests/u);
+  await assert.rejects(store.createSession({
+    gameId: "neutral-private-atomicity-fixture",
+    initialState: { public: {} },
+    participants: privateParticipants,
+    immutableBundle: bundle,
+    principal: first.principal,
+    additionalPrincipals: [duplicateId]
+  }), /unique ids and credential digests/u);
+  await assert.rejects(store.createSession({
+    gameId: "neutral-private-atomicity-fixture",
+    initialState: { public: {} },
+    participants: privateParticipants,
+    immutableBundle: bundle,
+    principal: first.principal,
+    additionalPrincipals: [duplicateActor]
+  }), /map one-to-one onto participants/u);
+
+  const second = createParticipantSessionAccess("p2");
+  const created = await store.createSession({
+    gameId: "neutral-private-atomicity-fixture",
+    initialState: { public: {} },
+    participants: privateParticipants,
+    immutableBundle: bundle,
+    principal: first.principal,
+    additionalPrincipals: [second.principal]
+  });
+  assert.ok(await store.getSession(created.session.sessionId));
+});
+
+test("in-memory creation rejects every participant-principal model except local controller or private seats", async () => {
+  const store = new InMemorySessionStore<Record<string, unknown>>();
+  const bundle = createImmutableBundleContent("neutral-principal-model-fixture", {});
+  const localParticipant = participants[0];
+  const localAccess = createLocalSessionAccess("player");
+  const secondLocalAccess = createLocalSessionAccess("player");
+  const participantAccess = createParticipantSessionAccess("p1");
+
+  for (const input of [
+    {
+      participants: [localParticipant],
+      principal: { ...localAccess.principal, kind: "facilitator" as const }
+    },
+    {
+      participants: [localParticipant],
+      principal: localAccess.principal,
+      additionalPrincipals: [secondLocalAccess.principal]
+    },
+    {
+      participants: [localParticipant],
+      principal: participantAccess.principal
+    },
+    {
+      participants: [{ ...localParticipant, joinState: "private-invite" as const }],
+      principal: localAccess.principal
+    },
+    {
+      participants: [{ ...localParticipant, kind: "agent" as const, joinState: "private-invite" as const }],
+      principal: participantAccess.principal
+    }
+  ]) {
+    await assert.rejects(store.createSession({
+      gameId: "neutral-principal-model-fixture",
+      initialState: { public: {} },
+      immutableBundle: bundle,
+      ...input
+    }), /Local sessions require|map one-to-one onto participants|canonical schema/u);
+  }
 });
 
 test("neutral non-turn session gets metadata without inventing player-scoped state", () => {
@@ -181,6 +338,18 @@ test("untrusted create request accepts only schema-valid local agent seat counts
   for (const agentSeatCount of [-1, 1.5, 65, "1"]) {
     assert.throws(() => parseCreateSessionRequest({ gameId: "neutral-game", agentSeatCount }));
   }
+});
+
+test("private-invite creation is optional and cannot mix with a positive agent-seat count", () => {
+  assert.deepEqual(parseCreateSessionRequest({ gameId: "neutral-game", accessMode: "private-invite" }), {
+    gameId: "neutral-game",
+    accessMode: "private-invite"
+  });
+  assert.throws(() => parseCreateSessionRequest({
+    gameId: "neutral-game",
+    accessMode: "private-invite",
+    agentSeatCount: 1
+  }));
 });
 
 test("migration 004 deletes sessions before the required column and preserves bundles", async () => {
