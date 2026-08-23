@@ -919,6 +919,29 @@ integration('synthetic shadow activation against prepared PostgreSQL', () => {
       agentMessage: new TextDecoder().decode(testAgentBytes),
       result: { schema_version: '1.0.0', request_id: 'modelreq_evaluator_adapter', outcome: 'no_change', proposal: null }
     });
+
+    const failedSuffix = 'evaluator-diagnostic';
+    const failedStableTurnKey = `${testStableTurnKey}-${failedSuffix}`;
+    await enqueueQueue(failedSuffix);
+    const failedStore = new PostgresShadowWorkerStore(workerRuntimePool, {
+      ownerRef: testReceipt.shadow_principal_ref,
+      gameRef: testReceipt.applies_to[0]!,
+      stableTurnKey: failedStableTurnKey
+    });
+    const failedLease = await failedStore.leaseNext(20_000, 1, started);
+    await failedStore.prepareCall(failedLease!, 'modelreq_evaluator_diagnostic', 20_000, started);
+    await failedStore.terminal(
+      failedLease!, 'failed', 'gateway_malformed', 'gateway_malformed:final_page_policy', null, started
+    );
+    await expect(evaluator.inspect()).resolves.toMatchObject({
+      runs: expect.arrayContaining([expect.objectContaining({
+        stableTurnKey: failedStableTurnKey,
+        status: 'failed',
+        outcome: 'gateway_malformed',
+        lastErrorCode: 'gateway_malformed:final_page_policy',
+        metricCount: 1
+      })])
+    });
   });
 
   it('exposes cleanup recovery only when PostgreSQL time makes the targeted claim terminal-only', async () => {

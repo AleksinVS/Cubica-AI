@@ -30,8 +30,9 @@ in_progress
 - Stage 1 принят PM и слит в `main` коммитом `928f2ee`.
 - Текущее состояние после окна DR-13 2026-08-23: Stage 2 остаётся
   `in_progress`; три отрицательных категории доказаны, первый положительный
-  сценарий остановлен `gateway_malformed`, пятый не запускался. Stage 3,
-  чтение, применение и Git остаются закрыты.
+  сценарий остановлен `gateway_malformed`, пятый не запускался. DR-15 добавил
+  локальную allowlisted диагностику этапа без изменения публичного отчёта или
+  хранения; новый внешний прогон и Stage 3 остаются закрыты.
 
 ## Parent
 
@@ -205,7 +206,7 @@ approved
 | Контракты, ConversationStore и gateway | Sol high | done | Server-only foundation; retention, crash recovery без опасного повтора и атомарные terminal result + metric проверены на PostgreSQL 17 |
 | Portal authorization adapter | Sol high | done | Настоящая Portal-аутентификация и право разработчика без client identity |
 | Editor post-response hook и изоляция | Sol high | done | Единственная разрешённая server-only точка shadow; основной ответ неизменен |
-| Оценка и rollback | Sol high | in_progress | Окно DR-13 подтвердило 3/3 `no_change`; первый положительный сценарий завершился fail-closed `gateway_malformed`, пятый не вызывался. Cleanup доказал exact zero и неизменный Git; положительные пути и Stage 3 остаются закрыты |
+| Оценка и rollback | Sol high | in_progress | Окно DR-13 подтвердило 3/3 `no_change`; первый положительный сценарий завершился fail-closed `gateway_malformed`. DR-15 теперь сохраняет только allowlisted этап в существующем `last_error_code`, не меняя metric/report/outcome; положительные пути и Stage 3 остаются закрыты |
 | Независимое security review | Sol high | done | Три приёмочных прохода и две волны исправлений закрыли все Critical/High/Medium замечания; итог — ACCEPT merge-ready для выключенного Stage 2 |
 | Read-only wiki и запуск cleanup | Sol high | done | Серверно закреплённый снимок bare Git и одноразовая ограниченная cleanup-команда прошли независимый security review |
 | Z.AI Coding Plan adapter | Sol high + Luna medium с обязательным Sol high review | code_ready | Фиксированные endpoint/model, полный read-only снимок HEAD и строгая серверная проверка ответа подтверждены mock-матрицей и синтетическим сетевым прогоном; пользовательские данные не передавались |
@@ -917,11 +918,34 @@ worker и не открывает второй путь к модели или �
   `gateway_malformed`. Локальная реализация теперь сохраняет уже существующий
   `schema_error` вместо его свёртки в `mismatch`; отдельный тест защищает это
   поведение. Более детальная причина внутри `gateway_malformed` неизвестна,
-  потому что raw provider payload намеренно не хранится. Возможное расширение
-  бесконтентного enum зарегистрировано как DR-15 и требует решения PM.
+  потому что raw provider payload намеренно не хранится. Зарегистрированный
+  здесь DR-15 позднее закрыт локальной диагностикой этапа без расширения
+  публичного enum.
 - Cleanup: после retention credential-free cleanup удалил 4 run и 4 metric,
   tombstoned 8 сообщений и 4 thread. Итог: 0 active runs, metrics, messages,
   threads и text bytes; `cleanup.passed=true`, Git неизменён, manifest удалён.
 - Verdict: DR-13 израсходован, semantic matrix не принята, Stage 3 закрыт.
   Новый внешний вызов, correction-only прогон или изменение provider/model
   требуют нового явного решения; текущие timeout не становятся default.
+
+### 2026-08-24 — основной AI agent, локальная диагностика DR-15
+
+- Решение: по поручению продолжать до крупного архитектурного блокера малое
+  обратимое решение принято автономно. Публичные JSON Schema, metric, report,
+  terminal outcome, таблицы, retention, ACL и граница доверия не изменены.
+- Реализация: `ModelGatewayError` несёт только один из десяти закрытых этапов.
+  Worker сохраняет `gateway_malformed:<stage>` в существующий
+  `shadow_runs.last_error_code`; evaluator выводит оператору только проверенный
+  stage до cleanup. Неизвестное значение не выводится, raw provider payload,
+  candidate, AJV paths, идентификаторы и фрагменты текста не сохраняются.
+- Упрощение: отклонены новое поле постоянного отчёта, колонка, sidecar и
+  диагностический сервис. Используется уже существующий run error code; после
+  cleanup деталь исчезает вместе с одноразовым состоянием.
+- Локальная проверка: gateway/worker/evaluator — 104/104, одноразовая
+  PostgreSQL 17 activation/security/RLS — 42/42, package typecheck,
+  generated-types, isolation, legacy и instruction gates прошли. Реальный
+  provider, Portal и внешний контур не запускались.
+- Следующий блокер: новое полное пятисценарное внешнее окно требует отдельного
+  решения PM о provider/model, timeout, lease, retention, attempts/retry и
+  границах одного developer/game/policy. DR-13 израсходован; correction-only,
+  Stage 3, активное чтение, применение и Git-запись остаются запрещены.

@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { dirname, join, resolve } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { validateProductKnowledgeContract, validateShadowEvaluationManifest, validateShadowEvaluationReport } from '../src/contracts.ts';
-import { cleanupShadowEvaluation, emptyShadowEvaluationReport, preflightShadowEvaluation, reviewShadowEvaluation, runNextShadowEvaluation, writeShadowEvaluationReport, type EvaluationDbSnapshot, type ShadowEvaluatorDatabase, type ShadowEvaluatorDeps } from '../src/shadow-evaluator.ts';
+import { cleanupShadowEvaluation, emptyShadowEvaluationReport, preflightShadowEvaluation, reviewShadowEvaluation, runNextShadowEvaluation, shadowEvaluationValidationStage, writeShadowEvaluationReport, type EvaluationDbSnapshot, type ShadowEvaluatorDatabase, type ShadowEvaluatorDeps } from '../src/shadow-evaluator.ts';
 import type { ShadowEvaluationManifest, ShadowEvaluationReport } from '../src/generated/product-knowledge.ts';
 import { readShadowEvaluatorCliConfig } from '../scripts/run-shadow-evaluator.ts';
 
@@ -121,14 +121,23 @@ describe('persistent shadow evaluator', () => {
   });
   it('preserves a schema error instead of collapsing it to mismatch', async () => {
     const f = await fixture(); try {
-      f.db.value = snapshot([{ ...f.db.value.runs[0]!, status: 'failed', outcome: 'gateway_malformed', metricCount: 1 }]);
+      f.db.value = snapshot([{ ...f.db.value.runs[0]!, status: 'failed', outcome: 'gateway_malformed', metricCount: 1, lastErrorCode: 'gateway_malformed:final_page_policy' }]);
       await preflightShadowEvaluation(f.deps);
       const report = await runNextShadowEvaluation(f.deps);
       expect(report.status).toBe('hard_stopped');
       expect(report.scenarios[0]!.actual_outcome).toBe('schema_error');
       expect(report.scenarios[1]!.actual_outcome).toBe('pending');
+      expect(shadowEvaluationValidationStage(f.db.value)).toBe('final_page_policy');
       expect(f.db.workerCalls).toBe(0);
     } finally { await rm(f.dir, { recursive: true, force: true }); }
+  });
+  it('never exposes arbitrary last_error_code text as an operator validation stage', () => {
+    const base = snapshot([{ ...new MemoryDb().value.runs[0]!, status: 'failed', outcome: 'gateway_malformed', metricCount: 1, lastErrorCode: 'provider payload text' }]);
+    expect(shadowEvaluationValidationStage(base)).toBeNull();
+    expect(shadowEvaluationValidationStage(snapshot([
+      ...base.runs,
+      { ...base.runs[0]!, stableTurnKey: manifest().scenarios[1]!.stable_turn_key, lastErrorCode: 'gateway_malformed:provider_envelope' }
+    ]))).toBeNull();
   });
   it('requires valid configuration for review and cleanup core entry points', async () => {
     const f = await fixture(); try {
