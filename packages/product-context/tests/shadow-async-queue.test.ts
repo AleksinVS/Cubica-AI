@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 
 import { ModelGatewayError } from '../src/model-gateway.ts';
+import { attachModelGatewayValidationStage, modelGatewayValidationErrorCode } from '../src/model-gateway-diagnostics.ts';
 import { ShadowAsyncWorker, classifyShadowWorkerError, type ShadowWorkerLease, type ShadowWorkerStore } from '../src/shadow-async-queue.ts';
 import type { ModelGateway, ModelGatewayRequest, ShadowAuthorizationReceipt } from '../src/index.ts';
 
@@ -109,6 +110,16 @@ describe('durable asynchronous shadow worker', () => {
       expect(classifyShadowWorkerError(new ModelGatewayError(code)).kind).toBe('failed');
     }
     expect(classifyShadowWorkerError(new ModelGatewayError('malformed_output',null,503)).kind).toBe('failed');
+  });
+
+  it('persists only an allowlisted content-free validation stage without changing outcome or retry policy', () => {
+    expect(classifyShadowWorkerError(attachModelGatewayValidationStage(new ModelGatewayError('malformed_output'), 'final_page_policy'))).toEqual({
+      kind: 'failed', code: 'gateway_malformed:final_page_policy', outcome: 'gateway_malformed'
+    });
+    expect(modelGatewayValidationErrorCode('provider payload text')).toBeNull();
+    expect(classifyShadowWorkerError(new ModelGatewayError('malformed_output'))).toEqual({
+      kind: 'failed', code: 'gateway_malformed_output', outcome: 'gateway_malformed'
+    });
   });
 });
 

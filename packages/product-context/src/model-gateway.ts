@@ -8,9 +8,11 @@
  */
 import { validateProductKnowledgeContract, verifyExactPatchProposalHash } from './contracts.ts';
 import type { ModelGatewayRequest, ModelGatewayResult } from './generated/product-knowledge.ts';
+import { attachModelGatewayValidationStage, type ModelGatewayValidationStage } from './model-gateway-diagnostics.ts';
 
 export type ModelGatewayErrorCode = 'policy_denied' | 'invalid_request' | 'timeout' | 'oversize_output' | 'malformed_output' | 'transport_error' | 'outcome_unknown';
 
+/** Content-free gateway failure; adapter details remain on an internal channel. */
 export class ModelGatewayError extends Error {
   constructor(
     readonly code: ModelGatewayErrorCode,
@@ -111,13 +113,18 @@ export class HttpModelGateway implements ModelGateway {
  */
 export function validateModelGatewayResult(request: ModelGatewayRequest, candidate: unknown): ModelGatewayResult {
   const validated = validateProductKnowledgeContract<ModelGatewayResult>('ModelGatewayResult', candidate);
-  if (!validated.ok || validated.value.request_id !== request.request_id ||
+  if (!validated.ok) throw malformed('result_schema');
+  if (validated.value.request_id !== request.request_id ||
       (validated.value.proposal !== null &&
-        (!verifyExactPatchProposalHash(validated.value.proposal) ||
-         validated.value.proposal.applies_to.length !== 1 ||
-         validated.value.proposal.applies_to[0] !== request.applies_to[0] ||
-         !proposalSourcesMatchRequest(validated.value.proposal, request)))) {
-    throw new ModelGatewayError('malformed_output');
+        (validated.value.proposal.applies_to.length !== 1 ||
+         validated.value.proposal.applies_to[0] !== request.applies_to[0]))) {
+    throw malformed('result_binding');
+  }
+  if (validated.value.proposal !== null && !verifyExactPatchProposalHash(validated.value.proposal)) {
+    throw malformed('exact_patch');
+  }
+  if (validated.value.proposal !== null && !proposalSourcesMatchRequest(validated.value.proposal, request)) {
+    throw malformed('provenance');
   }
   return validated.value;
 }
@@ -165,4 +172,8 @@ async function readBounded(response: Response, limit: number): Promise<Uint8Arra
 function positiveBound(value: number, label: string): number {
   if (!Number.isSafeInteger(value) || value <= 0) throw new TypeError(`A positive integer ${label} is required.`);
   return value;
+}
+
+function malformed(stage: ModelGatewayValidationStage): ModelGatewayError {
+  return attachModelGatewayValidationStage(new ModelGatewayError('malformed_output'), stage);
 }

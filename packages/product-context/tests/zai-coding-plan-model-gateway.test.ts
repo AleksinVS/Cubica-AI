@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { sha256Bytes } from '../src/markdown.ts';
+import { modelGatewayValidationStage } from '../src/model-gateway-diagnostics.ts';
 import { ShadowKnowledgeGrounding, type ShadowKnowledgeSnapshot } from '../src/shadow-grounding.ts';
 import { ZAI_CODING_PLAN_ENDPOINT, ZAI_CODING_PLAN_MAX_TOKENS, ZAI_CODING_PLAN_MODEL, ZaiCodingPlanModelGateway, type ZaiCodingPlanModelGatewayOptions } from '../src/zai-coding-plan-model-gateway.ts';
 import type { ExactPatchProposal, ModelGatewayRequest } from '../src/generated/product-knowledge.ts';
@@ -162,8 +163,9 @@ describe('Z.AI coding-plan shadow gateway', () => {
         reason: 'Capture the user-confirmed new subject', source_refs: [{ ref: userRef, use: 'confirmation' }]
       }]
     };
-    await expect(gateway(async () => responseFor({ schema_version: '1.0.0', request_id: request.request_id, outcome: 'proposal', proposal })).call(request))
-      .rejects.toMatchObject({ code: 'malformed_output' });
+    const error = await gateway(async () => responseFor({ schema_version: '1.0.0', request_id: request.request_id, outcome: 'proposal', proposal })).call(request).catch((caught) => caught);
+    expect(error).toMatchObject({ code: 'malformed_output' });
+    expect(modelGatewayValidationStage(error)).toBe('timestamp_binding');
   });
 
   it.each([
@@ -173,8 +175,9 @@ describe('Z.AI coding-plan shadow gateway', () => {
     mockGrounding();
     const proposal = providerProposal();
     proposal.operations[1]!.new_text = `"timestamp":"${timestamp}"`;
-    await expect(gateway(async () => responseFor({ schema_version: '1.0.0', request_id: request.request_id, outcome: 'proposal', proposal })).call(request))
-      .rejects.toMatchObject({ code: 'malformed_output' });
+    const error = await gateway(async () => responseFor({ schema_version: '1.0.0', request_id: request.request_id, outcome: 'proposal', proposal })).call(request).catch((caught) => caught);
+    expect(error).toMatchObject({ code: 'malformed_output' });
+    expect(modelGatewayValidationStage(error)).toBe('timestamp_binding');
   });
 
   it('fails closed when the trusted clock cannot produce an ISO timestamp', async () => {
@@ -264,22 +267,24 @@ describe('Z.AI coding-plan shadow gateway', () => {
     const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ error: { code: 1303, message: 'provider secret' } }), { status: 503 }));
     const error = await gateway(fetchImpl).call(request).catch((caught) => caught);
     expect(error).toMatchObject({ code: 'malformed_output', providerCode: '1303', httpStatus: 503 });
+    expect(modelGatewayValidationStage(error)).toBe('provider_http');
     expect(String(error)).not.toContain('provider secret');
   });
 
   it.each([
-    ['HTTP error', async () => new Response('provider secret', { status: 500 })],
-    ['missing model', async () => new Response(JSON.stringify({ choices: [] }))],
-    ['wrong model', async () => new Response(JSON.stringify({ model: 'glm-other', choices: [] }))],
-    ['no choices', async () => new Response(JSON.stringify({ model: ZAI_CODING_PLAN_MODEL, choices: [] }))],
-    ['multiple choices', async () => new Response(JSON.stringify({ model: ZAI_CODING_PLAN_MODEL, choices: [{ finish_reason: 'stop', message: { content: '{}' } }, { finish_reason: 'stop', message: { content: '{}' } }] }))],
-    ['unfinished choice', async () => new Response(JSON.stringify({ model: ZAI_CODING_PLAN_MODEL, choices: [{ finish_reason: 'length', message: { content: '{}' } }] }))],
-    ['tool call', async () => new Response(JSON.stringify({ model: ZAI_CODING_PLAN_MODEL, choices: [{ finish_reason: 'stop', message: { content: '{}', tool_calls: [] } }] }))],
-    ['non-JSON content', async () => new Response(JSON.stringify({ model: ZAI_CODING_PLAN_MODEL, choices: [{ finish_reason: 'stop', message: { content: '{bad' } }] }))]
-  ] as const)('fails closed on provider envelope variant: %s', async (_label, fetchImpl) => {
+    ['HTTP error', async () => new Response('provider secret', { status: 500 }), null],
+    ['missing model', async () => new Response(JSON.stringify({ choices: [] })), 'provider_envelope'],
+    ['wrong model', async () => new Response(JSON.stringify({ model: 'glm-other', choices: [] })), 'provider_envelope'],
+    ['no choices', async () => new Response(JSON.stringify({ model: ZAI_CODING_PLAN_MODEL, choices: [] })), 'provider_envelope'],
+    ['multiple choices', async () => new Response(JSON.stringify({ model: ZAI_CODING_PLAN_MODEL, choices: [{ finish_reason: 'stop', message: { content: '{}' } }, { finish_reason: 'stop', message: { content: '{}' } }] })), 'provider_envelope'],
+    ['unfinished choice', async () => new Response(JSON.stringify({ model: ZAI_CODING_PLAN_MODEL, choices: [{ finish_reason: 'length', message: { content: '{}' } }] })), 'provider_envelope'],
+    ['tool call', async () => new Response(JSON.stringify({ model: ZAI_CODING_PLAN_MODEL, choices: [{ finish_reason: 'stop', message: { content: '{}', tool_calls: [] } }] })), 'provider_envelope'],
+    ['non-JSON content', async () => new Response(JSON.stringify({ model: ZAI_CODING_PLAN_MODEL, choices: [{ finish_reason: 'stop', message: { content: '{bad' } }] })), 'candidate_json']
+  ] as const)('fails closed on provider envelope variant: %s', async (_label, fetchImpl, validationStage) => {
     mockGrounding();
     const error = await gateway(fetchImpl).call(request).catch((caught) => caught);
     expect(error).toMatchObject({ code: _label === 'HTTP error' ? 'outcome_unknown' : 'malformed_output' });
+    expect(modelGatewayValidationStage(error)).toBe(validationStage);
     expect(String(error)).not.toMatch(/provider secret|\{bad/u);
   });
 
@@ -296,19 +301,21 @@ describe('Z.AI coding-plan shadow gateway', () => {
   });
 
   it.each([
-    ['wrong request', (value: any) => { value.request_id = 'modelreq_wrong'; }],
-    ['wrong base', (value: any) => { value.proposal.base_commit = 'd'.repeat(40); }],
-    ['wrong scope', (value: any) => { value.proposal.applies_to = ['cubica://game-project/other']; }],
-    ['invented source', (value: any) => { value.proposal.operations[0].source_refs = [{ ref: 'cubica://invented/message', use: 'evidence' }]; }],
-    ['agent evidence', (value: any) => { value.proposal.operations[0].source_refs = [{ ref: agentRef, use: 'evidence' }]; value.proposal.source_refs = [{ ref: agentRef, use: 'evidence' }]; }],
-    ['unknown page', (value: any) => { value.proposal.operations[0].path = 'notes/unknown.md'; }],
-    ['full-file replacement', (value: any) => { value.proposal.operations[0].old_text = existingPage; value.proposal.operations[0].new_text = page('Rewritten\n'); }],
-    ['secret', (value: any) => { value.proposal.operations[0].new_text = 'api_key=abcdefghijklmnop1234'; }]
-  ])('rejects provider proposal with %s', async (_label, mutate) => {
+    ['wrong request', (value: any) => { value.request_id = 'modelreq_wrong'; }, 'result_binding'],
+    ['wrong base', (value: any) => { value.proposal.base_commit = 'd'.repeat(40); }, 'result_binding'],
+    ['wrong scope', (value: any) => { value.proposal.applies_to = ['cubica://game-project/other']; }, 'result_binding'],
+    ['invented source', (value: any) => { value.proposal.operations[0].source_refs = [{ ref: 'cubica://invented/message', use: 'evidence' }]; }, 'provenance'],
+    ['agent evidence', (value: any) => { value.proposal.operations[0].source_refs = [{ ref: agentRef, use: 'evidence' }]; value.proposal.source_refs = [{ ref: agentRef, use: 'evidence' }]; }, 'provenance'],
+    ['unknown page', (value: any) => { value.proposal.operations[0].path = 'notes/unknown.md'; }, 'exact_patch'],
+    ['full-file replacement', (value: any) => { value.proposal.operations[0].old_text = existingPage; value.proposal.operations[0].new_text = page('Rewritten\n'); }, 'exact_patch'],
+    ['secret', (value: any) => { value.proposal.operations[0].new_text = 'api_key=abcdefghijklmnop1234'; }, 'proposal_structure']
+  ])('rejects provider proposal with %s', async (_label, mutate, validationStage) => {
     mockGrounding();
     const value: any = { schema_version: '1.0.0', request_id: request.request_id, outcome: 'proposal', proposal: providerProposal() };
     mutate(value);
-    await expect(gateway(async () => responseFor(value)).call(request)).rejects.toMatchObject({ code: 'malformed_output' });
+    const error = await gateway(async () => responseFor(value)).call(request).catch((caught) => caught);
+    expect(error).toMatchObject({ code: 'malformed_output' });
+    expect(modelGatewayValidationStage(error)).toBe(validationStage);
   });
 
   it('rejects an invalid or policy-ineligible final page while allowing an exact delete', async () => {
@@ -316,16 +323,18 @@ describe('Z.AI coding-plan shadow gateway', () => {
     const invalid = providerProposal();
     invalid.operations[0]!.old_text = '"schema_version":"1.0.0"';
     invalid.operations[0]!.new_text = '"schema_version":"2.0.0"';
-    await expect(gateway(async () => responseFor({ schema_version: '1.0.0', request_id: request.request_id, outcome: 'proposal', proposal: invalid })).call(request))
-      .rejects.toMatchObject({ code: 'malformed_output' });
+    const invalidError = await gateway(async () => responseFor({ schema_version: '1.0.0', request_id: request.request_id, outcome: 'proposal', proposal: invalid })).call(request).catch((caught) => caught);
+    expect(invalidError).toMatchObject({ code: 'malformed_output' });
+    expect(modelGatewayValidationStage(invalidError)).toBe('final_page_policy');
     vi.restoreAllMocks();
 
     mockGrounding();
     const forbidden = providerProposal();
     forbidden.operations[0]!.old_text = '"role_scope":"developer"';
     forbidden.operations[0]!.new_text = '"role_scope":"facilitator"';
-    await expect(gateway(async () => responseFor({ schema_version: '1.0.0', request_id: request.request_id, outcome: 'proposal', proposal: forbidden })).call(request))
-      .rejects.toMatchObject({ code: 'malformed_output' });
+    const forbiddenError = await gateway(async () => responseFor({ schema_version: '1.0.0', request_id: request.request_id, outcome: 'proposal', proposal: forbidden })).call(request).catch((caught) => caught);
+    expect(forbiddenError).toMatchObject({ code: 'malformed_output' });
+    expect(modelGatewayValidationStage(forbiddenError)).toBe('final_page_policy');
     vi.restoreAllMocks();
 
     mockGrounding();
@@ -437,8 +446,9 @@ describe('Z.AI coding-plan shadow gateway', () => {
       }]
     };
 
-    await expect(gateway(async () => responseFor({ schema_version: '1.0.0', request_id: request.request_id, outcome: 'proposal', proposal: malformed })).call(request))
-      .rejects.toMatchObject({ code: 'malformed_output' });
+    const error = await gateway(async () => responseFor({ schema_version: '1.0.0', request_id: request.request_id, outcome: 'proposal', proposal: malformed })).call(request).catch((caught) => caught);
+    expect(error).toMatchObject({ code: 'malformed_output' });
+    expect(modelGatewayValidationStage(error)).toBe('final_page_policy');
   });
 
   it('guarantees close after read, provider, validation, and close failures without leaking raw data', async () => {
@@ -448,8 +458,9 @@ describe('Z.AI coding-plan shadow gateway', () => {
     vi.restoreAllMocks();
 
     const validationFailure = mockGrounding();
-    await expect(gateway(async () => responseFor({ schema_version: '1.0.0', request_id: request.request_id, outcome: 'no_change', proposal: {} })).call(request))
-      .rejects.toMatchObject({ code: 'malformed_output' });
+    const schemaError = await gateway(async () => responseFor({ schema_version: '1.0.0', request_id: request.request_id, outcome: 'no_change', proposal: {} })).call(request).catch((caught) => caught);
+    expect(schemaError).toMatchObject({ code: 'malformed_output' });
+    expect(modelGatewayValidationStage(schemaError)).toBe('result_schema');
     expect(validationFailure.close).toHaveBeenCalledOnce();
     vi.restoreAllMocks();
 
