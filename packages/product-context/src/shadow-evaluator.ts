@@ -206,24 +206,51 @@ export async function reviewShadowEvaluation(deps: ShadowEvaluatorDeps): Promise
   const { manifest, digest } = await readManifestBinding(deps.paths);
   ensureConfig(deps.workerConfig);
   let report = await existingOrEmpty(deps, digest);
-  if (report.status !== 'awaiting_review' || !deps.reviewer) throw new Error('Local semantic review is required.');
-  if (await deps.readGitHead() !== manifest.expected_git_head) return await stop(deps, report, reportIndex(report), 'git_drift');
-  const index = report.scenarios.findIndex((scenario) => scenario.review_expected_outcome === null);
+  const diagnosticIndex = semanticMismatchReviewIndex(report);
+  const diagnostic = diagnosticIndex >= 0;
+  if ((report.status !== 'awaiting_review' && !diagnostic) || !deps.reviewer) throw new Error('Local semantic review is required.');
+  if (await deps.readGitHead() !== manifest.expected_git_head) {
+    if (diagnostic) throw new Error('Semantic mismatch review requires unchanged Git.');
+    return await stop(deps, report, reportIndex(report), 'git_drift');
+  }
+  const index = diagnostic ? diagnosticIndex :
+    report.scenarios.findIndex((scenario) => scenario.review_expected_outcome === null);
   if (index < 0) return report;
   const snapshot = await deps.db.inspect();
   try { validateVisibleRuns(manifest, snapshot, report); }
-  catch { return await stop(deps, report, index, 'mismatch'); }
+  catch {
+    if (diagnostic) throw new Error('Semantic mismatch review requires an exact succeeded run.');
+    return await stop(deps, report, index, 'mismatch');
+  }
+  if (diagnostic) {
+    const targetKey = manifest.scenarios[index]!.stable_turn_key;
+    const exact = snapshot.runs.filter((run) => run.stableTurnKey === targetKey);
+    if (exact.length !== 1 || exact[0]!.status !== 'succeeded' ||
+        mapOutcome(exact[0]!) !== report.scenarios[index]!.actual_outcome) {
+      throw new Error('Semantic mismatch review requires an exact succeeded run.');
+    }
+  }
   let material: ShadowEvaluatorReviewMaterial;
   try {
     if (!deps.db.reviewMaterial) throw new Error('Review material port is unavailable.');
     material = await deps.db.reviewMaterial(manifest.scenarios[index]!.stable_turn_key);
-  } catch { return await stop(deps, report, index, 'unavailable'); }
+  } catch {
+    if (diagnostic) throw new Error('Semantic mismatch review material is unavailable.');
+    return await stop(deps, report, index, 'unavailable');
+  }
   let values: readonly [boolean, boolean, boolean, boolean];
-  try { values = await deps.reviewer.review(index, expectedOutcomes[manifest.scenarios[index]!.category], material); } catch { return await stop(deps, report, index, 'unavailable'); }
-  if (values.length !== 4 || values.some((value) => typeof value !== 'boolean')) return await stop(deps, report, index, 'mismatch');
+  try { values = await deps.reviewer.review(index, expectedOutcomes[manifest.scenarios[index]!.category], material); }
+  catch {
+    if (diagnostic) throw new Error('Semantic mismatch review did not complete.');
+    return await stop(deps, report, index, 'unavailable');
+  }
+  if (values.length !== 4 || values.some((value) => typeof value !== 'boolean')) {
+    if (diagnostic) throw new Error('Semantic mismatch review returned invalid answers.');
+    return await stop(deps, report, index, 'mismatch');
+  }
   const current = report.scenarios[index]!;
-  const next = { ...current, review_expected_outcome: values[0], review_all_and_only_confirmed_facts: values[1], review_correct_page_minimal_patch: values[2], review_no_duplicate_contradiction_unrelated_rewrite: values[3] };
-  report = { ...report, scenarios: report.scenarios.map((value, i) => i === index ? next : value), status: values.every(Boolean) ? (index === 4 ? 'ready_for_cleanup' : 'ready') : 'hard_stopped' };
+  const next = { ...current, review_expected_outcome: diagnostic ? false : values[0], review_all_and_only_confirmed_facts: values[1], review_correct_page_minimal_patch: values[2], review_no_duplicate_contradiction_unrelated_rewrite: values[3] };
+  report = { ...report, scenarios: report.scenarios.map((value, i) => i === index ? next : value), status: diagnostic ? 'hard_stopped' : values.every(Boolean) ? (index === 4 ? 'ready_for_cleanup' : 'ready') : 'hard_stopped' };
   await writeShadowEvaluationReport(deps.paths, report);
   return report;
 }
@@ -333,6 +360,27 @@ function bindReport(report: ShadowEvaluationReport | null, manifestDigest: strin
   return report;
 }
 function reportIndex(report: ShadowEvaluationReport): number { return report.scenarios.findIndex((scenario) => scenario.actual_outcome === 'pending'); }
+function semanticMismatchReviewIndex(report: ShadowEvaluationReport): number {
+  if (report.status !== 'hard_stopped' || report.cleanup.started || !report.git_unchanged) return -1;
+  const isUnreviewed = (scenario: ShadowEvaluationScenarioReport) =>
+    scenario.review_expected_outcome === null && scenario.review_all_and_only_confirmed_facts === null &&
+    scenario.review_correct_page_minimal_patch === null &&
+    scenario.review_no_duplicate_contradiction_unrelated_rewrite === null;
+  const isFullyAccepted = (scenario: ShadowEvaluationScenarioReport) =>
+    scenario.review_expected_outcome === true && scenario.review_all_and_only_confirmed_facts === true &&
+    scenario.review_correct_page_minimal_patch === true &&
+    scenario.review_no_duplicate_contradiction_unrelated_rewrite === true;
+  const candidates = report.scenarios.map((scenario, index) => ({ scenario, index })).filter(({ scenario }) =>
+    allowedActual.has(scenario.actual_outcome) && scenario.actual_outcome !== scenario.expected_outcome &&
+    isUnreviewed(scenario));
+  if (candidates.length !== 1) return -1;
+  const index = candidates[0]!.index;
+  if (report.scenarios.slice(0, index).some((scenario) =>
+    scenario.actual_outcome !== scenario.expected_outcome || !isFullyAccepted(scenario)) ||
+      report.scenarios.slice(index + 1).some((scenario) =>
+        scenario.actual_outcome !== 'pending' || !isUnreviewed(scenario))) return -1;
+  return index;
+}
 async function stop(deps: ShadowEvaluatorDeps, report: ShadowEvaluationReport, index: number, outcome: ShadowEvaluationScenarioReport['actual_outcome']): Promise<ShadowEvaluationReport> {
   const drift = outcome === 'git_drift';
   const next = index < 0 || !report.scenarios[index] ? report : {

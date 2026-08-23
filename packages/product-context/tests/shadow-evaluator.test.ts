@@ -120,6 +120,183 @@ describe('persistent shadow evaluator', () => {
       expect(f.db.workerCalls).toBe(0);
     } finally { await rm(f.dir, { recursive: true, force: true }); }
   });
+  it('reviews an unexpected proposal against exact local material while remaining hard-stopped', async () => {
+    const f = await fixture(); try {
+      const material = { userMessage: 'bound user', agentMessage: 'bound agent', result: { outcome: 'proposal' } };
+      const reviewMaterial = vi.fn(async () => material);
+      f.db.reviewMaterial = reviewMaterial;
+      f.db.value = snapshot([{ ...f.db.value.runs[0]!, status: 'succeeded', outcome: 'success',
+        operationCount: 1, durationMs: 7, inputBytes: 11, outputBytes: 13, metricCount: 1 }]);
+      const review = vi.fn(async () => [true, true, true, true] as const);
+      (f.deps as { reviewer: ShadowEvaluatorDeps['reviewer'] }).reviewer = { review };
+      await preflightShadowEvaluation(f.deps);
+      const stopped = await runNextShadowEvaluation(f.deps);
+      expect(stopped.status).toBe('hard_stopped');
+      expect(stopped.scenarios[0]).toMatchObject({ expected_outcome: 'no_change', actual_outcome: 'proposal' });
+      const result = await reviewShadowEvaluation(f.deps);
+      expect(result.status).toBe('hard_stopped');
+      expect(result.scenarios[0]).toMatchObject({
+        actual_outcome: 'proposal', review_expected_outcome: false,
+        review_all_and_only_confirmed_facts: true, review_correct_page_minimal_patch: true,
+        review_no_duplicate_contradiction_unrelated_rewrite: true
+      });
+      expect(reviewMaterial).toHaveBeenCalledWith(manifest().scenarios[0]!.stable_turn_key);
+      expect(review).toHaveBeenCalledWith(0, 'no_change', material);
+      expect(f.db.workerCalls).toBe(0);
+    } finally { await rm(f.dir, { recursive: true, force: true }); }
+  });
+  it('rejects a persisted diagnostic review without reopening local material', async () => {
+    const f = await fixture(); try {
+      await persistProposalMismatch(f);
+      (f.deps as { reviewer: ShadowEvaluatorDeps['reviewer'] }).reviewer = {
+        review: async () => [true, true, true, true]
+      };
+      await reviewShadowEvaluation(f.deps);
+      const before = await readFile(f.paths.reportPath, 'utf8');
+      const reviewMaterial = vi.fn(async () => ({ userMessage: '', agentMessage: '', result: { outcome: 'unused' } }));
+      f.db.reviewMaterial = reviewMaterial;
+      const review = vi.fn(async () => [true, true, true, true] as const);
+      (f.deps as { reviewer: ShadowEvaluatorDeps['reviewer'] }).reviewer = { review };
+      await expect(reviewShadowEvaluation(f.deps)).rejects.toThrow('Local semantic review is required');
+      expect(reviewMaterial).not.toHaveBeenCalled();
+      expect(review).not.toHaveBeenCalled();
+      expect(f.db.workerCalls).toBe(0);
+      expect(await readFile(f.paths.reportPath, 'utf8')).toBe(before);
+    } finally { await rm(f.dir, { recursive: true, force: true }); }
+  });
+  it('reviews an unexpected no-change where a proposal was expected and remains hard-stopped on any answers', async () => {
+    const f = await fixture(); try {
+      const base = emptyShadowEvaluationReport(manifestDigest);
+      const report: ShadowEvaluationReport = {
+        ...base,
+        status: 'hard_stopped',
+        scenarios: base.scenarios.map((scenario, index) => index < 3 ? {
+          ...scenario, actual_outcome: 'no_change', review_expected_outcome: true,
+          review_all_and_only_confirmed_facts: true, review_correct_page_minimal_patch: true,
+          review_no_duplicate_contradiction_unrelated_rewrite: true
+        } : index === 3 ? { ...scenario, actual_outcome: 'no_change' } : scenario)
+      };
+      await writeShadowEvaluationReport(f.paths, report);
+      f.db.value = snapshot([0, 1, 2, 3].map((index) => exactSucceededRun(index, 'no_change')));
+      const review = vi.fn(async () => [true, false, true, false] as const);
+      (f.deps as { reviewer: ShadowEvaluatorDeps['reviewer'] }).reviewer = { review };
+      const result = await reviewShadowEvaluation(f.deps);
+      expect(result.status).toBe('hard_stopped');
+      expect(result.scenarios[3]).toMatchObject({
+        expected_outcome: 'proposal', actual_outcome: 'no_change', review_expected_outcome: false,
+        review_all_and_only_confirmed_facts: false, review_correct_page_minimal_patch: true,
+        review_no_duplicate_contradiction_unrelated_rewrite: false
+      });
+      expect(review).toHaveBeenCalledWith(3, 'proposal', expect.any(Object));
+      expect(f.db.workerCalls).toBe(0);
+    } finally { await rm(f.dir, { recursive: true, force: true }); }
+  });
+  it('rejects changed semantic-mismatch run material without mutating the hard-stop report', async () => {
+    const f = await fixture(); try {
+      f.db.value = snapshot([{ ...f.db.value.runs[0]!, status: 'succeeded', outcome: 'success',
+        operationCount: 1, durationMs: 7, inputBytes: 11, outputBytes: 13, metricCount: 1 }]);
+      await preflightShadowEvaluation(f.deps);
+      await runNextShadowEvaluation(f.deps);
+      const before = await readFile(f.paths.reportPath, 'utf8');
+      f.db.value = snapshot([{ ...f.db.value.runs[0]!, durationMs: 8 }]);
+      const reviewMaterial = vi.fn(async () => ({ userMessage: '', agentMessage: '', result: { outcome: 'unused' } }));
+      f.db.reviewMaterial = reviewMaterial;
+      const review = vi.fn(async () => [true, true, true, true] as const);
+      (f.deps as { reviewer: ShadowEvaluatorDeps['reviewer'] }).reviewer = { review };
+      await expect(reviewShadowEvaluation(f.deps)).rejects.toThrow('exact succeeded run');
+      expect(reviewMaterial).not.toHaveBeenCalled();
+      expect(review).not.toHaveBeenCalled();
+      expect(await readFile(f.paths.reportPath, 'utf8')).toBe(before);
+    } finally { await rm(f.dir, { recursive: true, force: true }); }
+  });
+  it('rejects non-semantic hard stops without inspection, review, or report mutation', async () => {
+    const f = await fixture(); try {
+      f.db.value = snapshot([{ ...f.db.value.runs[0]!, status: 'failed', outcome: 'gateway_malformed', metricCount: 1 }]);
+      await preflightShadowEvaluation(f.deps);
+      await runNextShadowEvaluation(f.deps);
+      const before = await readFile(f.paths.reportPath, 'utf8');
+      const databaseCalls = f.db.calls;
+      const reviewMaterial = vi.fn(async () => ({ userMessage: '', agentMessage: '', result: { outcome: 'unused' } }));
+      f.db.reviewMaterial = reviewMaterial;
+      const review = vi.fn(async () => [true, true, true, true] as const);
+      (f.deps as { reviewer: ShadowEvaluatorDeps['reviewer'] }).reviewer = { review };
+      await expect(reviewShadowEvaluation(f.deps)).rejects.toThrow('Local semantic review is required');
+      expect(f.db.calls).toBe(databaseCalls);
+      expect(reviewMaterial).not.toHaveBeenCalled();
+      expect(review).not.toHaveBeenCalled();
+      expect(await readFile(f.paths.reportPath, 'utf8')).toBe(before);
+    } finally { await rm(f.dir, { recursive: true, force: true }); }
+  });
+  it('rejects diagnostic Git drift without exposing material or mutating the report', async () => {
+    const f = await fixture(); try {
+      await persistProposalMismatch(f);
+      const before = await readFile(f.paths.reportPath, 'utf8');
+      (f.deps as { readGitHead: ShadowEvaluatorDeps['readGitHead'] }).readGitHead = async () => 'b'.repeat(40);
+      const reviewMaterial = vi.fn(async () => ({ userMessage: '', agentMessage: '', result: { outcome: 'unused' } }));
+      f.db.reviewMaterial = reviewMaterial;
+      const review = vi.fn(async () => [true, true, true, true] as const);
+      (f.deps as { reviewer: ShadowEvaluatorDeps['reviewer'] }).reviewer = { review };
+      await expect(reviewShadowEvaluation(f.deps)).rejects.toThrow('unchanged Git');
+      expect(reviewMaterial).not.toHaveBeenCalled();
+      expect(review).not.toHaveBeenCalled();
+      expect(f.db.workerCalls).toBe(0);
+      expect(await readFile(f.paths.reportPath, 'utf8')).toBe(before);
+    } finally { await rm(f.dir, { recursive: true, force: true }); }
+  });
+  it.each(['missing', 'throwing'] as const)('rejects %s diagnostic review material without report mutation', async (mode) => {
+    const f = await fixture(); try {
+      await persistProposalMismatch(f);
+      const before = await readFile(f.paths.reportPath, 'utf8');
+      const reviewMaterial = vi.fn(async () => { throw new Error('material unavailable'); });
+      if (mode === 'missing') {
+        (f.db as unknown as { reviewMaterial?: ShadowEvaluatorDatabase['reviewMaterial'] }).reviewMaterial = undefined;
+      } else {
+        f.db.reviewMaterial = reviewMaterial;
+      }
+      const review = vi.fn(async () => [true, true, true, true] as const);
+      (f.deps as { reviewer: ShadowEvaluatorDeps['reviewer'] }).reviewer = { review };
+      await expect(reviewShadowEvaluation(f.deps)).rejects.toThrow('material is unavailable');
+      expect(reviewMaterial).toHaveBeenCalledTimes(mode === 'throwing' ? 1 : 0);
+      if (mode === 'throwing') expect(reviewMaterial).toHaveBeenCalledWith(manifest().scenarios[0]!.stable_turn_key);
+      expect(review).not.toHaveBeenCalled();
+      expect(f.db.workerCalls).toBe(0);
+      expect(await readFile(f.paths.reportPath, 'utf8')).toBe(before);
+    } finally { await rm(f.dir, { recursive: true, force: true }); }
+  });
+  it.each(['throwing', 'invalid'] as const)('rejects a %s diagnostic reviewer without report mutation', async (mode) => {
+    const f = await fixture(); try {
+      await persistProposalMismatch(f);
+      const before = await readFile(f.paths.reportPath, 'utf8');
+      const material = { userMessage: 'bound user', agentMessage: 'bound agent', result: { outcome: 'proposal' } };
+      const reviewMaterial = vi.fn(async () => material);
+      f.db.reviewMaterial = reviewMaterial;
+      const review = mode === 'throwing' ?
+        vi.fn(async (): Promise<readonly [boolean, boolean, boolean, boolean]> => { throw new Error('review failed'); }) :
+        vi.fn(async () => [true, true, true] as unknown as readonly [boolean, boolean, boolean, boolean]);
+      (f.deps as { reviewer: ShadowEvaluatorDeps['reviewer'] }).reviewer = { review };
+      await expect(reviewShadowEvaluation(f.deps)).rejects.toThrow(mode === 'throwing' ? 'did not complete' : 'invalid answers');
+      expect(reviewMaterial).toHaveBeenCalledWith(manifest().scenarios[0]!.stable_turn_key);
+      expect(review).toHaveBeenCalledWith(0, 'no_change', material);
+      expect(f.db.workerCalls).toBe(0);
+      expect(await readFile(f.paths.reportPath, 'utf8')).toBe(before);
+    } finally { await rm(f.dir, { recursive: true, force: true }); }
+  });
+  it('preserves the existing successful awaiting-review transition', async () => {
+    const f = await fixture(); try {
+      const review = vi.fn(async () => [true, true, true, true] as const);
+      (f.deps as { reviewer: ShadowEvaluatorDeps['reviewer'] }).reviewer = { review };
+      await preflightShadowEvaluation(f.deps);
+      await expect(runNextShadowEvaluation(f.deps)).resolves.toMatchObject({ status: 'awaiting_review' });
+      const result = await reviewShadowEvaluation(f.deps);
+      expect(result.status).toBe('ready');
+      expect(result.scenarios[0]).toMatchObject({
+        actual_outcome: 'no_change', review_expected_outcome: true,
+        review_all_and_only_confirmed_facts: true, review_correct_page_minimal_patch: true,
+        review_no_duplicate_contradiction_unrelated_rewrite: true
+      });
+      expect(review).toHaveBeenCalledWith(0, 'no_change', expect.any(Object));
+    } finally { await rm(f.dir, { recursive: true, force: true }); }
+  });
   it('preserves a schema error instead of collapsing it to mismatch', async () => {
     const f = await fixture(); try {
       f.db.value = snapshot([{ ...f.db.value.runs[0]!, status: 'failed', outcome: 'gateway_malformed', metricCount: 1, lastErrorCode: 'gateway_malformed:final_page_policy' }]);
@@ -355,6 +532,33 @@ describe('persistent shadow evaluator', () => {
 function fullyReviewedReport(): ShadowEvaluationReport {
   const report = emptyShadowEvaluationReport(manifestDigest);
   return { ...report, status: 'ready_for_cleanup', scenarios: report.scenarios.map((scenario) => ({ ...scenario, actual_outcome: scenario.expected_outcome, review_expected_outcome: true, review_all_and_only_confirmed_facts: true, review_correct_page_minimal_patch: true, review_no_duplicate_contradiction_unrelated_rewrite: true })) };
+}
+
+async function persistProposalMismatch(f: Awaited<ReturnType<typeof fixture>>): Promise<void> {
+  f.db.value = snapshot([{ ...f.db.value.runs[0]!, status: 'succeeded', outcome: 'success',
+    operationCount: 1, durationMs: 7, inputBytes: 11, outputBytes: 13, metricCount: 1 }]);
+  await preflightShadowEvaluation(f.deps);
+  const report = await runNextShadowEvaluation(f.deps);
+  if (report.status !== 'hard_stopped' || report.scenarios[0]!.actual_outcome !== 'proposal') throw new Error();
+}
+
+function exactSucceededRun(index: number, actual: 'no_change' | 'proposal'): DiagnosticEvaluationRunView {
+  return {
+    ownerRef: manifest().shadow_principal_ref,
+    gameRef: manifest().applies_to[0]!,
+    receiptPrincipal: manifest().shadow_principal_ref,
+    receiptGame: manifest().applies_to[0]!,
+    messageCount: 2,
+    liveMessageCount: 2,
+    stableTurnKey: manifest().scenarios[index]!.stable_turn_key,
+    status: 'succeeded',
+    outcome: actual === 'proposal' ? 'success' : 'no_change',
+    operationCount: 0,
+    durationMs: 0,
+    inputBytes: 0,
+    outputBytes: 0,
+    metricCount: 1
+  };
 }
 
 function cliEnv(): NodeJS.ProcessEnv {

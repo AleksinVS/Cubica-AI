@@ -347,6 +347,13 @@ retention credential-free cleanup удалил 2 run и 2 metric, обезлич
 сообщения и 2 thread; active runs/metrics/messages/threads/text bytes равны
 нулю, `cleanup.passed=true`, manifest удалён, временные credentials обнулены.
 
+DR-17 после cleanup добавил только локальную диагностику evaluator. Успешный
+semantic mismatch будущего окна можно один раз показать через существующий
+`/dev/tty`; status остаётся `hard_stopped`, первый review-признак всегда
+`false`, а содержимое не попадает в report. Focused evaluator прошёл 36/36,
+package typecheck и contract checks зелёные. Schema, storage, retention, ACL,
+prompt и provider не менялись; новый внешний вызов не разрешён.
+
 Перед каждым новым внешним окном необходимо:
 
 1. создать отдельную базу, app-login с единственным membership в

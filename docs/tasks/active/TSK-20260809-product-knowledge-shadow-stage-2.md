@@ -984,3 +984,14 @@ worker и не открывает второй путь к модели или �
 - Verdict: DR-16 не принят как полная матрица. Следующий крупный блокер — выбор
   способа устранить ложный `proposal` для знания, уже присутствующего в wiki,
   без ослабления fail-closed gates и без нового внешнего вызова до решения PM.
+- DR-17: принят минимальный eval-only путь. Maintained evaluator разрешает
+  ровно один локальный просмотр успешного semantic mismatch через существующий
+  reviewer, принудительно сохраняет `review_expected_outcome=false` и оставляет
+  status `hard_stopped`. Несемантические отказы и изменившиеся bindings
+  содержимое не раскрывают; повторный review запрещён.
+- Scope: JSON Schema, generated types, PostgreSQL, ACL, retention, prompt,
+  gateway и provider не менялись. Следующий `existing_fact` обязан быть
+  одноязычным с seed-страницей; межъязычный случай оценивается отдельно.
+- Verification: focused evaluator 36/36, package typecheck и diff-check прошли.
+  Новый внешний вызов всё ещё требует отдельного решения PM и Sol-high
+  preactivation.
