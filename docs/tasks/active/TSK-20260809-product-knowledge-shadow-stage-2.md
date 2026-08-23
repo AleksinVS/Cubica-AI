@@ -969,3 +969,11 @@ worker и не открывает второй путь к модели или �
   локальная editor personality вызываются как поддерживаемые серверные модули,
   а Portal запускается программно через официальный Strapi server-only путь.
   Это снижает расход памяти и не создаёт второй evaluator, queue или service.
+- Execution: после Sol-high preactivation `ACCEPT` первый внешний provider call
+  выполнен. `transient_conversation` дал ожидаемый `no_change`, Git остался
+  неизменным; DR-16 переведён в `consumed`. Разрешено только последовательное
+  продолжение этой же матрицы до первого hard stop и обязательная cleanup.
+- Hard stop: первый сценарий прошёл ручную смысловую рубрику 4/4. Второй
+  сценарий (`existing_fact`) ошибочно вернул `proposal` с одной операцией вместо
+  `no_change`. Повторов не было; сценарии 3–5 не запускались, Git не изменился.
+  До нового решения разрешена только credential-free exact-zero cleanup.
