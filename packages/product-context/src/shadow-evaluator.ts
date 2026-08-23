@@ -12,7 +12,6 @@ import { lstat, open, rename, unlink } from 'node:fs/promises';
 import { isAbsolute, dirname, join, relative, resolve, sep } from 'node:path';
 import type { ShadowEvaluationManifest, ShadowEvaluationReport, ShadowEvaluationScenarioReport } from './generated/product-knowledge.ts';
 import { validateShadowEvaluationManifest, validateShadowEvaluationReport } from './contracts.ts';
-import { modelGatewayValidationStageFromErrorCode, type ModelGatewayValidationStage } from './model-gateway-diagnostics.ts';
 
 export const EVALUATION_CATEGORIES = [
   'transient_conversation', 'existing_fact', 'unconfirmed_agent_suggestion',
@@ -37,7 +36,6 @@ export interface EvaluationRunView {
   readonly inputBytes: number;
   readonly outputBytes: number;
   readonly metricCount: number;
-  readonly lastErrorCode?: string | null;
   /** PostgreSQL-clock predicate proving that a targeted worker can only terminalize this run. */
   readonly cleanupRecovery?: EvaluationCleanupRecovery | null;
 }
@@ -82,14 +80,6 @@ export interface ShadowEvaluatorDeps {
   readonly reviewer?: ShadowEvaluatorReviewer;
   readonly cleanupLimit?: number;
   readonly cleanupMaxPasses?: number;
-}
-
-/** Returns one allowlisted content-free failure stage and never arbitrary DB text. */
-export function shadowEvaluationValidationStage(snapshot: EvaluationDbSnapshot): ModelGatewayValidationStage | null {
-  const failures = snapshot.runs.filter((run) => run.status === 'failed' && run.outcome === 'gateway_malformed');
-  return failures.length === 1
-    ? modelGatewayValidationStageFromErrorCode(failures[0]!.lastErrorCode)
-    : null;
 }
 
 const expectedOutcomes: Record<EvaluationCategory, 'no_change' | 'proposal'> = {

@@ -267,6 +267,7 @@ describe('Z.AI coding-plan shadow gateway', () => {
     const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ error: { code: 1303, message: 'provider secret' } }), { status: 503 }));
     const error = await gateway(fetchImpl).call(request).catch((caught) => caught);
     expect(error).toMatchObject({ code: 'malformed_output', providerCode: '1303', httpStatus: 503 });
+    expect(modelGatewayValidationStage(error)).toBe('provider_http');
     expect(String(error)).not.toContain('provider secret');
   });
 

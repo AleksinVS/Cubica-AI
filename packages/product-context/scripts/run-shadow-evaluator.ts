@@ -7,10 +7,12 @@ import { runShadowWorkerOnce, runShadowWorkerRecoveryOnce, readShadowWorkerConfi
 import { safeShadowDatabaseUrl } from '../src/shadow-database-url.ts';
 import {
   cleanupShadowEvaluation, preflightShadowEvaluation, readShadowEvaluationManifest,
-  reviewShadowEvaluation, runNextShadowEvaluation, shadowEvaluationValidationStage,
+  reviewShadowEvaluation, runNextShadowEvaluation,
   type EvaluationDbSnapshot, type EvaluationCleanupResult, type ShadowEvaluatorDatabase,
-  type ShadowEvaluatorDeps, type ShadowEvaluatorReviewer
+  type ShadowEvaluatorDeps, type ShadowEvaluatorReviewer, type EvaluationRunView
 } from '../src/shadow-evaluator.ts';
+import { modelGatewayValidationStageFromErrorCode, type ModelGatewayValidationStage } from '../src/model-gateway-diagnostics.ts';
+import type { ShadowEvaluationManifest, ShadowEvaluationReport } from '../src/generated/product-knowledge.ts';
 
 const integer = (value: string | undefined, min: number, max: number): number | null => {
   if (!value || !/^\d+$/u.test(value)) return null;
@@ -110,6 +112,23 @@ export class PostgresShadowEvaluatorDatabase implements ShadowEvaluatorDatabase 
   }
 }
 
+/** CLI-only binding from one schema-error report entry to its exact allowlisted run stage. */
+export function shadowEvaluatorValidationStage(
+  snapshot: EvaluationDbSnapshot,
+  manifest: ShadowEvaluationManifest,
+  report: ShadowEvaluationReport
+): ModelGatewayValidationStage | null {
+  const indexes = report.scenarios.flatMap((scenario, index) => scenario.actual_outcome === 'schema_error' ? [index] : []);
+  if (report.status !== 'hard_stopped' || indexes.length !== 1) return null;
+  const target = manifest.scenarios[indexes[0]!];
+  if (!target) return null;
+  const failures = snapshot.runs.filter((run) => run.stableTurnKey === target.stable_turn_key &&
+    run.status === 'failed' && run.outcome === 'gateway_malformed');
+  if (failures.length !== 1) return null;
+  const lastErrorCode = (failures[0] as EvaluationRunView & { readonly lastErrorCode?: unknown }).lastErrorCode;
+  return modelGatewayValidationStageFromErrorCode(lastErrorCode);
+}
+
 function cleanupRecovery(value: unknown): 'retention_expired' | 'expired_calling_model' | 'attempts_exhausted' | null {
   return value === 'retention_expired' || value === 'expired_calling_model' || value === 'attempts_exhausted' ? value : null;
 }
@@ -172,7 +191,8 @@ export async function main(env: NodeJS.ProcessEnv = process.env): Promise<number
     const report = mode === 'preflight' ? await preflightShadowEvaluation(deps) : mode === 'run-next' ? await runNextShadowEvaluation(deps) : mode === 'review' ? await reviewShadowEvaluation(deps) : await cleanupShadowEvaluation(deps);
     if (mode === 'run-next' && report.status === 'hard_stopped') {
       // Diagnostics cannot turn an already persisted fail-closed report into a CLI failure.
-      const stage = await database.inspect().then(shadowEvaluationValidationStage).catch(() => null);
+      const stage = await database.inspect().then((snapshot) =>
+        shadowEvaluatorValidationStage(snapshot, manifest, report)).catch(() => null);
       if (stage !== null) process.stderr.write(`Shadow evaluator validation stage: ${stage}.\n`);
     }
     process.stdout.write(`${JSON.stringify(report)}\n`); return 0;
