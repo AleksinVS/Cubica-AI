@@ -12,7 +12,8 @@ const categories = ['transient_conversation', 'existing_fact', 'unconfirmed_agen
 function manifest(): ShadowEvaluationManifest { return { schema_version: '1.0.0', shadow_principal_ref: 'cubica://shadow-principal/v1/evaluator', applies_to: ['cubica://game-project/evaluator'], expected_git_head: head, scenarios: categories.map((category, index) => ({ category, stable_turn_key: `shadow-turn-v1:${category}-${String(index).padStart(16, '0')}` })) }; }
 const manifestBytes = JSON.stringify(manifest());
 const manifestDigest = `sha256:${createHash('sha256').update(manifestBytes).digest('hex')}`;
-function snapshot(runs: EvaluationDbSnapshot['runs'] = []): EvaluationDbSnapshot { return { runs, activeRuns: runs.length, activeMetrics: runs.reduce((sum, run) => sum + run.metricCount, 0), activeMessages: runs.length * 2, activeThreads: runs.length, activeTextBytes: runs.length * 10 }; }
+type DiagnosticEvaluationRunView = EvaluationDbSnapshot['runs'][number] & { readonly lastErrorCode?: string | null };
+function snapshot(runs: readonly DiagnosticEvaluationRunView[] = []): EvaluationDbSnapshot { return { runs, activeRuns: runs.length, activeMetrics: runs.reduce((sum, run) => sum + run.metricCount, 0), activeMessages: runs.length * 2, activeThreads: runs.length, activeTextBytes: runs.length * 10 }; }
 async function fixture(): Promise<{ dir: string; paths: ShadowEvaluatorDeps['paths']; deps: ShadowEvaluatorDeps; db: MemoryDb }> {
   const hostRoot = resolve(process.cwd(), '../..');
   const root = await mkdtemp(join(hostRoot, '.tmp/shadow-evaluator-worktree-'));
