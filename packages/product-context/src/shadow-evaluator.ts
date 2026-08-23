@@ -7,6 +7,7 @@
  * one-shot worker, writes a content-free report, and waits for local review.
  */
 import { constants } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { lstat, open, rename, unlink } from 'node:fs/promises';
 import { isAbsolute, dirname, join, relative, resolve, sep } from 'node:path';
 import type { ShadowEvaluationManifest, ShadowEvaluationReport, ShadowEvaluationScenarioReport } from './generated/product-knowledge.ts';
@@ -18,6 +19,7 @@ export const EVALUATION_CATEGORIES = [
 ] as const;
 export type EvaluationCategory = typeof EVALUATION_CATEGORIES[number];
 export type EvaluationDbStatus = 'pending' | 'leased' | 'calling_model' | 'retry_wait' | 'succeeded' | 'denied' | 'failed' | 'blocked';
+export type EvaluationCleanupRecovery = 'retention_expired' | 'expired_calling_model' | 'attempts_exhausted';
 
 export interface EvaluationRunView {
   readonly ownerRef: string;
@@ -34,6 +36,8 @@ export interface EvaluationRunView {
   readonly inputBytes: number;
   readonly outputBytes: number;
   readonly metricCount: number;
+  /** PostgreSQL-clock predicate proving that a targeted worker can only terminalize this run. */
+  readonly cleanupRecovery?: EvaluationCleanupRecovery | null;
 }
 export interface EvaluationDbSnapshot {
   readonly runs: readonly EvaluationRunView[];
@@ -69,6 +73,7 @@ export interface ShadowEvaluatorReviewer {
 export interface ShadowEvaluatorDeps {
   readonly db: ShadowEvaluatorDatabase;
   readonly worker: (target: { readonly ownerRef: string; readonly gameRef: string; readonly stableTurnKey: string }) => Promise<unknown>;
+  readonly recoveryWorker: (target: { readonly ownerRef: string; readonly gameRef: string; readonly stableTurnKey: string }) => Promise<'terminalized' | 'unsafe'>;
   readonly readGitHead: () => Promise<string>;
   readonly workerConfig: ShadowEvaluatorWorkerConfig;
   readonly paths: ShadowEvaluatorPaths;
@@ -85,10 +90,18 @@ const terminal = new Set(['succeeded', 'denied', 'failed', 'blocked']);
 const allowedActual = new Set(['no_change', 'proposal']);
 
 export async function readShadowEvaluationManifest(paths: ShadowEvaluatorPaths): Promise<ShadowEvaluationManifest> {
+  return (await readManifestBinding(paths)).manifest;
+}
+
+async function readManifestBinding(paths: ShadowEvaluatorPaths): Promise<{
+  readonly manifest: ShadowEvaluationManifest;
+  readonly digest: string;
+}> {
   await assertSecurePaths(paths, true);
-  const value = JSON.parse(await readSecureFile(paths.manifestPath)) as unknown;
+  const bytes = await readSecureBytes(paths.manifestPath);
+  const value = JSON.parse(bytes.toString('utf8')) as unknown;
   if (!validateShadowEvaluationManifest(value)) throw new Error('Invalid shadow evaluation manifest.');
-  return value;
+  return { manifest: value, digest: `sha256:${createHash('sha256').update(bytes).digest('hex')}` };
 }
 
 export async function readShadowEvaluationReport(paths: ShadowEvaluatorPaths): Promise<ShadowEvaluationReport | null> {
@@ -127,9 +140,9 @@ export async function writeShadowEvaluationReport(paths: ShadowEvaluatorPaths, r
   }
 }
 
-export function emptyShadowEvaluationReport(): ShadowEvaluationReport {
+export function emptyShadowEvaluationReport(manifestDigest: string): ShadowEvaluationReport {
   return {
-    schema_version: '1.0.0', status: 'ready',
+    schema_version: '1.0.0', manifest_digest: manifestDigest, status: 'ready',
     scenarios: EVALUATION_CATEGORIES.map((category) => scenarioReport(category, 'pending', expectedOutcomes[category])),
     git_unchanged: true,
     cleanup: { started: false, initial_runs: 0, initial_metrics: 0, initial_messages: 0, initial_threads: 0, active_runs: 0, active_metrics: 0, active_messages: 0, active_threads: 0, active_text_bytes: 0, runs_deleted: 0, metrics_deleted: 0, messages_tombstoned: 0, threads_tombstoned: 0, passed: false }
@@ -137,11 +150,11 @@ export function emptyShadowEvaluationReport(): ShadowEvaluationReport {
 }
 
 export async function preflightShadowEvaluation(deps: ShadowEvaluatorDeps): Promise<ShadowEvaluationReport> {
-  const manifest = await readShadowEvaluationManifest(deps.paths);
+  const { manifest, digest } = await readManifestBinding(deps.paths);
   ensureBasicConfig(deps.workerConfig);
   if (await deps.readGitHead() !== manifest.expected_git_head) throw new Error('Git head does not match manifest.');
   const existing = await readShadowEvaluationReport(deps.paths);
-  const report = existing ?? emptyShadowEvaluationReport();
+  const report = bindReport(existing, digest);
   const snapshot = await deps.db.inspect();
   try { validateVisibleRuns(manifest, snapshot, report); } catch { const stopped = await stop(deps, report, reportIndex(report), 'mismatch'); return stopped; }
   if (!existing) await writeShadowEvaluationReport(deps.paths, report);
@@ -149,9 +162,9 @@ export async function preflightShadowEvaluation(deps: ShadowEvaluatorDeps): Prom
 }
 
 export async function runNextShadowEvaluation(deps: ShadowEvaluatorDeps): Promise<ShadowEvaluationReport> {
-  const manifest = await readShadowEvaluationManifest(deps.paths);
+  const { manifest, digest } = await readManifestBinding(deps.paths);
   ensureConfig(deps.workerConfig);
-  let report = await existingOrEmpty(deps);
+  let report = await existingOrEmpty(deps, digest);
   const head = await deps.readGitHead();
   if (head !== manifest.expected_git_head) return await stop(deps, report, reportIndex(report), 'git_drift');
   if (report.status === 'awaiting_review') return report;
@@ -182,7 +195,7 @@ export async function runNextShadowEvaluation(deps: ShadowEvaluatorDeps): Promis
   if (after.length !== 1 || !terminal.has(after[0]!.status) || after[0]!.metricCount !== 1) return await stop(deps, report, index, 'mismatch');
   const run = after[0]!;
   const actual = mapOutcome(run);
-  if (actual !== expectedOutcomes[target.category]) return await stop(deps, updateScenario(report, index, actual, run, true), index, 'mismatch');
+  if (actual !== expectedOutcomes[target.category]) return await stop(deps, updateScenario(report, index, actual, run, true), index, actual);
   report = updateScenario(report, index, actual, run, true);
   report = { ...report, status: 'awaiting_review' };
   await writeShadowEvaluationReport(deps.paths, report);
@@ -190,9 +203,9 @@ export async function runNextShadowEvaluation(deps: ShadowEvaluatorDeps): Promis
 }
 
 export async function reviewShadowEvaluation(deps: ShadowEvaluatorDeps): Promise<ShadowEvaluationReport> {
-  const manifest = await readShadowEvaluationManifest(deps.paths);
+  const { manifest, digest } = await readManifestBinding(deps.paths);
   ensureConfig(deps.workerConfig);
-  let report = await existingOrEmpty(deps);
+  let report = await existingOrEmpty(deps, digest);
   if (report.status !== 'awaiting_review' || !deps.reviewer) throw new Error('Local semantic review is required.');
   if (await deps.readGitHead() !== manifest.expected_git_head) return await stop(deps, report, reportIndex(report), 'git_drift');
   const index = report.scenarios.findIndex((scenario) => scenario.review_expected_outcome === null);
@@ -216,9 +229,13 @@ export async function reviewShadowEvaluation(deps: ShadowEvaluatorDeps): Promise
 }
 
 export async function cleanupShadowEvaluation(deps: ShadowEvaluatorDeps): Promise<ShadowEvaluationReport> {
-  const manifest = await readShadowEvaluationManifest(deps.paths);
+  const { manifest, digest } = await readManifestBinding(deps.paths);
   ensureConfig(deps.workerConfig);
-  let report = await existingOrEmpty(deps);
+  let report = await existingOrEmpty(deps, digest);
+  if (report.status === 'ready') {
+    const outcome = await deps.readGitHead() === manifest.expected_git_head ? 'unavailable' : 'git_drift';
+    report = await stop(deps, report, reportIndex(report), outcome);
+  }
   if (report.status === 'completed' && report.cleanup.passed) {
     const final = await deps.db.inspect();
     const zero = final.activeRuns === 0 && final.activeMetrics === 0 && final.activeMessages === 0 &&
@@ -226,12 +243,13 @@ export async function cleanupShadowEvaluation(deps: ShadowEvaluatorDeps): Promis
     if (!zero || await deps.readGitHead() !== manifest.expected_git_head) {
       throw new Error('Completed cleanup can only finalize after exact zero and unchanged Git.');
     }
-    await removeManifest(deps.paths.manifestPath);
+    await removeManifest(deps.paths, digest);
     return report;
   }
   if (report.status !== 'ready_for_cleanup' && report.status !== 'hard_stopped') throw new Error('Cleanup is not permitted in the current state.');
   if (!deps.cleanupLimit || !deps.cleanupMaxPasses) throw new Error('Explicit cleanup bounds are required.');
   let final = await deps.db.inspect();
+  if (!report.cleanup.started) final = await recoverExpiredCleanupTargets(deps, manifest, final);
   if (!report.cleanup.started) {
     report = { ...report, cleanup: {
       ...report.cleanup, started: true,
@@ -253,18 +271,67 @@ export async function cleanupShadowEvaluation(deps: ShadowEvaluatorDeps): Promis
   const gitUnchanged = (await deps.readGitHead()) === manifest.expected_git_head;
   report = { ...report, status: report.status === 'hard_stopped' || !gitUnchanged ? 'hard_stopped' : passed ? 'completed' : 'ready_for_cleanup', cleanup: { ...report.cleanup, active_runs: final.activeRuns, active_metrics: final.activeMetrics, active_messages: final.activeMessages, active_threads: final.activeThreads, active_text_bytes: final.activeTextBytes, runs_deleted: Math.max(0, report.cleanup.initial_runs - final.activeRuns), metrics_deleted: Math.max(0, report.cleanup.initial_metrics - final.activeMetrics), messages_tombstoned: Math.max(0, report.cleanup.initial_messages - final.activeMessages), threads_tombstoned: Math.max(0, report.cleanup.initial_threads - final.activeThreads), passed }, git_unchanged: gitUnchanged, scenarios: gitUnchanged ? report.scenarios : report.scenarios.map((scenario) => ({ ...scenario, git_unchanged: false })) };
   await writeShadowEvaluationReport(deps.paths, report);
-  if (passed) await removeManifest(deps.paths.manifestPath);
+  if (passed) await removeManifest(deps.paths, digest);
   return report;
 }
 
-async function removeManifest(path: string): Promise<void> {
-  try { await unlink(path); }
+async function recoverExpiredCleanupTargets(
+  deps: ShadowEvaluatorDeps,
+  manifest: ShadowEvaluationManifest,
+  snapshot: EvaluationDbSnapshot
+): Promise<EvaluationDbSnapshot> {
+  const nonTerminal = snapshot.runs.filter((run) => !terminal.has(run.status));
+  if (nonTerminal.length === 0) return snapshot;
+  const allowed = new Set(manifest.scenarios.map((scenario) => scenario.stable_turn_key));
+  if (snapshot.runs.some((run) => !allowed.has(run.stableTurnKey) ||
+      run.ownerRef !== manifest.shadow_principal_ref || run.gameRef !== manifest.applies_to[0] ||
+      run.receiptPrincipal !== manifest.shadow_principal_ref || run.receiptGame !== manifest.applies_to[0] ||
+      run.messageCount !== 2 || run.liveMessageCount !== 2) ||
+      nonTerminal.some((run) => run.cleanupRecovery === null || run.cleanupRecovery === undefined)) {
+    throw new Error('Nonterminal cleanup target is not safely recoverable.');
+  }
+  for (const run of nonTerminal) {
+    try {
+      // App-role inspection is advisory. The credential-free executor rolls
+      // back if the exact target becomes claimable before this second check.
+      const outcome = await deps.recoveryWorker({
+        ownerRef: manifest.shadow_principal_ref,
+        gameRef: manifest.applies_to[0]!,
+        stableTurnKey: run.stableTurnKey
+      });
+      if (outcome !== 'terminalized') throw new Error('Recovery target became claimable.');
+    } catch {
+      // A committed terminal transition may lose its acknowledgement.
+    }
+    const after = await deps.db.inspect();
+    const target = after.runs.filter((candidate) => candidate.stableTurnKey === run.stableTurnKey);
+    if (target.length !== 1 || !terminal.has(target[0]!.status) || target[0]!.metricCount !== 1) {
+      throw new Error('Expired cleanup target did not terminalize exactly.');
+    }
+    snapshot = after;
+  }
+  return snapshot;
+}
+
+async function removeManifest(paths: ShadowEvaluatorPaths, expectedDigest: string): Promise<void> {
+  try {
+    const binding = await readManifestBinding(paths);
+    if (binding.digest !== expectedDigest) throw new Error('Shadow evaluation report is bound to a different manifest.');
+    await unlink(paths.manifestPath);
+  }
   catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
 }
 
 function ensureBasicConfig(config: ShadowEvaluatorWorkerConfig): void { ensureConfig(config); }
 function ensureConfig(config: ShadowEvaluatorWorkerConfig): void { if (!config.evaluationEnabled || !['test', 'staging'].includes(config.deploymentTier) || config.maxAttempts !== 1) throw new Error('Explicit bounded evaluator configuration is required.'); }
-async function existingOrEmpty(deps: ShadowEvaluatorDeps): Promise<ShadowEvaluationReport> { return await readShadowEvaluationReport(deps.paths) ?? emptyShadowEvaluationReport(); }
+async function existingOrEmpty(deps: ShadowEvaluatorDeps, manifestDigest: string): Promise<ShadowEvaluationReport> {
+  return bindReport(await readShadowEvaluationReport(deps.paths), manifestDigest);
+}
+function bindReport(report: ShadowEvaluationReport | null, manifestDigest: string): ShadowEvaluationReport {
+  if (!report) return emptyShadowEvaluationReport(manifestDigest);
+  if (report.manifest_digest !== manifestDigest) throw new Error('Shadow evaluation report is bound to a different manifest.');
+  return report;
+}
 function reportIndex(report: ShadowEvaluationReport): number { return report.scenarios.findIndex((scenario) => scenario.actual_outcome === 'pending'); }
 async function stop(deps: ShadowEvaluatorDeps, report: ShadowEvaluationReport, index: number, outcome: ShadowEvaluationScenarioReport['actual_outcome']): Promise<ShadowEvaluationReport> {
   const drift = outcome === 'git_drift';
@@ -347,12 +414,16 @@ async function assertSecurePaths(paths: ShadowEvaluatorPaths, manifest: boolean)
 }
 
 async function readSecureFile(path: string): Promise<string> {
+  return (await readSecureBytes(path)).toString('utf8');
+}
+
+async function readSecureBytes(path: string): Promise<Buffer> {
   const handle = await open(path, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0));
   try {
     const info = await handle.stat();
     if (!info.isFile() || (info.mode & 0o777) !== 0o600 || info.uid !== process.getuid?.()) {
       throw new Error('Evaluator file must be a regular owned 0600 file.');
     }
-    return await handle.readFile('utf8');
+    return await handle.readFile();
   } finally { await handle.close(); }
 }

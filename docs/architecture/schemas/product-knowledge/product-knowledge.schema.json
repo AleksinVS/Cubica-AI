@@ -222,9 +222,10 @@
     },
     "ShadowEvaluationReport": {
       "type": "object", "additionalProperties": false,
-      "required": ["schema_version", "status", "scenarios", "git_unchanged", "cleanup"],
+      "required": ["schema_version", "manifest_digest", "status", "scenarios", "git_unchanged", "cleanup"],
       "properties": {
         "schema_version": { "$ref": "#/$defs/SchemaVersion" },
+        "manifest_digest": { "$ref": "#/$defs/Sha256" },
         "status": { "type": "string", "enum": ["ready", "awaiting_review", "ready_for_cleanup", "hard_stopped", "completed"] },
         "scenarios": { "type": "array", "minItems": 5, "maxItems": 5, "prefixItems": [
           { "$ref": "#/$defs/ShadowEvaluationScenarioReport" }, { "$ref": "#/$defs/ShadowEvaluationScenarioReport" }, { "$ref": "#/$defs/ShadowEvaluationScenarioReport" }, { "$ref": "#/$defs/ShadowEvaluationScenarioReport" }, { "$ref": "#/$defs/ShadowEvaluationScenarioReport" }

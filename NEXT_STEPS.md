@@ -52,7 +52,7 @@
 
 ## Now
 
-- [TSK-20260809-product-knowledge-shadow-stage-2](docs/tasks/active/TSK-20260809-product-knowledge-shadow-stage-2.md) — `in_progress`: PM сохранил Z.AI Coding Plan и `glm-4.7`; устойчивое асинхронное ядро и постоянный непроизводственный evaluator/runner реализованы и проверены. Новое одноразовое окно использовало model timeout 45s, authority timeout 5s, lease 60s, `maxAttempts=1` без retry и ровно 4 provider calls (три `no_change`, один create proposal); correction не вызывался, потому что proposal изобрёл/скопировал неподтверждённый page timestamp. Gateway теперь fail-closed проверяет trusted ISO `knowledge_timestamp`; SQL Base64 normalization и canonical fixture baseline repair подтверждены. Полный `verify:product-context` прошёл 263/263; canonical прошёл Runtime API и Player Web 274/274, но production build был безопасно остановлен после компиляции во время lint/type checks при снижении swap ниже 20%, поэтому последующие gates не доказаны. Cleanup дал 0 активных runs/metrics/messages/threads/text bytes, Git не изменился. Stage 3 и новый внешний вызов закрыты; timeout/retry остаются pending в [реестре спорных решений](docs/tasks/artifacts/TSK-20260809-product-knowledge-shadow-stage-2/stage-2-decision-review.md), 45s не является default.
+- [TSK-20260809-product-knowledge-shadow-stage-2](docs/tasks/active/TSK-20260809-product-knowledge-shadow-stage-2.md) — `in_progress`: асинхронное ядро и постоянный непроизводственный evaluator/runner реализованы, DR-12 прошёл финальную preactivation-приёмку. Одноразовое окно DR-13 израсходовано 2026-08-23: 3/3 отрицательных сценария дали `no_change` и прошли ручную рубрику 4/4; первый положительный сценарий завершился fail-closed `gateway_malformed`, пятый не запускался. Выполнено 4 provider call без retry; cleanup удалил 4 run, 4 metric, 8 сообщений и 4 thread, оставив 0 активных текстовых байтов и неизменный Git. Stage 3 закрыт. Следующее действие — локально улучшить диагностическую точность без хранения provider payload и согласовать DR-15 перед любым новым внешним окном.
 - [TSK-20260812-portable-public-journal](docs/tasks/active/TSK-20260812-portable-public-journal.md) — `review`: общий переносимый журнал подтверждённых публичных событий реализован по ADR-103. Schema-first контракт, ограниченный Runtime API, PostgreSQL `metricChanges`, credential-holding BFF и доступное скачивание проверены нейтральными тестами и настоящим CMT browser flow. `LEGACY-0053` закрыт; ИИ-интерпретация остаётся отдельным следующим этапом `LEGACY-0054` и в эту работу не входила.
 - [TSK-20260705-multiplayer-runtime-realization](docs/tasks/active/TSK-20260705-multiplayer-runtime-realization.md) — `in_progress`: принятая общая session-owned модель участников выполняется отдельным срезом S8; сетевые join/reconnect и WebSocket остаются последующими этапами этой задачи.
 - [TSK-20260801-cmt-test-suite-cost](docs/tasks/active/TSK-20260801-cmt-test-suite-cost.md) — `review`: 31 проверка жизненных циклов ускорена с 293,1 до 143–144 с без сокращения тестов, составов команд, матриц отказов или утверждений. Профиль опроверг повторную компиляцию как основную причину: полная компиляция и проверка уже выполнялись один раз на файл, а цена возникала при многократном копировании и сверке 10-МБ пакета с неиспользуемой в сценариях геометрией. Полный авторский манифест по-прежнему проходит проверку, настоящая геометрия остаётся в наборе строительства, а сценарии рынка и движения используют заново скомпилированную малую сетевую фикстуру. Два последовательных прогона дали одинаковое пустое множество падений; тестов, закрепляющих случайный порядок, не найдено.
@@ -75,10 +75,11 @@
 
 ## Next
 
-- Для Stage 2 следующий триггер — новая PM-авторизация полного неизменного
-  пятисценарного rerun; correction-only вызов не допускается. Перед этим
-  основной агент должен повторить оставшуюся каноническую проверку после
-  low-memory stop.
+- Для Stage 2 следующий шаг — завершить локальную приёмку более точного
+  бесконтентного error-reporting и решить DR-15: достаточно ли сохранять
+  безопасный подэтап валидации для `gateway_malformed`. DR-13 израсходован;
+  новый внешний вызов, correction-only прогон, Stage 3, активное чтение,
+  применение и Git-запись запрещены без нового решения PM.
 
 - [TSK-20260705-agent-controlled-players](docs/tasks/active/TSK-20260705-agent-controlled-players.md) — `planned`: S8-контракт участников принят, поэтому S9 разблокирован и запланирован следующим; агентское место, выбор доступного действия и обычный детерминированный путь исполнения остаются границей этой задачи.
 - [TSK-20260803-portal-access-control](docs/tasks/active/TSK-20260803-portal-access-control.md) — `awaiting_approval`: дочерняя задача. В черновом контуре портала смена статуса заказа и выдача платёжной ссылки не проверяют владельца. Блокирует тестовый запуск портала наружу.

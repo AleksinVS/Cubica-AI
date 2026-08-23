@@ -373,6 +373,7 @@ export interface ShadowEvaluationScenario {
 }
 export interface ShadowEvaluationReport {
   schema_version: SchemaVersion;
+  manifest_digest: Sha256;
   status: 'ready' | 'awaiting_review' | 'ready_for_cleanup' | 'hard_stopped' | 'completed';
   /**
    * @minItems 5

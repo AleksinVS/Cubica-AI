@@ -17,7 +17,7 @@ import {
   SyntheticShadowActivationError,
   syntheticShadowActivationConfig
 } from '../src/shadow-activation-harness.ts';
-import { verifyWorkerLogin } from '../scripts/run-shadow-worker.ts';
+import { runShadowWorkerRecoveryOnce, verifyWorkerLogin } from '../scripts/run-shadow-worker.ts';
 import { PostgresShadowEvaluatorDatabase } from '../scripts/run-shadow-evaluator.ts';
 
 const databaseUrl = process.env.TEST_PRODUCT_CONTEXT_DATABASE_URL;
@@ -919,6 +919,66 @@ integration('synthetic shadow activation against prepared PostgreSQL', () => {
       agentMessage: new TextDecoder().decode(testAgentBytes),
       result: { schema_version: '1.0.0', request_id: 'modelreq_evaluator_adapter', outcome: 'no_change', proposal: null }
     });
+  });
+
+  it('exposes cleanup recovery only when PostgreSQL time makes the targeted claim terminal-only', async () => {
+    const now = new Date();
+    const pending = await enqueueShadowTurn(new PostgresConversationStore(appRuntimePool), {
+      receipt: testReceipt, threadRef: `${testThreadRef}-cleanup-recovery-pending`,
+      stableTurnKey: `${testStableTurnKey}-cleanup-recovery-pending`, userBytes: testUserBytes,
+      agentBytes: testAgentBytes, now, retainedUntil: new Date(now.getTime() + 500)
+    });
+    const leased = await enqueueQueue('cleanup-recovery-leased');
+    const leasedStore = new PostgresShadowWorkerStore(workerRuntimePool, {
+      ownerRef: testReceipt.shadow_principal_ref, gameRef: testReceipt.applies_to[0]!,
+      stableTurnKey: `${testStableTurnKey}-cleanup-recovery-leased`
+    });
+    await leasedStore.leaseNext(500, 1);
+    const calling = await enqueueQueue('cleanup-recovery-calling');
+    const callingStore = new PostgresShadowWorkerStore(workerRuntimePool, {
+      ownerRef: testReceipt.shadow_principal_ref, gameRef: testReceipt.applies_to[0]!,
+      stableTurnKey: `${testStableTurnKey}-cleanup-recovery-calling`
+    });
+    const callingLease = await callingStore.leaseNext(10_000, 1);
+    await callingStore.prepareCall(callingLease!, 'modelreq_cleanup_recovery', 500, now);
+    const evaluator = new PostgresShadowEvaluatorDatabase(
+      appRuntimePool, testReceipt.shadow_principal_ref, testReceipt.applies_to[0]!
+    );
+    const recoveryEnv = {
+      CUBICA_DEPLOYMENT_TIER: 'test',
+      CUBICA_PRODUCT_CONTEXT_SHADOW_WORKER_DATABASE_URL: workerUrl,
+      CUBICA_PRODUCT_CONTEXT_SHADOW_WORKER_LEASE_MS: '10000',
+      CUBICA_PRODUCT_CONTEXT_SHADOW_MAX_ATTEMPTS: '1',
+      CUBICA_PRODUCT_CONTEXT_SHADOW_WORKER_DATABASE_STATEMENT_TIMEOUT_MS: '5000',
+      CUBICA_PRODUCT_CONTEXT_SHADOW_WORKER_DATABASE_LOCK_TIMEOUT_MS: '1000'
+    };
+    expect((await evaluator.inspect()).runs.every((run) => run.cleanupRecovery === null)).toBe(true);
+    await expect(runShadowWorkerRecoveryOnce(recoveryEnv, {
+      ownerRef: testReceipt.shadow_principal_ref, gameRef: testReceipt.applies_to[0]!,
+      stableTurnKey: pending.stableTurnKey
+    })).resolves.toBe('unsafe');
+    expect((await adminPool.query(`SELECT status FROM product_context_shadow.shadow_runs WHERE run_id = $1`, [pending.runId])).rows)
+      .toEqual([{ status: 'pending' }]);
+    await adminPool.query('SELECT pg_sleep(0.6)');
+    const recoverable = new Map((await evaluator.inspect()).runs.map((run) => [run.stableTurnKey, run.cleanupRecovery]));
+    expect(recoverable).toEqual(new Map([
+      [`${testStableTurnKey}-cleanup-recovery-pending`, 'retention_expired'],
+      [`${testStableTurnKey}-cleanup-recovery-leased`, 'attempts_exhausted'],
+      [`${testStableTurnKey}-cleanup-recovery-calling`, 'expired_calling_model']
+    ]));
+    for (const stableTurnKey of [pending.stableTurnKey, leased.stableTurnKey, calling.stableTurnKey]) {
+      await expect(runShadowWorkerRecoveryOnce(recoveryEnv, {
+        ownerRef: testReceipt.shadow_principal_ref, gameRef: testReceipt.applies_to[0]!, stableTurnKey
+      })).resolves.toBe('terminalized');
+    }
+    const terminal = await adminPool.query(`SELECT run_id, status, outcome_code FROM product_context_shadow.shadow_runs
+      WHERE run_id = ANY($1::text[]) ORDER BY run_id`, [[pending.runId, leased.runId, calling.runId]]);
+    expect(new Map(terminal.rows.map((row) => [row.run_id, [row.status, row.outcome_code]]))).toEqual(new Map([
+      [pending.runId, ['failed', 'retention_expired']],
+      [leased.runId, ['blocked', 'gateway_blocked']],
+      [calling.runId, ['failed', 'gateway_outcome_unknown']]
+    ]));
+    expect((await evaluator.inspect()).runs.every((run) => run.cleanupRecovery === null && run.metricCount === 1)).toBe(true);
   });
 
   it('reclaims an expired pre-call lease but terminalizes an expired call without retry', async () => {

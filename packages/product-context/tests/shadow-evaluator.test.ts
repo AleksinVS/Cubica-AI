@@ -1,4 +1,5 @@
 import { chmod, mkdir, mkdtemp, readFile, rm, stat, symlink, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { dirname, join, resolve } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { validateProductKnowledgeContract, validateShadowEvaluationManifest, validateShadowEvaluationReport } from '../src/contracts.ts';
@@ -9,6 +10,8 @@ import { readShadowEvaluatorCliConfig } from '../scripts/run-shadow-evaluator.ts
 const head = 'a'.repeat(40);
 const categories = ['transient_conversation', 'existing_fact', 'unconfirmed_agent_suggestion', 'confirmed_new_knowledge', 'correction'] as const;
 function manifest(): ShadowEvaluationManifest { return { schema_version: '1.0.0', shadow_principal_ref: 'cubica://shadow-principal/v1/evaluator', applies_to: ['cubica://game-project/evaluator'], expected_git_head: head, scenarios: categories.map((category, index) => ({ category, stable_turn_key: `shadow-turn-v1:${category}-${String(index).padStart(16, '0')}` })) }; }
+const manifestBytes = JSON.stringify(manifest());
+const manifestDigest = `sha256:${createHash('sha256').update(manifestBytes).digest('hex')}`;
 function snapshot(runs: EvaluationDbSnapshot['runs'] = []): EvaluationDbSnapshot { return { runs, activeRuns: runs.length, activeMetrics: runs.reduce((sum, run) => sum + run.metricCount, 0), activeMessages: runs.length * 2, activeThreads: runs.length, activeTextBytes: runs.length * 10 }; }
 async function fixture(): Promise<{ dir: string; paths: ShadowEvaluatorDeps['paths']; deps: ShadowEvaluatorDeps; db: MemoryDb }> {
   const hostRoot = resolve(process.cwd(), '../..');
@@ -17,8 +20,8 @@ async function fixture(): Promise<{ dir: string; paths: ShadowEvaluatorDeps['pat
   await mkdir(join(root, '.tmp'), { mode: 0o700 });
   const dir = await mkdtemp(join(root, '.tmp/shadow-evaluator-test-')); await chmod(dir, 0o700);
   const paths = { manifestPath: join(dir, 'manifest.json'), reportPath: join(dir, 'report.json'), worktreePath: root };
-  await writeFile(paths.manifestPath, JSON.stringify(manifest()), { mode: 0o600 }); await chmod(paths.manifestPath, 0o600);
-  const db = new MemoryDb(); const deps: ShadowEvaluatorDeps = { db, worker: async (target) => { db.lastTarget = target; db.worker(); }, readGitHead: async () => head, workerConfig: { evaluationEnabled: true, deploymentTier: 'test', maxAttempts: 1 }, paths, cleanupLimit: 1, cleanupMaxPasses: 20 }; return { dir: root, paths, deps, db };
+  await writeFile(paths.manifestPath, manifestBytes, { mode: 0o600 }); await chmod(paths.manifestPath, 0o600);
+  const db = new MemoryDb(); const deps: ShadowEvaluatorDeps = { db, worker: async (target) => { db.lastTarget = target; db.worker(); }, recoveryWorker: async (target) => { db.lastTarget = target; db.worker(); return 'terminalized'; }, readGitHead: async () => head, workerConfig: { evaluationEnabled: true, deploymentTier: 'test', maxAttempts: 1 }, paths, cleanupLimit: 1, cleanupMaxPasses: 20 }; return { dir: root, paths, deps, db };
 }
 class MemoryDb implements ShadowEvaluatorDatabase {
   value = snapshot([{ ownerRef: 'cubica://shadow-principal/v1/evaluator', gameRef: 'cubica://game-project/evaluator', receiptPrincipal: 'cubica://shadow-principal/v1/evaluator', receiptGame: 'cubica://game-project/evaluator', messageCount: 2, liveMessageCount: 2, stableTurnKey: categories[0] ? `shadow-turn-v1:${categories[0]}-${String(0).padStart(16, '0')}` : '', status: 'pending', outcome: null, operationCount: 0, durationMs: 0, inputBytes: 0, outputBytes: 0, metricCount: 0 }]); calls = 0; workerCalls = 0; lastTarget: unknown = null;
@@ -33,10 +36,25 @@ describe('persistent shadow evaluator', () => {
     const value = manifest(); expect(validateShadowEvaluationManifest(value)).toBe(true);
     expect(validateShadowEvaluationManifest({ ...value, scenarios: [...value.scenarios].reverse() })).toBe(false);
     expect(validateProductKnowledgeContract('ShadowEvaluationManifest', { ...value, provider_payload: 'secret' }).ok).toBe(false);
-    expect(validateShadowEvaluationReport({ ...emptyShadowEvaluationReport(), provider_payload: 'secret' })).toBe(false);
+    const report = emptyShadowEvaluationReport(manifestDigest);
+    const { manifest_digest: _manifestDigest, ...unbound } = report;
+    expect(validateShadowEvaluationReport(unbound)).toBe(false);
+    expect(validateShadowEvaluationReport({ ...report, manifest_digest: 'sha256:not-a-digest' })).toBe(false);
+    expect(validateShadowEvaluationReport({ ...report, provider_payload: 'secret' })).toBe(false);
   });
   it('writes a rereadable regular 0600 report atomically', async () => {
-    const f = await fixture(); try { await writeShadowEvaluationReport(f.paths, emptyShadowEvaluationReport()); const info = await stat(f.paths.reportPath); expect(info.isFile()).toBe(true); expect(info.mode & 0o777).toBe(0o600); expect(JSON.parse(await readFile(f.paths.reportPath, 'utf8')).status).toBe('ready'); } finally { await rm(f.dir, { recursive: true, force: true }); }
+    const f = await fixture(); try { await writeShadowEvaluationReport(f.paths, emptyShadowEvaluationReport(manifestDigest)); const info = await stat(f.paths.reportPath); expect(info.isFile()).toBe(true); expect(info.mode & 0o777).toBe(0o600); expect(JSON.parse(await readFile(f.paths.reportPath, 'utf8')).status).toBe('ready'); } finally { await rm(f.dir, { recursive: true, force: true }); }
+  });
+  it('binds the report to exact manifest bytes before worker or database access', async () => {
+    const f = await fixture(); try {
+      const report = await preflightShadowEvaluation(f.deps);
+      expect(report.manifest_digest).toBe(manifestDigest);
+      await writeFile(f.paths.manifestPath, JSON.stringify(manifest(), null, 2), { mode: 0o600 });
+      const databaseCalls = f.db.calls;
+      await expect(runNextShadowEvaluation(f.deps)).rejects.toThrow('different manifest');
+      expect(f.db.calls).toBe(databaseCalls);
+      expect(f.db.workerCalls).toBe(0);
+    } finally { await rm(f.dir, { recursive: true, force: true }); }
   });
   it('resumes a terminal target without a second worker call', async () => {
     const f = await fixture(); try { f.db.value = snapshot([{ ownerRef: 'cubica://shadow-principal/v1/evaluator', gameRef: 'cubica://game-project/evaluator', receiptPrincipal: 'cubica://shadow-principal/v1/evaluator', receiptGame: 'cubica://game-project/evaluator', messageCount: 2, liveMessageCount: 2, stableTurnKey: manifest().scenarios[0]!.stable_turn_key, status: 'succeeded', outcome: 'no_change', operationCount: 0, durationMs: 1, inputBytes: 1, outputBytes: 1, metricCount: 1 }]); await preflightShadowEvaluation(f.deps); const result = await runNextShadowEvaluation(f.deps); expect(f.db.workerCalls).toBe(0); expect(result.status).toBe('awaiting_review'); } finally { await rm(f.dir, { recursive: true, force: true }); }
@@ -63,6 +81,21 @@ describe('persistent shadow evaluator', () => {
   it('freezes run-next while awaiting review and requires distinct app/worker URLs', async () => {
     const f = await fixture(); try { await preflightShadowEvaluation(f.deps); await expect(runNextShadowEvaluation(f.deps)).resolves.toMatchObject({ status: 'awaiting_review' }); expect(f.db.lastTarget).toEqual({ ownerRef: manifest().shadow_principal_ref, gameRef: manifest().applies_to[0], stableTurnKey: manifest().scenarios[0]!.stable_turn_key }); const calls = f.db.workerCalls; await expect(runNextShadowEvaluation(f.deps)).resolves.toMatchObject({ status: 'awaiting_review' }); expect(f.db.workerCalls).toBe(calls); const env = cliEnv(); expect(readShadowEvaluatorCliConfig(env, 'run-next')).not.toBeNull(); expect(readShadowEvaluatorCliConfig({ ...env, CUBICA_PRODUCT_CONTEXT_SHADOW_DATABASE_URL: env.CUBICA_PRODUCT_CONTEXT_SHADOW_WORKER_DATABASE_URL }, 'run-next')).toBeNull(); } finally { await rm(f.dir, { recursive: true, force: true }); }
   });
+  it('allows cleanup configuration without Portal or provider credentials', () => {
+    const env = cliEnv();
+    env.CUBICA_PRODUCT_CONTEXT_SHADOW_CLEANUP_BATCH_LIMIT = '10';
+    env.CUBICA_PRODUCT_CONTEXT_SHADOW_EVALUATOR_CLEANUP_MAX_PASSES = '3';
+    for (const key of ['PKS_KEY', 'PKS_BASE_URL', 'PKS_MODEL', 'CUBICA_PORTAL_API_URL',
+      'CUBICA_PRODUCT_CONTEXT_SHADOW_REAUTHORIZATION_KEY',
+      'CUBICA_PRODUCT_CONTEXT_SHADOW_ZAI_CODING_PLAN_ENABLED',
+      'CUBICA_PRODUCT_CONTEXT_SHADOW_MODEL_TIMEOUT_MS',
+      'CUBICA_PRODUCT_CONTEXT_SHADOW_AUTHORIZATION_TIMEOUT_MS',
+      'CUBICA_PRODUCT_CONTEXT_SHADOW_RETRY_BASE_MS',
+      'CUBICA_PRODUCT_CONTEXT_SHADOW_MODEL_MAX_REQUEST_BYTES',
+      'CUBICA_PRODUCT_CONTEXT_SHADOW_MODEL_MAX_RESPONSE_BYTES']) delete env[key];
+    expect(readShadowEvaluatorCliConfig(env, 'cleanup')).not.toBeNull();
+    expect(readShadowEvaluatorCliConfig(env, 'run-next')).toBeNull();
+  });
   it('fails closed for retry-wait and binding mismatches without provider calls', async () => {
     const f = await fixture(); try {
       f.db.value = snapshot([{ ...f.db.value.runs[0]!, status: 'retry_wait' }]);
@@ -81,7 +114,18 @@ describe('persistent shadow evaluator', () => {
       await preflightShadowEvaluation(f.deps);
       const report = await runNextShadowEvaluation(f.deps);
       expect(report.status).toBe('hard_stopped');
-      expect(report.scenarios[0]!.actual_outcome).toBe('mismatch');
+      expect(report.scenarios[0]!.actual_outcome).toBe('proposal');
+      expect(report.scenarios[1]!.actual_outcome).toBe('pending');
+      expect(f.db.workerCalls).toBe(0);
+    } finally { await rm(f.dir, { recursive: true, force: true }); }
+  });
+  it('preserves a schema error instead of collapsing it to mismatch', async () => {
+    const f = await fixture(); try {
+      f.db.value = snapshot([{ ...f.db.value.runs[0]!, status: 'failed', outcome: 'gateway_malformed', metricCount: 1 }]);
+      await preflightShadowEvaluation(f.deps);
+      const report = await runNextShadowEvaluation(f.deps);
+      expect(report.status).toBe('hard_stopped');
+      expect(report.scenarios[0]!.actual_outcome).toBe('schema_error');
       expect(report.scenarios[1]!.actual_outcome).toBe('pending');
       expect(f.db.workerCalls).toBe(0);
     } finally { await rm(f.dir, { recursive: true, force: true }); }
@@ -145,6 +189,56 @@ describe('persistent shadow evaluator', () => {
       expect(report.cleanup).toMatchObject({ passed: true, runs_deleted: 2, metrics_deleted: 2, messages_tombstoned: 4, threads_tombstoned: 2 });
     } finally { await rm(f.dir, { recursive: true, force: true }); }
   });
+  it('terminalizes a PostgreSQL-clock-safe target before starting cleanup and reconciles a lost ack', async () => {
+    const f = await fixture(); try {
+      const stalled = { ...f.db.value.runs[0]!, cleanupRecovery: 'retention_expired' as const };
+      let value = snapshot([stalled]);
+      const db: ShadowEvaluatorDatabase = {
+        inspect: async () => value,
+        cleanup: async () => {
+          value = snapshot([]);
+          return { runsDeleted: 1, metricsDeleted: 1, messagesTombstoned: 2, threadsTombstoned: 1 };
+        }
+      };
+      const recoveryWorker = vi.fn(async () => {
+        value = snapshot([{ ...stalled, status: 'failed', outcome: 'retention_expired', metricCount: 1, cleanupRecovery: null }]);
+        throw new Error('terminal commit acknowledgement lost');
+      });
+      const worker = vi.fn();
+      const report = await cleanupShadowEvaluation({ ...f.deps, db, worker, recoveryWorker });
+      expect(worker).not.toHaveBeenCalled();
+      expect(recoveryWorker).toHaveBeenCalledTimes(1);
+      expect(recoveryWorker).toHaveBeenCalledWith({
+        ownerRef: manifest().shadow_principal_ref,
+        gameRef: manifest().applies_to[0],
+        stableTurnKey: manifest().scenarios[0]!.stable_turn_key
+      });
+      expect(report).toMatchObject({ status: 'hard_stopped', cleanup: { started: true, passed: true, initial_runs: 1 } });
+    } finally { await rm(f.dir, { recursive: true, force: true }); }
+  });
+  it('never invokes recovery before PostgreSQL marks an expired target', async () => {
+    const f = await fixture(); try {
+      const base = emptyShadowEvaluationReport(manifestDigest);
+      await writeShadowEvaluationReport(f.paths, {
+        ...base, status: 'hard_stopped',
+        scenarios: base.scenarios.map((scenario, index) => index === 0 ? { ...scenario, actual_outcome: 'gateway_error' } : scenario)
+      });
+      const worker = vi.fn(); const recoveryWorker = vi.fn();
+      await expect(cleanupShadowEvaluation({ ...f.deps, worker, recoveryWorker })).rejects.toThrow('not safely recoverable');
+      expect(worker).not.toHaveBeenCalled(); expect(recoveryWorker).not.toHaveBeenCalled();
+      expect(JSON.parse(await readFile(f.paths.reportPath, 'utf8'))).toMatchObject({ cleanup: { started: false } });
+    } finally { await rm(f.dir, { recursive: true, force: true }); }
+  });
+  it('keeps cleanup unstarted if recovery unexpectedly sees a claimable target', async () => {
+    const f = await fixture(); try {
+      await writeShadowEvaluationReport(f.paths, emptyShadowEvaluationReport(manifestDigest));
+      f.db.value = snapshot([{ ...f.db.value.runs[0]!, cleanupRecovery: 'retention_expired' }]);
+      const worker = vi.fn(); const recoveryWorker = vi.fn(async () => 'unsafe' as const);
+      await expect(cleanupShadowEvaluation({ ...f.deps, worker, recoveryWorker })).rejects.toThrow('did not terminalize exactly');
+      expect(worker).not.toHaveBeenCalled(); expect(recoveryWorker).toHaveBeenCalledTimes(1);
+      expect(JSON.parse(await readFile(f.paths.reportPath, 'utf8'))).toMatchObject({ status: 'hard_stopped', cleanup: { started: false } });
+    } finally { await rm(f.dir, { recursive: true, force: true }); }
+  });
   it('idempotently removes a manifest left after a completed cleanup report', async () => {
     const f = await fixture(); try {
       const reviewed = fullyReviewedReport();
@@ -179,6 +273,35 @@ describe('persistent shadow evaluator', () => {
       await expect(stat(f.paths.manifestPath)).rejects.toMatchObject({ code: 'ENOENT' });
     } finally { await rm(f.dir, { recursive: true, force: true }); }
   });
+  it('does not remove a changed manifest when resuming completed cleanup', async () => {
+    const f = await fixture(); try {
+      const reviewed = fullyReviewedReport();
+      await writeShadowEvaluationReport(f.paths, {
+        ...reviewed,
+        status: 'completed',
+        cleanup: {
+          ...reviewed.cleanup,
+          started: true,
+          initial_runs: 5,
+          initial_metrics: 5,
+          initial_messages: 10,
+          initial_threads: 5,
+          runs_deleted: 5,
+          metrics_deleted: 5,
+          messages_tombstoned: 10,
+          threads_tombstoned: 5,
+          passed: true
+        }
+      });
+      await writeFile(f.paths.manifestPath, `${manifestBytes}\n`, { mode: 0o600 });
+      const inspect = vi.fn(async () => ({ runs: [], activeRuns: 0, activeMetrics: 0, activeMessages: 0, activeThreads: 0, activeTextBytes: 0 }));
+      const cleanup = vi.fn(async () => ({ runsDeleted: 0, metricsDeleted: 0, messagesTombstoned: 0, threadsTombstoned: 0 }));
+      await expect(cleanupShadowEvaluation({ ...f.deps, db: { inspect, cleanup } })).rejects.toThrow('different manifest');
+      expect(inspect).not.toHaveBeenCalled();
+      expect(cleanup).not.toHaveBeenCalled();
+      expect((await stat(f.paths.manifestPath)).isFile()).toBe(true);
+    } finally { await rm(f.dir, { recursive: true, force: true }); }
+  });
   it('hard-stops when persisted measurements no longer match the exact metric', async () => {
     const f = await fixture(); try {
       f.db.value = snapshot([{ ...f.db.value.runs[0]!, status: 'succeeded', outcome: 'no_change', durationMs: 7, inputBytes: 11, outputBytes: 13, metricCount: 1 }]);
@@ -204,12 +327,12 @@ describe('persistent shadow evaluator', () => {
       await mkdir(join(outside, 'nested'), { mode: 0o700 });
       const link = join(dirname(f.paths.reportPath), 'linked');
       await symlink(outside, link);
-      await expect(writeShadowEvaluationReport({ ...f.paths, reportPath: join(link, 'nested', 'report.json') }, emptyShadowEvaluationReport())).rejects.toThrow('parent chain');
+      await expect(writeShadowEvaluationReport({ ...f.paths, reportPath: join(link, 'nested', 'report.json') }, emptyShadowEvaluationReport(manifestDigest))).rejects.toThrow('parent chain');
       await rm(outside, { recursive: true, force: true });
     } finally { await rm(f.dir, { recursive: true, force: true }); }
   });
   it('rejects malformed lifecycle reports', () => {
-    const base = emptyShadowEvaluationReport();
+    const base = emptyShadowEvaluationReport(manifestDigest);
     const mixed = { ...base, scenarios: base.scenarios.map((scenario, index) => index === 0 ? { ...scenario, review_expected_outcome: true } : scenario) };
     const wrongExpected = { ...base, scenarios: base.scenarios.map((scenario, index) => index === 0 ? { ...scenario, expected_outcome: 'proposal' } : scenario) };
     const falseCompleted = { ...base, status: 'completed', cleanup: { ...base.cleanup, passed: true } };
@@ -219,7 +342,7 @@ describe('persistent shadow evaluator', () => {
 });
 
 function fullyReviewedReport(): ShadowEvaluationReport {
-  const report = emptyShadowEvaluationReport();
+  const report = emptyShadowEvaluationReport(manifestDigest);
   return { ...report, status: 'ready_for_cleanup', scenarios: report.scenarios.map((scenario) => ({ ...scenario, actual_outcome: scenario.expected_outcome, review_expected_outcome: true, review_all_and_only_confirmed_facts: true, review_correct_page_minimal_patch: true, review_no_duplicate_contradiction_unrelated_rewrite: true })) };
 }
 
