@@ -342,7 +342,10 @@ DR-12 прошёл свежую Sol-high приёмку: обязательны�
 После свежего Sol-high preactivation `ACCEPT` первый внешний вызов дал ожидаемый
 `no_change` и прошёл ручную рубрику 4/4. Второй сценарий, повтор уже
 существующего знания, ошибочно дал `proposal`; evaluator выполнил hard stop.
-Сценарии 3–5 не запускались, Git не изменился, разрешение израсходовано.
+Сценарии 3–5 не запускались, Git не изменился, разрешение израсходовано. После
+retention credential-free cleanup удалил 2 run и 2 metric, обезличил 4
+сообщения и 2 thread; active runs/metrics/messages/threads/text bytes равны
+нулю, `cleanup.passed=true`, manifest удалён, временные credentials обнулены.
 
 Перед каждым новым внешним окном необходимо:
 
