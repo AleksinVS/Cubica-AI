@@ -13,6 +13,7 @@ import type { Pool, PoolClient } from 'pg';
 import { validateProductKnowledgeContract } from './contracts.ts';
 import type { AppendExactTurnInput, AtomicShadowEnqueueStore, ShadowRunOutcome, ShadowRunRecord } from './conversation-postgres.ts';
 import { ModelGatewayError, type ModelGateway, type ModelGatewayCall } from './model-gateway.ts';
+import { modelGatewayValidationErrorCode, modelGatewayValidationStage } from './model-gateway-diagnostics.ts';
 import type { ConversationMessage, ConversationTurn, ModelGatewayRequest, ModelGatewayResult, ShadowAuthorizationReceipt } from './generated/product-knowledge.ts';
 
 const MAX_ATTEMPTS = 3;
@@ -67,7 +68,10 @@ export function classifyShadowWorkerError(error: unknown): ShadowWorkerErrorActi
       return { kind: 'failed', code: `gateway_${error.code}`, outcome: 'gateway_outcome_unknown' };
     }
     if (error.code === 'oversize_output') return { kind: 'failed', code: 'gateway_oversize', outcome: 'gateway_oversize' };
-    return { kind: 'failed', code: `gateway_${error.code}`, outcome: 'gateway_malformed' };
+    const validationCode = error.code === 'malformed_output'
+      ? modelGatewayValidationErrorCode(modelGatewayValidationStage(error))
+      : null;
+    return { kind: 'failed', code: validationCode ?? `gateway_${error.code}`, outcome: 'gateway_malformed' };
   }
   return { kind: 'failed', code: 'gateway_unclassified', outcome: 'gateway_outcome_unknown' };
 }

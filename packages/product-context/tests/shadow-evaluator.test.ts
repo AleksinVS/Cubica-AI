@@ -5,14 +5,15 @@ import { describe, expect, it, vi } from 'vitest';
 import { validateProductKnowledgeContract, validateShadowEvaluationManifest, validateShadowEvaluationReport } from '../src/contracts.ts';
 import { cleanupShadowEvaluation, emptyShadowEvaluationReport, preflightShadowEvaluation, reviewShadowEvaluation, runNextShadowEvaluation, writeShadowEvaluationReport, type EvaluationDbSnapshot, type ShadowEvaluatorDatabase, type ShadowEvaluatorDeps } from '../src/shadow-evaluator.ts';
 import type { ShadowEvaluationManifest, ShadowEvaluationReport } from '../src/generated/product-knowledge.ts';
-import { readShadowEvaluatorCliConfig } from '../scripts/run-shadow-evaluator.ts';
+import { readShadowEvaluatorCliConfig, shadowEvaluatorValidationStage } from '../scripts/run-shadow-evaluator.ts';
 
 const head = 'a'.repeat(40);
 const categories = ['transient_conversation', 'existing_fact', 'unconfirmed_agent_suggestion', 'confirmed_new_knowledge', 'correction'] as const;
 function manifest(): ShadowEvaluationManifest { return { schema_version: '1.0.0', shadow_principal_ref: 'cubica://shadow-principal/v1/evaluator', applies_to: ['cubica://game-project/evaluator'], expected_git_head: head, scenarios: categories.map((category, index) => ({ category, stable_turn_key: `shadow-turn-v1:${category}-${String(index).padStart(16, '0')}` })) }; }
 const manifestBytes = JSON.stringify(manifest());
 const manifestDigest = `sha256:${createHash('sha256').update(manifestBytes).digest('hex')}`;
-function snapshot(runs: EvaluationDbSnapshot['runs'] = []): EvaluationDbSnapshot { return { runs, activeRuns: runs.length, activeMetrics: runs.reduce((sum, run) => sum + run.metricCount, 0), activeMessages: runs.length * 2, activeThreads: runs.length, activeTextBytes: runs.length * 10 }; }
+type DiagnosticEvaluationRunView = EvaluationDbSnapshot['runs'][number] & { readonly lastErrorCode?: string | null };
+function snapshot(runs: readonly DiagnosticEvaluationRunView[] = []): EvaluationDbSnapshot { return { runs, activeRuns: runs.length, activeMetrics: runs.reduce((sum, run) => sum + run.metricCount, 0), activeMessages: runs.length * 2, activeThreads: runs.length, activeTextBytes: runs.length * 10 }; }
 async function fixture(): Promise<{ dir: string; paths: ShadowEvaluatorDeps['paths']; deps: ShadowEvaluatorDeps; db: MemoryDb }> {
   const hostRoot = resolve(process.cwd(), '../..');
   const root = await mkdtemp(join(hostRoot, '.tmp/shadow-evaluator-worktree-'));
@@ -121,14 +122,24 @@ describe('persistent shadow evaluator', () => {
   });
   it('preserves a schema error instead of collapsing it to mismatch', async () => {
     const f = await fixture(); try {
-      f.db.value = snapshot([{ ...f.db.value.runs[0]!, status: 'failed', outcome: 'gateway_malformed', metricCount: 1 }]);
+      f.db.value = snapshot([{ ...f.db.value.runs[0]!, status: 'failed', outcome: 'gateway_malformed', metricCount: 1, lastErrorCode: 'gateway_malformed:final_page_policy' }]);
       await preflightShadowEvaluation(f.deps);
       const report = await runNextShadowEvaluation(f.deps);
       expect(report.status).toBe('hard_stopped');
       expect(report.scenarios[0]!.actual_outcome).toBe('schema_error');
       expect(report.scenarios[1]!.actual_outcome).toBe('pending');
+      expect(shadowEvaluatorValidationStage(f.db.value, manifest(), report)).toBe('final_page_policy');
       expect(f.db.workerCalls).toBe(0);
     } finally { await rm(f.dir, { recursive: true, force: true }); }
+  });
+  it('never exposes arbitrary last_error_code text as an operator validation stage', () => {
+    const base = snapshot([{ ...new MemoryDb().value.runs[0]!, status: 'failed', outcome: 'gateway_malformed', metricCount: 1, lastErrorCode: 'provider payload text' }]);
+    expect(shadowEvaluatorValidationStage(base, manifest(), emptyShadowEvaluationReport(manifestDigest))).toBeNull();
+    const schemaReport = { ...emptyShadowEvaluationReport(manifestDigest), status: 'hard_stopped' as const, scenarios: emptyShadowEvaluationReport(manifestDigest).scenarios.map((scenario, index) => index === 0 ? { ...scenario, actual_outcome: 'schema_error' as const } : scenario) };
+    expect(shadowEvaluatorValidationStage(snapshot([
+      ...base.runs,
+      { ...base.runs[0]!, stableTurnKey: manifest().scenarios[1]!.stable_turn_key, lastErrorCode: 'gateway_malformed:provider_envelope' }
+    ]), manifest(), schemaReport)).toBeNull();
   });
   it('requires valid configuration for review and cleanup core entry points', async () => {
     const f = await fixture(); try {
