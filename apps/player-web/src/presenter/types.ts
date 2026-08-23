@@ -32,9 +32,10 @@ export interface ClientRequest {
 export type PlayerRuntimeStatus = "booting" | "ready" | "paused" | "retry" | "unavailable";
 
 export type PlayerSessionSetup = {
-  /** Fixed participant count selected by the published game configuration. */
+  /** Initial participant count shown by the generic setup surface. */
   participantCount: number;
   minParticipants: number;
+  maxParticipants: number;
   maxAgentSeats: number;
   privateInviteAvailable?: boolean;
 };

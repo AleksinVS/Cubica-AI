@@ -9,8 +9,7 @@ import type {
 } from "@cubica/contracts-session";
 
 import {
-  buildPublicGameplayJournal,
-  serializePublicGameplayJournal
+  buildPublicGameplayJournal
 } from "../src/modules/session/publicGameplayJournal.ts";
 import { SessionService } from "../src/modules/session/session.service.ts";
 
@@ -87,13 +86,12 @@ test("public journal rejects duplicate event ids and enforces its version bounda
   );
 });
 
-test("public journal serialization rejects oversized documents without truncation", () => {
-  const journal = buildPublicGameplayJournal({
+test("public journal rejects oversized documents before returning the materialized projection", () => {
+  assert.throws(() => buildPublicGameplayJournal({
     session,
     lifecycle: "active",
     events: [event({ sequence: 1, audience: "public", data: { payload: "x".repeat(33 * 1024 * 1024) } })]
-  });
-  assert.throws(() => serializePublicGameplayJournal(journal), /exceeds the 33554432-byte limit/);
+  }), /exceeds the 33554432-byte limit/);
 });
 
 test("journal service rejects live auth failures and permits archived facilitator boundary only", async () => {

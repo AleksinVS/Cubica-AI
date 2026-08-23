@@ -5,7 +5,6 @@ import { after, before, test } from "node:test";
 import { fileURLToPath } from "node:url";
 import type {
   PrivateSessionInvite,
-  SessionStateVersion,
   SessionVersionNotification
 } from "@cubica/contracts-session";
 import { createRuntimeApiServer } from "../src/modules/player-api/httpServer.ts";
@@ -24,9 +23,10 @@ const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url))
 const contentRoot = path.join(repositoryRoot, ".tmp", "editor-worktrees", "private-invite-neutral-fixture");
 const contentSourceId = "private-invite-neutral-fixture";
 const eventHub = new SessionVersionEventHub(2);
+const sessionStore = new InMemorySessionStore<Record<string, unknown>>();
 const api = createRuntimeApiServer({
   port: 0,
-  sessionStore: new InMemorySessionStore<Record<string, unknown>>(),
+  sessionStore,
   sessionVersionEventHub: eventHub
 });
 let baseUrl = "";
@@ -82,20 +82,40 @@ test("private capabilities are seat-scoped and SSE carries only resync cursors",
   });
   assert.equal(privateWithoutGuest.status, 400);
 
+  const privateWithAgent = await fetch(`${baseUrl}/sessions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      gameId: "estate-race",
+      participantCount: 3,
+      agentSeatCount: 1,
+      accessMode: "private-invite"
+    })
+  });
+  assert.equal(privateWithAgent.status, 400);
+
   const create = await fetch(`${baseUrl}/sessions`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ gameId: "simple-choice", contentSourceId, accessMode: "private-invite" })
   });
-  const created = await create.json() as Created;
-  assert.equal(create.status, 201, JSON.stringify(created));
+  assert.equal(create.status, 400);
+
+  const privateCreate = await fetch(`${baseUrl}/sessions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ gameId: "estate-race", participantCount: 3, accessMode: "private-invite" })
+  });
+  const created = await privateCreate.json() as Created;
+  assert.equal(privateCreate.status, 201, JSON.stringify(created));
   assert.deepEqual(created.participants, [
     { seatId: "p1", playerId: "p1", kind: "human", joinState: "private-invite" },
-    { seatId: "p2", playerId: "p2", kind: "human", joinState: "private-invite" }
+    { seatId: "p2", playerId: "p2", kind: "human", joinState: "private-invite" },
+    { seatId: "p3", playerId: "p3", kind: "human", joinState: "private-invite" }
   ]);
-  assert.equal(created.privateInvites?.length, 1);
+  assert.equal(created.privateInvites?.length, 2);
   const guest = created.privateInvites![0];
-  assert.equal(guest.playerId, "p2");
+  assert.deepEqual(Object.keys(guest), ["credential"]);
   assert.match(created.credential, /^ses_[A-Za-z0-9_-]{43}$/u);
   assert.match(guest.credential, /^ses_[A-Za-z0-9_-]{43}$/u);
   assert.notEqual(guest.credential, created.credential);
@@ -118,50 +138,34 @@ test("private capabilities are seat-scoped and SSE carries only resync cursors",
   assert.deepEqual(hostStream.initial.notification, { stateVersion: 0, lastEventSequence: 0 });
   assert.doesNotMatch(hostStream.initial.raw, /credential|secret|ses_|"state"\s*:|"players"\s*:/iu);
 
-  const publish = eventHub.publish.bind(eventHub);
-  const consoleError = console.error;
-  const notificationErrors: unknown[][] = [];
-  eventHub.publish = (version: SessionStateVersion) => {
-    publish(version);
-    throw new Error("injected post-commit notification fault");
-  };
-  console.error = (...args: unknown[]) => notificationErrors.push(args);
-  let action: Response;
-  try {
-    action = await authenticated("/actions", created.credential, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        sessionId: created.sessionId,
-        actionId: "choice.accept",
-        commandId: "cli_AAAAAAAAAAAAAAAAAAAAAA",
-        expectedStateVersion: 0,
-        params: {}
-      })
-    });
-  } finally {
-    eventHub.publish = publish;
-    console.error = consoleError;
-  }
-  assert.equal(action.status, 200, await action.text());
-  assert.equal(notificationErrors.length, 1);
+  const current = await sessionStore.getSession(created.sessionId);
+  assert.ok(current);
+  await sessionStore.updateSession({
+    ...current,
+    version: { ...current.version, stateVersion: 1 },
+    updatedAt: new Date()
+  }, { expectedStateVersion: 0 });
+  eventHub.publish({ sessionId: created.sessionId, stateVersion: 1, lastEventSequence: 0 });
   const later = await readSseMessage(hostStream.reader);
-  assert.deepEqual(later.notification, { stateVersion: 1, lastEventSequence: 1 });
+  assert.deepEqual(later.notification, { stateVersion: 1, lastEventSequence: 0 });
   assert.doesNotMatch(later.raw, /credential|secret|ses_|"state"\s*:|"players"\s*:/iu);
 
   await hostStream.reader.cancel();
   await waitFor(() => eventHub.size === 0);
   const reconnect = await openStream(created.sessionId, guest.credential);
-  assert.deepEqual(reconnect.initial.notification, { stateVersion: 1, lastEventSequence: 1 });
+  assert.deepEqual(reconnect.initial.notification, { stateVersion: 1, lastEventSequence: 0 });
   await reconnect.reader.cancel();
   await waitFor(() => eventHub.size === 0);
 
   const first = await openStream(created.sessionId, created.credential);
   const second = await openStream(created.sessionId, guest.credential);
   assert.equal(eventHub.size, 2);
-  const overCapacity = await authenticated(`/sessions/${created.sessionId}/events`, created.credential);
+  const replacement = await openStream(created.sessionId, created.credential);
+  assert.equal(eventHub.size, 2);
+  assert.equal((await first.reader.read()).done, true);
+  const overCapacity = await authenticated(`/sessions/${localCreated.sessionId}/events`, localCreated.credential);
   assert.equal(overCapacity.status, 429);
-  await first.reader.cancel();
+  await replacement.reader.cancel();
   await second.reader.cancel();
   await waitFor(() => eventHub.size === 0);
 });

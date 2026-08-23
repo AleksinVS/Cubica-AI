@@ -132,6 +132,25 @@ describe("runtime-client", () => {
     });
   });
 
+  it("sends the selected participant count only when provided", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      sessionId: "session-players",
+      gameId: "neutral-game",
+      participants: [],
+      version: { sessionId: "session-players", stateVersion: 0, lastEventSequence: 0 },
+      state: { public: {}, secret: {} },
+      actionAvailability: []
+    }), { status: 201 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await createNewSession("neutral-game", 3);
+
+    expect(JSON.parse(String((fetchMock.mock.calls[0]?.[1] as RequestInit).body))).toEqual({
+      gameId: "neutral-game",
+      participantCount: 3
+    });
+  });
+
   it("returns game readiness payload even when runtime-api responds with 503", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(
       JSON.stringify({

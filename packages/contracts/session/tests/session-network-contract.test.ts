@@ -40,14 +40,13 @@ describe("private session and version notification contract", () => {
 
   it("keeps invite entries closed and seat-neutral", () => {
     const invite = {
-      seatId: "seat-neutral-7",
-      playerId: "actor-neutral-7",
       credential: `ses_${"a".repeat(43)}`
     } satisfies PrivateSessionInvite;
     expect(validatePrivateSessionInvitesShape([invite])).toBe(true);
     expect(validatePrivateSessionInvitesShape([])).toBe(false);
     expect(validatePrivateSessionInvitesShape([{ ...invite, extra: true }])).toBe(false);
     expect(validatePrivateSessionInvitesShape([{ ...invite, credential: "short" }])).toBe(false);
+    expect(validatePrivateSessionInvitesShape([{ ...invite, seatId: "client-claim" }])).toBe(false);
   });
 
   it("defines an authenticated one-way SSE endpoint with a bounded closed payload", () => {
@@ -56,6 +55,7 @@ describe("private session and version notification contract", () => {
     expect(stream.responses["200"].content["text/event-stream"].schema.$ref).toBe(
       "#/components/schemas/SessionVersionNotification"
     );
+    expect(stream.responses["429"].$ref).toBe("#/components/responses/TooManyRequests");
 
     const notification = {
       stateVersion: 3,

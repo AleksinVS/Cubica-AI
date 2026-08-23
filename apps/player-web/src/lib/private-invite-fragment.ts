@@ -6,8 +6,6 @@ export type PrivateInviteFragment = { readonly sessionId: string; readonly invit
 export function buildPrivateInviteFragment(value: PrivateInviteFragment): string {
   const params = new URLSearchParams({
     sessionId: value.sessionId,
-    seatId: value.invite.seatId,
-    playerId: value.invite.playerId,
     credential: value.invite.credential
   });
   return `#invite?${params.toString()}`;
@@ -18,8 +16,6 @@ export function parsePrivateInviteFragment(hash: string): PrivateInviteFragment 
   const params = new URLSearchParams(hash.slice("#invite?".length));
   const sessionId = params.get("sessionId");
   const invite = {
-    seatId: params.get("seatId"),
-    playerId: params.get("playerId"),
     credential: params.get("credential")
   };
   if (!sessionId || Object.values(invite).some((item) => item === null)) return null;

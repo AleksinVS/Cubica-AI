@@ -401,7 +401,7 @@ export function GamePlayer({
     void presenter.boot();
   };
 
-  const handleSessionSetup = (selection: { agentSeatCount: number; accessMode?: "local" | "private-invite" }) => {
+  const handleSessionSetup = (selection: { participantCount: number; agentSeatCount: number; accessMode?: "local" | "private-invite" }) => {
     void presenterRef.current?.createSessionFromSetup(selection);
   };
 
@@ -625,7 +625,7 @@ export function GamePlayer({
   );
 }
 
-function PrivateInvitePanel({ gameId, sessionId, invites, onDismiss }: { gameId: string; sessionId: string; invites: ReadonlyArray<{ seatId: string; playerId: string; credential: string }>; onDismiss: () => void }) {
+function PrivateInvitePanel({ gameId, sessionId, invites, onDismiss }: { gameId: string; sessionId: string; invites: ReadonlyArray<{ credential: string }>; onDismiss: () => void }) {
   const [message, setMessage] = useState<string | null>(null);
   return <aside className="session-invite-panel" aria-labelledby="session-invite-title">
     <div className="session-invite-panel__heading">
@@ -636,12 +636,12 @@ function PrivateInvitePanel({ gameId, sessionId, invites, onDismiss }: { gameId:
       <button className="session-invite-panel__close" type="button" onClick={onDismiss}>Закрыть</button>
     </div>
     <div className="session-invite-panel__list">
-      {invites.map((invite) => {
+      {invites.map((invite, index) => {
         const query = new URLSearchParams({ gameId });
         const link = `${window.location.origin}${window.location.pathname}?${query.toString()}${buildPrivateInviteFragment({ sessionId, invite })}`;
-        const label = `Скопировать ссылку для места ${invite.seatId}, ${invite.playerId}`;
-        return <div className="session-invite-panel__seat" key={invite.seatId}>
-          <span><strong>Место {invite.seatId}</strong><small>Участник {invite.playerId}</small></span>
+        const label = `Скопировать ссылку-приглашение ${index + 1}`;
+        return <div className="session-invite-panel__seat" key={invite.credential}>
+          <span><strong>Приглашение {index + 1}</strong><small>Личное удостоверение участника</small></span>
           <button type="button" aria-label={label} onClick={() => {
             const clipboard = typeof navigator !== "undefined" ? navigator.clipboard : undefined;
             if (!clipboard) { setMessage("Не удалось скопировать ссылку"); return; }

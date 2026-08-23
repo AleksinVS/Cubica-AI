@@ -30,6 +30,7 @@ import type {
 } from "@cubica/contracts-session";
 import { isValidImmutableBundleInput } from "../content/immutableBundle.ts";
 import { assertCommandTransactionResult } from "./commandTransactionValidation.ts";
+import { createPublicGameplayJournalByteAccumulator } from "./publicGameplayJournal.ts";
 import {
   createSystemCommandFingerprint,
   createSystemCommandId
@@ -200,8 +201,15 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
       const archivedAt = this.archivedAtBySessionId.get(input.sessionId);
       if (archivedAt !== undefined && principal.principal.role !== "facilitator") return null;
       const events: SessionEventRecord[] = [];
+      const accumulator = createPublicGameplayJournalByteAccumulator({
+        session,
+        lifecycle: archivedAt === undefined ? "active" : "archived",
+        ...(archivedAt === undefined ? {} : { archivedAt }),
+        maxEntries: limit
+      });
       for (const event of this.eventsBySessionId.get(input.sessionId) ?? []) {
         if (event.audience !== "public" || event.sequence > session.version.lastEventSequence) continue;
+        accumulator.addEvent(event);
         events.push(event);
         if (events.length === limit) break;
       }

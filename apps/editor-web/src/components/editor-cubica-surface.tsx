@@ -43,7 +43,7 @@ export function EditorCubicaSurfaceRenderer({ surface, onAction }: EditorCubicaS
   );
 }
 
-function renderComponent(component: CubicaSurfaceComponent, onAction: (action: CubicaSurfaceAction) => void): JSX.Element {
+function renderComponent(component: CubicaSurfaceComponent, onAction: (action: CubicaSurfaceAction) => void): React.JSX.Element {
   const children = component.children?.map((child) => renderComponent(child, onAction));
 
   switch (component.kind) {
@@ -104,7 +104,7 @@ function renderComponent(component: CubicaSurfaceComponent, onAction: (action: C
   }
 }
 
-function renderActions(component: CubicaSurfaceComponent, onAction: (action: CubicaSurfaceAction) => void): JSX.Element | null {
+function renderActions(component: CubicaSurfaceComponent, onAction: (action: CubicaSurfaceAction) => void): React.JSX.Element | null {
   if (component.actions === undefined || component.actions.length === 0) {
     return null;
   }

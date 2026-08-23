@@ -7,6 +7,8 @@ export const SESSION_VERSION_STREAM_DRAIN_TIMEOUT_MS = 10_000;
 
 interface StreamSubscription {
   readonly sessionId: string;
+  readonly principalId: string;
+  readonly key: string;
   readonly response: ServerResponse;
   lastStateVersion: number;
   lastEventSequence: number;
@@ -25,6 +27,7 @@ interface StreamSubscription {
  */
 export class SessionVersionEventHub {
   private readonly subscriptions = new Set<StreamSubscription>();
+  private readonly subscriptionsByPrincipal = new Map<string, StreamSubscription>();
   private readonly maxStreams: number;
 
   constructor(maxStreams = MAX_SESSION_VERSION_STREAMS) {
@@ -38,7 +41,13 @@ export class SessionVersionEventHub {
     return this.subscriptions.size;
   }
 
-  subscribe(response: ServerResponse, version: SessionStateVersion): () => void {
+  subscribe(response: ServerResponse, version: SessionStateVersion, principalId: string): () => void {
+    const key = subscriptionKey(version.sessionId, principalId);
+    const previous = this.subscriptionsByPrincipal.get(key);
+    if (previous !== undefined) {
+      previous.cleanup?.();
+      previous.response.end();
+    }
     if (this.subscriptions.size >= this.maxStreams) {
       throw new SessionVersionStreamCapacityError();
     }
@@ -53,12 +62,15 @@ export class SessionVersionEventHub {
 
     const subscription: StreamSubscription = {
       sessionId: version.sessionId,
+      principalId,
+      key,
       response,
       lastStateVersion: version.stateVersion,
       lastEventSequence: version.lastEventSequence,
       backpressured: false
     };
     this.subscriptions.add(subscription);
+    this.subscriptionsByPrincipal.set(key, subscription);
 
     let cleaned = false;
     const cleanup = () => {
@@ -68,6 +80,9 @@ export class SessionVersionEventHub {
       if (subscription.drainTimeout !== undefined) clearTimeout(subscription.drainTimeout);
       if (subscription.onDrain !== undefined) response.off("drain", subscription.onDrain);
       this.subscriptions.delete(subscription);
+      if (this.subscriptionsByPrincipal.get(subscription.key) === subscription) {
+        this.subscriptionsByPrincipal.delete(subscription.key);
+      }
     };
     subscription.cleanup = cleanup;
     subscription.onDrain = () => this.resumeAfterDrain(subscription);
@@ -166,6 +181,10 @@ export class SessionVersionEventHub {
       subscription.response.destroy();
     }
   }
+}
+
+function subscriptionKey(sessionId: string, principalId: string): string {
+  return JSON.stringify([sessionId, principalId]);
 }
 
 export class SessionVersionStreamCapacityError extends Error {

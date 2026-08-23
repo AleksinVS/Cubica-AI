@@ -5,7 +5,7 @@ import type {
   TransportRoadPreviewRequest
 } from "@cubica/contracts-session";
 import {
-  createSessionRequestValidationErrors,
+  getCreateSessionRequestValidationErrors,
   validateCreateSessionRequestShape
 } from "@cubica/contracts-session";
 import type { AgentTurnRequest } from "../ai/agentRuntime.ts";
@@ -75,12 +75,66 @@ const assertRequiredString: (value: unknown, path: string) => asserts value is s
 };
 
 export const parseCreateSessionRequest = (body: unknown): CreateSessionRequest => {
-  if (!validateCreateSessionRequestShape(body)) {
-    throw new RequestValidationError(
-      `POST /sessions body does not match CreateSessionRequest: ${createSessionRequestValidationErrors()}`
-    );
+  // WHY: `gameId` is REQUIRED to create a session. The manifest/content
+  // pipeline cannot resolve a game without it, and the downstream service used
+  // to throw a plain `Error` for a missing id which `httpServer.ts` maps to a
+  // misleading HTTP 500. Validating it here (the request-validation layer)
+  // surfaces the client mistake as a proper HTTP 400 instead. An undefined body
+  // is treated the same as a body with no `gameId`.
+  const candidate = body ?? {};
+  if (validateCreateSessionRequestShape(candidate)) return candidate;
+
+  const errors = getCreateSessionRequestValidationErrors();
+  const additionalProperty = errors.find((error) => error.keyword === "additionalProperties")
+    ?.params?.additionalProperty;
+  if (typeof additionalProperty === "string") {
+    throw new RequestValidationError(`Session creation contains unsupported field "${additionalProperty}"`);
   }
-  return body;
+
+  const requiredProperty = errors.find((error) => error.keyword === "required")
+    ?.params?.missingProperty;
+  if (requiredProperty === "gameId") {
+    throw new RequestValidationError("gameId is required and must be a non-empty string");
+  }
+
+  const record = isRecord(candidate) ? candidate : undefined;
+  const gameIdError = errors.find((error) => error.instancePath === "/gameId");
+  if (gameIdError) {
+    if (record?.gameId === null || record?.gameId === "") {
+      throw new RequestValidationError("gameId is required and must be a non-empty string");
+    }
+    if (gameIdError.keyword === "pattern") {
+      throw new RequestValidationError(`gameId must match /${String(gameIdError.params.pattern)}/`);
+    }
+    throw new RequestValidationError("gameId must match the canonical game identifier pattern");
+  }
+
+  const contentSourceIdError = errors.find((error) => error.instancePath === "/contentSourceId");
+  if (contentSourceIdError) {
+    if (contentSourceIdError.keyword === "pattern") {
+      throw new RequestValidationError(
+        `contentSourceId must match /${String(contentSourceIdError.params.pattern)}/`
+      );
+    }
+    throw new RequestValidationError("contentSourceId must match the canonical content source identifier pattern");
+  }
+
+  if (errors.some((error) => error.instancePath === "/participantCount")) {
+    throw new RequestValidationError("participantCount must be a positive integer");
+  }
+  if (errors.some((error) => error.instancePath === "/agentSeatCount")) {
+    throw new RequestValidationError("agentSeatCount must be an integer between 0 and 64");
+  }
+
+  const rootTypeError = errors.find((error) => error.instancePath === "" && error.keyword === "type");
+  if (rootTypeError) {
+    throw new RequestValidationError("POST /sessions body must be an object");
+  }
+
+  const details = errors
+    .map((error) => `${error.instancePath || "/"} ${error.message ?? "is invalid"}`)
+    .join("; ");
+  throw new RequestValidationError(`POST /sessions body does not match request schema: ${details}`);
 };
 
 export const parseDispatchActionRequest = (body: unknown): DispatchActionInput => {

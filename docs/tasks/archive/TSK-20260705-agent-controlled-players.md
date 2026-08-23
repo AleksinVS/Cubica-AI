@@ -178,4 +178,7 @@ npm run verify:canonical
 - 2026-08-13: S8-контракт принят; S9 реализован локально и зафиксирован
   GSR-049. PM-approved fallback расширен с 8 до 73 кандидатов. Реальный
   provider, полный terminal match и network join/reconnect не входят в
-  принятие; S10 остаётся сетевой границей.
+  доказанную границу; S10 остаётся сетевой границей.
+- 2026-08-23: при интеграции с актуальным `main` объединены принятый
+  `participantCount` и S9 `agentSeatCount`. Пересматриваемые детали записаны в
+  `docs/tasks/artifacts/TSK-20260705-monopoly-classic-game/s9-main-integration-decisions-20260823.md`.

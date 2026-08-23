@@ -1,8 +1,14 @@
 import { validatePrivateSessionInvitesShape, type PrivateSessionInvite } from "@cubica/contracts-session";
-import { NextResponse } from "next/server";
-import { requestRuntime, runtimeCredentialCookieIsSecure, setRuntimeCredentialCookie, readBoundedBrowserRuntimeBody } from "../../_shared";
+import { NextRequest, NextResponse } from "next/server";
+import {
+  readBoundedBrowserRuntimeBody,
+  requestRuntime,
+  runtimeCredentialCookieIsSecure,
+  runtimeCredentialCookieName,
+  setRuntimeCredentialCookie
+} from "../../_shared";
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   const bounded = await readBoundedBrowserRuntimeBody(request);
   if (!bounded.ok) return bounded.response;
   let body: unknown;
@@ -16,18 +22,19 @@ export async function POST(request: Request) {
   }
   const invite = inviteValue as PrivateSessionInvite;
   const credential = invite.credential;
+  const existingCredential = request.cookies.get(runtimeCredentialCookieName(sessionId))?.value;
+  if (existingCredential !== undefined && existingCredential !== credential) {
+    return NextResponse.json(
+      { error: "This browser already controls the session with a different credential." },
+      { status: 409, headers: { "Cache-Control": "no-store" } }
+    );
+  }
   const upstream = await requestRuntime(`/sessions/${encodeURIComponent(sessionId)}`, {
     method: "GET", headers: { Authorization: `Bearer ${credential}` }
   });
   if (!upstream.ok) return NextResponse.json({ error: "Invite link is not available." }, { status: upstream.status === 429 || upstream.status >= 500 ? upstream.status : 401 });
   let snapshot: Record<string, unknown>;
   try { snapshot = await upstream.json() as Record<string, unknown>; } catch { return NextResponse.json({ error: "Invite link is not available." }, { status: 502 }); }
-  const participants = Array.isArray(snapshot.participants) ? snapshot.participants : [];
-  const matched = participants.some((participant) => participant && typeof participant === "object" &&
-    (participant as Record<string, unknown>).seatId === invite.seatId &&
-    (participant as Record<string, unknown>).playerId === invite.playerId &&
-    (participant as Record<string, unknown>).joinState === "private-invite");
-  if (!matched) return NextResponse.json({ error: "Invite link is not available." }, { status: 401 });
   const { credential: _credential, privateInvites: _privateInvites, ...safeSnapshot } = snapshot;
   const response = NextResponse.json(safeSnapshot, { headers: { "Cache-Control": "no-store" } });
   setRuntimeCredentialCookie(response, sessionId, credential, { secure: runtimeCredentialCookieIsSecure(request) });

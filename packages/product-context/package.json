@@ -1,0 +1,34 @@
+{
+  "name": "@cubica/product-context",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Isolated product-knowledge contracts, Stage 1 core and non-production Stage 2 shadow foundation.",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "generate:types": "node scripts/generate-types.cjs",
+    "generate:types:check": "node scripts/generate-types.cjs --check",
+    "cleanup:shadow": "../../node_modules/.bin/vite-node --script scripts/run-shadow-cleanup.ts",
+    "worker:shadow": "../../node_modules/.bin/vite-node --script scripts/run-shadow-worker.ts",
+    "evaluate:shadow": "../../node_modules/.bin/vite-node --script scripts/run-shadow-evaluator.ts",
+    "preflight:shadow:synthetic": "../../node_modules/.bin/vite-node scripts/run-shadow-synthetic.ts preflight --synthetic-only --deny-external-processing",
+    "run:shadow:synthetic": "../../node_modules/.bin/vite-node scripts/run-shadow-synthetic.ts run --synthetic-only --deny-external-processing",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:acceptance": "vitest run --fileParallelism=false"
+  },
+  "dependencies": {
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
+    "js-yaml": "^4.1.0",
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.15.5",
+    "json-schema-to-typescript": "^15.0.4",
+    "typescript": "^5.9.3",
+    "vitest": "^2.1.0"
+  },
+  "engines": { "node": ">=22.7.0" }
+}

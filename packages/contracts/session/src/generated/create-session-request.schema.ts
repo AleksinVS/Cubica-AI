@@ -18,6 +18,11 @@ export const createSessionRequestSchema = {
       "type": "string",
       "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]{2,80}$"
     },
+    "participantCount": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Optional participant count. Runtime checks this against the published manifest bounds for both local and private-invite sessions."
+    },
     "accessMode": {
       "type": "string",
       "enum": [
@@ -50,6 +55,21 @@ export const createSessionRequestSchema = {
             "type": "integer",
             "minimum": 1
           }
+        }
+      }
+    },
+    {
+      "not": {
+        "required": [
+          "accessMode",
+          "contentSourceId"
+        ],
+        "properties": {
+          "accessMode": {
+            "type": "string",
+            "const": "private-invite"
+          },
+          "contentSourceId": {}
         }
       }
     }

@@ -6,15 +6,16 @@ interface SessionSetupPanelProps {
   readonly setup: PlayerSessionSetup;
   readonly isPending: boolean;
   readonly error: string | null;
-  readonly onSubmit: (selection: { agentSeatCount: number; accessMode?: "local" | "private-invite" }) => void;
+  readonly onSubmit: (selection: { participantCount: number; agentSeatCount: number; accessMode?: "local" | "private-invite" }) => void;
 }
 
 export function SessionSetupPanel({ setup, isPending, error, onSubmit }: SessionSetupPanelProps) {
   const t = useLocale();
+  const [participantCount, setParticipantCount] = useState(setup.participantCount);
   const [agentSeatCount, setAgentSeatCount] = useState(0);
   const [privateInvite, setPrivateInvite] = useState(false);
 
-  const maxAgentSeats = Math.min(setup.maxAgentSeats, setup.participantCount);
+  const maxAgentSeats = Math.min(setup.maxAgentSeats, participantCount);
   const boundedAgentSeatCount = Math.min(agentSeatCount, maxAgentSeats);
 
   return (
@@ -22,9 +23,26 @@ export function SessionSetupPanel({ setup, isPending, error, onSubmit }: Session
       <span className="runtime-status-kicker">{t.sessionSetupKicker}</span>
       <h1 id="session-setup-title">{t.sessionSetupTitle}</h1>
       <p>{t.sessionSetupDescription}</p>
-      <p className="session-setup-fixed-count">
-        {t.participantCountLabel}: <strong>{setup.participantCount}</strong>
-      </p>
+      {setup.minParticipants < setup.maxParticipants ? (
+        <label className="session-setup-field" htmlFor="participant-count">
+          <span>{t.participantCountLabel}</span>
+          <select
+            id="participant-count"
+            value={participantCount}
+            onChange={(event) => setParticipantCount(Number(event.target.value))}
+            disabled={isPending}
+          >
+            {Array.from(
+              { length: setup.maxParticipants - setup.minParticipants + 1 },
+              (_, index) => setup.minParticipants + index
+            ).map((count) => <option key={count} value={count}>{count}</option>)}
+          </select>
+        </label>
+      ) : (
+        <p className="session-setup-fixed-count">
+          {t.participantCountLabel}: <strong>{participantCount}</strong>
+        </p>
+      )}
 
       <fieldset className="session-setup-choice">
         <legend>{t.participantModeLabel}</legend>
@@ -74,7 +92,7 @@ export function SessionSetupPanel({ setup, isPending, error, onSubmit }: Session
         className="action-button session-setup-submit"
         type="button"
         disabled={isPending}
-        onClick={() => onSubmit({ agentSeatCount: boundedAgentSeatCount, ...(privateInvite ? { accessMode: "private-invite" } : {}) })}
+        onClick={() => onSubmit({ participantCount, agentSeatCount: boundedAgentSeatCount, ...(privateInvite ? { accessMode: "private-invite" } : {}) })}
       >
         {isPending ? t.loading : t.startSession}
       </button>

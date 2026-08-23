@@ -18,8 +18,10 @@ Estate Race получает optional `accessMode`: `local` (по умолчан
 `private-invite`. Участники принадлежат сессии и неизменяемы после создания.
 Хост получает credential первого места, а для остальных человеческих мест
 создание сессии выдаёт invite links. Секреты хранятся на сервере только как
-хеши; браузер импортирует credential из fragment в HttpOnly SameSite cookie и
-затем очищает fragment.
+хеши; host browser временно получает guest credentials для построения ссылок и
+удаляет их из Presenter при закрытии панели. Guest browser импортирует
+credential-only fragment в HttpOnly SameSite cookie и затем очищает fragment;
+место и actor выбираются только runtime по аутентифицированному principal.
 
 ## Общая граница
 
@@ -28,6 +30,8 @@ Estate Race получает optional `accessMode`: `local` (по умолчан
 полный GET/resync. Команды остаются HTTP-командами с проверками версии и
 идемпотентности. Игровой manifest и механика Estate Race не изменены, а
 общий runtime/player слой остаётся game-neutral.
+Один principal удерживает не более одного потока на сессию с заменой прежнего;
+общий предел 128 возвращает канонический HTTP 429.
 
 ## Приёмка
 

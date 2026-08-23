@@ -290,6 +290,7 @@ export async function buildGameReadinessResponse(input: {
 export async function assertGameLaunchReady(input: {
   gameId: string;
   contentSourceId?: string;
+  participantCount?: number;
   agentSeatCount?: number;
 }): Promise<void> {
   const manifest = await loadGameManifest(input.gameId, input.contentSourceId);
@@ -315,7 +316,7 @@ export async function assertGameLaunchReady(input: {
 
   assertAgentSeatLaunchReady({
     gameId: input.gameId,
-    participantCount: manifest.config.players.min,
+    participantCount: input.participantCount ?? manifest.config.players.min,
     agentSeatCount: input.agentSeatCount,
     agentSeats: manifest.config.players.agentSeats,
     agentRuntime: manifest.agentRuntime
@@ -334,10 +335,10 @@ export function assertAgentSeatLaunchReady(input: {
   if (input.agentSeats === undefined) {
     throw new HttpError(400, `Game "${input.gameId}" does not declare local agent seats.`);
   }
-  if (input.agentSeatCount > input.agentSeats.max || input.agentSeats.max > input.participantCount) {
+  if (input.agentSeatCount > input.agentSeats.max || input.agentSeatCount > input.participantCount) {
     throw new HttpError(
       400,
-      `Requested agent seats must satisfy count <= declared maximum <= participant count (${input.participantCount}).`
+      `Requested agent seats must not exceed the declared maximum or participant count (${input.participantCount}).`
     );
   }
   const seatRuntime = checkAgentRuntimeReadiness(input.agentRuntime, { requireConfigured: true });

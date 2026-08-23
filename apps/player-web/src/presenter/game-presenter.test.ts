@@ -177,13 +177,16 @@ describe("GamePresenter session recovery", () => {
     expect(presenter.playerState.sessionSetup).toEqual({
       participantCount: 2,
       minParticipants: 2,
+      maxParticipants: 2,
       maxAgentSeats: 2,
       privateInviteAvailable: true
     });
 
-    await presenter.createSessionFromSetup({ agentSeatCount: 0 });
+    await presenter.createSessionFromSetup({ participantCount: 2, agentSeatCount: 0 });
     expect(JSON.parse(String((fetchMock.mock.calls[0]?.[1] as RequestInit).body))).toEqual({
-      gameId: content.gameId
+      gameId: content.gameId,
+      participantCount: 2,
+      agentSeatCount: 0
     });
   });
 
@@ -202,11 +205,11 @@ describe("GamePresenter session recovery", () => {
     });
     await presenter.boot();
 
-    await presenter.createSessionFromSetup({ agentSeatCount: 2 });
+    await presenter.createSessionFromSetup({ participantCount: 1, agentSeatCount: 2 });
     expect(fetchMock).not.toHaveBeenCalled();
 
-    const creation = presenter.createSessionFromSetup({ agentSeatCount: 1 });
-    const duplicate = presenter.createSessionFromSetup({ agentSeatCount: 1 });
+    const creation = presenter.createSessionFromSetup({ participantCount: 1, agentSeatCount: 1 });
+    const duplicate = presenter.createSessionFromSetup({ participantCount: 1, agentSeatCount: 1 });
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(presenter.playerState.booting).toBe(true);
@@ -262,15 +265,11 @@ describe("GamePresenter session recovery", () => {
     expect(published.playerState.sessionSetup).toEqual({
       participantCount: 2,
       minParticipants: 2,
+      maxParticipants: 6,
       maxAgentSeats: 0,
       privateInviteAvailable: true
     });
-    expect(preview.playerState.sessionSetup).toEqual({
-      participantCount: 2,
-      minParticipants: 2,
-      maxAgentSeats: 0,
-      privateInviteAvailable: false
-    });
+    expect(preview.playerState.sessionSetup).toBeNull();
   });
 
   it("clears a private invite fragment before a failed import can expose it in the address bar", async () => {
@@ -278,8 +277,6 @@ describe("GamePresenter session recovery", () => {
     const invite = {
       sessionId: "session-private",
       invite: {
-        seatId: "seat-2",
-        playerId: "player-2",
         credential: `ses_${"a".repeat(43)}`
       }
     } as const;
@@ -429,7 +426,7 @@ describe("GamePresenter session version cursor", () => {
     });
     await presenter.boot();
 
-    await presenter.createSessionFromSetup({ agentSeatCount: 0, accessMode: "private-invite" });
+    await presenter.createSessionFromSetup({ participantCount: 2, agentSeatCount: 0, accessMode: "private-invite" });
 
     expect(resume).toHaveBeenCalledTimes(1);
     expect(presenter.sessionSnapshot?.version).toMatchObject({ stateVersion: 2, lastEventSequence: 3 });
@@ -484,7 +481,7 @@ describe("GamePresenter session version cursor", () => {
     expect(unsubscribeSessionVersions).toHaveBeenCalledTimes(1);
   });
 
-  it("does not let a delayed refresh resurrect a session after reset", async () => {
+  it("does not let a delayed refresh overwrite the replacement session after reset", async () => {
     let resolveRefresh: (session: GameSession) => void = () => undefined;
     const delayedRefresh = new Promise<GameSession>((resolve) => { resolveRefresh = resolve; });
     const { presenter, resume } = await bootPresenterWithSession(versionedSession(1, 1));
@@ -499,8 +496,8 @@ describe("GamePresenter session version cursor", () => {
     await Promise.resolve();
 
     expect(unsubscribeSessionVersions).toHaveBeenCalledTimes(1);
-    expect(presenter.sessionSnapshot).toBeNull();
-    expect(presenter.playerState.sessionSetup).not.toBeNull();
+    expect(presenter.sessionSnapshot?.version).toMatchObject({ stateVersion: 1, lastEventSequence: 1 });
+    expect(presenter.playerState.sessionSetup).toBeNull();
   });
 
   it("does not attach or apply a boot result that resolves after dispose", async () => {

@@ -158,13 +158,13 @@ test("agent-seat launch policy enforces declaration, bounds and existing runtime
     participantCount: 2,
     agentSeatCount: 2,
     agentSeats
-  }), /count <= declared maximum/u);
+  }), /declared maximum or participant count/u);
   assert.throws(() => assertAgentSeatLaunchReady({
     gameId: "neutral-fixture",
     participantCount: 1,
-    agentSeatCount: 1,
+    agentSeatCount: 2,
     agentSeats: { ...agentSeats, max: 2 }
-  }), /declared maximum <= participant count/u);
+  }), /declared maximum or participant count/u);
   assert.throws(() => assertAgentSeatLaunchReady({
     gameId: "neutral-fixture",
     participantCount: 2,

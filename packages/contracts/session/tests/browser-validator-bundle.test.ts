@@ -11,8 +11,6 @@ describe("browser-safe session validator exports", () => {
           } from "@cubica/contracts-session";
 
           const validInvite = {
-            seatId: "seat-browser",
-            playerId: "actor-browser",
             credential: "ses_" + "a".repeat(43)
           };
 

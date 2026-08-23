@@ -370,8 +370,6 @@ describe("GamePlayer S1 DOM Rendering", () => {
     });
     window.history.replaceState({}, "", "/play?source=editor");
     const invite = {
-      seatId: "seat-2",
-      playerId: "player-2",
       credential: `ses_${"a".repeat(43)}`
     } as const;
     const inviteContent: PlayerFacingContent = {
@@ -383,8 +381,8 @@ describe("GamePlayer S1 DOM Rendering", () => {
       sessionId: "session-private",
       gameId: inviteContent.gameId,
       participants: [{
-        seatId: invite.seatId,
-        playerId: invite.playerId,
+        seatId: "seat-2",
+        playerId: "player-2",
         kind: "human",
         joinState: "private-invite"
       }],
@@ -408,17 +406,16 @@ describe("GamePlayer S1 DOM Rendering", () => {
       fireEvent.click(await screen.findByLabelText("Пригласить участников по ссылке"));
       fireEvent.click(screen.getByRole("button", { name: "Начать игру" }));
       const panel = await screen.findByRole("complementary", { name: "Ссылки для приглашения" });
-      expect(panel.textContent).toContain("Место seat-2");
-      expect(panel.textContent).toContain("Участник player-2");
+      expect(panel.textContent).toContain("Приглашение 1");
 
       const copyButton = screen.getByRole("button", {
-        name: "Скопировать ссылку для места seat-2, player-2"
+        name: "Скопировать ссылку-приглашение 1"
       });
       fireEvent.click(copyButton);
       await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
       expect(writeText).toHaveBeenCalledWith(
         `${window.location.origin}/play?gameId=${inviteContent.gameId}` +
-        `#invite?sessionId=session-private&seatId=seat-2&playerId=player-2&credential=${invite.credential}`
+        `#invite?sessionId=session-private&credential=${invite.credential}`
       );
       expect((await screen.findByRole("status")).textContent).toContain("Ссылка скопирована");
 

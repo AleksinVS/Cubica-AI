@@ -18,19 +18,26 @@ export interface InitializeTurnBasedSessionOptions {
   participantCount?: number;
 }
 
+export class ParticipantCountValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ParticipantCountValidationError";
+  }
+}
+
 const isObjectRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
-const validateParticipantCount = (manifest: GameManifest, requested?: number): number => {
+export const resolveParticipantCount = (manifest: GameManifest, requested?: number): number => {
   const minimum = manifest.config.players.min;
   const maximum = manifest.config.players.max;
   const count = requested ?? minimum;
 
   if (![minimum, maximum, count].every((value) => Number.isSafeInteger(value))) {
-    throw new Error("Manifest player bounds and participant count must be safe integers");
+    throw new ParticipantCountValidationError("Manifest player bounds and participant count must be safe integers");
   }
   if (minimum < 1 || maximum < minimum || count < minimum || count > maximum) {
-    throw new Error(`Participant count ${count} is outside manifest bounds ${minimum}..${maximum}`);
+    throw new ParticipantCountValidationError(`Participant count ${count} is outside manifest bounds ${minimum}..${maximum}`);
   }
 
   return count;
@@ -50,11 +57,11 @@ export const initializeTurnBasedSessionState = (
   options: InitializeTurnBasedSessionOptions = {}
 ): RuntimeState => {
   const state = structuredClone(declaredState);
+  const participantCount = resolveParticipantCount(manifest, options.participantCount);
   const template = manifest.state.playersTemplate;
   const phases = manifest.config.turnModel?.phases ?? [];
 
   if (template) {
-    const participantCount = validateParticipantCount(manifest, options.participantCount);
     const order = Array.from({ length: participantCount }, (_, index) => `p${index + 1}`);
     state.players = Object.fromEntries(order.map((playerId) => [playerId, materializePlayer(template)]));
 

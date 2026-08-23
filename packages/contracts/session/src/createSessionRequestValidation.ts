@@ -1,5 +1,5 @@
 import Ajv2020Lib from "ajv/dist/2020.js";
-import type { ValidateFunction } from "ajv";
+import type { ErrorObject, ValidateFunction } from "ajv";
 import type { CreateSessionRequest } from "./generated/create-session-request.ts";
 import { createSessionRequestSchema } from "./generated/create-session-request.schema.ts";
 
@@ -12,18 +12,6 @@ export function validateCreateSessionRequestShape(value: unknown): value is Crea
   return validate(value);
 }
 
-export function createSessionRequestValidationErrors(): string {
-  return (validate.errors ?? [])
-    .map((error) => {
-      if (error.keyword === "additionalProperties") {
-        const property = (error.params as { additionalProperty?: string }).additionalProperty;
-        return property === undefined ? "unsupported field" : `unsupported field "${property}"`;
-      }
-      if (error.keyword === "required") {
-        const property = (error.params as { missingProperty?: string }).missingProperty;
-        return property === undefined ? "required field is missing" : `${property} is required`;
-      }
-      return `${error.instancePath || "/"} ${error.message ?? "is invalid"}`;
-    })
-    .join("; ");
+export function getCreateSessionRequestValidationErrors(): ReadonlyArray<ErrorObject> {
+  return validate.errors ?? [];
 }

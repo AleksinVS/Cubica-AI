@@ -400,12 +400,12 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
         requestUrl.pathname.match(/^\/sessions\/([^/]+)\/events$/u);
       if (sessionEventsMatch) {
         const sessionId = decodePathSegment(sessionEventsMatch[1], "sessionId");
-        const snapshot = await sessionService.getSession(
+        const access = await sessionService.authenticateSessionVersionAccess(
           sessionId,
           requireBearerCredential(request.headers)
         );
         try {
-          sessionVersionEventHub.subscribe(response, snapshot.version);
+          sessionVersionEventHub.subscribe(response, access.version, access.principalId);
         } catch (error) {
           if (error instanceof SessionVersionStreamCapacityError) {
             throw new HttpError(429, error.message);

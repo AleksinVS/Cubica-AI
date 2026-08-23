@@ -12,13 +12,8 @@
  */
 
 /**
- * Creation-only durable capability for exactly one invite-bound seat.
+ * Creation-only durable capability bound by runtime to exactly one invite participant. Seat and player metadata are intentionally omitted because unauthenticated client metadata is not identity proof.
  */
 export interface PrivateSessionInvite {
-  seatId: string;
-  /**
-   * Non-empty player identifier that cannot address JavaScript object prototype properties.
-   */
-  playerId: string;
   credential: string;
 }

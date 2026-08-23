@@ -588,7 +588,42 @@ test("POST /sessions rejects invalid request bodies", async () => {
   });
 
   assert.equal(response.status, 400);
-  assert.match(body.error, /gameId must be string/);
+  assert.match(body.error, /gameId must match/);
+});
+
+test("POST /sessions materializes the requested participant count within manifest bounds", async () => {
+  const { response, body } = await requestJson<CreateSessionResponse>("/sessions", {
+    method: "POST",
+    body: JSON.stringify({ gameId: "estate-race", participantCount: 3 })
+  });
+
+  assert.equal(response.status, 201, JSON.stringify(body));
+  assert.deepEqual(body.participants.map((participant) => participant.playerId), ["p1", "p2", "p3"]);
+  assert.deepEqual(
+    Object.keys((body.state as unknown as { players: Record<string, unknown> }).players),
+    ["p1", "p2", "p3"]
+  );
+  assert.deepEqual(
+    (body.state.public as unknown as { turn: { order: string[] } }).turn.order,
+    ["p1", "p2", "p3"]
+  );
+});
+
+test("POST /sessions rejects participantCount outside the selected manifest bounds", async () => {
+  const { response, body } = await requestJson<{ error: string }>("/sessions", {
+    method: "POST",
+    body: JSON.stringify({ gameId: "estate-race", participantCount: 7 })
+  });
+
+  assert.equal(response.status, 400);
+  assert.match(body.error, /outside manifest bounds 2\.\.6/u);
+
+  const neutral = await requestJson<{ error: string }>("/sessions", {
+    method: "POST",
+    body: JSON.stringify({ gameId: "simple-choice", participantCount: 2 })
+  });
+  assert.equal(neutral.response.status, 400);
+  assert.match(neutral.body.error, /outside manifest bounds 1\.\.1/u);
 });
 
 test("POST /sessions with an empty body responds 400 (not 500)", async () => {

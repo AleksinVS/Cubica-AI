@@ -156,13 +156,14 @@ async function parseCommandResponse<T extends object>(
 /**
  * Создаёт новую игровую сессию через runtime-api.
  */
-export async function createNewSession(gameId: string): Promise<SessionSnapshot> {
-  return createNewSessionWithOptions({ gameId });
+export async function createNewSession(gameId: string, participantCount?: number): Promise<SessionSnapshot> {
+  return createNewSessionWithOptions({ gameId, participantCount });
 }
 
 export async function createNewSessionWithOptions(input: {
   readonly gameId: string;
   readonly contentSourceId?: string;
+  readonly participantCount?: number;
   readonly agentSeatCount?: number;
   readonly accessMode?: "local" | "private-invite";
 }): Promise<CreatedPrivateSession> {
@@ -173,6 +174,7 @@ export async function createNewSessionWithOptions(input: {
     body: JSON.stringify({
       gameId: input.gameId,
       ...(input.contentSourceId === undefined ? {} : { contentSourceId: input.contentSourceId }),
+      ...(input.participantCount === undefined ? {} : { participantCount: input.participantCount }),
       ...(input.agentSeatCount === undefined ? {} : { agentSeatCount: input.agentSeatCount }),
       ...(input.accessMode === undefined ? {} : { accessMode: input.accessMode })
     })

@@ -15,6 +15,10 @@ export interface CreateSessionRequest {
   gameId: string;
   contentSourceId?: string;
   /**
+   * Optional participant count. Runtime checks this against the published manifest bounds for both local and private-invite sessions.
+   */
+  participantCount?: number;
+  /**
    * Session access model. Omitted remains the backward-compatible local controller mode.
    */
   accessMode?: "local" | "private-invite";

@@ -75,7 +75,7 @@ interface EditorPreviewRestoreRequestMessage extends EditorPreviewRestoreRequest
   readonly requestId: string;
 }
 
-export function useEditorPreviewBridge(rootRef: RefObject<HTMLElement>, options: EditorPreviewBridgeOptions): void {
+export function useEditorPreviewBridge(rootRef: RefObject<HTMLElement | null>, options: EditorPreviewBridgeOptions): void {
   useEffect(() => {
     if (!options.enabled || typeof window === "undefined") {
       return;

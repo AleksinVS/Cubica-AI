@@ -7,6 +7,8 @@ import {
   parseRestorePreviewSessionRequest
 } from "../src/modules/player-api/requestValidation.ts";
 import { InMemorySessionStore } from "../src/modules/session/inMemorySessionStore.ts";
+import { SessionService } from "../src/modules/session/session.service.ts";
+import type { SessionPrincipal, SessionRecord, SessionStorePort } from "@cubica/contracts-session";
 import {
   assertCreationPrincipalsMatchParticipants,
   assertSessionParticipantsMatchState,
@@ -325,6 +327,19 @@ test("untrusted create request cannot inject participant metadata", () => {
   }), /unsupported field "participants"/u);
 });
 
+test("create request accepts only a positive integer participantCount", () => {
+  assert.deepEqual(parseCreateSessionRequest({ gameId: "neutral-game", participantCount: 2 }), {
+    gameId: "neutral-game",
+    participantCount: 2
+  });
+  for (const participantCount of [0, -1, 1.5, "2", null]) {
+    assert.throws(
+      () => parseCreateSessionRequest({ gameId: "neutral-game", participantCount }),
+      /participantCount must be a positive integer/u
+    );
+  }
+});
+
 test("untrusted create request accepts only schema-valid local agent seat counts", () => {
   assert.deepEqual(parseCreateSessionRequest({ gameId: "neutral-game" }), { gameId: "neutral-game" });
   assert.deepEqual(parseCreateSessionRequest({ gameId: "neutral-game", agentSeatCount: 0 }), {
@@ -350,6 +365,45 @@ test("private-invite creation is optional and cannot mix with a positive agent-s
     accessMode: "private-invite",
     agentSeatCount: 1
   }));
+  assert.throws(() => parseCreateSessionRequest({
+    gameId: "neutral-game",
+    accessMode: "private-invite",
+    contentSourceId: "preview-source"
+  }));
+});
+
+test("preview restore rejects an authenticated participant before taking the session lock", async () => {
+  const access = createParticipantSessionAccess("p1");
+  const sessionId = "11111111-1111-4111-8111-111111111111";
+  const snapshot = {
+    sessionId,
+    version: { sessionId, stateVersion: 0, lastEventSequence: 0 }
+  } as SessionRecord<Record<string, unknown>>;
+  const principal = {
+    ...access.principal,
+    sessionId,
+    createdAt: new Date()
+  } satisfies SessionPrincipal;
+  let lockTaken = false;
+  const store = {
+    getSession: async () => snapshot,
+    authenticateSession: async () => principal,
+    withLockedSession: async () => {
+      lockTaken = true;
+      throw new Error("lock must not be reached");
+    }
+  } as unknown as SessionStorePort<Record<string, unknown>>;
+  const service = new SessionService({ sessionStore: store });
+
+  await assert.rejects(
+    service.restorePreviewSession(sessionId, access.accessToken, {
+      state: {},
+      version: { stateVersion: 0, lastEventSequence: 0 }
+    }),
+    (error: unknown) => typeof error === "object" && error !== null &&
+      "statusCode" in error && error.statusCode === 403
+  );
+  assert.equal(lockTaken, false);
 });
 
 test("migration 004 deletes sessions before the required column and preserves bundles", async () => {

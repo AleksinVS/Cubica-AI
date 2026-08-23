@@ -351,6 +351,15 @@ export class GamePresenter {
     const lifecycle = ++this.sessionLifecycle;
     this.stopSessionEvents();
     const declaredSetup = this.getSessionSetup();
+    const resetOptions = this.session === null
+      ? undefined
+      : {
+          participantCount: this.session.participants.length,
+          agentSeatCount: this.session.participants.filter((participant) => participant.kind === "agent").length,
+          ...(this.session.participants.some((participant) => participant.joinState === "private-invite")
+            ? { accessMode: "private-invite" as const }
+            : {})
+        };
     this.booting = true;
     this.runtimeStatus = "booting";
     this.runtimeStatusReason = null;
@@ -375,7 +384,9 @@ export class GamePresenter {
       if (!this.isCurrentSessionLifecycle(lifecycle)) return;
       const data = this.launchContext
         ? await bindPortalLaunchSession(this.launchContext)
-        : declaredSetup !== null
+        : resetOptions !== undefined
+          ? await this.createSession(resetOptions)
+          : declaredSetup !== null
           ? null
           : await this.createSession();
       if (!this.isCurrentSessionLifecycle(lifecycle)) return;
@@ -410,6 +421,7 @@ export class GamePresenter {
 
   /** Starts a session after the generic local seat setup was confirmed. */
   async createSessionFromSetup(selection: {
+    participantCount: number;
     agentSeatCount: number;
     accessMode?: "local" | "private-invite";
   }): Promise<void> {
@@ -436,11 +448,7 @@ export class GamePresenter {
         return;
       }
       if (!this.isCurrentSessionLifecycle(lifecycle)) return;
-      const data = await this.createSession(
-        selection.agentSeatCount > 0 || selection.accessMode === "private-invite"
-          ? selection
-          : undefined
-      );
+      const data = await this.createSession(selection);
       if (!this.isCurrentSessionLifecycle(lifecycle)) return;
       this.privateInvites = data.privateInvites ?? [];
       this.session = { ...data, gameId: data.gameId || this.config.gameId };
@@ -771,7 +779,7 @@ export class GamePresenter {
       (this.content.executionMode === "ai-driven" || this.content.executionMode === "hybrid");
   }
 
-  private createSession(options?: { agentSeatCount?: number; accessMode?: "local" | "private-invite" }): Promise<CreatedPrivateSession> {
+  private createSession(options?: { participantCount?: number; agentSeatCount?: number; accessMode?: "local" | "private-invite" }): Promise<CreatedPrivateSession> {
     return createNewSessionWithOptions({
       gameId: this.config.gameId,
       contentSourceId: this.contentSourceId,
@@ -813,19 +821,22 @@ export class GamePresenter {
   }
 
   private getSessionSetup(): PlayerSessionSetup | null {
+    if (this.previewMode) return null;
     const playerConfig = this.content.playerConfig;
     const minParticipants = Number.isInteger(playerConfig.min) && playerConfig.min > 0 ? playerConfig.min : 1;
+    const maxParticipants = Number.isInteger(playerConfig.max) && playerConfig.max >= minParticipants
+      ? playerConfig.max
+      : minParticipants;
     const agentSeats = playerConfig.agentSeats;
     const maxAgentSeats = agentSeats !== undefined && Number.isInteger(agentSeats.max) && agentSeats.max > 0
-      ? Math.min(agentSeats.max, minParticipants) : 0;
-    if (maxAgentSeats < 1 && minParticipants < 2) {
-      return null;
-    }
+      ? Math.min(agentSeats.max, maxParticipants) : 0;
+    if (minParticipants === maxParticipants && maxAgentSeats === 0 && minParticipants < 2) return null;
     return {
       participantCount: minParticipants,
       minParticipants,
+      maxParticipants,
       maxAgentSeats,
-      privateInviteAvailable: !this.previewMode && this.contentSourceId === undefined && minParticipants >= 2
+      privateInviteAvailable: this.contentSourceId === undefined && maxParticipants >= 2
     };
   }
 
@@ -1075,13 +1086,20 @@ function surfacePayloadToRecord(payload: CubicaJsonValue | undefined): Record<st
 }
 
 function isValidSessionSetupSelection(
-  selection: { agentSeatCount: number; accessMode?: "local" | "private-invite" },
+  selection: { participantCount: number; agentSeatCount: number; accessMode?: "local" | "private-invite" },
   setup: PlayerSessionSetup
 ): boolean {
-  return Number.isInteger(selection.agentSeatCount) &&
+  return Number.isInteger(selection.participantCount) &&
+    selection.participantCount >= setup.minParticipants &&
+    selection.participantCount <= setup.maxParticipants &&
+    Number.isInteger(selection.agentSeatCount) &&
     selection.agentSeatCount >= 0 &&
-    selection.agentSeatCount <= Math.min(setup.maxAgentSeats, setup.participantCount) &&
-    (selection.accessMode !== "private-invite" || (setup.privateInviteAvailable === true && selection.agentSeatCount === 0));
+    selection.agentSeatCount <= Math.min(setup.maxAgentSeats, selection.participantCount) &&
+    (selection.accessMode !== "private-invite" || (
+      setup.privateInviteAvailable === true &&
+      selection.participantCount >= 2 &&
+      selection.agentSeatCount === 0
+    ));
 }
 
 function isSupportedPlayerSurfaceAction(

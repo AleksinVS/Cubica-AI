@@ -47,7 +47,7 @@ test("an initial write that never drains is disconnected after the bounded timeo
   const hub = new SessionVersionEventHub();
   const response = new FakeResponse([false]);
 
-  hub.subscribe(asServerResponse(response), version(0, 0));
+  hub.subscribe(asServerResponse(response), version(0, 0), "principal-a");
   hub.publish(version(1, 1));
   assert.equal(response.writes.length, 1);
   assert.equal(response.destroyed, false);
@@ -64,7 +64,7 @@ test("publish backpressure coalesces buffered notifications to the latest cursor
   const hub = new SessionVersionEventHub();
   const response = new FakeResponse([true, false, true]);
 
-  hub.subscribe(asServerResponse(response), version(0, 0));
+  hub.subscribe(asServerResponse(response), version(0, 0), "principal-a");
   hub.publish(version(1, 1));
   hub.publish(version(2, 2));
   hub.publish(version(3, 4));
@@ -85,7 +85,7 @@ test("heartbeat backpressure suppresses writes until drain and then flushes the 
   const hub = new SessionVersionEventHub();
   const response = new FakeResponse([true, false, true]);
 
-  hub.subscribe(asServerResponse(response), version(0, 0));
+  hub.subscribe(asServerResponse(response), version(0, 0), "principal-a");
   context.mock.timers.tick(20_000);
   assert.equal(response.writes[1], ": keepalive\n\n");
 
@@ -95,6 +95,44 @@ test("heartbeat backpressure suppresses writes until drain and then flushes the 
   response.emit("drain");
   assert.match(response.writes[2], /"stateVersion":2,"lastEventSequence":3/u);
   hub.close();
+});
+
+test("a second stream for the same session principal replaces and closes the first", () => {
+  const hub = new SessionVersionEventHub(2);
+  const first = new FakeResponse([true]);
+  const second = new FakeResponse([true]);
+
+  const cleanupFirst = hub.subscribe(asServerResponse(first), version(0, 0), "principal-a");
+  const cleanupSecond = hub.subscribe(asServerResponse(second), version(1, 1), "principal-a");
+
+  assert.equal(first.writableEnded, true);
+  assert.equal(second.writableEnded, false);
+  assert.equal(hub.size, 1);
+  cleanupFirst();
+  assert.equal(hub.size, 1, "stale cleanup must not remove the replacement stream");
+  cleanupSecond();
+  assert.equal(hub.size, 0);
+});
+
+test("global capacity counts distinct principals and still permits replacement at capacity", () => {
+  const hub = new SessionVersionEventHub(2);
+  const first = new FakeResponse([true]);
+  const second = new FakeResponse([true]);
+  const replacement = new FakeResponse([true]);
+
+  hub.subscribe(asServerResponse(first), version(0, 0), "principal-a");
+  hub.subscribe(asServerResponse(second), version(0, 0), "principal-b");
+  assert.throws(
+    () => hub.subscribe(asServerResponse(new FakeResponse([true])), version(0, 0), "principal-c"),
+    { name: "SessionVersionStreamCapacityError" }
+  );
+  assert.equal(hub.size, 2);
+
+  hub.subscribe(asServerResponse(replacement), version(0, 0), "principal-a");
+  assert.equal(first.writableEnded, true);
+  assert.equal(hub.size, 2);
+  hub.close();
+  assert.equal(hub.size, 0);
 });
 
 function asServerResponse(response: FakeResponse): ServerResponse {

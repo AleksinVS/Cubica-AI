@@ -32,6 +32,13 @@ export class SessionStoreUnavailableError extends HttpError {
   }
 }
 
+/** The portable public journal exceeded one of its authenticated read limits. */
+export class PublicJournalTooLargeError extends HttpError {
+  constructor(message: string) {
+    super(413, message, "PUBLIC_JOURNAL_TOO_LARGE");
+  }
+}
+
 /**
  * Generic snapshot writes must not fabricate or skip protected event ids.
  *

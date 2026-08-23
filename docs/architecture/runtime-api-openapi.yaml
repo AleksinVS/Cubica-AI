@@ -489,6 +489,9 @@
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
           }
         }
       }
@@ -1115,6 +1118,11 @@
         "properties": {
           "gameId": { "$ref": "#/components/schemas/GameId" },
           "contentSourceId": { "$ref": "#/components/schemas/ContentSourceId" },
+          "participantCount": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Optional participant count. Runtime checks this against the published manifest bounds for both local and private-invite sessions."
+          },
           "accessMode": {
             "type": "string",
             "enum": ["local", "private-invite"],
@@ -1135,6 +1143,15 @@
               "properties": {
                 "accessMode": { "type": "string", "const": "private-invite" },
                 "agentSeatCount": { "type": "integer", "minimum": 1 }
+              }
+            }
+          },
+          {
+            "not": {
+              "required": ["accessMode", "contentSourceId"],
+              "properties": {
+                "accessMode": { "type": "string", "const": "private-invite" },
+                "contentSourceId": {}
               }
             }
           }
@@ -1337,12 +1354,10 @@
         "pattern": "^ses_[A-Za-z0-9_-]{43}$"
       },
       "PrivateSessionInvite": {
-        "description": "Creation-only durable capability for exactly one invite-bound seat.",
+        "description": "Creation-only durable capability bound by runtime to exactly one invite participant. Seat and player metadata are intentionally omitted because unauthenticated client metadata is not identity proof.",
         "type": "object",
-        "required": ["seatId", "playerId", "credential"],
+        "required": ["credential"],
         "properties": {
-          "seatId": { "type": "string", "minLength": 1 },
-          "playerId": { "$ref": "#/components/schemas/PlayerId" },
           "credential": { "$ref": "#/components/schemas/SessionCredential" }
         },
         "additionalProperties": false

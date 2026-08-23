@@ -25,8 +25,10 @@ describe("create-session request contract parity", () => {
       enum: ["local", "private-invite"],
       default: "local"
     });
+    expect(schema.properties.participantCount).toMatchObject({ type: "integer", minimum: 1 });
 
-    const request = { gameId: "neutral-game", agentSeatCount: 1 } satisfies CreateSessionRequest;
+    const request = { gameId: "neutral-game", participantCount: 3, agentSeatCount: 1 } satisfies CreateSessionRequest;
+    expect(request.participantCount).toBe(3);
     expect(request.agentSeatCount).toBe(1);
   });
 
@@ -41,12 +43,16 @@ describe("create-session request contract parity", () => {
     expect(validateCreateSessionRequestShape({ gameId: "neutral-game", accessMode: "private-invite" })).toBe(true);
     expect(validateCreateSessionRequestShape({ gameId: "neutral-game", agentSeatCount: 0 })).toBe(true);
     expect(validateCreateSessionRequestShape({ gameId: "neutral-game", agentSeatCount: 1 })).toBe(true);
+    expect(validateCreateSessionRequestShape({ gameId: "neutral-game", participantCount: 3 })).toBe(true);
     for (const invalid of [
+      { gameId: "neutral-game", participantCount: 0 },
+      { gameId: "neutral-game", participantCount: 1.5 },
       { gameId: "neutral-game", agentSeatCount: -1 },
       { gameId: "neutral-game", agentSeatCount: 1.5 },
       { gameId: "neutral-game", agentSeatCount: 65 },
       { gameId: "neutral-game", accessMode: "public" },
       { gameId: "neutral-game", accessMode: "private-invite", agentSeatCount: 1 },
+      { gameId: "neutral-game", accessMode: "private-invite", contentSourceId: "preview-source" },
       { gameId: "neutral-game", participants: [] }
     ]) {
       expect(validateCreateSessionRequestShape(invalid)).toBe(false);

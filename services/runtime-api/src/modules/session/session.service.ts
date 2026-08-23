@@ -39,8 +39,16 @@ import {
   hashSessionCredential,
   resolveSessionViewerActor
 } from "./sessionAuthentication.ts";
-import { SessionAuthenticationError, SessionStoreUnavailableError } from "./sessionStoreErrors.ts";
-import { initializeTurnBasedSessionState } from "./turnBasedSessionState.ts";
+import {
+  SessionAuthenticationError,
+  SessionAuthorizationError,
+  SessionStoreUnavailableError
+} from "./sessionStoreErrors.ts";
+import {
+  initializeTurnBasedSessionState,
+  ParticipantCountValidationError,
+  resolveParticipantCount
+} from "./turnBasedSessionState.ts";
 import {
   buildPublicGameplayJournal,
   MAX_PUBLIC_JOURNAL_ENTRIES
@@ -87,23 +95,41 @@ export class SessionService {
       throw new RequestValidationError("gameId is required to create a session");
     }
 
+    const privateInvite = request.accessMode === "private-invite";
+    if (privateInvite && request.contentSourceId !== undefined) {
+      throw new RequestValidationError("Private-invite sessions cannot use editor preview content");
+    }
+    if (privateInvite && (request.agentSeatCount ?? 0) > 0) {
+      throw new RequestValidationError("Private-invite sessions cannot contain agent seats");
+    }
+
     await assertGameLaunchReady({
       gameId,
       contentSourceId: request.contentSourceId,
+      participantCount: request.participantCount,
       agentSeatCount: request.agentSeatCount
     });
     const bundle = await contentService.getBundle(gameId, request.contentSourceId);
     const declaredState = extractInitialState(bundle) as RuntimeState;
-    const initialState = initializeTurnBasedSessionState(bundle.manifest, declaredState, {});
-    const privateInvite = request.accessMode === "private-invite";
-    if (privateInvite && bundle.manifest.config.players.min < 2) {
+    let initialState: RuntimeState;
+    let participantCount: number;
+    try {
+      participantCount = resolveParticipantCount(bundle.manifest, request.participantCount);
+      initialState = initializeTurnBasedSessionState(bundle.manifest, declaredState, { participantCount });
+    } catch (error) {
+      if (error instanceof ParticipantCountValidationError) {
+        throw new RequestValidationError(error.message);
+      }
+      throw error;
+    }
+    if (privateInvite && participantCount < 2) {
       throw new RequestValidationError("Private-invite sessions require at least one guest participant");
     }
     const participants = privateInvite
-      ? materializePrivateSessionParticipants(initialState, bundle.manifest.config.players.min)
+      ? materializePrivateSessionParticipants(initialState, participantCount)
       : materializeLocalSessionParticipants(
           initialState,
-          bundle.manifest.config.players.min,
+          participantCount,
           request.agentSeatCount ?? 0
         );
     // A client never chooses its own trusted role. Facilitated mode is the one
@@ -131,6 +157,10 @@ export class SessionService {
       ...(privateInvite ? { additionalPrincipals: participantAccess.slice(1).map(({ principal }) => principal) } : {})
     });
     let driven: Awaited<ReturnType<AgentSeatDriver["drive"]>> | undefined;
+    let recovered: {
+      snapshot: SessionRecord<RuntimeState>;
+      agentControl?: Awaited<ReturnType<typeof projectAgentControl>>;
+    } | undefined;
     if (this.agentSeatDriver !== undefined) {
       try {
         driven = await this.agentSeatDriver.drive({
@@ -145,9 +175,33 @@ export class SessionService {
           `[agent-seat] initial bounded driver failed for session ${created.session.sessionId}:`,
           error instanceof Error ? error.message : String(error)
         );
+        try {
+          const authoritative = await this.sessionStore.getSession(created.session.sessionId);
+          if (authoritative !== null) {
+            recovered = { snapshot: authoritative };
+            try {
+              const agentControl = await projectAgentControl({
+                sessionStore: this.sessionStore,
+                credentialSha256: localAccess.principal.credentialSha256,
+                snapshot: authoritative
+              });
+              if (agentControl !== undefined) recovered.agentControl = agentControl;
+            } catch (projectionError) {
+              console.error(
+                `[agent-seat] receipt-derived control projection failed for session ${created.session.sessionId}:`,
+                projectionError instanceof Error ? projectionError.message : String(projectionError)
+              );
+            }
+          }
+        } catch (reloadError) {
+          console.error(
+            `[agent-seat] authoritative reload failed for session ${created.session.sessionId}:`,
+            reloadError instanceof Error ? reloadError.message : String(reloadError)
+          );
+        }
       }
     }
-    const snapshot = driven?.snapshot ?? created.session;
+    const snapshot = driven?.snapshot ?? recovered?.snapshot ?? created.session;
     const actorPlayerId = resolveSessionViewerActor(snapshot, created.principal);
 
     return {
@@ -164,14 +218,12 @@ export class SessionService {
         ...(actorPlayerId === undefined ? {} : { actorPlayerId }),
         sessionRole: created.principal.role
       }),
-      ...(driven?.agentControl === undefined ? {} : { agentControl: driven.agentControl }),
+      ...((driven?.agentControl ?? recovered?.agentControl) === undefined
+        ? {}
+        : { agentControl: driven?.agentControl ?? recovered?.agentControl }),
       credential: localAccess.accessToken,
       ...(privateInvite ? {
-        privateInvites: participantAccess.slice(1).map(({ accessToken }, index) => ({
-          seatId: participants[index + 1].seatId,
-          playerId: participants[index + 1].playerId,
-          credential: accessToken
-        }))
+        privateInvites: participantAccess.slice(1).map(({ accessToken }) => ({ credential: accessToken }))
       } : {})
     };
   }
@@ -249,9 +301,13 @@ export class SessionService {
     accessToken: string,
     request: RestorePreviewSessionRequest<RuntimeState>
   ): Promise<RestorePreviewSessionResponse<RuntimeState>> {
-    // Preview restore is a trusted editor operation, not a gameplay command,
-    // but it still requires current session membership before taking the lock.
-    const access = await this.authenticateSessionAccess(sessionId, accessToken);
+    // Preview restore mutates the complete trusted preview state. Session
+    // membership alone is insufficient: an invite-scoped participant must
+    // never gain the local editor controller's authority.
+    const access = await this.authenticateSessionIdentity(sessionId, accessToken);
+    if (access.principal.kind !== "local-controller") {
+      throw new SessionAuthorizationError();
+    }
     return this.sessionStore.withLockedSession(sessionId, async (current) => {
       if (!current) {
         throw new NotFoundError(`Session "${sessionId}" was not found`);
@@ -334,14 +390,36 @@ export class SessionService {
     accessToken: string
   ): Promise<AuthenticatedSessionAccess> {
     const credentialSha256 = hashSessionCredential(accessToken);
+    const { snapshot, principal } = await this.authenticateSessionIdentityByDigest(sessionId, credentialSha256);
+    return { snapshot, principal, bundle: await this.getPinnedBundle(snapshot) };
+  }
+
+  /** Authenticate an SSE cursor stream without constructing a player projection. */
+  async authenticateSessionVersionAccess(
+    sessionId: SessionId,
+    accessToken: string
+  ): Promise<{ version: SessionRecord<RuntimeState>["version"]; principalId: string }> {
+    const { snapshot, principal } = await this.authenticateSessionIdentity(sessionId, accessToken);
+    return { version: snapshot.version, principalId: principal.principalId };
+  }
+
+  private authenticateSessionIdentity(
+    sessionId: SessionId,
+    accessToken: string
+  ): Promise<{ snapshot: SessionRecord<RuntimeState>; principal: SessionPrincipal }> {
+    return this.authenticateSessionIdentityByDigest(sessionId, hashSessionCredential(accessToken));
+  }
+
+  private async authenticateSessionIdentityByDigest(
+    sessionId: SessionId,
+    credentialSha256: string
+  ): Promise<{ snapshot: SessionRecord<RuntimeState>; principal: SessionPrincipal }> {
     const [snapshot, principal] = await Promise.all([
       this.sessionStore.getSession(sessionId),
       this.sessionStore.authenticateSession({ sessionId, credentialSha256 })
     ]);
-    if (snapshot === null || principal === null) {
-      throw new SessionAuthenticationError();
-    }
-    return { snapshot, principal, bundle: await this.getPinnedBundle(snapshot) };
+    if (snapshot === null || principal === null) throw new SessionAuthenticationError();
+    return { snapshot, principal };
   }
 
   private async getPinnedBundle(snapshot: SessionRecord<RuntimeState>): Promise<GameBundle> {

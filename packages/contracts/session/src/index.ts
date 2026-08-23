@@ -4,7 +4,7 @@ export type EventId = string;
 export type * from "./generated/public-gameplay-journal.ts";
 export type { CreateSessionRequest } from "./generated/create-session-request.ts";
 export {
-  createSessionRequestValidationErrors,
+  getCreateSessionRequestValidationErrors,
   validateCreateSessionRequestShape
 } from "./createSessionRequestValidation.ts";
 import type { SessionParticipant } from "./generated/session-participant.ts";

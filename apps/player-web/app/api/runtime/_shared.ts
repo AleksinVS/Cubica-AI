@@ -1,10 +1,15 @@
 /**
  * Server-only runtime proxy helpers.
  *
- * Runtime credentials never cross into browser JSON. Player Web stores one
- * credential per runtime session in an HttpOnly cookie whose name is derived
- * from a hash of the session id, then adds the bearer header only while
+ * The controller credential never crosses into browser JSON. Player Web stores
+ * one credential per runtime session in an HttpOnly cookie whose name is
+ * derived from a hash of the session id, then adds the bearer header only while
  * forwarding same-origin BFF requests to runtime-api.
+ *
+ * Private-session creation is the narrow exception: the host browser receives
+ * guest bearer capabilities long enough to render invite links. They remain
+ * JavaScript-readable until the host dismisses that creation-only surface;
+ * imported participant credentials are immediately moved to HttpOnly cookies.
  */
 
 import { createHash } from "node:crypto";

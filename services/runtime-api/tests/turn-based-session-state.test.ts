@@ -5,9 +5,10 @@ import { test } from "node:test";
 import type { CubicaMechanicsIRV1Alpha1, GameManifest, Step } from "@cubica/contracts-manifest";
 
 import {
-  validateAgentSeatSemanticReferences
-} from "../src/modules/content/manifestValidation.ts";
-import { initializeTurnBasedSessionState } from "../src/modules/session/turnBasedSessionState.ts";
+  initializeTurnBasedSessionState,
+  resolveParticipantCount
+} from "../src/modules/session/turnBasedSessionState.ts";
+import { validateAgentSeatSemanticReferences } from "../src/modules/content/manifestValidation.ts";
 import { materializeLocalSessionParticipants } from "../src/modules/session/sessionParticipants.ts";
 
 const require = createRequire(import.meta.url);
@@ -157,6 +158,15 @@ test("participant count outside manifest bounds is rejected", () => {
     () => initializeTurnBasedSessionState(manifest, declaredState(manifest), {
       participantCount: 3
     }),
+    /outside manifest bounds/u
+  );
+});
+
+test("participant bounds are enforced for manifests without a player template", () => {
+  const manifest = createManifest();
+  delete manifest.state.playersTemplate;
+  assert.throws(
+    () => resolveParticipantCount(manifest, 1),
     /outside manifest bounds/u
   );
 });

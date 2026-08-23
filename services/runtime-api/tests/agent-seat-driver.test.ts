@@ -84,6 +84,49 @@ test("the same bounded driver handles a session whose initial active participant
   }
 });
 
+test("session creation reloads an authoritative snapshot after a post-commit driver fault", async () => {
+  const store = new InMemorySessionStore<Record<string, unknown>>();
+  const driver = {
+    async drive(input: {
+      sessionStore: typeof store;
+      sessionId: string;
+    }): Promise<never> {
+      const current = await input.sessionStore.getSession(input.sessionId);
+      assert.ok(current);
+      await input.sessionStore.updateSession({
+        ...current,
+        state: {
+          ...current.state,
+          public: {
+            ...(current.state.public as Record<string, unknown>),
+            choice: {
+              ...((current.state.public as Record<string, unknown>).choice as Record<string, unknown>),
+              outcome: "accepted"
+            }
+          }
+        },
+        version: {
+          ...current.version,
+          stateVersion: current.version.stateVersion + 1
+        },
+        updatedAt: new Date()
+      }, { expectedStateVersion: current.version.stateVersion });
+      throw new Error("driver failed after durable commit");
+    }
+  } as unknown as AgentSeatDriver;
+  const service = new SessionService({ sessionStore: store, agentSeatDriver: driver });
+
+  try {
+    const response = await service.createSession({ gameId: "simple-choice" });
+    assert.equal(response.version.stateVersion, 1);
+    const publicState = response.state.public as Record<string, unknown>;
+    assert.equal((publicState.choice as Record<string, unknown>).outcome, "accepted");
+    assert.match(response.credential, /^ses_[A-Za-z0-9_-]{43}$/u);
+  } finally {
+    await store.close();
+  }
+});
+
 test("73 ordered fallbacks reject ordinary guard and parameter failures before the final atomic commit", async () => {
   let calls = 0;
   const fallbacks = Array.from(

@@ -111,13 +111,14 @@ BFF; новые база, очередь, фоновая задача, игро�
 
 Фактически выполнено 2026-08-13:
 
-- contracts schema parity, session AJV tests и typecheck — пройдены (6/6);
-- runtime journal — 4/4, PostgreSQL store — 33/33, полный Runtime API — 363
+- contracts schema parity, session AJV tests и typecheck — пройдены (7/7);
+- runtime journal — 4/4, PostgreSQL store — пройден, полный Runtime API — 371
   успешно и 2 штатно пропущено; runtime typecheck и OpenAPI validator пройдены;
-- Player Web BFF/component — 19/19, полный Player Web — 272/272;
-  сфокусированный CMT browser proof — 1/1;
-- Player Web typecheck отдельно блокировался семью чужими fixtures текущего
-  параллельного среза session participants; журналные файлы ошибок типов не дали;
+- Player Web BFF/component — 19/19, полный Player Web — 280/280;
+  после нормализации fixtures участников сессии Player Web typecheck — пройден;
+- CMT browser proof повторно запущен основным агентом на изолированных портах
+  3230/3231 и пройден; проверено точное событие `cargo.loaded` в скачанном
+  журнале;
 - реальная PostgreSQL integration не запускалась: в окружении отсутствует
   `TEST_POSTGRES_DATABASE_URL`; миграция и адаптер доказаны unit-контуром.
 
