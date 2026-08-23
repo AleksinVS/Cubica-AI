@@ -988,10 +988,13 @@ worker и не открывает второй путь к модели или �
   ровно один локальный просмотр успешного semantic mismatch через существующий
   reviewer, принудительно сохраняет `review_expected_outcome=false` и оставляет
   status `hard_stopped`. Несемантические отказы и изменившиеся bindings
-  содержимое не раскрывают; повторный review запрещён.
+  содержимое не раскрывают; повторный review запрещён. До чтения evaluator
+  атомарно создаёт приватный crash-sticky маркер: падение, ошибка reviewer и
+  конкурентный запуск расходуют возможность просмотра, а удалить маркер может
+  только exact-zero credential-free cleanup.
 - Scope: JSON Schema, generated types, PostgreSQL, ACL, retention, prompt,
   gateway и provider не менялись. Следующий `existing_fact` обязан быть
   одноязычным с seed-страницей; межъязычный случай оценивается отдельно.
-- Verification: focused evaluator 36/36, package typecheck и diff-check прошли.
+- Verification: focused evaluator 39/39, package typecheck и diff-check прошли.
   Новый внешний вызов всё ещё требует отдельного решения PM и Sol-high
   preactivation.

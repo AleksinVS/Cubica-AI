@@ -143,6 +143,7 @@ describe('persistent shadow evaluator', () => {
       expect(reviewMaterial).toHaveBeenCalledWith(manifest().scenarios[0]!.stable_turn_key);
       expect(review).toHaveBeenCalledWith(0, 'no_change', material);
       expect(f.db.workerCalls).toBe(0);
+      expect((await stat(`${f.paths.reportPath}.semantic-review-claimed`)).mode & 0o777).toBe(0o700);
     } finally { await rm(f.dir, { recursive: true, force: true }); }
   });
   it('rejects a persisted diagnostic review without reopening local material', async () => {
@@ -261,6 +262,10 @@ describe('persistent shadow evaluator', () => {
       expect(review).not.toHaveBeenCalled();
       expect(f.db.workerCalls).toBe(0);
       expect(await readFile(f.paths.reportPath, 'utf8')).toBe(before);
+      await expect(reviewShadowEvaluation(f.deps)).rejects.toThrow('already claimed');
+      expect(reviewMaterial).toHaveBeenCalledTimes(mode === 'throwing' ? 1 : 0);
+      expect(review).not.toHaveBeenCalled();
+      expect(await readFile(f.paths.reportPath, 'utf8')).toBe(before);
     } finally { await rm(f.dir, { recursive: true, force: true }); }
   });
   it.each(['throwing', 'invalid'] as const)('rejects a %s diagnostic reviewer without report mutation', async (mode) => {
@@ -279,6 +284,72 @@ describe('persistent shadow evaluator', () => {
       expect(review).toHaveBeenCalledWith(0, 'no_change', material);
       expect(f.db.workerCalls).toBe(0);
       expect(await readFile(f.paths.reportPath, 'utf8')).toBe(before);
+      await expect(reviewShadowEvaluation(f.deps)).rejects.toThrow('already claimed');
+      expect(reviewMaterial).toHaveBeenCalledTimes(1);
+      expect(review).toHaveBeenCalledTimes(1);
+      expect(await readFile(f.paths.reportPath, 'utf8')).toBe(before);
+    } finally { await rm(f.dir, { recursive: true, force: true }); }
+  });
+  it('allows only one concurrent diagnostic review to read local material', async () => {
+    const f = await fixture(); try {
+      await persistProposalMismatch(f);
+      let release!: () => void;
+      const held = new Promise<void>((resolvePromise) => { release = resolvePromise; });
+      let materialRead!: () => void;
+      const materialStarted = new Promise<void>((resolvePromise) => { materialRead = resolvePromise; });
+      const reviewMaterial = vi.fn(async () => {
+        materialRead();
+        return { userMessage: 'bound user', agentMessage: 'bound agent', result: { outcome: 'proposal' } };
+      });
+      f.db.reviewMaterial = reviewMaterial;
+      const review = vi.fn(async () => {
+        await held;
+        return [false, true, true, true] as const;
+      });
+      (f.deps as { reviewer: ShadowEvaluatorDeps['reviewer'] }).reviewer = { review };
+      const first = reviewShadowEvaluation(f.deps);
+      await materialStarted;
+      await expect(reviewShadowEvaluation(f.deps)).rejects.toThrow('already claimed');
+      expect(reviewMaterial).toHaveBeenCalledTimes(1);
+      expect(review).toHaveBeenCalledTimes(1);
+      release();
+      await expect(first).resolves.toMatchObject({ status: 'hard_stopped' });
+      expect(f.db.workerCalls).toBe(0);
+    } finally { await rm(f.dir, { recursive: true, force: true }); }
+  });
+  it('blocks diagnostic review after cleanup starts without reading material', async () => {
+    const f = await fixture(); try {
+      await persistProposalMismatch(f);
+      const report = JSON.parse(await readFile(f.paths.reportPath, 'utf8')) as ShadowEvaluationReport;
+      await writeShadowEvaluationReport(f.paths, { ...report, cleanup: { ...report.cleanup, started: true } });
+      const before = await readFile(f.paths.reportPath, 'utf8');
+      const reviewMaterial = vi.fn(async () => ({ userMessage: '', agentMessage: '', result: { outcome: 'unused' } }));
+      f.db.reviewMaterial = reviewMaterial;
+      (f.deps as { reviewer: ShadowEvaluatorDeps['reviewer'] }).reviewer = {
+        review: vi.fn(async () => [false, true, true, true] as const)
+      };
+      await expect(reviewShadowEvaluation(f.deps)).rejects.toThrow('Local semantic review is required');
+      expect(reviewMaterial).not.toHaveBeenCalled();
+      expect(await readFile(f.paths.reportPath, 'utf8')).toBe(before);
+    } finally { await rm(f.dir, { recursive: true, force: true }); }
+  });
+  it('removes a crash-sticky diagnostic claim only after exact-zero cleanup', async () => {
+    const f = await fixture(); try {
+      await persistProposalMismatch(f);
+      (f.deps as { reviewer: ShadowEvaluatorDeps['reviewer'] }).reviewer = {
+        review: async (): Promise<readonly [boolean, boolean, boolean, boolean]> => { throw new Error('operator crashed'); }
+      };
+      await expect(reviewShadowEvaluation(f.deps)).rejects.toThrow('did not complete');
+      const claim = `${f.paths.reportPath}.semantic-review-claimed`;
+      expect((await stat(claim)).isDirectory()).toBe(true);
+      const zeroDb: ShadowEvaluatorDatabase = {
+        inspect: async () => snapshot([]),
+        cleanup: async () => ({ runsDeleted: 0, metricsDeleted: 0, messagesTombstoned: 0, threadsTombstoned: 0 })
+      };
+      const result = await cleanupShadowEvaluation({ ...f.deps, db: zeroDb });
+      expect(result).toMatchObject({ status: 'hard_stopped', cleanup: { passed: true } });
+      await expect(stat(claim)).rejects.toMatchObject({ code: 'ENOENT' });
+      await expect(stat(f.paths.manifestPath)).rejects.toMatchObject({ code: 'ENOENT' });
     } finally { await rm(f.dir, { recursive: true, force: true }); }
   });
   it('preserves the existing successful awaiting-review transition', async () => {

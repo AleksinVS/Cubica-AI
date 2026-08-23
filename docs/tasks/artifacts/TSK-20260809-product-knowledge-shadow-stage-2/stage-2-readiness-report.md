@@ -350,9 +350,12 @@ retention credential-free cleanup удалил 2 run и 2 metric, обезлич
 DR-17 после cleanup добавил только локальную диагностику evaluator. Успешный
 semantic mismatch будущего окна можно один раз показать через существующий
 `/dev/tty`; status остаётся `hard_stopped`, первый review-признак всегда
-`false`, а содержимое не попадает в report. Focused evaluator прошёл 36/36,
-package typecheck и contract checks зелёные. Schema, storage, retention, ACL,
-prompt и provider не менялись; новый внешний вызов не разрешён.
+`false`, а содержимое не попадает в report. До чтения создаётся атомарный
+приватный каталог-маркер `0700`: crash, ошибка reviewer и конкурентный процесс
+не могут открыть материал повторно; после exact-zero cleanup маркер удаляется.
+Focused evaluator прошёл 39/39, package typecheck и contract checks зелёные.
+Schema, storage, retention, ACL, prompt и provider не менялись; новый внешний
+вызов не разрешён.
 
 Перед каждым новым внешним окном необходимо:
 

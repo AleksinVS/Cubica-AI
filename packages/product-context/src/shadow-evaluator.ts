@@ -8,7 +8,7 @@
  */
 import { constants } from 'node:fs';
 import { createHash } from 'node:crypto';
-import { lstat, open, rename, unlink } from 'node:fs/promises';
+import { lstat, mkdir, open, readdir, rename, rmdir, unlink } from 'node:fs/promises';
 import { isAbsolute, dirname, join, relative, resolve, sep } from 'node:path';
 import type { ShadowEvaluationManifest, ShadowEvaluationReport, ShadowEvaluationScenarioReport } from './generated/product-knowledge.ts';
 import { validateShadowEvaluationManifest, validateShadowEvaluationReport } from './contracts.ts';
@@ -229,6 +229,7 @@ export async function reviewShadowEvaluation(deps: ShadowEvaluatorDeps): Promise
         mapOutcome(exact[0]!) !== report.scenarios[index]!.actual_outcome) {
       throw new Error('Semantic mismatch review requires an exact succeeded run.');
     }
+    await claimSemanticMismatchReview(deps.paths);
   }
   let material: ShadowEvaluatorReviewMaterial;
   try {
@@ -270,6 +271,7 @@ export async function cleanupShadowEvaluation(deps: ShadowEvaluatorDeps): Promis
     if (!zero || await deps.readGitHead() !== manifest.expected_git_head) {
       throw new Error('Completed cleanup can only finalize after exact zero and unchanged Git.');
     }
+    await removeSemanticMismatchReviewClaim(deps.paths);
     await removeManifest(deps.paths, digest);
     return report;
   }
@@ -298,7 +300,10 @@ export async function cleanupShadowEvaluation(deps: ShadowEvaluatorDeps): Promis
   const gitUnchanged = (await deps.readGitHead()) === manifest.expected_git_head;
   report = { ...report, status: report.status === 'hard_stopped' || !gitUnchanged ? 'hard_stopped' : passed ? 'completed' : 'ready_for_cleanup', cleanup: { ...report.cleanup, active_runs: final.activeRuns, active_metrics: final.activeMetrics, active_messages: final.activeMessages, active_threads: final.activeThreads, active_text_bytes: final.activeTextBytes, runs_deleted: Math.max(0, report.cleanup.initial_runs - final.activeRuns), metrics_deleted: Math.max(0, report.cleanup.initial_metrics - final.activeMetrics), messages_tombstoned: Math.max(0, report.cleanup.initial_messages - final.activeMessages), threads_tombstoned: Math.max(0, report.cleanup.initial_threads - final.activeThreads), passed }, git_unchanged: gitUnchanged, scenarios: gitUnchanged ? report.scenarios : report.scenarios.map((scenario) => ({ ...scenario, git_unchanged: false })) };
   await writeShadowEvaluationReport(deps.paths, report);
-  if (passed) await removeManifest(deps.paths, digest);
+  if (passed) {
+    await removeSemanticMismatchReviewClaim(deps.paths);
+    await removeManifest(deps.paths, digest);
+  }
   return report;
 }
 
@@ -347,6 +352,45 @@ async function removeManifest(paths: ShadowEvaluatorPaths, expectedDigest: strin
     await unlink(paths.manifestPath);
   }
   catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
+}
+
+function semanticMismatchReviewClaimPath(paths: ShadowEvaluatorPaths): string {
+  return `${paths.reportPath}.semantic-review-claimed`;
+}
+
+async function claimSemanticMismatchReview(paths: ShadowEvaluatorPaths): Promise<void> {
+  const path = semanticMismatchReviewClaimPath(paths);
+  try {
+    await mkdir(path, { mode: 0o700 });
+    const info = await lstat(path);
+    if (!info.isDirectory() || info.isSymbolicLink() || info.uid !== process.getuid?.() ||
+        (info.mode & 0o777) !== 0o700) throw new Error('Semantic mismatch review claim is unsafe.');
+    await syncParentDirectory(path);
+  } catch {
+    // A crash-sticky claim deliberately makes retries and concurrent reviews
+    // indistinguishable: both must fail before reading the local material.
+    throw new Error('Semantic mismatch review was already claimed.');
+  }
+}
+
+async function removeSemanticMismatchReviewClaim(paths: ShadowEvaluatorPaths): Promise<void> {
+  const path = semanticMismatchReviewClaimPath(paths);
+  try {
+    const info = await lstat(path);
+    if (!info.isDirectory() || info.isSymbolicLink() || info.uid !== process.getuid?.() ||
+        (info.mode & 0o777) !== 0o700 || (await readdir(path)).length !== 0) {
+      throw new Error('Semantic mismatch review claim is unsafe.');
+    }
+    await rmdir(path);
+    await syncParentDirectory(path);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+  }
+}
+
+async function syncParentDirectory(path: string): Promise<void> {
+  const directory = await open(dirname(path), constants.O_RDONLY | constants.O_DIRECTORY);
+  try { await directory.sync(); } finally { await directory.close(); }
 }
 
 function ensureBasicConfig(config: ShadowEvaluatorWorkerConfig): void { ensureConfig(config); }
