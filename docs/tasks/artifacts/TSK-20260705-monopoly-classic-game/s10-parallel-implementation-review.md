@@ -113,6 +113,6 @@ Production build и браузерный E2E не запускались: на �
 авторизации, но остаётся обязательным финальным доказательством после ручной
 композиции.
 
-Общее предложение по координации разных игровых требований, режимам владения и
-ограниченной роли интегратора записано в
-[`docs/processes/parallel-agent-coordination-proposal.md`](../../../processes/parallel-agent-coordination-proposal.md).
+Принятый процесс координации разных игровых требований и эксклюзивной
+shared-реализации записан в
+[`docs/processes/parallel-agent-coordination.md`](../../../processes/parallel-agent-coordination.md).
