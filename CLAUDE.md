@@ -119,14 +119,29 @@ architecture but are not expected to know the codebase or ADR numbers.
 
 ## 6. Execution and verification
 
-- Before delegating, apply
+- Before delegating Codex agents, apply
   [`skills/C_codex-agent-routing/SKILL.md`](skills/C_codex-agent-routing/SKILL.md).
+  Other agent environments use an equivalent risk-based mapping while keeping
+  the shared process in
+  [`parallel-agent-coordination.md`](docs/processes/parallel-agent-coordination.md).
   Delegate only a bounded independent result when it reduces latency or adds a
   justified independent review. Keep small, tightly coupled work with the
   primary agent.
 - Only the primary agent creates subagents. Keep at most two active at once and
   give parallel writers non-overlapping ownership. Do not duplicate assignments
   or delegate one known deterministic command.
+- The primary agent of a root `TSK-*` is its coordinator and normally also its
+  integrator. Game-specific investigation may run in parallel in `open` mode.
+  Before any shared schema, Mechanics IR, runtime, player, storage, or trust
+  write, the coordinator publishes one `exclusive` owner and working branch for
+  the exact shared boundary in `NEXT_STEPS.md` on current `origin/main`, then
+  fetches and rechecks uniqueness before writing starts. Known complementary
+  game requirements must be synthesized before that owner starts writing.
+- Authors of dependent branches under one exclusive shared boundary hand off
+  their head SHA instead of merging independently. The coordinator, or a
+  separately appointed integrator when risk requires it, composes them in a
+  clean worktree. A semantic conflict stops integration and returns to PM when
+  it crosses an architecture decision.
 - Pass a narrow context packet without full history: objective, established
   facts, exact files, boundaries, criteria, checks, and stop conditions. The
   primary agent verifies the result against contracts and fresh evidence, then

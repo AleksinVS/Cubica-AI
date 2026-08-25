@@ -36,8 +36,10 @@ SSE-вариант с долговечным удостоверением мес
 Работа понята так: реализовать принятую модель мультиплеера (ADR-011: очередь
 `session_events`, `state_version`, последовательная обработка, broadcast) внутри
 модульного монолита `runtime-api` по решениям ADR-059: PostgreSQL-хранилище
-сессий как предусловие, модель участников с join-токенами, WebSocket-доставка
-персональных проекций. Игровые манифесты при этом не меняются.
+сессий как предусловие, модель участников с закрытым приглашением и
+аутентифицированная доставка уведомлений с полной персональной
+ресинхронизацией. Точные invite lifecycle и realtime transport остаются
+архитектурным выбором PM; игровые манифесты при этом не меняются.
 
 ## Architecture Source
 
@@ -65,11 +67,11 @@ session-owned модель участников для локальной дос
    `kind:"agent"`; network join и reconnect остаются границей S10.
 3. Канонические actor-scoped projection и доступность действий переиспользуются;
    `seatId` — стабильное место, `playerId` — actor/key в `state.players`.
-4. Остальные WebSocket, durable-session и network acceptance criteria остаются
+4. Остальные network delivery, durable-session и acceptance criteria остаются
    последующими фазами и не считаются доказанными текущим статусом.
 5. ADR-059 не фиксирует срок/одноразовость join-токена, допустимый переход
-   `joinState`, браузерную WebSocket-аутентификацию и точные кадры resync. Это
-   публичные и защитные границы, требующие решения PM до реализации S10.
+   `joinState`, выбор realtime transport, его аутентификацию и payload resync.
+   Это публичные и защитные границы, требующие решения PM до реализации S10.
 
 ## Target State
 
@@ -81,9 +83,9 @@ session-owned модель участников для локальной дос
 3. Действия проходят через `session_events` с последовательной обработкой и
    advisory-lock на сессию; `{{actor}}` в сетевом режиме — только из
    аутентифицированного участника.
-4. WebSocket endpoint: подписка по сессии+токену, сообщения с `state_version`,
-   `last_event_sequence` и персональной проекцией; протокол описан схемой в
-   `packages/contracts/session` + протокол-док рядом с OpenAPI.
+4. Выбранный PM server-to-client transport сообщает подтверждённую версию и
+   sequence без второго владельца состояния; клиент получает полную
+   аутентифицированную персональную проекцию по принятому контракту resync.
 5. `player-web` умеет: занять место по ссылке-приглашению, играть свой ход,
    получать чужие ходы пушем, реконнект с полной ресинхронизацией.
 
@@ -94,7 +96,8 @@ session-owned модель участников для локальной дос
   (поглощает `TSK-20260518-session-persistence-hardening` — отметить в нём).
 - Participants/join API (+OpenAPI update по ADR-051).
 - Обработчик очереди, блокировки, жизненный цикл событий (таймауты/попытки).
-- WebSocket delivery module + контракт сообщений.
+- Network delivery module + контракт уведомлений/resync по выбранному PM
+  transport.
 - Параметр наблюдателя в строителе player-facing проекции (ADR-019 + ADR-058 §2.3).
 - Интеграция `player-web` (подписка, версии, реконнект) и e2e-доказательство.
 
@@ -146,21 +149,21 @@ session-owned модель участников для локальной дос
 3. Тесты конкуренции: два одновременных действия → последовательное применение,
    проигравшее отклонено управляемо.
 
-### Phase 4. WebSocket delivery
+### Phase 4. Network delivery
 
 1. **Architecture gate — основной агент, Sol high, высокий риск:** после
    решения PM уточнить ADR-059 и зафиксировать lifecycle invite/claim,
-   realtime-аутентификацию и full-snapshot протокол. До этого пункта реализация
-   S10 не начинается.
+   `joinState`, выбор SSE либо WebSocket, realtime-аутентификацию и payload
+   resync. До этого пункта реализация S10 не начинается.
 2. **Contracts — Luna medium, ограниченный schema-first блок:** OpenAPI,
    JSON Schema, генерируемые типы и негативные contract tests; основной агент
    проверяет публичную границу и generated drift.
 3. **Runtime invite/claim — Luna high, security-sensitive реализация по уже
    принятому контракту:** hash-only токены, атомарное занятие места, principal
    scope и PostgreSQL tests. Основной агент выполняет security review.
-4. **WebSocket delivery — Luna high:** аутентификация коротким ticket,
-   персональный полный snapshot после commit, версии и reconnect. Gameplay
-   commands остаются в HTTP.
+4. **Network delivery — Luna high:** реализация только выбранного PM transport,
+   аутентифицированное уведомление/снимок после commit, версии и reconnect.
+   Gameplay commands остаются в HTTP.
 
 ### Phase 5. Персональные проекции — done в S8/S9, переиспользовать
 
@@ -184,8 +187,8 @@ session-owned модель участников для локальной дос
 1. Обновить `PROJECT_ARCHITECTURE.md`, `NEXT_STEPS.md`, debt-log
    (`InMemorySessionStore`), Handoff Log.
 2. Упростить итоговую схему: подтвердить отсутствие отдельного gateway,
-   persistent presence, WebSocket gameplay commands, delta-sync и второго
-   владельца состояния; любое расширение вернуть на решение PM.
+   persistent presence, gameplay commands в delivery transport, delta-sync и
+   второго владельца состояния; любое расширение вернуть на решение PM.
 
 ## Acceptance
 
@@ -211,10 +214,10 @@ npx playwright test  # двухбраузерный e2e dice-track
 - Ошибка в claim transaction способна выдать одно место двум principal или
   оставить использованный токен действующим; обязательны PostgreSQL race и
   replay tests до UI-интеграции.
-- WebSocket нельзя аутентифицировать долговечным credential в URL. Принятый
-  BFF handoff требует отдельного короткоживущего ticket и негативных тестов на
-  replay/expiry до рассылки первого snapshot.
-- Реестр соединений живёт в одном runtime-процессе и теряется при рестарте.
+- Выбранный delivery transport не должен раскрывать долговечный credential в
+  URL или browser JavaScript; его auth/handoff требует соответствующих
+  негативных тестов, включая replay/expiry при использовании временного token.
+- Реестр соединений или подписок живёт в одном runtime-процессе и теряется при рестарте.
   Это ожидаемое поведение первого среза, поэтому restart/resync является
   обязательной приёмкой, а не последующим улучшением.
 
@@ -241,3 +244,9 @@ npx playwright test  # двухбраузерный e2e dice-track
   упрощение SSE, но нашёл три P1 и несовместимость с S9. Автоматическая
   интеграция не выполняется до выбора между исходным пакетом, параллельным
   вариантом и рекомендованным гибридом из аудита.
+- 2026-08-25: PM принял переносимый процесс параллельной координации. Основной
+  агент этого корневого TSK является координатором и по умолчанию будущим
+  интегратором; параллельный сильный агент остаётся read-only рецензентом. S10
+  сохраняет режим `open`, shared-писатель и integration branch не назначаются
+  до отдельного решения PM по invite lifecycle, `joinState`, realtime
+  transport, его аутентификации и payload.
