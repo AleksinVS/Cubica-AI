@@ -487,8 +487,8 @@ model timeout 45000 ms, Portal auth timeout 5000 ms, lease 60000 ms, retention
 считается израсходованным; до свежего Sol-high preactivation `ACCEPT` запрещены
 worker и любой внешний вызов модели. Локальные PostgreSQL/read-only Git checks
 и loopback-проверка Portal authorization допустимы как часть preflight и не
-расходуют разрешение. Это принятие не утверждает, что DR-18
-состоялся, и не открывает Stage 3.
+расходуют разрешение. На этапе принятия это решение ещё не утверждало, что
+DR-18 состоялся, и не открывало Stage 3; фактический итог записан ниже.
 
 Для подготовки DR-18 используется только временный private TypeScript operator
 под `.tmp/agent-workflow/.../dr18/` (фиксированный `vite-node` launcher и
@@ -503,3 +503,14 @@ Portal и HMAC credentials не печатаются, а cleanup может ра
 Одноразовый adapter намеренно не запускает Strapi/Next: интеграция Portal уже
 проверена ранее, а семантическое окно не должно добавлять сервисы и потребление
 памяти без нового проверяемого свойства.
+
+DR-18 выполнен после свежего Sol-high `ACCEPT`. Вызовы 1–3 вернули ожидаемый
+`no_change` для переходной беседы, уже существующего факта и неподтверждённого
+предложения ассистента; каждый результат прошёл локальную рубрику 4/4. Вызов 4
+для подтверждённого нового знания завершился `gateway_timeout` и был сохранён
+как `gateway_outcome_unknown`; согласно no-retry правилу evaluator немедленно
+остановил окно, поэтому correction не запускался. После 300000 ms retention
+credential-free cleanup удалил 4 run, 4 metrics, 8 messages и 4 threads до
+exact zero; manifest удалён, bare Git HEAD не изменился, disposable PostgreSQL
+и private state уничтожены. Разрешение DR-18 израсходовано и нового внешнего
+вызова не создаёт.

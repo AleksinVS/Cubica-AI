@@ -357,13 +357,13 @@ Focused evaluator прошёл 40/40, package typecheck и contract checks зе�
 Schema, storage, retention, ACL, prompt и provider не менялись; новый внешний
 вызов не разрешён.
 
-DR-18 принят PM 2026-08-25 ровно для одного нового полного окна, но ещё не
-запускался. Bounds зафиксированы как model timeout 45000 ms, Portal auth
+DR-18 принят и выполнен 2026-08-25 ровно как одно новое полное окно. Bounds
+были зафиксированы как model timeout 45000 ms, Portal auth
 timeout 5000 ms, lease 60000 ms, retention 300000 ms, `maxAttempts=1`, без
 retry; provider/model — Z.AI Coding Plan `glm-4.7` с существующим фиксированным
 endpoint, один developer/game/policy, фиксированный порядок пяти сценариев и
-hard stop при первом небезопасном результате. Разрешение расходуется первым
-provider call и требует свежего Sol-high preactivation до запуска. Временная
+hard stop при первом небезопасном результате. Разрешение израсходовано первым
+provider call после свежего Sol-high preactivation. Временная
 подготовка ограничена private `.tmp` TypeScript operator/config, reuse maintained
 Editor enqueue, Portal authorization utility через минимальный loopback HTTP
 adapter, worker/evaluator, disposable PostgreSQL 17, read-only bare Git,
@@ -375,10 +375,20 @@ Strapi/Next не запускаются: их уже проверенная ин
 Local static check и live preflight DR-18 прошли 2026-08-25 без worker/provider
 call: manifest/report валидны по canonical JSON Schema, disposable PostgreSQL
 17 readiness и exact-zero visibility подтверждены, loopback Portal
-authorization успешен, bare Git HEAD совпадает, `providerCalls=0`. Для
+authorization успешен, bare Git HEAD совпал, `providerCalls=0`. Для
 изоляции от уже работающего параллельного контура выбран другой свободный
-loopback-порт; чужой контейнер не изменялся. До Sol-high `ACCEPT` окно остаётся
-неактивированным.
+loopback-порт; чужой контейнер не изменялся.
+
+Фактический итог: первые три сценария дали ожидаемый `no_change`, 0 операций и
+review 4/4. Четвёртый сценарий завершился `gateway_timeout` с неопределённым
+внешним исходом; он записан как `gateway_outcome_unknown`, без кандидата и без
+retry. Пятый сценарий не запускался. После retention удалены 4 run, 4 metrics,
+8 messages и 4 threads; active counts/text bytes равны нулю, manifest удалён,
+Git unchanged, disposable contour уничтожен. Положительные create/update пути
+не доказаны, новый внешний вызов и Stage 3 не разрешены.
+Canonical бесконтентный результат сохранён в
+[`dr18-content-free-report.json`](dr18-content-free-report.json); exact
+transcript, candidate, bearer, HMAC и provider payload в артефакт не входят.
 
 Перед каждым новым внешним окном необходимо:
 

@@ -34,12 +34,11 @@ in_progress
   Сценарии 3–5 не запускались. Exact-zero cleanup и неизменный Git доказаны,
   разрешение DR-16 израсходовано. Новый внешний вызов и Stage 3 запрещены до
   отдельного решения PM.
-- PM 2026-08-25 принял DR-18 ровно для одного нового полного окна на Z.AI
-  Coding Plan `glm-4.7` и существующем фиксированном endpoint: model/Portal
-  auth/lease/retention `45000/5000/60000/300000` ms, `maxAttempts=1`, без retry,
-  один developer/game/policy, фиксированный порядок пяти сценариев и
-  немедленный hard stop. Разрешение расходуется первым provider call и не
-  действует до свежего Sol-high preactivation. Окно ещё не запускалось;
+- DR-18 выполнен 2026-08-25 после свежего Sol-high `ACCEPT`. Сценарии 1–3 дали
+  ожидаемый `no_change` и прошли ручную рубрику 4/4. Сценарий 4 завершился
+  `gateway_timeout`/`gateway_outcome_unknown`; немедленный hard stop исключил
+  correction и повтор. Exact-zero cleanup, неизменный Git и destruction
+  доказаны; разрешение израсходовано. Положительные пути не доказаны, поэтому
   Stage 3, активное чтение, применение кандидатов и Git-запись закрыты.
 
 ## Parent
@@ -1029,5 +1028,26 @@ worker и не открывает второй путь к модели или �
   `postgres:17-alpine`; занятой параллельным контуром порт не освобождался, для
   DR-18 выбран другой свободный loopback-порт. Canonical manifest/report,
   exact-zero database visibility, read-only Git HEAD, Portal authorization и
-  evaluator readiness подтверждены; `providerCalls=0`. Внешний вызов ещё не
-  выполнялся и ожидает независимый Sol-high `ACCEPT`.
+  evaluator readiness подтверждены; `providerCalls=0`. На момент завершения
+  подготовки внешний вызов ещё не выполнялся и ожидал независимый Sol-high
+  `ACCEPT`; фактический итог записан следующим блоком.
+
+### 2026-08-25 — основной AI agent, выполнение DR-18
+
+- Preactivation: после двух fail-closed замечаний Sol-high binding расширен до
+  точных SHA-256 operator, launcher, Vite aliases, manifest, operator config,
+  runtime и Portal env. Все пять сценариев были pending, БД exact-zero,
+  maintained source clean; только затем создан private `0600` marker.
+- Execution: `transient_conversation`, `existing_fact` и
+  `unconfirmed_agent_suggestion` дали ожидаемый `no_change`, 0 операций и
+  прошли ручную semantic rubric 4/4. Их durations составили соответственно
+  8698, 44764 и 8498 ms; тексты и request IDs в документацию не переносились.
+  `confirmed_new_knowledge` завершился без кандидата как
+  `gateway_timeout`/`gateway_outcome_unknown`; hard stop запретил пятый
+  `correction` и любой retry.
+- Cleanup: после 300000 ms retention credential-free cleanup удалил 4 run,
+  4 metrics, 8 messages и 4 threads. Итог: 0 active runs/metrics/messages/
+  threads, 0 active text bytes, manifest удалён, Git unchanged. Owned
+  PostgreSQL container и private state уничтожены; сохранён только canonical
+  [content-free report](../artifacts/TSK-20260809-product-knowledge-shadow-stage-2/dr18-content-free-report.json).
+  DR-18 consumed, Stage 3 остаётся закрыт.
