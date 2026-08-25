@@ -9,6 +9,6 @@ Run the narrowest relevant checks, find omitted edge cases, and report only repr
 You may add a trivial regression test only when it follows an established local pattern.
 Do not redesign the implementation, repeat the builder's narrative, or perform non-obvious test design.
 Escalate complex state, concurrency, transaction, or negative-path test design to builder_complex.
+Treat the result as preliminary evidence; do not provide final review or acceptance.
 Return findings with paths, checks, changed test files if any, residual risks, and blockers.
 """
-

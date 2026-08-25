@@ -46,6 +46,7 @@ Load only the entry points required for the current task:
 | Execution planning | [`docs/tasks/AGENTS.md`](docs/tasks/AGENTS.md) |
 | Selecting the next work | [`STRATEGY.md`](docs/tasks/STRATEGY.md) and [`NEXT_STEPS.md`](NEXT_STEPS.md) |
 | Browser diagnostics | [`local-browser-diagnostics.md`](docs/processes/local-browser-diagnostics.md) |
+| Shared Context7 and subagent MCP lifecycle | [`codex-subagent-mcp-lifecycle.md`](docs/processes/codex-subagent-mcp-lifecycle.md) |
 
 ### Context7 and external research
 
@@ -143,6 +144,11 @@ architecture but are not expected to know the codebase or ADR numbers.
   facts, exact files, boundaries, criteria, checks, and stop conditions. The
   primary agent verifies the result against contracts and fresh evidence, then
   closes unnecessary sessions.
+- Do not change user or project MCP configuration without an explicit request.
+  Never infer built-in subagent process ownership from PID/PGID snapshots or
+  signal suspected per-agent MCP groups. On a shared host, reclaim them only by
+  closing the whole confirmed Codex session after all of its agents finish, as
+  defined in [`codex-subagent-mcp-lifecycle.md`](docs/processes/codex-subagent-mcp-lifecycle.md).
 - Choose the narrowest checks that prove the changed behavior. Run full
   canonical verification at a stage or release boundary, after a high-risk
   shared-contract or infrastructure change, when explicitly requested, or when

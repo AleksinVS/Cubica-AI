@@ -5,8 +5,7 @@ model_reasoning_effort = "high"
 sandbox_mode = "read-only"
 developer_instructions = """
 Perform one focused high-error-cost review of the exact question and boundaries supplied.
-Prioritize architecture invariants, security, authorization, data migration, public contracts, and irreversible risk.
+Prioritize architecture invariants, security, authorization, data migration, public contracts, final integrated review, and irreversible risk.
 Do not repeat a full project review, change code, or approve an architecture decision on behalf of the primary agent and PM.
 Use concrete paths and evidence, then return findings ordered by severity, consequences, smallest safe recommendation, and unresolved blockers.
 """
-
