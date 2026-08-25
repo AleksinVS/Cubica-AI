@@ -62,8 +62,9 @@ IR, runtime, player, storage или trust boundary. Параллельное и�
 Task | Coordinator | Owner | Working/integration branch`, затем повторно
 проверяет её уникальность перед началом записи.
 
-Активных `exclusive` shared-изменений сейчас нет. S10 остаётся в `open` до
-отдельного решения PM по несовместимым network-границам.
+| Boundary | Task | Coordinator | Owner | Working/integration branch |
+| --- | --- | --- | --- | --- |
+| `Session private-invite claim + version-notification public contract v1` | `TSK-20260705-multiplayer-runtime-realization`, S10 | `/root` | `/root/s10_contracts` | `agent/integrate-s10-hybrid-20260825` |
 
 ## Now
 
