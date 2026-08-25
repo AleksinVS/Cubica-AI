@@ -28,10 +28,12 @@ in_progress
 - Владелец: Platform Team.
 - Создана: 2026-08-09.
 - Stage 1 принят PM и слит в `main` коммитом `928f2ee`.
-- Текущее состояние после окна DR-13 2026-08-23: Stage 2 остаётся
-  `in_progress`; три отрицательных категории доказаны, первый положительный
-  сценарий остановлен `gateway_malformed`, пятый не запускался. Stage 3,
-  чтение, применение и Git остаются закрыты.
+- Текущее состояние после окна DR-16 2026-08-24: Stage 2 остаётся
+  `in_progress`; первый сценарий дал `no_change` и прошёл рубрику 4/4, второй
+  ошибочно дал `proposal` для уже существующего знания и вызвал hard stop.
+  Сценарии 3–5 не запускались. Exact-zero cleanup и неизменный Git доказаны,
+  разрешение DR-16 израсходовано. Новый внешний вызов и Stage 3 запрещены до
+  отдельного решения PM.
 
 ## Parent
 
@@ -91,8 +93,9 @@ approved
 - PM 2026-08-23 одобрил DR-12: обязательный `manifest_digest` равен `sha256:`
   плюс SHA-256 точных байтов manifest и проверяется maintained evaluator на
   каждом lifecycle entry и перед удалением manifest. DR-12 прошёл Sol-high
-  preactivation review и реальный cleanup. Одноразовое разрешение DR-13
-  израсходовано; любой новый внешний вызов требует нового решения PM.
+  preactivation review и реальный cleanup. Одноразовые разрешения DR-13 и
+  DR-16 израсходованы. DR-16 остановлен после двух вызовов, exact-zero cleanup
+  завершён; любой новый внешний вызов требует отдельного решения PM.
 
 ## Architecture Source
 
@@ -205,7 +208,7 @@ approved
 | Контракты, ConversationStore и gateway | Sol high | done | Server-only foundation; retention, crash recovery без опасного повтора и атомарные terminal result + metric проверены на PostgreSQL 17 |
 | Portal authorization adapter | Sol high | done | Настоящая Portal-аутентификация и право разработчика без client identity |
 | Editor post-response hook и изоляция | Sol high | done | Единственная разрешённая server-only точка shadow; основной ответ неизменен |
-| Оценка и rollback | Sol high | in_progress | Окно DR-13 подтвердило 3/3 `no_change`; первый положительный сценарий завершился fail-closed `gateway_malformed`, пятый не вызывался. Cleanup доказал exact zero и неизменный Git; положительные пути и Stage 3 остаются закрыты |
+| Оценка и rollback | Sol high | in_progress | Окно DR-13 подтвердило 3/3 `no_change`; первый положительный сценарий завершился fail-closed `gateway_malformed`. DR-15 теперь сохраняет только allowlisted этап в существующем `last_error_code`, не меняя metric/report/outcome; положительные пути и Stage 3 остаются закрыты |
 | Независимое security review | Sol high | done | Три приёмочных прохода и две волны исправлений закрыли все Critical/High/Medium замечания; итог — ACCEPT merge-ready для выключенного Stage 2 |
 | Read-only wiki и запуск cleanup | Sol high | done | Серверно закреплённый снимок bare Git и одноразовая ограниченная cleanup-команда прошли независимый security review |
 | Z.AI Coding Plan adapter | Sol high + Luna medium с обязательным Sol high review | code_ready | Фиксированные endpoint/model, полный read-only снимок HEAD и строгая серверная проверка ответа подтверждены mock-матрицей и синтетическим сетевым прогоном; пользовательские данные не передавались |
@@ -843,11 +846,10 @@ worker и не открывает второй путь к модели или �
   последующих lint/type checks, когда свободный swap снизился ниже
   обязательного порога 20%. Финальный build и последующие view/editor gates
   поэтому не доказаны; чужие процессы и настройки хоста не менялись.
-- Verdict: Stage 2 остаётся `in_progress`; новый внешний вызов требует новой
-  авторизации и полного повтора всех пяти неизменных категорий, а не только
-  correction. Permanent model timeout и retries остаются pending. Decision
-  registry обновлён: разовое 45s authorization consumed, trusted timestamp
-  implemented, trigger — новая approved full five-scenario rerun.
+- Verdict: Stage 2 остаётся `in_progress`; одноразовая авторизация DR-16
+  разрешает полный повтор всех пяти неизменных категорий, а не только
+  correction, после свежего preactivation. Permanent model timeout и retries
+  остаются pending. Trusted timestamp implemented; Stage 3 закрыт.
 
 ### 2026-08-13 — основной AI agent, подготовка воспроизводимого полного повтора
 
@@ -917,11 +919,82 @@ worker и не открывает второй путь к модели или �
   `gateway_malformed`. Локальная реализация теперь сохраняет уже существующий
   `schema_error` вместо его свёртки в `mismatch`; отдельный тест защищает это
   поведение. Более детальная причина внутри `gateway_malformed` неизвестна,
-  потому что raw provider payload намеренно не хранится. Возможное расширение
-  бесконтентного enum зарегистрировано как DR-15 и требует решения PM.
+  потому что raw provider payload намеренно не хранится. Зарегистрированный
+  здесь DR-15 позднее закрыт локальной диагностикой этапа без расширения
+  публичного enum.
 - Cleanup: после retention credential-free cleanup удалил 4 run и 4 metric,
   tombstoned 8 сообщений и 4 thread. Итог: 0 active runs, metrics, messages,
   threads и text bytes; `cleanup.passed=true`, Git неизменён, manifest удалён.
 - Verdict: DR-13 израсходован, semantic matrix не принята, Stage 3 закрыт.
   Новый внешний вызов, correction-only прогон или изменение provider/model
   требуют нового явного решения; текущие timeout не становятся default.
+
+### 2026-08-24 — основной AI agent, локальная диагностика DR-15
+
+- Решение: по поручению продолжать до крупного архитектурного блокера малое
+  обратимое решение принято автономно. Публичные JSON Schema, metric, report,
+  terminal outcome, таблицы, retention, ACL и граница доверия не изменены.
+- Реализация: `ModelGatewayError` несёт только один из десяти закрытых этапов.
+  Worker сохраняет `gateway_malformed:<stage>` в существующий
+  `shadow_runs.last_error_code`; evaluator выводит оператору только проверенный
+  stage до cleanup. Неизвестное значение не выводится, raw provider payload,
+  candidate, AJV paths, идентификаторы и фрагменты текста не сохраняются.
+- Упрощение: отклонены новое поле постоянного отчёта, колонка, sidecar и
+  диагностический сервис. Используется уже существующий run error code; после
+  cleanup деталь исчезает вместе с одноразовым состоянием.
+- Локальная проверка: gateway/worker/evaluator — 104/104, одноразовая
+  PostgreSQL 17 activation/security/RLS — 42/42, package typecheck,
+  generated-types, isolation, legacy и instruction gates прошли. Реальный
+  provider, Portal и внешний контур не запускались.
+- Следующий блокер: новое полное пятисценарное внешнее окно требует отдельного
+  решения PM о provider/model, timeout, lease, retention, attempts/retry и
+  границах одного developer/game/policy. DR-13 израсходован; correction-only,
+  Stage 3, активное чтение, применение и Git-запись остаются запрещены.
+
+### 2026-08-24 — основной AI agent, разрешение окна DR-16
+
+- PM разрешил ровно одно полное окно на Z.AI Coding Plan `glm-4.7`: model
+  timeout 45000 ms, Portal auth timeout 5000 ms, lease 60000 ms, retention
+  300000 ms, `maxAttempts=1`, без retry, один developer/game/policy и пять
+  категорий в фиксированном порядке.
+- Разрешение не распространяется на correction-only повтор, настройку prompt
+  между сценариями, активное чтение, применение кандидата, Git-запись или
+  Stage 3. Первый внешний provider call начинает расходование разрешения;
+  hard stop исключает последующие вызовы.
+- До внешнего вызова обязательны свежий Sol-high preactivation, отдельные
+  disposable app/worker LOGIN, настоящий Portal authorization, read-only bare
+  Git, exact manifest binding и проверенный план credential-free cleanup.
+- Малое операционное решение: Next-процесс не нужен. Текущий AG-UI route и
+  локальная editor personality вызываются как поддерживаемые серверные модули,
+  а Portal запускается программно через официальный Strapi server-only путь.
+  Это снижает расход памяти и не создаёт второй evaluator, queue или service.
+- Execution: после Sol-high preactivation `ACCEPT` первый внешний provider call
+  выполнен. `transient_conversation` дал ожидаемый `no_change`, Git остался
+  неизменным; DR-16 переведён в `consumed`. Разрешено только последовательное
+  продолжение этой же матрицы до первого hard stop и обязательная cleanup.
+- Hard stop: первый сценарий прошёл ручную смысловую рубрику 4/4. Второй
+  сценарий (`existing_fact`) ошибочно вернул `proposal` с одной операцией вместо
+  `no_change`. Повторов не было; сценарии 3–5 не запускались, Git не изменился.
+  До нового решения разрешена только credential-free exact-zero cleanup.
+- Cleanup: после retention удалены 2 run и 2 metric, обезличены 4 сообщения и
+  2 thread; active runs/metrics/messages/threads/text bytes равны нулю,
+  `cleanup.passed=true`, manifest удалён, временные credentials обнулены.
+  Одноразовые Portal/PostgreSQL/SQLite/bare Git/LOGIN-роли/ключи и contour
+  уничтожены, принадлежавшие окну порты освобождены.
+- Verdict: DR-16 не принят как полная матрица. Следующий крупный блокер — выбор
+  способа устранить ложный `proposal` для знания, уже присутствующего в wiki,
+  без ослабления fail-closed gates и без нового внешнего вызова до решения PM.
+- DR-17: принят минимальный eval-only путь. Maintained evaluator разрешает
+  ровно один локальный просмотр успешного semantic mismatch через существующий
+  reviewer, принудительно сохраняет `review_expected_outcome=false` и оставляет
+  status `hard_stopped`. Несемантические отказы и изменившиеся bindings
+  содержимое не раскрывают; повторный review запрещён. До чтения evaluator
+  атомарно создаёт приватный crash-sticky маркер: падение, ошибка reviewer и
+  конкурентный запуск расходуют возможность просмотра, а удалить маркер может
+  только exact-zero credential-free cleanup.
+- Scope: JSON Schema, generated types, PostgreSQL, ACL, retention, prompt,
+  gateway и provider не менялись. Следующий `existing_fact` обязан быть
+  одноязычным с seed-страницей; межъязычный случай оценивается отдельно.
+- Verification: focused evaluator 40/40, package typecheck и diff-check прошли.
+  Новый внешний вызов всё ещё требует отдельного решения PM и Sol-high
+  preactivation.

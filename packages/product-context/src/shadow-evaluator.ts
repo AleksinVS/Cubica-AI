@@ -8,7 +8,7 @@
  */
 import { constants } from 'node:fs';
 import { createHash } from 'node:crypto';
-import { lstat, open, rename, unlink } from 'node:fs/promises';
+import { lstat, mkdir, open, readdir, rename, rmdir, unlink } from 'node:fs/promises';
 import { isAbsolute, dirname, join, relative, resolve, sep } from 'node:path';
 import type { ShadowEvaluationManifest, ShadowEvaluationReport, ShadowEvaluationScenarioReport } from './generated/product-knowledge.ts';
 import { validateShadowEvaluationManifest, validateShadowEvaluationReport } from './contracts.ts';
@@ -206,24 +206,52 @@ export async function reviewShadowEvaluation(deps: ShadowEvaluatorDeps): Promise
   const { manifest, digest } = await readManifestBinding(deps.paths);
   ensureConfig(deps.workerConfig);
   let report = await existingOrEmpty(deps, digest);
-  if (report.status !== 'awaiting_review' || !deps.reviewer) throw new Error('Local semantic review is required.');
-  if (await deps.readGitHead() !== manifest.expected_git_head) return await stop(deps, report, reportIndex(report), 'git_drift');
-  const index = report.scenarios.findIndex((scenario) => scenario.review_expected_outcome === null);
+  const diagnosticIndex = semanticMismatchReviewIndex(report);
+  const diagnostic = diagnosticIndex >= 0;
+  if ((report.status !== 'awaiting_review' && !diagnostic) || !deps.reviewer) throw new Error('Local semantic review is required.');
+  if (await deps.readGitHead() !== manifest.expected_git_head) {
+    if (diagnostic) throw new Error('Semantic mismatch review requires unchanged Git.');
+    return await stop(deps, report, reportIndex(report), 'git_drift');
+  }
+  const index = diagnostic ? diagnosticIndex :
+    report.scenarios.findIndex((scenario) => scenario.review_expected_outcome === null);
   if (index < 0) return report;
   const snapshot = await deps.db.inspect();
   try { validateVisibleRuns(manifest, snapshot, report); }
-  catch { return await stop(deps, report, index, 'mismatch'); }
+  catch {
+    if (diagnostic) throw new Error('Semantic mismatch review requires an exact succeeded run.');
+    return await stop(deps, report, index, 'mismatch');
+  }
+  if (diagnostic) {
+    const targetKey = manifest.scenarios[index]!.stable_turn_key;
+    const exact = snapshot.runs.filter((run) => run.stableTurnKey === targetKey);
+    if (exact.length !== 1 || exact[0]!.status !== 'succeeded' ||
+        mapOutcome(exact[0]!) !== report.scenarios[index]!.actual_outcome) {
+      throw new Error('Semantic mismatch review requires an exact succeeded run.');
+    }
+    await claimSemanticMismatchReview(deps.paths);
+  }
   let material: ShadowEvaluatorReviewMaterial;
   try {
     if (!deps.db.reviewMaterial) throw new Error('Review material port is unavailable.');
     material = await deps.db.reviewMaterial(manifest.scenarios[index]!.stable_turn_key);
-  } catch { return await stop(deps, report, index, 'unavailable'); }
+  } catch {
+    if (diagnostic) throw new Error('Semantic mismatch review material is unavailable.');
+    return await stop(deps, report, index, 'unavailable');
+  }
   let values: readonly [boolean, boolean, boolean, boolean];
-  try { values = await deps.reviewer.review(index, expectedOutcomes[manifest.scenarios[index]!.category], material); } catch { return await stop(deps, report, index, 'unavailable'); }
-  if (values.length !== 4 || values.some((value) => typeof value !== 'boolean')) return await stop(deps, report, index, 'mismatch');
+  try { values = await deps.reviewer.review(index, expectedOutcomes[manifest.scenarios[index]!.category], material); }
+  catch {
+    if (diagnostic) throw new Error('Semantic mismatch review did not complete.');
+    return await stop(deps, report, index, 'unavailable');
+  }
+  if (values.length !== 4 || values.some((value) => typeof value !== 'boolean')) {
+    if (diagnostic) throw new Error('Semantic mismatch review returned invalid answers.');
+    return await stop(deps, report, index, 'mismatch');
+  }
   const current = report.scenarios[index]!;
-  const next = { ...current, review_expected_outcome: values[0], review_all_and_only_confirmed_facts: values[1], review_correct_page_minimal_patch: values[2], review_no_duplicate_contradiction_unrelated_rewrite: values[3] };
-  report = { ...report, scenarios: report.scenarios.map((value, i) => i === index ? next : value), status: values.every(Boolean) ? (index === 4 ? 'ready_for_cleanup' : 'ready') : 'hard_stopped' };
+  const next = { ...current, review_expected_outcome: diagnostic ? false : values[0], review_all_and_only_confirmed_facts: values[1], review_correct_page_minimal_patch: values[2], review_no_duplicate_contradiction_unrelated_rewrite: values[3] };
+  report = { ...report, scenarios: report.scenarios.map((value, i) => i === index ? next : value), status: diagnostic ? 'hard_stopped' : values.every(Boolean) ? (index === 4 ? 'ready_for_cleanup' : 'ready') : 'hard_stopped' };
   await writeShadowEvaluationReport(deps.paths, report);
   return report;
 }
@@ -243,6 +271,7 @@ export async function cleanupShadowEvaluation(deps: ShadowEvaluatorDeps): Promis
     if (!zero || await deps.readGitHead() !== manifest.expected_git_head) {
       throw new Error('Completed cleanup can only finalize after exact zero and unchanged Git.');
     }
+    await removeSemanticMismatchReviewClaim(deps.paths);
     await removeManifest(deps.paths, digest);
     return report;
   }
@@ -271,7 +300,10 @@ export async function cleanupShadowEvaluation(deps: ShadowEvaluatorDeps): Promis
   const gitUnchanged = (await deps.readGitHead()) === manifest.expected_git_head;
   report = { ...report, status: report.status === 'hard_stopped' || !gitUnchanged ? 'hard_stopped' : passed ? 'completed' : 'ready_for_cleanup', cleanup: { ...report.cleanup, active_runs: final.activeRuns, active_metrics: final.activeMetrics, active_messages: final.activeMessages, active_threads: final.activeThreads, active_text_bytes: final.activeTextBytes, runs_deleted: Math.max(0, report.cleanup.initial_runs - final.activeRuns), metrics_deleted: Math.max(0, report.cleanup.initial_metrics - final.activeMetrics), messages_tombstoned: Math.max(0, report.cleanup.initial_messages - final.activeMessages), threads_tombstoned: Math.max(0, report.cleanup.initial_threads - final.activeThreads), passed }, git_unchanged: gitUnchanged, scenarios: gitUnchanged ? report.scenarios : report.scenarios.map((scenario) => ({ ...scenario, git_unchanged: false })) };
   await writeShadowEvaluationReport(deps.paths, report);
-  if (passed) await removeManifest(deps.paths, digest);
+  if (passed && gitUnchanged) {
+    await removeSemanticMismatchReviewClaim(deps.paths);
+    await removeManifest(deps.paths, digest);
+  }
   return report;
 }
 
@@ -322,6 +354,45 @@ async function removeManifest(paths: ShadowEvaluatorPaths, expectedDigest: strin
   catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
 }
 
+function semanticMismatchReviewClaimPath(paths: ShadowEvaluatorPaths): string {
+  return `${paths.reportPath}.semantic-review-claimed`;
+}
+
+async function claimSemanticMismatchReview(paths: ShadowEvaluatorPaths): Promise<void> {
+  const path = semanticMismatchReviewClaimPath(paths);
+  try {
+    await mkdir(path, { mode: 0o700 });
+    const info = await lstat(path);
+    if (!info.isDirectory() || info.isSymbolicLink() || info.uid !== process.getuid?.() ||
+        (info.mode & 0o777) !== 0o700) throw new Error('Semantic mismatch review claim is unsafe.');
+    await syncParentDirectory(path);
+  } catch {
+    // A crash-sticky claim deliberately makes retries and concurrent reviews
+    // indistinguishable: both must fail before reading the local material.
+    throw new Error('Semantic mismatch review was already claimed.');
+  }
+}
+
+async function removeSemanticMismatchReviewClaim(paths: ShadowEvaluatorPaths): Promise<void> {
+  const path = semanticMismatchReviewClaimPath(paths);
+  try {
+    const info = await lstat(path);
+    if (!info.isDirectory() || info.isSymbolicLink() || info.uid !== process.getuid?.() ||
+        (info.mode & 0o777) !== 0o700 || (await readdir(path)).length !== 0) {
+      throw new Error('Semantic mismatch review claim is unsafe.');
+    }
+    await rmdir(path);
+    await syncParentDirectory(path);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+  }
+}
+
+async function syncParentDirectory(path: string): Promise<void> {
+  const directory = await open(dirname(path), constants.O_RDONLY | constants.O_DIRECTORY);
+  try { await directory.sync(); } finally { await directory.close(); }
+}
+
 function ensureBasicConfig(config: ShadowEvaluatorWorkerConfig): void { ensureConfig(config); }
 function ensureConfig(config: ShadowEvaluatorWorkerConfig): void { if (!config.evaluationEnabled || !['test', 'staging'].includes(config.deploymentTier) || config.maxAttempts !== 1) throw new Error('Explicit bounded evaluator configuration is required.'); }
 async function existingOrEmpty(deps: ShadowEvaluatorDeps, manifestDigest: string): Promise<ShadowEvaluationReport> {
@@ -333,6 +404,27 @@ function bindReport(report: ShadowEvaluationReport | null, manifestDigest: strin
   return report;
 }
 function reportIndex(report: ShadowEvaluationReport): number { return report.scenarios.findIndex((scenario) => scenario.actual_outcome === 'pending'); }
+function semanticMismatchReviewIndex(report: ShadowEvaluationReport): number {
+  if (report.status !== 'hard_stopped' || report.cleanup.started || !report.git_unchanged) return -1;
+  const isUnreviewed = (scenario: ShadowEvaluationScenarioReport) =>
+    scenario.review_expected_outcome === null && scenario.review_all_and_only_confirmed_facts === null &&
+    scenario.review_correct_page_minimal_patch === null &&
+    scenario.review_no_duplicate_contradiction_unrelated_rewrite === null;
+  const isFullyAccepted = (scenario: ShadowEvaluationScenarioReport) =>
+    scenario.review_expected_outcome === true && scenario.review_all_and_only_confirmed_facts === true &&
+    scenario.review_correct_page_minimal_patch === true &&
+    scenario.review_no_duplicate_contradiction_unrelated_rewrite === true;
+  const candidates = report.scenarios.map((scenario, index) => ({ scenario, index })).filter(({ scenario }) =>
+    allowedActual.has(scenario.actual_outcome) && scenario.actual_outcome !== scenario.expected_outcome &&
+    isUnreviewed(scenario));
+  if (candidates.length !== 1) return -1;
+  const index = candidates[0]!.index;
+  if (report.scenarios.slice(0, index).some((scenario) =>
+    scenario.actual_outcome !== scenario.expected_outcome || !isFullyAccepted(scenario)) ||
+      report.scenarios.slice(index + 1).some((scenario) =>
+        scenario.actual_outcome !== 'pending' || !isUnreviewed(scenario))) return -1;
+  return index;
+}
 async function stop(deps: ShadowEvaluatorDeps, report: ShadowEvaluationReport, index: number, outcome: ShadowEvaluationScenarioReport['actual_outcome']): Promise<ShadowEvaluationReport> {
   const drift = outcome === 'git_drift';
   const next = index < 0 || !report.scenarios[index] ? report : {

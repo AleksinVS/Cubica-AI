@@ -12,6 +12,7 @@ import { hashExactPatchProposal, validateProductKnowledgeContract } from './cont
 import type { ExactPatchOperation, ExactPatchProposal, KnowledgePage, ModelGatewayRequest, ModelGatewayResult, SourceRef } from './generated/product-knowledge.ts';
 import { applyExactOperation, parseKnowledgePage, sha256Bytes } from './markdown.ts';
 import { DEFAULT_MODEL_GATEWAY_MAX_REQUEST_BYTES, ModelGatewayError, validateModelGatewayResult, type ModelGateway, type ModelGatewayCall } from './model-gateway.ts';
+import { attachModelGatewayValidationStage, type ModelGatewayValidationStage } from './model-gateway-diagnostics.ts';
 import { evaluateKnowledgePageRead, hasSecretLikeText } from './policy.ts';
 import { ShadowGroundingError, ShadowKnowledgeGrounding, type ShadowKnowledgeGroundingConfig, type ShadowKnowledgeSnapshot } from './shadow-grounding.ts';
 
@@ -168,16 +169,16 @@ export class ZaiCodingPlanModelGateway implements ModelGateway {
       if (!response.ok) {
         const output = await readBounded(response, this.maxResponseBytes);
         const providerCode = providerErrorCode(output);
-        if (providerCode !== null) throw new ModelGatewayError('malformed_output', providerCode, response.status);
+        if (providerCode !== null) throw attachModelGatewayValidationStage(new ModelGatewayError('malformed_output', providerCode, response.status), 'provider_http');
         // An unclassified 5xx may have accepted work before the connection
         // failed, so it must never be automatically repeated.
         if (response.status >= 500) throw new ModelGatewayError('outcome_unknown', null, response.status);
-        throw new ModelGatewayError('malformed_output', null, response.status);
+        throw attachModelGatewayValidationStage(new ModelGatewayError('malformed_output', null, response.status), 'provider_http');
       }
       const output = await readBounded(response, this.maxResponseBytes);
       let envelope: unknown;
       try { envelope = JSON.parse(decoder.decode(output)); }
-      catch { throw new ModelGatewayError('malformed_output'); }
+      catch { throw malformed('provider_envelope'); }
       return { candidate: providerContent(envelope), outputBytes: output.byteLength };
     } catch (error) {
       if (error instanceof ModelGatewayError) throw error;
@@ -324,15 +325,15 @@ function providerBody(
 function providerContent(envelope: unknown): unknown {
   if (!isRecord(envelope) || envelope.model !== ZAI_CODING_PLAN_MODEL ||
       !Array.isArray(envelope.choices) || envelope.choices.length !== 1) {
-    throw new ModelGatewayError('malformed_output');
+    throw malformed('provider_envelope');
   }
   const choice = envelope.choices[0];
   if (!isRecord(choice) || choice.finish_reason !== 'stop' || Object.hasOwn(choice, 'tool_calls') || !isRecord(choice.message) ||
       Object.hasOwn(choice.message, 'tool_calls') || typeof choice.message.content !== 'string') {
-    throw new ModelGatewayError('malformed_output');
+    throw malformed('provider_envelope');
   }
   try { return JSON.parse(choice.message.content); }
-  catch { throw new ModelGatewayError('malformed_output'); }
+  catch { throw malformed('candidate_json'); }
 }
 
 function normalizeProviderResult(
@@ -343,34 +344,37 @@ function normalizeProviderResult(
 ): unknown {
   if (!isRecord(candidate) || candidate.outcome !== 'proposal') return candidate;
   const rawProposal = candidate.proposal;
-  if (!isRecord(rawProposal) || hasSecretLikeText(JSON.stringify(rawProposal)) || rawProposal.base_commit !== snapshot.commit ||
-      !Array.isArray(rawProposal.applies_to) || rawProposal.applies_to.length !== 1 || rawProposal.applies_to[0] !== request.applies_to[0] ||
+  if (!isRecord(rawProposal) || hasSecretLikeText(JSON.stringify(rawProposal)) ||
       !Array.isArray(rawProposal.operations) || rawProposal.operations.length === 0) {
-    throw new ModelGatewayError('malformed_output');
+    throw malformed('proposal_structure');
+  }
+  if (rawProposal.base_commit !== snapshot.commit || !Array.isArray(rawProposal.applies_to) ||
+      rawProposal.applies_to.length !== 1 || rawProposal.applies_to[0] !== request.applies_to[0]) {
+    throw malformed('result_binding');
   }
   const pages = new Map(snapshot.pages.map((page) => [page.path, encoder.encode(page.content)] as const));
   const operations = rawProposal.operations.map((rawOperation) => normalizeOperation(rawOperation, pages));
   const paths = new Set(operations.map((operation) => operation.path));
-  if (paths.size !== 1 || paths.has('index.md')) throw new ModelGatewayError('malformed_output');
+  if (paths.size !== 1 || paths.has('index.md')) throw malformed('exact_patch');
   const targetPath = operations[0]!.path;
   const original = pages.get(targetPath);
   if (original === undefined && (operations.length !== 1 || operations[0]!.kind !== 'create_file')) {
-    throw new ModelGatewayError('malformed_output');
+    throw malformed('exact_patch');
   }
   if (original !== undefined && operations.some((operation) => operation.kind === 'create_file')) {
-    throw new ModelGatewayError('malformed_output');
+    throw malformed('exact_patch');
   }
 
   let current: Uint8Array | undefined = original;
   try {
     for (const operation of operations) current = applyExactOperation(current, operation, original);
-  } catch { throw new ModelGatewayError('malformed_output'); }
+  } catch { throw malformed('exact_patch'); }
   if (current !== undefined) {
     try {
-      if (parseKnowledgePage(current).timestamp !== knowledgeTimestamp) throw new ModelGatewayError('malformed_output');
+      if (parseKnowledgePage(current).timestamp !== knowledgeTimestamp) throw malformed('timestamp_binding');
     } catch (error) {
       if (error instanceof ModelGatewayError) throw error;
-      throw new ModelGatewayError('malformed_output');
+      throw malformed('final_page_policy');
     }
   }
 
@@ -386,19 +390,19 @@ function normalizeProviderResult(
 
 function normalizeOperation(rawOperation: unknown, pages: ReadonlyMap<string, Uint8Array>): ExactPatchOperation {
   if (!isRecord(rawOperation) || typeof rawOperation.kind !== 'string' || typeof rawOperation.path !== 'string') {
-    throw new ModelGatewayError('malformed_output');
+    throw malformed('exact_patch');
   }
   if (rawOperation.kind === 'create_file') return { ...rawOperation } as ExactPatchOperation;
   if (!exactKinds.has(rawOperation.kind as ExactPatchOperation['kind']) || typeof rawOperation.old_text !== 'string') {
-    throw new ModelGatewayError('malformed_output');
+    throw malformed('exact_patch');
   }
   const original = pages.get(rawOperation.path);
-  if (!original) throw new ModelGatewayError('malformed_output');
+  if (!original) throw malformed('exact_patch');
   const source = decoder.decode(original);
   const first = source.indexOf(rawOperation.old_text);
   if (first < 0 || first !== source.lastIndexOf(rawOperation.old_text) ||
       (rawOperation.kind === 'replace_exact' && rawOperation.old_text === source)) {
-    throw new ModelGatewayError('malformed_output');
+    throw malformed('exact_patch');
   }
   return {
     ...rawOperation,
@@ -416,7 +420,7 @@ function validateFinalProposal(
 ): void {
   if (!result.proposal) return;
   const proposal = result.proposal;
-  if (hasSecretLikeText(JSON.stringify(proposal))) throw new ModelGatewayError('malformed_output');
+  if (hasSecretLikeText(JSON.stringify(proposal))) throw malformed('final_page_policy');
   const targetPath = proposal.operations[0]!.path;
   const original = snapshot.pages.find((page) => page.path === targetPath);
   let current: Uint8Array | undefined = original ? encoder.encode(original.content) : undefined;
@@ -426,19 +430,20 @@ function validateFinalProposal(
     for (const operation of proposal.operations) current = applyExactOperation(current, operation, originalBytes);
     if (!current) return;
     const page = parseKnowledgePage(current);
-    if (page.timestamp !== knowledgeTimestamp ||
-        (originalPage !== null && page.cubica_id !== originalPage.cubica_id) ||
+    if (page.timestamp !== knowledgeTimestamp) throw malformed('timestamp_binding');
+    if ((originalPage !== null && page.cubica_id !== originalPage.cubica_id) ||
         (originalPage === null && snapshot.pages.some((snapshotPage) => parseKnowledgePage(encoder.encode(snapshotPage.content)).cubica_id === page.cubica_id)) ||
-        !pageProvenanceIsSafe(originalPage, page, proposal.operations, request) || !evaluateKnowledgePageRead(page, {
+        !evaluateKnowledgePageRead(page, {
       role: 'developer',
       knownAppliesTo: new Set([request.applies_to[0]!]),
       currentAppliesTo: new Set([request.applies_to[0]!]),
       allUserGamesConfirmed: false,
       globalConfirmed: false
-    }).allowed) throw new ModelGatewayError('malformed_output');
+    }).allowed) throw malformed('final_page_policy');
+    if (!pageProvenanceIsSafe(originalPage, page, proposal.operations, request)) throw malformed('provenance');
   } catch (error) {
     if (error instanceof ModelGatewayError) throw error;
-    throw new ModelGatewayError('malformed_output');
+    throw malformed('final_page_policy');
   }
 }
 
@@ -515,4 +520,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function positiveBound(value: number, label: string): number {
   if (!Number.isSafeInteger(value) || value <= 0) throw new TypeError(`A positive integer ${label} is required.`);
   return value;
+}
+
+function malformed(stage: ModelGatewayValidationStage): ModelGatewayError {
+  return attachModelGatewayValidationStage(new ModelGatewayError('malformed_output'), stage);
 }

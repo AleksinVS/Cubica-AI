@@ -9,8 +9,10 @@ import {
   cleanupShadowEvaluation, preflightShadowEvaluation, readShadowEvaluationManifest,
   reviewShadowEvaluation, runNextShadowEvaluation,
   type EvaluationDbSnapshot, type EvaluationCleanupResult, type ShadowEvaluatorDatabase,
-  type ShadowEvaluatorDeps, type ShadowEvaluatorReviewer
+  type ShadowEvaluatorDeps, type ShadowEvaluatorReviewer, type EvaluationRunView
 } from '../src/shadow-evaluator.ts';
+import { modelGatewayValidationStageFromErrorCode, type ModelGatewayValidationStage } from '../src/model-gateway-diagnostics.ts';
+import type { ShadowEvaluationManifest, ShadowEvaluationReport } from '../src/generated/product-knowledge.ts';
 
 const integer = (value: string | undefined, min: number, max: number): number | null => {
   if (!value || !/^\d+$/u.test(value)) return null;
@@ -29,7 +31,7 @@ export class PostgresShadowEvaluatorDatabase implements ShadowEvaluatorDatabase 
       const runs = await client.query(`
         SELECT run.owner_ref, thread.game_ref, run.authorization_receipt->>'shadow_principal_ref' AS receipt_principal,
           run.authorization_receipt->'applies_to'->>0 AS receipt_game,
-          run.stable_turn_key, run.status, run.outcome_code,
+          run.stable_turn_key, run.status, run.outcome_code, run.last_error_code,
           (SELECT count(*) FROM product_context_shadow.conversation_messages m WHERE m.thread_ref = run.thread_ref AND m.stable_turn_key = run.stable_turn_key) AS message_count,
           (SELECT count(*) FROM product_context_shadow.conversation_messages m WHERE m.thread_ref = run.thread_ref AND m.stable_turn_key = run.stable_turn_key AND NOT m.tombstone AND m.content_bytes IS NOT NULL) AS live_message_count,
           COALESCE(metric.proposal_operation_count, 0) AS operation_count,
@@ -62,7 +64,7 @@ export class PostgresShadowEvaluatorDatabase implements ShadowEvaluatorDatabase 
           (SELECT count(*) FROM product_context_shadow.conversation_threads WHERE status = 'active') AS active_threads,
           (SELECT COALESCE(sum(octet_length(content_bytes)), 0) FROM product_context_shadow.conversation_messages WHERE content_bytes IS NOT NULL) AS active_text_bytes`);
       return {
-        runs: runs.rows.map((row) => ({ ownerRef: String(row.owner_ref), gameRef: String(row.game_ref), receiptPrincipal: String(row.receipt_principal), receiptGame: String(row.receipt_game), messageCount: Number(row.message_count), liveMessageCount: Number(row.live_message_count), stableTurnKey: String(row.stable_turn_key), status: row.status, outcome: row.outcome_code, operationCount: Number(row.operation_count), durationMs: Number(row.duration_ms), inputBytes: Number(row.input_bytes), outputBytes: Number(row.output_bytes), metricCount: Number(row.metric_count), cleanupRecovery: cleanupRecovery(row.cleanup_recovery) })),
+        runs: runs.rows.map((row) => ({ ownerRef: String(row.owner_ref), gameRef: String(row.game_ref), receiptPrincipal: String(row.receipt_principal), receiptGame: String(row.receipt_game), messageCount: Number(row.message_count), liveMessageCount: Number(row.live_message_count), stableTurnKey: String(row.stable_turn_key), status: row.status, outcome: row.outcome_code, operationCount: Number(row.operation_count), durationMs: Number(row.duration_ms), inputBytes: Number(row.input_bytes), outputBytes: Number(row.output_bytes), metricCount: Number(row.metric_count), lastErrorCode: row.last_error_code === null ? null : String(row.last_error_code), cleanupRecovery: cleanupRecovery(row.cleanup_recovery) })),
         activeRuns: Number(counts.rows[0]?.active_runs ?? 0), activeMetrics: Number(counts.rows[0]?.active_metrics ?? 0), activeMessages: Number(counts.rows[0]?.active_messages ?? 0), activeThreads: Number(counts.rows[0]?.active_threads ?? 0), activeTextBytes: Number(counts.rows[0]?.active_text_bytes ?? 0)
       };
     });
@@ -108,6 +110,23 @@ export class PostgresShadowEvaluatorDatabase implements ShadowEvaluatorDatabase 
     catch (error) { if (begun) await client.query('ROLLBACK').catch(() => undefined); throw error; }
     finally { client.release(); }
   }
+}
+
+/** CLI-only binding from one schema-error report entry to its exact allowlisted run stage. */
+export function shadowEvaluatorValidationStage(
+  snapshot: EvaluationDbSnapshot,
+  manifest: ShadowEvaluationManifest,
+  report: ShadowEvaluationReport
+): ModelGatewayValidationStage | null {
+  const indexes = report.scenarios.flatMap((scenario, index) => scenario.actual_outcome === 'schema_error' ? [index] : []);
+  if (report.status !== 'hard_stopped' || indexes.length !== 1) return null;
+  const target = manifest.scenarios[indexes[0]!];
+  if (!target) return null;
+  const failures = snapshot.runs.filter((run) => run.stableTurnKey === target.stable_turn_key &&
+    run.status === 'failed' && run.outcome === 'gateway_malformed');
+  if (failures.length !== 1) return null;
+  const lastErrorCode = (failures[0] as EvaluationRunView & { readonly lastErrorCode?: unknown }).lastErrorCode;
+  return modelGatewayValidationStageFromErrorCode(lastErrorCode);
 }
 
 function cleanupRecovery(value: unknown): 'retention_expired' | 'expired_calling_model' | 'attempts_exhausted' | null {
@@ -159,8 +178,9 @@ export async function main(env: NodeJS.ProcessEnv = process.env): Promise<number
     if (!manifestPath || !reportPath || !worktreePath || !config) return 2;
     const manifest = await readShadowEvaluationManifest({ manifestPath, reportPath, worktreePath });
     pool = new Pool({ connectionString: config.appDatabaseUrl, max: 2, connectionTimeoutMillis: 2000, idleTimeoutMillis: 10000, allowExitOnIdle: true });
+    const database = new PostgresShadowEvaluatorDatabase(pool, manifest.shadow_principal_ref, manifest.applies_to[0]!);
     const deps: ShadowEvaluatorDeps = {
-      db: new PostgresShadowEvaluatorDatabase(pool, manifest.shadow_principal_ref, manifest.applies_to[0]!),
+      db: database,
       worker: async (target) => runShadowWorkerOnce(env, target),
       recoveryWorker: async (target) => runShadowWorkerRecoveryOnce(env, target),
       readGitHead: async () => { const { ReadOnlyKnowledgeGit } = await import('../src/git.ts'); const git = await ReadOnlyKnowledgeGit.open(env.CUBICA_PRODUCT_CONTEXT_SHADOW_KNOWLEDGE_REPOSITORY!); try { return git.head(); } finally { await git.close(); } },
@@ -169,6 +189,12 @@ export async function main(env: NodeJS.ProcessEnv = process.env): Promise<number
       cleanupLimit: config.cleanupLimit, cleanupMaxPasses: config.cleanupMaxPasses
     };
     const report = mode === 'preflight' ? await preflightShadowEvaluation(deps) : mode === 'run-next' ? await runNextShadowEvaluation(deps) : mode === 'review' ? await reviewShadowEvaluation(deps) : await cleanupShadowEvaluation(deps);
+    if (mode === 'run-next' && report.status === 'hard_stopped') {
+      // Diagnostics cannot turn an already persisted fail-closed report into a CLI failure.
+      const stage = await database.inspect().then((snapshot) =>
+        shadowEvaluatorValidationStage(snapshot, manifest, report)).catch(() => null);
+      if (stage !== null) process.stderr.write(`Shadow evaluator validation stage: ${stage}.\n`);
+    }
     process.stdout.write(`${JSON.stringify(report)}\n`); return 0;
   } catch { process.stderr.write('Shadow evaluator refused or failed.\n'); return 1; }
   finally { await pool?.end().catch(() => undefined); }
