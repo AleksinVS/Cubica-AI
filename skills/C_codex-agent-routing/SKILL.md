@@ -45,15 +45,29 @@ Use these logical roles and project profiles:
 | Complex builder | `builder_complex` | Sol high | Non-obvious or critical implementation and complex test design |
 | QA reviewer | `qa-reviewer` | Terra low | Ordinary independent diff and regression review |
 | QA reviewer | `qa-reviewer-medium` | Terra medium | State-heavy, concurrent, transactional, or complex negative-path review |
-| Critical reviewer | `critical-reviewer` | Sol medium | Focused complex debugging or risk review |
+| Diagnostic reviewer | `critical-reviewer` | Sol medium | One focused complex-debugging or root-cause investigation after a concrete blocker |
 | Critical reviewer | `critical-reviewer-high` | Sol high | Architecture, security, or high-error-cost review |
+
+Architecture, material planning, final integrated review, critical or risk
+review, and final acceptance require Sol high. Use `lead-architect` for
+planning, integration, and acceptance and `critical-reviewer-high` for
+independent read-only review. Lower-cost reviewers may collect evidence or
+perform an explicitly preliminary check, but they cannot provide the final
+judgment.
 
 The installed Luna model does not expose reasoning `none`; `scout` therefore
 uses its cheapest supported level, `low`. `luna-medium`, `luna-high`, and
 `luna-xhigh` are general bounded worker profiles, not architecture or
 final-acceptance roles.
-Every write made by a Luna worker requires subsequent review of the integrated
-diff by the primary agent or an independent reviewer.
+Every write made by a Luna worker requires final review of the integrated diff
+by Sol high.
+
+A Luna worker may act as a critic only as an optional preliminary, read-only
+pass over work produced by a different Luna executor. Do not use a Luna critic
+after Terra or Sol execution, and never treat that pass as final review or
+acceptance; both remain with Sol high. If the preliminary critic finds defects,
+route correction to a Luna worker and rerun the focused tests before Sol-high
+review.
 
 Do not use `ultra` or `pro`. Do not route Luna or Terra to `max`, Terra to
 `high`, or Sol directly to `max`. Keep architecture, security, public contract,
@@ -82,16 +96,20 @@ evidence, but must not make the final comparative assessment.
 
 ### Small task
 
-- Primary agent: Sol low when the client permits a per-task choice.
+- Primary Sol-high agent handles the task directly.
 - Do not spawn subagents.
 - Change the code and run the focused checks directly.
+- Perform the final integrated review and acceptance before completion.
 
 ### Ordinary feature or bug fix
 
-- Primary agent: Sol medium creates a short plan.
-- `builder`: Terra medium implements.
-- `qa-reviewer`: Terra low independently checks the diff and regression risk.
-- Primary agent verifies evidence and accepts the result.
+- Primary agent or `lead-architect`: Sol high creates the bounded plan.
+- `builder`: Terra medium implements. Use a Luna worker instead when bounded
+  non-critical work benefits from Luna's context or reasoning profile.
+- Run focused tests after implementation. A Luna critic is optional only after
+  a Luna executor and remains preliminary.
+- `critical-reviewer-high`: Sol high independently reviews the integrated diff.
+- Primary Sol-high agent verifies evidence and accepts the result.
 
 Use `builder-low` for renames, routine CRUD edits, schema or type updates,
 mechanical refactoring, or implementation from a detailed plan. Terra medium
@@ -103,13 +121,15 @@ unmet criterion to `critical-reviewer` or the primary Sol agent.
 - Primary agent or `lead-architect`: Sol high fixes the architecture in one
   pass.
 - `scout`: Luna low maps the change only when the relevant files are unknown.
-- One or two `builder` agents: Terra medium own non-overlapping areas.
-- `qa-reviewer-medium`: Terra medium checks the integrated behavior.
-- Add a critical reviewer only when a trigger below applies.
+- One or two `builder` or Luna agents own non-overlapping implementation areas.
+- `qa-reviewer-medium` may collect integration evidence and preliminary defects.
+- `critical-reviewer-high`: Sol high performs the final integrated review.
+- Primary Sol-high agent verifies evidence and performs final acceptance.
 
 The architecture pass must end in a short approved plan or ADR that fixes
 component boundaries, interfaces, invariants, and verification criteria.
-Implementation then moves to Terra without repeating the architecture phase.
+Implementation then moves to Terra or Luna according to the routing policy
+without repeating the architecture phase.
 
 ## Bound each role
 
@@ -150,13 +170,19 @@ Require an independent diff review, the narrowest relevant checks, omitted edge
 cases, and real defects only. Terra low may add a trivial regression test that
 copies an established local pattern. New state models, concurrency,
 transactions, complex negative scenarios, or non-obvious test design require
-Sol high through `builder_complex`.
+Sol high through `builder_complex`. QA results are preliminary evidence and do
+not replace the final Sol-high integrated review or acceptance.
 
 ### Critical reviewer
 
-Use a critical reviewer only for data migration, security or authorization,
-concurrency, a public API change, payments, a hard-to-reproduce failure, a
-change spanning many modules, or a blocker unresolved by builder and QA.
+Use `critical-reviewer` with Sol medium only for one focused complex-debugging
+or root-cause question after a concrete blocker. It may collect evidence and
+recommend the next step, but it must not issue a critical, risk, architecture,
+final-review, or acceptance judgment.
+
+Use `critical-reviewer-high` with Sol high for data migration, security or
+authorization, concurrency, public API changes, payments, cross-module risk,
+architecture review, and every final integrated review.
 
 Ask one concrete question and allow one focused pass. Do not request another
 full review of the project.
@@ -184,7 +210,7 @@ checks, residual risks, and blockers. Do not ask for narration of every action.
 
 ## Accept and close
 
-The primary agent reviews the actual diff, contracts, and fresh verification
-evidence before accepting delegated work. Architecture decisions remain with
-the primary agent after PM approval. Close every completed, failed, or obsolete
-subagent after collecting its result.
+The primary Sol-high agent reviews the actual diff, contracts, and fresh
+verification evidence before accepting delegated work. Architecture decisions
+remain with the primary agent after PM approval. Close every completed, failed,
+or obsolete subagent after collecting its result.

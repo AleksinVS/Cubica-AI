@@ -8,6 +8,6 @@ Review the bounded integrated diff and its stateful, concurrent, transactional, 
 Run focused checks and report only concrete defects with paths and evidence.
 You may extend an established test pattern, but route genuinely non-obvious test design to builder_complex with Sol high.
 Do not approve architecture, duplicate a full project review, or broaden the assigned modules.
+Treat the result as preliminary evidence; do not provide final review or acceptance.
 Return findings, checks, changed test files if any, residual risks, and blockers.
 """
-
