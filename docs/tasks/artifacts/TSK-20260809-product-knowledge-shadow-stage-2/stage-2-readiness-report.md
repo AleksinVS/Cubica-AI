@@ -357,6 +357,29 @@ Focused evaluator прошёл 40/40, package typecheck и contract checks зе�
 Schema, storage, retention, ACL, prompt и provider не менялись; новый внешний
 вызов не разрешён.
 
+DR-18 принят PM 2026-08-25 ровно для одного нового полного окна, но ещё не
+запускался. Bounds зафиксированы как model timeout 45000 ms, Portal auth
+timeout 5000 ms, lease 60000 ms, retention 300000 ms, `maxAttempts=1`, без
+retry; provider/model — Z.AI Coding Plan `glm-4.7` с существующим фиксированным
+endpoint, один developer/game/policy, фиксированный порядок пяти сценариев и
+hard stop при первом небезопасном результате. Разрешение расходуется первым
+provider call и требует свежего Sol-high preactivation до запуска. Временная
+подготовка ограничена private `.tmp` TypeScript operator/config, reuse maintained
+Editor enqueue, Portal authorization utility через минимальный loopback HTTP
+adapter, worker/evaluator, disposable PostgreSQL 17, read-only bare Git,
+English seed для exact same-language `existing_fact`, content-free report,
+локальный `/dev/tty` mismatch review, retention cleanup и destruction; новая
+схема, storage, сервис, prompt, provenance-семантика и Git-запись не вводятся.
+Strapi/Next не запускаются: их уже проверенная интеграция не является предметом
+семантического окна и не оправдывает дополнительный сервисный контур.
+Local static check и live preflight DR-18 прошли 2026-08-25 без worker/provider
+call: manifest/report валидны по canonical JSON Schema, disposable PostgreSQL
+17 readiness и exact-zero visibility подтверждены, loopback Portal
+authorization успешен, bare Git HEAD совпадает, `providerCalls=0`. Для
+изоляции от уже работающего параллельного контура выбран другой свободный
+loopback-порт; чужой контейнер не изменялся. До Sol-high `ACCEPT` окно остаётся
+неактивированным.
+
 Перед каждым новым внешним окном необходимо:
 
 1. создать отдельную базу, app-login с единственным membership в

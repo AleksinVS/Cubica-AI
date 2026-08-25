@@ -34,6 +34,13 @@ in_progress
   Сценарии 3–5 не запускались. Exact-zero cleanup и неизменный Git доказаны,
   разрешение DR-16 израсходовано. Новый внешний вызов и Stage 3 запрещены до
   отдельного решения PM.
+- PM 2026-08-25 принял DR-18 ровно для одного нового полного окна на Z.AI
+  Coding Plan `glm-4.7` и существующем фиксированном endpoint: model/Portal
+  auth/lease/retention `45000/5000/60000/300000` ms, `maxAttempts=1`, без retry,
+  один developer/game/policy, фиксированный порядок пяти сценариев и
+  немедленный hard stop. Разрешение расходуется первым provider call и не
+  действует до свежего Sol-high preactivation. Окно ещё не запускалось;
+  Stage 3, активное чтение, применение кандидатов и Git-запись закрыты.
 
 ## Parent
 
@@ -992,9 +999,35 @@ worker и не открывает второй путь к модели или �
   атомарно создаёт приватный crash-sticky маркер: падение, ошибка reviewer и
   конкурентный запуск расходуют возможность просмотра, а удалить маркер может
   только exact-zero credential-free cleanup.
+
 - Scope: JSON Schema, generated types, PostgreSQL, ACL, retention, prompt,
   gateway и provider не менялись. Следующий `existing_fact` обязан быть
   одноязычным с seed-страницей; межъязычный случай оценивается отдельно.
 - Verification: focused evaluator 40/40, package typecheck и diff-check прошли.
   Новый внешний вызов всё ещё требует отдельного решения PM и Sol-high
   preactivation.
+
+### 2026-08-25 — основной AI agent, подготовка DR-18
+
+- Decision: PM принял ровно одно новое полное пятисценарное окно DR-18 с
+  `glm-4.7`, фиксированным endpoint, bounds `45000/5000/60000/300000` ms,
+  `maxAttempts=1`, без retry, одним developer/game/policy и hard stop при
+  первом небезопасном результате. Первый provider call расходует разрешение;
+  запуск не утверждён и не выполнялся.
+- Preparation: временный import-safe TypeScript operator под `.tmp` повторно
+  использует maintained Editor enqueue, Portal authorization utility через
+  минимальный loopback HTTP adapter, worker/evaluator,
+  PostgreSQL 17, read-only bare Git, content-free report, `/dev/tty` review,
+  retention cleanup и destruction. Fixed English scenarios и English wiki seed
+  для `existing_fact` выражают тот же durable fact без новой provenance-
+  semantics; содержимое не попадает в tracked docs/logs.
+- Verification: до Sol-high preactivation разрешены только local static checks,
+  disposable PostgreSQL, read-only Git и loopback Portal authorization
+  preflight. Worker и внешний provider не запускаются. Отдельные Strapi/Next
+  процессы исключены как не добавляющие нового доказательства этому окну.
+- Evidence: local static check и live preflight прошли на owned disposable
+  `postgres:17-alpine`; занятой параллельным контуром порт не освобождался, для
+  DR-18 выбран другой свободный loopback-порт. Canonical manifest/report,
+  exact-zero database visibility, read-only Git HEAD, Portal authorization и
+  evaluator readiness подтверждены; `providerCalls=0`. Внешний вызов ещё не
+  выполнялся и ожидает независимый Sol-high `ACCEPT`.

@@ -478,3 +478,28 @@ prompt и provider не изменены. Одноразовость обесп�
 расходуют просмотр в текущем контуре, а exact-zero cleanup удаляет маркер.
 Это улучшает диагностику следующего отдельно разрешённого окна, но само такого
 разрешения не создаёт.
+
+PM 2026-08-25 принял DR-18 ровно для одного нового полного окна. Оно должно
+использовать Z.AI Coding Plan `glm-4.7` и существующий фиксированный endpoint,
+model timeout 45000 ms, Portal auth timeout 5000 ms, lease 60000 ms, retention
+300000 ms, `maxAttempts=1`, без retry, одного developer/game/policy и тот же
+фиксированный порядок пяти категорий. Первым provider call разрешение
+считается израсходованным; до свежего Sol-high preactivation `ACCEPT` запрещены
+worker и любой внешний вызов модели. Локальные PostgreSQL/read-only Git checks
+и loopback-проверка Portal authorization допустимы как часть preflight и не
+расходуют разрешение. Это принятие не утверждает, что DR-18
+состоялся, и не открывает Stage 3.
+
+Для подготовки DR-18 используется только временный private TypeScript operator
+под `.tmp/agent-workflow/.../dr18/` (фиксированный `vite-node` launcher и
+`operator.ts`): один import-safe contour создаёт
+одноязычный English seed и read-only bare Git, связывает manifest с точными
+байтами и запускает существующие Editor enqueue, Portal authorization utility
+через минимальный loopback HTTP adapter, worker/evaluator, `/dev/tty` review,
+retention cleanup и destruction. Seed и
+реплика `existing_fact` выражают один и тот же English durable fact; новая
+provenance-семантика не добавляется. Report остаётся content-free, provider,
+Portal и HMAC credentials не печатаются, а cleanup может работать без них.
+Одноразовый adapter намеренно не запускает Strapi/Next: интеграция Portal уже
+проверена ранее, а семантическое окно не должно добавлять сервисы и потребление
+памяти без нового проверяемого свойства.
