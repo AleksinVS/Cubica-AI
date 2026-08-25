@@ -7,13 +7,113 @@ import {
   previewTransportRoad,
   runAgentTurn,
   RuntimeClientError,
-  shouldRetainPendingRuntimeCommand
+  shouldRetainPendingRuntimeCommand,
+  subscribeToSessionEvents,
+  consumePrivateInviteFragment
 } from "./runtime-client";
+
+const originalEventSource = window.EventSource;
 
 describe("runtime-client", () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+    Object.defineProperty(window, "EventSource", { configurable: true, value: originalEventSource });
+    window.history.replaceState({}, "", "/");
+  });
+
+  it("refreshes once for the initial GET and for a named version event", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(runtimeSnapshotResponse("session-events", 1));
+    const source = installEventSource();
+    const onSnapshot = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const subscription = subscribeToSessionEvents("session-events", onSnapshot);
+    await Promise.resolve();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/runtime/sessions/session-events");
+
+    source.emit("version");
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(onSnapshot).toHaveBeenCalled();
+    subscription.stop();
+  });
+
+  it("coalesces events received during a deferred full GET", async () => {
+    let resolveFirst: (response: Response) => void = () => undefined;
+    const first = new Promise<Response>((resolve) => { resolveFirst = resolve; });
+    const fetchMock = vi.fn().mockReturnValueOnce(first).mockResolvedValue(runtimeSnapshotResponse("session-events", 2));
+    const source = installEventSource();
+    vi.stubGlobal("fetch", fetchMock);
+    const subscription = subscribeToSessionEvents("session-events", vi.fn());
+
+    source.emit("version");
+    source.emit("message");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    resolveFirst(runtimeSnapshotResponse("session-events", 1));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    subscription.stop();
+  });
+
+  it("refreshes after EventSource errors and suppresses callbacks after stop", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(runtimeSnapshotResponse("session-events", 1))
+      .mockResolvedValueOnce(runtimeSnapshotResponse("session-events", 2));
+    const source = installEventSource();
+    const onSnapshot = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const subscription = subscribeToSessionEvents("session-events", onSnapshot);
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    source.emitError();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    subscription.stop();
+    expect(source.close).toHaveBeenCalledTimes(1);
+    source.emit("version");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("suppresses an in-flight callback after stop", async () => {
+    let resolveFirst: (response: Response) => void = () => undefined;
+    const first = new Promise<Response>((resolve) => { resolveFirst = resolve; });
+    const fetchMock = vi.fn().mockReturnValueOnce(first);
+    const source = installEventSource();
+    const onSnapshot = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const subscription = subscribeToSessionEvents("session-events", onSnapshot);
+
+    subscription.stop();
+    resolveFirst(runtimeSnapshotResponse("session-events", 1));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(onSnapshot).not.toHaveBeenCalled();
+    expect(source.close).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not require EventSource support", () => {
+    vi.stubGlobal("EventSource", undefined);
+    Object.defineProperty(window, "EventSource", { configurable: true, value: undefined });
+    expect(() => subscribeToSessionEvents("session-events", vi.fn())).not.toThrow();
+  });
+
+  it("clears a complete invite fragment synchronously", () => {
+    window.history.replaceState({}, "", "/play?mode=private#sessionId=s1&inviteToken=tok");
+    const invite = consumePrivateInviteFragment();
+    expect(invite).toEqual({ sessionId: "s1", inviteToken: "tok" });
+    expect(window.location.hash).toBe("");
+    expect(window.location.pathname + window.location.search).toBe("/play?mode=private");
+  });
+
+  it("clears a partial invite fragment but keeps unrelated anchors", () => {
+    window.history.replaceState({}, "", "/play#inviteToken=tok");
+    expect(consumePrivateInviteFragment()).toBeNull();
+    expect(window.location.hash).toBe("");
+
+    window.history.replaceState({}, "", "/play#board");
+    expect(consumePrivateInviteFragment()).toBeNull();
+    expect(window.location.hash).toBe("#board");
   });
 
   it("sends only the explicitly selected agent-seat count when creating a session", async () => {
@@ -410,3 +510,68 @@ describe("runtime-client", () => {
     });
   });
 });
+
+type FakeEventSource = {
+  onmessage: (() => void) | null;
+  onerror: (() => void) | null;
+  addEventListener: (name: string, listener: () => void) => void;
+  emit: (name: string) => void;
+  emitError: () => void;
+  close: ReturnType<typeof vi.fn>;
+};
+
+function installEventSource(): FakeEventSource {
+  let latestSource: TestEventSource | null = null;
+  class TestEventSource {
+    onmessage: (() => void) | null = null;
+    onerror: (() => void) | null = null;
+    listeners = new Map<string, () => void>();
+    close = vi.fn();
+
+    constructor(_url: string) {
+      latestSource = this;
+    }
+
+    addEventListener(name: string, listener: () => void): void {
+      this.listeners.set(name, listener);
+    }
+
+    emit(name: string): void {
+      if (name === "message") this.onmessage?.();
+      this.listeners.get(name)?.();
+    }
+
+    emitError(): void {
+      this.onerror?.();
+    }
+  }
+
+  vi.stubGlobal("EventSource", TestEventSource);
+  Object.defineProperty(window, "EventSource", {
+    configurable: true,
+    value: TestEventSource
+  });
+  // The instance is created by subscribeToSessionEvents, so expose a proxy
+  // that resolves after the caller constructs its subscription.
+  return {
+    get onmessage() { return latestSource?.onmessage ?? null; },
+    set onmessage(listener: (() => void) | null) { if (latestSource) latestSource.onmessage = listener; },
+    get onerror() { return latestSource?.onerror ?? null; },
+    set onerror(listener: (() => void) | null) { if (latestSource) latestSource.onerror = listener; },
+    addEventListener: (name, listener) => latestSource?.addEventListener(name, listener),
+    emit: (name) => latestSource?.emit(name),
+    emitError: () => latestSource?.emitError(),
+    get close() { return latestSource?.close ?? vi.fn(); }
+  };
+}
+
+function runtimeSnapshotResponse(sessionId: string, stateVersion: number): Response {
+  return new Response(JSON.stringify({
+    sessionId,
+    gameId: "runtime-fixture",
+    participants: [],
+    version: { sessionId, stateVersion, lastEventSequence: stateVersion },
+    state: { public: {}, secret: {} },
+    actionAvailability: []
+  }), { status: 200, headers: { "Content-Type": "application/json" } });
+}

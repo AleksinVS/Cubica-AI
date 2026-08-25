@@ -22,7 +22,48 @@
       "minimum": 0,
       "maximum": 64,
       "description": "Requested local agent seats. Runtime assigns the last N server-derived seats; omitted is equivalent to zero."
+    },
+    "accessMode": {
+      "type": "string",
+      "enum": [
+        "local",
+        "private-invite"
+      ],
+      "default": "local"
     }
   },
+  "allOf": [
+    {
+      "not": {
+        "required": [
+          "accessMode",
+          "agentSeatCount"
+        ],
+        "properties": {
+          "accessMode": {
+            "const": "private-invite"
+          },
+          "agentSeatCount": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    },
+    {
+      "not": {
+        "required": [
+          "accessMode",
+          "contentSourceId"
+        ],
+        "properties": {
+          "accessMode": {
+            "const": "private-invite"
+          },
+          "contentSourceId": {}
+        }
+      }
+    }
+  ],
   "additionalProperties": false
 }

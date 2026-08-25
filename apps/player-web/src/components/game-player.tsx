@@ -327,6 +327,7 @@ export function GamePlayer({
 
     return () => {
       unsubscribe();
+      presenter.dispose();
       presenterRef.current = null;
     };
   }, [content, contentSourceId, gameUi, fullConfig, initialSessionId, playerPluginState.status]);
@@ -401,7 +402,7 @@ export function GamePlayer({
     void presenter.boot();
   };
 
-  const handleSessionSetup = (selection: { participantCount: number; agentSeatCount: number }) => {
+  const handleSessionSetup = (selection: { participantCount: number; agentSeatCount: number; accessMode?: "local" | "private-invite" }) => {
     void presenterRef.current?.createSessionFromSetup(selection);
   };
 
@@ -497,7 +498,7 @@ export function GamePlayer({
   if (agentControl.kind === "invalid") {
     return (
       <main ref={rootRef} className="shell game-player-root" style={rootStyle}>
-        <SessionParticipants participants={state.participants} />
+        <SessionParticipants sessionId={state.sessionId} privateInvites={state.privateInvites} participants={state.participants} actionAvailability={state.actionAvailability} />
         <AgentControlPanel invalid onRefresh={handleRefreshAgentControl} />
       </main>
     );
@@ -505,7 +506,7 @@ export function GamePlayer({
   if (agentControl.kind === "valid" && agentControl.value.status === "paused") {
     return (
       <main ref={rootRef} className="shell game-player-root" style={rootStyle}>
-        <SessionParticipants participants={state.participants} />
+        <SessionParticipants sessionId={state.sessionId} privateInvites={state.privateInvites} participants={state.participants} actionAvailability={state.actionAvailability} />
         <AgentControlPanel control={agentControl.value} onRefresh={handleRefreshAgentControl} />
       </main>
     );
@@ -523,7 +524,7 @@ export function GamePlayer({
 
   return (
     <main ref={rootRef} className="shell game-player-root" style={rootStyle}>
-      <SessionParticipants participants={state.participants} />
+      <SessionParticipants sessionId={state.sessionId} privateInvites={state.privateInvites} participants={state.participants} actionAvailability={state.actionAvailability} />
       {agentControl.kind === "valid" && agentControl.value.status === "facilitatorTakeover" ? (
         <AgentControlPanel control={agentControl.value} onRefresh={handleRefreshAgentControl} />
       ) : null}

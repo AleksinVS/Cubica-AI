@@ -63,6 +63,13 @@ export class SessionAuthenticationError extends HttpError {
   }
 }
 
+/** Invalid, expired, replayed and racing invite capabilities are indistinguishable. */
+export class PrivateInviteAuthenticationError extends HttpError {
+  constructor() {
+    super(401, "Private invitation is invalid or unavailable.", "PRIVATE_INVITE_INVALID");
+  }
+}
+
 /** The authenticated principal is not permitted to perform the requested operation. */
 export class SessionAuthorizationError extends HttpError {
   constructor() {

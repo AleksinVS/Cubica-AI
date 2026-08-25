@@ -13,6 +13,8 @@ import type {
   CreatedSession,
   ImmutableGameBundle,
   LockedSessionOperation,
+  PrivateInviteClaimStoreInput,
+  PrivateInviteClaimStoreResult,
   SessionAuthenticationInput,
   SessionCommandReceipt,
   SessionCommandTransaction,
@@ -48,6 +50,8 @@ import {
 } from "./sessionStoreErrors.ts";
 import { createPublicGameplayJournalByteAccumulator } from "./publicGameplayJournal.ts";
 import {
+  applyPrivateInviteClaim,
+  assertCreationPrincipalsMatchParticipants,
   assertSessionParticipantsImmutable,
   assertSessionParticipantsMatchState
 } from "./sessionParticipants.ts";
@@ -231,6 +235,8 @@ export class PostgresSessionStore<TState = unknown> implements SessionStorePort<
   async createSession(input: CreateSessionInput<TState>): Promise<CreatedSession<TState>> {
     assertCreateInput(input);
     assertSessionParticipantsMatchState(input.participants, input.initialState, { allowAgents: true });
+    const principalInputs = [input.principal, ...(input.additionalPrincipals ?? [])];
+    assertCreationPrincipalsMatchParticipants(principalInputs, input.participants);
     const sessionId = randomUUID();
     const now = new Date();
     let client: SessionDatabaseClient;
@@ -285,27 +291,33 @@ export class PostgresSessionStore<TState = unknown> implements SessionStorePort<
           JSON.stringify(input.initialState)
         ]
       );
-      const principalWrite = await queryClient<PrincipalRow>(
-        client,
-        sessionId,
-        `INSERT INTO session_principals (
-           principal_id, session_id, principal_kind, session_role,
-           actor_scope, credential_sha256
-         ) VALUES ($1, $2, $3, $4, $5::jsonb, $6)
-         RETURNING principal_id, session_id, principal_kind, session_role, actor_scope, created_at`,
-        [
-          input.principal.principalId,
+      let primaryPrincipal: PrincipalRow | undefined;
+      for (const principalInput of principalInputs) {
+        const principalWrite = await queryClient<PrincipalRow>(
+          client,
           sessionId,
-          input.principal.kind,
-          input.principal.role,
-          JSON.stringify(input.principal.actorScope),
-          input.principal.credentialSha256
-        ]
-      );
+          `INSERT INTO session_principals (
+             principal_id, session_id, principal_kind, session_role,
+             actor_scope, credential_sha256, credential_expires_at
+           ) VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7)
+           RETURNING principal_id, session_id, principal_kind, session_role, actor_scope, created_at`,
+          [
+            principalInput.principalId,
+            sessionId,
+            principalInput.kind,
+            principalInput.role,
+            JSON.stringify(principalInput.actorScope),
+            principalInput.credentialSha256,
+            principalInput.credentialExpiresAt ?? null
+          ]
+        );
+        const principalRow = requireSingleRow(principalWrite);
+        if (primaryPrincipal === undefined) primaryPrincipal = principalRow;
+      }
       await queryClient(client, sessionId, "COMMIT");
       return {
         session: mapSessionRow<TState>(requireSingleRow(sessionWrite)),
-        principal: mapPrincipalRow(requireSingleRow(principalWrite))
+        principal: mapPrincipalRow(primaryPrincipal ?? failMissingPrimaryPrincipal())
       };
     } catch (error) {
       if (transactionStarted) {
@@ -334,12 +346,104 @@ export class PostgresSessionStore<TState = unknown> implements SessionStorePort<
          FROM session_principals p
          JOIN game_sessions s ON s.id = p.session_id
          WHERE p.session_id = $1 AND p.credential_sha256 = $2
+           AND p.credential_expires_at IS NULL
            AND s.archived_at IS NULL AND s.bundle_hash IS NOT NULL`,
         [input.sessionId, input.credentialSha256]
       );
       return result.rows[0] === undefined ? null : mapPrincipalRow(result.rows[0]);
     } catch (error) {
       throw mapDatabaseOperationalError(error);
+    }
+  }
+
+  async claimPrivateInvite(
+    input: PrivateInviteClaimStoreInput
+  ): Promise<PrivateInviteClaimStoreResult<TState> | null> {
+    let client: SessionDatabaseClient;
+    try {
+      client = await this.pool.connect();
+    } catch (error) {
+      throw mapDatabaseOperationalError(error);
+    }
+    let transactionStarted = false;
+    let releaseError: Error | boolean | undefined;
+    try {
+      await queryClient(client, input.sessionId, "BEGIN");
+      transactionStarted = true;
+      const sessionRead = await queryClient<SessionRow>(
+        client,
+        input.sessionId,
+        SELECT_SESSION_FOR_UPDATE,
+        [input.sessionId]
+      );
+      const currentRow = sessionRead.rows[0];
+      if (currentRow === undefined) {
+        await queryClient(client, input.sessionId, "COMMIT");
+        return null;
+      }
+      const principalRead = await queryClient<PrincipalRow>(
+        client,
+        input.sessionId,
+        `SELECT principal_id, session_id, principal_kind, session_role, actor_scope, created_at
+         FROM session_principals
+         WHERE session_id = $1 AND credential_sha256 = $2
+           AND credential_expires_at IS NOT NULL AND credential_expires_at > $3
+         FOR UPDATE`,
+        [input.sessionId, input.inviteCredentialSha256, input.claimedAt]
+      );
+      const principalRow = principalRead.rows[0];
+      if (principalRow === undefined) {
+        await queryClient(client, input.sessionId, "COMMIT");
+        return null;
+      }
+      const principal = mapPrincipalRow(principalRow);
+      if (principal.kind !== "participant" || principal.actorScope.kind !== "listed-actors") {
+        throw new SessionStoreUnavailableError();
+      }
+      const updated = applyPrivateInviteClaim(
+        mapSessionRow<TState>(currentRow),
+        principal.actorScope.actorIds[0],
+        input.claimedAt
+      );
+      const principalWrite = await queryClient(
+        client,
+        input.sessionId,
+        `UPDATE session_principals
+         SET credential_sha256 = $3, credential_expires_at = NULL
+         WHERE session_id = $1 AND principal_id = $2
+           AND credential_sha256 = $4 AND credential_expires_at > $5`,
+        [
+          input.sessionId,
+          principal.principalId,
+          input.participantCredentialSha256,
+          input.inviteCredentialSha256,
+          input.claimedAt
+        ]
+      );
+      if (principalWrite.rowCount !== 1) throw new SessionStoreUnavailableError();
+      const sessionWrite = await queryClient<SessionRow>(
+        client,
+        input.sessionId,
+        `UPDATE game_sessions
+         SET participants = $2::jsonb, state_version = $3, updated_at = $4
+         WHERE id = $1 AND state_version = $5
+         RETURNING ${SESSION_COLUMNS}`,
+        [
+          input.sessionId,
+          JSON.stringify(updated.participants),
+          updated.version.stateVersion,
+          input.claimedAt,
+          parseSafeInteger(currentRow.state_version)
+        ]
+      );
+      if (sessionWrite.rowCount !== 1) throw new SessionStoreUnavailableError();
+      await queryClient(client, input.sessionId, "COMMIT");
+      return { session: mapSessionRow<TState>(requireSingleRow(sessionWrite)), principal };
+    } catch (error) {
+      if (transactionStarted) releaseError = await rollbackAfterFailure(client, error);
+      throw mapDatabaseOperationalError(error);
+    } finally {
+      client.release(releaseError);
     }
   }
 
@@ -351,6 +455,7 @@ export class PostgresSessionStore<TState = unknown> implements SessionStorePort<
            AND principal_id = (
              SELECT principal_id FROM session_principals
              WHERE session_id = $1 AND credential_sha256 = $2
+               AND credential_expires_at IS NULL
            )
            AND EXISTS (
              SELECT 1 FROM game_sessions
@@ -399,6 +504,7 @@ export class PostgresSessionStore<TState = unknown> implements SessionStorePort<
          FROM game_sessions s
          JOIN session_principals p ON p.session_id = s.id
          WHERE s.id = $1 AND p.credential_sha256 = $2
+           AND p.credential_expires_at IS NULL
            AND s.bundle_hash IS NOT NULL
            AND (s.archived_at IS NULL OR p.session_role = 'facilitator')`,
         [input.sessionId, input.credentialSha256]
@@ -553,7 +659,8 @@ export class PostgresSessionStore<TState = unknown> implements SessionStorePort<
         input.sessionId,
         `SELECT principal_id, session_id, principal_kind, session_role, actor_scope, created_at
          FROM session_principals
-         WHERE session_id = $1 AND credential_sha256 = $2`,
+         WHERE session_id = $1 AND credential_sha256 = $2
+           AND credential_expires_at IS NULL`,
         [input.sessionId, input.credentialSha256]
       );
       const principalRow = principalRead.rows[0];
@@ -750,7 +857,7 @@ export class PostgresSessionStore<TState = unknown> implements SessionStorePort<
           FROM game_sessions LIMIT 0
         ), principal_probe AS (
           SELECT principal_id, session_id, principal_kind, session_role,
-                 actor_scope, credential_sha256, created_at
+                 actor_scope, credential_sha256, credential_expires_at, created_at
           FROM session_principals LIMIT 0
         ), bundle_probe AS (
           SELECT bundle_hash, game_id, canonical_bytes, canonical_bundle, created_at
@@ -784,6 +891,7 @@ export class PostgresSessionStore<TState = unknown> implements SessionStorePort<
             AND has_table_privilege(current_user, 'session_events', 'INSERT')
             AND has_table_privilege(current_user, 'system_schedules', 'INSERT') AS can_insert,
           has_table_privilege(current_user, 'game_sessions', 'UPDATE')
+            AND has_table_privilege(current_user, 'session_principals', 'UPDATE')
             AND has_table_privilege(current_user, 'system_schedules', 'UPDATE') AS can_update
       `);
       const readiness = result.rows[0];
@@ -833,6 +941,7 @@ export class PostgresSessionStore<TState = unknown> implements SessionStorePort<
          FROM session_principals p
          JOIN game_sessions s ON s.id = p.session_id
          WHERE p.session_id = $1 AND p.credential_sha256 = $2
+           AND p.credential_expires_at IS NULL
            AND p.session_role = 'facilitator'
            AND s.bundle_hash IS NOT NULL
            ${shouldArchive ? "" : "AND s.archived_at IS NOT NULL"}`,
@@ -1377,6 +1486,10 @@ function requireSingleRow<TRow extends QueryResultRow>(result: QueryResult<TRow>
     throw new SessionStoreUnavailableError();
   }
   return row;
+}
+
+function failMissingPrimaryPrincipal(): never {
+  throw new SessionStoreUnavailableError();
 }
 
 function mapSessionRow<TState>(row: SessionRow): SessionRecord<TState> {

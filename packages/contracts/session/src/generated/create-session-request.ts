@@ -22,4 +22,5 @@ export interface CreateSessionRequest {
    * Requested local agent seats. Runtime assigns the last N server-derived seats; omitted is equivalent to zero.
    */
   agentSeatCount?: number;
+  accessMode?: "local" | "private-invite";
 }
