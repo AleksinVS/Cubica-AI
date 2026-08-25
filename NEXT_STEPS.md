@@ -64,7 +64,7 @@ Task | Coordinator | Owner | Working/integration branch`, затем повто�
 
 | Boundary | Task | Coordinator | Owner | Working/integration branch |
 | --- | --- | --- | --- | --- |
-| `Session private-invite claim + version-notification public contract v1` | `TSK-20260705-multiplayer-runtime-realization`, S10 | `/root` | `/root/s10_contracts` | `agent/integrate-s10-hybrid-20260825` |
+| `Session principal invite credential transition + SSE notification hub v1` | `TSK-20260705-multiplayer-runtime-realization`, S10 | `/root` | `/root` | `agent/integrate-s10-hybrid-20260825` |
 
 ## Now
 
