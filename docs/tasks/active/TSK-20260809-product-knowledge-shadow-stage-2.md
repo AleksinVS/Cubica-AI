@@ -34,6 +34,12 @@ in_progress
   Сценарии 3–5 не запускались. Exact-zero cleanup и неизменный Git доказаны,
   разрешение DR-16 израсходовано. Новый внешний вызов и Stage 3 запрещены до
   отдельного решения PM.
+- DR-18 выполнен 2026-08-25 после свежего Sol-high `ACCEPT`. Сценарии 1–3 дали
+  ожидаемый `no_change` и прошли ручную рубрику 4/4. Сценарий 4 завершился
+  `gateway_timeout`/`gateway_outcome_unknown`; немедленный hard stop исключил
+  correction и повтор. Exact-zero cleanup, неизменный Git и destruction
+  доказаны; разрешение израсходовано. Положительные пути не доказаны, поэтому
+  Stage 3, активное чтение, применение кандидатов и Git-запись закрыты.
 
 ## Parent
 
@@ -992,9 +998,56 @@ worker и не открывает второй путь к модели или �
   атомарно создаёт приватный crash-sticky маркер: падение, ошибка reviewer и
   конкурентный запуск расходуют возможность просмотра, а удалить маркер может
   только exact-zero credential-free cleanup.
+
 - Scope: JSON Schema, generated types, PostgreSQL, ACL, retention, prompt,
   gateway и provider не менялись. Следующий `existing_fact` обязан быть
   одноязычным с seed-страницей; межъязычный случай оценивается отдельно.
 - Verification: focused evaluator 40/40, package typecheck и diff-check прошли.
   Новый внешний вызов всё ещё требует отдельного решения PM и Sol-high
   preactivation.
+
+### 2026-08-25 — основной AI agent, подготовка DR-18
+
+- Decision: PM принял ровно одно новое полное пятисценарное окно DR-18 с
+  `glm-4.7`, фиксированным endpoint, bounds `45000/5000/60000/300000` ms,
+  `maxAttempts=1`, без retry, одним developer/game/policy и hard stop при
+  первом небезопасном результате. Первый provider call расходует разрешение;
+  запуск не утверждён и не выполнялся.
+- Preparation: временный import-safe TypeScript operator под `.tmp` повторно
+  использует maintained Editor enqueue, Portal authorization utility через
+  минимальный loopback HTTP adapter, worker/evaluator,
+  PostgreSQL 17, read-only bare Git, content-free report, `/dev/tty` review,
+  retention cleanup и destruction. Fixed English scenarios и English wiki seed
+  для `existing_fact` выражают тот же durable fact без новой provenance-
+  semantics; содержимое не попадает в tracked docs/logs.
+- Verification: до Sol-high preactivation разрешены только local static checks,
+  disposable PostgreSQL, read-only Git и loopback Portal authorization
+  preflight. Worker и внешний provider не запускаются. Отдельные Strapi/Next
+  процессы исключены как не добавляющие нового доказательства этому окну.
+- Evidence: local static check и live preflight прошли на owned disposable
+  `postgres:17-alpine`; занятой параллельным контуром порт не освобождался, для
+  DR-18 выбран другой свободный loopback-порт. Canonical manifest/report,
+  exact-zero database visibility, read-only Git HEAD, Portal authorization и
+  evaluator readiness подтверждены; `providerCalls=0`. На момент завершения
+  подготовки внешний вызов ещё не выполнялся и ожидал независимый Sol-high
+  `ACCEPT`; фактический итог записан следующим блоком.
+
+### 2026-08-25 — основной AI agent, выполнение DR-18
+
+- Preactivation: после двух fail-closed замечаний Sol-high binding расширен до
+  точных SHA-256 operator, launcher, Vite aliases, manifest, operator config,
+  runtime и Portal env. Все пять сценариев были pending, БД exact-zero,
+  maintained source clean; только затем создан private `0600` marker.
+- Execution: `transient_conversation`, `existing_fact` и
+  `unconfirmed_agent_suggestion` дали ожидаемый `no_change`, 0 операций и
+  прошли ручную semantic rubric 4/4. Их durations составили соответственно
+  8698, 44764 и 8498 ms; тексты и request IDs в документацию не переносились.
+  `confirmed_new_knowledge` завершился без кандидата как
+  `gateway_timeout`/`gateway_outcome_unknown`; hard stop запретил пятый
+  `correction` и любой retry.
+- Cleanup: после 300000 ms retention credential-free cleanup удалил 4 run,
+  4 metrics, 8 messages и 4 threads. Итог: 0 active runs/metrics/messages/
+  threads, 0 active text bytes, manifest удалён, Git unchanged. Owned
+  PostgreSQL container и private state уничтожены; сохранён только canonical
+  [content-free report](../artifacts/TSK-20260809-product-knowledge-shadow-stage-2/dr18-content-free-report.json).
+  DR-18 consumed, Stage 3 остаётся закрыт.

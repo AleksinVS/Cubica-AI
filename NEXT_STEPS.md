@@ -98,6 +98,14 @@ Task | Coordinator | Owner | Working/integration branch`, затем повто�
   запрещены до отдельного решения после анализа.
   Correction-only прогон, Stage 3, активное чтение, применение и Git-запись
   остаются запрещены.
+- DR-18 выполнен 2026-08-25 и разрешение израсходовано. Три отрицательных
+  сценария дали ожидаемый `no_change` и прошли ручную рубрику 4/4. Первый
+  положительный сценарий завершился `gateway_timeout` с
+  `gateway_outcome_unknown`; hard stop исключил correction и любой повтор.
+  Exact-zero cleanup и неизменный Git доказаны, одноразовый контур уничтожен.
+  Положительные create/update пути поэтому всё ещё не доказаны; новый внешний
+  вызов требует отдельного решения PM. Stage 3, активное чтение, применение
+  кандидата и Git-запись остаются закрыты.
 
 - [TSK-20260705-multiplayer-runtime-realization](docs/tasks/active/TSK-20260705-multiplayer-runtime-realization.md) — `awaiting_approval`: Estate Race S10 private invite network v1 остаётся следующим срезом программы. Исходный пакет принят 2026-08-24, но сохранённый параллельный коммит реализовал несовместимый SSE-вариант; требуется выбрать итоговую композицию после
   [сравнительного аудита](docs/tasks/artifacts/TSK-20260705-monopoly-classic-game/s10-parallel-implementation-review.md).
