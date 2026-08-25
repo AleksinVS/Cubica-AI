@@ -81,6 +81,7 @@ export async function verifyWorkerLogin(pool: Pool): Promise<void> {
 
 export interface ShadowWorkerConfig { databaseUrl:string; portalUrl:string; reauthorizationKey:string; apiKey:string; knowledgeRepository:string; modelTimeoutMs:number; authorizationTimeoutMs:number; leaseMs:number; retryBaseMs:number; maxAttempts:number; maxRequestBytes:number; maxResponseBytes:number; databaseStatementTimeoutMs:number; databaseLockTimeoutMs:number; }
 export interface ShadowWorkerRecoveryConfig { databaseUrl:string; leaseMs:number; maxAttempts:1; databaseStatementTimeoutMs:number; databaseLockTimeoutMs:number; }
+const MAX_MODEL_TIMEOUT_MS = 90_000;
 export function readShadowWorkerRecoveryConfig(env:NodeJS.ProcessEnv):ShadowWorkerRecoveryConfig|null {
   const databaseUrl=safeShadowDatabaseUrl(env.CUBICA_PRODUCT_CONTEXT_SHADOW_WORKER_DATABASE_URL);
   const leaseMs=integer(env.CUBICA_PRODUCT_CONTEXT_SHADOW_WORKER_LEASE_MS,5_001,120_000);
@@ -94,7 +95,7 @@ export function readShadowWorkerConfig(env:NodeJS.ProcessEnv):ShadowWorkerConfig
   const databaseUrl=safeShadowDatabaseUrl(env.CUBICA_PRODUCT_CONTEXT_SHADOW_WORKER_DATABASE_URL);
   const portalBase=safeUrl(env.CUBICA_PORTAL_API_URL); const key=env.CUBICA_PRODUCT_CONTEXT_SHADOW_REAUTHORIZATION_KEY??'';
   const apiKey=env.PKS_KEY??''; const repository=env.CUBICA_PRODUCT_CONTEXT_SHADOW_KNOWLEDGE_REPOSITORY??'';
-  const modelTimeoutMs=integer(env.CUBICA_PRODUCT_CONTEXT_SHADOW_MODEL_TIMEOUT_MS,1,45_000);
+  const modelTimeoutMs=integer(env.CUBICA_PRODUCT_CONTEXT_SHADOW_MODEL_TIMEOUT_MS,1,MAX_MODEL_TIMEOUT_MS);
   const authorizationTimeoutMs=integer(env.CUBICA_PRODUCT_CONTEXT_SHADOW_AUTHORIZATION_TIMEOUT_MS,1,15_000);
   const leaseMs=integer(env.CUBICA_PRODUCT_CONTEXT_SHADOW_WORKER_LEASE_MS,5_001,120_000);
   const retryBaseMs=integer(env.CUBICA_PRODUCT_CONTEXT_SHADOW_RETRY_BASE_MS,1_000,300_000);

@@ -106,6 +106,10 @@ Task | Coordinator | Owner | Working/integration branch`, затем повто�
   Положительные create/update пути поэтому всё ещё не доказаны; новый внешний
   вызов требует отдельного решения PM. Stage 3, активное чтение, применение
   кандидата и Git-запись остаются закрыты.
+- По решению PM после DR-18 worker теперь допускает явный model timeout до
+  90000 ms; при Portal timeout 5000 ms следующий контур обязан использовать
+  lease не меньше 100000 ms. Это изменение не разрешает новый provider call,
+  не добавляет retry и не открывает Stage 3.
 
 - [TSK-20260705-multiplayer-runtime-realization](docs/tasks/active/TSK-20260705-multiplayer-runtime-realization.md) — `awaiting_approval`: Estate Race S10 private invite network v1 остаётся следующим срезом программы. Исходный пакет принят 2026-08-24, но сохранённый параллельный коммит реализовал несовместимый SSE-вариант; требуется выбрать итоговую композицию после
   [сравнительного аудита](docs/tasks/artifacts/TSK-20260705-monopoly-classic-game/s10-parallel-implementation-review.md).

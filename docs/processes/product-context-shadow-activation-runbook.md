@@ -514,3 +514,10 @@ credential-free cleanup удалил 4 run, 4 metrics, 8 messages и 4 threads �
 exact zero; manifest удалён, bare Git HEAD не изменился, disposable PostgreSQL
 и private state уничтожены. Разрешение DR-18 израсходовано и нового внешнего
 вызова не создаёт.
+
+После DR-18 PM одобрил постоянную верхнюю границу model timeout 90000 ms.
+Worker по-прежнему требует явное значение; default не вводится. Для
+authorization timeout 5000 ms минимальный call lease равен 100000 ms:
+90000 ms модели + 5000 ms повторной Portal-проверки + 5000 ms terminal margin.
+`maxAttempts=1`, запрет retry неопределённого исхода и необходимость отдельного
+разрешения каждого внешнего окна не изменились.
