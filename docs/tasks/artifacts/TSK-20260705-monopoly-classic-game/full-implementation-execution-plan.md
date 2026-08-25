@@ -126,7 +126,7 @@ Agent Runtime недоступен, локальная партия ставит
 | Завершение | `done` | обязательства, банкротство, передача активов, server-owned победа и S7-объяснение итога | — |
 | Интерфейс | `done` | map-first Web UI, Phaser-поле, DOM-действия, responsive camera, style-parity и локальная accessibility matrix S7 | Каталожная и продуктовая приёмка S10; публикация не объявлена |
 | Методика | `done` | read-only материалы участника/ведущего, компетенции, рефлексия и product review S7 | Каталожная приёмка S10; публикация не объявлена |
-| Сеть | `partial` | PostgreSQL, блокировка, версии и долговечные квитанции; S8 session-owned participants реализован и принят | S10 private invite join, персональная доставка, WebSocket, reconnect |
+| Сеть | `accepted-for-closed-alpha` | PostgreSQL, row-level `SELECT FOR UPDATE NOWAIT`, версии и долговечные квитанции; S10 private invite claim, authenticated SSE cursor + full authenticated HTTP GET, reconnect, PostgreSQL restart и Estate Race two-browser flow; runtime `403 pass / 3 skip`, Player Web `328/328` + typecheck/build, package `53/53`, plugin `37/37` + typecheck, disposable PostgreSQL `2/2` | recoverable handoff после потери claim-ответа; catalog/content/economy/product publication и production readiness |
 | ИИ-места | `done` | Локальная граница GSR-049: schema-first `agentSeats`, local `agentSeatCount`, ordinary projection/availability/Intent, fallback до 73, exact receipts, `agentControl`, семь eval fixtures и bounded transcript | real provider, full terminal match и network lifecycle |
 
 Перед началом каждого среза основной агент повторяет только затронутую часть
@@ -434,6 +434,11 @@ fixtures для покупки, аукциона, выхода из тюрьмы
 трассировка не содержит незакрытых обязательных правил, документация не
 противоречит коду, временные артефакты удалены, `NEXT_STEPS.md` обновлён.
 
+S10 принят для закрытой альфы. Если claim записан, но ответ с credential
+потерян, ведущий пересоздаёт тестовый сеанс; recoverable handoff нужен до
+каталога/production. Каталог, content/economy/product publication и
+production readiness не объявлены завершёнными.
+
 ## 6. Распределение между агентами
 
 ### 6.1. Общая политика
@@ -468,7 +473,7 @@ fixtures для покупки, аукциона, выхода из тюрьмы
 | E7 | mockups, визуальное сравнение, архитектурное и итоговое review | critical-reviewer-high / основной агент | Sol high | PM принимает продуктовую визуальную поверхность |
 | E8 | средние/поздние фикстуры и обычные тесты по принятому test design | `luna-high` | Luna high | test design Sol high; replay/package/plugin |
 | E9 | механический прогон точных команд и сбор кратких результатов | scout/QA | Luna low | без изменения файлов и без вердикта |
-| E10 | participants, WebSocket, авторизация, reconnect и конкуренция ADR-059 | builder_complex | Sol high | отдельная платформенная задача; security/concurrency review Sol high |
+| E10 | participants, авторизация, authenticated SSE cursor + full authenticated HTTP GET, reconnect и конкуренция ADR-059 | builder_complex | Sol high | отдельная платформенная задача; security/concurrency review Sol high |
 | E11 | agent action choice, scheduler, fallback, секреты и eval ADR-060 | builder_complex | Sol high | отдельная платформенная задача; adversarial review Sol high |
 | E12 | игровая стратегия ИИ и методический контекст по готовому контракту | `luna-high` | Luna high | не меняет runtime; evaluation acceptance Sol high |
 
@@ -553,7 +558,7 @@ schema parity, typecheck runtime и всех найденных потребит
 
 - место и actor определяются аутентифицированным runtime, не телом команды;
 - чужое место, устаревшая версия и повтор изменённой команды отклоняются;
-- персональная проекция и сообщения WebSocket не раскрывают чужие секреты;
+- персональная проекция через authenticated HTTP GET после SSE cursor не раскрывает чужие секреты;
 - локальный и будущий сетевой режим используют одинаковые Game Intents и plans.
 
 ### 7.4. Общая приёмка ИИ — milestone A

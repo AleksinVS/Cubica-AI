@@ -410,7 +410,7 @@
         },
         "responses": {
           "201": {
-            "description": "Runtime session was created. The one-time credential is intended for immediate BFF handoff and is not returned by later reads.",
+            "description": "Runtime session was created. The host SessionCredential and one-time private-invite tokens are disclosed only in this direct response; later reads never return creation-only credentials.",
             "content": {
               "application/json": {
                 "schema": {
@@ -457,6 +457,48 @@
           "401": {
             "$ref": "#/components/responses/Unauthorized"
           }
+        }
+      }
+    },
+    "/sessions/{sessionId}/private-invite-claims": {
+      "post": {
+        "tags": ["Sessions"],
+        "operationId": "claimPrivateInvite",
+        "summary": "Claim one private-invite seat.",
+        "description": "Consumes the invite token once and returns the caller's normal personal session projection plus a creation-only durable SessionCredential. Malformed bodies use 400 and oversized bodies use 413; invalid, expired, replayed, and concurrent-loser tokens uniformly use 401. A transient runtime or storage failure uses 503 and does not disclose whether the token remains claimable. The response never contains privateInvites.",
+        "x-cubica-scope": "public",
+        "parameters": [{ "$ref": "#/components/parameters/SessionId" }],
+        "requestBody": { "$ref": "#/components/requestBodies/PrivateInviteClaimRequest" },
+        "responses": {
+          "200": {
+            "description": "Invite claimed; the durable credential is disclosed for this claim only.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PrivateInviteClaimResponse" } } }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/InvalidPrivateInvite" },
+          "413": { "$ref": "#/components/responses/PayloadTooLarge" },
+          "503": { "$ref": "#/components/responses/Unavailable" }
+        }
+      }
+    },
+    "/sessions/{sessionId}/events": {
+      "get": {
+        "tags": ["Sessions"],
+        "operationId": "streamSessionVersionNotifications",
+        "summary": "Stream authenticated session-version notifications.",
+        "description": "Each Server-Sent Event carries only SessionVersionNotification. After every notification and after reconnect, the client performs authenticated GET /sessions/{sessionId} for the complete personal projection; this stream never carries state projections or deltas.",
+        "x-cubica-scope": "public",
+        "security": [{ "SessionBearer": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/SessionId" }],
+        "responses": {
+          "200": {
+            "description": "One-way Server-Sent Events stream of version notifications.",
+            "headers": { "Cache-Control": { "schema": { "type": "string", "const": "no-store" } } },
+            "content": { "text/event-stream": { "schema": { "$ref": "#/components/schemas/SessionVersionNotification" } } }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "503": { "$ref": "#/components/responses/Unavailable" }
         }
       }
     },
@@ -821,6 +863,14 @@
           }
         }
       },
+      "PrivateInviteClaimRequest": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/PrivateInviteClaimRequest" }
+          }
+        }
+      },
       "DispatchActionRequest": {
         "required": true,
         "content": {
@@ -974,6 +1024,16 @@
             }
           }
         }
+      },
+      "InvalidPrivateInvite": {
+        "description": "The private invitation is invalid, expired, already consumed or lost a concurrent claim. These cases are intentionally indistinguishable and do not use Bearer authentication.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
       }
     },
     "schemas": {
@@ -1092,8 +1152,17 @@
             "minimum": 0,
             "maximum": 64,
             "description": "Requested local agent seats. Runtime assigns the last N server-derived seats; omitted is equivalent to zero."
+          },
+          "accessMode": {
+            "type": "string",
+            "enum": ["local", "private-invite"],
+            "default": "local"
           }
         },
+        "allOf": [
+          { "not": { "required": ["accessMode", "agentSeatCount"], "properties": { "accessMode": { "const": "private-invite" }, "agentSeatCount": { "type": "integer", "minimum": 1 } } } },
+          { "not": { "required": ["accessMode", "contentSourceId"], "properties": { "accessMode": { "const": "private-invite" }, "contentSourceId": {} } } }
+        ],
         "additionalProperties": false
       },
       "DependencyCheckResult": {
@@ -1260,21 +1329,54 @@
         }
       },
       "SessionParticipant": {
-        "description": "Stable server-owned seat binding. S8 creates only local human participants; agent remains reserved for the accepted S9 flow.",
+        "description": "Stable immutable server-owned seat binding. Private-invite seats move from invited to joined; seatId, playerId and kind remain immutable, and agents cannot use network join states.",
         "type": "object",
         "required": ["seatId", "playerId", "kind", "joinState"],
         "properties": {
           "seatId": { "type": "string", "minLength": 1 },
           "playerId": { "$ref": "#/components/schemas/PlayerId" },
           "kind": { "enum": ["human", "agent"] },
-          "joinState": { "const": "local" }
+          "joinState": { "enum": ["local", "invited", "joined"] }
         },
+        "allOf": [
+          { "not": { "required": ["kind", "joinState"], "properties": { "kind": { "const": "agent" }, "joinState": { "enum": ["invited", "joined"] } } } }
+        ],
         "additionalProperties": false
       },
       "SessionParticipants": {
         "type": "array",
         "minItems": 1,
         "items": { "$ref": "#/components/schemas/SessionParticipant" }
+      },
+      "SessionCredential": {
+        "type": "string",
+        "pattern": "^ses_[A-Za-z0-9_-]{43}$"
+      },
+      "PrivateInviteToken": {
+        "type": "string",
+        "pattern": "^inv_[A-Za-z0-9_-]{43}$"
+      },
+      "PrivateSessionInvite": {
+        "type": "object",
+        "required": ["seatId", "playerId", "inviteToken", "expiresAt"],
+        "properties": {
+          "seatId": { "type": "string", "minLength": 1 },
+          "playerId": { "$ref": "#/components/schemas/PlayerId" },
+          "inviteToken": { "$ref": "#/components/schemas/PrivateInviteToken" },
+          "expiresAt": { "type": "string", "format": "date-time" }
+        },
+        "additionalProperties": false
+      },
+      "PrivateSessionInvites": {
+        "type": "array",
+        "minItems": 1,
+        "items": { "$ref": "#/components/schemas/PrivateSessionInvite" }
+      },
+      "PrivateInviteClaimRequest": {
+        "type": "object",
+        "required": ["inviteToken"],
+        "properties": { "inviteToken": { "$ref": "#/components/schemas/PrivateInviteToken" } },
+        "additionalProperties": false
       },
       "JsonObject": {
         "type": "object",
@@ -1388,10 +1490,23 @@
           "state": { "$ref": "#/components/schemas/JsonObject" },
           "actionAvailability": { "$ref": "#/components/schemas/SessionActionAvailabilityList" },
           "agentControl": { "$ref": "#/components/schemas/AgentControl" },
-          "credential": {
-            "type": "string",
-            "pattern": "^ses_[A-Za-z0-9_-]{43}$"
-          }
+          "credential": { "$ref": "#/components/schemas/SessionCredential" },
+          "privateInvites": { "$ref": "#/components/schemas/PrivateSessionInvites" }
+        },
+        "additionalProperties": false
+      },
+      "PrivateInviteClaimResponse": {
+        "type": "object",
+        "required": ["sessionId", "gameId", "participants", "version", "state", "actionAvailability", "credential"],
+        "properties": {
+          "sessionId": { "type": "string" },
+          "gameId": { "$ref": "#/components/schemas/GameId" },
+          "participants": { "$ref": "#/components/schemas/SessionParticipants" },
+          "version": { "$ref": "#/components/schemas/SessionStateVersion" },
+          "state": { "$ref": "#/components/schemas/JsonObject" },
+          "actionAvailability": { "$ref": "#/components/schemas/SessionActionAvailabilityList" },
+          "agentControl": { "$ref": "#/components/schemas/AgentControl" },
+          "credential": { "$ref": "#/components/schemas/SessionCredential" }
         },
         "additionalProperties": false
       },
@@ -1425,6 +1540,15 @@
         "required": ["sessionId", "stateVersion", "lastEventSequence"],
         "properties": {
           "sessionId": { "type": "string" },
+          "stateVersion": { "type": "integer", "minimum": 0 },
+          "lastEventSequence": { "type": "integer", "minimum": 0 }
+        },
+        "additionalProperties": false
+      },
+      "SessionVersionNotification": {
+        "type": "object",
+        "required": ["stateVersion", "lastEventSequence"],
+        "properties": {
           "stateVersion": { "type": "integer", "minimum": 0 },
           "lastEventSequence": { "type": "integer", "minimum": 0 }
         },

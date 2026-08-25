@@ -13,6 +13,7 @@ import {
   hashSessionCredential,
   requireBearerCredential
 } from "../session/sessionAuthentication.ts";
+import { SessionAuthenticationError } from "../session/sessionStoreErrors.ts";
 import {
   RuntimeService,
   type RuntimeServiceDispatchTimings
@@ -41,9 +42,14 @@ import {
   parseAgentTurnRequest,
   parseCreateSessionRequest,
   parseDispatchActionRequest,
+  parsePrivateInviteClaimRequest,
   parseRestorePreviewSessionRequest,
   parseTransportRoadPreviewRequest
 } from "./requestValidation.ts";
+import {
+  SessionVersionEventHub,
+  SessionVersionStreamCapacityError
+} from "./sessionVersionEventHub.ts";
 
 type RuntimeState = Record<string, unknown>;
 
@@ -196,6 +202,7 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
     options.random,
     agentSeatDriver
   );
+  const sessionVersionEvents = new SessionVersionEventHub();
   let activePort = port;
   let closed = false;
 
@@ -384,7 +391,43 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
           accessToken,
           parseRestorePreviewSessionRequest(body)
         );
+        sessionVersionEvents.publish(snapshot.version);
         sendJson(response, 200, snapshot);
+        return;
+      }
+
+      const privateInviteClaimMatch = request.method === "POST" &&
+        requestUrl.pathname.match(/^\/sessions\/([^/]+)\/private-invite-claims$/u);
+      if (privateInviteClaimMatch) {
+        const sessionId = decodePathSegment(privateInviteClaimMatch[1], "sessionId");
+        const body = await readJsonBody(request);
+        const snapshot = await sessionService.claimPrivateInvite(
+          sessionId,
+          parsePrivateInviteClaimRequest(body)
+        );
+        sessionVersionEvents.publish(snapshot.version);
+        sendJson(response, 200, snapshot);
+        return;
+      }
+
+      const sessionVersionEventsMatch = request.method === "GET" &&
+        requestUrl.pathname.match(/^\/sessions\/([^/]+)\/events$/u);
+      if (sessionVersionEventsMatch) {
+        const sessionId = decodePathSegment(sessionVersionEventsMatch[1], "sessionId");
+        const access = await sessionService.authenticateSessionAccess(
+          sessionId,
+          requireBearerCredential(request.headers)
+        );
+        try {
+          sessionVersionEvents.subscribe(response, access.snapshot.version, access.principal.principalId);
+        } catch (error) {
+          if (error instanceof SessionVersionStreamCapacityError) {
+            response.setHeader("Retry-After", String(error.retryAfterSeconds));
+            sendJson(response, 429, { error: "Session event stream capacity is exhausted" });
+            return;
+          }
+          throw error;
+        }
         return;
       }
 
@@ -423,6 +466,7 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
           accessToken: requireBearerCredential(request.headers),
           input: requestBody
         });
+        sessionVersionEvents.publish(dispatchResponse.version);
 
         const serverTiming = formatServerTimingHeader(timings);
         if (serverTiming !== undefined) {
@@ -451,6 +495,7 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
           credentialSha256: hashSessionCredential(requireBearerCredential(request.headers)),
           request: requestBody
         });
+        sessionVersionEvents.publish(agentTurnResponse.version);
 
         sendJson(response, 200, agentTurnResponse);
         return;
@@ -459,7 +504,7 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
       sendJson(response, 404, { error: "Not found" });
     } catch (error) {
       if (error instanceof HttpError) {
-        if (error.statusCode === 401) {
+        if (error instanceof SessionAuthenticationError) {
           response.setHeader("WWW-Authenticate", 'Bearer realm="cubica-session"');
         }
         if (error instanceof CommandAdmissionRejectedError) {
@@ -500,6 +545,7 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
         return;
       }
       closed = true;
+      sessionVersionEvents.close();
       if (server.listening) {
         await new Promise<void>((resolve, reject) => {
           server.close((error) => error ? reject(error) : resolve());

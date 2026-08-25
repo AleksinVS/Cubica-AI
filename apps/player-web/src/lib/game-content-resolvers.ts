@@ -1,6 +1,6 @@
 import type { PlayerFacingContent, PlayerFacingMockup } from "@cubica/contracts-manifest";
 
-import type { DispatchActionResponse, GetSessionResponse } from "@cubica/contracts-session";
+import type { DispatchActionResponse, GetSessionResponse, PrivateSessionInvite } from "@cubica/contracts-session";
 
 export type { PlayerFacingMockup as GameMockup };
 
@@ -23,7 +23,10 @@ export interface ActionEntry {
 }
 
 /** Browser-safe snapshot after the BFF has removed the one-time credential. */
-export type SessionSnapshot = GetSessionResponse<Record<string, unknown>>;
+export type SessionSnapshot = GetSessionResponse<Record<string, unknown>> & {
+  /** Host-only safe invite metadata; the runtime credential is never included. */
+  readonly privateInvites?: ReadonlyArray<PrivateSessionInvite>;
+};
 export type ActionSnapshot = DispatchActionResponse<Record<string, unknown>>;
 
 /**

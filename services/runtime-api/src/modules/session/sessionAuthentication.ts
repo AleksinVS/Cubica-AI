@@ -18,10 +18,23 @@ import { SessionAuthenticationError, SessionAuthorizationError } from "./session
 import { participantActorIds } from "./sessionParticipants.ts";
 
 const SESSION_CREDENTIAL_PATTERN = /^ses_[A-Za-z0-9_-]{43}$/u;
+const PRIVATE_INVITE_TOKEN_PATTERN = /^inv_[A-Za-z0-9_-]{43}$/u;
 
 export interface NewLocalSessionAccess {
   accessToken: string;
   principal: CreateSessionPrincipalInput;
+}
+
+export interface NewParticipantSessionAccess extends NewLocalSessionAccess {
+  principal: CreateSessionPrincipalInput & {
+    kind: "participant";
+    actorScope: { kind: "listed-actors"; actorIds: readonly [string] };
+  };
+}
+
+export interface NewPrivateInviteAccess {
+  inviteToken: string;
+  principal: NewParticipantSessionAccess["principal"] & { credentialExpiresAt: Date };
 }
 
 /** Create a local-controller principal backed by 32 random credential bytes. */
@@ -37,6 +50,48 @@ export function createLocalSessionAccess(role: SessionRole): NewLocalSessionAcce
       credentialSha256: hashSessionCredential(accessToken)
     }
   };
+}
+
+/** Mint a durable credential that can view and act for exactly one participant. */
+export function createParticipantSessionAccess(
+  playerId: string,
+  role: SessionRole = "player"
+): NewParticipantSessionAccess {
+  const accessToken = createSessionCredential();
+  return {
+    accessToken,
+    principal: {
+      principalId: randomUUID(),
+      kind: "participant",
+      role,
+      actorScope: { kind: "listed-actors", actorIds: [playerId] },
+      credentialSha256: hashSessionCredential(accessToken)
+    }
+  };
+}
+
+/** Mint an expiring one-time invite capability for one server-selected actor. */
+export function createPrivateInviteAccess(
+  playerId: string,
+  credentialExpiresAt: Date
+): NewPrivateInviteAccess {
+  const inviteToken = `inv_${randomBytes(32).toString("base64url")}`;
+  return {
+    inviteToken,
+    principal: {
+      principalId: randomUUID(),
+      kind: "participant",
+      role: "player",
+      actorScope: { kind: "listed-actors", actorIds: [playerId] },
+      credentialSha256: hashSessionCredential(inviteToken),
+      credentialExpiresAt
+    }
+  };
+}
+
+/** Raw durable credential; storage receives only its digest. */
+export function createSessionCredential(): string {
+  return `ses_${randomBytes(32).toString("base64url")}`;
 }
 
 /** Hash a credential before it crosses the session-store boundary. */
@@ -55,6 +110,10 @@ export function requireBearerCredential(headers: IncomingHttpHeaders): string {
     throw new SessionAuthenticationError();
   }
   return match[1];
+}
+
+export function isPrivateInviteToken(value: string): boolean {
+  return PRIVATE_INVITE_TOKEN_PATTERN.test(value);
 }
 
 /**

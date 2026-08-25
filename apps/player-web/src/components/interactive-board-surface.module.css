@@ -304,6 +304,12 @@
     border: 1px solid rgb(246 240 223 / 24%);
   }
 
+  .surfaceMapFirst .actionPanelToggle {
+    top: 0.75rem;
+    right: auto;
+    left: 0.75rem;
+  }
+
   .cameraControls {
     right: 0.75rem;
     bottom: calc(42vh + 6.5rem);

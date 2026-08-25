@@ -119,6 +119,10 @@ const aiDrivenContent: PlayerFacingContent = {
 const aiDrivenSession = {
   sessionId: "ai-driven-session-id",
   gameId: "ai-driven-choice",
+  participants: [
+    { seatId: "p1", playerId: "p1", kind: "human" as const, joinState: "local" as const }
+  ],
+  actionAvailability: [],
   version: {
     sessionId: "ai-driven-session-id",
     stateVersion: 0,
@@ -317,6 +321,10 @@ const mockS1Ui: GamePlayerUiContent = {
 
 const mockSession = {
   sessionId: "test-session-id",
+  participants: [
+    { seatId: "p1", playerId: "p1", kind: "human" as const, joinState: "local" as const }
+  ],
+  actionAvailability: [],
   version: {
     sessionId: "test-session-id",
     stateVersion: 0,
@@ -479,6 +487,8 @@ describe("GamePlayer S1 DOM Rendering", () => {
       if (url === "/api/runtime/agent-turns") {
         return Promise.resolve(new Response(JSON.stringify({
           sessionId: aiDrivenSession.sessionId,
+          participants: aiDrivenSession.participants,
+          actionAvailability: aiDrivenSession.actionAvailability,
           version: {
             sessionId: aiDrivenSession.sessionId,
             stateVersion: 1,
@@ -937,6 +947,10 @@ describe("GamePlayer S1 DOM Rendering", () => {
     const session = {
       sessionId: "async-plugin-session",
       gameId,
+      participants: [
+        { seatId: "p1", playerId: "p1", kind: "human" as const, joinState: "local" as const }
+      ],
+      actionAvailability: [],
       version: { sessionId: "async-plugin-session", stateVersion: 1, lastEventSequence: 0 },
       state: {
         public: {
@@ -2428,6 +2442,10 @@ describe("GamePlayer sticky screenKey regression (Finding 2)", () => {
   const stickyInitialSession = {
     sessionId: "sticky-session-1",
     gameId: stickyGameId,
+    participants: [
+      { seatId: "p1", playerId: "p1", kind: "human" as const, joinState: "local" as const }
+    ],
+    actionAvailability: [],
     version: { sessionId: "sticky-session-1", stateVersion: 0, lastEventSequence: 0 },
     state: {
       public: {

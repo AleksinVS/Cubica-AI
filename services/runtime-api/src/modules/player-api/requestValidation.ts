@@ -1,11 +1,13 @@
 import type {
   CreateSessionRequest,
   DispatchActionInput,
+  PrivateInviteClaimRequest,
   RestorePreviewSessionRequest,
   TransportRoadPreviewRequest
 } from "@cubica/contracts-session";
 import {
   getCreateSessionRequestValidationErrors,
+  validatePrivateInviteClaimRequestShape,
   validateCreateSessionRequestShape
 } from "@cubica/contracts-session";
 import type { AgentTurnRequest } from "../ai/agentRuntime.ts";
@@ -139,6 +141,13 @@ export const parseCreateSessionRequest = (body: unknown): CreateSessionRequest =
 
 export const parseDispatchActionRequest = (body: unknown): DispatchActionInput => {
   return parseRuntimeCommand(body, "POST /actions body");
+};
+
+export const parsePrivateInviteClaimRequest = (body: unknown): PrivateInviteClaimRequest => {
+  if (!validatePrivateInviteClaimRequestShape(body)) {
+    throw new RequestValidationError("Private invite claim does not match the canonical request schema");
+  }
+  return body;
 };
 
 function parseRuntimeCommand(body: unknown, label: string): DispatchActionInput {

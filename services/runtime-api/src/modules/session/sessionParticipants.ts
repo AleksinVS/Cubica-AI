@@ -1,6 +1,7 @@
 /** Neutral materialization and semantic validation of authoritative session seats. */
 import {
   validateSessionParticipantsShape,
+  type CreateSessionPrincipalInput,
   type SessionParticipant,
   type SessionRecord
 } from "@cubica/contracts-session";
@@ -37,6 +38,18 @@ export function materializeLocalSessionParticipants(
     playerId,
     kind: index >= firstAgentIndex ? "agent" : "human",
     joinState: "local"
+  }));
+}
+
+/** Derive private human seats; the creator owns the first and guests start invited. */
+export function materializePrivateSessionParticipants(
+  state: RuntimeState,
+  participantCount: number
+): ReadonlyArray<SessionParticipant> {
+  return materializeLocalSessionParticipants(state, participantCount).map((participant, index) => ({
+    ...participant,
+    kind: "human",
+    joinState: index === 0 ? "joined" : "invited"
   }));
 }
 
@@ -85,6 +98,102 @@ export function assertSessionParticipantsImmutable<TState>(
 export function participantActorIds<TState>(session: SessionRecord<TState>): ReadonlyArray<string> {
   assertSessionParticipantsMatchState(session.participants, session.state, { allowAgents: true });
   return session.participants.map((participant) => participant.playerId);
+}
+
+/** Validate the complete principal topology before a session creation commit. */
+export function assertCreationPrincipalsMatchParticipants(
+  principals: ReadonlyArray<CreateSessionPrincipalInput>,
+  participants: ReadonlyArray<SessionParticipant>
+): void {
+  if (principals.length < 1) throw new Error("A session must have at least one principal");
+  const participantIds = new Set(participants.map(({ playerId }) => playerId));
+  const principalIds = new Set<string>();
+  const credentialDigests = new Set<string>();
+  for (const principal of principals) {
+    if (
+      principalIds.has(principal.principalId) ||
+      credentialDigests.has(principal.credentialSha256) ||
+      !/^[a-f0-9]{64}$/u.test(principal.credentialSha256) ||
+      (principal.credentialExpiresAt !== undefined && (
+        !(principal.credentialExpiresAt instanceof Date) ||
+        !Number.isFinite(principal.credentialExpiresAt.valueOf())
+      ))
+    ) {
+      throw new Error("Session principals must have unique valid credential material");
+    }
+    principalIds.add(principal.principalId);
+    credentialDigests.add(principal.credentialSha256);
+    if (principal.actorScope.kind === "listed-actors" && (
+      principal.actorScope.actorIds.length !== 1 ||
+      !participantIds.has(principal.actorScope.actorIds[0])
+    )) {
+      throw new Error("A participant principal must be scoped to exactly one session actor");
+    }
+  }
+
+  const networkParticipants = participants.filter(({ joinState }) => joinState !== "local");
+  if (networkParticipants.length === 0) {
+    if (
+      principals.length !== 1 ||
+      principals[0].kind !== "local-controller" ||
+      principals[0].actorScope.kind !== "all-session-actors" ||
+      principals[0].credentialExpiresAt !== undefined
+    ) {
+      throw new Error("Local sessions require one durable all-actor controller principal");
+    }
+    return;
+  }
+  if (networkParticipants.length !== participants.length || participants.some(({ kind }) => kind !== "human")) {
+    throw new Error("Private sessions cannot mix local, agent and network participants");
+  }
+  const joined = participants.filter(({ joinState }) => joinState === "joined");
+  const invited = participants.filter(({ joinState }) => joinState === "invited");
+  if (joined.length !== 1 || invited.length !== participants.length - 1 || principals.length !== participants.length) {
+    throw new Error("Private sessions require one joined host and one principal per seat");
+  }
+  for (const participant of participants) {
+    const principal = principals.find(({ actorScope }) =>
+      actorScope.kind === "listed-actors" && actorScope.actorIds[0] === participant.playerId
+    );
+    if (
+      principal === undefined ||
+      principal.kind !== "participant" ||
+      principal.actorScope.kind !== "listed-actors" ||
+      (participant.joinState === "invited" && principal.role !== "player") ||
+      (participant.joinState === "invited") !== (principal.credentialExpiresAt !== undefined)
+    ) {
+      throw new Error("Private principal credentials must match joined and invited seats exactly");
+    }
+  }
+}
+
+/** Allow exactly one server-owned `invited -> joined` change during claim. */
+export function applyPrivateInviteClaim<TState>(
+  current: SessionRecord<TState>,
+  playerId: string,
+  claimedAt: Date
+): SessionRecord<TState> {
+  let matched = false;
+  const participants = current.participants.map((participant) => {
+    if (participant.playerId !== playerId) return participant;
+    if (matched || participant.kind !== "human" || participant.joinState !== "invited") {
+      throw new Error("Private invite does not reference an available human seat");
+    }
+    matched = true;
+    return { ...participant, joinState: "joined" as const };
+  });
+  if (!matched) throw new Error("Private invite does not reference an available human seat");
+  if (!Number.isSafeInteger(current.version.stateVersion + 1)) {
+    throw new Error("Session state version cannot advance safely");
+  }
+  const updated = {
+    ...current,
+    participants,
+    version: { ...current.version, stateVersion: current.version.stateVersion + 1 },
+    updatedAt: claimedAt
+  };
+  assertSessionParticipantsMatchState(updated.participants, updated.state, { allowAgents: true });
+  return updated;
 }
 
 function readAuthoritativePlayerIds(state: unknown): string[] | undefined {

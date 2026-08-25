@@ -8,8 +8,11 @@ import {
 } from "../src/modules/player-api/requestValidation.ts";
 import { InMemorySessionStore } from "../src/modules/session/inMemorySessionStore.ts";
 import {
+  applyPrivateInviteClaim,
+  assertCreationPrincipalsMatchParticipants,
   assertSessionParticipantsMatchState,
-  materializeLocalSessionParticipants
+  materializeLocalSessionParticipants,
+  materializePrivateSessionParticipants
 } from "../src/modules/session/sessionParticipants.ts";
 
 const participants = [
@@ -47,6 +50,104 @@ test("neutral non-turn session gets metadata without inventing player-scoped sta
     { seatId: "p1", playerId: "p1", kind: "human", joinState: "local" }
   ]);
   assert.equal("players" in state, false);
+});
+
+test("private materializer assigns one joined host and invited human guests", () => {
+  const state = {
+    public: { turn: { order: ["p2", "p1", "p3"], activePlayerId: "p2" } },
+    players: { p1: {}, p2: {}, p3: {} }
+  };
+  assert.deepEqual(materializePrivateSessionParticipants(state, 3), [
+    { seatId: "p2", playerId: "p2", kind: "human", joinState: "joined" },
+    { seatId: "p1", playerId: "p1", kind: "human", joinState: "invited" },
+    { seatId: "p3", playerId: "p3", kind: "human", joinState: "invited" }
+  ]);
+});
+
+test("private principal topology binds one expiring capability to each invited seat", () => {
+  const privateParticipants = [
+    { seatId: "p1", playerId: "p1", kind: "human" as const, joinState: "joined" as const },
+    { seatId: "p2", playerId: "p2", kind: "human" as const, joinState: "invited" as const }
+  ];
+  const expiresAt = new Date("2026-08-26T12:00:00.000Z");
+  const principals = [
+    {
+      principalId: "11111111-1111-4111-8111-111111111111",
+      kind: "participant" as const,
+      role: "player" as const,
+      actorScope: { kind: "listed-actors" as const, actorIds: ["p1"] },
+      credentialSha256: "a".repeat(64)
+    },
+    {
+      principalId: "22222222-2222-4222-8222-222222222222",
+      kind: "participant" as const,
+      role: "player" as const,
+      actorScope: { kind: "listed-actors" as const, actorIds: ["p2"] },
+      credentialSha256: "b".repeat(64),
+      credentialExpiresAt: expiresAt
+    }
+  ];
+  assert.doesNotThrow(() => assertCreationPrincipalsMatchParticipants(principals, privateParticipants));
+  assert.throws(
+    () => assertCreationPrincipalsMatchParticipants(
+      [{ ...principals[0], credentialExpiresAt: expiresAt }, principals[1]],
+      privateParticipants
+    ),
+    /match joined and invited/u
+  );
+  assert.throws(
+    () => assertCreationPrincipalsMatchParticipants(
+      [principals[0], { ...principals[1], actorScope: { kind: "listed-actors", actorIds: ["p1"] } }],
+      privateParticipants
+    ),
+    /one principal per seat|match joined and invited/u
+  );
+  assert.throws(
+    () => assertCreationPrincipalsMatchParticipants(
+      [principals[0], { ...principals[1], role: "facilitator" }],
+      privateParticipants
+    ),
+    /match joined and invited/u
+  );
+  assert.throws(
+    () => assertCreationPrincipalsMatchParticipants(
+      [principals[0], { ...principals[1], credentialExpiresAt: null as unknown as Date }],
+      privateParticipants
+    ),
+    /credential material/u
+  );
+});
+
+test("private invite claim changes only the server-owned seat lifecycle and version", () => {
+  const claimedAt = new Date("2026-08-25T12:00:00.000Z");
+  const current = {
+    sessionId: "11111111-1111-4111-8111-111111111111",
+    gameId: "neutral-private-fixture",
+    bundleHash: "a".repeat(64),
+    participants: [
+      { seatId: "p1", playerId: "p1", kind: "human" as const, joinState: "joined" as const },
+      { seatId: "p2", playerId: "p2", kind: "human" as const, joinState: "invited" as const }
+    ],
+    state: {
+      public: { turn: { order: ["p1", "p2"], activePlayerId: "p1" } },
+      players: { p1: {}, p2: {} },
+      secret: { sentinel: "unchanged" }
+    },
+    version: {
+      sessionId: "11111111-1111-4111-8111-111111111111",
+      stateVersion: 7,
+      lastEventSequence: 3
+    },
+    createdAt: new Date("2026-08-25T11:00:00.000Z"),
+    updatedAt: new Date("2026-08-25T11:00:00.000Z")
+  };
+  const updated = applyPrivateInviteClaim(current, "p2", claimedAt);
+  assert.deepEqual(updated.participants.map(({ joinState }) => joinState), ["joined", "joined"]);
+  assert.equal(updated.version.stateVersion, 8);
+  assert.equal(updated.version.lastEventSequence, 3);
+  assert.deepEqual(updated.state, current.state);
+  assert.equal(updated.updatedAt, claimedAt);
+  assert.throws(() => applyPrivateInviteClaim(updated, "p2", claimedAt), /available human seat/u);
 });
 
 test("semantic participant validation rejects agent creation, duplicates and actor mismatch in S8", () => {
@@ -213,4 +314,13 @@ test("migration 004 deletes sessions before the required column and preserves bu
   assert.match(down, /disposable pre-release development\/test databases/u);
   assert.match(down, /ADD COLUMN player_id TEXT/u);
   assert.doesNotMatch(down, /DELETE FROM game_bundles/u);
+});
+
+test("migration 006 stores only invite expiry metadata and keeps tokens hashed", async () => {
+  const up = await readFile(new URL("../migrations/006_private_invite_claim.up.sql", import.meta.url), "utf8");
+  const down = await readFile(new URL("../migrations/006_private_invite_claim.down.sql", import.meta.url), "utf8");
+  assert.match(up, /ADD COLUMN credential_expires_at TIMESTAMPTZ/u);
+  assert.match(up, /WHERE credential_expires_at IS NOT NULL/u);
+  assert.doesNotMatch(up, /invite_token|raw_credential|\binv_/u);
+  assert.match(down, /DROP COLUMN IF EXISTS credential_expires_at/u);
 });

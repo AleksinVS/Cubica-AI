@@ -13,6 +13,8 @@ import type {
   CreatedSession,
   ImmutableGameBundle,
   LockedSessionOperation,
+  PrivateInviteClaimStoreInput,
+  PrivateInviteClaimStoreResult,
   SessionAuthenticationInput,
   SessionCommandReceipt,
   SessionCommandTransaction,
@@ -44,6 +46,8 @@ import {
   SessionWriteLockedError
 } from "./sessionStoreErrors.ts";
 import {
+  applyPrivateInviteClaim,
+  assertCreationPrincipalsMatchParticipants,
   assertSessionParticipantsImmutable,
   assertSessionParticipantsMatchState
 } from "./sessionParticipants.ts";
@@ -51,6 +55,7 @@ import {
 interface StoredPrincipal {
   principal: SessionPrincipal;
   credentialSha256: string;
+  credentialExpiresAt?: Date;
 }
 
 export class InMemorySessionStore<TState = unknown> implements SessionStorePort<TState> {
@@ -68,6 +73,8 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
   async createSession(command: CreateSessionInput<TState>): Promise<CreatedSession<TState>> {
     assertBundleInput(command);
     assertSessionParticipantsMatchState(command.participants, command.initialState, { allowAgents: true });
+    const principalInputs = [command.principal, ...(command.additionalPrincipals ?? [])];
+    assertCreationPrincipalsMatchParticipants(principalInputs, command.participants);
     const sessionId = randomUUID();
     const now = new Date();
     const existingBundle = this.bundles.get(command.immutableBundle.bundleHash);
@@ -98,24 +105,27 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
       createdAt: now,
       updatedAt: now
     };
-    const principal: SessionPrincipal = {
-      principalId: command.principal.principalId,
-      sessionId,
-      kind: command.principal.kind,
-      role: command.principal.role,
-      actorScope: structuredClone(command.principal.actorScope),
-      createdAt: now
-    };
+    const storedPrincipals = principalInputs.map((principalInput): StoredPrincipal => ({
+      principal: {
+        principalId: principalInput.principalId,
+        sessionId,
+        kind: principalInput.kind,
+        role: principalInput.role,
+        actorScope: structuredClone(principalInput.actorScope),
+        createdAt: now
+      },
+      credentialSha256: principalInput.credentialSha256,
+      ...(principalInput.credentialExpiresAt === undefined
+        ? {}
+        : { credentialExpiresAt: new Date(principalInput.credentialExpiresAt) })
+    }));
 
     // All writes happen only after every invariant has been checked, which is
     // the in-memory equivalent of committing one database transaction.
     this.bundles.set(bundle.bundleHash, bundle);
     this.sessions.set(sessionId, snapshot);
-    this.principalsBySessionId.set(sessionId, [{
-      principal,
-      credentialSha256: command.principal.credentialSha256
-    }]);
-    return { session: clone(snapshot), principal: clone(principal) };
+    this.principalsBySessionId.set(sessionId, storedPrincipals);
+    return { session: clone(snapshot), principal: clone(storedPrincipals[0].principal) };
   }
 
   async getSession(sessionId: string): Promise<SessionRecord<TState> | null> {
@@ -127,9 +137,41 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
   async authenticateSession(input: SessionAuthenticationInput): Promise<SessionPrincipal | null> {
     if (this.archivedAtBySessionId.has(input.sessionId)) return null;
     const match = this.principalsBySessionId.get(input.sessionId)?.find(
-      (candidate) => candidate.credentialSha256 === input.credentialSha256
+      (candidate) => candidate.credentialExpiresAt === undefined &&
+        candidate.credentialSha256 === input.credentialSha256
     );
     return match === undefined ? null : clone(match.principal);
+  }
+
+  async claimPrivateInvite(
+    input: PrivateInviteClaimStoreInput
+  ): Promise<PrivateInviteClaimStoreResult<TState> | null> {
+    return this.withSessionLock(input.sessionId, async () => {
+      if (this.archivedAtBySessionId.has(input.sessionId)) return null;
+      const session = this.sessions.get(input.sessionId);
+      const principal = this.principalsBySessionId.get(input.sessionId)?.find((candidate) =>
+        candidate.credentialSha256 === input.inviteCredentialSha256 &&
+        candidate.credentialExpiresAt !== undefined &&
+        candidate.credentialExpiresAt.getTime() > input.claimedAt.getTime()
+      );
+      if (session === undefined || principal === undefined || principal.principal.actorScope.kind !== "listed-actors") {
+        return null;
+      }
+      if (this.principalsBySessionId.get(input.sessionId)?.some(
+        (candidate) => candidate.credentialSha256 === input.participantCredentialSha256
+      )) {
+        throw new SessionStoreUnavailableError();
+      }
+      const updated = applyPrivateInviteClaim(
+        session,
+        principal.principal.actorScope.actorIds[0],
+        input.claimedAt
+      );
+      principal.credentialSha256 = input.participantCredentialSha256;
+      delete principal.credentialExpiresAt;
+      this.sessions.set(input.sessionId, updated);
+      return { session: clone(updated), principal: clone(principal.principal) };
+    });
   }
 
   async getCommandReceipt(input: SessionCommandTransactionInput): Promise<SessionCommandReceipt | null> {
@@ -294,7 +336,8 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
     return this.withSessionLock(input.sessionId, async () => {
       const current = this.sessions.get(input.sessionId);
       const storedPrincipal = this.principalsBySessionId.get(input.sessionId)?.find(
-        (candidate) => candidate.credentialSha256 === input.credentialSha256
+        (candidate) => candidate.credentialExpiresAt === undefined &&
+          candidate.credentialSha256 === input.credentialSha256
       );
       if (
         current === undefined ||
@@ -472,7 +515,8 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
 
   private findStoredPrincipal(input: SessionAuthenticationInput): StoredPrincipal | undefined {
     return this.principalsBySessionId.get(input.sessionId)?.find(
-      (candidate) => candidate.credentialSha256 === input.credentialSha256
+      (candidate) => candidate.credentialExpiresAt === undefined &&
+        candidate.credentialSha256 === input.credentialSha256
     );
   }
 

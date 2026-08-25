@@ -169,6 +169,126 @@ test("PostgreSQL creates immutable bundle, session and hashed principal atomical
   assert.equal(sessionInsert?.values?.[5], JSON.stringify(persistedRow.participants));
 });
 
+test("PostgreSQL creates every private seat principal in the session transaction", async () => {
+  const expiresAt = new Date("2026-07-12T12:00:00.000Z");
+  const privateParticipants = [
+    { seatId: "p1", playerId: "p1", kind: "human" as const, joinState: "joined" as const },
+    { seatId: "p2", playerId: "p2", kind: "human" as const, joinState: "invited" as const }
+  ];
+  const privateRow = { ...persistedRow, participants: privateParticipants };
+  const guestPrincipalId = "44444444-4444-4444-8444-444444444444";
+  const client = new ScriptedClient((text, values) => {
+    if (text.includes("INSERT INTO game_bundles")) return result([bundleRow], 1);
+    if (text.includes("INSERT INTO game_sessions")) return result([privateRow], 1);
+    if (text.includes("INSERT INTO session_principals")) {
+      return result([{
+        ...principalRow,
+        principal_id: values?.[0],
+        principal_kind: "participant",
+        actor_scope: JSON.parse(String(values?.[4]))
+      }], 1);
+    }
+    return result([]);
+  });
+  const store = new PostgresSessionStore<Record<string, unknown>>(new ScriptedPool(client));
+  await store.createSession({
+    ...createInput(),
+    participants: privateParticipants,
+    principal: {
+      principalId,
+      kind: "participant",
+      role: "facilitator",
+      actorScope: { kind: "listed-actors", actorIds: ["p1"] },
+      credentialSha256
+    },
+    additionalPrincipals: [{
+      principalId: guestPrincipalId,
+      kind: "participant",
+      role: "player",
+      actorScope: { kind: "listed-actors", actorIds: ["p2"] },
+      credentialSha256: "c".repeat(64),
+      credentialExpiresAt: expiresAt
+    }]
+  });
+
+  const principalWrites = client.queries.filter(({ text }) => text.includes("INSERT INTO session_principals"));
+  assert.equal(principalWrites.length, 2);
+  assert.equal(principalWrites[0]?.values?.[6], null);
+  assert.equal(principalWrites[1]?.values?.[0], guestPrincipalId);
+  assert.equal(principalWrites[1]?.values?.[5], "c".repeat(64));
+  assert.equal(principalWrites[1]?.values?.[6], expiresAt);
+  assert.deepEqual(client.queries.map(({ text }) => firstSqlWord(text)), [
+    "BEGIN", "INSERT", "INSERT", "INSERT", "INSERT", "COMMIT"
+  ]);
+});
+
+test("PostgreSQL atomically replaces one unexpired invite and advances only participant metadata", async () => {
+  const claimedAt = new Date("2026-07-11T12:30:00.000Z");
+  const privateParticipants = [
+    { seatId: "p1", playerId: "p1", kind: "human" as const, joinState: "joined" as const },
+    { seatId: "p2", playerId: "p2", kind: "human" as const, joinState: "invited" as const }
+  ];
+  const joinedParticipants = privateParticipants.map((participant) => ({
+    ...participant,
+    joinState: "joined" as const
+  }));
+  const privateRow = { ...persistedRow, participants: privateParticipants };
+  const invitePrincipal = {
+    ...principalRow,
+    principal_kind: "participant",
+    session_role: "player",
+    actor_scope: { kind: "listed-actors", actorIds: ["p2"] }
+  };
+  const client = new ScriptedClient((text) => {
+    if (text === "BEGIN") return result([]);
+    if (text.includes("FROM game_sessions") && text.includes("FOR UPDATE NOWAIT")) {
+      return result([privateRow]);
+    }
+    if (text.includes("FROM session_principals") && text.includes("credential_expires_at > $3")) {
+      return result([invitePrincipal]);
+    }
+    if (text.includes("UPDATE session_principals")) return result([], 1);
+    if (text.includes("UPDATE game_sessions")) {
+      return result([{
+        ...privateRow,
+        participants: joinedParticipants,
+        state_version: "5",
+        updated_at: claimedAt
+      }], 1);
+    }
+    return result([]);
+  });
+  const store = new PostgresSessionStore<Record<string, unknown>>(new ScriptedPool(client));
+  const claimed = await store.claimPrivateInvite({
+    sessionId,
+    inviteCredentialSha256: "c".repeat(64),
+    participantCredentialSha256: "d".repeat(64),
+    claimedAt
+  });
+
+  assert.equal(claimed?.principal.principalId, principalId);
+  assert.deepEqual(claimed?.session.participants, joinedParticipants);
+  assert.equal(claimed?.session.version.stateVersion, 5);
+  assert.equal(claimed?.session.version.lastEventSequence, 7);
+  const principalWrite = client.queries.find(({ text }) => text.includes("UPDATE session_principals"));
+  assert.deepEqual(principalWrite?.values, [
+    sessionId,
+    principalId,
+    "d".repeat(64),
+    "c".repeat(64),
+    claimedAt
+  ]);
+  const sessionWrite = client.queries.find(({ text }) => text.includes("UPDATE game_sessions"));
+  assert.deepEqual(sessionWrite?.values, [
+    sessionId,
+    JSON.stringify(joinedParticipants),
+    5,
+    claimedAt,
+    4
+  ]);
+  assert.equal(firstSqlWord(client.queries.at(-1)?.text ?? ""), "COMMIT");
+});
+
 test("PostgreSQL accepts server-authorized agent participants", async () => {
   const agentParticipants = [{ seatId: "p1", playerId: "p1", kind: "agent" as const, joinState: "local" as const }];
   const client = new ScriptedClient((text) => {
@@ -1119,6 +1239,18 @@ test("readiness checks every command-ledger table and required privileges", asyn
   ]) {
     assert.match(sql, new RegExp(table, "u"));
   }
+  assert.match(sql, /actor_scope, credential_sha256, credential_expires_at, created_at/u);
+  assert.match(sql, /has_table_privilege\(current_user, 'session_principals', 'UPDATE'\)/u);
+});
+
+test("readiness rejects a store that cannot atomically claim private invites", async () => {
+  const pool = new ScriptedPool(
+    new ScriptedClient(() => result([])),
+    () => result([{ writable: true, can_select: true, can_insert: true, can_update: false }])
+  );
+  const store = new PostgresSessionStore(pool);
+
+  await assert.rejects(store.checkReadiness(), SessionStoreUnavailableError);
 });
 
 test("PostgreSQL reads session events after a cursor in canonical sequence order", async () => {
