@@ -63,7 +63,7 @@ def load_toml(path: Path) -> dict[str, Any]:
 
 
 def validate_project_config(failures: list[str]) -> None:
-    """Check the shared Codex defaults and concurrency ceiling."""
+    """Check shared Codex defaults without pinning adaptive concurrency."""
     try:
         config = load_toml(CONFIG_PATH)
     except ValueError as error:
@@ -75,7 +75,6 @@ def validate_project_config(failures: list[str]) -> None:
         "model_reasoning_effort": "high",
     }
     expected_agents = {
-        "max_threads": 2,
         "max_depth": 1,
         "interrupt_message": True,
     }
