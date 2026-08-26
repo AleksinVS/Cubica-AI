@@ -41,7 +41,7 @@ Use these logical roles and project profiles:
 
 | Logical role | Codex profile | Model and effort | Use |
 | --- | --- | --- | --- |
-| Lead architect | `lead-architect` | Sol high | One architecture pass, decomposition, integration, and final acceptance |
+| Lead architect | `lead-architect` | Sol high | One architecture pass, decomposition, or integration analysis; no final acceptance |
 | Scout | `scout` | Luna low | Narrow repository search and evidence gathering |
 | Luna worker | `luna-medium` | Luna medium | Bounded routine implementation, documentation, and focused verification with low architectural risk |
 | Deep Luna worker | `luna-high` | Luna high | Bounded non-critical work requiring deeper analysis or careful handling of edge cases |

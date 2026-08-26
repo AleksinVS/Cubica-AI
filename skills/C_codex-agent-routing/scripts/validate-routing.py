@@ -87,6 +87,16 @@ def validate_project_config(failures: list[str]) -> None:
             )
 
     agents = config.get("agents", {})
+    for forbidden_key in (
+        "max_threads",
+        "max_concurrent_threads_per_session",
+    ):
+        if forbidden_key in agents:
+            failures.append(
+                f".codex/config.toml: agents.{forbidden_key} must be unset; "
+                "concurrency is adaptive within the current runtime and host limits"
+            )
+
     for key, expected in expected_agents.items():
         if agents.get(key) != expected:
             failures.append(
