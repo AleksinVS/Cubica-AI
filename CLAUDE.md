@@ -125,11 +125,16 @@ architecture but are not expected to know the codebase or ADR numbers.
   Delegate only a bounded independent result when it reduces latency or adds a
   justified independent review. Keep small, tightly coupled work with the
   primary agent.
-- Only the primary agent creates subagents. Keep at most two active at once and
-  give parallel writers non-overlapping ownership. Do not duplicate assignments
-  or delegate one known deterministic command.
-- Pass a narrow context packet without full history: objective, established
-  facts, exact files, boundaries, criteria, checks, and stop conditions. The
+- Only the primary agent creates subagents. Start with one and add parallel
+  agents only for genuinely independent work, up to the current runtime limit
+  and safe host capacity. More than two active subagents require at least three
+  bounded workstreams with non-overlapping ownership and a clear net benefit.
+  Do not duplicate assignments or delegate one known deterministic command.
+- Pass a narrow and deep context packet: exclude unrelated history, but include
+  every fact needed to finish safely within the assigned boundary—objective,
+  governing instructions and accepted decisions, relevant contracts and
+  dependencies, exact files or evidence, concurrent edits, criteria, checks,
+  and stop conditions. Do not save tokens by omitting material context. The
   primary agent verifies the result against contracts and fresh evidence, then
   closes unnecessary sessions.
 - Do not change user or project MCP configuration without an explicit request.
