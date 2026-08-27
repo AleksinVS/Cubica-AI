@@ -78,9 +78,11 @@ player-web и disposable PostgreSQL доказательствам. Участн
 На 2026-08-25 S10 принят для закрытой альфы и зафиксирован GSR-050: одноразовый
 invite, durable participant credential, authenticated SSE, полный HTTP resync,
 PostgreSQL restart и Estate Race two-browser flow. Каталог, content/economy/
-product publication и production readiness не объявлены. Если ответ с
-credential потерян после успешного claim, ведущий пересоздаёт тестовый сеанс;
-recoverable handoff требуется до каталога/production.
+product publication и production readiness не объявлены. 2026-08-27 узкий
+recoverable handoff для уже joined human guest seat реализован как завершение
+closed-alpha S10 trust boundary: одна новая 24-часовая recovery-ссылка
+поворачивает credential на том же principal без изменения game state; потеря
+ответа больше не требует пересоздания сессии.
 
 ## Parent
 
@@ -276,7 +278,7 @@ npx playwright test apps/player-web/e2e/estate-race.spec.ts --project=chromium
 - `docs/architecture/gameplay-slices/045-estate-race-terminal-local-game.md` — завершённая граница S6: последний активный участник, terminal outcome и ограниченный локальный transcript.
 - `docs/architecture/gameplay-slices/047-estate-race-session-participants.md` — завершённая граница S8: session-owned participants и actor-scoped local delivery.
 - `docs/architecture/gameplay-slices/049-estate-race-local-agent-seat.md` — завершённая локальная граница S9: agent seat, bounded fallback, receipts и fail-closed Player Web.
-- `docs/architecture/gameplay-slices/050-estate-race-private-invite-network.md` — S10 принят для закрытой альфы: private invite claim, durable credential, authenticated SSE/full HTTP resync и reconnect; каталог/production остаются вне приёмки.
+- `docs/architecture/gameplay-slices/050-estate-race-private-invite-network.md` — S10 принят для закрытой альфы: private invite claim, durable credential, authenticated SSE/full HTTP resync, reconnect и узкий recovery уже joined human guest seat; каталог/production остаются вне приёмки.
 - `docs/tasks/artifacts/TSK-20260705-monopoly-classic-game/product-specification.md` — продуктовый сценарий и интерфейс.
 - `docs/tasks/artifacts/TSK-20260705-monopoly-classic-game/rules-and-rights-provenance.md` — источники и границы прав.
 - `docs/tasks/artifacts/TSK-20260705-monopoly-classic-game/traceability-matrix.md` — связь требований с реализацией и тестами.

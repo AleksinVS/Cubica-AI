@@ -324,3 +324,15 @@ test("migration 006 stores only invite expiry metadata and keeps tokens hashed",
   assert.doesNotMatch(up, /invite_token|raw_credential|\binv_/u);
   assert.match(down, /DROP COLUMN IF EXISTS credential_expires_at/u);
 });
+
+test("migration 007 stores one hash-only recovery capability on a durable guest principal", async () => {
+  const up = await readFile(new URL("../migrations/007_private_seat_recovery.up.sql", import.meta.url), "utf8");
+  const down = await readFile(new URL("../migrations/007_private_seat_recovery.down.sql", import.meta.url), "utf8");
+  assert.match(up, /ADD COLUMN recovery_token_sha256 TEXT/u);
+  assert.match(up, /ADD COLUMN recovery_token_expires_at TIMESTAMPTZ/u);
+  assert.match(up, /credential_expires_at IS NULL/u);
+  assert.match(up, /session_role = 'player'/u);
+  assert.doesNotMatch(up, /raw_credential|recovery_token\s+TEXT|\bses_|\binv_/u);
+  assert.match(down, /DROP COLUMN IF EXISTS recovery_token_sha256/u);
+  assert.match(down, /DROP COLUMN IF EXISTS recovery_token_expires_at/u);
+});

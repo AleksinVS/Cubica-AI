@@ -75,7 +75,7 @@ export function createPrivateInviteAccess(
   playerId: string,
   credentialExpiresAt: Date
 ): NewPrivateInviteAccess {
-  const inviteToken = `inv_${randomBytes(32).toString("base64url")}`;
+  const inviteToken = createPrivateInviteToken();
   return {
     inviteToken,
     principal: {
@@ -87,6 +87,11 @@ export function createPrivateInviteAccess(
       credentialExpiresAt
     }
   };
+}
+
+/** Mint one opaque capability accepted only by the private-invite claim path. */
+export function createPrivateInviteToken(): string {
+  return `inv_${randomBytes(32).toString("base64url")}`;
 }
 
 /** Raw durable credential; storage receives only its digest. */
@@ -110,6 +115,12 @@ export function requireBearerCredential(headers: IncomingHttpHeaders): string {
     throw new SessionAuthenticationError();
   }
   return match[1];
+}
+
+/** Parse an optional session credential without weakening the accepted Bearer form. */
+export function readOptionalBearerCredential(headers: IncomingHttpHeaders): string | undefined {
+  if (headers.authorization === undefined) return undefined;
+  return requireBearerCredential(headers);
 }
 
 export function isPrivateInviteToken(value: string): boolean {

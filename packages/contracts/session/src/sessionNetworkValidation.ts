@@ -5,6 +5,8 @@ import type { PrivateSessionInvite } from "./generated/private-session-invite.ts
 import { privateSessionInvitesSchema } from "./generated/private-session-invites.schema.ts";
 import type { PrivateInviteClaimRequest } from "./generated/private-invite-claim-request.ts";
 import { privateInviteClaimRequestSchema } from "./generated/private-invite-claim-request.schema.ts";
+import type { PrivateSeatRecoveryInviteRequest } from "./generated/private-seat-recovery-invite-request.ts";
+import { privateSeatRecoveryInviteRequestSchema } from "./generated/private-seat-recovery-invite-request.schema.ts";
 import type { SessionVersionNotification } from "./generated/session-version-notification.ts";
 import { sessionVersionNotificationSchema } from "./generated/session-version-notification.schema.ts";
 
@@ -14,6 +16,7 @@ const ajv = new Ajv2020({ allErrors: true, strict: true });
 addFormats(ajv);
 const validateInvites = ajv.compile(privateSessionInvitesSchema as object) as ValidateFunction<ReadonlyArray<PrivateSessionInvite>>;
 const validateClaim = ajv.compile(privateInviteClaimRequestSchema as object) as ValidateFunction<PrivateInviteClaimRequest>;
+const validateRecovery = ajv.compile(privateSeatRecoveryInviteRequestSchema as object) as ValidateFunction<PrivateSeatRecoveryInviteRequest>;
 const validateNotification = ajv.compile(sessionVersionNotificationSchema as object) as ValidateFunction<SessionVersionNotification>;
 
 export function validatePrivateSessionInvitesShape(value: unknown): value is ReadonlyArray<PrivateSessionInvite> {
@@ -22,6 +25,10 @@ export function validatePrivateSessionInvitesShape(value: unknown): value is Rea
 
 export function validatePrivateInviteClaimRequestShape(value: unknown): value is PrivateInviteClaimRequest {
   return validateClaim(value);
+}
+
+export function validatePrivateSeatRecoveryInviteRequestShape(value: unknown): value is PrivateSeatRecoveryInviteRequest {
+  return validateRecovery(value);
 }
 
 export function validateSessionVersionNotificationShape(value: unknown): value is SessionVersionNotification {

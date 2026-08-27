@@ -15,6 +15,8 @@ import type {
   LockedSessionOperation,
   PrivateInviteClaimStoreInput,
   PrivateInviteClaimStoreResult,
+  PrivateSeatRecoveryInviteStoreInput,
+  PrivateSeatRecoveryInviteStoreResult,
   SessionAuthenticationInput,
   SessionCommandReceipt,
   SessionCommandTransaction,
@@ -40,7 +42,9 @@ import {
 import {
   assertNextSessionVersion,
   assertProtectedEventSequenceUnchanged,
+  PrivateSeatRecoveryUnavailableError,
   SessionAuthenticationError,
+  SessionAuthorizationError,
   SessionStoreUnavailableError,
   SessionVersionConflictError,
   SessionWriteLockedError
@@ -49,13 +53,17 @@ import {
   applyPrivateInviteClaim,
   assertCreationPrincipalsMatchParticipants,
   assertSessionParticipantsImmutable,
-  assertSessionParticipantsMatchState
+  assertSessionParticipantsMatchState,
+  isPrivateSessionHostPrincipal,
+  resolvePrivateSeatRecoveryTarget
 } from "./sessionParticipants.ts";
 
 interface StoredPrincipal {
   principal: SessionPrincipal;
   credentialSha256: string;
   credentialExpiresAt?: Date;
+  recoveryTokenSha256?: string;
+  recoveryTokenExpiresAt?: Date;
 }
 
 export class InMemorySessionStore<TState = unknown> implements SessionStorePort<TState> {
@@ -143,24 +151,104 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
     return match === undefined ? null : clone(match.principal);
   }
 
+  async issuePrivateSeatRecoveryInvite(
+    input: PrivateSeatRecoveryInviteStoreInput
+  ): Promise<PrivateSeatRecoveryInviteStoreResult | null> {
+    return this.withSessionLock(input.sessionId, async () => {
+      if (this.archivedAtBySessionId.has(input.sessionId)) return null;
+      const session = this.sessions.get(input.sessionId);
+      const issuer = this.findStoredPrincipal(input);
+      if (session === undefined || issuer === undefined) return null;
+      if (!isPrivateSessionHostPrincipal(session, issuer.principal)) {
+        throw new SessionAuthorizationError();
+      }
+      const target = resolvePrivateSeatRecoveryTarget(session, input.seatId);
+      const targetPrincipals = target === undefined ? [] : (this.principalsBySessionId.get(input.sessionId) ?? [])
+        .filter((candidate) =>
+          candidate.principal.kind === "participant" &&
+          candidate.principal.role === "player" &&
+          candidate.principal.actorScope.kind === "listed-actors" &&
+          candidate.principal.actorScope.actorIds.length === 1 &&
+          candidate.principal.actorScope.actorIds[0] === target.playerId &&
+          candidate.credentialExpiresAt === undefined
+        );
+      if (target === undefined || targetPrincipals.length !== 1) {
+        throw new PrivateSeatRecoveryUnavailableError();
+      }
+      if (
+        !/^[a-f0-9]{64}$/u.test(input.recoveryTokenSha256) ||
+        !Number.isFinite(input.issuedAt.valueOf()) ||
+        !Number.isFinite(input.recoveryTokenExpiresAt.valueOf()) ||
+        input.recoveryTokenExpiresAt.getTime() <= input.issuedAt.getTime() ||
+        (this.principalsBySessionId.get(input.sessionId) ?? []).some((candidate) =>
+          candidate.credentialSha256 === input.recoveryTokenSha256 ||
+          candidate.recoveryTokenSha256 === input.recoveryTokenSha256
+        )
+      ) {
+        throw new SessionStoreUnavailableError();
+      }
+      const targetPrincipal = targetPrincipals[0];
+      targetPrincipal.recoveryTokenSha256 = input.recoveryTokenSha256;
+      targetPrincipal.recoveryTokenExpiresAt = new Date(input.recoveryTokenExpiresAt);
+      return {
+        seatId: target.seatId,
+        playerId: target.playerId,
+        recoveryTokenExpiresAt: new Date(input.recoveryTokenExpiresAt)
+      };
+    });
+  }
+
   async claimPrivateInvite(
     input: PrivateInviteClaimStoreInput
   ): Promise<PrivateInviteClaimStoreResult<TState> | null> {
     return this.withSessionLock(input.sessionId, async () => {
+      if (
+        input.currentCredentialSha256 !== undefined &&
+        !/^[a-f0-9]{64}$/u.test(input.currentCredentialSha256)
+      ) {
+        throw new SessionStoreUnavailableError();
+      }
       if (this.archivedAtBySessionId.has(input.sessionId)) return null;
       const session = this.sessions.get(input.sessionId);
-      const principal = this.principalsBySessionId.get(input.sessionId)?.find((candidate) =>
+      const principals = this.principalsBySessionId.get(input.sessionId) ?? [];
+      const currentPrincipal = input.currentCredentialSha256 === undefined
+        ? undefined
+        : principals.find((candidate) =>
+            candidate.credentialSha256 === input.currentCredentialSha256 &&
+            candidate.credentialExpiresAt === undefined
+          );
+      const initialPrincipal = principals.find((candidate) =>
         candidate.credentialSha256 === input.inviteCredentialSha256 &&
         candidate.credentialExpiresAt !== undefined &&
         candidate.credentialExpiresAt.getTime() > input.claimedAt.getTime()
       );
+      const recoveryPrincipal = principals.find((candidate) =>
+        candidate.recoveryTokenSha256 === input.inviteCredentialSha256 &&
+        candidate.recoveryTokenExpiresAt !== undefined &&
+        candidate.recoveryTokenExpiresAt.getTime() > input.claimedAt.getTime()
+      );
+      const principal = currentPrincipal === undefined
+        ? initialPrincipal ?? recoveryPrincipal
+        : currentPrincipal === recoveryPrincipal
+          ? recoveryPrincipal
+          : undefined;
       if (session === undefined || principal === undefined || principal.principal.actorScope.kind !== "listed-actors") {
         return null;
       }
-      if (this.principalsBySessionId.get(input.sessionId)?.some(
+      if (principals.some(
         (candidate) => candidate.credentialSha256 === input.participantCredentialSha256
       )) {
         throw new SessionStoreUnavailableError();
+      }
+      if (recoveryPrincipal !== undefined) {
+        principal.credentialSha256 = input.participantCredentialSha256;
+        delete principal.recoveryTokenSha256;
+        delete principal.recoveryTokenExpiresAt;
+        return {
+          session: clone(session),
+          principal: clone(principal.principal),
+          transition: "credential-recovery"
+        };
       }
       const updated = applyPrivateInviteClaim(
         session,
@@ -170,7 +258,11 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
       principal.credentialSha256 = input.participantCredentialSha256;
       delete principal.credentialExpiresAt;
       this.sessions.set(input.sessionId, updated);
-      return { session: clone(updated), principal: clone(principal.principal) };
+      return {
+        session: clone(updated),
+        principal: clone(principal.principal),
+        transition: "initial-join"
+      };
     });
   }
 

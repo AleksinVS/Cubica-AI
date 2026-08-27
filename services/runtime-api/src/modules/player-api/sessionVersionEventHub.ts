@@ -20,6 +20,12 @@ interface StreamSubscription {
   onDrain?: () => void;
 }
 
+export interface SessionVersionStreamReservation {
+  readonly sessionId: string;
+  readonly principalId: string;
+  readonly token: symbol;
+}
+
 /**
  * Process-local, bounded notification hub for the accepted single-instance
  * runtime. Messages carry only durable cursors; clients fetch their complete
@@ -28,6 +34,7 @@ interface StreamSubscription {
 export class SessionVersionEventHub {
   private readonly subscriptions = new Set<StreamSubscription>();
   private readonly subscriptionsByPrincipal = new Map<string, StreamSubscription>();
+  private readonly pendingByPrincipal = new Map<string, symbol>();
   private readonly maxStreams: number;
 
   constructor(maxStreams = MAX_SESSION_VERSION_STREAMS) {
@@ -39,6 +46,37 @@ export class SessionVersionEventHub {
 
   get size(): number {
     return this.subscriptions.size;
+  }
+
+  /**
+   * Reserve the principal slot before the final durable credential check.
+   * Rotation can invalidate this pending registration even when no response
+   * stream exists yet, closing the authenticate-then-subscribe race.
+   */
+  reservePrincipal(sessionId: string, principalId: string): SessionVersionStreamReservation {
+    const token = Symbol("session-version-stream-reservation");
+    this.pendingByPrincipal.set(subscriptionKey(sessionId, principalId), token);
+    return { sessionId, principalId, token };
+  }
+
+  subscribeReserved(
+    response: ServerResponse,
+    version: SessionStateVersion,
+    reservation: SessionVersionStreamReservation
+  ): () => void {
+    const key = subscriptionKey(reservation.sessionId, reservation.principalId);
+    if (this.pendingByPrincipal.get(key) !== reservation.token) {
+      throw new SessionVersionStreamReservationInvalidError();
+    }
+    this.pendingByPrincipal.delete(key);
+    return this.subscribe(response, version, reservation.principalId);
+  }
+
+  cancelReservation(reservation: SessionVersionStreamReservation): void {
+    const key = subscriptionKey(reservation.sessionId, reservation.principalId);
+    if (this.pendingByPrincipal.get(key) === reservation.token) {
+      this.pendingByPrincipal.delete(key);
+    }
   }
 
   subscribe(response: ServerResponse, version: SessionStateVersion, principalId: string): () => void {
@@ -131,7 +169,27 @@ export class SessionVersionEventHub {
     }
   }
 
+  /** Close the already-authenticated stream when its durable credential rotates. */
+  disconnectPrincipal(sessionId: string, principalId: string): boolean {
+    const key = subscriptionKey(sessionId, principalId);
+    const pendingDisconnected = this.pendingByPrincipal.delete(key);
+    const subscription = this.subscriptionsByPrincipal.get(key);
+    if (subscription === undefined) return pendingDisconnected;
+    subscription.cleanup?.();
+    try {
+      subscription.response.end();
+    } catch {
+      try {
+        subscription.response.destroy();
+      } catch {
+        // cleanup already removed the subscription, so no later cursor can leak.
+      }
+    }
+    return true;
+  }
+
   close(): void {
+    this.pendingByPrincipal.clear();
     for (const subscription of [...this.subscriptions]) {
       subscription.cleanup?.();
       subscription.response.end();
@@ -196,6 +254,13 @@ export class SessionVersionStreamCapacityError extends Error {
   constructor() {
     super("Session event stream capacity is exhausted");
     this.name = "SessionVersionStreamCapacityError";
+  }
+}
+
+export class SessionVersionStreamReservationInvalidError extends Error {
+  constructor() {
+    super("Session event stream reservation is no longer valid");
+    this.name = "SessionVersionStreamReservationInvalidError";
   }
 }
 

@@ -114,6 +114,48 @@ test("a second stream for the same session principal replaces and closes the fir
   assert.equal(hub.size, 0);
 });
 
+test("credential rotation disconnects only the matching principal stream", () => {
+  const hub = new SessionVersionEventHub(2);
+  const revoked = new FakeResponse([true]);
+  const peer = new FakeResponse([true]);
+
+  hub.subscribe(asServerResponse(revoked), version(2, 4), "principal-a");
+  hub.subscribe(asServerResponse(peer), version(2, 4), "principal-b");
+
+  assert.equal(hub.disconnectPrincipal(version(0, 0).sessionId, "principal-a"), true);
+  assert.equal(revoked.writableEnded, true);
+  assert.equal(peer.writableEnded, false);
+  assert.equal(hub.size, 1);
+  assert.equal(hub.disconnectPrincipal(version(0, 0).sessionId, "principal-a"), false);
+  hub.close();
+});
+
+test("credential rotation invalidates an in-flight principal stream reservation", () => {
+  const hub = new SessionVersionEventHub(2);
+  const response = new FakeResponse([true]);
+  const reservation = hub.reservePrincipal(version(0, 0).sessionId, "principal-a");
+
+  assert.equal(hub.disconnectPrincipal(version(0, 0).sessionId, "principal-a"), true);
+  assert.throws(
+    () => hub.subscribeReserved(asServerResponse(response), version(0, 0), reservation),
+    { name: "SessionVersionStreamReservationInvalidError" }
+  );
+  assert.equal(response.writes.length, 0);
+  assert.equal(hub.size, 0);
+});
+
+test("stale reservation cleanup cannot cancel a newer reservation", () => {
+  const hub = new SessionVersionEventHub(2);
+  const stale = hub.reservePrincipal(version(0, 0).sessionId, "principal-a");
+  const current = hub.reservePrincipal(version(0, 0).sessionId, "principal-a");
+  const response = new FakeResponse([true]);
+
+  hub.cancelReservation(stale);
+  hub.subscribeReserved(asServerResponse(response), version(0, 0), current);
+  assert.equal(hub.size, 1);
+  hub.close();
+});
+
 test("global capacity counts distinct principals and still permits replacement at capacity", () => {
   const hub = new SessionVersionEventHub(2);
   const first = new FakeResponse([true]);

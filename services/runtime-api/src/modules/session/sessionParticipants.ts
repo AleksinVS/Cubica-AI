@@ -2,6 +2,7 @@
 import {
   validateSessionParticipantsShape,
   type CreateSessionPrincipalInput,
+  type SessionPrincipal,
   type SessionParticipant,
   type SessionRecord
 } from "@cubica/contracts-session";
@@ -98,6 +99,35 @@ export function assertSessionParticipantsImmutable<TState>(
 export function participantActorIds<TState>(session: SessionRecord<TState>): ReadonlyArray<string> {
   assertSessionParticipantsMatchState(session.participants, session.state, { allowAgents: true });
   return session.participants.map((participant) => participant.playerId);
+}
+
+/** Resolve one already joined human guest without changing gameplay identity. */
+export function resolvePrivateSeatRecoveryTarget<TState>(
+  session: SessionRecord<TState>,
+  seatId: string
+): SessionParticipant | undefined {
+  if (session.participants[0]?.seatId === seatId) return undefined;
+  const matches = session.participants.filter((participant) =>
+    participant.seatId === seatId &&
+    participant.kind === "human" &&
+    participant.joinState === "joined"
+  );
+  return matches.length === 1 ? matches[0] : undefined;
+}
+
+/** The private-session creator is the principal bound to the first seat. */
+export function isPrivateSessionHostPrincipal<TState>(
+  session: SessionRecord<TState>,
+  principal: SessionPrincipal
+): boolean {
+  const hostPlayerId = session.participants[0]?.playerId;
+  return hostPlayerId !== undefined &&
+    session.participants.every(({ joinState }) => joinState !== "local") &&
+    principal.sessionId === session.sessionId &&
+    principal.kind === "participant" &&
+    principal.actorScope.kind === "listed-actors" &&
+    principal.actorScope.actorIds.length === 1 &&
+    principal.actorScope.actorIds[0] === hostPlayerId;
 }
 
 /** Validate the complete principal topology before a session creation commit. */

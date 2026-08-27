@@ -9,7 +9,8 @@ import {
   RuntimeClientError,
   shouldRetainPendingRuntimeCommand,
   subscribeToSessionEvents,
-  consumePrivateInviteFragment
+  consumePrivateInviteFragment,
+  recoverGuestSeat
 } from "./runtime-client";
 
 const originalEventSource = window.EventSource;
@@ -38,6 +39,16 @@ describe("runtime-client", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(onSnapshot).toHaveBeenCalled();
     subscription.stop();
+  });
+
+  it("posts guest recovery to the typed endpoint and exposes runtime errors", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ seatId: "p2", playerId: "p2", inviteToken: "opaque", expiresAt: "2026-08-25T12:00:00.000Z" }), { status: 201 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ error: "not eligible" }), { status: 403 }));
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(recoverGuestSeat("session/1", "p2")).resolves.toMatchObject({ seatId: "p2" });
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/runtime/sessions/session%2F1/seat-recovery-invites");
+    await expect(recoverGuestSeat("session/1", "p2")).rejects.toMatchObject({ statusCode: 403, message: "not eligible" });
   });
 
   it("coalesces events received during a deferred full GET", async () => {

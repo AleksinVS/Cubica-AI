@@ -11,9 +11,13 @@ import { SessionService } from "../session/session.service.ts";
 import { createSessionStoreFromEnvironment } from "../session/sessionStoreFactory.ts";
 import {
   hashSessionCredential,
+  readOptionalBearerCredential,
   requireBearerCredential
 } from "../session/sessionAuthentication.ts";
-import { SessionAuthenticationError } from "../session/sessionStoreErrors.ts";
+import {
+  PrivateInviteAuthenticationError,
+  SessionAuthenticationError
+} from "../session/sessionStoreErrors.ts";
 import {
   RuntimeService,
   type RuntimeServiceDispatchTimings
@@ -43,12 +47,14 @@ import {
   parseCreateSessionRequest,
   parseDispatchActionRequest,
   parsePrivateInviteClaimRequest,
+  parsePrivateSeatRecoveryInviteRequest,
   parseRestorePreviewSessionRequest,
   parseTransportRoadPreviewRequest
 } from "./requestValidation.ts";
 import {
   SessionVersionEventHub,
-  SessionVersionStreamCapacityError
+  SessionVersionStreamCapacityError,
+  SessionVersionStreamReservationInvalidError
 } from "./sessionVersionEventHub.ts";
 
 type RuntimeState = Record<string, unknown>;
@@ -196,13 +202,19 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
   // controllers would let Agent Turns bypass the general command budget.
   const agentTurnService = new AgentTurnService(commandAdmissionController);
   const agentSeatDriver = new AgentSeatDriver(agentTurnService);
-  const sessionService = new SessionService({ sessionStore, agentSeatDriver });
+  const sessionVersionEvents = new SessionVersionEventHub();
+  const sessionService = new SessionService({
+    sessionStore,
+    agentSeatDriver,
+    onParticipantCredentialRotated: (sessionId, principalId) => {
+      sessionVersionEvents.disconnectPrincipal(sessionId, principalId);
+    }
+  });
   const runtimeService = new RuntimeService(
     commandAdmissionController,
     options.random,
     agentSeatDriver
   );
-  const sessionVersionEvents = new SessionVersionEventHub();
   let activePort = port;
   let closed = false;
 
@@ -401,12 +413,36 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
       if (privateInviteClaimMatch) {
         const sessionId = decodePathSegment(privateInviteClaimMatch[1], "sessionId");
         const body = await readJsonBody(request);
+        let currentAccessToken: string | undefined;
+        try {
+          currentAccessToken = readOptionalBearerCredential(request.headers);
+        } catch (error) {
+          if (error instanceof SessionAuthenticationError) {
+            throw new PrivateInviteAuthenticationError();
+          }
+          throw error;
+        }
         const snapshot = await sessionService.claimPrivateInvite(
           sessionId,
-          parsePrivateInviteClaimRequest(body)
+          parsePrivateInviteClaimRequest(body),
+          currentAccessToken
         );
         sessionVersionEvents.publish(snapshot.version);
         sendJson(response, 200, snapshot);
+        return;
+      }
+
+      const seatRecoveryInviteMatch = request.method === "POST" &&
+        requestUrl.pathname.match(/^\/sessions\/([^/]+)\/seat-recovery-invites$/u);
+      if (seatRecoveryInviteMatch) {
+        const sessionId = decodePathSegment(seatRecoveryInviteMatch[1], "sessionId");
+        const body = await readJsonBody(request);
+        const invite = await sessionService.issuePrivateSeatRecoveryInvite(
+          sessionId,
+          requireBearerCredential(request.headers),
+          parsePrivateSeatRecoveryInviteRequest(body)
+        );
+        sendJson(response, 201, invite);
         return;
       }
 
@@ -414,17 +450,31 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
         requestUrl.pathname.match(/^\/sessions\/([^/]+)\/events$/u);
       if (sessionVersionEventsMatch) {
         const sessionId = decodePathSegment(sessionVersionEventsMatch[1], "sessionId");
+        const accessToken = requireBearerCredential(request.headers);
         const access = await sessionService.authenticateSessionAccess(
           sessionId,
-          requireBearerCredential(request.headers)
+          accessToken
+        );
+        const reservation = sessionVersionEvents.reservePrincipal(
+          sessionId,
+          access.principal.principalId
         );
         try {
-          sessionVersionEvents.subscribe(response, access.snapshot.version, access.principal.principalId);
+          await sessionService.assertSessionPrincipalCredentialCurrent(
+            sessionId,
+            accessToken,
+            access.principal.principalId
+          );
+          sessionVersionEvents.subscribeReserved(response, access.snapshot.version, reservation);
         } catch (error) {
+          sessionVersionEvents.cancelReservation(reservation);
           if (error instanceof SessionVersionStreamCapacityError) {
             response.setHeader("Retry-After", String(error.retryAfterSeconds));
             sendJson(response, 429, { error: "Session event stream capacity is exhausted" });
             return;
+          }
+          if (error instanceof SessionVersionStreamReservationInvalidError) {
+            throw new SessionAuthenticationError();
           }
           throw error;
         }

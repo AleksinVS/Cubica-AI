@@ -498,7 +498,7 @@ export function GamePlayer({
   if (agentControl.kind === "invalid") {
     return (
       <main ref={rootRef} className="shell game-player-root" style={rootStyle}>
-        <SessionParticipants sessionId={state.sessionId} privateInvites={state.privateInvites} participants={state.participants} actionAvailability={state.actionAvailability} />
+        <SessionParticipants sessionId={state.sessionId} privateInvites={state.privateInvites} participants={state.participants} actionAvailability={state.actionAvailability} hostManagementHint={state.hostManagementHint} onRecoverGuestSeat={async (seatId) => presenterRef.current?.recoverGuestSeat(seatId)} />
         <AgentControlPanel invalid onRefresh={handleRefreshAgentControl} />
       </main>
     );
@@ -506,7 +506,7 @@ export function GamePlayer({
   if (agentControl.kind === "valid" && agentControl.value.status === "paused") {
     return (
       <main ref={rootRef} className="shell game-player-root" style={rootStyle}>
-        <SessionParticipants sessionId={state.sessionId} privateInvites={state.privateInvites} participants={state.participants} actionAvailability={state.actionAvailability} />
+        <SessionParticipants sessionId={state.sessionId} privateInvites={state.privateInvites} participants={state.participants} actionAvailability={state.actionAvailability} hostManagementHint={state.hostManagementHint} onRecoverGuestSeat={async (seatId) => presenterRef.current?.recoverGuestSeat(seatId)} />
         <AgentControlPanel control={agentControl.value} onRefresh={handleRefreshAgentControl} />
       </main>
     );
@@ -524,7 +524,7 @@ export function GamePlayer({
 
   return (
     <main ref={rootRef} className="shell game-player-root" style={rootStyle}>
-      <SessionParticipants sessionId={state.sessionId} privateInvites={state.privateInvites} participants={state.participants} actionAvailability={state.actionAvailability} />
+      <SessionParticipants sessionId={state.sessionId} privateInvites={state.privateInvites} participants={state.participants} actionAvailability={state.actionAvailability} hostManagementHint={state.hostManagementHint} onRecoverGuestSeat={async (seatId) => presenterRef.current?.recoverGuestSeat(seatId)} />
       {agentControl.kind === "valid" && agentControl.value.status === "facilitatorTakeover" ? (
         <AgentControlPanel control={agentControl.value} onRefresh={handleRefreshAgentControl} />
       ) : null}

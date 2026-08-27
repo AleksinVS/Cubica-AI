@@ -15,6 +15,8 @@ import type {
   LockedSessionOperation,
   PrivateInviteClaimStoreInput,
   PrivateInviteClaimStoreResult,
+  PrivateSeatRecoveryInviteStoreInput,
+  PrivateSeatRecoveryInviteStoreResult,
   SessionAuthenticationInput,
   SessionCommandReceipt,
   SessionCommandTransaction,
@@ -42,7 +44,9 @@ import {
 import {
   assertNextSessionVersion,
   assertProtectedEventSequenceUnchanged,
+  PrivateSeatRecoveryUnavailableError,
   SessionAuthenticationError,
+  SessionAuthorizationError,
   PublicJournalTooLargeError,
   SessionStoreUnavailableError,
   SessionVersionConflictError,
@@ -53,7 +57,9 @@ import {
   applyPrivateInviteClaim,
   assertCreationPrincipalsMatchParticipants,
   assertSessionParticipantsImmutable,
-  assertSessionParticipantsMatchState
+  assertSessionParticipantsMatchState,
+  isPrivateSessionHostPrincipal,
+  resolvePrivateSeatRecoveryTarget
 } from "./sessionParticipants.ts";
 
 interface SessionRow extends QueryResultRow {
@@ -356,9 +362,17 @@ export class PostgresSessionStore<TState = unknown> implements SessionStorePort<
     }
   }
 
-  async claimPrivateInvite(
-    input: PrivateInviteClaimStoreInput
-  ): Promise<PrivateInviteClaimStoreResult<TState> | null> {
+  async issuePrivateSeatRecoveryInvite(
+    input: PrivateSeatRecoveryInviteStoreInput
+  ): Promise<PrivateSeatRecoveryInviteStoreResult | null> {
+    if (
+      !/^[a-f0-9]{64}$/u.test(input.recoveryTokenSha256) ||
+      !Number.isFinite(input.issuedAt.valueOf()) ||
+      !Number.isFinite(input.recoveryTokenExpiresAt.valueOf()) ||
+      input.recoveryTokenExpiresAt.getTime() <= input.issuedAt.getTime()
+    ) {
+      throw new SessionStoreUnavailableError();
+    }
     let client: SessionDatabaseClient;
     try {
       client = await this.pool.connect();
@@ -381,17 +395,150 @@ export class PostgresSessionStore<TState = unknown> implements SessionStorePort<
         await queryClient(client, input.sessionId, "COMMIT");
         return null;
       }
-      const principalRead = await queryClient<PrincipalRow>(
+      const current = mapSessionRow<TState>(currentRow);
+      const issuerRead = await queryClient<PrincipalRow>(
         client,
         input.sessionId,
         `SELECT principal_id, session_id, principal_kind, session_role, actor_scope, created_at
          FROM session_principals
          WHERE session_id = $1 AND credential_sha256 = $2
-           AND credential_expires_at IS NOT NULL AND credential_expires_at > $3
+           AND credential_expires_at IS NULL
          FOR UPDATE`,
-        [input.sessionId, input.inviteCredentialSha256, input.claimedAt]
+        [input.sessionId, input.credentialSha256]
       );
-      const principalRow = principalRead.rows[0];
+      const issuerRow = issuerRead.rows[0];
+      if (issuerRow === undefined) {
+        await queryClient(client, input.sessionId, "COMMIT");
+        return null;
+      }
+      if (!isPrivateSessionHostPrincipal(current, mapPrincipalRow(issuerRow))) {
+        throw new SessionAuthorizationError();
+      }
+      const target = resolvePrivateSeatRecoveryTarget(current, input.seatId);
+      if (target === undefined) throw new PrivateSeatRecoveryUnavailableError();
+      const targetRead = await queryClient<PrincipalRow>(
+        client,
+        input.sessionId,
+        `SELECT principal_id, session_id, principal_kind, session_role, actor_scope, created_at
+         FROM session_principals
+         WHERE session_id = $1 AND principal_kind = 'participant'
+           AND session_role = 'player' AND credential_expires_at IS NULL
+         FOR UPDATE`,
+        [input.sessionId]
+      );
+      const targetPrincipals = targetRead.rows
+        .map(mapPrincipalRow)
+        .filter((principal) =>
+          principal.actorScope.kind === "listed-actors" &&
+          principal.actorScope.actorIds.length === 1 &&
+          principal.actorScope.actorIds[0] === target.playerId
+        );
+      if (targetPrincipals.length !== 1) throw new PrivateSeatRecoveryUnavailableError();
+      const targetPrincipal = targetPrincipals[0];
+      const write = await queryClient(
+        client,
+        input.sessionId,
+        `UPDATE session_principals
+         SET recovery_token_sha256 = $3, recovery_token_expires_at = $4
+         WHERE session_id = $1 AND principal_id = $2
+           AND credential_expires_at IS NULL`,
+        [
+          input.sessionId,
+          targetPrincipal.principalId,
+          input.recoveryTokenSha256,
+          input.recoveryTokenExpiresAt
+        ]
+      );
+      if (write.rowCount !== 1) throw new SessionStoreUnavailableError();
+      await queryClient(client, input.sessionId, "COMMIT");
+      return {
+        seatId: target.seatId,
+        playerId: target.playerId,
+        recoveryTokenExpiresAt: input.recoveryTokenExpiresAt
+      };
+    } catch (error) {
+      if (transactionStarted) releaseError = await rollbackAfterFailure(client, error);
+      throw mapDatabaseOperationalError(error);
+    } finally {
+      client.release(releaseError);
+    }
+  }
+
+  async claimPrivateInvite(
+    input: PrivateInviteClaimStoreInput
+  ): Promise<PrivateInviteClaimStoreResult<TState> | null> {
+    if (
+      input.currentCredentialSha256 !== undefined &&
+      !/^[a-f0-9]{64}$/u.test(input.currentCredentialSha256)
+    ) {
+      throw new SessionStoreUnavailableError();
+    }
+    let client: SessionDatabaseClient;
+    try {
+      client = await this.pool.connect();
+    } catch (error) {
+      throw mapDatabaseOperationalError(error);
+    }
+    let transactionStarted = false;
+    let releaseError: Error | boolean | undefined;
+    try {
+      await queryClient(client, input.sessionId, "BEGIN");
+      transactionStarted = true;
+      const sessionRead = await queryClient<SessionRow>(
+        client,
+        input.sessionId,
+        SELECT_SESSION_FOR_UPDATE,
+        [input.sessionId]
+      );
+      const currentRow = sessionRead.rows[0];
+      if (currentRow === undefined) {
+        await queryClient(client, input.sessionId, "COMMIT");
+        return null;
+      }
+      const currentPrincipalRead = input.currentCredentialSha256 === undefined
+        ? undefined
+        : await queryClient<PrincipalRow>(
+            client,
+            input.sessionId,
+            `SELECT principal_id, session_id, principal_kind, session_role, actor_scope, created_at
+             FROM session_principals
+             WHERE session_id = $1 AND credential_sha256 = $2
+               AND credential_expires_at IS NULL
+             FOR UPDATE`,
+            [input.sessionId, input.currentCredentialSha256]
+          );
+      const currentPrincipalRow = currentPrincipalRead?.rows[0];
+      const principalRead = currentPrincipalRow === undefined
+        ? await queryClient<PrincipalRow>(
+            client,
+            input.sessionId,
+            `SELECT principal_id, session_id, principal_kind, session_role, actor_scope, created_at
+             FROM session_principals
+             WHERE session_id = $1 AND credential_sha256 = $2
+               AND credential_expires_at IS NOT NULL AND credential_expires_at > $3
+             FOR UPDATE`,
+            [input.sessionId, input.inviteCredentialSha256, input.claimedAt]
+          )
+        : { rows: [], rowCount: 0 };
+      const recoveryRead = principalRead.rows[0] === undefined
+        ? await queryClient<PrincipalRow>(
+            client,
+            input.sessionId,
+            `SELECT principal_id, session_id, principal_kind, session_role, actor_scope, created_at
+             FROM session_principals
+             WHERE session_id = $1 AND recovery_token_sha256 = $2
+               AND recovery_token_expires_at IS NOT NULL
+               AND recovery_token_expires_at > $3
+               AND credential_expires_at IS NULL
+             FOR UPDATE`,
+            [input.sessionId, input.inviteCredentialSha256, input.claimedAt]
+          )
+        : undefined;
+      const candidatePrincipalRow = principalRead.rows[0] ?? recoveryRead?.rows[0];
+      const principalRow = currentPrincipalRow === undefined ||
+        currentPrincipalRow.principal_id === recoveryRead?.rows[0]?.principal_id
+        ? candidatePrincipalRow
+        : undefined;
       if (principalRow === undefined) {
         await queryClient(client, input.sessionId, "COMMIT");
         return null;
@@ -399,6 +546,34 @@ export class PostgresSessionStore<TState = unknown> implements SessionStorePort<
       const principal = mapPrincipalRow(principalRow);
       if (principal.kind !== "participant" || principal.actorScope.kind !== "listed-actors") {
         throw new SessionStoreUnavailableError();
+      }
+      if (recoveryRead?.rows[0] !== undefined) {
+        const principalWrite = await queryClient(
+          client,
+          input.sessionId,
+          `UPDATE session_principals
+           SET credential_sha256 = $3,
+               recovery_token_sha256 = NULL,
+               recovery_token_expires_at = NULL
+           WHERE session_id = $1 AND principal_id = $2
+             AND recovery_token_sha256 = $4
+             AND recovery_token_expires_at > $5
+             AND credential_expires_at IS NULL`,
+          [
+            input.sessionId,
+            principal.principalId,
+            input.participantCredentialSha256,
+            input.inviteCredentialSha256,
+            input.claimedAt
+          ]
+        );
+        if (principalWrite.rowCount !== 1) throw new SessionStoreUnavailableError();
+        await queryClient(client, input.sessionId, "COMMIT");
+        return {
+          session: mapSessionRow<TState>(currentRow),
+          principal,
+          transition: "credential-recovery"
+        };
       }
       const updated = applyPrivateInviteClaim(
         mapSessionRow<TState>(currentRow),
@@ -438,7 +613,11 @@ export class PostgresSessionStore<TState = unknown> implements SessionStorePort<
       );
       if (sessionWrite.rowCount !== 1) throw new SessionStoreUnavailableError();
       await queryClient(client, input.sessionId, "COMMIT");
-      return { session: mapSessionRow<TState>(requireSingleRow(sessionWrite)), principal };
+      return {
+        session: mapSessionRow<TState>(requireSingleRow(sessionWrite)),
+        principal,
+        transition: "initial-join"
+      };
     } catch (error) {
       if (transactionStarted) releaseError = await rollbackAfterFailure(client, error);
       throw mapDatabaseOperationalError(error);
@@ -857,7 +1036,8 @@ export class PostgresSessionStore<TState = unknown> implements SessionStorePort<
           FROM game_sessions LIMIT 0
         ), principal_probe AS (
           SELECT principal_id, session_id, principal_kind, session_role,
-                 actor_scope, credential_sha256, credential_expires_at, created_at
+                 actor_scope, credential_sha256, credential_expires_at,
+                 recovery_token_sha256, recovery_token_expires_at, created_at
           FROM session_principals LIMIT 0
         ), bundle_probe AS (
           SELECT bundle_hash, game_id, canonical_bytes, canonical_bundle, created_at
@@ -1719,7 +1899,9 @@ async function rollbackAfterFailure(
 function mapDatabaseOperationalError(error: unknown): Error {
   if (
     error instanceof PublicJournalTooLargeError ||
+    error instanceof PrivateSeatRecoveryUnavailableError ||
     error instanceof SessionAuthenticationError ||
+    error instanceof SessionAuthorizationError ||
     error instanceof SessionStoreUnavailableError ||
     error instanceof SessionVersionConflictError ||
     error instanceof SessionWriteLockedError

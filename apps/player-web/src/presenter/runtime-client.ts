@@ -1,8 +1,6 @@
 import type { SessionSnapshot } from "@/lib/game-content-resolvers";
 import type { CubicaAgentTurnResult } from "@cubica/contracts-ai";
-import type {
-  TransportRoadPreviewResponse
-} from "@cubica/contracts-session";
+import type { PrivateSessionInvite, TransportRoadPreviewResponse } from "@cubica/contracts-session";
 import type {
   RuntimeActionEnvelope,
   RuntimeAgentTurnEnvelope
@@ -204,6 +202,19 @@ export async function claimPrivateInvite(sessionId: string, inviteToken: string)
   });
   if (!response.ok) throw await readRuntimeError(response, `Failed to claim session invite: ${response.status}`);
   return parseJson<SessionSnapshot>(response);
+}
+
+export async function recoverGuestSeat(sessionId: string, seatId: string): Promise<PrivateSessionInvite> {
+  const response = await fetch(`/api/runtime/sessions/${encodeURIComponent(sessionId)}/seat-recovery-invites`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify({ seatId })
+  });
+  if (!response.ok) {
+    throw await readRuntimeError(response, `Failed to recover guest seat: ${response.status}`);
+  }
+  return parseJson<PrivateSessionInvite>(response);
 }
 
 export type PrivateInviteFragment = { readonly sessionId: string; readonly inviteToken: string };
