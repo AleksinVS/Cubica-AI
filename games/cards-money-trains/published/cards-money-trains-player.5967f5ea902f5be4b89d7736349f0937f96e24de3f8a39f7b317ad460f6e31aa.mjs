@@ -22,7 +22,7 @@ __pluginDefine("src/index.ts", (exports, module) => {
  * scene factory. Phaser remains platform-owned and is injected into the scene.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.createCardsMoneyTrainsScene = exports.provideCardsMoneyTrainsAccessibleBoardActions = exports.projectBoardSession = exports.CARDS_MONEY_TRAINS_PLAYER_PLUGIN_ID = exports.CARDS_MONEY_TRAINS_GAME_ID = void 0;
+exports.createCardsMoneyTrainsScene = exports.provideCardsMoneyTrainsFacilitatorDebriefAvailability = exports.provideCardsMoneyTrainsAccessibleBoardActions = exports.projectBoardSession = exports.CARDS_MONEY_TRAINS_PLAYER_PLUGIN_ID = exports.CARDS_MONEY_TRAINS_GAME_ID = void 0;
 exports.activate = activate;
 const scene_ts_1 = __pluginRequire("src/scene.ts");
 const registration_ts_1 = __pluginRequire("src/registration.ts");
@@ -33,6 +33,8 @@ var board_state_ts_1 = __pluginRequire("src/board-state.ts");
 Object.defineProperty(exports, "projectBoardSession", { enumerable: true, get: function () { return board_state_ts_1.projectBoardSession; } });
 var accessible_actions_ts_1 = __pluginRequire("src/accessible-actions.ts");
 Object.defineProperty(exports, "provideCardsMoneyTrainsAccessibleBoardActions", { enumerable: true, get: function () { return accessible_actions_ts_1.provideCardsMoneyTrainsAccessibleBoardActions; } });
+var facilitator_debrief_availability_ts_1 = __pluginRequire("src/facilitator-debrief-availability.ts");
+Object.defineProperty(exports, "provideCardsMoneyTrainsFacilitatorDebriefAvailability", { enumerable: true, get: function () { return facilitator_debrief_availability_ts_1.provideCardsMoneyTrainsFacilitatorDebriefAvailability; } });
 var scene_ts_2 = __pluginRequire("src/scene.ts");
 Object.defineProperty(exports, "createCardsMoneyTrainsScene", { enumerable: true, get: function () { return scene_ts_2.createCardsMoneyTrainsScene; } });
 /** Register both independent host controls and the Phaser scene. */
@@ -5306,17 +5308,37 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.CARDS_MONEY_TRAINS_PLAYER_PLUGIN_ID = exports.CARDS_MONEY_TRAINS_GAME_ID = void 0;
 exports.registerCardsMoneyTrainsPlayer = registerCardsMoneyTrainsPlayer;
 const accessible_actions_ts_1 = __pluginRequire("src/accessible-actions.ts");
+const facilitator_debrief_availability_ts_1 = __pluginRequire("src/facilitator-debrief-availability.ts");
 exports.CARDS_MONEY_TRAINS_GAME_ID = "cards-money-trains";
 exports.CARDS_MONEY_TRAINS_PLAYER_PLUGIN_ID = "cards-money-trains-player";
 /** Register the DOM projection and the injected visual scene as one lifetime. */
 function registerCardsMoneyTrainsPlayer(api, sceneFactory) {
     const disposeActions = api.registerAccessibleBoardActionsProvider?.(exports.CARDS_MONEY_TRAINS_GAME_ID, accessible_actions_ts_1.provideCardsMoneyTrainsAccessibleBoardActions) ?? (() => { });
+    const disposeFacilitatorDebrief = api.registerFacilitatorDebriefAvailabilityProvider?.(exports.CARDS_MONEY_TRAINS_GAME_ID, facilitator_debrief_availability_ts_1.provideCardsMoneyTrainsFacilitatorDebriefAvailability) ?? (() => { });
     const disposeScene = api.registerPhaserSceneFactory(exports.CARDS_MONEY_TRAINS_GAME_ID, sceneFactory);
     return () => {
         disposeScene();
         disposeActions();
+        disposeFacilitatorDebrief();
     };
 }
+
+});
+__pluginDefine("src/facilitator-debrief-availability.ts", (exports, module) => {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.provideCardsMoneyTrainsFacilitatorDebriefAvailability = void 0;
+const board_state_ts_1 = __pluginRequire("src/board-state.ts");
+/**
+ * Exposes the debrief affordance only after the existing authoritative final
+ * results projection has accepted a completed session. This provider does not
+ * duplicate final-result validation or grant runtime authorization.
+ */
+const provideCardsMoneyTrainsFacilitatorDebriefAvailability = (session) => {
+    const projection = (0, board_state_ts_1.projectBoardSession)(session);
+    return projection.finalResults !== null && projection.finalResults !== undefined;
+};
+exports.provideCardsMoneyTrainsFacilitatorDebriefAvailability = provideCardsMoneyTrainsFacilitatorDebriefAvailability;
 
 });
 const __entry = __pluginRequire("src/index.ts");
