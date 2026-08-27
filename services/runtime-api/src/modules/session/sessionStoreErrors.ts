@@ -70,6 +70,13 @@ export class PrivateInviteAuthenticationError extends HttpError {
   }
 }
 
+/** An authorized host cannot recover the requested seat through this boundary. */
+export class PrivateSeatRecoveryUnavailableError extends HttpError {
+  constructor() {
+    super(404, "Private seat recovery is unavailable.", "PRIVATE_SEAT_RECOVERY_UNAVAILABLE");
+  }
+}
+
 /** The authenticated principal is not permitted to perform the requested operation. */
 export class SessionAuthorizationError extends HttpError {
   constructor() {

@@ -95,6 +95,9 @@ test("deriveSessionStoreMode reflects an alternate store class name", () => {
     async claimPrivateInvite() {
       return null;
     }
+    async issuePrivateSeatRecoveryInvite() {
+      return null;
+    }
     async archiveSession() {
       return null;
     }

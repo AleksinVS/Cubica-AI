@@ -85,6 +85,7 @@ const expectedOperations = [
     marker: "public-journal"
   },
   { method: "post", path: "/sessions/{sessionId}/private-invite-claims", operationId: "claimPrivateInvite", tag: "Sessions", marker: "private-invite-claims" },
+  { method: "post", path: "/sessions/{sessionId}/seat-recovery-invites", operationId: "createSeatRecoveryInvite", tag: "Sessions", marker: "seat-recovery-invites" },
   { method: "get", path: "/sessions/{sessionId}/events", operationId: "streamSessionVersionNotifications", tag: "Sessions", marker: "sessionVersionEventsMatch" },
   {
     method: "post",
@@ -325,6 +326,7 @@ function validateSchemaCoverage(spec) {
     "CreateSessionRequest",
     "CreatedSessionResponse",
     "PrivateInviteClaimRequest",
+    "PrivateSeatRecoveryInviteRequest",
     "PrivateInviteClaimResponse",
     "PrivateInviteToken",
     "PrivateSessionInvite",
@@ -563,7 +565,8 @@ function validateSessionTrustContract(spec) {
     fail("GET session events must expose only SessionVersionNotification and document 401/429/503");
   }
   const claim = spec.paths?.["/sessions/{sessionId}/private-invite-claims"]?.post;
-  if (claim?.security !== undefined ||
+  if (JSON.stringify(claim?.security) !== JSON.stringify([{}, { SessionBearer: [] }]) ||
+      !claim?.description?.includes("initial invite or recovery invite") ||
       claim?.requestBody?.$ref !== "#/components/requestBodies/PrivateInviteClaimRequest" ||
       claim?.responses?.["200"]?.content?.["application/json"]?.schema?.$ref !==
         "#/components/schemas/PrivateInviteClaimResponse" ||
@@ -571,7 +574,22 @@ function validateSessionTrustContract(spec) {
       claim?.responses?.["413"]?.$ref !== "#/components/responses/PayloadTooLarge" ||
       claim?.responses?.["503"]?.$ref !== "#/components/responses/Unavailable" ||
       JSON.stringify(Object.keys(claim?.responses ?? {}).sort()) !== JSON.stringify(["200", "400", "401", "413", "503"])) {
-    fail("Private invite claim must use canonical request and response schemas");
+    fail("Private invite claim must allow anonymous or same-principal recovery authentication and use canonical schemas");
+  }
+  const recoveryRequest = spec.components.schemas.PrivateSeatRecoveryInviteRequest;
+  if (recoveryRequest?.type !== "object" ||
+      JSON.stringify(recoveryRequest.required) !== JSON.stringify(["seatId"]) ||
+      recoveryRequest.properties?.seatId?.type !== "string" ||
+      recoveryRequest.properties?.seatId?.minLength !== 1 ||
+      recoveryRequest.additionalProperties !== false) {
+    fail("PrivateSeatRecoveryInviteRequest must be a closed object containing a non-empty seatId");
+  }
+  const recovery = spec.paths?.["/sessions/{sessionId}/seat-recovery-invites"]?.post;
+  if (recovery?.security?.[0]?.SessionBearer === undefined ||
+      recovery?.requestBody?.$ref !== "#/components/requestBodies/PrivateSeatRecoveryInviteRequest" ||
+      recovery?.responses?.["201"]?.content?.["application/json"]?.schema?.$ref !== "#/components/schemas/PrivateSessionInvite" ||
+      JSON.stringify(Object.keys(recovery?.responses ?? {}).sort()) !== JSON.stringify(["201", "400", "401", "403", "404", "413", "423", "503"])) {
+    fail("Seat recovery invite must expose the authenticated canonical request, invite response, and exact errors");
   }
   const claimResponse = spec.components.schemas.PrivateInviteClaimResponse;
   if (claimResponse?.properties?.privateInvites !== undefined ||

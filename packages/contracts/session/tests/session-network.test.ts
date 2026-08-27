@@ -1,6 +1,7 @@
 import {
   validatePrivateInviteClaimRequestShape,
   validatePrivateSessionInvitesShape,
+  validatePrivateSeatRecoveryInviteRequestShape,
   validateSessionVersionNotificationShape
 } from "../src/index.ts";
 
@@ -15,6 +16,10 @@ describe("private invite and version notification contracts", () => {
     expect(validatePrivateInviteClaimRequestShape({ inviteToken: token })).toBe(true);
     expect(validatePrivateInviteClaimRequestShape({ inviteToken: token, privateInvites: invite })).toBe(false);
     expect(validatePrivateInviteClaimRequestShape({ inviteToken: "inv_short" })).toBe(false);
+    expect(validatePrivateSeatRecoveryInviteRequestShape({ seatId: "seat-b" })).toBe(true);
+    expect(validatePrivateSeatRecoveryInviteRequestShape({ seatId: "" })).toBe(false);
+    expect(validatePrivateSeatRecoveryInviteRequestShape({ seatId: "seat-b", extra: true })).toBe(false);
+    expect(validatePrivateSeatRecoveryInviteRequestShape({})).toBe(false);
   });
 
   it("accepts only the closed minimal SSE cursor", () => {

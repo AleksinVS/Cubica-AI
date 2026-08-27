@@ -44,6 +44,10 @@ test("PostgreSQL state, command receipt and event ledger survive a store restart
     path.resolve(testDirectory, "../migrations/006_private_invite_claim.up.sql"),
     "utf8"
   );
+  const migration007 = await readFile(
+    path.resolve(testDirectory, "../migrations/007_private_seat_recovery.up.sql"),
+    "utf8"
+  );
   const setupPool = new Pool({ connectionString: databaseUrl });
   await setupPool.query(migration001);
   await setupPool.query(migration002);
@@ -51,6 +55,7 @@ test("PostgreSQL state, command receipt and event ledger survive a store restart
   await setupPool.query(migration004);
   await setupPool.query(migration005);
   await setupPool.query(migration006);
+  await setupPool.query(migration007);
   await setupPool.end();
 
   const firstPool = new Pool({ connectionString: databaseUrl });
@@ -272,9 +277,71 @@ test("PostgreSQL state, command receipt and event ledger survive a store restart
   });
   assert.deepEqual(replayed, commandReceipt.result);
   assert.equal((await secondStore.getSessionEvents(created.session.sessionId)).length, 1);
-  await secondPool.query("DELETE FROM game_sessions WHERE id = $1", [created.session.sessionId]);
-  await secondPool.query("DELETE FROM game_sessions WHERE id = $1", [privateCreated.session.sessionId]);
+  const beforeRecovery = await secondStore.getSession(privateCreated.session.sessionId);
+  assert.ok(beforeRecovery);
+  const recoveryTokenSha256 = "6".repeat(64);
+  const recoveryCredentialSha256 = "5".repeat(64);
+  const recoveryIssued = await secondStore.issuePrivateSeatRecoveryInvite({
+    sessionId: privateCreated.session.sessionId,
+    credentialSha256: "7".repeat(64),
+    seatId: "p2",
+    recoveryTokenSha256,
+    issuedAt: new Date("2026-08-25T12:01:00.000Z"),
+    recoveryTokenExpiresAt: new Date("2026-08-26T12:01:00.000Z")
+  });
+  assert.equal(recoveryIssued?.playerId, "p2");
   await secondStore.close();
+
+  const thirdPool = new Pool({ connectionString: databaseUrl });
+  const thirdStore = new PostgresSessionStore<Record<string, unknown>>(asSessionDatabasePool(thirdPool));
+  assert.equal(await thirdStore.claimPrivateInvite({
+    sessionId: privateCreated.session.sessionId,
+    inviteCredentialSha256: recoveryTokenSha256,
+    participantCredentialSha256: "4".repeat(64),
+    currentCredentialSha256: "7".repeat(64),
+    claimedAt: new Date("2026-08-25T12:01:30.000Z")
+  }), null, "a live host credential cannot claim a guest recovery capability");
+  const recovered = await thirdStore.claimPrivateInvite({
+    sessionId: privateCreated.session.sessionId,
+    inviteCredentialSha256: recoveryTokenSha256,
+    participantCredentialSha256: recoveryCredentialSha256,
+    currentCredentialSha256: winningCredentialSha256,
+    claimedAt: new Date("2026-08-25T12:02:00.000Z")
+  });
+  assert.equal(recovered?.transition, "credential-recovery");
+  assert.deepEqual(recovered?.session, beforeRecovery);
+  assert.equal(await thirdStore.authenticateSession({
+    sessionId: privateCreated.session.sessionId,
+    credentialSha256: winningCredentialSha256
+  }), null);
+  assert.equal((await thirdStore.authenticateSession({
+    sessionId: privateCreated.session.sessionId,
+    credentialSha256: recoveryCredentialSha256
+  }))?.principalId, privateGuestPrincipalId);
+  const retryRecoveryTokenSha256 = "8".repeat(64);
+  assert.ok(await thirdStore.issuePrivateSeatRecoveryInvite({
+    sessionId: privateCreated.session.sessionId,
+    credentialSha256: "7".repeat(64),
+    seatId: "p2",
+    recoveryTokenSha256: retryRecoveryTokenSha256,
+    issuedAt: new Date("2026-08-25T12:03:00.000Z"),
+    recoveryTokenExpiresAt: new Date("2026-08-26T12:03:00.000Z")
+  }));
+  const recoveredAfterLostResponse = await thirdStore.claimPrivateInvite({
+    sessionId: privateCreated.session.sessionId,
+    inviteCredentialSha256: retryRecoveryTokenSha256,
+    participantCredentialSha256: "9".repeat(64),
+    currentCredentialSha256: winningCredentialSha256,
+    claimedAt: new Date("2026-08-25T12:04:00.000Z")
+  });
+  assert.equal(recoveredAfterLostResponse?.principal.principalId, privateGuestPrincipalId);
+  assert.equal((await thirdStore.authenticateSession({
+    sessionId: privateCreated.session.sessionId,
+    credentialSha256: "9".repeat(64)
+  }))?.principalId, privateGuestPrincipalId);
+  await thirdPool.query("DELETE FROM game_sessions WHERE id = $1", [created.session.sessionId]);
+  await thirdPool.query("DELETE FROM game_sessions WHERE id = $1", [privateCreated.session.sessionId]);
+  await thirdStore.close();
 });
 
 test("PostgreSQL runtime HTTP restart resyncs private-invite peers", {
@@ -302,7 +369,8 @@ test("PostgreSQL runtime HTTP restart resyncs private-invite peers", {
         "003_system_schedules.up.sql",
         "004_session_participants.up.sql",
         "005_session_event_metric_changes.up.sql",
-        "006_private_invite_claim.up.sql"
+        "006_private_invite_claim.up.sql",
+        "007_private_seat_recovery.up.sql"
       ]) {
         await setupPool.query(
           await readFile(path.resolve(testDirectory, "../migrations", migrationName), "utf8")
@@ -319,6 +387,18 @@ test("PostgreSQL runtime HTTP restart resyncs private-invite peers", {
       if (hasInviteExpiry.rowCount === 0) {
         await setupPool.query(
           await readFile(path.resolve(testDirectory, "../migrations/006_private_invite_claim.up.sql"), "utf8")
+        );
+      }
+      const hasRecoveryToken = await setupPool.query<{ column_name: string }>(
+        `SELECT column_name
+         FROM information_schema.columns
+         WHERE table_schema = 'public'
+           AND table_name = 'session_principals'
+           AND column_name = 'recovery_token_sha256'`
+      );
+      if (hasRecoveryToken.rowCount === 0) {
+        await setupPool.query(
+          await readFile(path.resolve(testDirectory, "../migrations/007_private_seat_recovery.up.sql"), "utf8")
         );
       }
     }
