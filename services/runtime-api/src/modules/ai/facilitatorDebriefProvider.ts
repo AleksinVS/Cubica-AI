@@ -433,9 +433,14 @@ function extractDraftCandidate(envelope: unknown): {
     throw new FacilitatorDebriefProviderError("provider_invalid_response");
   }
   const choice = envelope.choices[0];
-  if (!isRecord(choice) || choice.finish_reason !== "stop" || Object.hasOwn(choice, "tool_calls") ||
-      !isRecord(choice.message) || Object.hasOwn(choice.message, "tool_calls") ||
-      typeof choice.message.content !== "string") {
+  if (!isRecord(choice) || !isRecord(choice.message)) {
+    throw new FacilitatorDebriefProviderError("provider_invalid_response");
+  }
+  if (Object.hasOwn(choice.message, "reasoning_content")) {
+    throw new FacilitatorDebriefProviderError("provider_invalid_response");
+  }
+  if (choice.finish_reason !== "stop" || Object.hasOwn(choice, "tool_calls") ||
+      Object.hasOwn(choice.message, "tool_calls") || typeof choice.message.content !== "string") {
     throw new FacilitatorDebriefProviderError("provider_invalid_response");
   }
   let candidate: unknown;

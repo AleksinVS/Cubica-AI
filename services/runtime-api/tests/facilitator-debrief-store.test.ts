@@ -9,6 +9,7 @@ import {
 } from "../src/modules/ai/facilitatorDebriefProvider.ts";
 import { InMemorySessionStore } from "../src/modules/session/inMemorySessionStore.ts";
 import { createLocalSessionAccess } from "../src/modules/session/sessionAuthentication.ts";
+import { SessionStoreUnavailableError } from "../src/modules/session/sessionStoreErrors.ts";
 
 const draft: FacilitatorDebriefDraft = {
   title: "Нейтральный разбор",
@@ -114,6 +115,37 @@ test("an explicit request atomically replaces only a stale generating attempt", 
     sessionId: fixture.sessionId,
     credentialSha256: fixture.credentialSha256
   }))?.attempt?.runId, "debrief_replacement123");
+});
+
+test("in-memory debrief store rejects contradictory audit snapshot bindings atomically", async () => {
+  const fixture = await createFixture();
+  const firstInput = beginInput(fixture, {
+    runId: "debrief_first123",
+    requestedAt: new Date("2026-08-27T10:00:00.000Z")
+  });
+  const first = await fixture.store.beginFacilitatorDebriefAttempt(firstInput);
+  assert.equal(first.kind, "created");
+
+  await assert.rejects(
+    fixture.store.beginFacilitatorDebriefAttempt({
+      ...beginInput(fixture, {
+        runId: "debrief_second123",
+        requestedAt: new Date("2026-08-27T10:01:00.000Z")
+      }),
+      requestAudit: {
+        ...firstInput.requestAudit,
+        inputSnapshotWithoutJournal: {
+          ...firstInput.requestAudit.inputSnapshotWithoutJournal,
+          runId: "debrief_contradict123"
+        }
+      }
+    }),
+    SessionStoreUnavailableError
+  );
+  assert.equal((await fixture.store.readFacilitatorDebriefStatus({
+    sessionId: fixture.sessionId,
+    credentialSha256: fixture.credentialSha256
+  }))?.attempt?.runId, "debrief_first123");
 });
 
 async function createFixture() {

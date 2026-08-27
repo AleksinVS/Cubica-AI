@@ -821,6 +821,7 @@ function assertPublicJournalLimit(limit: number): void {
 }
 
 function assertFacilitatorDebriefBeginInput(input: BeginFacilitatorDebriefAttemptInput): void {
+  const snapshot = input.requestAudit.inputSnapshotWithoutJournal;
   if (!/^debrief_[A-Za-z0-9_-]{8,128}$/u.test(input.runId) ||
       !/^[a-f0-9]{64}$/u.test(input.credentialSha256) ||
       !Number.isSafeInteger(input.expectedStateVersion) || input.expectedStateVersion < 0 ||
@@ -828,7 +829,11 @@ function assertFacilitatorDebriefBeginInput(input: BeginFacilitatorDebriefAttemp
       !/^sha256:[a-f0-9]{64}$/u.test(input.journalSha256) ||
       !Number.isFinite(input.requestedAt.getTime()) ||
       !Number.isFinite(input.staleGeneratingBefore.getTime()) ||
-      input.staleGeneratingBefore.getTime() > input.requestedAt.getTime()) {
+      input.staleGeneratingBefore.getTime() > input.requestedAt.getTime() ||
+      snapshot.runId !== input.runId || snapshot.sessionId !== input.sessionId ||
+      snapshot.stateVersion !== input.expectedStateVersion ||
+      snapshot.throughEventSequence !== input.throughEventSequence ||
+      snapshot.journalSha256 !== input.journalSha256) {
     throw new SessionStoreUnavailableError();
   }
 }

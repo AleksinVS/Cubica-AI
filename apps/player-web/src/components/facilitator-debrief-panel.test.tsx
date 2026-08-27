@@ -12,6 +12,18 @@ const base = {
 } as const;
 
 const absent = { ...base, status: "absent", canGenerate: true } as const;
+const generating = {
+  ...base,
+  status: "generating",
+  canGenerate: false,
+  runId: "debrief_fixture123",
+  requestedAt: "2026-08-27T10:00:00.000Z",
+  journalSha256: `sha256:${"a".repeat(64)}`,
+  throughEventSequence: 2,
+  provider: "z.ai",
+  model: "glm-4.7",
+  promptVersion: "facilitator-debrief-ru-v1"
+} as const;
 const ready = {
   ...base,
   status: "ready",
@@ -67,18 +79,7 @@ describe("FacilitatorDebriefPanel", () => {
   it("loads absent state and starts generation with the exact version body", async () => {
     const fetchImpl = vi.fn<FacilitatorDebriefFetch>()
       .mockResolvedValueOnce(jsonResponse(absent))
-      .mockResolvedValueOnce(jsonResponse({
-        ...base,
-        status: "generating",
-        canGenerate: false,
-        runId: "debrief_fixture123",
-        requestedAt: "2026-08-27T10:00:00.000Z",
-        journalSha256: `sha256:${"a".repeat(64)}`,
-        throughEventSequence: 2,
-        provider: "z.ai",
-        model: "glm-4.7",
-        promptVersion: "facilitator-debrief-ru-v1"
-      }));
+      .mockResolvedValueOnce(jsonResponse(generating));
 
     renderPanel(fetchImpl);
     await waitFor(() => expect(screen.getByRole("button", { name: "Сформировать разбор" })).toBeTruthy());
@@ -92,6 +93,35 @@ describe("FacilitatorDebriefPanel", () => {
     expect(fetchImpl.mock.calls[0]?.[1]).toMatchObject({ method: "GET", credentials: "same-origin" });
     expect(JSON.parse(String(fetchImpl.mock.calls[1]?.[1]?.body))).toEqual({ expectedStateVersion: 7 });
     expect(fetchImpl.mock.calls[1]?.[1]).toMatchObject({ method: "POST", credentials: "same-origin" });
+  });
+
+  it("offers an explicit check or recovery action while generation is in progress", async () => {
+    const fetchImpl = vi.fn<FacilitatorDebriefFetch>()
+      .mockResolvedValueOnce(jsonResponse(generating))
+      .mockResolvedValueOnce(jsonResponse(generating));
+    renderPanel(fetchImpl);
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "Проверить или восстановить" })).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: "Проверить или восстановить" }));
+    await waitFor(() => expect(fetchImpl).toHaveBeenCalledTimes(2));
+    expect(fetchImpl.mock.calls[1]?.[1]).toMatchObject({ method: "POST", credentials: "same-origin" });
+    expect(JSON.parse(String(fetchImpl.mock.calls[1]?.[1]?.body))).toEqual({ expectedStateVersion: 7 });
+  });
+
+  it("allows repeated manual checks until the server returns the ready replacement", async () => {
+    const fetchImpl = vi.fn<FacilitatorDebriefFetch>()
+      .mockResolvedValueOnce(jsonResponse(generating))
+      .mockResolvedValueOnce(jsonResponse(generating))
+      .mockResolvedValueOnce(jsonResponse(ready));
+    renderPanel(fetchImpl);
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "Проверить или восстановить" })).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: "Проверить или восстановить" }));
+    await waitFor(() => expect(fetchImpl).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Проверить или восстановить" })).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: "Проверить или восстановить" }));
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Путь к решению" })).toBeTruthy());
+    expect(fetchImpl.mock.calls.map(([, init]) => init?.method)).toEqual(["GET", "POST", "POST"]);
   });
 
   it("renders ready content, confidence text, and event evidence as text", async () => {

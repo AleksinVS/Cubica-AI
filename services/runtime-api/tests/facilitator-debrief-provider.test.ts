@@ -243,6 +243,32 @@ test("provider rejects tool calls, model drift, truncation and malformed candida
   }
 });
 
+test("provider rejects any reasoning_content property and retains the exact bounded response audit", async () => {
+  for (const reasoningContent of ["секретное внутреннее рассуждение", "", null]) {
+    const envelope = {
+      model: "glm-4.7",
+      choices: [{
+        finish_reason: "stop",
+        message: { content: JSON.stringify(draft), reasoning_content: reasoningContent }
+      }]
+    };
+    const expectedRawResponse = JSON.stringify(envelope);
+    const provider = new ZaiFacilitatorDebriefProvider({
+      apiKey: "test-secret",
+      fetchImpl: async () => response(envelope)
+    });
+
+    await assert.rejects(provider.generate(input), (error: unknown) => {
+      assert.equal(isProviderError("provider_invalid_response")(error), true);
+      const providerError = error as FacilitatorDebriefProviderError;
+      assert.equal(providerError.rawResponseUtf8, expectedRawResponse);
+      assert.equal(providerError.audit?.rawResponseUtf8, expectedRawResponse);
+      assert.equal(providerError.audit?.responseBytes, Buffer.byteLength(expectedRawResponse, "utf8"));
+      return true;
+    });
+  }
+});
+
 test("provider classifies abort as timeout and performs one call", async () => {
   let calls = 0;
   const provider = new ZaiFacilitatorDebriefProvider({

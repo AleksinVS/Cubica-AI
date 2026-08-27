@@ -219,6 +219,7 @@ export function FacilitatorDebriefPanel({
         <section aria-labelledby="facilitator-debrief-generating-title" role="status" aria-live="polite">
           <h2 id="facilitator-debrief-generating-title">Разбор формируется</h2>
           <p>Подождите: ведущий получит разбор после обработки игровых событий.</p>
+          <button type="button" onClick={() => beginRequest("POST")}>Проверить или восстановить</button>
         </section>
       ) : state.response.status === "failed" ? (
         <section aria-labelledby="facilitator-debrief-failed-title" role="alert" aria-live="assertive">
