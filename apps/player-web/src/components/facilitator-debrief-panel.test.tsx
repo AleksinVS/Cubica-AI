@@ -107,6 +107,8 @@ describe("FacilitatorDebriefPanel", () => {
     expect(screen.getByRole("heading", { name: "Факты игры" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Вопросы для рефлексии" })).toBeTruthy();
     expect(screen.getByText("Этот текст создан ИИ и является черновиком: ведущий должен проверить его перед использованием.")).toBeTruthy();
+    expect(screen.getByText(ready.runId)).toBeTruthy();
+    expect(screen.getByText(ready.journalSha256)).toBeTruthy();
   });
 
   it("shows failed status and allows a manual retry", async () => {

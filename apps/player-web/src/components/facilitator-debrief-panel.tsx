@@ -235,6 +235,16 @@ export function FacilitatorDebriefPanel({
           <p className="facilitator-debrief-ai-notice" role="note">
             Этот текст создан ИИ и является черновиком: ведущий должен проверить его перед использованием.
           </p>
+          <dl className="facilitator-debrief-provenance" aria-label="Происхождение черновика">
+            <div>
+              <dt>Черновик</dt>
+              <dd><code>{state.response.runId}</code></dd>
+            </div>
+            <div>
+              <dt>Журнал</dt>
+              <dd><code>{state.response.journalSha256}</code></dd>
+            </div>
+          </dl>
           <ReadyDebrief draft={state.response.draft} />
         </>
       )}

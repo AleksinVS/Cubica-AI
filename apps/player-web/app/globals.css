@@ -1271,6 +1271,33 @@ button.button-helper-arrow:focus-visible {
   margin: 0;
 }
 
+.facilitator-debrief-provenance {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0.75rem 0 1rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.facilitator-debrief-provenance > div {
+  display: grid;
+  grid-template-columns: 5rem minmax(0, 1fr);
+  gap: 0.5rem;
+}
+
+.facilitator-debrief-provenance dt {
+  font-weight: 700;
+}
+
+.facilitator-debrief-provenance dd {
+  min-width: 0;
+  margin: 0;
+}
+
+.facilitator-debrief-provenance code {
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 640px) {
   .facilitator-debrief-drawer {
     right: 0.5rem;
