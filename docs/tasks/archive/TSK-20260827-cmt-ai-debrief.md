@@ -17,7 +17,7 @@
 
 ## Status
 
-review
+done
 
 ## Parent
 
@@ -94,12 +94,16 @@ ADR-104; оставшиеся решения являются ограничен
 - Player/CMT — `completed`: CMT-плагин сообщает доступность только из
   проверенного финального результата, Player показывает сворачиваемый разбор,
   а опубликованный bundle пересобран с новым хешем.
-- Critic/fix — `completed`: Luna xhigh обнаружил устаревший production bundle;
-  Luna-исполнитель пересобрал его каноническим генератором, основной агент
-  добавил проверки выгрузки provider и отсутствующей регистрации.
-- Primary acceptance — `completed-focused`: Sol high проверил общий diff,
+- Critic/fix — `completed`: первый Luna xhigh critic обнаружил устаревший
+  production bundle; после его исправления независимый Sol-high reviewer нашёл
+  недоступное из UI восстановление stale-run, неполную in-memory audit binding
+  и принятие `reasoning_content`. Два Luna-исполнителя исправили непересекающиеся
+  Player/Runtime границы, Luna xhigh critic выявил и устранил отклонение от
+  принятого exact-response audit.
+- Primary acceptance — `completed`: основной Sol high проверил общий diff,
   provenance UI, production build и настоящий CMT browser flow до финала и
-  reload. Независимый Sol-high review перед `main` остаётся последним gate.
+  reload. Независимый Sol-high reviewer повторно проверил исправления на
+  `a9cf316` и вернул `PASS` без оставшихся P0/P1/P2.
 
 Параллельный блок participant credential recovery владеет другим смысловым
 контрактом, но меняет часть тех же session/runtime/player файлов. До его
@@ -195,6 +199,11 @@ PostgreSQL integration без `TEST_POSTGRES_DATABASE_URL`/локальной Б
 - Luna-цикл UI завершён; единственная находка критика — stale published bundle
   — исправлена генератором. Основной агент добавил видимый provenance и
   production browser proof после reload.
-- Ветка готова к независимому Sol-high review и отдельной чистой интеграции в
-  `main`; открыты только принятые `LEGACY-0084/0085` и описанные выше внешние
-  проверки credential/PostgreSQL.
+- Первое независимое Sol-high review выявило три ограниченных дефекта:
+  недоступное из UI восстановление stale-run, неполную in-memory audit binding
+  и принятие provider `reasoning_content`. Исправления прошли цикл Luna
+  executor → focused tests → Luna xhigh critic → Luna correction → primary
+  acceptance.
+- Повторное независимое Sol-high review на `a9cf316` завершилось `PASS` без
+  оставшихся P0/P1/P2. Открыты только принятые `LEGACY-0084/0085` и описанные
+  выше внешние проверки Z.AI/PostgreSQL.
