@@ -1,9 +1,11 @@
 /** Focused unit coverage for durable authentication and command transactions. */
 
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { test } from "node:test";
 import type {
   CreateSessionInput,
+  FacilitatorDebriefDraft,
   SessionCommandReceipt,
   SessionEventRecord,
   SessionRecord,
@@ -11,6 +13,7 @@ import type {
 } from "@cubica/contracts-session";
 import type { QueryResult, QueryResultRow } from "pg";
 import { createImmutableBundleContent } from "../src/modules/content/immutableBundle.ts";
+import { ZaiFacilitatorDebriefProvider } from "../src/modules/ai/facilitatorDebriefProvider.ts";
 import { InMemorySessionStore } from "../src/modules/session/inMemorySessionStore.ts";
 import {
   createSystemCommandFingerprint,
@@ -1338,6 +1341,137 @@ test("in-memory bundle is content-addressed and cannot be mutated through a read
   await assert.rejects(store.createSession(mismatched), SessionStoreUnavailableError);
 });
 
+test("PostgreSQL debrief source authenticates a facilitator and reads one repeatable journal boundary", async () => {
+  const publicEvent = event({ session: sessionId, sequence: 7 });
+  const client = new ScriptedClient((text) => {
+    if (text.includes("FROM game_sessions") && text.includes("session_role = 'facilitator'")) {
+      return result([{ ...persistedRow, archived_at: null }]);
+    }
+    if (text.includes("FROM game_bundles")) return result([bundleRow]);
+    if (text.includes("FROM facilitator_debrief_attempts")) return result([]);
+    if (text.includes("FROM session_events")) return result([eventRow(publicEvent)]);
+    return result([]);
+  });
+  const store = new PostgresSessionStore<Record<string, unknown>>(new ScriptedPool(client));
+
+  const source = await store.readFacilitatorDebriefGenerationSource({
+    sessionId,
+    credentialSha256
+  }, 65_537);
+
+  assert.equal(source?.session.version.stateVersion, 4);
+  assert.equal(source?.attempt, null);
+  assert.equal(source?.bundle.bundleHash, bundleHash);
+  assert.deepEqual(source?.events, [publicEvent]);
+  assert.deepEqual(client.queries.map(({ text }) => firstSqlWord(text)), [
+    "BEGIN", "SELECT", "SELECT", "SELECT", "SELECT", "COMMIT"
+  ]);
+});
+
+test("PostgreSQL atomically fails one stale debrief run before creating its replacement", async () => {
+  const staleRow = facilitatorDebriefAttemptRow({
+    runId: "debrief_stale123",
+    status: "generating",
+    requestedAt: new Date("2026-08-27T09:58:00.000Z")
+  });
+  const replacementRow = facilitatorDebriefAttemptRow({
+    runId: "debrief_replacement123",
+    status: "generating",
+    requestedAt: new Date("2026-08-27T10:00:00.000Z")
+  });
+  const client = new ScriptedClient((text) => {
+    if (text.includes("FROM game_sessions") && text.includes("FOR UPDATE NOWAIT")) {
+      return result([{ ...persistedRow, archived_at: null }]);
+    }
+    if (text.includes("FROM facilitator_debrief_attempts")) return result([staleRow]);
+    if (text.includes("UPDATE facilitator_debrief_attempts")) return result([{ run_id: "debrief_stale123" }]);
+    if (text.includes("INSERT INTO facilitator_debrief_attempts")) return result([replacementRow]);
+    return result([]);
+  });
+  const store = new PostgresSessionStore<Record<string, unknown>>(new ScriptedPool(client));
+  const requestAudit = facilitatorDebriefRequestAudit("debrief_replacement123");
+
+  const begun = await store.beginFacilitatorDebriefAttempt({
+    runId: "debrief_replacement123",
+    sessionId,
+    credentialSha256,
+    expectedStateVersion: 4,
+    throughEventSequence: 7,
+    journalSha256: requestAudit.inputSnapshotWithoutJournal.journalSha256,
+    requestAudit,
+    requestedAt: new Date("2026-08-27T10:00:00.000Z"),
+    staleGeneratingBefore: new Date("2026-08-27T09:58:30.000Z")
+  });
+
+  assert.equal(begun.kind, "created");
+  assert.equal(begun.kind === "created" ? begun.attempt.runId : "", "debrief_replacement123");
+  const debriefWrites = client.queries.filter(({ text }) =>
+    text.includes("facilitator_debrief_attempts") &&
+    (text.includes("UPDATE") || text.includes("INSERT"))
+  );
+  assert.equal(debriefWrites.length, 2);
+  assert.match(debriefWrites[0]?.text ?? "", /SET status = 'failed'/u);
+  assert.match(debriefWrites[1]?.text ?? "", /INSERT INTO facilitator_debrief_attempts/u);
+});
+
+test("PostgreSQL completes a debrief only by matching its generating run id", async () => {
+  const runId = "debrief_complete123";
+  const requestAudit = facilitatorDebriefRequestAudit(runId);
+  const readyDraft: FacilitatorDebriefDraft = {
+    title: "Stored debrief",
+    summary: "One event was stored.",
+    facts: [{ statement: "The event exists.", eventSequences: [7] }],
+    interpretations: [],
+    reflectionQuestions: [{ question: "What changed?", eventSequences: [7] }]
+  };
+  const readyRow = {
+    ...facilitatorDebriefAttemptRow({
+      runId,
+      status: "generating",
+      requestedAt: new Date("2026-08-27T10:00:00.000Z")
+    }),
+    status: "ready",
+    provider_request_id: "provider-1",
+    provider_status: 200,
+    provider_usage: { total_tokens: 12 },
+    response_bytes: 2,
+    duration_ms: 10_000,
+    raw_response_utf8: "{}",
+    draft: readyDraft,
+    completed_at: new Date("2026-08-27T10:00:10.000Z")
+  };
+  const pool = new ScriptedPool(
+    new ScriptedClient(() => result([])),
+    (text, values) => {
+      assert.match(text, /WHERE session_id = \$1 AND run_id = \$2 AND status = 'generating'/u);
+      assert.equal(JSON.stringify(values).includes("publicJournal"), false);
+      return result([readyRow]);
+    }
+  );
+  const store = new PostgresSessionStore<Record<string, unknown>>(pool);
+
+  const completed = await store.completeFacilitatorDebriefAttempt({
+    sessionId,
+    runId,
+    status: "ready",
+    completedAt: new Date("2026-08-27T10:00:10.000Z"),
+    audit: {
+      ...requestAudit,
+      providerRequestId: "provider-1",
+      providerStatus: 200,
+      providerUsage: { total_tokens: 12 },
+      responseBytes: 2,
+      durationMs: 10_000,
+      rawResponseUtf8: "{}"
+    },
+    draft: readyDraft
+  });
+
+  assert.equal(completed?.status, "ready");
+  assert.deepEqual(completed?.providerUsage, { total_tokens: 12 });
+  assert.deepEqual(completed?.draft, readyDraft);
+});
+
 test("readiness checks every command-ledger table and required privileges", async () => {
   const pool = new ScriptedPool(
     new ScriptedClient(() => result([])),
@@ -1352,7 +1486,8 @@ test("readiness checks every command-ledger table and required privileges", asyn
     "session_principals",
     "command_receipts",
     "session_events",
-    "system_schedules"
+    "system_schedules",
+    "facilitator_debrief_attempts"
   ]) {
     assert.match(sql, new RegExp(table, "u"));
   }
@@ -1757,6 +1892,59 @@ function eventRow(value: SessionEventRecord): QueryResultRow {
     event_data: value.data,
     metric_changes: value.metricChanges ?? null,
     created_at: value.createdAt
+  };
+}
+
+function facilitatorDebriefRequestAudit(runId: string) {
+  const publicJournalJson = "{}";
+  const journalSha256 = `sha256:${createHash("sha256").update(publicJournalJson).digest("hex")}` as const;
+  return new ZaiFacilitatorDebriefProvider({ apiKey: "test" }).prepare({
+    runId,
+    sessionId,
+    gameId: "fixture-game",
+    bundleHash,
+    stateVersion: 4,
+    throughEventSequence: 7,
+    journalSha256,
+    publicJournalJson,
+    publicState: persistedRow.state,
+    trainingMetadata: null
+  }).audit;
+}
+
+function facilitatorDebriefAttemptRow(input: {
+  runId: string;
+  status: "generating";
+  requestedAt: Date;
+}): QueryResultRow {
+  const audit = facilitatorDebriefRequestAudit(input.runId);
+  return {
+    run_id: input.runId,
+    session_id: sessionId,
+    status: input.status,
+    expected_state_version: "4",
+    through_event_sequence: "7",
+    journal_sha256: audit.inputSnapshotWithoutJournal.journalSha256,
+    provider: audit.provider,
+    endpoint: audit.endpoint,
+    model: audit.model,
+    prompt_version: audit.promptVersion,
+    system_prompt: audit.systemPrompt,
+    system_prompt_sha256: audit.systemPromptSha256,
+    provider_parameters: audit.parameters,
+    request_body_sha256: audit.requestBodySha256,
+    request_bytes: String(audit.requestBytes),
+    input_snapshot_without_journal: audit.inputSnapshotWithoutJournal,
+    provider_request_id: null,
+    provider_status: null,
+    provider_usage: null,
+    response_bytes: null,
+    duration_ms: null,
+    raw_response_utf8: null,
+    draft: null,
+    error: null,
+    requested_at: input.requestedAt,
+    completed_at: null
   };
 }
 

@@ -179,6 +179,7 @@ npm run ops:supervise >> /var/log/cubica/supervisor.log 2>&1
 | `SUPERVISOR_CONFIG` | путь к JSON-конфигу набора сервисов | встроенный профиль |
 | `SESSION_STORE` | режим хранения сессий | обязателен; `postgresql` для рабочего запуска |
 | `DATABASE_URL` | строка подключения PostgreSQL | обязательна для `postgresql` |
+| `CUBICA_FACILITATOR_DEBRIEF_ZAI_API_KEY` | серверный ключ Z.AI для закрытого тестирования ИИ-разбора ведущего | опционален; без него разбор возвращает аудируемый `provider_unavailable` |
 
 `player-web` получает `RUNTIME_API_URL=http://127.0.0.1:<RUNTIME_API_PORT>`
 автоматически. Тот же URL следует использовать при сборке `player-web` (см.

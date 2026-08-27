@@ -87,7 +87,10 @@ ADR-104; оставшиеся решения являются ограничен
 - Architecture and planning — `completed`: решения PM записаны в ADR-104 и
   GSR-051; официальный API Z.AI подтверждает `glm-4.7`, Chat Completions и JSON
   mode.
-- Contract/runtime/store — `in_progress`, основной агент.
+- Contract/provider/runtime/store — `completed-focused`: schema-first контракт,
+  фиксированный Z.AI adapter, одинаковые in-memory/PostgreSQL операции,
+  facilitator-only GET/POST и восстановление stale-run реализованы; реальная
+  PostgreSQL integration ожидает доступную disposable БД.
 - Player/CMT — `pending`, Luna после фиксации серверного контракта.
 - Critic/fix — `pending`, Luna xhigh после Luna-исполнителя.
 - Sol-high review and primary acceptance — `pending`.

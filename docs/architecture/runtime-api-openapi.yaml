@@ -567,6 +567,69 @@
         }
       }
     },
+    "/sessions/{sessionId}/facilitator-debrief": {
+      "get": {
+        "tags": ["Sessions"],
+        "operationId": "getFacilitatorDebrief",
+        "summary": "Read the facilitator-only status or accepted AI debrief draft.",
+        "x-cubica-scope": "facilitator",
+        "security": [{ "SessionBearer": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/SessionId" }],
+        "responses": {
+          "200": {
+            "description": "Current debrief status or the one accepted draft.",
+            "headers": {
+              "Cache-Control": { "schema": { "type": "string", "const": "no-store" } }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "./schemas/facilitator-debrief.schema.json" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      },
+      "post": {
+        "tags": ["Sessions"],
+        "operationId": "generateFacilitatorDebrief",
+        "summary": "Explicitly run one bounded facilitator AI debrief attempt.",
+        "x-cubica-scope": "facilitator",
+        "security": [{ "SessionBearer": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/SessionId" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "./schemas/facilitator-debrief.schema.json#/$defs/FacilitatorDebriefGenerationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Ready, generating, or auditable failed debrief status.",
+            "headers": {
+              "Cache-Control": { "schema": { "type": "string", "const": "no-store" } }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "./schemas/facilitator-debrief.schema.json" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "409": { "$ref": "#/components/responses/Conflict" },
+          "413": { "$ref": "#/components/responses/PayloadTooLarge" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      }
+    },
     "/sessions/{sessionId}/preview-restore": {
       "post": {
         "tags": ["Sessions", "EditorPreview"],

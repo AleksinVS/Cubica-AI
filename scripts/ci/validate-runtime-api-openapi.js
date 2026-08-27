@@ -84,6 +84,20 @@ const expectedOperations = [
     tag: "Sessions",
     marker: "public-journal"
   },
+  {
+    method: "get",
+    path: "/sessions/{sessionId}/facilitator-debrief",
+    operationId: "getFacilitatorDebrief",
+    tag: "Sessions",
+    marker: "facilitator-debrief"
+  },
+  {
+    method: "post",
+    path: "/sessions/{sessionId}/facilitator-debrief",
+    operationId: "generateFacilitatorDebrief",
+    tag: "Sessions",
+    marker: "facilitator-debrief"
+  },
   { method: "post", path: "/sessions/{sessionId}/private-invite-claims", operationId: "claimPrivateInvite", tag: "Sessions", marker: "private-invite-claims" },
   { method: "post", path: "/sessions/{sessionId}/seat-recovery-invites", operationId: "createSeatRecoveryInvite", tag: "Sessions", marker: "seat-recovery-invites" },
   { method: "get", path: "/sessions/{sessionId}/events", operationId: "streamSessionVersionNotifications", tag: "Sessions", marker: "sessionVersionEventsMatch" },

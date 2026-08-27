@@ -143,8 +143,23 @@ test("state-version conflict and missing provider credentials fail closed withou
   assert.equal(calls, 0);
 });
 
+test("credential revocation between source read and durable begin prevents provider I/O", async () => {
+  const store = new FakeDebriefStore();
+  store.beginAuthorized = false;
+  let calls = 0;
+  const service = serviceWith(store, validDraft, () => { calls += 1; });
+
+  await assert.rejects(
+    service.generate(session.sessionId, "ses_revoked", { expectedStateVersion: 3 }),
+    (error: unknown) => (error as { statusCode?: number }).statusCode === 401
+  );
+  assert.equal(calls, 0);
+  assert.equal(store.attempt, null);
+});
+
 class FakeDebriefStore implements FacilitatorDebriefStorePort<Record<string, unknown>> {
   authorized = true;
+  beginAuthorized = true;
   attempt: StoredFacilitatorDebriefAttempt | null = null;
 
   async readFacilitatorDebriefStatus(): Promise<FacilitatorDebriefStatusSource | null> {
@@ -164,6 +179,7 @@ class FakeDebriefStore implements FacilitatorDebriefStorePort<Record<string, unk
   async beginFacilitatorDebriefAttempt(
     input: BeginFacilitatorDebriefAttemptInput
   ): Promise<BeginFacilitatorDebriefAttemptResult> {
+    if (!this.beginAuthorized) return { kind: "authentication-failed" };
     if (input.expectedStateVersion !== session.version.stateVersion) return { kind: "version-conflict" };
     if (this.attempt?.status === "ready" || this.attempt?.status === "generating") {
       return { kind: "existing", attempt: cloneAttempt(this.attempt)! };
@@ -190,6 +206,8 @@ class FakeDebriefStore implements FacilitatorDebriefStorePort<Record<string, unk
       status: input.status,
       completedAt: new Date(input.completedAt),
       ...(input.audit.providerRequestId === undefined ? {} : { providerRequestId: input.audit.providerRequestId }),
+      ...(input.audit.providerStatus === undefined ? {} : { providerStatus: input.audit.providerStatus }),
+      ...(input.audit.providerUsage === undefined ? {} : { providerUsage: structuredClone(input.audit.providerUsage) }),
       ...(input.audit.responseBytes === undefined ? {} : { responseBytes: input.audit.responseBytes }),
       durationMs: input.audit.durationMs,
       ...(input.audit.rawResponseUtf8 === undefined ? {} : { rawResponseUtf8: input.audit.rawResponseUtf8 }),

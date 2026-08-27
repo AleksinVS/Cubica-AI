@@ -11,9 +11,12 @@ test("facilitator debrief storage retains attempts, one draft and no duplicated 
   assert.match(up, /WHERE status = 'generating'/u);
   assert.match(up, /WHERE status = 'ready'/u);
   assert.match(up, /journal_sha256 TEXT NOT NULL/u);
+  assert.match(up, /endpoint TEXT NOT NULL/u);
+  assert.match(up, /system_prompt_sha256 TEXT NOT NULL/u);
   assert.match(up, /input_snapshot_without_journal JSONB NOT NULL/u);
   assert.doesNotMatch(up, /journal_(?:json|bytes|content)|public_journal JSONB/u);
   assert.match(up, /raw_response_utf8 TEXT/u);
+  assert.match(up, /provider_usage JSONB/u);
   assert.match(up, /draft JSONB/u);
   assert.match(up, /error JSONB/u);
   assert.match(down, /^DROP TABLE IF EXISTS facilitator_debrief_attempts;\n$/u);

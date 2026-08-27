@@ -42,6 +42,8 @@ const input = {
   runId: "debrief_fixture123",
   sessionId: "session-debrief",
   gameId: "neutral-game",
+  bundleHash: `sha256:${"b".repeat(64)}`,
+  stateVersion: 7,
   throughEventSequence: 2,
   journalSha256: sha256(journalJson),
   publicJournalJson: journalJson,
@@ -94,8 +96,14 @@ test("Z.AI debrief call is pinned, bounded, non-streaming and returns complete a
   assert.equal("tools" in requestBody, false);
   assert.deepEqual(result.draftCandidate, draft);
   assert.equal(result.audit.providerRequestId, "chatcmpl-debrief");
+  assert.equal(result.audit.providerStatus, 200);
+  assert.deepEqual(result.audit.providerUsage, { prompt_tokens: 100, completion_tokens: 50, total_tokens: 150 });
   assert.equal(result.audit.durationMs, 37);
   assert.equal(result.audit.systemPrompt, FACILITATOR_DEBRIEF_SYSTEM_PROMPT);
+  assert.match(result.audit.systemPromptSha256, /^sha256:[a-f0-9]{64}$/u);
+  assert.equal(result.audit.endpoint, FACILITATOR_DEBRIEF_ZAI_ENDPOINT);
+  assert.equal(result.audit.inputSnapshotWithoutJournal.bundleHash, input.bundleHash);
+  assert.equal(result.audit.inputSnapshotWithoutJournal.stateVersion, 7);
   assert.equal(result.audit.inputSnapshotWithoutJournal.journalSha256, input.journalSha256);
   assert.equal("publicJournalJson" in result.audit.inputSnapshotWithoutJournal, false);
   assert.equal(result.audit.rawResponseUtf8.includes("chatcmpl-debrief"), true);

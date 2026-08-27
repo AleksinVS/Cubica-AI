@@ -22,6 +22,7 @@ export interface StoredFacilitatorDebriefAttempt {
   readonly requestAudit: FacilitatorDebriefProviderRequestAudit;
   readonly providerRequestId?: string;
   readonly providerStatus?: number;
+  readonly providerUsage?: unknown;
   readonly responseBytes?: number;
   readonly durationMs?: number;
   readonly rawResponseUtf8?: string;
@@ -47,16 +48,21 @@ export interface FacilitatorDebriefGenerationSource<TState = Record<string, unkn
 export interface BeginFacilitatorDebriefAttemptInput {
   readonly runId: string;
   readonly sessionId: string;
+  /** Rechecked under the same lock that creates the durable attempt. */
+  readonly credentialSha256: string;
   readonly expectedStateVersion: number;
   readonly throughEventSequence: number;
   readonly journalSha256: `sha256:${string}`;
   readonly requestAudit: FacilitatorDebriefProviderRequestAudit;
   readonly requestedAt: Date;
+  /** An older generating attempt is failed atomically before this run begins. */
+  readonly staleGeneratingBefore: Date;
 }
 
 export type BeginFacilitatorDebriefAttemptResult =
   | { readonly kind: "created"; readonly attempt: StoredFacilitatorDebriefAttempt }
   | { readonly kind: "existing"; readonly attempt: StoredFacilitatorDebriefAttempt }
+  | { readonly kind: "authentication-failed" }
   | { readonly kind: "version-conflict" };
 
 interface CompleteFacilitatorDebriefAttemptBase {

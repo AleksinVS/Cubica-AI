@@ -44,6 +44,8 @@ export interface FacilitatorDebriefProviderInput {
   readonly runId: string;
   readonly sessionId: string;
   readonly gameId: string;
+  readonly bundleHash: string;
+  readonly stateVersion: number;
   readonly throughEventSequence: number;
   readonly journalSha256: `sha256:${string}`;
   /** Exact bytes produced by serializePublicGameplayJournal. */
@@ -54,9 +56,11 @@ export interface FacilitatorDebriefProviderInput {
 
 export interface FacilitatorDebriefProviderAudit {
   readonly provider: "z.ai";
+  readonly endpoint: typeof FACILITATOR_DEBRIEF_ZAI_ENDPOINT;
   readonly model: "glm-4.7";
   readonly promptVersion: "facilitator-debrief-ru-v1";
   readonly systemPrompt: string;
+  readonly systemPromptSha256: `sha256:${string}`;
   readonly parameters: {
     readonly maxTokens: number;
     readonly temperature: 0;
@@ -71,12 +75,16 @@ export interface FacilitatorDebriefProviderAudit {
     readonly runId: string;
     readonly sessionId: string;
     readonly gameId: string;
+    readonly bundleHash: string;
+    readonly stateVersion: number;
     readonly throughEventSequence: number;
     readonly journalSha256: `sha256:${string}`;
     readonly publicState: unknown;
     readonly trainingMetadata: unknown;
   };
   readonly providerRequestId?: string;
+  readonly providerStatus: number;
+  readonly providerUsage?: unknown;
   readonly responseBytes: number;
   readonly durationMs: number;
   /** Exact bounded response envelope returned by Z.AI. */
@@ -85,11 +93,13 @@ export interface FacilitatorDebriefProviderAudit {
 
 export type FacilitatorDebriefProviderRequestAudit = Omit<
   FacilitatorDebriefProviderAudit,
-  "providerRequestId" | "responseBytes" | "durationMs" | "rawResponseUtf8"
+  "providerRequestId" | "providerStatus" | "providerUsage" | "responseBytes" | "durationMs" | "rawResponseUtf8"
 >;
 
 export type FacilitatorDebriefFailedProviderAudit = FacilitatorDebriefProviderRequestAudit & {
   readonly providerRequestId?: string;
+  readonly providerStatus?: number;
+  readonly providerUsage?: unknown;
   readonly responseBytes?: number;
   readonly durationMs: number;
   readonly rawResponseUtf8?: string;
@@ -182,6 +192,8 @@ export class ZaiFacilitatorDebriefProvider implements FacilitatorDebriefProvider
       runId: input.runId,
       sessionId: input.sessionId,
       gameId: input.gameId,
+      bundleHash: input.bundleHash,
+      stateVersion: input.stateVersion,
       throughEventSequence: input.throughEventSequence,
       journalSha256: input.journalSha256,
       publicState: cloneJson(input.publicState, "public state"),
@@ -221,6 +233,7 @@ export class ZaiFacilitatorDebriefProvider implements FacilitatorDebriefProvider
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
     timer.unref?.();
+    let receivedProviderStatus: number | undefined;
 
     try {
       const response = await this.fetchImpl(FACILITATOR_DEBRIEF_ZAI_ENDPOINT, {
@@ -233,6 +246,7 @@ export class ZaiFacilitatorDebriefProvider implements FacilitatorDebriefProvider
         body: body.buffer,
         signal: controller.signal
       });
+      receivedProviderStatus = response.status;
       const responseBytes = await readBounded(response, this.maxResponseBytes);
       const rawResponseUtf8 = decodeResponse(responseBytes);
       const durationMs = elapsed(this.now, startedAt);
@@ -258,12 +272,14 @@ export class ZaiFacilitatorDebriefProvider implements FacilitatorDebriefProvider
         }
         throw error;
       }
-      const { candidate, providerRequestId } = extracted;
+      const { candidate, providerRequestId, providerUsage } = extracted;
       return {
         draftCandidate: candidate,
         audit: {
           ...requestAudit,
           ...(providerRequestId === undefined ? {} : { providerRequestId }),
+          providerStatus: response.status,
+          ...(providerUsage === undefined ? {} : { providerUsage }),
           responseBytes: responseBytes.byteLength,
           durationMs,
           rawResponseUtf8
@@ -272,7 +288,7 @@ export class ZaiFacilitatorDebriefProvider implements FacilitatorDebriefProvider
     } catch (error) {
       const durationMs = elapsed(this.now, startedAt);
       if (error instanceof FacilitatorDebriefProviderError) {
-        throw withRequestAudit(error, requestAudit, durationMs);
+        throw withRequestAudit(error, requestAudit, durationMs, receivedProviderStatus);
       }
       if (controller.signal.aborted || (error instanceof Error && error.name === "AbortError")) {
         throw new FacilitatorDebriefProviderError("provider_timeout", {
@@ -296,9 +312,11 @@ function buildRequestAudit(
 ): FacilitatorDebriefProviderRequestAudit {
   return {
     provider: "z.ai",
+    endpoint: FACILITATOR_DEBRIEF_ZAI_ENDPOINT,
     model: FACILITATOR_DEBRIEF_ZAI_MODEL,
     promptVersion: FACILITATOR_DEBRIEF_PROMPT_VERSION,
     systemPrompt: FACILITATOR_DEBRIEF_SYSTEM_PROMPT,
+    systemPromptSha256: sha256(encoder.encode(FACILITATOR_DEBRIEF_SYSTEM_PROMPT)),
     parameters: {
       maxTokens: FACILITATOR_DEBRIEF_MAX_TOKENS,
       temperature: 0,
@@ -314,16 +332,19 @@ function buildRequestAudit(
 function withRequestAudit(
   error: FacilitatorDebriefProviderError,
   requestAudit: FacilitatorDebriefProviderRequestAudit,
-  fallbackDurationMs: number
+  fallbackDurationMs: number,
+  fallbackProviderStatus?: number
 ): FacilitatorDebriefProviderError {
   if (error.audit !== undefined) return error;
+  const providerStatus = error.providerStatus ?? fallbackProviderStatus;
   return new FacilitatorDebriefProviderError(error.code, {
-    ...(error.providerStatus === undefined ? {} : { providerStatus: error.providerStatus }),
+    ...(providerStatus === undefined ? {} : { providerStatus }),
     ...(error.rawResponseUtf8 === undefined ? {} : { rawResponseUtf8: error.rawResponseUtf8 }),
     ...(error.responseBytes === undefined ? {} : { responseBytes: error.responseBytes }),
     durationMs: error.durationMs ?? fallbackDurationMs,
     audit: {
       ...requestAudit,
+      ...(providerStatus === undefined ? {} : { providerStatus }),
       ...(error.responseBytes === undefined ? {} : { responseBytes: error.responseBytes }),
       durationMs: error.durationMs ?? fallbackDurationMs,
       ...(error.rawResponseUtf8 === undefined ? {} : { rawResponseUtf8: error.rawResponseUtf8 })
@@ -359,6 +380,8 @@ function buildProviderBody(
             runId: input.runId,
             sessionId: input.sessionId,
             gameId: input.gameId,
+            bundleHash: input.bundleHash,
+            stateVersion: input.stateVersion,
             throughEventSequence: input.throughEventSequence,
             journalSha256: input.journalSha256,
             publicJournal: journal,
@@ -384,8 +407,12 @@ function cloneJson(value: unknown, label: string): unknown {
 }
 
 function assertInputBinding(input: FacilitatorDebriefProviderInput): void {
-  if (input.runId.trim() === "" || input.sessionId.trim() === "" || input.gameId.trim() === "") {
+  if (input.runId.trim() === "" || input.sessionId.trim() === "" || input.gameId.trim() === "" ||
+      input.bundleHash.trim() === "") {
     throw new TypeError("The debrief provider input is missing its session binding.");
+  }
+  if (!Number.isSafeInteger(input.stateVersion) || input.stateVersion < 0) {
+    throw new TypeError("The debrief provider input has an invalid state boundary.");
   }
   if (!Number.isSafeInteger(input.throughEventSequence) || input.throughEventSequence < 0) {
     throw new TypeError("The debrief provider input has an invalid event boundary.");
@@ -396,7 +423,11 @@ function assertInputBinding(input: FacilitatorDebriefProviderInput): void {
   }
 }
 
-function extractDraftCandidate(envelope: unknown): { candidate: unknown; providerRequestId?: string } {
+function extractDraftCandidate(envelope: unknown): {
+  candidate: unknown;
+  providerRequestId?: string;
+  providerUsage?: unknown;
+} {
   if (!isRecord(envelope) || envelope.model !== FACILITATOR_DEBRIEF_ZAI_MODEL ||
       !Array.isArray(envelope.choices) || envelope.choices.length !== 1) {
     throw new FacilitatorDebriefProviderError("provider_invalid_response");
@@ -416,7 +447,14 @@ function extractDraftCandidate(envelope: unknown): { candidate: unknown; provide
   const providerRequestId = typeof envelope.id === "string" && envelope.id.length <= 256
     ? envelope.id
     : undefined;
-  return { candidate, ...(providerRequestId === undefined ? {} : { providerRequestId }) };
+  const providerUsage = envelope.usage === undefined
+    ? undefined
+    : cloneJson(envelope.usage, "provider usage");
+  return {
+    candidate,
+    ...(providerRequestId === undefined ? {} : { providerRequestId }),
+    ...(providerUsage === undefined ? {} : { providerUsage })
+  };
 }
 
 async function readBounded(response: Response, limit: number): Promise<Uint8Array> {

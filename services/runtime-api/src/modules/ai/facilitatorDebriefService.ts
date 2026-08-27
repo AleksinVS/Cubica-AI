@@ -35,6 +35,7 @@ import type {
 } from "./facilitatorDebriefStore.ts";
 
 type RuntimeState = Record<string, unknown>;
+export const FACILITATOR_DEBRIEF_STALE_GENERATING_MS = 90_000;
 
 export interface FacilitatorDebriefServiceOptions {
   readonly store: FacilitatorDebriefStorePort<RuntimeState>;
@@ -71,12 +72,17 @@ export class FacilitatorDebriefService {
     accessToken: string,
     request: FacilitatorDebriefGenerationRequest
   ): Promise<FacilitatorDebriefResponse> {
+    const credentialSha256 = hashSessionCredential(accessToken);
     const source = await this.store.readFacilitatorDebriefGenerationSource({
       sessionId,
-      credentialSha256: hashSessionCredential(accessToken)
+      credentialSha256
     }, MAX_PUBLIC_JOURNAL_ENTRIES + 1);
     if (source === null) throw new SessionAuthenticationError();
-    if (source.attempt?.status === "ready" || source.attempt?.status === "generating") {
+    if (source.attempt?.status === "ready") {
+      return responseFromAttempt(source.session.sessionId, source.session.gameId, source.attempt);
+    }
+    if (source.attempt?.status === "generating" &&
+        source.attempt.requestedAt.getTime() > this.readNow().getTime() - FACILITATOR_DEBRIEF_STALE_GENERATING_MS) {
       return responseFromAttempt(source.session.sessionId, source.session.gameId, source.attempt);
     }
     if (source.session.version.stateVersion !== request.expectedStateVersion) {
@@ -101,6 +107,8 @@ export class FacilitatorDebriefService {
       runId,
       sessionId: source.session.sessionId,
       gameId: source.session.gameId,
+      bundleHash: source.session.bundleHash,
+      stateVersion: source.session.version.stateVersion,
       throughEventSequence: journal.throughEventSequence,
       journalSha256,
       publicJournalJson,
@@ -113,7 +121,10 @@ export class FacilitatorDebriefService {
       prepared = this.provider.prepare(providerInput);
     } catch (error) {
       if (!(error instanceof FacilitatorDebriefProviderError) || error.audit === undefined) throw error;
-      const begun = await this.begin(source, request.expectedStateVersion, runId, journal, error.audit);
+      const begun = await this.begin(
+        source, credentialSha256, request.expectedStateVersion, runId, journal, error.audit
+      );
+      if (begun.kind === "authentication-failed") throw new SessionAuthenticationError();
       if (begun.kind !== "created") {
         return responseFromAttempt(source.session.sessionId, source.session.gameId, begun.attempt);
       }
@@ -122,11 +133,13 @@ export class FacilitatorDebriefService {
 
     const begun = await this.begin(
       source,
+      credentialSha256,
       request.expectedStateVersion,
       runId,
       journal,
       prepared.audit
     );
+    if (begun.kind === "authentication-failed") throw new SessionAuthenticationError();
     if (begun.kind !== "created") {
       return responseFromAttempt(source.session.sessionId, source.session.gameId, begun.attempt);
     }
@@ -173,19 +186,23 @@ export class FacilitatorDebriefService {
 
   private async begin(
     source: FacilitatorDebriefGenerationSource<RuntimeState>,
+    credentialSha256: string,
     expectedStateVersion: number,
     runId: string,
     journal: PortablePublicGameplayJournal,
     requestAudit: FacilitatorDebriefProviderRequestAudit
   ) {
+    const requestedAt = this.readNow();
     const begun = await this.store.beginFacilitatorDebriefAttempt({
       runId,
       sessionId: source.session.sessionId,
+      credentialSha256,
       expectedStateVersion,
       throughEventSequence: journal.throughEventSequence,
       journalSha256: sha256(serializePublicGameplayJournal(journal)),
       requestAudit,
-      requestedAt: this.readNow()
+      requestedAt,
+      staleGeneratingBefore: new Date(requestedAt.getTime() - FACILITATOR_DEBRIEF_STALE_GENERATING_MS)
     });
     if (begun.kind === "version-conflict") {
       throw new SessionVersionConflictError(source.session.sessionId, expectedStateVersion);

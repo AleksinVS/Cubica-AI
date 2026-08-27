@@ -9,9 +9,11 @@ CREATE TABLE facilitator_debrief_attempts (
   through_event_sequence BIGINT NOT NULL CHECK (through_event_sequence >= 0),
   journal_sha256 TEXT NOT NULL CHECK (journal_sha256 ~ '^sha256:[a-f0-9]{64}$'),
   provider TEXT NOT NULL CHECK (provider = 'z.ai'),
+  endpoint TEXT NOT NULL CHECK (endpoint = 'https://api.z.ai/api/paas/v4/chat/completions'),
   model TEXT NOT NULL CHECK (model = 'glm-4.7'),
   prompt_version TEXT NOT NULL CHECK (prompt_version = 'facilitator-debrief-ru-v1'),
   system_prompt TEXT NOT NULL CHECK (octet_length(system_prompt) BETWEEN 1 AND 32768),
+  system_prompt_sha256 TEXT NOT NULL CHECK (system_prompt_sha256 ~ '^sha256:[a-f0-9]{64}$'),
   provider_parameters JSONB NOT NULL CHECK (octet_length(provider_parameters::text) <= 16384),
   request_body_sha256 TEXT NOT NULL CHECK (request_body_sha256 ~ '^sha256:[a-f0-9]{64}$'),
   -- Oversized rejected requests are still auditable, so the measured size is
@@ -24,6 +26,9 @@ CREATE TABLE facilitator_debrief_attempts (
   ),
   provider_status INTEGER CHECK (
     provider_status IS NULL OR provider_status BETWEEN 100 AND 599
+  ),
+  provider_usage JSONB CHECK (
+    provider_usage IS NULL OR octet_length(provider_usage::text) <= 524288
   ),
   response_bytes INTEGER CHECK (
     response_bytes IS NULL OR response_bytes BETWEEN 0 AND 524288
