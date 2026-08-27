@@ -64,6 +64,7 @@ Task | Coordinator | Owner | Working/integration branch`, затем повто�
 
 | Boundary | Task | Coordinator | Owner | Working/integration branch |
 | --- | --- | --- | --- | --- |
+| Private participant credential recovery | TSK-20260705-multiplayer-runtime-realization | /root | /root | agent/estate-recoverable-handoff-20260827 |
 
 ## Now
 
