@@ -96,6 +96,10 @@ export interface FacilitatorDebriefProviderResult {
   readonly audit: FacilitatorDebriefProviderAudit;
 }
 
+export interface FacilitatorDebriefProvider {
+  generate(input: FacilitatorDebriefProviderInput): Promise<FacilitatorDebriefProviderResult>;
+}
+
 export interface ZaiFacilitatorDebriefProviderOptions {
   readonly apiKey: string;
   readonly timeoutMs?: number;
@@ -135,7 +139,7 @@ export class FacilitatorDebriefProviderError extends Error {
 }
 
 /** Server-pinned Z.AI GLM-4.7 adapter for one explicit debrief attempt. */
-export class ZaiFacilitatorDebriefProvider {
+export class ZaiFacilitatorDebriefProvider implements FacilitatorDebriefProvider {
   private readonly options: ZaiFacilitatorDebriefProviderOptions;
   private readonly fetchImpl: typeof fetch;
   private readonly now: () => number;

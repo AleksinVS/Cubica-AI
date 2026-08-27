@@ -14,11 +14,11 @@ CREATE TABLE facilitator_debrief_attempts (
   system_prompt TEXT NOT NULL CHECK (octet_length(system_prompt) BETWEEN 1 AND 32768),
   provider_parameters JSONB NOT NULL CHECK (octet_length(provider_parameters::text) <= 16384),
   request_body_sha256 TEXT NOT NULL CHECK (request_body_sha256 ~ '^sha256:[a-f0-9]{64}$'),
-  request_bytes INTEGER NOT NULL CHECK (request_bytes BETWEEN 1 AND 2097152),
+  -- Oversized rejected requests are still auditable, so the measured size is
+  -- not constrained to the provider admission limit.
+  request_bytes BIGINT NOT NULL CHECK (request_bytes >= 1),
   -- Provider input retained without duplicated public-journal bytes.
-  input_snapshot_without_journal JSONB NOT NULL CHECK (
-    octet_length(input_snapshot_without_journal::text) <= 2097152
-  ),
+  input_snapshot_without_journal JSONB NOT NULL,
   provider_request_id TEXT CHECK (
     provider_request_id IS NULL OR length(provider_request_id) BETWEEN 1 AND 256
   ),
