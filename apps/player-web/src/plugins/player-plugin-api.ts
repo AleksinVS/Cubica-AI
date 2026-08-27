@@ -12,8 +12,10 @@ import { ManifestAction } from "@cubica/contracts-manifest";
 import { registerGameConfigData, registerGameResolvers } from "@/presenter/game-config-registry";
 import {
   registerAccessibleBoardActionsProvider,
+  registerFacilitatorDebriefAvailabilityProvider,
   registerPhaserSceneFactory,
   type AccessibleBoardActionsProvider,
+  type FacilitatorDebriefAvailabilityProvider,
   type PhaserSceneFactory
 } from "@/plugins/phaser-scene-registry";
 
@@ -35,6 +37,7 @@ export type {
   AccessibleBoardActionOption,
   AccessibleBoardTransportRoadPreview,
   AccessibleBoardActionsProvider,
+  FacilitatorDebriefAvailabilityProvider,
   InteractiveBoardActionDraft,
   InteractiveBoardActionDraftValue,
   InteractiveBoardSpatialPreview,
@@ -97,6 +100,14 @@ export interface PlayerPluginApi {
     gameId: string,
     provider: AccessibleBoardActionsProvider
   ): () => void;
+  /**
+   * Registers game-owned terminal eligibility for the facilitator debrief.
+   * Optional so API 2.0 bundles remain loadable in older hosts.
+   */
+  registerFacilitatorDebriefAvailabilityProvider?(
+    gameId: string,
+    provider: FacilitatorDebriefAvailabilityProvider
+  ): () => void;
 }
 
 /**
@@ -123,6 +134,11 @@ export function createScopedPlayerPluginApi(
     },
     registerAccessibleBoardActionsProvider(gameId, provider) {
       const dispose = registerAccessibleBoardActionsProvider(gameId, provider);
+      collectDisposer?.(dispose);
+      return dispose;
+    },
+    registerFacilitatorDebriefAvailabilityProvider(gameId, provider) {
+      const dispose = registerFacilitatorDebriefAvailabilityProvider(gameId, provider);
       collectDisposer?.(dispose);
       return dispose;
     }

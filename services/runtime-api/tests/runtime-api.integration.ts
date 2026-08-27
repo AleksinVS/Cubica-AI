@@ -14,7 +14,11 @@ import path from "node:path";
 import { after, before, test } from "node:test";
 import { fileURLToPath } from "node:url";
 import type { PlayerFacingContent } from "@cubica/contracts-manifest";
-import type { PublicSessionCommandReceipt, SessionParticipant } from "@cubica/contracts-session";
+import type {
+  FacilitatorDebriefResponse,
+  PublicSessionCommandReceipt,
+  SessionParticipant
+} from "@cubica/contracts-session";
 
 import { createRuntimeApiServer } from "../src/modules/player-api/httpServer.ts";
 import { InMemorySessionStore } from "../src/modules/session/inMemorySessionStore.ts";
@@ -502,6 +506,53 @@ test("runtimeReady admits the complete normative package without exposing author
   assert.equal(sessionResponse.status, 201);
   assert.equal(session.gameId, "cards-money-trains");
   assert.equal(JSON.stringify(session).includes("runtimeBlockers"), false);
+});
+
+test("facilitator debrief HTTP boundary validates input, role and missing provider configuration", async () => {
+  const { response: createResponse, body: session } = await requestJson<CreateSessionResponse>("/sessions", {
+    method: "POST",
+    body: JSON.stringify({ gameId: "cards-money-trains" })
+  });
+  assert.equal(createResponse.status, 201, JSON.stringify(session));
+  sessionCredentials.set(session.sessionId, session.credential);
+
+  const initial = await authenticatedRequestJson<FacilitatorDebriefResponse>(
+    session.sessionId,
+    `/sessions/${encodeURIComponent(session.sessionId)}/facilitator-debrief`
+  );
+  assert.equal(initial.response.status, 200);
+  assert.equal(initial.response.headers.get("cache-control"), "no-store");
+  assert.equal(initial.body.status, "absent");
+  assert.equal(initial.body.canGenerate, true);
+
+  const malformed = await authenticatedRequestJson<{ error: string }>(
+    session.sessionId,
+    `/sessions/${encodeURIComponent(session.sessionId)}/facilitator-debrief`,
+    { method: "POST", body: "{}" }
+  );
+  assert.equal(malformed.response.status, 400);
+  assert.match(malformed.body.error, /canonical request schema/u);
+
+  const generated = await authenticatedRequestJson<FacilitatorDebriefResponse>(
+    session.sessionId,
+    `/sessions/${encodeURIComponent(session.sessionId)}/facilitator-debrief`,
+    {
+      method: "POST",
+      body: JSON.stringify({ expectedStateVersion: session.version.stateVersion })
+    }
+  );
+  assert.equal(generated.response.status, 200);
+  assert.equal(generated.response.headers.get("cache-control"), "no-store");
+  assert.equal(generated.body.status, "failed");
+  assert.equal(generated.body.error?.code, "provider_unavailable");
+
+  const playerSession = await createSession({ gameId: "simple-choice" });
+  const denied = await authenticatedRequestJson<{ error: string }>(
+    playerSession.sessionId,
+    `/sessions/${encodeURIComponent(playerSession.sessionId)}/facilitator-debrief`
+  );
+  assert.equal(denied.response.status, 401);
+  assert.equal(denied.response.headers.get("www-authenticate"), 'Bearer realm="cubica-session"');
 });
 
 // Agent Turn command execution is covered by agent-intent-selection.test.ts,

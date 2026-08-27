@@ -8,7 +8,8 @@
   "types": "src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./agent-control.schema.json": "./src/generated/agent-control.schema.json"
+    "./agent-control.schema.json": "./src/generated/agent-control.schema.json",
+    "./facilitator-debrief": "./src/facilitatorDebrief.ts"
   },
   "scripts": {
     "build": "npm run typecheck",

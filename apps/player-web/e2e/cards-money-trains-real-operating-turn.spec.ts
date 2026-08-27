@@ -201,6 +201,51 @@ test.describe("Cards Money Trains real operating-turn preview", { tag: "@player"
     // the production HTTP boundary. On the shared low-memory host the full
     // 50-action journey is substantially longer than the focused replay tests.
     test.setTimeout(900_000);
+    let generatedRequestBody: JsonRecord | null = null;
+    let readyDebrief: JsonRecord | null = null;
+    await page.route("**/api/runtime/sessions/*/facilitator-debrief", async (route) => {
+      const request = route.request();
+      const encodedSessionId = new URL(request.url()).pathname.split("/").at(-2) ?? "";
+      const sessionId = decodeURIComponent(encodedSessionId);
+      if (request.method() === "POST") {
+        generatedRequestBody = request.postDataJSON() as JsonRecord;
+        readyDebrief = {
+          format: "cubica.facilitator-debrief",
+          schemaVersion: "1.0.0",
+          sessionId,
+          gameId: GAME_ID,
+          status: "ready",
+          canGenerate: false,
+          runId: "debrief_browserproof1",
+          requestedAt: "2026-08-27T10:00:00.000Z",
+          completedAt: "2026-08-27T10:00:20.000Z",
+          journalSha256: `sha256:${"a".repeat(64)}`,
+          throughEventSequence: 1,
+          provider: "z.ai",
+          model: "glm-4.7",
+          promptVersion: "facilitator-debrief-ru-v1",
+          draft: {
+            title: "Проверяемый итог партии",
+            summary: "Черновик связан с завершённой игровой сессией.",
+            facts: [{ statement: "Партия завершена.", eventSequences: [1] }],
+            interpretations: [],
+            reflectionQuestions: [{ question: "Что определило итог?", eventSequences: [1] }]
+          }
+        };
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(readyDebrief ?? {
+          format: "cubica.facilitator-debrief",
+          schemaVersion: "1.0.0",
+          sessionId,
+          gameId: GAME_ID,
+          status: "absent",
+          canGenerate: true
+        })
+      });
+    });
     const source = materializeNormativePreviewSource();
     let snapshot = await openPreviewSession(page, source);
     const board = page.getByRole("region", { name: BOARD_LABEL });
@@ -459,6 +504,21 @@ test.describe("Cards Money Trains real operating-turn preview", { tag: "@player"
     expect(snapshot.state.public.session.fixtureId).toBe("normal-start-policy");
     expectNoSecretDecks(snapshot);
     await expect(page.getByText(/Этап:\s*finished/iu)).toBeVisible();
+
+    const debriefToggle = page.getByText("Открыть разбор ведущего", { exact: true });
+    await expect(debriefToggle).toBeVisible();
+    await debriefToggle.click();
+    await page.getByRole("button", { name: "Сформировать разбор" }).click();
+    await expect(page.getByText("Проверяемый итог партии", { exact: true })).toBeVisible();
+    expect(generatedRequestBody).toEqual({ expectedStateVersion: snapshot.version.stateVersion });
+    await expect(page.getByText("debrief_browserproof1", { exact: true })).toBeVisible();
+    await expect(page.getByText(`sha256:${"a".repeat(64)}`, { exact: true })).toBeVisible();
+
+    await page.reload();
+    await expect(page.getByText("Открыть разбор ведущего", { exact: true })).toBeVisible();
+    await page.getByText("Открыть разбор ведущего", { exact: true }).click();
+    await expect(page.getByText("debrief_browserproof1", { exact: true })).toBeVisible();
+    await expect(page.getByText(`sha256:${"a".repeat(64)}`, { exact: true })).toBeVisible();
   });
 
   test("runs news 24, cargo 1 to 9 and settlement through the facilitator map", async ({ page }) => {

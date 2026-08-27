@@ -7,6 +7,12 @@ import type { SessionStorePort } from "@cubica/contracts-session";
 import { HttpError } from "../errors.ts";
 import { AgentTurnService } from "../ai/agentRuntime.ts";
 import { AgentSeatDriver } from "../ai/agentSeatDriver.ts";
+import {
+  type FacilitatorDebriefProvider,
+  ZaiFacilitatorDebriefProvider
+} from "../ai/facilitatorDebriefProvider.ts";
+import { FacilitatorDebriefService } from "../ai/facilitatorDebriefService.ts";
+import type { FacilitatorDebriefStorePort } from "../ai/facilitatorDebriefStore.ts";
 import { SessionService } from "../session/session.service.ts";
 import { createSessionStoreFromEnvironment } from "../session/sessionStoreFactory.ts";
 import {
@@ -16,7 +22,8 @@ import {
 } from "../session/sessionAuthentication.ts";
 import {
   PrivateInviteAuthenticationError,
-  SessionAuthenticationError
+  SessionAuthenticationError,
+  SessionStoreUnavailableError
 } from "../session/sessionStoreErrors.ts";
 import {
   RuntimeService,
@@ -46,6 +53,7 @@ import {
   parseAgentTurnRequest,
   parseCreateSessionRequest,
   parseDispatchActionRequest,
+  parseFacilitatorDebriefGenerationRequest,
   parsePrivateInviteClaimRequest,
   parsePrivateSeatRecoveryInviteRequest,
   parseRestorePreviewSessionRequest,
@@ -69,6 +77,8 @@ export interface RuntimeApiServerOptions {
   assetContentService?: Pick<ContentService, "getGameAssetIndex" | "getGameAssetFile" | "getGameStylesheetSource">;
   /** Shared command/Agent-Turn admission boundary for this runtime process. */
   commandAdmissionController?: CommandAdmissionController;
+  /** Injected transport only for deterministic tests; production uses server configuration. */
+  facilitatorDebriefProvider?: FacilitatorDebriefProvider;
 }
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../../../");
@@ -210,6 +220,17 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
       sessionVersionEvents.disconnectPrincipal(sessionId, principalId);
     }
   });
+  const facilitatorDebriefStore = isFacilitatorDebriefStore(sessionStore)
+    ? sessionStore
+    : null;
+  const facilitatorDebriefService = facilitatorDebriefStore === null
+    ? null
+    : new FacilitatorDebriefService({
+      store: facilitatorDebriefStore,
+      provider: options.facilitatorDebriefProvider ?? new ZaiFacilitatorDebriefProvider({
+        apiKey: process.env.CUBICA_FACILITATOR_DEBRIEF_ZAI_API_KEY ?? ""
+      })
+    });
   const runtimeService = new RuntimeService(
     commandAdmissionController,
     options.random,
@@ -496,6 +517,25 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
         return;
       }
 
+      const facilitatorDebriefMatch =
+        (request.method === "GET" || request.method === "POST") &&
+        requestUrl.pathname.match(/^\/sessions\/([^/]+)\/facilitator-debrief$/u);
+      if (facilitatorDebriefMatch) {
+        if (facilitatorDebriefService === null) throw new SessionStoreUnavailableError();
+        const sessionId = decodePathSegment(facilitatorDebriefMatch[1], "sessionId");
+        const accessToken = requireBearerCredential(request.headers);
+        const debrief = request.method === "GET"
+          ? await facilitatorDebriefService.get(sessionId, accessToken)
+          : await facilitatorDebriefService.generate(
+            sessionId,
+            accessToken,
+            parseFacilitatorDebriefGenerationRequest(await readJsonBody(request))
+          );
+        response.setHeader("Cache-Control", "no-store");
+        sendJson(response, 200, debrief);
+        return;
+      }
+
       if (request.method === "GET" && requestUrl.pathname.startsWith("/sessions/")) {
         const sessionId = requestUrl.pathname.slice("/sessions/".length);
         const snapshot = await sessionService.getSession(
@@ -604,6 +644,16 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
       await sessionStore.close();
     }
   };
+}
+
+function isFacilitatorDebriefStore(
+  store: SessionStorePort<RuntimeState>
+): store is SessionStorePort<RuntimeState> & FacilitatorDebriefStorePort<RuntimeState> {
+  const candidate = store as Partial<FacilitatorDebriefStorePort<RuntimeState>>;
+  return typeof candidate.readFacilitatorDebriefStatus === "function" &&
+    typeof candidate.readFacilitatorDebriefGenerationSource === "function" &&
+    typeof candidate.beginFacilitatorDebriefAttempt === "function" &&
+    typeof candidate.completeFacilitatorDebriefAttempt === "function";
 }
 
 function assertEditorPreviewContentRoot(contentRoot: string): string {

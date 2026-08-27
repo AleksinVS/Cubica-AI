@@ -44,6 +44,8 @@ import { restorePreviewSession } from "@/presenter/runtime-client";
 import { SessionSetupPanel } from "@/components/session-setup-panel";
 import { SessionParticipants } from "@/components/session-participants";
 import { AgentControlPanel } from "@/components/agent-control-panel";
+import { FacilitatorDebriefPanel } from "@/components/facilitator-debrief-panel";
+import { resolveFacilitatorDebriefAvailabilityProvider } from "@/plugins/phaser-scene-registry";
 
 export type { PlayerFacingMockup as GameMockup };
 
@@ -521,6 +523,19 @@ export function GamePlayer({
     )
   );
   const sessionSnapshot = presenterRef.current?.sessionSnapshot ?? undefined;
+  const facilitatorDebriefAvailable = (() => {
+    if (playerPluginState.status !== "ready" || sessionSnapshot === undefined) {
+      return false;
+    }
+
+    const provider = resolveFacilitatorDebriefAvailabilityProvider(content.gameId);
+    if (provider === undefined) return false;
+    try {
+      return provider(sessionSnapshot) === true;
+    } catch {
+      return false;
+    }
+  })();
 
   return (
     <main ref={rootRef} className="shell game-player-root" style={rootStyle}>
@@ -529,6 +544,17 @@ export function GamePlayer({
         <AgentControlPanel control={agentControl.value} onRefresh={handleRefreshAgentControl} />
       ) : null}
       <PublicJournalDownload sessionId={state.sessionId} runtimeStatus={state.runtimeStatus} />
+      {facilitatorDebriefAvailable && sessionSnapshot ? (
+        <details className="facilitator-debrief-drawer">
+          <summary>Открыть разбор ведущего</summary>
+          <div className="facilitator-debrief-drawer-content">
+            <FacilitatorDebriefPanel
+              sessionId={sessionSnapshot.sessionId}
+              expectedStateVersion={sessionSnapshot.version.stateVersion}
+            />
+          </div>
+        </details>
+      ) : null}
       {activeManifestPanel && !keepsMapBehindPanel ? (
         <ManifestRenderer
           screenDefinition={activeManifestPanel}

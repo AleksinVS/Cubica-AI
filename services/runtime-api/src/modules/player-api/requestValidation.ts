@@ -1,6 +1,7 @@
 import type {
   CreateSessionRequest,
   DispatchActionInput,
+  FacilitatorDebriefGenerationRequest,
   PrivateInviteClaimRequest,
   PrivateSeatRecoveryInviteRequest,
   RestorePreviewSessionRequest,
@@ -8,6 +9,7 @@ import type {
 } from "@cubica/contracts-session";
 import {
   getCreateSessionRequestValidationErrors,
+  validateFacilitatorDebriefGenerationRequestShape,
   validatePrivateInviteClaimRequestShape,
   validatePrivateSeatRecoveryInviteRequestShape,
   validateCreateSessionRequestShape
@@ -157,6 +159,17 @@ export const parsePrivateSeatRecoveryInviteRequest = (
 ): PrivateSeatRecoveryInviteRequest => {
   if (!validatePrivateSeatRecoveryInviteRequestShape(body)) {
     throw new RequestValidationError("Seat recovery invite does not match the canonical request schema");
+  }
+  return body;
+};
+
+export const parseFacilitatorDebriefGenerationRequest = (
+  body: unknown
+): FacilitatorDebriefGenerationRequest => {
+  if (!validateFacilitatorDebriefGenerationRequestShape(body)) {
+    throw new RequestValidationError(
+      "Facilitator debrief generation does not match the canonical request schema"
+    );
   }
   return body;
 };

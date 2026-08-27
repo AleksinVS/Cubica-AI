@@ -9,6 +9,7 @@ import {
 } from "./preview-plugin-loader";
 import {
   resolveAccessibleBoardActionsProvider,
+  resolveFacilitatorDebriefAvailabilityProvider,
   resolvePhaserSceneFactory
 } from "./phaser-scene-registry";
 
@@ -188,6 +189,7 @@ describe("preview plugin loader", () => {
         api.registerAccessibleBoardActionsProvider("${gameId}", () => ([{
           id: "move", label: "Move", actionId: "board.move"
         }]));
+        api.registerFacilitatorDebriefAvailabilityProvider("${gameId}", () => true);
       }
     `;
     const bundle: PlayerWebPluginBundleReference = {
@@ -207,9 +209,11 @@ describe("preview plugin loader", () => {
 
     expect(resolvePhaserSceneFactory(gameId)).toBeTypeOf("function");
     expect(resolveAccessibleBoardActionsProvider(gameId)).toBeTypeOf("function");
+    expect(resolveFacilitatorDebriefAvailabilityProvider(gameId)).toBeTypeOf("function");
     handle.dispose();
     expect(resolvePhaserSceneFactory(gameId)).toBeUndefined();
     expect(resolveAccessibleBoardActionsProvider(gameId)).toBeUndefined();
+    expect(resolveFacilitatorDebriefAvailabilityProvider(gameId)).toBeUndefined();
   });
 });
 

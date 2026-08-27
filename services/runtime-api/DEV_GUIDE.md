@@ -60,9 +60,16 @@ npm run dev --workspace @cubica/runtime-api
 ```bash
 export SESSION_STORE=postgresql
 export DATABASE_URL='postgresql://user:password@host:5432/cubica'
+# Только для закрытого тестирования ИИ-разбора ведущего; значение берётся из
+# серверного secret store и никогда не передаётся Player Web.
+export CUBICA_FACILITATOR_DEBRIEF_ZAI_API_KEY='...'
 npm run migrate:sessions --workspace @cubica/runtime-api
 node --experimental-strip-types --enable-source-maps services/runtime-api/src/bootstrap.ts
 ```
+
+Без `CUBICA_FACILITATOR_DEBRIEF_ZAI_API_KEY` Runtime продолжает работать, но
+явный запуск ИИ-разбора завершается сохраняемой ошибкой `provider_unavailable`
+без внешнего сетевого вызова.
 
 ## Проверки
 

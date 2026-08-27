@@ -1,7 +1,7 @@
 /** Optional restart-recovery proof against a disposable real PostgreSQL database. */
 
 import assert from "node:assert/strict";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { test } from "node:test";
@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 import type { SessionCommandReceipt, SessionEventRecord } from "@cubica/contracts-session";
 import { Pool } from "pg";
 import { createImmutableBundleContent } from "../src/modules/content/immutableBundle.ts";
+import { ZaiFacilitatorDebriefProvider } from "../src/modules/ai/facilitatorDebriefProvider.ts";
 import { createRuntimeApiServer } from "../src/modules/player-api/httpServer.ts";
 import {
   asSessionDatabasePool,
@@ -48,6 +49,10 @@ test("PostgreSQL state, command receipt and event ledger survive a store restart
     path.resolve(testDirectory, "../migrations/007_private_seat_recovery.up.sql"),
     "utf8"
   );
+  const migration008 = await readFile(
+    path.resolve(testDirectory, "../migrations/008_facilitator_debrief.up.sql"),
+    "utf8"
+  );
   const setupPool = new Pool({ connectionString: databaseUrl });
   await setupPool.query(migration001);
   await setupPool.query(migration002);
@@ -56,6 +61,7 @@ test("PostgreSQL state, command receipt and event ledger survive a store restart
   await setupPool.query(migration005);
   await setupPool.query(migration006);
   await setupPool.query(migration007);
+  await setupPool.query(migration008);
   await setupPool.end();
 
   const firstPool = new Pool({ connectionString: databaseUrl });
@@ -160,6 +166,53 @@ test("PostgreSQL state, command receipt and event ledger survive a store restart
       events: [commandEvent]
     };
   });
+  const publicJournalJson = "{}";
+  const journalSha256 = `sha256:${createHash("sha256").update(publicJournalJson).digest("hex")}` as const;
+  const debriefRunId = "debrief_postgres123";
+  const requestAudit = new ZaiFacilitatorDebriefProvider({ apiKey: "test" }).prepare({
+    runId: debriefRunId,
+    sessionId: created.session.sessionId,
+    gameId: created.session.gameId,
+    bundleHash: created.session.bundleHash,
+    stateVersion: 1,
+    throughEventSequence: 1,
+    journalSha256,
+    publicJournalJson,
+    publicState: { step: 2 },
+    trainingMetadata: null
+  }).audit;
+  assert.equal((await firstStore.beginFacilitatorDebriefAttempt({
+    runId: debriefRunId,
+    sessionId: created.session.sessionId,
+    credentialSha256,
+    expectedStateVersion: 1,
+    throughEventSequence: 1,
+    journalSha256,
+    requestAudit,
+    requestedAt: new Date("2026-08-27T10:00:00.000Z"),
+    staleGeneratingBefore: new Date("2026-08-27T09:58:30.000Z")
+  })).kind, "created");
+  assert.equal((await firstStore.completeFacilitatorDebriefAttempt({
+    sessionId: created.session.sessionId,
+    runId: debriefRunId,
+    status: "ready",
+    completedAt: new Date("2026-08-27T10:00:10.000Z"),
+    audit: {
+      ...requestAudit,
+      providerStatus: 200,
+      providerUsage: { total_tokens: 12 },
+      responseBytes: 2,
+      durationMs: 10_000,
+      rawResponseUtf8: "{}"
+    },
+    draft: {
+      title: "PostgreSQL debrief",
+      summary: "Stored across restart.",
+      facts: [{ statement: "One event was committed.", eventSequences: [1] }],
+      interpretations: [],
+      reflectionQuestions: [{ question: "What changed?", eventSequences: [1] }]
+    }
+  }))?.status, "ready");
   assert.deepEqual(await firstStore.getSessionEvents(created.session.sessionId), [commandEvent]);
   const privateInviteSha256 = "8".repeat(64);
   const privateCredentialSha256 = "9".repeat(64);
@@ -216,6 +269,12 @@ test("PostgreSQL state, command receipt and event ledger survive a store restart
   }))?.receiptId, receiptId);
   assert.deepEqual(await secondStore.getSessionEvents(created.session.sessionId), [commandEvent]);
   assert.deepEqual(await secondStore.getSessionEvents(created.session.sessionId, 1), []);
+  const restoredDebrief = await secondStore.readFacilitatorDebriefStatus({
+    sessionId: created.session.sessionId,
+    credentialSha256
+  });
+  assert.equal(restoredDebrief?.attempt?.status, "ready");
+  assert.deepEqual(restoredDebrief?.attempt?.providerUsage, { total_tokens: 12 });
 
   const contenderPool = new Pool({ connectionString: databaseUrl });
   const contenderStore = new PostgresSessionStore<Record<string, unknown>>(
@@ -370,7 +429,8 @@ test("PostgreSQL runtime HTTP restart resyncs private-invite peers", {
         "004_session_participants.up.sql",
         "005_session_event_metric_changes.up.sql",
         "006_private_invite_claim.up.sql",
-        "007_private_seat_recovery.up.sql"
+        "007_private_seat_recovery.up.sql",
+        "008_facilitator_debrief.up.sql"
       ]) {
         await setupPool.query(
           await readFile(path.resolve(testDirectory, "../migrations", migrationName), "utf8")
@@ -399,6 +459,14 @@ test("PostgreSQL runtime HTTP restart resyncs private-invite peers", {
       if (hasRecoveryToken.rowCount === 0) {
         await setupPool.query(
           await readFile(path.resolve(testDirectory, "../migrations/007_private_seat_recovery.up.sql"), "utf8")
+        );
+      }
+      const hasFacilitatorDebrief = await setupPool.query<{ table_name: string | null }>(
+        "SELECT to_regclass('public.facilitator_debrief_attempts') AS table_name"
+      );
+      if (hasFacilitatorDebrief.rows[0]?.table_name === null) {
+        await setupPool.query(
+          await readFile(path.resolve(testDirectory, "../migrations/008_facilitator_debrief.up.sql"), "utf8")
         );
       }
     }
