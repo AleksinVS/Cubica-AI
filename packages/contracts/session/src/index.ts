@@ -2,6 +2,7 @@ export type SessionId = string;
 export type PlayerId = string;
 export type EventId = string;
 export type * from "./generated/public-gameplay-journal.ts";
+export type * from "./generated/facilitator-debrief.ts";
 export type { CreateSessionRequest } from "./generated/create-session-request.ts";
 import type { SessionParticipant } from "./generated/session-participant.ts";
 import type { PrivateSessionInvite } from "./generated/private-session-invite.ts";
@@ -25,6 +26,11 @@ export {
 import type { AgentControl } from "./generated/agent-control.ts";
 export type { AgentControl } from "./generated/agent-control.ts";
 export { validateAgentControlShape } from "./agentControlValidation.ts";
+export {
+  getFacilitatorDebriefContractErrors,
+  validateFacilitatorDebriefGenerationRequestShape,
+  validateFacilitatorDebriefResponseShape
+} from "./facilitatorDebriefValidation.ts";
 export type SessionRole = "player" | "facilitator" | "assistant" | "observer";
 export type SessionPrincipalId = string;
 

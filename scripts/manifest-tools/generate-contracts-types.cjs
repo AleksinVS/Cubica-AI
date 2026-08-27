@@ -192,6 +192,27 @@ const JOBS = [
     rootName: "PortablePublicGameplayJournal",
     compileRoot: true,
     validationOnlyRootAllOf: true
+  },
+  {
+    name: "facilitator-debrief",
+    schema: path.join(repoRoot, "docs", "architecture", "schemas", "facilitator-debrief.schema.json"),
+    output: path.join(repoRoot, "packages", "contracts", "session", "src", "generated", "facilitator-debrief.ts"),
+    rootName: "FacilitatorDebriefResponse",
+    compileRoot: true,
+    validationOnlyRootAllOf: true
+  },
+  {
+    name: "facilitator-debrief-schema",
+    schema: path.join(repoRoot, "docs", "architecture", "schemas", "facilitator-debrief.schema.json"),
+    output: path.join(repoRoot, "packages", "contracts", "session", "src", "generated", "facilitator-debrief.schema.json"),
+    outputKind: "json-schema"
+  },
+  {
+    name: "facilitator-debrief-schema-module",
+    schema: path.join(repoRoot, "docs", "architecture", "schemas", "facilitator-debrief.schema.json"),
+    output: path.join(repoRoot, "packages", "contracts", "session", "src", "generated", "facilitator-debrief.schema.ts"),
+    outputKind: "typescript-schema",
+    exportName: "facilitatorDebriefSchema"
   }
 ];
 
