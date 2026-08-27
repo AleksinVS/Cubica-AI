@@ -24,25 +24,28 @@ type Snapshot = {
   receipt?: { status: string; rejectionCode?: string };
   actionAvailability?: Array<{ actionId: string; status: string }>;
 };
-type S10Window = Window & { __s10Events?: string[] };
+type S10Window = Window & { __s10Events?: string[]; __s10Sources?: EventSource[] };
 type CursorEvent = { stateVersion?: number; lastEventSequence?: number };
 
 test.describe("Estate Race private network", { tag: "@player" }, () => {
   test("keeps invite and seat secrets private while peers follow SSE refresh", async ({ browser }) => {
-    // The dev profile compiles each newly touched BFF route on demand. Keep
-    // assertions individually bounded while allowing one cold two-context run.
-    test.setTimeout(300_000);
+    // Keep assertions individually bounded while allowing one cold
+    // multi-context run through the production Player Web profile.
+    test.setTimeout(420_000);
     const host = await context(browser);
     const guest = await context(browser);
+    const recoveredGuest = await context(browser);
     const anonymous = await browser.newContext({ baseURL: PLAYER_URL });
     const hostPage = await host.newPage();
     const guestPage = await guest.newPage();
+    const recoveredGuestPage = await recoveredGuest.newPage();
     try {
       await hostPage.goto(`/?gameId=${GAME_ID}`);
       await expect(hostPage.getByRole("heading", { name: "Кто участвует в игре?" })).toBeVisible();
       await hostPage.getByLabel("Игра по приглашениям").check();
       const createRequest = hostPage.waitForRequest((request) => new URL(request.url()).pathname === "/api/runtime/sessions" && request.method() === "POST");
       const create = waitFor(hostPage, "/api/runtime/sessions", "POST");
+      const hostEventsReady = waitForEventStream(hostPage);
       await hostPage.getByRole("button", { name: "Начать игру" }).click();
       expect((await createRequest).postDataJSON()).toMatchObject({ accessMode: "private-invite", participantCount: 2, agentSeatCount: 0 });
       const created = await json(await create, 201) as Snapshot;
@@ -56,7 +59,7 @@ test.describe("Estate Race private network", { tag: "@player" }, () => {
       expect(Object.keys(invite ?? {}).sort()).toEqual(["expiresAt", "inviteToken", "playerId", "seatId"]);
       expect(created).not.toHaveProperty("credential");
       if (!invite) throw new Error("Private invite was not returned by session creation.");
-      await expectCursor(hostPage, created.version);
+      await expectEventStream(hostEventsReady);
       const hostEventsBeforeClaim = await sessionEventCount(hostPage);
       const copy = hostPage.getByRole("button", { name: "Скопировать ссылку" });
       await expect(copy).toBeVisible();
@@ -71,6 +74,7 @@ test.describe("Estate Race private network", { tag: "@player" }, () => {
       expect(inviteUrl.hash).not.toMatch(/credential|playerId|seatId/iu);
 
       const claim = waitFor(guestPage, `/api/runtime/sessions/${created.sessionId}/private-invite-claims`, "POST");
+      const guestEventsReady = waitForEventStream(guestPage, created.sessionId);
       await guestPage.goto(inviteUrl.toString());
       const guestSnapshot = await json(await claim, 200) as Snapshot;
       expect(guestSnapshot.sessionId).toBe(created.sessionId);
@@ -99,7 +103,7 @@ test.describe("Estate Race private network", { tag: "@player" }, () => {
       const anonymousBody = await anonymousRead.text();
       expect(anonymousRead.status()).toBe(401);
       expect(anonymousBody).not.toMatch(/privateInvites|inviteToken|inv_[A-Za-z0-9_-]+|ses_[A-Za-z0-9_-]+/u);
-      await expectCursor(guestPage, guestSnapshot.version);
+      await expectEventStream(guestEventsReady);
 
       await expectBoardAction(hostPage, "Определить порядок");
       const setupRead = waitForSessionReadVersion(
@@ -116,12 +120,60 @@ test.describe("Estate Race private network", { tag: "@player" }, () => {
       expectSafeProjection(setupRefresh, "p2", "p1");
       await expectCursor(guestPage, setup.snapshot.version);
 
+      const recoveryIssue = waitFor(
+        hostPage,
+        `/api/runtime/sessions/${created.sessionId}/seat-recovery-invites`,
+        "POST"
+      );
+      await hostPage.getByRole("button", { name: "Восстановить приглашение: p2" }).click();
+      const recoveryIssueResponse = await recoveryIssue;
+      const recoveryIssueBody = await recoveryIssueResponse.json() as {
+        seatId: string;
+        playerId: string;
+        inviteToken: string;
+        expiresAt: string;
+      };
+      expect(recoveryIssueResponse.status()).toBe(201);
+      expect(recoveryIssueBody).toMatchObject({ seatId: "p2", playerId: "p2" });
+      const recoveryUrl = new URL(await hostPage.evaluate(() => navigator.clipboard.readText()));
+      const recoveryFragment = new URLSearchParams(recoveryUrl.hash.slice(1));
+      expect(recoveryFragment.get("sessionId")).toBe(created.sessionId);
+      expect(recoveryFragment.get("inviteToken")).toBe(recoveryIssueBody.inviteToken);
+
+      const recoveryClaim = waitFor(
+        recoveredGuestPage,
+        `/api/runtime/sessions/${created.sessionId}/private-invite-claims`,
+        "POST"
+      );
+      const recoveryEvents = waitFor(
+        recoveredGuestPage,
+        `/api/runtime/sessions/${created.sessionId}/events`,
+        "GET"
+      );
+      await recoveredGuestPage.goto(recoveryUrl.toString());
+      const recoveredSnapshot = await json(await recoveryClaim, 200) as Snapshot;
+      expect(recoveredSnapshot.version).toEqual(setupRefresh.version);
+      expect(recoveredSnapshot.participants).toEqual(setupRefresh.participants);
+      expect(recoveredSnapshot.state).toEqual(setupRefresh.state);
+      expect(recoveredSnapshot.actionAvailability).toEqual(setupRefresh.actionAvailability);
+      expectSafeProjection(recoveredSnapshot, "p2", "p1");
+      await expect.poll(() => recoveredGuestPage.url()).toBe(`${PLAYER_URL}/?gameId=${GAME_ID}`);
+      await expectEventStream(recoveryEvents);
+
+      const oldGuestRead = await sessionReadResult(guestPage, created.sessionId);
+      expect(oldGuestRead.status).toBe(401);
+      expect(oldGuestRead.body).not.toMatch(/privateInvites|inviteToken|inv_|ses_/iu);
+      const recoveredCookies = await recoveredGuest.cookies(`${PLAYER_URL}/api/runtime`);
+      expect(recoveredCookies.find((cookie) => cookie.path === "/api/runtime" && cookie.httpOnly))
+        .toMatchObject({ path: "/api/runtime", httpOnly: true, sameSite: "Strict" });
+
       const active = setup.snapshot.state.public.turn.activePlayerId as string;
-      const activePage = active === "p1" ? hostPage : guestPage;
-      const peerPage = active === "p1" ? guestPage : hostPage;
-      const activeSnapshot = active === "p1" ? setup.snapshot : setupRefresh;
+      const activePage = active === "p1" ? hostPage : recoveredGuestPage;
+      const peerPage = active === "p1" ? recoveredGuestPage : hostPage;
+      const activeSnapshot = active === "p1" ? setup.snapshot : recoveredSnapshot;
       expect(activeSnapshot.actionAvailability?.find(({ actionId }) => actionId === "turn.roll")?.status).toBe("available");
       await expectBoardAction(activePage, "Бросить кости");
+      await expectEventStreamOpen(peerPage);
       const peerRead = waitForSessionReadVersion(
         peerPage,
         created.sessionId,
@@ -131,10 +183,10 @@ test.describe("Estate Race private network", { tag: "@player" }, () => {
       expect(roll.request.actionId).toBe("turn.roll");
       expect(roll.request).not.toHaveProperty("playerId");
       expect(roll.snapshot.receipt?.status).toBe("applied");
+      await expectCursor(peerPage, roll.snapshot.version);
       const peer = await json(await peerRead, 200) as Snapshot;
       expect(peer.version).toEqual(roll.snapshot.version);
       expectSafeProjection(peer, active === "p1" ? "p2" : "p1", active);
-      await expectCursor(peerPage, roll.snapshot.version);
 
       const spoof = await postAction(hostPage, { sessionId: created.sessionId, playerId: "p2", actionId: "turn.roll", commandId: commandId(), expectedStateVersion: roll.snapshot.version.stateVersion, params: {} });
       expect(spoof.status).toBe(400);
@@ -142,31 +194,36 @@ test.describe("Estate Race private network", { tag: "@player" }, () => {
       const stale = await postAction(activePage, { sessionId: created.sessionId, actionId: "turn.roll", commandId: commandId(), expectedStateVersion: setup.snapshot.version.stateVersion, params: {} });
       expect(stale.status).toBe(409);
       expect(JSON.stringify(stale.body)).not.toMatch(/inviteToken|privateInvites|ses_/iu);
-      const unchanged = await sessionGet(guestPage, created.sessionId);
+      const unchanged = await sessionGet(recoveredGuestPage, created.sessionId);
       expect(unchanged.version).toEqual(roll.snapshot.version);
       expect(unchanged.state.public.turn).toEqual(roll.snapshot.state.public.turn);
 
       const reconnectRead = waitForSessionReadVersion(
-        guestPage,
+        recoveredGuestPage,
         created.sessionId,
         roll.snapshot.version.stateVersion
       );
-      await guestPage.reload();
+      const reconnectEvents = waitFor(
+        recoveredGuestPage,
+        `/api/runtime/sessions/${created.sessionId}/events`,
+        "GET"
+      );
+      await recoveredGuestPage.reload();
       const reconnected = await json(await reconnectRead, 200) as Snapshot;
       expect(reconnected.version).toEqual(roll.snapshot.version);
       expect(reconnected.state.public.turn.activePlayerId).toBe(roll.snapshot.state.public.turn.activePlayerId);
       expectSafeProjection(reconnected, "p2", "p1");
-      await expectCursor(guestPage, roll.snapshot.version);
+      await expectEventStream(reconnectEvents);
 
-      await guestPage.setViewportSize({ width: 390, height: 844 });
-      const actionToggle = board(guestPage).getByRole("button", { name: "Действия" });
-      const overviewToggle = guestPage.getByRole("button", { name: "Открыть панель «Обзор»" });
-      const fitMap = board(guestPage).getByRole("button", { name: "Показать всю карту" });
+      await recoveredGuestPage.setViewportSize({ width: 390, height: 844 });
+      const actionToggle = board(recoveredGuestPage).getByRole("button", { name: "Действия" });
+      const overviewToggle = recoveredGuestPage.getByRole("button", { name: "Открыть панель «Обзор»" });
+      const fitMap = board(recoveredGuestPage).getByRole("button", { name: "Показать всю карту" });
       await expect(actionToggle).toBeVisible();
       await expect(overviewToggle).toBeVisible();
       await expect(fitMap).toBeEnabled({ timeout: 60_000 });
       await fitMap.click();
-      await guestPage.evaluate(() => new Promise<void>((resolve) => {
+      await recoveredGuestPage.evaluate(() => new Promise<void>((resolve) => {
         requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
       }));
       const [actionBounds, overviewBounds] = await Promise.all([
@@ -178,7 +235,14 @@ test.describe("Estate Race private network", { tag: "@player" }, () => {
       if (actionBounds && overviewBounds) {
         expect(actionBounds.x + actionBounds.width).toBeLessThan(overviewBounds.x);
       }
-    } finally { await Promise.allSettled([anonymous.close(), host.close(), guest.close()]); }
+    } finally {
+      await Promise.allSettled([
+        anonymous.close(),
+        host.close(),
+        guest.close(),
+        recoveredGuest.close()
+      ]);
+    }
   });
 });
 
@@ -188,10 +252,13 @@ async function context(browser: Browser): Promise<BrowserContext> {
   await result.addInitScript(() => {
     const events: string[] = [];
     (window as S10Window).__s10Events = events;
+    const sources: EventSource[] = [];
+    (window as S10Window).__s10Sources = sources;
     const Native = window.EventSource;
     window.EventSource = class extends Native {
       constructor(url: string | URL, init?: EventSourceInit) {
         super(url, init);
+        sources.push(this);
         this.addEventListener("version", (event) => events.push((event as MessageEvent<string>).data));
       }
     };
@@ -212,6 +279,27 @@ async function expectBoardAction(page: Page, label: string): Promise<void> {
 const waitFor = (page: Page, path: string, method: string) => page.waitForResponse((response) =>
   new URL(response.url()).pathname === path && response.request().method() === method
 );
+const waitForEventStream = (page: Page, sessionId?: string) => page.waitForResponse((response) => {
+  const path = new URL(response.url()).pathname;
+  return response.request().method() === "GET" && (
+    sessionId === undefined
+      ? /^\/api\/runtime\/sessions\/[^/]+\/events$/u.test(path)
+      : path === `/api/runtime/sessions/${encodeURIComponent(sessionId)}/events`
+  );
+});
+async function expectEventStream(response: Promise<Response>): Promise<void> {
+  const stream = await response;
+  expect(stream.status()).toBe(200);
+  expect(stream.headers()["content-type"]).toContain("text/event-stream");
+}
+async function expectEventStreamOpen(page: Page): Promise<void> {
+  await expect.poll(() => page.evaluate(() =>
+    ((window as S10Window).__s10Sources ?? []).map((source) => source.readyState)
+  ), {
+    message: "authenticated SSE stream should reach the OPEN state",
+    timeout: 60_000
+  }).toContain(1);
+}
 const waitForSessionReadVersion = (page: Page, sessionId: string, stateVersion: number) =>
   waitForSessionRead(page, sessionId, (snapshot) => snapshot.version.stateVersion === stateVersion);
 const waitForSessionRead = (
@@ -259,6 +347,14 @@ async function sessionGet(page: Page, id: string): Promise<Snapshot> {
       credentials: "same-origin"
     });
     return response.json() as Promise<Snapshot>;
+  }, id);
+}
+async function sessionReadResult(page: Page, id: string): Promise<{ status: number; body: string }> {
+  return page.evaluate(async (sessionId) => {
+    const response = await fetch(`/api/runtime/sessions/${encodeURIComponent(sessionId)}`, {
+      credentials: "same-origin"
+    });
+    return { status: response.status, body: await response.text() };
   }, id);
 }
 function expectSafeProjection(snapshot: Snapshot, own: string, peer: string): void {

@@ -11,6 +11,44 @@ vi.mock("../../app/api/runtime/_shared", async () => {
 describe("S10 private invite BFF", () => {
   beforeEach(() => requestRuntime.mockReset());
 
+  it("forwards seat recovery through the existing HttpOnly session credential", async () => {
+    const upstream = vi.fn().mockResolvedValue(new Response(JSON.stringify({ seatId: "p2", playerId: "p2", inviteToken: "opaque", expiresAt: "2026-01-01T00:00:00Z" }), { status: 201 }));
+    vi.stubGlobal("fetch", upstream);
+    const { POST } = await import("../../app/api/runtime/sessions/[sessionId]/seat-recovery-invites/route");
+    const request = new NextRequest("http://localhost/api/runtime/sessions/s1/seat-recovery-invites", { method: "POST", body: JSON.stringify({ seatId: "p2" }) });
+    request.cookies.set(runtimeCredentialCookieName("s1"), "session-secret");
+    const response = await POST(request, { params: Promise.resolve({ sessionId: "s1" }) });
+    expect(response.status).toBe(201);
+    expect(upstream).toHaveBeenCalledWith(expect.objectContaining({ pathname: "/sessions/s1/seat-recovery-invites" }), expect.objectContaining({ body: JSON.stringify({ seatId: "p2" }) }));
+    expect(new Headers(upstream.mock.calls[0]?.[1]?.headers).get("Authorization")).toBe("Bearer session-secret");
+    expect(await response.json()).toEqual(expect.objectContaining({ seatId: "p2" }));
+  });
+
+  it("rejects an oversized recovery body before contacting runtime", async () => {
+    const upstream = vi.fn();
+    vi.stubGlobal("fetch", upstream);
+    const { POST } = await import("../../app/api/runtime/sessions/[sessionId]/seat-recovery-invites/route");
+    const response = await POST(new NextRequest("http://localhost/api/runtime/sessions/s1/seat-recovery-invites", { method: "POST", body: "x".repeat(256 * 1024 + 1) }), { params: Promise.resolve({ sessionId: "s1" }) });
+    expect(response.status).toBe(413);
+    expect(upstream).not.toHaveBeenCalled();
+  });
+
+  it("requires the session cookie and preserves upstream recovery errors", async () => {
+    const upstream = vi.fn().mockResolvedValue(new Response(JSON.stringify({ error: "seat is not recoverable" }), { status: 409, headers: { "content-type": "application/problem+json" } }));
+    vi.stubGlobal("fetch", upstream);
+    const { POST } = await import("../../app/api/runtime/sessions/[sessionId]/seat-recovery-invites/route");
+    const missing = await POST(new NextRequest("http://localhost/api/runtime/sessions/s1/seat-recovery-invites", { method: "POST", body: JSON.stringify({ seatId: "p2" }) }), { params: Promise.resolve({ sessionId: "s1" }) });
+    expect(missing.status).toBe(401);
+    expect(upstream).not.toHaveBeenCalled();
+
+    const request = new NextRequest("http://localhost/api/runtime/sessions/s1/seat-recovery-invites", { method: "POST", body: JSON.stringify({ seatId: "p2" }) });
+    request.cookies.set(runtimeCredentialCookieName("s1"), "session-secret");
+    const error = await POST(request, { params: Promise.resolve({ sessionId: "s1" }) });
+    expect(error.status).toBe(409);
+    await expect(error.json()).resolves.toEqual({ error: "seat is not recoverable" });
+    expect(error.headers.get("set-cookie")).toBeNull();
+  });
+
   it("claims without forwarding a browser bearer and redacts durable credential", async () => {
     requestRuntime.mockResolvedValue(new Response(JSON.stringify({ sessionId: "s1", credential: "ses_secret", participants: [] }), { status: 200 }));
     const { POST } = await import("../../app/api/runtime/sessions/[sessionId]/private-invite-claims/route");
@@ -34,7 +72,12 @@ describe("S10 private invite BFF", () => {
     expect(response.headers.get("set-cookie")).toBeNull();
   });
 
-  it("rejects a claim when the browser already has the session credential cookie", async () => {
+  it("forwards an existing cookie as same-principal recovery proof and replaces it only on success", async () => {
+    requestRuntime.mockResolvedValue(new Response(JSON.stringify({
+      sessionId: "s1",
+      credential: "replacement-credential",
+      participants: []
+    }), { status: 200 }));
     const { POST } = await import("../../app/api/runtime/sessions/[sessionId]/private-invite-claims/route");
     const request = new NextRequest("http://localhost/api/runtime/sessions/s1/private-invite-claims", {
       method: "POST",
@@ -43,9 +86,11 @@ describe("S10 private invite BFF", () => {
     request.cookies.set(runtimeCredentialCookieName("s1"), "existing-credential");
 
     const response = await POST(request, { params: Promise.resolve({ sessionId: "s1" }) });
-    expect(response.status).toBe(409);
-    expect(requestRuntime).not.toHaveBeenCalled();
-    expect(response.headers.get("set-cookie")).toBeNull();
+    expect(response.status).toBe(200);
+    const forwarded = requestRuntime.mock.calls[0]?.[1] as RequestInit;
+    expect(new Headers(forwarded.headers).get("Authorization")).toBe("Bearer existing-credential");
+    expect(response.headers.get("set-cookie")).toContain("replacement-credential");
+    expect(await response.json()).not.toHaveProperty("credential");
   });
 
   it("rejects an oversized claim body before contacting runtime", async () => {

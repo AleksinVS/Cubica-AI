@@ -13,10 +13,12 @@ export type { PrivateSessionInvite } from "./generated/private-session-invite.ts
 export type { PrivateInviteToken } from "./generated/private-invite-token.ts";
 export type { SessionCredential } from "./generated/session-credential.ts";
 export type { PrivateInviteClaimRequest } from "./generated/private-invite-claim-request.ts";
+export type { PrivateSeatRecoveryInviteRequest } from "./generated/private-seat-recovery-invite-request.ts";
 export type { SessionVersionNotification } from "./generated/session-version-notification.ts";
 export {
   validatePrivateSessionInvitesShape,
   validatePrivateInviteClaimRequestShape,
+  validatePrivateSeatRecoveryInviteRequestShape,
   validateSessionVersionNotificationShape
 } from "./sessionNetworkValidation.ts";
 export {
@@ -378,17 +380,34 @@ export interface SessionAuthenticationInput {
   credentialSha256: string;
 }
 
-/** Atomic replacement of a one-time invite digest by a durable participant digest. */
+/** Atomic consumption of an initial or recovery invite by one participant. */
 export interface PrivateInviteClaimStoreInput {
   sessionId: SessionId;
   inviteCredentialSha256: string;
   participantCredentialSha256: string;
+  /** Optional durable credential proving that a recovery stays on the same principal. */
+  currentCredentialSha256?: string;
   claimedAt: Date;
 }
 
 export interface PrivateInviteClaimStoreResult<TState = unknown> {
   session: SessionRecord<TState>;
   principal: SessionPrincipal;
+  transition: "initial-join" | "credential-recovery";
+}
+
+/** Authenticated host request to replace one pending recovery capability. */
+export interface PrivateSeatRecoveryInviteStoreInput extends SessionAuthenticationInput {
+  seatId: string;
+  recoveryTokenSha256: string;
+  recoveryTokenExpiresAt: Date;
+  issuedAt: Date;
+}
+
+export interface PrivateSeatRecoveryInviteStoreResult {
+  seatId: string;
+  playerId: PlayerId;
+  recoveryTokenExpiresAt: Date;
 }
 
 /**
@@ -583,7 +602,11 @@ export interface SessionStorePort<TState = unknown> {
   getSession(sessionId: SessionId): Promise<SessionRecord<TState> | null>;
   /** Authenticate a live session from a credential digest without exposing it. */
   authenticateSession(input: SessionAuthenticationInput): Promise<SessionPrincipal | null>;
-  /** Consume one unexpired invite and commit its `invited -> joined` transition. */
+  /** Replace the pending recovery capability for one joined human guest seat. */
+  issuePrivateSeatRecoveryInvite(
+    input: PrivateSeatRecoveryInviteStoreInput
+  ): Promise<PrivateSeatRecoveryInviteStoreResult | null>;
+  /** Consume one unexpired initial or recovery invite atomically. */
   claimPrivateInvite(
     input: PrivateInviteClaimStoreInput
   ): Promise<PrivateInviteClaimStoreResult<TState> | null>;

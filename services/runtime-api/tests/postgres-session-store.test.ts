@@ -289,6 +289,123 @@ test("PostgreSQL atomically replaces one unexpired invite and advances only part
   assert.equal(firstSqlWord(client.queries.at(-1)?.text ?? ""), "COMMIT");
 });
 
+test("PostgreSQL host replaces one pending recovery token without changing the session", async () => {
+  const issuedAt = new Date("2026-07-11T12:30:00.000Z");
+  const expiresAt = new Date("2026-07-12T12:30:00.000Z");
+  const privateRow = {
+    ...persistedRow,
+    participants: [
+      { seatId: "p1", playerId: "p1", kind: "human", joinState: "joined" },
+      { seatId: "p2", playerId: "p2", kind: "human", joinState: "joined" }
+    ]
+  };
+  const hostPrincipal = {
+    ...principalRow,
+    principal_kind: "participant",
+    session_role: "player",
+    actor_scope: { kind: "listed-actors", actorIds: ["p1"] }
+  };
+  const guestPrincipal = {
+    ...hostPrincipal,
+    principal_id: "44444444-4444-4444-8444-444444444444",
+    actor_scope: { kind: "listed-actors", actorIds: ["p2"] }
+  };
+  const client = new ScriptedClient((text) => {
+    if (text.includes("FROM game_sessions") && text.includes("FOR UPDATE NOWAIT")) return result([privateRow]);
+    if (text.includes("credential_sha256 = $2") && text.includes("FOR UPDATE")) return result([hostPrincipal]);
+    if (text.includes("principal_kind = 'participant'") && text.includes("FOR UPDATE")) {
+      return result([hostPrincipal, guestPrincipal]);
+    }
+    if (text.includes("SET recovery_token_sha256")) return result([], 1);
+    return result([]);
+  });
+  const store = new PostgresSessionStore<Record<string, unknown>>(new ScriptedPool(client));
+
+  const issued = await store.issuePrivateSeatRecoveryInvite({
+    sessionId,
+    credentialSha256,
+    seatId: "p2",
+    recoveryTokenSha256: "e".repeat(64),
+    recoveryTokenExpiresAt: expiresAt,
+    issuedAt
+  });
+
+  assert.deepEqual(issued, { seatId: "p2", playerId: "p2", recoveryTokenExpiresAt: expiresAt });
+  const write = client.queries.find(({ text }) => text.includes("SET recovery_token_sha256"));
+  assert.deepEqual(write?.values, [sessionId, guestPrincipal.principal_id, "e".repeat(64), expiresAt]);
+  assert.equal(client.queries.some(({ text }) => text.includes("UPDATE game_sessions")), false);
+  assert.equal(firstSqlWord(client.queries.at(-1)?.text ?? ""), "COMMIT");
+});
+
+test("PostgreSQL recovery claim rotates only the durable credential and preserves the cursor", async () => {
+  const claimedAt = new Date("2026-07-11T12:30:00.000Z");
+  const privateRow = {
+    ...persistedRow,
+    participants: [
+      { seatId: "p1", playerId: "p1", kind: "human", joinState: "joined" },
+      { seatId: "p2", playerId: "p2", kind: "human", joinState: "joined" }
+    ]
+  };
+  const guestPrincipal = {
+    ...principalRow,
+    principal_id: "44444444-4444-4444-8444-444444444444",
+    principal_kind: "participant",
+    session_role: "player",
+    actor_scope: { kind: "listed-actors", actorIds: ["p2"] }
+  };
+  const client = new ScriptedClient((text) => {
+    if (text.includes("FROM game_sessions") && text.includes("FOR UPDATE NOWAIT")) return result([privateRow]);
+    if (text.includes("credential_sha256 = $2") && text.includes("credential_expires_at IS NULL")) {
+      return result([guestPrincipal]);
+    }
+    if (text.includes("credential_expires_at IS NOT NULL")) return result([]);
+    if (text.includes("recovery_token_sha256 = $2")) return result([guestPrincipal]);
+    if (text.includes("SET credential_sha256 = $3") && text.includes("recovery_token_sha256 = NULL")) {
+      return result([], 1);
+    }
+    return result([]);
+  });
+  const store = new PostgresSessionStore<Record<string, unknown>>(new ScriptedPool(client));
+
+  const claimed = await store.claimPrivateInvite({
+    sessionId,
+    inviteCredentialSha256: "e".repeat(64),
+    participantCredentialSha256: "f".repeat(64),
+    currentCredentialSha256: "d".repeat(64),
+    claimedAt
+  });
+
+  assert.equal(claimed?.transition, "credential-recovery");
+  assert.deepEqual(claimed?.session, {
+    sessionId,
+    gameId: persistedRow.game_id,
+    bundleHash,
+    contentSourceId: persistedRow.content_source_id,
+    sessionRole: persistedRow.session_role,
+    participants: privateRow.participants,
+    state: persistedRow.state,
+    version: { sessionId, stateVersion: 4, lastEventSequence: 7 },
+    createdAt: now,
+    updatedAt: now
+  });
+  const write = client.queries.find(({ text }) => text.includes("recovery_token_sha256 = NULL"));
+  const currentPrincipalRead = client.queries.find(({ text }) =>
+    text.includes("credential_sha256 = $2") && text.includes("credential_expires_at IS NULL")
+  );
+  assert.deepEqual(currentPrincipalRead?.values, [sessionId, "d".repeat(64)]);
+  const recoveryRead = client.queries.find(({ text }) => text.includes("recovery_token_sha256 = $2"));
+  assert.deepEqual(recoveryRead?.values, [sessionId, "e".repeat(64), claimedAt]);
+  assert.deepEqual(write?.values, [
+    sessionId,
+    guestPrincipal.principal_id,
+    "f".repeat(64),
+    "e".repeat(64),
+    claimedAt
+  ]);
+  assert.equal(client.queries.some(({ text }) => text.includes("UPDATE game_sessions")), false);
+  assert.equal(firstSqlWord(client.queries.at(-1)?.text ?? ""), "COMMIT");
+});
+
 test("PostgreSQL accepts server-authorized agent participants", async () => {
   const agentParticipants = [{ seatId: "p1", playerId: "p1", kind: "agent" as const, joinState: "local" as const }];
   const client = new ScriptedClient((text) => {
@@ -1239,7 +1356,10 @@ test("readiness checks every command-ledger table and required privileges", asyn
   ]) {
     assert.match(sql, new RegExp(table, "u"));
   }
-  assert.match(sql, /actor_scope, credential_sha256, credential_expires_at, created_at/u);
+  assert.match(
+    sql,
+    /actor_scope, credential_sha256, credential_expires_at,[\s\S]*recovery_token_sha256, recovery_token_expires_at, created_at/u
+  );
   assert.match(sql, /has_table_privilege\(current_user, 'session_principals', 'UPDATE'\)/u);
 });
 

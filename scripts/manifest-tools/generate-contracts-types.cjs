@@ -120,6 +120,29 @@ const JOBS = [
     exportName: "privateInviteClaimRequestSchema"
   },
   {
+    name: "private-seat-recovery-invite-request",
+    schema: path.join(repoRoot, "docs", "architecture", "runtime-api-openapi.yaml"),
+    schemaPath: ["components", "schemas", "PrivateSeatRecoveryInviteRequest"],
+    output: path.join(repoRoot, "packages", "contracts", "session", "src", "generated", "private-seat-recovery-invite-request.ts"),
+    rootName: "PrivateSeatRecoveryInviteRequest",
+    compileRoot: true
+  },
+  {
+    name: "private-seat-recovery-invite-request-schema",
+    schema: path.join(repoRoot, "docs", "architecture", "runtime-api-openapi.yaml"),
+    schemaPath: ["components", "schemas", "PrivateSeatRecoveryInviteRequest"],
+    output: path.join(repoRoot, "packages", "contracts", "session", "src", "generated", "private-seat-recovery-invite-request.schema.json"),
+    outputKind: "json-schema"
+  },
+  {
+    name: "private-seat-recovery-invite-request-schema-module",
+    schema: path.join(repoRoot, "docs", "architecture", "runtime-api-openapi.yaml"),
+    schemaPath: ["components", "schemas", "PrivateSeatRecoveryInviteRequest"],
+    output: path.join(repoRoot, "packages", "contracts", "session", "src", "generated", "private-seat-recovery-invite-request.schema.ts"),
+    outputKind: "typescript-schema",
+    exportName: "privateSeatRecoveryInviteRequestSchema"
+  },
+  {
     name: "session-version-notification",
     schema: path.join(repoRoot, "docs", "architecture", "runtime-api-openapi.yaml"),
     schemaPath: ["components", "schemas", "SessionVersionNotification"],

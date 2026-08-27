@@ -267,6 +267,7 @@ describe("GamePresenter session recovery", () => {
     expect(window.location.hash).toBe("");
     expect(window.localStorage.getItem(config.storageKey)).toBe(claimedSession.sessionId);
     expect(presenter.sessionSnapshot?.sessionId).toBe(claimedSession.sessionId);
+    expect(presenter.playerState.hostManagementHint).toBe(false);
   });
 
   it("keeps automatic creation when the content has no agent-seat declaration", async () => {
@@ -345,6 +346,26 @@ describe("GamePresenter session recovery", () => {
       accessMode: "private-invite"
     });
     expect(presenter.playerState.privateInvites).toEqual(session.privateInvites);
+    expect(presenter.playerState.hostManagementHint).toBe(true);
+    expect(window.localStorage.getItem(`cubica-host-management:${session.sessionId}`)).toBe("1");
+    expect(window.localStorage.getItem(`cubica-host-management:${session.sessionId}`)).not.toContain("inv_");
+  });
+
+  it("restores the non-secret host hint on a later resume", async () => {
+    const content = neutralContent("neutral-private-resume", { min: 1, max: 1 });
+    const config = createDefaultGameConfig(createDefaultGameConfigData(content));
+    const created: GameSession = { ...turnSession("p1"), gameId: content.gameId, privateInvites: [privateInvite("p2")] };
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(runtimeResponse(created, 0))
+      .mockResolvedValueOnce(runtimeResponse(created, 0));
+    vi.stubGlobal("fetch", fetchMock);
+    const first = new GamePresenter({ gateway: new ReactViewGateway(), content, config });
+    await first.boot();
+    first.dispose();
+    const second = new GamePresenter({ gateway: new ReactViewGateway(), content, config });
+    await second.boot();
+    expect(second.playerState.hostManagementHint).toBe(true);
+    expect(window.localStorage.getItem(`cubica-host-management:${created.sessionId}`)).toBe("1");
   });
 
   it("keeps exactly one live subscription through boot and reset", async () => {

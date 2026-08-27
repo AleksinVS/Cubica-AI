@@ -35,14 +35,23 @@ SSE несёт только курсор версии, а полная перс�
 tests, disposable PostgreSQL migrations 001–006 с restart и concurrent
 single-winner/replay, а также runtime и contract typechecks уже проходят.
 Player Web integration, PostgreSQL restart и двухбраузерный Estate Race flow
-реализованы и проверены. S10 принят для закрытой альфы: two-browser E2E прошёл
+реализованы и проверены. S10 принят для закрытой альфы. Исторические результаты
+от 2026-08-25: two-browser E2E прошёл
 с desktop+narrow primary visual inspection; runtime — `403 pass / 3 skip`,
 Player Web — `328/328` + typecheck и production build, Estate Race — `53/53`,
 plugin — `37/37` + typecheck, disposable PostgreSQL integration — `2/2`,
-канонические constituent gates пройдены. Задача остаётся в `review` только для
+канонические constituent gates пройдены; до финальной защиты гонки SSE recovery
+increment также подтверждался focused recovery/PostgreSQL/SSE `53/53` и полным
+runtime `411 pass / 3 skip / 0 fail`, а после неё свежие session event hub `8/8`
+и private invite/recovery `6/6` прошли. Полный Player `342/342` относится к
+принятой базовой recovery-сборке. Задача остаётся в `review` только для
 каталожных и production/content/economy/product publication ворот.
-Если claim уже записан, но ответ с credential потерян, ведущий пересоздаёт
-тестовый сеанс. Recoverable handoff обязателен до каталога/production. Cookie
+Узкий recoverable handoff для уже joined human guest seat реализован: ведущий
+может выдать одну новую 24-часовую одноразовую recovery-ссылку без отзыва
+текущего credential и без изменения participant principal или game state.
+Если cookie не соответствует живому principal, она является только анонимным
+предъявлением capability; credential другого живого principal claim не допускает.
+Cookie
 браузера живёт 30 дней, а credential runtime durable — это операционный
 residual до согласования архивирования.
 
@@ -85,7 +94,7 @@ session-owned модель участников для локальной дос
 4. S10 выбрал одноразовый 24-часовый invite, атомарный `invited → joined`,
    долговечный participant credential и SSE cursor с полным HTTP resync.
 5. Реальный provider для агентских мест, public rooms, matchmaking, spectators,
-   чат, revoke/reissue приглашения, дельты и несколько runtime-реплик не входят
+   чат, обычная revoke/reissue приглашения, дельты и несколько runtime-реплик не входят
    в этот срез.
 
 ## Target State
@@ -127,7 +136,8 @@ session-owned модель участников для локальной дос
 - Дельта-синхронизация при реконнекте (полная ресинхронизация достаточна).
 - WebSocket, realtime-ticket, presence, rooms, Redis, второй runtime instance,
   public rooms, matchmaking, spectators, чат, multi-use invites и
-  revoke/reissue приглашений.
+  обычная revoke/reissue приглашений; узкий recovery joined human guest seat
+  описан в GSR-050.
 - Вторая обслуживающая реплика `runtime-api` — вне области; предусловие её
   появления (фиксируется здесь, чтобы не потерять): перевод ограниченного
   квотного контроллера ADR-086 с памяти одного процесса на общий атомарный
@@ -233,8 +243,14 @@ npx playwright test apps/player-web/e2e/estate-race-private-network.spec.ts
 
 - Ошибка в claim transaction способна выдать одно место двум principal или
   оставить использованный токен действующим; PostgreSQL race и replay tests
-  уже прошли. Остаточный gate до каталога/production — recoverable handoff
-  после потери ответа credential; content/economy/product publication и
+  уже прошли. Итоговый recovery increment подтверждён contracts generator
+  `--check`, schema parity, `verify:api-contracts`, contracts-session `16/16` +
+  typecheck. До финальной защиты гонки SSE runtime focused `53/53` + typecheck
+  и full runtime `411 pass / 3 skip / 0 fail` (`414`) прошли; после неё свежие
+  session event hub `8/8` и private invite/recovery `6/6` прошли. Player focused
+  `81/81` + typecheck и full Player
+  `342/342`, production build и Playwright `1/1` PASS с loopback insecure-cookie
+  flag, disposable PostgreSQL 17 `2/2`. Content/economy/product publication и
   production readiness также остаются вне закрытой альфа-приёмки.
 - Выбранный delivery transport не должен раскрывать долговечный credential в
   URL или browser JavaScript; invite fragment синхронно очищается, а
@@ -278,5 +294,19 @@ npx playwright test apps/player-web/e2e/estate-race-private-network.spec.ts
   и Estate Race two-browser evidence pass. S10 принят для закрытой альфы после
   desktop+narrow primary visual inspection и полного набора constituent gates;
   задача остаётся `review` для каталожных и production/content/economy/product
-  publication ворот. Closed-alpha claim-response-loss limitation и
-  recoverable-handoff gate before catalog/production recorded in GSR-050.
+  publication ворот. Closed-alpha claim-response-loss limitation recorded in
+  GSR-050.
+- 2026-08-27: narrow joined-human-guest credential recovery implemented as a
+  completion of the closed-alpha S10 trust boundary. Recovery reissue is one
+  24-hour one-time fragment link for an already joined human guest seat; it
+  rotates only the credential digest on the same principal and clears the
+  capability. Fresh recovery evidence: contracts-session `16/16` + typecheck,
+  contracts generator `--check`, schema parity, `verify:api-contracts`. До
+  финальной защиты гонки SSE runtime focused `53/53` + typecheck и full runtime
+  `411 pass / 3 skip / 0 fail` прошли; после неё свежие session event hub `8/8`
+  и private invite/recovery `6/6` прошли.
+  disposable PostgreSQL 17 `2/2`, Player Web focused `81/81` + typecheck and
+  full Player `342/342`; production build and Playwright `1/1` PASS с loopback
+  insecure-cookie flag. Catalog,
+  content/economy/product publication and production readiness remain separate
+  gates.

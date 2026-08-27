@@ -2,12 +2,14 @@ import type {
   CreateSessionRequest,
   DispatchActionInput,
   PrivateInviteClaimRequest,
+  PrivateSeatRecoveryInviteRequest,
   RestorePreviewSessionRequest,
   TransportRoadPreviewRequest
 } from "@cubica/contracts-session";
 import {
   getCreateSessionRequestValidationErrors,
   validatePrivateInviteClaimRequestShape,
+  validatePrivateSeatRecoveryInviteRequestShape,
   validateCreateSessionRequestShape
 } from "@cubica/contracts-session";
 import type { AgentTurnRequest } from "../ai/agentRuntime.ts";
@@ -146,6 +148,15 @@ export const parseDispatchActionRequest = (body: unknown): DispatchActionInput =
 export const parsePrivateInviteClaimRequest = (body: unknown): PrivateInviteClaimRequest => {
   if (!validatePrivateInviteClaimRequestShape(body)) {
     throw new RequestValidationError("Private invite claim does not match the canonical request schema");
+  }
+  return body;
+};
+
+export const parsePrivateSeatRecoveryInviteRequest = (
+  body: unknown
+): PrivateSeatRecoveryInviteRequest => {
+  if (!validatePrivateSeatRecoveryInviteRequestShape(body)) {
+    throw new RequestValidationError("Seat recovery invite does not match the canonical request schema");
   }
   return body;
 };

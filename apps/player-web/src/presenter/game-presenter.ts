@@ -18,6 +18,7 @@ import {
   shouldRetainPendingRuntimeCommand,
   subscribeToSessionEvents,
   claimPrivateInvite,
+  recoverGuestSeat,
   consumePrivateInviteFragment,
   type SessionEventSubscription
 } from "@/presenter/runtime-client";
@@ -55,6 +56,10 @@ import {
 import { normalizeAgentControl } from "@/presenter/agent-control-validation";
 
 export type { ClientRequest, PlayerState } from "@/presenter/types";
+
+function hostManagementHintKey(sessionId: string): string {
+  return `cubica-host-management:${sessionId}`;
+}
 
 /**
  * Generic Presenter для игрового Web-плеера.
@@ -95,6 +100,7 @@ export class GamePresenter {
   private readonly sessionSetupEnabled: boolean;
   private sessionEvents: SessionEventSubscription | null = null;
   private sessionLifecycle = 0;
+  private hostManagementHint = false;
 
   constructor(options: {
     gateway: ReactViewGateway;
@@ -210,6 +216,7 @@ export class GamePresenter {
       participants: this.session?.participants ?? [],
       actionAvailability: this.session?.actionAvailability ?? [],
       privateInvites: this.session?.privateInvites ?? [],
+      hostManagementHint: this.hostManagementHint,
       agentControl: normalizeAgentControl(this.session?.agentControl),
       sessionSetup: this.sessionSetup,
       error: this.error,
@@ -275,6 +282,7 @@ export class GamePresenter {
       if (storedSessionId) {
         try {
           const data = await resumeSession(storedSessionId);
+          this.hostManagementHint = window.localStorage.getItem(hostManagementHintKey(storedSessionId)) === "1";
           if (!this.adoptSessionSnapshot(data, lifecycle, true)) return;
           this.agentSurface = null;
           this.clearError();
@@ -290,6 +298,7 @@ export class GamePresenter {
           // Its former setup is not authenticated client state. The accepted
           // recovery path creates a manifest-minimum all-human replacement.
           const data = await this.createSession();
+          this.recordHostManagementHint(data);
           if (!this.adoptSessionSnapshot(data, lifecycle, true)) return;
           if (typeof window !== "undefined") {
             window.localStorage.setItem(this.config.storageKey, data.sessionId);
@@ -305,6 +314,7 @@ export class GamePresenter {
           return;
         }
         const data = await this.createSession();
+        this.recordHostManagementHint(data);
         if (!this.adoptSessionSnapshot(data, lifecycle, true)) return;
         if (typeof window !== "undefined") {
           window.localStorage.setItem(this.config.storageKey, data.sessionId);
@@ -374,6 +384,7 @@ export class GamePresenter {
         return;
       }
       if (!this.adoptSessionSnapshot(data, lifecycle, true)) return;
+      this.recordHostManagementHint(data);
       if (typeof window !== "undefined") {
         const storageKey = this.launchContext
           ? launchScopedStorageKey(this.config.storageKey, this.launchContext)
@@ -430,6 +441,7 @@ export class GamePresenter {
         ? { participantCount: selection.participantCount, agentSeatCount: 0, accessMode: "private-invite" }
         : { participantCount: selection.participantCount, agentSeatCount: selection.agentSeatCount });
       if (!this.adoptSessionSnapshot(data, lifecycle, true)) return;
+      this.recordHostManagementHint(data);
       if (typeof window !== "undefined") {
         window.localStorage.setItem(this.config.storageKey, data.sessionId);
       }
@@ -729,6 +741,18 @@ export class GamePresenter {
       contentSourceId: this.contentSourceId,
       ...options
     }) as Promise<GameSession>;
+  }
+
+  async recoverGuestSeat(seatId: string) {
+    if (!this.session) throw new Error("Игровая сессия еще не готова.");
+    return recoverGuestSeat(this.session.sessionId, seatId);
+  }
+
+  private recordHostManagementHint(snapshot: GameSession): void {
+    this.hostManagementHint = Array.isArray(snapshot.privateInvites) && snapshot.privateInvites.length > 0;
+    if (this.hostManagementHint && typeof window !== "undefined") {
+      window.localStorage.setItem(hostManagementHintKey(snapshot.sessionId), "1");
+    }
   }
 
   private beginSessionLifecycle(): number {

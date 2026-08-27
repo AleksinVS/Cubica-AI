@@ -98,22 +98,33 @@
 Этот гибрид сохраняет продуктовую функцию и защиту от повторного использования
 ссылки, но удаляет отдельный realtime-протокол и второй краткоживущий секрет.
 
-## Свежие доказательства
+## Итоговые доказательства recovery increment
 
-- `@cubica/contracts-session`: typecheck и 16/16 тестов — успешно.
-- Runtime API: полный набор — `403 pass / 3 skip`; Estate Race package — `53/53`,
-  plugin — `37/37` с typecheck; disposable PostgreSQL integration — `2/2`.
-- Player Web: полные `328/328`, typecheck и production build — успешно; Estate
-  Race two-browser E2E и PostgreSQL restart проходят; desktop+narrow primary
-  visual inspection принята для закрытой альфы.
-- OpenAPI drift gate — успешно.
+- Contracts generator `--check`, schema parity и `verify:api-contracts` — PASS;
+  `@cubica/contracts-session` typecheck и `16/16` тестов — PASS.
+- Runtime typecheck — PASS. До финальной защиты гонки SSE focused
+  recovery/PostgreSQL/SSE — `53/53` и полный runtime — `411 pass / 3 skip / 0
+  fail` (`414`) прошли; после неё свежие session event hub `8/8` и private
+  invite/recovery `6/6` прошли.
+- Исторические результаты S10 от 2026-08-25: Player Web — `328/328`, typecheck
+  и production build — успешно; Estate Race two-browser E2E и PostgreSQL
+  restart проходят; desktop+narrow primary visual inspection принята для
+  закрытой альфы. Обновлённые recovery E2E/build/visual проверки приняты:
+  production player build — PASS, production Playwright Estate private network
+  — `1/1` PASS с явным loopback insecure-cookie flag.
+- Estate package — `53/53`; plugin — `37/37` и typecheck — PASS; disposable
+  PostgreSQL 17 migrations/restart — `2/2`.
 - Пробный cherry-pick на актуальный `origin/main` выявил 28 файлов,
   изменённых с обеих сторон, и 43 конфликтных участка; автоматическая
   интеграция неприемлема.
 
-Ограничение закрытой альфы остаётся явным: если claim записан, но ответ с
-credential потерян, ведущий пересоздаёт тестовый сеанс. До каталога/production
-нужен recoverable handoff; content/economy/product publication и production
+Ограничение закрытой альфы дополнено узким реализованным recoverable handoff:
+для уже joined human guest seat ведущий выдаёт одну новую 24-часовую
+одноразовую recovery-ссылку, которая заменяет только pending capability и не
+отзывает текущий credential. Успешный claim поворачивает digest на том же
+principal; потеря ответа больше не требует пересоздания сессии. Recovery не
+является общей invite reissue: host seat, invited/local/agent seats, rooms и
+accounts исключены. Content/economy/product publication и production
 readiness остаются отдельными воротами. Браузерная cookie живёт 30 дней,
 тогда как runtime credential durable.
 

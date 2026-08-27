@@ -36,23 +36,32 @@ HTTP.
 ## Явные нецели
 
 WebSocket, realtime-ticket cache, presence, rooms, Redis, дельты, чат,
-matchmaking, spectators, public rooms, multi-use invites, revoke/reissue и
+matchmaking, spectators, public rooms, multi-use invites, обычная revoke/reissue и
 вторая runtime-реплика не входят в S10. Это не утверждение, что эти функции
 никогда не понадобятся; их можно открыть только отдельным продуктовым и
 архитектурным решением после измеримой потребности.
 
 ## Доказательства и оставшиеся ворота
 
-Канонические OpenAPI/generated session contracts и constituent gates проходят:
-runtime — `403 pass / 3 skip`, Player Web — `328/328` + typecheck и production
-build, Estate Race package — `53/53`, plugin — `37/37` + typecheck, disposable
-PostgreSQL integration — `2/2`. Player Web интеграция, PostgreSQL restart и
-Estate Race two-browser E2E с desktop+narrow primary visual inspection
-реализованы и проверены; S10 принят для закрытой альфы.
+Итоговые проверки recovery increment: contracts generator `--check`, schema
+parity и `verify:api-contracts` — PASS; contracts-session typecheck и `16/16` —
+PASS; runtime typecheck — PASS. До финальной защиты гонки SSE focused
+recovery/PostgreSQL/SSE — `53/53` и полный runtime — `411 pass / 3 skip / 0
+fail` (`414`) прошли; после неё свежие session event hub `8/8` и private
+invite/recovery `6/6` прошли. Player typecheck — PASS,
+focused Player Web — `81/81`, полный Player Web — `342/342`; Estate package —
+`53/53`; plugin — `37/37` и typecheck — PASS; disposable PostgreSQL 17
+migrations/restart — `2/2`; production player build — PASS; production
+Playwright Estate private network — `1/1` PASS с явным loopback insecure-cookie
+flag. Исторические S10 two-browser E2E и visual inspection от 2026-08-25
+сохранены отдельно.
 
-Если claim уже записан, но ответ с credential потерян, закрытая альфа требует
-пересоздать тестовый сеанс ведущим. Recoverable handoff обязателен до
-каталога/production. Catalog/content/economy/product publication и production
+Позднейшая узкая поправка S10 завершила этот bounded handoff: ведущий может
+выдать одну 24-часовую одноразовую recovery-ссылку для уже joined human guest
+seat. Она заменяет только pending recovery capability, не отзывает текущий
+credential, а успешный claim поворачивает digest на том же principal и очищает
+capability. Поэтому потеря ответа после успешного claim больше не требует
+пересоздания сессии. Catalog/content/economy/product publication и production
 readiness остаются отдельными воротами. Cookie браузера живёт 30 дней, тогда
 как credential runtime durable; это операционный residual до согласования
 архивирования.

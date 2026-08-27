@@ -13,6 +13,8 @@ import type {
   GetSessionResponse,
   PrivateInviteClaimRequest,
   PrivateInviteClaimResponse,
+  PrivateSeatRecoveryInviteRequest,
+  PrivateSessionInvite,
   PortablePublicGameplayJournal,
   RestorePreviewSessionRequest,
   RestorePreviewSessionResponse,
@@ -39,6 +41,7 @@ import {
   createLocalSessionAccess,
   createParticipantSessionAccess,
   createPrivateInviteAccess,
+  createPrivateInviteToken,
   createSessionCredential,
   hashSessionCredential,
   resolveSessionViewerActor
@@ -69,6 +72,7 @@ interface SessionServiceOptions {
   sessionStore: SessionStorePort<RuntimeState>;
   agentSeatDriver?: AgentSeatDriver;
   now?: () => Date;
+  onParticipantCredentialRotated?: (sessionId: string, principalId: string) => void;
 }
 
 const PRIVATE_INVITE_TTL_MS = 24 * 60 * 60 * 1000;
@@ -92,11 +96,13 @@ export class SessionService {
   private readonly sessionStore: SessionStorePort<RuntimeState>;
   private readonly agentSeatDriver?: AgentSeatDriver;
   private readonly now: () => Date;
+  private readonly onParticipantCredentialRotated?: (sessionId: string, principalId: string) => void;
 
   constructor(options: SessionServiceOptions) {
     this.sessionStore = options.sessionStore;
     this.agentSeatDriver = options.agentSeatDriver;
     this.now = options.now ?? (() => new Date());
+    this.onParticipantCredentialRotated = options.onParticipantCredentialRotated;
   }
 
   async createSession(request: CreateSessionRequest): Promise<CreateSessionResponse<RuntimeState>> {
@@ -242,7 +248,8 @@ export class SessionService {
 
   async claimPrivateInvite(
     sessionId: SessionId,
-    request: PrivateInviteClaimRequest
+    request: PrivateInviteClaimRequest,
+    currentAccessToken?: string
   ): Promise<PrivateInviteClaimResponse<RuntimeState>> {
     const accessToken = createSessionCredential();
     let claimed: Awaited<ReturnType<SessionStorePort<RuntimeState>["claimPrivateInvite"]>>;
@@ -251,6 +258,9 @@ export class SessionService {
         sessionId,
         inviteCredentialSha256: hashSessionCredential(request.inviteToken),
         participantCredentialSha256: hashSessionCredential(accessToken),
+        ...(currentAccessToken === undefined
+          ? {}
+          : { currentCredentialSha256: hashSessionCredential(currentAccessToken) }),
         claimedAt: this.now()
       });
     } catch (error) {
@@ -261,6 +271,14 @@ export class SessionService {
       throw error;
     }
     if (claimed === null) throw new PrivateInviteAuthenticationError();
+    if (claimed.transition === "credential-recovery") {
+      try {
+        this.onParticipantCredentialRotated?.(claimed.session.sessionId, claimed.principal.principalId);
+      } catch {
+        // Rotation is already committed. Notification cleanup must never turn
+        // that success into a credential-losing error response.
+      }
+    }
     const bundle = await this.getPinnedBundle(claimed.session);
     const actorPlayerId = resolveSessionViewerActor(claimed.session, claimed.principal);
     return {
@@ -278,6 +296,31 @@ export class SessionService {
         sessionRole: claimed.principal.role
       }),
       credential: accessToken
+    };
+  }
+
+  async issuePrivateSeatRecoveryInvite(
+    sessionId: SessionId,
+    accessToken: string,
+    request: PrivateSeatRecoveryInviteRequest
+  ): Promise<PrivateSessionInvite> {
+    const issuedAt = this.now();
+    const expiresAt = new Date(issuedAt.getTime() + PRIVATE_INVITE_TTL_MS);
+    const inviteToken = createPrivateInviteToken();
+    const issued = await this.sessionStore.issuePrivateSeatRecoveryInvite({
+      sessionId,
+      credentialSha256: hashSessionCredential(accessToken),
+      seatId: request.seatId,
+      recoveryTokenSha256: hashSessionCredential(inviteToken),
+      recoveryTokenExpiresAt: expiresAt,
+      issuedAt
+    });
+    if (issued === null) throw new SessionAuthenticationError();
+    return {
+      seatId: issued.seatId,
+      playerId: issued.playerId,
+      inviteToken,
+      expiresAt: issued.recoveryTokenExpiresAt.toISOString()
     };
   }
 
@@ -447,6 +490,25 @@ export class SessionService {
       throw new SessionAuthenticationError();
     }
     return { snapshot, principal, bundle: await this.getPinnedBundle(snapshot) };
+  }
+
+  /**
+   * Revalidate an already-resolved principal immediately before attaching a
+   * long-lived authenticated transport. This deliberately avoids bundle I/O
+   * so credential rotation cannot hide inside an authenticate-to-register gap.
+   */
+  async assertSessionPrincipalCredentialCurrent(
+    sessionId: SessionId,
+    accessToken: string,
+    expectedPrincipalId: string
+  ): Promise<void> {
+    const principal = await this.sessionStore.authenticateSession({
+      sessionId,
+      credentialSha256: hashSessionCredential(accessToken)
+    });
+    if (principal === null || principal.principalId !== expectedPrincipalId) {
+      throw new SessionAuthenticationError();
+    }
   }
 
   private async getPinnedBundle(snapshot: SessionRecord<RuntimeState>): Promise<GameBundle> {

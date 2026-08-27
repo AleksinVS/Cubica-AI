@@ -72,6 +72,7 @@ export type PlayerState = Record<string, unknown> & {
   participants: ReadonlyArray<SessionParticipant>;
   actionAvailability: ReadonlyArray<SessionActionAvailability>;
   privateInvites: ReadonlyArray<PrivateSessionInvite>;
+  hostManagementHint: boolean;
   agentControl: NormalizedAgentControl;
   sessionSetup: PlayerSessionSetup | null;
 

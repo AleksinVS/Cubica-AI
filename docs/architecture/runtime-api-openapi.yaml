@@ -465,8 +465,9 @@
         "tags": ["Sessions"],
         "operationId": "claimPrivateInvite",
         "summary": "Claim one private-invite seat.",
-        "description": "Consumes the invite token once and returns the caller's normal personal session projection plus a creation-only durable SessionCredential. Malformed bodies use 400 and oversized bodies use 413; invalid, expired, replayed, and concurrent-loser tokens uniformly use 401. A transient runtime or storage failure uses 503 and does not disclose whether the token remains claimable. The response never contains privateInvites.",
+        "description": "Consumes an initial invite or recovery invite token once and returns the caller's normal personal session projection plus a creation-only durable SessionCredential. Anonymous claim is supported. An optional live SessionBearer is accepted only as proof that a recovery claim rotates the same participant principal; it never authorizes an initial invite or a different principal's recovery token. A valid-format credential that is no longer live grants no authority and the token is evaluated as an anonymous capability, allowing a new recovery after a lost rotation response. Malformed bodies use 400 and oversized bodies use 413; invalid, expired, replayed, concurrent-loser tokens, live credential mismatch and a competing claim lock uniformly use 401. A transient runtime or storage failure uses 503 and does not disclose whether the token remains claimable. The response never contains privateInvites.",
         "x-cubica-scope": "public",
+        "security": [{}, { "SessionBearer": [] }],
         "parameters": [{ "$ref": "#/components/parameters/SessionId" }],
         "requestBody": { "$ref": "#/components/requestBodies/PrivateInviteClaimRequest" },
         "responses": {
@@ -477,6 +478,31 @@
           "400": { "$ref": "#/components/responses/BadRequest" },
           "401": { "$ref": "#/components/responses/InvalidPrivateInvite" },
           "413": { "$ref": "#/components/responses/PayloadTooLarge" },
+          "503": { "$ref": "#/components/responses/Unavailable" }
+        }
+      }
+    },
+    "/sessions/{sessionId}/seat-recovery-invites": {
+      "post": {
+        "tags": ["Sessions"],
+        "operationId": "createSeatRecoveryInvite",
+        "summary": "Create a one-time recovery invite for a joined private guest seat.",
+        "description": "Authenticated private-session host only. Creates a one-time inv_ recovery token for the requested joined human guest seat and returns the existing PrivateSessionInvite shape. The guest's current credential remains valid until the recovery token is claimed. Malformed bodies use 400, unauthorized credentials use 401, callers without permission use 403, unavailable seats use 404, oversized bodies use 413, a concurrent session write uses 423, and transient runtime or storage failure uses 503.",
+        "x-cubica-scope": "public",
+        "security": [{ "SessionBearer": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/SessionId" }],
+        "requestBody": { "$ref": "#/components/requestBodies/PrivateSeatRecoveryInviteRequest" },
+        "responses": {
+          "201": {
+            "description": "Recovery invite created.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PrivateSessionInvite" } } }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "413": { "$ref": "#/components/responses/PayloadTooLarge" },
+          "423": { "$ref": "#/components/responses/Locked" },
           "503": { "$ref": "#/components/responses/Unavailable" }
         }
       }
@@ -868,6 +894,14 @@
         "content": {
           "application/json": {
             "schema": { "$ref": "#/components/schemas/PrivateInviteClaimRequest" }
+          }
+        }
+      },
+      "PrivateSeatRecoveryInviteRequest": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/PrivateSeatRecoveryInviteRequest" }
           }
         }
       },
@@ -1376,6 +1410,12 @@
         "type": "object",
         "required": ["inviteToken"],
         "properties": { "inviteToken": { "$ref": "#/components/schemas/PrivateInviteToken" } },
+        "additionalProperties": false
+      },
+      "PrivateSeatRecoveryInviteRequest": {
+        "type": "object",
+        "required": ["seatId"],
+        "properties": { "seatId": { "type": "string", "minLength": 1 } },
         "additionalProperties": false
       },
       "JsonObject": {

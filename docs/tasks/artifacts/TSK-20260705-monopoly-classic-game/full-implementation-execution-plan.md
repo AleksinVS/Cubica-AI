@@ -126,7 +126,7 @@ Agent Runtime недоступен, локальная партия ставит
 | Завершение | `done` | обязательства, банкротство, передача активов, server-owned победа и S7-объяснение итога | — |
 | Интерфейс | `done` | map-first Web UI, Phaser-поле, DOM-действия, responsive camera, style-parity и локальная accessibility matrix S7 | Каталожная и продуктовая приёмка S10; публикация не объявлена |
 | Методика | `done` | read-only материалы участника/ведущего, компетенции, рефлексия и product review S7 | Каталожная приёмка S10; публикация не объявлена |
-| Сеть | `accepted-for-closed-alpha` | PostgreSQL, row-level `SELECT FOR UPDATE NOWAIT`, версии и долговечные квитанции; S10 private invite claim, authenticated SSE cursor + full authenticated HTTP GET, reconnect, PostgreSQL restart и Estate Race two-browser flow; runtime `403 pass / 3 skip`, Player Web `328/328` + typecheck/build, package `53/53`, plugin `37/37` + typecheck, disposable PostgreSQL `2/2` | recoverable handoff после потери claim-ответа; catalog/content/economy/product publication и production readiness |
+| Сеть | `accepted-for-closed-alpha` | PostgreSQL, row-level `SELECT FOR UPDATE NOWAIT`, версии и долговечные квитанции; S10 private invite claim, authenticated SSE cursor + full authenticated HTTP GET, reconnect, PostgreSQL restart и Estate Race two-browser flow; узкий recovery уже joined human guest seat; historical S10 evidence от 2026-08-25: runtime `403 pass / 3 skip`, Player Web `328/328` + typecheck/build, package `53/53`, plugin `37/37` + typecheck, disposable PostgreSQL `2/2`; recovery evidence: contracts generator `--check`, schema parity, `verify:api-contracts`, contracts-session `16/16` + typecheck; до финальной защиты гонки SSE runtime focused `53/53` + typecheck и full runtime `411 pass / 3 skip / 0 fail`; после неё session event hub `8/8` и private invite/recovery `6/6`; Player focused `81/81` + typecheck, full Player `342/342` + typecheck, production build PASS, Playwright `1/1` PASS с loopback insecure-cookie flag, package `53/53`, plugin `37/37` + typecheck, disposable PostgreSQL 17 `2/2`; recovery E2E/build/visual acceptance принята | catalog/content/economy/product publication и production readiness |
 | ИИ-места | `done` | Локальная граница GSR-049: schema-first `agentSeats`, local `agentSeatCount`, ordinary projection/availability/Intent, fallback до 73, exact receipts, `agentControl`, семь eval fixtures и bounded transcript | real provider, full terminal match и network lifecycle |
 
 Перед началом каждого среза основной агент повторяет только затронутую часть
@@ -434,9 +434,11 @@ fixtures для покупки, аукциона, выхода из тюрьмы
 трассировка не содержит незакрытых обязательных правил, документация не
 противоречит коду, временные артефакты удалены, `NEXT_STEPS.md` обновлён.
 
-S10 принят для закрытой альфы. Если claim записан, но ответ с credential
-потерян, ведущий пересоздаёт тестовый сеанс; recoverable handoff нужен до
-каталога/production. Каталог, content/economy/product publication и
+S10 принят для закрытой альфы. Узкий recovery уже joined human guest seat
+реализован как завершение этой trust boundary: потеря ответа не требует
+повторного initial-invite claim — новый recovery token предъявляется через
+существующий claim endpoint как recovery claim. Обновлённые recovery
+E2E/build/visual проверки приняты. Каталог, content/economy/product publication и
 production readiness не объявлены завершёнными.
 
 ## 6. Распределение между агентами
