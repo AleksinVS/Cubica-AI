@@ -18,6 +18,9 @@ const ORDER_STATUSES = {
 };
 
 const PACKAGE_TYPES = new Set(['one-time', 'day', 'month']);
+const ROBOKASSA_AMOUNT_PATTERN = /^(?:0|[1-9]\d{0,11})(?:\.\d{1,2})?$/;
+const ROBOKASSA_INVOICE_PATTERN = /^[1-9]\d{0,15}$/;
+const SHA256_HEX_PATTERN = /^[a-fA-F0-9]{64}$/;
 
 function isPaymentStubEnabled() {
     return process.env.PAYMENT_STUB_ENABLED === 'true';
@@ -31,6 +34,43 @@ function normalizePrice(price) {
     const numericPrice = Number(price);
 
     return Number.isFinite(numericPrice) && numericPrice >= 0 ? numericPrice : null;
+}
+
+function normalizeRobokassaAmount(value) {
+    if (typeof value !== 'string' && typeof value !== 'number') {
+        return null;
+    }
+
+    if (typeof value === 'number' && !Number.isFinite(value)) {
+        return null;
+    }
+
+    const normalized = String(value);
+    return ROBOKASSA_AMOUNT_PATTERN.test(normalized) ? normalized : null;
+}
+
+function normalizeRobokassaInvoiceId(value) {
+    if (typeof value !== 'string' && typeof value !== 'number') {
+        return null;
+    }
+
+    if (typeof value === 'number' && !Number.isSafeInteger(value)) {
+        return null;
+    }
+
+    const normalized = String(value);
+
+    if (!ROBOKASSA_INVOICE_PATTERN.test(normalized)) {
+        return null;
+    }
+
+    const numericId = Number(normalized);
+
+    if (!Number.isSafeInteger(numericId) || numericId <= 0) {
+        return null;
+    }
+
+    return { normalized, numericId };
 }
 
 /**
@@ -238,42 +278,29 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
         }
     },
 
-    async updateOrderStatus(ctx) {
-        const { orderDocumentId, status } = ctx.request.body;
-
-        if (!orderDocumentId || !status) {
-            return ctx.badRequest("Missing orderDocumentId or status.");
-        }
-
-        const order = await strapi.db.query("api::order.order").findOne({
-            where: { documentId: orderDocumentId }
-        });
-
-        if (!order) {
-            return ctx.notFound("Order not found.");
-        }
-
-        // Update order status
-        order.order_status = status;
-        await strapi.db.query("api::order.order").update({
-            where: { documentId: orderDocumentId },
-            data: { order_status: status }
-        });
-
-        return ctx.send({ message: `Order status updated to ${status}.` });
-    },
-
-
     async generatePaymentLink(ctx) {
         const { documentId } = ctx.request.query;
+        const user = ctx.state.user;
+
+        if (!user || !user.id) {
+            return ctx.send({
+                success: false,
+                message: "You must be logged in to create a payment link.",
+                error_code: "AUTHENTICATION_REQUIRED"
+            }, 401);
+        }
 
         if (!documentId) {
             return ctx.badRequest("Missing documentId");
         }
 
-        // Fetch the order by documentId
+        // Combine identity and ownership in one lookup so foreign and absent
+        // orders have the same externally observable result.
         const order = await strapi.db.query('api::order.order').findOne({
-            where: { documentId },
+            where: {
+                documentId,
+                users_permissions_user: { id: user.id },
+            },
             populate: ['game'],
         });
 
@@ -338,16 +365,40 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
 
 
     async handlePaymentResult(ctx) {
-        const { OutSum, InvId, SignatureValue } = ctx.request.body;
-
         const password2 = process.env.ROBO_PASSWORD2;
+
+        if (typeof password2 !== 'string' || password2.trim().length === 0) {
+            strapi.log.error("Robokassa callback rejected: ROBO_PASSWORD2 is not configured");
+            return ctx.internalServerError("Payment callback is not configured");
+        }
+
+        const { OutSum, InvId, SignatureValue } = ctx.request.body || {};
+        const normalizedOutSum = normalizeRobokassaAmount(OutSum);
+        const invoiceId = normalizeRobokassaInvoiceId(InvId);
+
+        if (
+            normalizedOutSum === null ||
+            invoiceId === null ||
+            typeof SignatureValue !== 'string' ||
+            !SHA256_HEX_PATTERN.test(SignatureValue)
+        ) {
+            strapi.log.warn("Robokassa callback rejected: invalid payload");
+            return ctx.badRequest("Invalid payment callback payload");
+        }
+
         const expectedSignature = crypto
             .createHash("sha256")
-            .update(`${OutSum}:${InvId}:${password2}`)
-            .digest("hex");
+            .update(`${normalizedOutSum}:${invoiceId.normalized}:${password2}`)
+            .digest();
+        const suppliedSignature = Buffer.from(SignatureValue, 'hex');
+        const isValid = crypto.timingSafeEqual(expectedSignature, suppliedSignature);
 
-        const orderId = parseInt(InvId);
-        const isValid = expectedSignature.toUpperCase() === SignatureValue?.toUpperCase();
+        if (!isValid) {
+            strapi.log.warn("Invalid Robokassa signature");
+            return ctx.badRequest("Invalid signature");
+        }
+
+        const orderId = invoiceId.numericId;
 
         // Continue with order and purchase logic
         const order = await strapi.db.query("api::order.order").findOne({
@@ -373,19 +424,12 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
             strapi.log.error("Error creating payment_event:", err);
         }
 
-        // Only proceed if signature is valid
-        if (!isValid) {
-            strapi.log.warn("Invalid Robokassa signature");
-            return ctx.badRequest("Invalid signature");
-        }
-
-
         if (!order) {
             return ctx.notFound("Order not found");
         }
 
         if (order.order_status === ORDER_STATUSES.PAID) {
-            return ctx.send(`OK${InvId}`); // already processed
+            return ctx.send(`OK${invoiceId.normalized}`); // already processed
         }
 
         await strapi.db.query("api::order.order").update({
@@ -420,7 +464,7 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
             strapi.log.error("Error creating purchase:", err);
         }
 
-        return ctx.send(`OK${InvId}`);
+        return ctx.send(`OK${invoiceId.normalized}`);
     }
 
 

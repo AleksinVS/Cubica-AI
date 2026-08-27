@@ -6,4 +6,6 @@
 
 const { createCoreRouter } = require('@strapi/strapi').factories;
 
-module.exports = createCoreRouter('api::purchase.purchase');
+module.exports = createCoreRouter('api::purchase.purchase', {
+    only: [],
+});
