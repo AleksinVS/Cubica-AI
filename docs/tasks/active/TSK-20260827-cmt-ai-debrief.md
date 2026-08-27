@@ -151,7 +151,11 @@ transport. Это не препятствует проверке контрак�
 - production Player build — PASS;
 - нормативный production browser flow — `1/1` за 6,8 минуты: реальный финал
   CMT, точная `expectedStateVersion`, видимые draft id/journal SHA-256 и тот же
-  результат после reload.
+  результат после reload;
+- полный `verify:canonical:ci` прошёл все продуктовые проверки; первый запуск
+  остановился только перед Editor Web из-за отсутствующего workspace-link
+  `@cubica/product-context` в отдельном worktree, после безопасной локальной
+  связи его typecheck и production build прошли без изменений исходников.
 
 Не выполнены намеренно: реальный вызов Z.AI без credential и disposable
 PostgreSQL integration без `TEST_POSTGRES_DATABASE_URL`/локальной БД. Тест
