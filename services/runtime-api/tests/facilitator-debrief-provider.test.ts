@@ -121,6 +121,46 @@ test("provider rejects mismatched exact journal hash before network I/O", async 
   assert.equal(calls, 0);
 });
 
+test("provider preparation exposes durable request audit before starting network I/O", async () => {
+  let calls = 0;
+  const provider = new ZaiFacilitatorDebriefProvider({
+    apiKey: "test-secret",
+    fetchImpl: async () => {
+      calls += 1;
+      return response({
+        model: "glm-4.7",
+        choices: [{ finish_reason: "stop", message: { content: JSON.stringify(draft) } }]
+      });
+    }
+  });
+
+  const prepared = provider.prepare(input);
+  assert.equal(calls, 0);
+  assert.equal(prepared.audit.inputSnapshotWithoutJournal.journalSha256, input.journalSha256);
+  assert.match(prepared.audit.requestBodySha256, /^sha256:[a-f0-9]{64}$/u);
+  await prepared.execute();
+  assert.equal(calls, 1);
+});
+
+test("missing server credential fails audibly without starting network I/O", async () => {
+  let calls = 0;
+  const provider = new ZaiFacilitatorDebriefProvider({
+    apiKey: "",
+    fetchImpl: async () => {
+      calls += 1;
+      return response({});
+    }
+  });
+
+  const prepared = provider.prepare(input);
+  await assert.rejects(prepared.execute(), (error: unknown) => {
+    assert.equal(isProviderError("provider_unavailable")(error), true);
+    assert.match((error as FacilitatorDebriefProviderError).audit?.requestBodySha256 ?? "", /^sha256:/u);
+    return true;
+  });
+  assert.equal(calls, 0);
+});
+
 test("provider enforces request and response byte limits before materializing an unbounded result", async () => {
   let calls = 0;
   const requestBounded = new ZaiFacilitatorDebriefProvider({

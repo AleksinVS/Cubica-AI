@@ -33,6 +33,7 @@ const encoder = new TextEncoder();
 const decoder = new TextDecoder("utf-8", { fatal: true });
 
 export type FacilitatorDebriefProviderErrorCode =
+  | "provider_unavailable"
   | "provider_timeout"
   | "provider_rejected"
   | "provider_outcome_unknown"
@@ -82,10 +83,13 @@ export interface FacilitatorDebriefProviderAudit {
   readonly rawResponseUtf8: string;
 }
 
-export type FacilitatorDebriefFailedProviderAudit = Omit<
+export type FacilitatorDebriefProviderRequestAudit = Omit<
   FacilitatorDebriefProviderAudit,
-  "responseBytes" | "durationMs" | "rawResponseUtf8"
-> & {
+  "providerRequestId" | "responseBytes" | "durationMs" | "rawResponseUtf8"
+>;
+
+export type FacilitatorDebriefFailedProviderAudit = FacilitatorDebriefProviderRequestAudit & {
+  readonly providerRequestId?: string;
   readonly responseBytes?: number;
   readonly durationMs: number;
   readonly rawResponseUtf8?: string;
@@ -96,7 +100,13 @@ export interface FacilitatorDebriefProviderResult {
   readonly audit: FacilitatorDebriefProviderAudit;
 }
 
+export interface FacilitatorDebriefPreparedCall {
+  readonly audit: FacilitatorDebriefProviderRequestAudit;
+  execute(): Promise<FacilitatorDebriefProviderResult>;
+}
+
 export interface FacilitatorDebriefProvider {
+  prepare(input: FacilitatorDebriefProviderInput): FacilitatorDebriefPreparedCall;
   generate(input: FacilitatorDebriefProviderInput): Promise<FacilitatorDebriefProviderResult>;
 }
 
@@ -148,9 +158,6 @@ export class ZaiFacilitatorDebriefProvider implements FacilitatorDebriefProvider
   readonly maxResponseBytes: number;
 
   constructor(options: ZaiFacilitatorDebriefProviderOptions) {
-    if (options.apiKey.trim() === "") {
-      throw new TypeError("A Z.AI facilitator-debrief credential is required.");
-    }
     this.timeoutMs = positiveBound(options.timeoutMs ?? DEFAULT_FACILITATOR_DEBRIEF_TIMEOUT_MS, "timeout");
     this.maxRequestBytes = positiveBound(
       options.maxRequestBytes ?? DEFAULT_FACILITATOR_DEBRIEF_MAX_REQUEST_BYTES,
@@ -166,6 +173,10 @@ export class ZaiFacilitatorDebriefProvider implements FacilitatorDebriefProvider
   }
 
   async generate(input: FacilitatorDebriefProviderInput): Promise<FacilitatorDebriefProviderResult> {
+    return this.prepare(input).execute();
+  }
+
+  prepare(input: FacilitatorDebriefProviderInput): FacilitatorDebriefPreparedCall {
     assertInputBinding(input);
     const inputSnapshotWithoutJournal = Object.freeze({
       runId: input.runId,
@@ -184,11 +195,28 @@ export class ZaiFacilitatorDebriefProvider implements FacilitatorDebriefProvider
       });
     }
 
+    return Object.freeze({
+      audit: requestAudit,
+      execute: () => this.execute(body, requestAudit)
+    });
+  }
+
+  private async execute(
+    body: Uint8Array<ArrayBuffer>,
+    requestAudit: FacilitatorDebriefProviderRequestAudit
+  ): Promise<FacilitatorDebriefProviderResult> {
+    if (this.options.apiKey.trim() === "") {
+      throw new FacilitatorDebriefProviderError("provider_unavailable", {
+        audit: { ...requestAudit, durationMs: 0 }
+      });
+    }
     let startedAt: number;
     try {
       startedAt = this.now();
     } catch {
-      throw new FacilitatorDebriefProviderError("provider_outcome_unknown");
+      throw new FacilitatorDebriefProviderError("provider_outcome_unknown", {
+        audit: { ...requestAudit, durationMs: 0 }
+      });
     }
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
@@ -265,7 +293,7 @@ export class ZaiFacilitatorDebriefProvider implements FacilitatorDebriefProvider
 function buildRequestAudit(
   inputSnapshotWithoutJournal: FacilitatorDebriefProviderAudit["inputSnapshotWithoutJournal"],
   body: Uint8Array
-): Omit<FacilitatorDebriefProviderAudit, "providerRequestId" | "responseBytes" | "durationMs" | "rawResponseUtf8"> {
+): FacilitatorDebriefProviderRequestAudit {
   return {
     provider: "z.ai",
     model: FACILITATOR_DEBRIEF_ZAI_MODEL,
@@ -285,7 +313,7 @@ function buildRequestAudit(
 
 function withRequestAudit(
   error: FacilitatorDebriefProviderError,
-  requestAudit: Omit<FacilitatorDebriefProviderAudit, "providerRequestId" | "responseBytes" | "durationMs" | "rawResponseUtf8">,
+  requestAudit: FacilitatorDebriefProviderRequestAudit,
   fallbackDurationMs: number
 ): FacilitatorDebriefProviderError {
   if (error.audit !== undefined) return error;
