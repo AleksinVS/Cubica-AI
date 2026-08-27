@@ -65,6 +65,7 @@ Task | Coordinator | Owner | Working/integration branch`, затем повто�
 | Boundary | Task | Coordinator | Owner | Working/integration branch |
 | --- | --- | --- | --- | --- |
 | Private participant credential recovery | TSK-20260705-multiplayer-runtime-realization | /root | /root | agent/estate-recoverable-handoff-20260827 |
+| Facilitator AI debrief contract, runtime, storage and player surface | TSK-20260827-cmt-ai-debrief | /root | /root | agent/cmt-ai-debrief-20260827 |
 
 ## Now
 
