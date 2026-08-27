@@ -17,7 +17,7 @@
 
 ## Status
 
-in_progress
+review
 
 ## Parent
 
@@ -91,9 +91,15 @@ ADR-104; оставшиеся решения являются ограничен
   фиксированный Z.AI adapter, одинаковые in-memory/PostgreSQL операции,
   facilitator-only GET/POST и восстановление stale-run реализованы; реальная
   PostgreSQL integration ожидает доступную disposable БД.
-- Player/CMT — `pending`, Luna после фиксации серверного контракта.
-- Critic/fix — `pending`, Luna xhigh после Luna-исполнителя.
-- Sol-high review and primary acceptance — `pending`.
+- Player/CMT — `completed`: CMT-плагин сообщает доступность только из
+  проверенного финального результата, Player показывает сворачиваемый разбор,
+  а опубликованный bundle пересобран с новым хешем.
+- Critic/fix — `completed`: Luna xhigh обнаружил устаревший production bundle;
+  Luna-исполнитель пересобрал его каноническим генератором, основной агент
+  добавил проверки выгрузки provider и отсутствующей регистрации.
+- Primary acceptance — `completed-focused`: Sol high проверил общий diff,
+  provenance UI, production build и настоящий CMT browser flow до финала и
+  reload. Независимый Sol-high review перед `main` остаётся последним gate.
 
 Параллельный блок participant credential recovery владеет другим смысловым
 контрактом, но меняет часть тех же session/runtime/player файлов. До его
@@ -102,21 +108,21 @@ ADR-104; оставшиеся решения являются ограничен
 
 ## Acceptance
 
-- [ ] JSON Schema — источник формы; derived TypeScript и OpenAPI не расходятся.
-- [ ] Только facilitator может узнать статус, запустить и прочитать черновик.
-- [ ] Runtime отправляет Z.AI фиксированную модель `glm-4.7`, не принимает
+- [x] JSON Schema — источник формы; derived TypeScript и OpenAPI не расходятся.
+- [x] Только facilitator может узнать статус, запустить и прочитать черновик.
+- [x] Runtime отправляет Z.AI фиксированную модель `glm-4.7`, не принимает
   endpoint/model/prompt от клиента и не раскрывает API key.
-- [ ] В accepted draft факты и интерпретации разделены, ссылки событий валидны.
-- [ ] Один успешный draft сохраняется на сессию и переживает restart/archive;
+- [x] В accepted draft факты и интерпретации разделены, ссылки событий валидны.
+- [x] Один успешный draft сохраняется на сессию и переживает restart/archive;
   повтор не вызывает provider.
-- [ ] Неуспешные попытки сохраняются, auto-retry отсутствует, явный повтор
+- [x] Неуспешные попытки сохраняются, auto-retry отсутствует, явный повтор
   безопасен, конкурентный запуск не создаёт два provider calls.
-- [ ] Аудит хранит согласованный корпус без копии журнала, но с точным SHA-256.
-- [ ] Создание/чтение не меняют state version, event sequence и gameplay state.
-- [ ] CMT показывает control только после финала, доступно сообщает статус и
+- [x] Аудит хранит согласованный корпус без копии журнала, но с точным SHA-256.
+- [x] Создание/чтение не меняют state version, event sequence и gameplay state.
+- [x] CMT показывает control только после финала, доступно сообщает статус и
   после reload показывает тот же результат.
-- [ ] Нейтральная фикстура доказывает отсутствие CMT id/семантики в общих слоях.
-- [ ] Privacy и audit-governance gaps записаны как ограниченный долг.
+- [x] Нейтральная фикстура доказывает отсутствие CMT id/семантики в общих слоях.
+- [x] Privacy и audit-governance gaps записаны как ограниченный долг.
 
 ## Validation
 
@@ -133,6 +139,25 @@ ADR-104; оставшиеся решения являются ограничен
 Реальный внешний вызов Z.AI не выполняется без отдельно предоставленного
 credential и разрешённого тестового окна; adapter проверяется injected fake
 transport. Это не препятствует проверке контракта и fail-closed поведения.
+
+Свежая этапная проверка 2026-08-27:
+
+- Runtime provider/service/store/PostgreSQL mapping/migration — `61/61`,
+  runtime typecheck, OpenAPI и generated-contract drift — PASS;
+- Player debrief/BFF/registry/loader/GamePlayer — `70/70`, Player typecheck —
+  PASS;
+- CMT plugin — `83/83`, typecheck — PASS; plugin schema — `61/61`, published
+  bundle integrity — `2/2`, game-agnostic — `10/10`;
+- production Player build — PASS;
+- нормативный production browser flow — `1/1` за 6,8 минуты: реальный финал
+  CMT, точная `expectedStateVersion`, видимые draft id/journal SHA-256 и тот же
+  результат после reload.
+
+Не выполнены намеренно: реальный вызов Z.AI без credential и disposable
+PostgreSQL integration без `TEST_POSTGRES_DATABASE_URL`/локальной БД. Тест
+реального restart/archive присутствует и компилируется; миграция и оба store
+проверены сфокусированно, но фактический драйвер PostgreSQL остаётся
+эксплуатационной проверкой следующего доступного DB-окна.
 
 ## Artifacts
 
@@ -156,3 +181,16 @@ transport. Это не препятствует проверке контрак�
   `glm-4.7`, управляемый thinking и `json_object` response format.
 - Next: дождаться интеграции пересекающегося recovery-блока, обновиться от
   `origin/main`, затем реализовать contract/runtime/store.
+
+### 2026-08-27 — completion candidate
+
+- Recovery-блок объединён в `main`, после чего ветка обновлена без потери его
+  participant/session границ.
+- Contract, provider, migration, in-memory/PostgreSQL stores, facilitator-only
+  HTTP, BFF, Player и CMT plugin реализованы отдельными проверяемыми коммитами.
+- Luna-цикл UI завершён; единственная находка критика — stale published bundle
+  — исправлена генератором. Основной агент добавил видимый provenance и
+  production browser proof после reload.
+- Ветка готова к независимому Sol-high review и отдельной чистой интеграции в
+  `main`; открыты только принятые `LEGACY-0084/0085` и описанные выше внешние
+  проверки credential/PostgreSQL.
