@@ -4,7 +4,11 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { validateAgentInstructions } from "./validate-agent-instructions.mjs";
+import {
+  parseWorktreePorcelainZ,
+  validateAgentInstructions,
+  validateWorktreeLocations
+} from "./validate-agent-instructions.mjs";
 
 function fixture(files) {
   const root = mkdtempSync(path.join(os.tmpdir(), "agent-instructions-"));
@@ -138,4 +142,34 @@ test("accepts a complete valid repository fixture", () => {
   const source = rules("[guide](docs/)");
   const result = check({ "AGENTS.md": source, "CLAUDE.md": claude(source), "docs/.keep": "" });
   assert.deepEqual(result.violations, []);
+});
+
+test("allows only the primary repository and linked worktrees under its temporary worktree root", () => {
+  const primary = path.resolve("/srv/Cubica-AI");
+  assert.deepEqual(validateWorktreeLocations(primary, [
+    primary,
+    path.join(primary, ".tmp", "worktrees", "feature-a"),
+    path.join(primary, ".tmp", "worktrees", "nested", "feature-b")
+  ]), []);
+
+  const violations = validateWorktreeLocations(primary, [
+    "/srv/Cubica-AI-feature-a",
+    path.join(primary, ".tmp", "worktrees-other", "feature-b"),
+    "relative-worktree"
+  ]);
+  assert.equal(violations.length, 3);
+  assert.match(violations.join("\n"), /Cubica-AI-feature-a/u);
+  assert.match(violations.join("\n"), /worktrees-other/u);
+  assert.match(violations.join("\n"), /not absolute/u);
+});
+
+test("parses NUL-delimited worktree porcelain without splitting paths on spaces", () => {
+  const raw = [
+    "worktree /srv/Cubica-AI", "HEAD abc", "branch refs/heads/main", "",
+    "worktree /srv/Cubica-AI/.tmp/worktrees/feature with spaces", "HEAD def", "detached", ""
+  ].join("\0");
+  assert.deepEqual(parseWorktreePorcelainZ(raw), [
+    "/srv/Cubica-AI",
+    "/srv/Cubica-AI/.tmp/worktrees/feature with spaces"
+  ]);
 });

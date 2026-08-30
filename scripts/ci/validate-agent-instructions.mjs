@@ -7,6 +7,7 @@
  * mirroring the precedence rule used by agent hosts.
  */
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
@@ -212,8 +213,51 @@ export function formatReport(result) {
   ].join("\n");
 }
 
+export function validateWorktreeLocations(primaryRoot, worktreePaths) {
+  const primary = path.resolve(primaryRoot);
+  const allowedRoot = path.join(primary, ".tmp", "worktrees");
+  const violations = [];
+  for (const rawPath of worktreePaths) {
+    if (!path.isAbsolute(rawPath)) {
+      violations.push(`linked worktree path is not absolute: ${rawPath}`);
+      continue;
+    }
+    const candidate = path.resolve(rawPath);
+    if (candidate === primary) continue;
+    const relative = path.relative(allowedRoot, candidate);
+    if (!relative || relative.startsWith(`..${path.sep}`) || relative === ".." || path.isAbsolute(relative)) {
+      violations.push(`${candidate}: linked worktree must be under ${allowedRoot}`);
+    }
+  }
+  return violations;
+}
+
+export function parseWorktreePorcelainZ(raw) {
+  return raw.split("\0")
+    .filter((field) => field.startsWith("worktree "))
+    .map((field) => field.slice("worktree ".length));
+}
+
+function validateCurrentWorktreeLocations(repoRoot) {
+  try {
+    const commonGitDirectory = execFileSync(
+      "git", ["rev-parse", "--path-format=absolute", "--git-common-dir"],
+      { cwd: repoRoot, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }
+    ).trim();
+    const primaryRoot = path.dirname(commonGitDirectory);
+    const worktrees = parseWorktreePorcelainZ(execFileSync(
+      "git", ["worktree", "list", "--porcelain", "-z"],
+      { cwd: repoRoot, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }
+    ));
+    return validateWorktreeLocations(primaryRoot, worktrees);
+  } catch {
+    return ["linked worktree locations could not be verified"];
+  }
+}
+
 function main() {
   const result = validateAgentInstructions(process.cwd());
+  result.violations.push(...validateCurrentWorktreeLocations(process.cwd()));
   console.log(formatReport(result));
   if (result.violations.length > 0) process.exitCode = 1;
 }
