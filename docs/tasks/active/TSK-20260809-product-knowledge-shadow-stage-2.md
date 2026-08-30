@@ -40,6 +40,13 @@ in_progress
   correction и повтор. Exact-zero cleanup, неизменный Git и destruction
   доказаны; разрешение израсходовано. Положительные пути не доказаны, поэтому
   Stage 3, активное чтение, применение кандидатов и Git-запись закрыты.
+- DR-19 выполнен 2026-08-30 с принятыми постоянными верхними границами
+  `90000/5000/100000/300000` ms. Первые два отрицательных сценария дали
+  ожидаемый `no_change`, 0 операций и прошли ручную рубрику 4/4. Третий вызов
+  завершился общим `gateway_error`; no-retry hard stop исключил сценарии 4–5
+  и повтор. Exact-zero cleanup, неизменный Git и уничтожение одноразового
+  контура доказаны. Разрешение DR-19 израсходовано, полная матрица и
+  положительные пути по-прежнему не доказаны; Stage 3 закрыт.
 
 ## Parent
 
@@ -1063,3 +1070,32 @@ worker и не открывает второй путь к модели или �
   schema/migration/storage не меняются.
 - Safety: default и retry не добавлены; 90001 ms и lease 99999 ms для сочетания
   90000/5000 отклоняются fail-closed. Stage 3 остаётся закрыт.
+
+### 2026-08-30 — основной AI agent, окно DR-19
+
+- Decision: PM разрешил ровно одно новое полное пятисценарное окно на Z.AI
+  Coding Plan `glm-4.7` с bounds `90000/5000/100000/300000` ms,
+  `maxAttempts=1`, без retry, одним developer/game/policy и hard stop при
+  первом небезопасном результате. Первый provider call израсходовал
+  разрешение.
+- Preactivation: временный private оператор повторно использовал maintained
+  Editor enqueue, Portal authorization utility через минимальный loopback HTTP
+  adapter, worker/evaluator, disposable PostgreSQL 17 и read-only bare Git.
+  Binding включал точные хэши operator/config/manifest, Git HEAD, provider
+  settings digest и одобренные bounds. После исправлений независимый Sol-high
+  review дал `ACCEPT`; live preflight подтвердил нулевые данные и
+  `providerCalls=0`.
+- Execution: `transient_conversation` и `existing_fact` вернули ожидаемый
+  `no_change`, 0 операций и прошли локальную смысловую рубрику 4/4; durations —
+  10233 и 8590 ms. Третий `unconfirmed_agent_suggestion` завершился
+  `gateway_error` без результата и операций. Согласно no-retry правилу окно
+  немедленно остановлено; `confirmed_new_knowledge`, `correction` и повтор не
+  запускались. Тексты, request IDs и provider payload не переносились в Git.
+- Cleanup: после 300000 ms retention credential-free cleanup удалил 3 run,
+  3 metrics, 6 messages и 3 threads. Итог: 0 active runs/metrics/messages/
+  threads, 0 active text bytes, manifest удалён, Git unchanged. Disposable
+  PostgreSQL container и private state уничтожены; сохранён только canonical
+  [content-free report](../artifacts/TSK-20260809-product-knowledge-shadow-stage-2/dr19-content-free-report.json).
+  DR-19 consumed; следующий крупный блокер — отдельное решение о способе
+  получить полную матрицу после неизвестного gateway-сбоя без ослабления
+  no-retry и privacy-границ. Stage 3 остаётся закрыт.
