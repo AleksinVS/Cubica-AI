@@ -10,5 +10,6 @@
   "047-estate-race-session-participants.md": "Estate Race S8: общая session-owned модель локальных участников без сетевого lifecycle и игровых веток в платформе.",
   "048-cards-money-trains-portable-public-journal.md": "CMT: общий переносимый журнал подтверждённых публичных событий с безопасной выгрузкой без ИИ-интерпретации.",
   "049-estate-race-local-agent-seat.md": "Estate Race S9: одно локальное агентское место, actor-scoped Game Intent, bounded fallback и fail-closed Player Web.",
-  "052-estate-race-agent-terminal-proof.md": "Estate Race S11: локальная проверка серверного финала человека и автосоперника, стабильного повтора и персональной проекции с квитанцией."
+  "052-estate-race-agent-terminal-proof.md": "Estate Race S11: локальная проверка серверного финала человека и автосоперника, стабильного повтора и персональной проекции с квитанцией.",
+  "053-estate-race-economy-observation-readiness.md": "Estate Race S12: bounded готовность к наблюдению экономики и длительности через существующий публичный журнал и доверенный manifest."
 }

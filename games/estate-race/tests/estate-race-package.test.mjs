@@ -215,6 +215,17 @@ const act = async (replay, actionId, params = {}, command = {}) => {
   });
 };
 
+const eventsOfType = async (replay, eventType) => (
+  await replay.store.getSessionEvents(replay.session.sessionId)
+).filter((event) => event.eventType === eventType);
+
+const assertObservationDataIsPublic = (data) => {
+  assert.doesNotMatch(
+    JSON.stringify(data),
+    /bundleHash|receipt|principal|credential|heldCard|deckOrder|secret/iu
+  );
+};
+
 /** A rules rejection is persisted and returned as a terminal receipt. */
 const assertRejectedAction = async (dispatch, messagePattern) => {
   const outcome = await dispatch;
@@ -401,6 +412,13 @@ test("S4 builds and sells every tier with exact 32/12 conservation, including 4â
     await s4PassRemainingWindow(replay);
     let current = await replay.store.getSession(replay.session.sessionId);
     assert.equal(s4Property(current.state, cellId).attributes.improvementTier, improvementTier);
+    const placementEvents = await eventsOfType(replay, "estate-race.building.placed");
+    assert.deepEqual(placementEvents.map(({ data }) => data), [{
+      cellId,
+      ownerPlayerId: "p1",
+      improvementTier
+    }]);
+    assertObservationDataIsPublic(placementEvents[0].data);
     assert.equal(
       s4Property(current.state, cellId).attributes.rent,
       s4Property(current.state, cellId).attributes.rentScale[improvementTier]
@@ -645,6 +663,15 @@ test("S4 monopoly doubles tier0 rent and uses exact rent1..5 with updated cell r
     assert.equal(cell.attributes.rent, cell.attributes.rentScale[improvementTier]);
     assert.equal(current.state.players.p1.metrics.cash, 1200 - expectedRent);
     assert.equal(current.state.players.p2.metrics.cash, 1200 + expectedRent);
+    const rentEvents = await eventsOfType(replay, "property.rent");
+    assert.deepEqual(rentEvents.map(({ data }) => data), [{
+      cellId: "cell-01",
+      payerPlayerId: "p1",
+      ownerPlayerId: "p2",
+      amount: expectedRent,
+      improvementTier
+    }]);
+    assertObservationDataIsPublic(rentEvents[0].data);
     s4Conservation(current.state);
   }
 });
@@ -1022,11 +1049,25 @@ test("bounded sampler replay completes first purchase and first rent", async () 
     "property.buy",
     "property.decline"
   ]);
+  assert.deepEqual(
+    (await eventsOfType(replay, "estate-race.turn.rolled")).map(({ data }) => data),
+    [{ kind: "movement" }]
+  );
 
   await act(replay, "property.buy");
   current = await replay.store.getSession(replay.session.sessionId);
   assert.equal(current.state.players.p2.metrics.cash, 1040);
   assert.equal(current.state.public.objects.boardCells["cell-05"].attributes.ownerPlayerId, "p2");
+  const purchaseEvents = await eventsOfType(replay, "estate-race.property.ownership");
+  assert.deepEqual(purchaseEvents.map(({ data }) => data), [{
+    cellId: "cell-05",
+    ownerKind: "player",
+    ownerPlayerId: "p2",
+    acquisitionMethod: "direct-purchase",
+    amount: 160
+  }]);
+  assertObservationDataIsPublic(purchaseEvents[0].data);
+  assert.equal("groupCompleted" in purchaseEvents[0].data, false);
 
   const finishedFirstTurn = await act(replay, "turn.finish");
   assert.equal(
@@ -1034,19 +1075,37 @@ test("bounded sampler replay completes first purchase and first rent", async () 
     "p1",
     "the successful response must project the actor selected by the explicit turn plan"
   );
+  assert.deepEqual(
+    (await eventsOfType(replay, "estate-race.turn.completed")).map(({ data }) => data),
+    [{ kind: "turn" }]
+  );
   await act(replay, "turn.roll");
   current = await replay.store.getSession(replay.session.sessionId);
   assert.deepEqual(current.state.public.board.lastRoll.values, [1, 4]);
   assert.equal(current.state.players.p2.metrics.position, 5);
   assert.equal(current.state.public.turn.phase, "rent");
+  assert.equal((await eventsOfType(replay, "estate-race.turn.rolled")).length, 2);
 
   await act(replay, "property.rent");
   current = await replay.store.getSession(replay.session.sessionId);
   assert.equal(current.state.players.p1.metrics.cash, 1176);
   assert.equal(current.state.players.p2.metrics.cash, 1064);
   assert.equal(current.state.public.turn.phase, "finish");
-  assert.ok(current.state.public.log.some((entry) => entry.data?.kind === "purchase"));
-  assert.ok(current.state.public.log.some((entry) => entry.data?.kind === "rent"));
+  const rentEvents = await eventsOfType(replay, "property.rent");
+  assert.deepEqual(rentEvents.map(({ data }) => data), [{
+    cellId: "cell-05",
+    payerPlayerId: "p1",
+    ownerPlayerId: "p2",
+    amount: 24,
+    improvementTier: 0
+  }]);
+  assertObservationDataIsPublic(rentEvents[0].data);
+  assert.ok(current.state.public.log.some((entry) => entry.eventType === "estate-race.property.ownership"));
+  assert.ok(current.state.public.log.some((entry) => entry.eventType === "property.rent"));
+  const eventTypes = (await replay.store.getSessionEvents(replay.session.sessionId))
+    .map(({ eventType }) => eventType);
+  assert.equal(eventTypes.includes("turn.roll.event.23"), false);
+  assert.equal(eventTypes.includes("turn.finish.event.4"), false);
 });
 
 test("compiled gameplay contains no legacy actor, resource or turn shortcuts", async () => {
@@ -1163,7 +1222,7 @@ test("rent resolution also preserves the pending extra roll", async () => {
   assert.equal(current.state.public.turn.phase, "roll");
 });
 
-test("a normal roll resets the double chain and passes the turn after landing", async () => {
+test("a completed-turn event excludes a double continuation and exact retry does not duplicate it", async () => {
   const replay = await createReplay((state) => {
     state.players.p1.metrics.position = 8;
   }, { samples: [0, 0, 3, 5] });
@@ -1172,17 +1231,35 @@ test("a normal roll resets the double chain and passes the turn after landing", 
   await act(replay, "turn.finish");
   let current = await replay.store.getSession(replay.session.sessionId);
   assert.equal(current.state.public.turn.activePlayerId, "p1");
+  assert.equal(current.state.public.turn.turnNumber, 1);
   assert.equal(current.state.public.board.consecutiveDoubles, 1);
+  assert.equal((await eventsOfType(replay, "estate-race.turn.rolled")).length, 1);
+  assert.equal((await eventsOfType(replay, "estate-race.turn.completed")).length, 0);
 
   await act(replay, "turn.roll");
   current = await replay.store.getSession(replay.session.sessionId);
   assert.deepEqual(current.state.public.board.lastRoll.values, [4, 6]);
   assert.equal(current.state.public.board.consecutiveDoubles, 0);
   assert.equal(current.state.public.board.extraRollPending, false);
-  await act(replay, "turn.finish");
+  assert.equal((await eventsOfType(replay, "estate-race.turn.rolled")).length, 2);
+
+  const commandId = createTestCommandId();
+  const completed = await act(replay, "turn.finish", {}, {
+    commandId,
+    expectedStateVersion: current.version.stateVersion
+  });
+  const retried = await act(replay, "turn.finish", {}, {
+    commandId,
+    expectedStateVersion: current.version.stateVersion
+  });
+  assert.deepEqual(retried.receipt, completed.receipt);
   current = await replay.store.getSession(replay.session.sessionId);
   assert.equal(current.state.public.turn.activePlayerId, "p2");
   assert.equal(current.state.public.turn.turnNumber, 2);
+  assert.deepEqual(
+    (await eventsOfType(replay, "estate-race.turn.completed")).map(({ data }) => data),
+    [{ kind: "turn" }]
+  );
 });
 
 test("the third consecutive double jails the actor and blocks a later roll before randomness", async () => {
@@ -1810,6 +1887,13 @@ test("jail pay, doubles, failed attempts, and third-attempt obligations are atom
   current = await paid.store.getSession(paid.session.sessionId);
   assert.equal(current.state.public.board.lastRoll.isDouble, true);
   assert.equal(current.state.public.board.extraRollPending, true);
+  const normalRollEvents = await eventsOfType(paid, "estate-race.turn.rolled");
+  assert.deepEqual(normalRollEvents.map(({ data }) => data), [{ kind: "movement" }]);
+  assert.equal(
+    (await paid.store.getSessionEvents(paid.session.sessionId))
+      .some(({ eventType }) => eventType === "turn.roll.event.23"),
+    false
+  );
 
   const poorPay = await jailedReplay({
     cash: 49,
@@ -1837,24 +1921,41 @@ test("jail pay, doubles, failed attempts, and third-attempt obligations are atom
   assert.equal(firstDouble.result.ok, true, JSON.stringify(firstDouble.result));
   const retriedDouble = await act(doubled, "jail.roll", {}, { commandId, expectedStateVersion: beforeDouble.version.stateVersion });
   assert.deepEqual(retriedDouble.receipt, firstDouble.receipt);
+  assert.deepEqual(retriedDouble.receipt.eventRefs, firstDouble.receipt.eventRefs);
   assert.equal(doubled.randomCallCount, 2);
   current = await doubled.store.getSession(doubled.session.sessionId);
   assert.equal(current.state.players.p1.metrics.position, 16);
   assert.equal(current.state.players.p1.flags.inJail, false);
   assert.equal(current.state.public.turn.phase, "acquire");
   assert.equal(current.state.public.board.extraRollPending, false);
+  const doubledRollEvents = await eventsOfType(doubled, "estate-race.turn.rolled");
+  assert.deepEqual(doubledRollEvents.map(({ data }) => data), [{ kind: "movement" }]);
+  assert.ok(firstDouble.receipt.eventRefs.includes(doubledRollEvents[0].eventId));
+  assert.equal(
+    (await doubled.store.getSessionEvents(doubled.session.sessionId))
+      .some(({ eventType }) => eventType === "turn.roll.event.23"),
+    false
+  );
 
   for (const attempts of [0, 1]) {
     const failed = await jailedReplay({ attempts, samples: [0, 1] });
-    await act(failed, "jail.roll");
+    const failedRoll = await act(failed, "jail.roll");
     current = await failed.store.getSession(failed.session.sessionId);
     assert.equal(current.state.players.p1.metrics.position, 10);
     assert.equal(current.state.players.p1.metrics.jailAttempts, attempts + 1);
     assert.equal(current.state.players.p1.flags.inJail, true);
     assert.equal(current.state.public.turn.phase, "finish");
+    const failedRollEvents = await eventsOfType(failed, "estate-race.turn.rolled");
+    assert.deepEqual(failedRollEvents.map(({ data }) => data), [{ kind: "movement" }]);
+    assert.ok(failedRoll.receipt.eventRefs.includes(failedRollEvents[0].eventId));
+    assert.equal((await eventsOfType(failed, "estate-race.turn.completed")).length, 0);
     await act(failed, "turn.finish");
     current = await failed.store.getSession(failed.session.sessionId);
     assert.equal(current.state.public.turn.activePlayerId, "p2");
+    assert.deepEqual(
+      (await eventsOfType(failed, "estate-race.turn.completed")).map(({ data }) => data),
+      [{ kind: "turn" }]
+    );
   }
 
   const third = await jailedReplay({ attempts: 2, cash: 50, samples: [0, 1] });
@@ -1865,6 +1966,7 @@ test("jail pay, doubles, failed attempts, and third-attempt obligations are atom
   assert.equal(current.state.players.p1.flags.inJail, false);
   assert.equal(current.state.players.p1.metrics.jailAttempts, 0);
   assert.equal(current.state.public.turn.phase, "acquire");
+  assert.equal((await eventsOfType(third, "estate-race.turn.rolled")).length, 1);
 
   const poorThird = await jailedReplay({
     attempts: 2,
@@ -1888,6 +1990,7 @@ test("jail pay, doubles, failed attempts, and third-attempt obligations are atom
   assert.deepEqual(thirdRetry.receipt, thirdFailure.receipt);
   let afterPoorThird = await poorThird.store.getSession(poorThird.session.sessionId);
   assert.equal(poorThird.randomCallCount, 2);
+  assert.equal((await eventsOfType(poorThird, "estate-race.turn.rolled")).length, 1);
   assert.equal(afterPoorThird.state.public.turn.phase, "obligation");
   assert.equal(afterPoorThird.state.public.obligation.reason, "jail-third");
   assert.equal(afterPoorThird.state.players.p1.metrics.position, 10);
@@ -2005,6 +2108,16 @@ test("two-player auction rotates, rejects invalid bids, pays p2 once, and resume
     leaderPlayerId: ""
   });
   assert.ok(Object.values(current.state.players).every((player) => player.objects.bidderStatus === "idle"));
+  const ownershipEvents = await eventsOfType(replay, "estate-race.property.ownership");
+  assert.deepEqual(ownershipEvents.map(({ data }) => data), [{
+    cellId: "cell-01",
+    ownerKind: "player",
+    ownerPlayerId: "p2",
+    acquisitionMethod: "auction",
+    amount: 40
+  }]);
+  assert.ok(firstPass.receipt.eventRefs.includes(ownershipEvents[0].eventId));
+  assertObservationDataIsPublic(ownershipEvents[0].data);
 
   await act(replay, "turn.finish");
   current = await replay.store.getSession(replay.session.sessionId);
@@ -2287,6 +2400,23 @@ test("S5 trade atomically exchanges cash and unimproved assets then restores the
   assert.equal(current.state.public.trade.status, "idle");
   assert.equal(current.state.public.turn.activePlayerId, "p1");
   assert.equal(current.state.public.turn.phase, "finish");
+  const ownershipEvents = await eventsOfType(replay, "estate-race.property.ownership");
+  assert.deepEqual(ownershipEvents.map(({ data }) => data), [
+    {
+      cellId: "cell-01",
+      ownerKind: "player",
+      ownerPlayerId: "p2",
+      acquisitionMethod: "trade"
+    },
+    {
+      cellId: "cell-05",
+      ownerKind: "player",
+      ownerPlayerId: "p1",
+      acquisitionMethod: "trade"
+    }
+  ]);
+  assert.ok(ownershipEvents.every(({ eventId }) => accepted.receipt.eventRefs.includes(eventId)));
+  ownershipEvents.forEach(({ data }) => assertObservationDataIsPublic(data));
 });
 
 test("S5 trade transfers both held cards without exposing another actor-private slot", async () => {
@@ -2532,6 +2662,8 @@ test("S5 bankruptcy rejects remaining liquidity, transfers to a player or bank, 
     state.public.board.lastRoll = { values: [3, 4], total: 7, isDouble: false };
     state.public.objects.boardCells["cell-01"].attributes.ownerPlayerId = "p2";
     state.public.objects.boardCells["cell-05"].attributes.ownerPlayerId = "p1";
+    state.public.objects.boardCells["cell-08"].attributes.ownerPlayerId = "p2";
+    state.public.objects.boardCells["cell-09"].attributes.ownerPlayerId = "p2";
     state.public.objects.boardCells["cell-05"].attributes.mortgaged = true;
   }, { participantCount: 3, phase: "rent" });
   const creditorRent = await act(creditor, "property.rent");
@@ -2545,6 +2677,23 @@ test("S5 bankruptcy rejects remaining liquidity, transfers to a player or bank, 
   assert.equal(current.state.public.turn.activePlayerId, "p2");
   assert.equal(current.state.public.turn.phase, "liquidationMortgage");
   assert.equal(current.state.public.liquidation.pendingCellId, "cell-05");
+  const creditorOwnershipEvents = await eventsOfType(creditor, "estate-race.property.ownership");
+  assert.deepEqual(creditorOwnershipEvents.map(({ data }) => data), [{
+    cellId: "cell-05",
+    ownerKind: "player",
+    ownerPlayerId: "p2",
+    acquisitionMethod: "creditor-transfer"
+  }]);
+  assert.deepEqual(
+    s4GroupIds(current.state, "cell-05").map((cellId) => s4Property(current.state, cellId).attributes.ownerPlayerId),
+    ["p2", "p2", "p2"]
+  );
+  const creditorBankruptcies = await eventsOfType(creditor, "estate-race.bankruptcy");
+  assert.deepEqual(creditorBankruptcies.map(({ data }) => data), [{
+    debtorPlayerId: "p1"
+  }]);
+  assertObservationDataIsPublic(creditorOwnershipEvents[0].data);
+  assertObservationDataIsPublic(creditorBankruptcies[0].data);
   const transferFee = current.state.public.objects.boardCells["cell-05"].attributes.transferFee;
   await act(creditor, "mortgage.transfer.keep");
   current = await creditor.store.getSession(creditor.session.sessionId);
@@ -2569,6 +2718,18 @@ test("S5 bankruptcy rejects remaining liquidity, transfers to a player or bank, 
   assert.equal(current.state.public.objects.boardCells["cell-01"].attributes.liquidationPending, true);
   assert.equal(current.state.public.turn.phase, "auction");
   assert.equal(current.state.public.turn.activePlayerId, "p2");
+  const bankOwnershipEvents = await eventsOfType(bank, "estate-race.property.ownership");
+  assert.deepEqual(bankOwnershipEvents.map(({ data }) => data), [{
+    cellId: "cell-01",
+    ownerKind: "bank",
+    acquisitionMethod: "bank-reversion"
+  }]);
+  const bankBankruptcies = await eventsOfType(bank, "estate-race.bankruptcy");
+  assert.deepEqual(bankBankruptcies.map(({ data }) => data), [{
+    debtorPlayerId: "p1"
+  }]);
+  assertObservationDataIsPublic(bankOwnershipEvents[0].data);
+  assertObservationDataIsPublic(bankBankruptcies[0].data);
   await act(bank, "property.auction.pass");
   await act(bank, "property.auction.pass");
   current = await bank.store.getSession(bank.session.sessionId);
@@ -2903,7 +3064,7 @@ const estateAgentFixture = async (mutateState, { phase, participantCount = 2 } =
 
 test("S9 manifest keeps Estate deterministic and declares the exact safe 73-entry policy", async () => {
   const manifest = await loadManifest();
-  assert.equal(manifest.meta.version, "0.8.0");
+  assert.equal(manifest.meta.version, "0.9.0");
   assert.equal(manifest.executionMode ?? "deterministic", "deterministic");
   assert.equal(manifest.config.players.agentSeats.max, 1);
   assert.equal(manifest.config.players.agentSeats.invalidAttemptLimit, 2);

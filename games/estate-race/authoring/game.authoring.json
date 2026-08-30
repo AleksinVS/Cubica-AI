@@ -9,7 +9,7 @@
     "_semantics": "Локальная экономическая игра для 2–6 участников на полном авторском сорокаклеточном маршруте.",
     "meta": {
       "id": "estate-race",
-      "version": "0.8.0",
+      "version": "0.9.0",
       "name": "Estate Race",
       "description": "Доступная экономическая стратегия о выборе момента для покупки, развития и переговоров.",
       "author": "Cubica",
@@ -3012,10 +3012,94 @@
             "itemType": "core.event-journal-entry",
             "maxItems": 16384
           },
-          "game.property-event": {
+          "game.property-owner-kind": {
+            "kind": "enum",
+            "values": [
+              "player",
+              "bank"
+            ]
+          },
+          "game.property-acquisition-method": {
+            "kind": "enum",
+            "values": [
+              "direct-purchase",
+              "auction",
+              "trade",
+              "creditor-transfer",
+              "bank-reversion"
+            ]
+          },
+          "game.property-ownership-event": {
             "kind": "record",
             "fields": {
-              "kind": {
+              "cellId": {
+                "typeRef": "core.string",
+                "optional": false
+              },
+              "ownerKind": {
+                "typeRef": "game.property-owner-kind",
+                "optional": false
+              },
+              "ownerPlayerId": {
+                "typeRef": "core.string",
+                "optional": true
+              },
+              "acquisitionMethod": {
+                "typeRef": "game.property-acquisition-method",
+                "optional": false
+              },
+              "amount": {
+                "typeRef": "core.integer",
+                "optional": true
+              }
+            }
+          },
+          "game.rent-event": {
+            "kind": "record",
+            "fields": {
+              "cellId": {
+                "typeRef": "core.string",
+                "optional": false
+              },
+              "payerPlayerId": {
+                "typeRef": "core.string",
+                "optional": false
+              },
+              "ownerPlayerId": {
+                "typeRef": "core.optional-string",
+                "optional": false
+              },
+              "amount": {
+                "typeRef": "core.integer",
+                "optional": false
+              },
+              "improvementTier": {
+                "typeRef": "core.integer",
+                "optional": true
+              }
+            }
+          },
+          "game.building-placement-event": {
+            "kind": "record",
+            "fields": {
+              "cellId": {
+                "typeRef": "core.string",
+                "optional": false
+              },
+              "ownerPlayerId": {
+                "typeRef": "core.string",
+                "optional": false
+              },
+              "improvementTier": {
+                "typeRef": "core.integer",
+                "optional": false
+              }
+            }
+          },
+          "game.bankruptcy-event": {
+            "kind": "record",
+            "fields": {
+              "debtorPlayerId": {
                 "typeRef": "core.string",
                 "optional": false
               }
@@ -3038,7 +3122,7 @@
               }
             }
           },
-          "game.turn.roll.event.23-event-record.1": {
+          "game.turn-rolled-event": {
             "kind": "record",
             "fields": {
               "kind": {
@@ -3047,7 +3131,7 @@
               }
             }
           },
-          "game.turn.finish.event.4-event-record.10": {
+          "game.turn-completed-event": {
             "kind": "record",
             "fields": {
               "kind": {
@@ -4867,16 +4951,30 @@
           }
         },
         "events": {
-          "property.purchase": {
+          "estate-race.property.ownership": {
             "audienceRef": "public",
-            "payloadType": "game.property-event",
+            "payloadType": "game.property-ownership-event",
             "journalEndpoint": {
               "endpoint": "public.log"
             }
           },
           "property.rent": {
             "audienceRef": "public",
-            "payloadType": "game.property-event",
+            "payloadType": "game.rent-event",
+            "journalEndpoint": {
+              "endpoint": "public.log"
+            }
+          },
+          "estate-race.building.placed": {
+            "audienceRef": "public",
+            "payloadType": "game.building-placement-event",
+            "journalEndpoint": {
+              "endpoint": "public.log"
+            }
+          },
+          "estate-race.bankruptcy": {
+            "audienceRef": "public",
+            "payloadType": "game.bankruptcy-event",
             "journalEndpoint": {
               "endpoint": "public.log"
             }
@@ -4888,16 +4986,16 @@
               "endpoint": "public.log"
             }
           },
-          "turn.roll.event.23": {
+          "estate-race.turn.rolled": {
             "audienceRef": "public",
-            "payloadType": "game.turn.roll.event.23-event-record.1",
+            "payloadType": "game.turn-rolled-event",
             "journalEndpoint": {
               "endpoint": "public.log"
             }
           },
-          "turn.finish.event.4": {
+          "estate-race.turn.completed": {
             "audienceRef": "public",
-            "payloadType": "game.turn.finish.event.4-event-record.10",
+            "payloadType": "game.turn-completed-event",
             "journalEndpoint": {
               "endpoint": "public.log"
             }
@@ -5601,7 +5699,7 @@
                 "id": "s023",
                 "kind": "command",
                 "op": "core.event.emit",
-                "eventType": "turn.roll.event.23",
+                "eventType": "estate-race.turn.rolled",
                 "summary": {
                   "op": "value.literal",
                   "value": "Активный участник бросил кости и переместил фишку."
@@ -5845,16 +5943,46 @@
                 "id": "purchase-event",
                 "kind": "command",
                 "op": "core.event.emit",
-                "eventType": "property.purchase",
+                "eventType": "estate-race.property.ownership",
                 "summary": {
                   "op": "value.literal",
                   "value": "Участник приобрёл объект."
                 },
                 "audience": "public",
                 "data": {
-                  "kind": {
+                  "cellId": {
+                    "op": "value.result",
+                    "stepId": "landing-cell",
+                    "path": [
+                      "ids",
+                      "0"
+                    ]
+                  },
+                  "ownerKind": {
                     "op": "value.literal",
-                    "value": "purchase"
+                    "value": "player"
+                  },
+                  "ownerPlayerId": {
+                    "op": "value.actor"
+                  },
+                  "acquisitionMethod": {
+                    "op": "value.literal",
+                    "value": "direct-purchase"
+                  },
+                  "amount": {
+                    "op": "value.entity",
+                    "entity": {
+                      "collection": "boardCells",
+                      "entityId": {
+                        "op": "value.result",
+                        "stepId": "landing-cell",
+                        "path": [
+                          "ids",
+                          "0"
+                        ]
+                      }
+                    },
+                    "field": "price"
                   }
                 }
               }
@@ -7540,33 +7668,150 @@
                 }
               },
               {
-                "id": "rent-event",
+                "id": "estate-rent-event",
                 "kind": "command",
                 "op": "core.event.emit",
                 "eventType": "property.rent",
                 "summary": {
                   "op": "value.literal",
-                  "value": "Участник оплатил ренту."
+                  "value": "Участнику начислена рента за объект."
                 },
                 "audience": "public",
                 "data": {
-                  "kind": {
-                    "op": "value.literal",
-                    "value": "rent"
+                  "cellId": {
+                    "op": "value.result",
+                    "stepId": "landing-cell",
+                    "path": [
+                      "ids",
+                      "0"
+                    ]
+                  },
+                  "payerPlayerId": {
+                    "op": "value.actor"
+                  },
+                  "ownerPlayerId": {
+                    "op": "value.entity",
+                    "entity": {
+                      "collection": "boardCells",
+                      "entityId": {
+                        "op": "value.result",
+                        "stepId": "landing-cell",
+                        "path": [
+                          "ids",
+                          "0"
+                        ]
+                      }
+                    },
+                    "field": "ownerPlayerId"
+                  },
+                  "amount": {
+                    "op": "value.state",
+                    "ref": {
+                      "endpoint": "public.obligation.amount"
+                    }
+                  },
+                  "improvementTier": {
+                    "op": "value.entity",
+                    "entity": {
+                      "collection": "boardCells",
+                      "entityId": {
+                        "op": "value.result",
+                        "stepId": "landing-cell",
+                        "path": [
+                          "ids",
+                          "0"
+                        ]
+                      }
+                    },
+                    "field": "improvementTier"
                   }
                 },
                 "when": {
-                  "op": "predicate.compare",
-                  "operator": "eq",
-                  "left": {
-                    "op": "value.state",
-                    "ref": {
-                      "endpoint": "public.obligation.status"
+                  "op": "predicate.entity.matches",
+                  "entity": {
+                    "collection": "boardCells",
+                    "entityId": {
+                      "op": "value.result",
+                      "stepId": "landing-cell",
+                      "path": [
+                        "ids",
+                        "0"
+                      ]
                     }
                   },
-                  "right": {
-                    "op": "value.literal",
-                    "value": "idle"
+                  "attributes": {
+                    "kind": {
+                      "op": "value.literal",
+                      "value": "estate"
+                    }
+                  }
+                }
+              },
+              {
+                "id": "non-estate-rent-event",
+                "kind": "command",
+                "op": "core.event.emit",
+                "eventType": "property.rent",
+                "summary": {
+                  "op": "value.literal",
+                  "value": "Участнику начислена рента за объект."
+                },
+                "audience": "public",
+                "data": {
+                  "cellId": {
+                    "op": "value.result",
+                    "stepId": "landing-cell",
+                    "path": [
+                      "ids",
+                      "0"
+                    ]
+                  },
+                  "payerPlayerId": {
+                    "op": "value.actor"
+                  },
+                  "ownerPlayerId": {
+                    "op": "value.entity",
+                    "entity": {
+                      "collection": "boardCells",
+                      "entityId": {
+                        "op": "value.result",
+                        "stepId": "landing-cell",
+                        "path": [
+                          "ids",
+                          "0"
+                        ]
+                      }
+                    },
+                    "field": "ownerPlayerId"
+                  },
+                  "amount": {
+                    "op": "value.state",
+                    "ref": {
+                      "endpoint": "public.obligation.amount"
+                    }
+                  }
+                },
+                "when": {
+                  "op": "predicate.not",
+                  "item": {
+                    "op": "predicate.entity.matches",
+                    "entity": {
+                      "collection": "boardCells",
+                      "entityId": {
+                        "op": "value.result",
+                        "stepId": "landing-cell",
+                        "path": [
+                          "ids",
+                          "0"
+                        ]
+                      }
+                    },
+                    "attributes": {
+                      "kind": {
+                        "op": "value.literal",
+                        "value": "estate"
+                      }
+                    }
                   }
                 }
               }
@@ -8013,6 +8258,59 @@
                     }
                   }
                 ],
+                "when": {
+                  "op": "predicate.compare",
+                  "operator": "eq",
+                  "left": {
+                    "op": "value.result",
+                    "stepId": "remaining-eligible",
+                    "path": [
+                      "ids"
+                    ]
+                  },
+                  "right": {
+                    "op": "value.literal",
+                    "value": []
+                  }
+                }
+              },
+              {
+                "id": "auction-ownership-event",
+                "kind": "command",
+                "op": "core.event.emit",
+                "eventType": "estate-race.property.ownership",
+                "summary": {
+                  "op": "value.literal",
+                  "value": "Участник приобрёл объект на аукционе."
+                },
+                "audience": "public",
+                "data": {
+                  "cellId": {
+                    "op": "value.result",
+                    "stepId": "auction-cell",
+                    "path": [
+                      "ids",
+                      "0"
+                    ]
+                  },
+                  "ownerKind": {
+                    "op": "value.literal",
+                    "value": "player"
+                  },
+                  "ownerPlayerId": {
+                    "op": "value.actor"
+                  },
+                  "acquisitionMethod": {
+                    "op": "value.literal",
+                    "value": "auction"
+                  },
+                  "amount": {
+                    "op": "value.state",
+                    "ref": {
+                      "endpoint": "public.auction.currentBid"
+                    }
+                  }
+                },
                 "when": {
                   "op": "predicate.compare",
                   "operator": "eq",
@@ -9317,6 +9615,58 @@
                         "op": "value.literal",
                         "value": ""
                       }
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "auction-ownership-event",
+                "kind": "command",
+                "op": "core.event.emit",
+                "eventType": "estate-race.property.ownership",
+                "summary": {
+                  "op": "value.literal",
+                  "value": "Участник приобрёл объект на аукционе."
+                },
+                "audience": "public",
+                "data": {
+                  "cellId": {
+                    "op": "value.result",
+                    "stepId": "auction-cell",
+                    "path": ["ids", "0"]
+                  },
+                  "ownerKind": { "op": "value.literal", "value": "player" },
+                  "ownerPlayerId": {
+                    "op": "value.state",
+                    "ref": { "endpoint": "public.auction.leaderPlayerId" }
+                  },
+                  "acquisitionMethod": { "op": "value.literal", "value": "auction" },
+                  "amount": {
+                    "op": "value.state",
+                    "ref": { "endpoint": "public.auction.currentBid" }
+                  }
+                },
+                "when": {
+                  "op": "predicate.all",
+                  "items": [
+                    {
+                      "op": "predicate.compare",
+                      "operator": "eq",
+                      "left": {
+                        "op": "value.result",
+                        "stepId": "remaining-eligible",
+                        "path": ["ids"]
+                      },
+                      "right": { "op": "value.literal", "value": [] }
+                    },
+                    {
+                      "op": "predicate.compare",
+                      "operator": "ne",
+                      "left": {
+                        "op": "value.state",
+                        "ref": { "endpoint": "public.auction.leaderPlayerId" }
+                      },
+                      "right": { "op": "value.literal", "value": "" }
                     }
                   ]
                 }
@@ -12667,6 +13017,37 @@
                 }
               },
               {
+                "id": "s002-completed-event",
+                "kind": "command",
+                "op": "core.event.emit",
+                "eventType": "estate-race.turn.completed",
+                "summary": {
+                  "op": "value.literal",
+                  "value": "Участник готов к следующему броску."
+                },
+                "audience": "public",
+                "data": {
+                  "kind": {
+                    "op": "value.literal",
+                    "value": "turn"
+                  }
+                },
+                "when": {
+                  "op": "predicate.compare",
+                  "operator": "eq",
+                  "left": {
+                    "op": "value.state",
+                    "ref": {
+                      "endpoint": "public.board.extraRollPending"
+                    }
+                  },
+                  "right": {
+                    "op": "value.literal",
+                    "value": false
+                  }
+                }
+              },
+              {
                 "id": "s003-turn-state",
                 "kind": "command",
                 "op": "core.state.patch",
@@ -12962,23 +13343,6 @@
                       ]
                     }
                   ]
-                }
-              },
-              {
-                "id": "s005-event",
-                "kind": "command",
-                "op": "core.event.emit",
-                "eventType": "turn.finish.event.4",
-                "summary": {
-                  "op": "value.literal",
-                  "value": "Участник готов к следующему броску."
-                },
-                "audience": "public",
-                "data": {
-                  "kind": {
-                    "op": "value.literal",
-                    "value": "turn"
-                  }
                 }
               }
             ]
@@ -13676,6 +14040,23 @@
                 "stream": "estate-race.jail.roll",
                 "target": {
                   "endpoint": "public.board.lastRoll"
+                }
+              },
+              {
+                "id": "roll-event",
+                "kind": "command",
+                "op": "core.event.emit",
+                "eventType": "estate-race.turn.rolled",
+                "summary": {
+                  "op": "value.literal",
+                  "value": "Участник бросил кости."
+                },
+                "audience": "public",
+                "data": {
+                  "kind": {
+                    "op": "value.literal",
+                    "value": "movement"
+                  }
                 }
               },
               {
@@ -17212,6 +17593,23 @@
                         }
                       }
                     ]
+                  },
+                  {
+                    "id": "offered-ownership-event",
+                    "kind": "command",
+                    "op": "core.event.emit",
+                    "eventType": "estate-race.property.ownership",
+                    "summary": { "op": "value.literal", "value": "Объект передан по принятой сделке." },
+                    "audience": "public",
+                    "data": {
+                      "cellId": { "op": "value.item", "area": "attribute", "field": "id" },
+                      "ownerKind": { "op": "value.literal", "value": "player" },
+                      "ownerPlayerId": {
+                        "op": "value.state",
+                        "ref": { "endpoint": "public.trade.targetPlayerId" }
+                      },
+                      "acquisitionMethod": { "op": "value.literal", "value": "trade" }
+                    }
                   }
                 ]
               },
@@ -17260,6 +17658,23 @@
                         }
                       }
                     ]
+                  },
+                  {
+                    "id": "requested-ownership-event",
+                    "kind": "command",
+                    "op": "core.event.emit",
+                    "eventType": "estate-race.property.ownership",
+                    "summary": { "op": "value.literal", "value": "Объект передан по принятой сделке." },
+                    "audience": "public",
+                    "data": {
+                      "cellId": { "op": "value.item", "area": "attribute", "field": "id" },
+                      "ownerKind": { "op": "value.literal", "value": "player" },
+                      "ownerPlayerId": {
+                        "op": "value.state",
+                        "ref": { "endpoint": "public.trade.proposerPlayerId" }
+                      },
+                      "acquisitionMethod": { "op": "value.literal", "value": "trade" }
+                    }
                   }
                 ]
               },
@@ -21277,6 +21692,40 @@
                 }
               },
               {
+                "id": "creditor-ownership-events",
+                "kind": "command",
+                "op": "core.entities.each",
+                "selection": { "op": "value.result", "stepId": "owned-assets" },
+                "body": [
+                  {
+                    "id": "creditor-ownership-event",
+                    "kind": "command",
+                    "op": "core.event.emit",
+                    "eventType": "estate-race.property.ownership",
+                    "summary": { "op": "value.literal", "value": "Объект банкрота передан кредитору." },
+                    "audience": "public",
+                    "data": {
+                      "cellId": { "op": "value.item", "area": "attribute", "field": "id" },
+                      "ownerKind": { "op": "value.literal", "value": "player" },
+                      "ownerPlayerId": {
+                        "op": "value.state",
+                        "ref": { "endpoint": "public.obligation.creditorPlayerId" }
+                      },
+                      "acquisitionMethod": { "op": "value.literal", "value": "creditor-transfer" }
+                    }
+                  }
+                ],
+                "when": {
+                  "op": "predicate.compare",
+                  "operator": "eq",
+                  "left": {
+                    "op": "value.state",
+                    "ref": { "endpoint": "public.obligation.creditorKind" }
+                  },
+                  "right": { "op": "value.literal", "value": "player" }
+                }
+              },
+              {
                 "id": "return-bank-assets",
                 "kind": "command",
                 "op": "core.entities.each",
@@ -21344,6 +21793,36 @@
                     "op": "value.literal",
                     "value": "bank"
                   }
+                }
+              },
+              {
+                "id": "bank-reversion-events",
+                "kind": "command",
+                "op": "core.entities.each",
+                "selection": { "op": "value.result", "stepId": "owned-assets" },
+                "body": [
+                  {
+                    "id": "bank-reversion-event",
+                    "kind": "command",
+                    "op": "core.event.emit",
+                    "eventType": "estate-race.property.ownership",
+                    "summary": { "op": "value.literal", "value": "Объект банкрота возвращён банку." },
+                    "audience": "public",
+                    "data": {
+                      "cellId": { "op": "value.item", "area": "attribute", "field": "id" },
+                      "ownerKind": { "op": "value.literal", "value": "bank" },
+                      "acquisitionMethod": { "op": "value.literal", "value": "bank-reversion" }
+                    }
+                  }
+                ],
+                "when": {
+                  "op": "predicate.compare",
+                  "operator": "eq",
+                  "left": {
+                    "op": "value.state",
+                    "ref": { "endpoint": "public.obligation.creditorKind" }
+                  },
+                  "right": { "op": "value.literal", "value": "bank" }
                 }
               },
               {
@@ -21822,6 +22301,20 @@
                     }
                   }
                 ]
+              },
+              {
+                "id": "bankruptcy-event",
+                "kind": "command",
+                "op": "core.event.emit",
+                "eventType": "estate-race.bankruptcy",
+                "summary": {
+                  "op": "value.literal",
+                  "value": "Участник объявлен банкротом."
+                },
+                "audience": "public",
+                "data": {
+                  "debtorPlayerId": { "op": "value.actor" }
+                }
               },
               {
                 "id": "next-active",
@@ -27079,6 +27572,71 @@
               }
             },
             {
+              "id": "building-placement-event",
+              "kind": "command",
+              "op": "core.event.emit",
+              "eventType": "estate-race.building.placed",
+              "summary": { "op": "value.literal", "value": "Участник разместил строение после аукциона дефицита." },
+              "audience": "public",
+              "data": {
+                "cellId": {
+                  "op": "value.state",
+                  "ref": {
+                    "endpoint": "participant.objects.buildingRequestCellId",
+                    "bindings": {
+                      "participantId": {
+                        "op": "value.state",
+                        "ref": { "endpoint": "public.buildingAuction.leaderPlayerId" }
+                      }
+                    }
+                  }
+                },
+                "ownerPlayerId": {
+                  "op": "value.state",
+                  "ref": { "endpoint": "public.buildingAuction.leaderPlayerId" }
+                },
+                "improvementTier": {
+                  "op": "value.entity",
+                  "entity": {
+                    "collection": "boardCells",
+                    "entityId": {
+                      "op": "value.state",
+                      "ref": {
+                        "endpoint": "participant.objects.buildingRequestCellId",
+                        "bindings": {
+                          "participantId": {
+                            "op": "value.state",
+                            "ref": { "endpoint": "public.buildingAuction.leaderPlayerId" }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "field": "improvementTier"
+                }
+              },
+              "when": {
+                "op": "predicate.all",
+                "items": [
+                  {
+                    "op": "predicate.compare",
+                    "operator": "eq",
+                    "left": { "op": "value.result", "stepId": "eligible", "path": ["ids"] },
+                    "right": { "op": "value.literal", "value": [] }
+                  },
+                  {
+                    "op": "predicate.compare",
+                    "operator": "ne",
+                    "left": {
+                      "op": "value.state",
+                      "ref": { "endpoint": "public.buildingAuction.leaderPlayerId" }
+                    },
+                    "right": { "op": "value.literal", "value": "" }
+                  }
+                ]
+              }
+            },
+            {
               "id": "house-stock",
               "kind": "command",
               "op": "core.state.patch",
@@ -28638,6 +29196,42 @@
                         "op": "value.literal",
                         "value": 5
                       }
+                    }
+                  }
+                },
+                {
+                  "id": "building-placement-event",
+                  "kind": "command",
+                  "op": "core.event.emit",
+                  "eventType": "estate-race.building.placed",
+                  "summary": { "op": "value.literal", "value": "Участник разместил строение." },
+                  "audience": "public",
+                  "data": {
+                    "cellId": {
+                      "op": "value.state",
+                      "ref": {
+                        "endpoint": "participant.objects.buildingRequestCellId",
+                        "bindings": {
+                          "participantId": { "op": "value.item", "area": "identity", "field": "id" }
+                        }
+                      }
+                    },
+                    "ownerPlayerId": { "op": "value.item", "area": "identity", "field": "id" },
+                    "improvementTier": {
+                      "op": "value.entity",
+                      "entity": {
+                        "collection": "boardCells",
+                        "entityId": {
+                          "op": "value.state",
+                          "ref": {
+                            "endpoint": "participant.objects.buildingRequestCellId",
+                            "bindings": {
+                              "participantId": { "op": "value.item", "area": "identity", "field": "id" }
+                            }
+                          }
+                        }
+                      },
+                      "field": "improvementTier"
                     }
                   }
                 },

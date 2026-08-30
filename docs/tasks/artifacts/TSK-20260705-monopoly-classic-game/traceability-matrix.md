@@ -1,6 +1,6 @@
-# Матрица трассировки Estate Race (S0–S10)
+# Матрица трассировки Estate Race (S0–S12)
 
-Матрица является исполнительным срезом полного плана S0–S10 и не создаёт
+Матрица является исполнительным срезом полного плана S0–S12 и не создаёт
 отдельную очередь. Источником порядка и критериев служит [полный
 исполнительный план](full-implementation-execution-plan.md), наблюдаемым
 описанием первого среза — [продуктовая спецификация](product-specification.md),
@@ -52,16 +52,17 @@ provenance/hash и проверки баланса; публикация ими 
 | Общая модель участников сохраняет actor boundary, персональную проекцию и доступные действия | S8 (GSR-047) | session-owned item `seatId:string`, `playerId:string`, `kind:human\|agent`, `joinState:local`; S8 создаёт только human/local; опциональный `participantCount` выбирает число мест в manifest bounds, но не идентичности; actor-scoped projection и те же intents | общий экран выбора 2–6 для первой локальной сессии, локальная проекция и доступность действий; для нейтральной неходовой фикстуры не создаются искусственные `state.players`/`public.turn` | create-contract shape + semantic bounds, privacy, stale version и actor checks; canonical contracts/OpenAPI, runtime `371` + `2` skip, Player `280/280` + production build, PostgreSQL unit/restart boundary, game-agnostic и player-core seam | реализовано; review-исправление participantCount проверено |
 | ИИ получает только проекцию и доступные действия, а не состояние движка | S9 (GSR-049) | schema-first `agentSeats`, local `agentSeatCount`; system-owned Agent Turn → ordinary projection/availability/Intent; fallback до 73 | agentControl receipt-derived, paused/facilitatorTakeover, participant labels; malformed/paused fail closed | 73 candidates (72 reject/no partial state, #73 commit, #74 schema reject), exact retry без rescan; 7 eval fixtures; bounded human+agent transcript; Estate Race 53/53, balance 3/3, compiler | реализовано локально; provider/full terminal match вне scope |
 | Private invite network сохраняет actor boundary и reconnect | S10 (GSR-050) | authenticated invite-only participants, одноразовый claim с durable credential в `HttpOnly` cookie, узкий recovery уже joined human guest seat, authenticated SSE cursor + full authenticated HTTP GET projection, PostgreSQL version; те же intents | два браузерных контекста, reconnect и recovery state | spoofing/privacy, stale version, reconnect/resync; historical S10 two-browser E2E с desktop+narrow visual inspection; recovery evidence: contracts generator `--check`, schema parity, `verify:api-contracts`, contracts-session `16/16` + typecheck; до финальной защиты гонки SSE runtime focused `53/53` + typecheck и full runtime `411 pass / 3 skip / 0 fail`; после неё session event hub `8/8` и private invite/recovery `6/6`; Player focused `81/81` + typecheck, full Player `342/342` + typecheck, production build PASS, Playwright `1/1` PASS с loopback insecure-cookie flag, package `53/53`, plugin `37/37` + typecheck, disposable PostgreSQL 17 `2/2` | принято для закрытой альфы; каталог/content/economy/product publication и production readiness остаются отдельными воротами |
-| Каталог публикуется только после принятия содержания, ресурсов и режимов | S10 | immutable game bundle + provenance; release/catalog plan | утверждённое название, описание и preview | production build/E2E, rights and product acceptance | запланировано |
+| Каталог публикуется только после принятия содержания, ресурсов и режимов | post-S12 gate | immutable game bundle + provenance; release/catalog plan | утверждённое название, описание и preview | реальные completed alpha journals, PM decision, product/rights acceptance | запланировано |
+| GSR-053 / S12: готовность наблюдения экономики и длительности | S12 (GSR-053) | ADR-103 journal + trusted hashed compiled manifest + one game-local deterministic report; minimal game-owned events | raw turn ordinals, counts, ratios, deltas and elapsed time | event package `8/8 PASS`, analyzer `8/8 PASS`, compiler check `PASS`, balance `3/3 PASS`, Estate glob `65/65 PASS`, `git diff --check PASS` | реализовано как measurement readiness; real alpha observations/final balance/catalog/production вне среза |
 
 ## Заблокировано решениями и внешними воротами
 
 | Правило/ворота | Срез | Состояние / Game Intent / план | UI | Проверка | Статус |
 |---|---|---|---|---|---|
 | P-01: оригинальный публичный кандидат | S7 | принято PM 2026-08-12; source-of-truth наборы имеют provenance/hash; balance `3/3` только `PASS-for-closed-alpha` | public local UI/content завершены для локальной приёмки; каталог не активируется | provenance/rights-record, balance review и будущая economy telemetry | принято; публикационные критерии остаются |
-| Финальное содержание, публикация в каталоге и полная продуктовая приёмка | S10 | P-01 разблокировал кандидатный пакет; S7 UI/local surface уже приняты для локальной приёмки, но финальные content, catalog и product acceptance ещё не приняты | production/catalog branding не объявляется готовым | content/provenance, balance и product acceptance | запланировано |
+| Финальное содержание, публикация в каталоге и полная продуктовая приёмка | post-S12 gate | P-01 разблокировал кандидатный пакет; S7 UI/local surface уже приняты для локальной приёмки, но финальные content, catalog и product acceptance ещё не приняты | production/catalog branding не объявляется готовым | реальные completed alpha journals, PM decision, product/rights acceptance | запланировано |
 | ИИ-места | S9 (GSR-049) | S8-контракт и ADR-060 приняты; отдельную ветку runtime создавать нельзя | явная agent-seat setup только при декларации; fail closed | adversarial projection/fallback checks и bounded transcript | реализовано локально; provider/full terminal match вне scope |
-| Каталог и полное закрытие | S10 | зависит от P-01, S7, `LEGACY-0072` и `LEGACY-0068`; source of truth не расширяется | каталог не публикуется | milestone H/N/A и product/rights acceptance | заблокировано: зависимости |
+| Каталог и полное закрытие | post-S12 gate | зависит от P-01, S7, реальных completed alpha journals и решения PM; source of truth не расширяется | каталог не публикуется | product/rights acceptance и PM direction | запланировано: внешний gate |
 
 Visual reference SHA-256: `f492f69142368e03def533fe5aead099f67c1f037582072eaa6dc059fd7c250c`;
 balance report/input SHA-256: `0d06087345740f5e88b842c416366884451ea6e5d11d998ab94f2b1ea943c9e7` /
@@ -70,6 +71,6 @@ visual/accessibility matrix — evidence конкретных viewport-пров�
 сертификация доступности. Для публичного релиза остаются economy telemetry и
 решение о целевой длительности партии.
 
-Таким образом, ни одно существенное правило S1–S10 не остаётся без среза,
+Таким образом, ни одно существенное правило S1–S12 не остаётся без среза,
 состояния/намерения, UI, проверки и статуса; `запланировано` не означает
 фактическую реализацию.
