@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { validateProductKnowledgeContract, validateShadowEvaluationManifest, validateShadowEvaluationReport } from '../src/contracts.ts';
 import { cleanupShadowEvaluation, emptyShadowEvaluationReport, preflightShadowEvaluation, reviewShadowEvaluation, runNextShadowEvaluation, writeShadowEvaluationReport, type EvaluationDbSnapshot, type ShadowEvaluatorDatabase, type ShadowEvaluatorDeps } from '../src/shadow-evaluator.ts';
 import type { ShadowEvaluationManifest, ShadowEvaluationReport } from '../src/generated/product-knowledge.ts';
-import { readShadowEvaluatorCliConfig, shadowEvaluatorValidationStage } from '../scripts/run-shadow-evaluator.ts';
+import { readShadowEvaluatorCliConfig, shadowEvaluatorGatewayFailureCode, shadowEvaluatorValidationStage } from '../scripts/run-shadow-evaluator.ts';
 
 const head = 'a'.repeat(40);
 const categories = ['transient_conversation', 'existing_fact', 'unconfirmed_agent_suggestion', 'confirmed_new_knowledge', 'correction'] as const;
@@ -407,6 +407,70 @@ describe('persistent shadow evaluator', () => {
       ...base.runs,
       { ...base.runs[0]!, stableTurnKey: manifest().scenarios[1]!.stable_turn_key, lastErrorCode: 'gateway_malformed:provider_envelope' }
     ]), manifest(), schemaReport)).toBeNull();
+  });
+  it.each([
+    ['gateway_outcome_unknown', 'failed', 'gateway_outcome_unknown'],
+    ['gateway_transport_error', 'failed', 'gateway_outcome_unknown'],
+    ['gateway_timeout', 'failed', 'gateway_outcome_unknown'],
+    ['zai_1308', 'blocked', 'gateway_blocked'],
+    ['zai_1302', 'blocked', 'gateway_blocked'],
+    ['unsafe_timeout_configuration', 'blocked', 'gateway_error']
+  ] as const)('prints only the allowlisted gateway failure %s', (lastErrorCode, status, outcome) => {
+    const run = { ...new MemoryDb().value.runs[0]!, status, outcome, metricCount: 1, lastErrorCode };
+    const report = { ...emptyShadowEvaluationReport(manifestDigest), status: 'hard_stopped' as const,
+      scenarios: emptyShadowEvaluationReport(manifestDigest).scenarios.map((scenario, index) => index === 0 ? {
+        ...scenario, actual_outcome: 'gateway_error' as const
+      } : scenario) };
+    expect(shadowEvaluatorGatewayFailureCode(snapshot([run]), manifest(), report)).toBe(lastErrorCode);
+  });
+  it('rejects gateway diagnostics when binding, measurements, status, outcome, Git, or report shape drifts', () => {
+    const run = { ...new MemoryDb().value.runs[0]!, status: 'failed' as const, outcome: 'gateway_outcome_unknown', metricCount: 1, lastErrorCode: 'gateway_outcome_unknown' };
+    const report = { ...emptyShadowEvaluationReport(manifestDigest), status: 'hard_stopped' as const,
+      scenarios: emptyShadowEvaluationReport(manifestDigest).scenarios.map((scenario, index) => index === 0 ? {
+        ...scenario, actual_outcome: 'gateway_error' as const
+      } : scenario) };
+    expect(shadowEvaluatorGatewayFailureCode(snapshot([{ ...run, ownerRef: 'other' }]), manifest(), report)).toBeNull();
+    expect(shadowEvaluatorGatewayFailureCode(snapshot([run, run]), manifest(), report)).toBeNull();
+    expect(shadowEvaluatorGatewayFailureCode(snapshot([{ ...run, operationCount: 1 }]), manifest(), report)).toBeNull();
+    expect(shadowEvaluatorGatewayFailureCode(snapshot([{ ...run, outcome: 'authorization_changed' }]), manifest(), report)).toBeNull();
+    expect(shadowEvaluatorGatewayFailureCode(snapshot([{ ...run, lastErrorCode: 'provider payload text' }]), manifest(), report)).toBeNull();
+    expect(shadowEvaluatorGatewayFailureCode(snapshot([run]), manifest(), { ...report, status: 'ready' })).toBeNull();
+    expect(shadowEvaluatorGatewayFailureCode(snapshot([run]), manifest(), { ...report, git_unchanged: false })).toBeNull();
+    expect(shadowEvaluatorGatewayFailureCode(snapshot([run]), manifest(), { ...report, scenarios: report.scenarios.map((scenario, index) => index === 0 ? { ...scenario, git_unchanged: false } : scenario) })).toBeNull();
+    expect(shadowEvaluatorGatewayFailureCode(snapshot([run]), manifest(), { ...report, scenarios: report.scenarios.map((scenario, index) => index === 1 ? { ...scenario, actual_outcome: 'gateway_error' as const } : scenario) })).toBeNull();
+  });
+  it('rejects a gateway diagnostic when the recorded sequence has a missing, drifted, or future run', () => {
+    const reportAt = (index: number): ShadowEvaluationReport => {
+      const base = emptyShadowEvaluationReport(manifestDigest);
+      return { ...base, status: 'hard_stopped', scenarios: base.scenarios.map((scenario, candidate) => candidate < index ? {
+        ...scenario, actual_outcome: 'no_change' as const,
+        review_expected_outcome: true, review_all_and_only_confirmed_facts: true,
+        review_correct_page_minimal_patch: true, review_no_duplicate_contradiction_unrelated_rewrite: true
+      } : candidate === index ? { ...scenario, actual_outcome: 'gateway_error' as const } : scenario) };
+    };
+    const runAt = (index: number, value: Record<string, unknown> = {}) => ({
+      ...new MemoryDb().value.runs[0]!, stableTurnKey: manifest().scenarios[index]!.stable_turn_key, ...value
+    });
+    const previous = runAt(0, { status: 'succeeded' as const, outcome: 'no_change', metricCount: 1 });
+    const target = runAt(1, { status: 'failed' as const, outcome: 'gateway_outcome_unknown', metricCount: 1, lastErrorCode: 'gateway_timeout' });
+    const report = reportAt(1);
+    expect(shadowEvaluatorGatewayFailureCode(snapshot([target]), manifest(), report)).toBeNull();
+    expect(shadowEvaluatorGatewayFailureCode(snapshot([{ ...previous, operationCount: 1 }, target]), manifest(), report)).toBeNull();
+    expect(shadowEvaluatorGatewayFailureCode(snapshot([previous, target, runAt(2, { status: 'pending' as const, outcome: null })]), manifest(), report)).toBeNull();
+    expect(shadowEvaluatorGatewayFailureCode(snapshot([previous, target]), manifest(), { ...report, cleanup: { ...report.cleanup, started: true } })).toBeNull();
+    expect(shadowEvaluatorGatewayFailureCode(snapshot([previous, target]), manifest(), { ...report, scenarios: report.scenarios.map((scenario, candidate) => candidate === 0 ? { ...scenario, review_correct_page_minimal_patch: null } : scenario) })).toBeNull();
+    expect(shadowEvaluatorGatewayFailureCode(snapshot([previous, target]), manifest(), report)).toBe('gateway_timeout');
+  });
+  it('rejects impossible code/status/outcome tuples and unknown provider codes', () => {
+    const report = { ...emptyShadowEvaluationReport(manifestDigest), status: 'hard_stopped' as const,
+      scenarios: emptyShadowEvaluationReport(manifestDigest).scenarios.map((scenario, index) => index === 0 ? {
+        ...scenario, actual_outcome: 'gateway_error' as const
+      } : scenario) };
+    const run = { ...new MemoryDb().value.runs[0]!, status: 'failed' as const, outcome: 'gateway_outcome_unknown', metricCount: 1, lastErrorCode: 'gateway_timeout' };
+    expect(shadowEvaluatorGatewayFailureCode(snapshot([{ ...run, outcome: 'gateway_error' }]), manifest(), report)).toBeNull();
+    expect(shadowEvaluatorGatewayFailureCode(snapshot([{ ...run, lastErrorCode: 'gateway_oversize', outcome: 'gateway_error' }]), manifest(), report)).toBeNull();
+    expect(shadowEvaluatorGatewayFailureCode(snapshot([{ ...run, status: 'blocked', outcome: 'gateway_error' }]), manifest(), report)).toBeNull();
+    expect(shadowEvaluatorGatewayFailureCode(snapshot([{ ...run, status: 'blocked', outcome: 'gateway_blocked', lastErrorCode: 'zai_9999' }]), manifest(), report)).toBeNull();
   });
   it('requires valid configuration for review and cleanup core entry points', async () => {
     const f = await fixture(); try {

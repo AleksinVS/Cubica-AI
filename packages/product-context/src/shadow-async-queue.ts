@@ -19,6 +19,10 @@ import type { ConversationMessage, ConversationTurn, ModelGatewayRequest, ModelG
 const MAX_ATTEMPTS = 3;
 const TERMINAL_SAFETY_MARGIN_MS = 5_000;
 
+/** Provider codes are shared with the evaluator's closed diagnostic allowlist. */
+const SHADOW_WORKER_RETRY_PROVIDER_CODES = ['1302', '1303', '1305', '1312'] as const;
+const SHADOW_WORKER_BLOCKED_PROVIDER_CODES = ['1000', '1001', '1002', '1003', '1004', '1113', '1308', '1309', '1310', '1311', '1313'] as const;
+
 export interface EnqueueShadowTurnInput {
   readonly receipt: ShadowAuthorizationReceipt;
   readonly threadRef: string;
@@ -59,8 +63,8 @@ export type ShadowWorkerErrorAction =
 /** Official Z.AI error policy. Unknown throttling fails closed without a hot retry. */
 export function classifyShadowWorkerError(error: unknown): ShadowWorkerErrorAction {
   if (error instanceof ModelGatewayError) {
-    if (error.providerCode && ['1302', '1303', '1305', '1312'].includes(error.providerCode)) return { kind: 'retry', code: `zai_${error.providerCode}` };
-    if (error.providerCode && ['1000', '1001', '1002', '1003', '1004', '1113', '1308', '1309', '1310', '1311', '1313'].includes(error.providerCode)) return { kind: 'blocked', code: `zai_${error.providerCode}` };
+    if (error.providerCode && SHADOW_WORKER_RETRY_PROVIDER_CODES.includes(error.providerCode as typeof SHADOW_WORKER_RETRY_PROVIDER_CODES[number])) return { kind: 'retry', code: `zai_${error.providerCode}` };
+    if (error.providerCode && SHADOW_WORKER_BLOCKED_PROVIDER_CODES.includes(error.providerCode as typeof SHADOW_WORKER_BLOCKED_PROVIDER_CODES[number])) return { kind: 'blocked', code: `zai_${error.providerCode}` };
     if (error.httpStatus === 429) return { kind: 'blocked', code: 'zai_http_429_unknown' };
     if (error.httpStatus === 401 || error.httpStatus === 403) return { kind: 'blocked', code: `zai_http_${error.httpStatus}` };
     if (error.code === 'policy_denied') return { kind: 'blocked', code: 'policy_denied' };
@@ -74,6 +78,32 @@ export function classifyShadowWorkerError(error: unknown): ShadowWorkerErrorActi
     return { kind: 'failed', code: validationCode ?? `gateway_${error.code}`, outcome: 'gateway_malformed' };
   }
   return { kind: 'failed', code: 'gateway_unclassified', outcome: 'gateway_outcome_unknown' };
+}
+
+/**
+ * Returns a worker failure code only for tuples that this classifier can
+ * persist. This is intentionally content-free and is used by the local CLI
+ * diagnostic after the report has already been written.
+ */
+export function shadowWorkerGatewayFailureCode(
+  value: unknown,
+  status: string,
+  outcome: string | null
+): string | null {
+  if (typeof value !== 'string') return null;
+  if (value === 'gateway_timeout' || value === 'gateway_transport_error' ||
+      value === 'gateway_outcome_unknown' || value === 'gateway_unclassified') {
+    return status === 'failed' && outcome === 'gateway_outcome_unknown' ? value : null;
+  }
+  if (value === 'gateway_oversize') return status === 'failed' && outcome === 'gateway_oversize' ? value : null;
+  if (value === 'unsafe_timeout_configuration') return status === 'blocked' && outcome === 'gateway_error' ? value : null;
+  if (value === 'policy_denied' || value === 'zai_http_429_unknown' || value === 'zai_http_401' || value === 'zai_http_403') {
+    return status === 'blocked' && outcome === 'gateway_blocked' ? value : null;
+  }
+  if (!value.startsWith('zai_') || status !== 'blocked' || outcome !== 'gateway_blocked') return null;
+  const providerCode = value.slice('zai_'.length);
+  return SHADOW_WORKER_RETRY_PROVIDER_CODES.includes(providerCode as typeof SHADOW_WORKER_RETRY_PROVIDER_CODES[number]) ||
+    SHADOW_WORKER_BLOCKED_PROVIDER_CODES.includes(providerCode as typeof SHADOW_WORKER_BLOCKED_PROVIDER_CODES[number]) ? value : null;
 }
 
 export interface ShadowWorkerLease {

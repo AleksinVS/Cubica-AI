@@ -8,9 +8,11 @@ import { safeShadowDatabaseUrl } from '../src/shadow-database-url.ts';
 import {
   cleanupShadowEvaluation, preflightShadowEvaluation, readShadowEvaluationManifest,
   reviewShadowEvaluation, runNextShadowEvaluation,
+  validateVisibleRuns,
   type EvaluationDbSnapshot, type EvaluationCleanupResult, type ShadowEvaluatorDatabase,
   type ShadowEvaluatorDeps, type ShadowEvaluatorReviewer, type EvaluationRunView
 } from '../src/shadow-evaluator.ts';
+import { shadowWorkerGatewayFailureCode } from '../src/shadow-async-queue.ts';
 import { modelGatewayValidationStageFromErrorCode, type ModelGatewayValidationStage } from '../src/model-gateway-diagnostics.ts';
 import type { ShadowEvaluationManifest, ShadowEvaluationReport } from '../src/generated/product-knowledge.ts';
 
@@ -129,6 +131,44 @@ export function shadowEvaluatorValidationStage(
   return modelGatewayValidationStageFromErrorCode(lastErrorCode);
 }
 
+/** CLI-only binding from one gateway-error report entry to one safe worker code. */
+export function shadowEvaluatorGatewayFailureCode(
+  snapshot: EvaluationDbSnapshot,
+  manifest: ShadowEvaluationManifest,
+  report: ShadowEvaluationReport
+): string | null {
+  const indexes = report.scenarios.flatMap((scenario, index) => scenario.actual_outcome === 'gateway_error' ? [index] : []);
+  if (report.status !== 'hard_stopped' || report.cleanup.started !== false || report.git_unchanged !== true || indexes.length !== 1 ||
+      report.scenarios.length !== manifest.scenarios.length || report.scenarios.some((scenario, candidate) =>
+        scenario.git_unchanged !== true || scenario.category !== manifest.scenarios[candidate]?.category)) return null;
+  const index = indexes[0]!;
+  const target = manifest.scenarios[index];
+  const scenario = report.scenarios[index];
+  if (!target || !scenario || scenario.git_unchanged !== true || scenario.category !== target.category) return null;
+  const reviewFields = (value: ShadowEvaluationReport['scenarios'][number]) => [
+    value.review_expected_outcome, value.review_all_and_only_confirmed_facts,
+    value.review_correct_page_minimal_patch, value.review_no_duplicate_contradiction_unrelated_rewrite
+  ];
+  const previous = report.scenarios.slice(0, index);
+  const later = report.scenarios.slice(index + 1);
+  if (previous.some((value) => value.actual_outcome !== value.expected_outcome || reviewFields(value).some((field) => field !== true)) ||
+      reviewFields(scenario).some((field) => field !== null) ||
+      later.some((value) => value.actual_outcome !== 'pending' || reviewFields(value).some((field) => field !== null))) return null;
+
+  try { validateVisibleRuns(manifest, snapshot, report); } catch { return null; }
+  // validateVisibleRuns treats the next pending scenario as a valid target;
+  // a gateway hard-stop is terminal, so no later target may exist at all.
+  const futureKeys = new Set(manifest.scenarios.slice(index + 1).map((candidate) => candidate.stable_turn_key));
+  if (snapshot.runs.some((run) => futureKeys.has(run.stableTurnKey))) return null;
+
+  const matches = snapshot.runs.filter((run) => run.stableTurnKey === target.stable_turn_key);
+  if (matches.length !== 1) return null;
+  const run = matches[0]!;
+  if (run.outcome === null) return null;
+  const lastErrorCode = (run as EvaluationRunView & { readonly lastErrorCode?: unknown }).lastErrorCode;
+  return shadowWorkerGatewayFailureCode(lastErrorCode, run.status, run.outcome);
+}
+
 function cleanupRecovery(value: unknown): 'retention_expired' | 'expired_calling_model' | 'attempts_exhausted' | null {
   return value === 'retention_expired' || value === 'expired_calling_model' || value === 'attempts_exhausted' ? value : null;
 }
@@ -191,9 +231,13 @@ export async function main(env: NodeJS.ProcessEnv = process.env): Promise<number
     const report = mode === 'preflight' ? await preflightShadowEvaluation(deps) : mode === 'run-next' ? await runNextShadowEvaluation(deps) : mode === 'review' ? await reviewShadowEvaluation(deps) : await cleanupShadowEvaluation(deps);
     if (mode === 'run-next' && report.status === 'hard_stopped') {
       // Diagnostics cannot turn an already persisted fail-closed report into a CLI failure.
-      const stage = await database.inspect().then((snapshot) =>
-        shadowEvaluatorValidationStage(snapshot, manifest, report)).catch(() => null);
+      const diagnostics = await database.inspect().then((snapshot) => ({
+        stage: shadowEvaluatorValidationStage(snapshot, manifest, report),
+        gatewayFailureCode: shadowEvaluatorGatewayFailureCode(snapshot, manifest, report)
+      })).catch(() => ({ stage: null, gatewayFailureCode: null }));
+      const { stage, gatewayFailureCode } = diagnostics;
       if (stage !== null) process.stderr.write(`Shadow evaluator validation stage: ${stage}.\n`);
+      if (gatewayFailureCode !== null) process.stderr.write(`Shadow evaluator gateway failure: ${gatewayFailureCode}.\n`);
     }
     process.stdout.write(`${JSON.stringify(report)}\n`); return 0;
   } catch { process.stderr.write('Shadow evaluator refused or failed.\n'); return 1; }
