@@ -47,6 +47,11 @@ in_progress
   и повтор. Exact-zero cleanup, неизменный Git и уничтожение одноразового
   контура доказаны. Разрешение DR-19 израсходовано, полная матрица и
   положительные пути по-прежнему не доказаны; Stage 3 закрыт.
+- Для предлагаемого DR-21 2026-08-31 подготовлен новый одноразовый private
+  contour. Live preflight подтвердил Portal/Editor/worker bindings, exact-zero
+  PostgreSQL, evaluator `ready`, неизменный Git и `providerCalls=0`; enqueue и
+  Z.AI не запускались. Окно остаётся `pending` до отдельного решения PM и
+  свежего независимого Sol-high `ACCEPT`.
 
 ## Parent
 
@@ -1120,3 +1125,22 @@ worker и не открывает второй путь к модели или �
 - Next blocker: отдельное решение PM о новом полном пятисценарном окне после
   свежего Sol-high preactivation. Stage 3, активное чтение, применение
   кандидатов, Git-запись и retry остаются закрыты.
+
+### 2026-08-31 — основной AI agent, подготовка предлагаемого окна DR-21
+
+- Plan: подготовить новый одноразовый контур в принятой границе, доказать его
+  готовность без enqueue и внешнего вызова и остановиться до нового решения PM.
+- Implementation: private оператор под локальным `.tmp/` создал отдельную
+  PostgreSQL 17, app/worker LOGIN, одноязычный English seed в read-only bare
+  Git, пять фиксированных English-сценариев и manifest. Portal проверяется
+  через минимальный loopback HTTP adapter над существующим authorization
+  utility; Editor формирует штатный job, но не сохраняет ход.
+- Evidence: host preflight — `READY`; live preflight подтвердил Portal initial
+  authorization и worker reauthorization, валидный bounded worker config,
+  evaluator `ready`, точный Git HEAD и 0 run/metrics/messages/threads/text
+  bytes. `providerCalls=0`; Z.AI не вызывался.
+- Simplification: не добавлены сервис, таблица, схема, второй enqueue,
+  scheduler или новая retry-политика; Next/Strapi процессы не запускались.
+- Blocker: DR-21 остаётся `pending`. До явного разрешения PM на ровно одно
+  полное окно и свежего независимого Sol-high `ACCEPT` запрещены enqueue,
+  worker и внешний provider call. Stage 3 остаётся закрыт.
