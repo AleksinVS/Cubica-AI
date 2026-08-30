@@ -144,23 +144,30 @@ test("accepts a complete valid repository fixture", () => {
   assert.deepEqual(result.violations, []);
 });
 
-test("allows only the primary repository and linked worktrees under its temporary worktree root", () => {
+test("allows agent and exact product editor worktrees only under their declared temporary roots", () => {
   const primary = path.resolve("/srv/Cubica-AI");
   assert.deepEqual(validateWorktreeLocations(primary, [
-    primary,
-    path.join(primary, ".tmp", "worktrees", "feature-a"),
-    path.join(primary, ".tmp", "worktrees", "nested", "feature-b")
+    { path: primary, branch: "refs/heads/main" },
+    { path: path.join(primary, ".tmp", "worktrees", "feature-a"), branch: "refs/heads/agent/feature-a" },
+    { path: path.join(primary, ".tmp", "worktrees", "nested", "feature-b"), branch: null },
+    { path: path.join(primary, ".tmp", "editor-worktrees", "game-abc123"), branch: "refs/heads/editor/session/game-abc123" }
   ]), []);
 
   const violations = validateWorktreeLocations(primary, [
-    "/srv/Cubica-AI-feature-a",
-    path.join(primary, ".tmp", "worktrees-other", "feature-b"),
-    "relative-worktree"
+    { path: "/srv/Cubica-AI-feature-a", branch: "refs/heads/agent/feature-a" },
+    { path: path.join(primary, ".tmp", "worktrees-other", "feature-b"), branch: "refs/heads/agent/feature-b" },
+    { path: "relative-worktree", branch: "refs/heads/agent/relative" },
+    { path: path.join(primary, ".tmp", "editor-worktrees", "agent-copy"), branch: "refs/heads/agent/copy" },
+    { path: path.join(primary, ".tmp", "editor-worktrees", "nested", "session"), branch: "refs/heads/editor/session/session" },
+    { path: path.join(primary, ".tmp", "editor-worktrees", "session-a"), branch: "refs/heads/editor/session/session-b" }
   ]);
-  assert.equal(violations.length, 3);
+  assert.equal(violations.length, 6);
   assert.match(violations.join("\n"), /Cubica-AI-feature-a/u);
   assert.match(violations.join("\n"), /worktrees-other/u);
   assert.match(violations.join("\n"), /not absolute/u);
+  assert.match(violations.join("\n"), /agent-copy/u);
+  assert.match(violations.join("\n"), /nested/u);
+  assert.match(violations.join("\n"), /session-a/u);
 });
 
 test("parses NUL-delimited worktree porcelain without splitting paths on spaces", () => {
@@ -169,7 +176,7 @@ test("parses NUL-delimited worktree porcelain without splitting paths on spaces"
     "worktree /srv/Cubica-AI/.tmp/worktrees/feature with spaces", "HEAD def", "detached", ""
   ].join("\0");
   assert.deepEqual(parseWorktreePorcelainZ(raw), [
-    "/srv/Cubica-AI",
-    "/srv/Cubica-AI/.tmp/worktrees/feature with spaces"
+    { path: "/srv/Cubica-AI", branch: "refs/heads/main" },
+    { path: "/srv/Cubica-AI/.tmp/worktrees/feature with spaces", branch: null }
   ]);
 });

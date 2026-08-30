@@ -204,10 +204,14 @@ code does not activate this workflow.
 - Store screenshots, logs, and intermediate artifacts only under `.tmp/` with
   descriptive names. Store temporary subagent packets under
   `.tmp/agent-workflow/`.
-- Create every linked Git worktree except the primary repository under
-  `.tmp/worktrees/<descriptive-name>/`. Adjacent sibling directories such as
-  `../Cubica-AI-*` are forbidden. Relocate a registered worktree with
-  `git worktree move`, never with a raw filesystem move, and run
+- Place every temporary Git worktree under a declared repository-local
+  `.tmp/` root. Agent-owned development and integration worktrees belong under
+  `.tmp/worktrees/<descriptive-name>/`. Product-managed worktrees use their
+  accepted subsystem root and lifecycle; editor sessions use exactly
+  `.tmp/editor-worktrees/<sessionId>/` on `editor/session/<sessionId>`. Agents
+  must not use a product-managed root for their own branches. Adjacent sibling
+  directories such as `../Cubica-AI-*` are forbidden. Relocate a registered
+  worktree with `git worktree move`, never with a raw filesystem move, and run
   `npm run verify:agent-instructions` after adding or moving one.
 - Never add `.tmp/` to Git. At completion, remove only your own obsolete
   artifacts; do not touch files owned by the user or other agents.
