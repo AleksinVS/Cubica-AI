@@ -141,6 +141,25 @@ describe("classifyChangeSet risk policy", () => {
     expect(result.reasons.some((reason) => reason.includes("outside authoring/assets"))).toBe(true);
   });
 
+  it("canonicalizes file paths before granting the authoring/assets risk class", () => {
+    const escaped = classifyChangeSet(
+      changeSet([], {
+        fileCreates: [{ filePath: "games/demo/authoring/../../../package.json", text: "{}" }]
+      }),
+      projection
+    );
+    const contained = classifyChangeSet(
+      changeSet([], {
+        fileCreates: [{ filePath: "games/demo/authoring/../assets/card.png", text: "" }]
+      }),
+      projection
+    );
+
+    expect(escaped.risk).toBe("dangerous");
+    expect(escaped.reasons.some((reason) => reason.includes("outside authoring/assets"))).toBe(true);
+    expect(contained.risk).toBe("structural");
+  });
+
   it("returns the maximum risk for a mixed ChangeSet and keeps every reason", () => {
     const result = classifyChangeSet(
       changeSet([

@@ -68,12 +68,11 @@ module.exports = createCoreController('api::launch-session.launch-session', ({ s
       return ctx.badRequest('token and counter are required');
     }
 
-    const { deviceToken, playerId } = requestPayload(ctx);
+    const { deviceToken } = requestPayload(ctx);
     const result = await strapi.service('api::launch-session.launch-session').bindRuntime({
       token,
       counter,
       deviceToken,
-      playerId,
     });
 
     if (!result.ok && result.httpStatus === 404) {

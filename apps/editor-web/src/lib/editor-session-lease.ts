@@ -8,8 +8,9 @@
  * that still belongs to a live process.
  */
 import { AsyncLocalStorage } from "node:async_hooks";
-import { randomUUID } from "node:crypto";
-import { mkdir, open, readFile, rename, rm, stat } from "node:fs/promises";
+import { createHash, randomUUID } from "node:crypto";
+import { mkdir, open, readFile, readdir, rename, rm, stat } from "node:fs/promises";
+import type { Dirent, Stats } from "node:fs";
 import path from "node:path";
 
 import { EditorRepositoryError } from "./editor-repository";
@@ -28,6 +29,30 @@ interface EditorSessionLeaseOwner {
   readonly operation: string;
   readonly acquiredAt: string;
 }
+
+type LeaseInspection =
+  | { readonly kind: "missing" }
+  | { readonly kind: "error" }
+  | { readonly kind: "valid"; readonly owner: EditorSessionLeaseOwner; readonly fileStat: Stats }
+  | { readonly kind: "invalid"; readonly fileStat: Stats };
+
+interface ReclaimCoordinatorOwner {
+  readonly pid: number;
+  readonly token: string;
+}
+
+interface ReclaimCoordination {
+  readonly path: string;
+  readonly owner: ReclaimCoordinatorOwner;
+  readonly recoveredTombstones: readonly string[];
+}
+
+type ReclaimCoordinatorInspection =
+  | { readonly kind: "missing" }
+  | { readonly kind: "error" }
+  | { readonly kind: "valid"; readonly owner: ReclaimCoordinatorOwner };
+
+const reclaimInspectionTestHookKey = Symbol.for("cubica.test.editor-session-lease.reclaim-inspected");
 
 export interface EditorSessionLeaseOptions {
   readonly waitMs?: number;
@@ -136,33 +161,63 @@ async function acquireLease(
 }
 
 async function reclaimAbandonedLease(leasePath: string): Promise<boolean> {
-  const [owner, fileStat] = await Promise.all([
-    readLeaseOwner(leasePath),
-    stat(leasePath).catch(() => undefined)
-  ]);
-  if (fileStat === undefined) {
+  const inspected = await inspectLease(leasePath);
+  if (inspected.kind === "missing") {
     return true;
+  }
+  if (inspected.kind === "error") {
+    return false;
   }
 
   // A newly-created record can be observed before its owner JSON is flushed.
   // The grace window prevents another process from mistaking that short state
   // for an abandoned lease.
-  if (owner === undefined) {
-    if (Date.now() - fileStat.mtimeMs < invalidOwnerGraceMs) {
+  if (inspected.kind === "invalid") {
+    if (Date.now() - inspected.fileStat.mtimeMs < invalidOwnerGraceMs) {
       return false;
     }
-  } else if (isProcessAlive(owner.pid)) {
+  } else if (isProcessAlive(inspected.owner.pid)) {
     return false;
   }
 
+  await runReclaimTestHook("lease-inspected", leasePath);
+
+  const coordination = await acquireReclaimCoordination(leasePath, inspected);
+  if (coordination === undefined) {
+    return false;
+  }
+
+  let identityIsGone = false;
   try {
-    await rm(leasePath, { force: true });
-    return true;
-  } catch (error) {
-    // A failed stale-lock cleanup is contention, not progress. Returning false
-    // preserves the bounded poll/deadline path instead of spinning forever on
-    // a filesystem that keeps rejecting deletion.
-    return isMissingFileError(error);
+    const current = await inspectLease(leasePath);
+    if (current.kind === "missing") {
+      identityIsGone = true;
+      return true;
+    }
+    if (!isSameLeaseIdentity(inspected, current)) {
+      identityIsGone = true;
+      return false;
+    }
+    if (current.kind === "valid" && isProcessAlive(current.owner.pid)) {
+      return false;
+    }
+
+    try {
+      await rm(leasePath);
+      identityIsGone = true;
+      return true;
+    } catch (error) {
+      // A failed stale-lock cleanup is contention, not progress. Returning
+      // false preserves the bounded poll/deadline path instead of spinning.
+      return isMissingFileError(error);
+    }
+  } finally {
+    await releaseReclaimCoordination(coordination);
+    if (identityIsGone) {
+      await Promise.all(coordination.recoveredTombstones.map(async (tombstonePath) => {
+        await rm(tombstonePath, { recursive: true, force: true }).catch(() => undefined);
+      }));
+    }
   }
 }
 
@@ -196,7 +251,33 @@ async function releaseLease(leasePath: string, token: string): Promise<void> {
 
 async function readLeaseOwner(leasePath: string): Promise<EditorSessionLeaseOwner | undefined> {
   try {
-    const parsed = JSON.parse(await readFile(leasePath, "utf8")) as Partial<EditorSessionLeaseOwner>;
+    return parseLeaseOwner(await readFile(leasePath, "utf8"));
+  } catch {
+    return undefined;
+  }
+}
+
+async function inspectLease(leasePath: string): Promise<LeaseInspection> {
+  let fileStat: Stats;
+  try {
+    fileStat = await stat(leasePath);
+  } catch (error) {
+    return isMissingFileError(error) ? { kind: "missing" } : { kind: "error" };
+  }
+
+  try {
+    const owner = parseLeaseOwner(await readFile(leasePath, "utf8"));
+    return owner === undefined
+      ? { kind: "invalid", fileStat }
+      : { kind: "valid", owner, fileStat };
+  } catch (error) {
+    return isMissingFileError(error) ? { kind: "missing" } : { kind: "error" };
+  }
+}
+
+function parseLeaseOwner(contents: string): EditorSessionLeaseOwner | undefined {
+  try {
+    const parsed = JSON.parse(contents) as Partial<EditorSessionLeaseOwner>;
     if (
       parsed.schemaVersion !== leaseSchemaVersion ||
       typeof parsed.token !== "string" ||
@@ -212,6 +293,151 @@ async function readLeaseOwner(leasePath: string): Promise<EditorSessionLeaseOwne
   } catch {
     return undefined;
   }
+}
+
+function reclaimCoordinationPath(leasePath: string, inspected: LeaseInspection): string {
+  const identity = inspected.kind === "valid"
+    ? inspected.owner.token
+    : [
+        inspected.fileStat.dev,
+        inspected.fileStat.ino,
+        inspected.fileStat.size,
+        inspected.fileStat.mtimeMs,
+        inspected.fileStat.ctimeMs
+      ].join(":");
+  const identityHash = createHash("sha256").update(identity).digest("hex");
+  return `${leasePath}.reclaim-${identityHash}`;
+}
+
+async function acquireReclaimCoordination(
+  leasePath: string,
+  inspected: LeaseInspection
+): Promise<ReclaimCoordination | undefined> {
+  const coordinationPath = reclaimCoordinationPath(leasePath, inspected);
+  const owner: ReclaimCoordinatorOwner = { pid: process.pid, token: randomUUID() };
+  const candidatePath = `${coordinationPath}.candidate-${owner.token}`;
+  const markerPath = path.join(candidatePath, `${owner.pid}-${owner.token}`);
+  const recoveredTombstones: string[] = [];
+
+  try {
+    await mkdir(markerPath, { recursive: true });
+  } catch {
+    return undefined;
+  }
+
+  try {
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      try {
+        await rename(candidatePath, coordinationPath);
+        return { path: coordinationPath, owner, recoveredTombstones };
+      } catch (error) {
+        if (isMissingFileError(error)) {
+          return undefined;
+        }
+      }
+
+      const current = await inspectReclaimCoordinator(coordinationPath);
+      if (current.kind === "missing") {
+        // The failed publish and subsequent disappearance do not prove which
+        // filesystem action won. Let the bounded outer poll retry from a fresh
+        // lease inspection instead of treating ambiguity as ownership.
+        return undefined;
+      }
+      if (current.kind === "error" || isProcessAlive(current.owner.pid)) {
+        return undefined;
+      }
+
+      await runReclaimTestHook("coordinator-inspected", leasePath);
+      const tombstonePath = `${coordinationPath}.abandoned-${current.owner.token}`;
+      try {
+        // A non-empty directory is never overwritten by directory rename. The
+        // retained tombstone therefore turns the observed coordinator token
+        // into a compare-and-move fence: a delayed observer of X cannot move a
+        // replacement Y onto X's existing tombstone.
+        await rename(coordinationPath, tombstonePath);
+        recoveredTombstones.push(tombstonePath);
+      } catch (error) {
+        if (!isMissingFileError(error)) {
+          return undefined;
+        }
+      }
+    }
+    return undefined;
+  } finally {
+    await rm(candidatePath, { recursive: true, force: true }).catch(() => undefined);
+  }
+}
+
+async function inspectReclaimCoordinator(
+  coordinationPath: string
+): Promise<ReclaimCoordinatorInspection> {
+  let entries: Dirent[];
+  try {
+    entries = await readdir(coordinationPath, { withFileTypes: true });
+  } catch (error) {
+    return isMissingFileError(error) ? { kind: "missing" } : { kind: "error" };
+  }
+  if (entries.length !== 1 || !entries[0]?.isDirectory()) {
+    return { kind: "error" };
+  }
+
+  const match = /^([1-9][0-9]*)-([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/u
+    .exec(entries[0].name);
+  const pid = Number(match?.[1]);
+  if (match === null || !Number.isSafeInteger(pid)) {
+    return { kind: "error" };
+  }
+  return { kind: "valid", owner: { pid, token: match[2] as string } };
+}
+
+async function releaseReclaimCoordination(coordination: ReclaimCoordination): Promise<void> {
+  const current = await inspectReclaimCoordinator(coordination.path);
+  if (
+    current.kind !== "valid"
+    || current.owner.pid !== coordination.owner.pid
+    || current.owner.token !== coordination.owner.token
+  ) {
+    return;
+  }
+
+  const releasedPath = `${coordination.path}.released-${coordination.owner.token}`;
+  try {
+    await rename(coordination.path, releasedPath);
+    await rm(releasedPath, { recursive: true, force: true }).catch(() => undefined);
+  } catch {
+    // A later process can recover this live-looking record after this process
+    // exits. Keeping it is safer than modifying an ambiguous replacement.
+  }
+}
+
+function isSameLeaseIdentity(observed: LeaseInspection, current: LeaseInspection): boolean {
+  if (observed.kind === "valid" && current.kind === "valid") {
+    return observed.owner.token === current.owner.token;
+  }
+  if (observed.kind !== "invalid" || current.kind !== "invalid") {
+    return false;
+  }
+  return observed.fileStat.dev === current.fileStat.dev
+    && observed.fileStat.ino === current.fileStat.ino
+    && observed.fileStat.size === current.fileStat.size
+    && observed.fileStat.mtimeMs === current.fileStat.mtimeMs
+    && observed.fileStat.ctimeMs === current.fileStat.ctimeMs;
+}
+
+async function runReclaimTestHook(
+  phase: "lease-inspected" | "coordinator-inspected",
+  leasePath: string
+): Promise<void> {
+  if (process.env.NODE_ENV !== "test") {
+    return;
+  }
+  const hooks = globalThis as typeof globalThis & {
+    [key: symbol]: ((input: {
+      readonly phase: "lease-inspected" | "coordinator-inspected";
+      readonly leasePath: string;
+    }) => Promise<void>) | undefined;
+  };
+  await hooks[reclaimInspectionTestHookKey]?.({ phase, leasePath });
 }
 
 function isProcessAlive(pid: number): boolean {

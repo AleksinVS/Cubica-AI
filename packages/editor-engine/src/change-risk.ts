@@ -190,12 +190,31 @@ function isContainerValue(value: JsonValue): boolean {
 }
 
 /**
- * A path is "inside authoring/assets" when any of its segments is `authoring`
- * or `assets` (for example `games/<id>/authoring/...` or `.../assets/...`). Any
- * other location is out of the safe editing surface and escalates to dangerous.
+ * A path is "inside authoring/assets" only after lexical canonicalization.
+ * Escaping above the repository root is always dangerous, even when a later
+ * segment happens to be named `authoring` or `assets`.
  */
 function isWithinAuthoringOrAssets(filePath: string): boolean {
-  const segments = filePath.split("/").filter((segment) => segment !== "");
+  const normalized = filePath.replaceAll("\\", "/");
+  if (normalized.startsWith("/")) {
+    return false;
+  }
+
+  const segments: string[] = [];
+  for (const segment of normalized.split("/")) {
+    if (segment === "" || segment === ".") {
+      continue;
+    }
+    if (segment === "..") {
+      if (segments.length === 0) {
+        return false;
+      }
+      segments.pop();
+      continue;
+    }
+    segments.push(segment);
+  }
+
   return segments.includes("authoring") || segments.includes("assets");
 }
 

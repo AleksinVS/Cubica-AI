@@ -20,9 +20,9 @@
 
 ## Status
 
-planned
+in_progress
 
-Независимые fail-closed исправления готовы к исполнению. Семь блоков,
+Независимые fail-closed исправления готовы к исполнению. Восемь блоков,
 меняющих public/trust/storage/product boundary, ожидают решений PM; они не
 блокируют остальные волны.
 
@@ -89,6 +89,7 @@ stand не скрывает красные сценарии, а архитект
 5. hybrid failure policy (AD-05);
 6. trusted preview origin bootstrap (AD-06);
 7. фактическая гарантия ИИ-разбора CMT (AD-07).
+8. доверенная регистрация и чтение preview-контента (AD-08).
 
 Этот список не отменяет условный stop: F-010, F-020, F-029, F-037, F-046 и
 любой другой блок возвращаются на архитектурную классификацию, если
@@ -104,12 +105,12 @@ boundary или постоянное хранение. F-035 исполняет 
 
 ### Волна 0. Честная базовая линия
 
-- [ ] F-002: исправить Portal `CreateSessionRequest` и добавить настоящий
+- [x] F-002: исправить Portal `CreateSessionRequest` и добавить настоящий
   Portal -> Runtime contract test.
-- [ ] F-044: восстановить CMT mock control/full replay, привести provenance к
+- [x] F-044: восстановить CMT mock control/full replay, привести provenance к
   схеме и подключить focused gate к affected pipeline.
-- [ ] Зафиксировать исходные отрицательные тесты для F-001 и F-003 до
-  изменения реализации.
+- [x] Зафиксировать исходный отрицательный тест F-001. Для F-003 сохранить
+  corpus сценариев, но не закреплять произвольную auth-схему до AD-08.
 
 Gate: узкие тесты воспроизводят прежний отказ и проходят после исправления;
 существующий canonical slice остаётся зелёным.
@@ -117,7 +118,7 @@ Gate: узкие тесты воспроизводят прежний отказ
 ### Волна 1. Потеря данных и межсессионная изоляция
 
 - [ ] W1 Editor: F-001, F-004..F-007, F-010.
-- [ ] W2 Preview: F-003, F-018, fail-closed часть F-028, F-029.
+- [ ] W2 Preview: F-018, fail-closed часть F-028 и F-029; F-003 после AD-08.
 - [ ] W6 Product Context: F-037, F-038.
 
 Gate: concurrency, stale-owner, dirty-worktree, symlink, cross-session,
@@ -188,10 +189,10 @@ Gate: обещания ADR соответствуют реально доказ�
 
 | Поток | Статус | Зависимость | Владелец/ветка |
 | --- | --- | --- | --- |
-| W0 baseline | pending | нет | назначается перед реализацией |
-| W1 Editor lease/mutations/GC | pending | нет | exclusive: `apps/editor-web` session/lease/mutating routes |
-| W2 Preview trust/messages | pending | AD-06 только для hosted origin | exclusive integration owner: Runtime preview routes, preview message schema и их OpenAPI; W4 только потребитель до handoff SHA |
-| W3 Portal | partially_blocked | AD-01..AD-03 | exclusive integration owner: Portal/Runtime launch contract и его OpenAPI; W4 только потребитель до handoff SHA |
+| W0 baseline | completed | нет | F-002/F-044 accepted; F-003 corpus передан в AD-08 |
+| W1 Editor lease/mutations/GC | in_progress | нет | F-001/F-007 fixed; exclusive: `apps/editor-web` session/lease/mutating routes |
+| W2 Preview trust/messages | partially_blocked | AD-08 для F-003; AD-06 только для hosted origin | exclusive integration owner: Runtime preview routes, preview message schema и их OpenAPI; W4 только потребитель до handoff SHA |
+| W3 Portal | partially_blocked | F-002 fixed; AD-01..AD-03 | exclusive integration owner: Portal/Runtime launch contract и его OpenAPI; W4 только потребитель до handoff SHA |
 | W4 Runtime/Mechanics/contracts | pending | AD-04/AD-05 только для соответствующих схем | exclusive: остальные Runtime/Mechanics/shared contracts, исключая границы W2/W3 |
 | W5 Player/game packages | pending | handoff SHA W2/W3/W4 для contract changes, AD-07 для semantics | exclusive: Player/game files; shared schema не меняет |
 | W6 Product Context/operations/CI | pending | нет | разделять concurrency и mechanical CI blocks |
@@ -284,7 +285,15 @@ rollout-планом.
 
 ## Plan Amendments
 
-Нет.
+### 2026-08-31 — AD-08 для preview registration
+
+- Во время картирования F-003 подтверждено, что Runtime не имеет готового
+  principal/capability для `/content/reload`: игровая сессия и её bearer
+  появляются только после регистрации временного content source.
+- Самовольное добавление shared secret, session bearer до создания сессии или
+  постоянной binding-таблицы изменило бы trust/storage/public boundary.
+- F-003 остановлен до решения AD-08; остальные независимые находки продолжают
+  исполняться.
 
 ## Handoff Log
 
@@ -296,7 +305,7 @@ rollout-планом.
   отложенной в выполненное ревью.
 - Validation before documentation: `typecheck`, `verify:canonical`,
   `verify:mechanics-locks` прошли; CMT mock — 15/18, provenance — fail.
-- Remaining: решения AD-01..AD-07 и реализация волн 0–5.
+- Remaining: решения AD-01..AD-08 и реализация волн 0–5.
 - Next safe step: Волна 0 без изменения архитектуры — Portal create contract,
   CMT mock/provenance и исходные regression tests F-001/F-003.
 - Risks: live PostgreSQL/Strapi/Z.AI/Robokassa и browser E2E не выполнялись;
@@ -317,3 +326,21 @@ rollout-планом.
   `generate-structure.js --check` и `git diff --check` прошли; JSON metadata
   разобраны, найдено ровно 49 finding ids, 12 drift ids и 46 подробных
   трассировок F-004..F-049.
+
+### 2026-08-31 — primary agent, реализация волны 0
+
+- Fixed: F-001 использует v1 token как fencing identity и восстанавливаемую
+  directory-rename координацию stale reclaim; F-002 отправляет в Runtime
+  точный `{gameId}`; F-044 получил deterministic replay, schema-valid
+  provenance и отдельный affected/canonical gate; дополнительно закрыт F-007.
+- Review: Luna-high CMT-результат исправлен после Luna-xhigh
+  `NEEDS_CORRECTION`; concurrency/public-contract diff после коррекции получил
+  независимый Sol-high `ACCEPT`.
+- Validation: Editor lease 5/5, Editor risk 13/13 + typecheck, Portal 36/36,
+  affected selector 18/18, CMT mock 18/18 + provenance, `verify:legacy`,
+  agent instructions, structure check и `git diff --check` прошли.
+- Limitation: общий Editor Web typecheck не завершён в этом worktree, потому
+  что shared host `node_modules/@cubica` не содержит workspace-link
+  `@cubica/product-context`; focused Vite compilation изменённого lease прошла.
+- Remaining: F-003 ждёт AD-08; W1 продолжает F-004..F-006/F-010, затем
+  независимые W2/W6 без смены архитектурных границ.
