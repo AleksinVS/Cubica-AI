@@ -1099,3 +1099,24 @@ worker и не открывает второй путь к модели или �
   DR-19 consumed; следующий крупный блокер — отдельное решение о способе
   получить полную матрицу после неизвестного gateway-сбоя без ослабления
   no-retry и privacy-границ. Stage 3 остаётся закрыт.
+
+### 2026-08-31 — основной AI agent, локальная диагностика DR-20
+
+- Decision: PM принял минимальный локальный вывод существующего
+  `last_error_code` для будущего `gateway_error`, без смены Z.AI Coding Plan
+  `glm-4.7`, публичного отчёта, storage, retry или provider. Новый внешний
+  вызов этим решением не разрешён.
+- Implementation: `run-next` после точно связанного `hard_stopped` результата
+  выводит в `stderr` только код из закрытого списка worker. Проверяются exact
+  manifest/report/run binding, неизменный Git, terminal status/outcome, одна
+  metric и совпадение бесконтентных измерений. Неизвестное значение
+  подавляется; report и exit status не меняются.
+- Simplification: сохранены один evaluator, существующие `shadow_runs` и
+  classifier. Новое поле JSON Schema, таблица, sidecar и диагностический сервис
+  не создаются; деталь исчезает при штатном cleanup.
+- Verification: focused worker/evaluator tests — 79/79, package typecheck,
+  agent-instructions — 13/13 и runtime `OK`, `git diff --check`. Внешний
+  provider, Portal и одноразовый оценочный контур не запускались.
+- Next blocker: отдельное решение PM о новом полном пятисценарном окне после
+  свежего Sol-high preactivation. Stage 3, активное чтение, применение
+  кандидатов, Git-запись и retry остаются закрыты.

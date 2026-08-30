@@ -7,6 +7,7 @@
  * mirroring the precedence rule used by agent hosts.
  */
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
@@ -212,8 +213,80 @@ export function formatReport(result) {
   ].join("\n");
 }
 
+const editorSessionIdPattern = /^[a-zA-Z0-9][a-zA-Z0-9._-]{2,80}$/u;
+
+function strictRelative(root, candidate) {
+  const relative = path.relative(root, candidate);
+  return relative && relative !== ".." && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative)
+    ? relative
+    : null;
+}
+
+export function validateWorktreeLocations(primaryRoot, worktrees) {
+  const primary = path.resolve(primaryRoot);
+  const agentRoot = path.join(primary, ".tmp", "worktrees");
+  const editorRoot = path.join(primary, ".tmp", "editor-worktrees");
+  const violations = [];
+  for (const worktree of worktrees) {
+    const rawPath = worktree.path;
+    if (!path.isAbsolute(rawPath)) {
+      violations.push(`linked worktree path is not absolute: ${rawPath}`);
+      continue;
+    }
+    const candidate = path.resolve(rawPath);
+    if (candidate === primary) continue;
+
+    if (strictRelative(agentRoot, candidate) !== null) continue;
+
+    const editorSessionId = strictRelative(editorRoot, candidate);
+    if (editorSessionId !== null && !editorSessionId.includes(path.sep) &&
+        editorSessionIdPattern.test(editorSessionId) && !editorSessionId.includes("..") &&
+        worktree.branch === `refs/heads/editor/session/${editorSessionId}`) continue;
+
+    if (editorSessionId !== null) {
+      violations.push(`${candidate}: product editor worktree must be a direct .tmp/editor-worktrees/<sessionId> child on refs/heads/editor/session/<sessionId>`);
+    } else {
+      violations.push(`${candidate}: linked worktree must use a declared repository-local .tmp root`);
+    }
+  }
+  return violations;
+}
+
+export function parseWorktreePorcelainZ(raw) {
+  const records = [];
+  let current = null;
+  for (const field of raw.split("\0")) {
+    if (field.startsWith("worktree ")) {
+      if (current !== null) records.push(current);
+      current = { path: field.slice("worktree ".length), branch: null };
+    } else if (field.startsWith("branch ") && current !== null) {
+      current.branch = field.slice("branch ".length);
+    }
+  }
+  if (current !== null) records.push(current);
+  return records;
+}
+
+function validateCurrentWorktreeLocations(repoRoot) {
+  try {
+    const commonGitDirectory = execFileSync(
+      "git", ["rev-parse", "--path-format=absolute", "--git-common-dir"],
+      { cwd: repoRoot, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }
+    ).trim();
+    const primaryRoot = path.dirname(commonGitDirectory);
+    const worktrees = parseWorktreePorcelainZ(execFileSync(
+      "git", ["worktree", "list", "--porcelain", "-z"],
+      { cwd: repoRoot, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }
+    ));
+    return validateWorktreeLocations(primaryRoot, worktrees);
+  } catch {
+    return ["linked worktree locations could not be verified"];
+  }
+}
+
 function main() {
   const result = validateAgentInstructions(process.cwd());
+  result.violations.push(...validateCurrentWorktreeLocations(process.cwd()));
   console.log(formatReport(result));
   if (result.violations.length > 0) process.exitCode = 1;
 }
