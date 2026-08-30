@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#294738" />
+    <title>Карта Гвиней — транспортная сеть</title>
+    <link rel="stylesheet" href="transport-network-prototype.css" />
+  </head>
+  <body>
+    <main class="application-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Тренинг · прототип ведущего</p>
+          <h1>Транспортная сеть Гвиней</h1>
+        </div>
+        <div class="topbar-actions" aria-label="Настройки карты">
+          <label class="switch-control" for="callouts-toggle">
+            <input id="callouts-toggle" type="checkbox" checked />
+            <span aria-hidden="true"></span>
+            Выноски
+          </label>
+          <button class="button secondary" id="reset-button" type="button">Сбросить</button>
+        </div>
+      </header>
+
+      <section class="workspace" aria-label="Интерактивная карта транспортной сети">
+        <div class="map-panel">
+          <div class="map-toolbar" aria-label="Масштаб карты">
+            <button class="round-button" id="zoom-out" type="button" aria-label="Уменьшить карту">−</button>
+            <output id="zoom-value" aria-live="polite">100%</output>
+            <button class="round-button" id="zoom-in" type="button" aria-label="Увеличить карту">+</button>
+          </div>
+          <p class="map-hint">Колесо — масштаб · фон — drag/стрелки · диаграмма — перенос или выбор маршрута</p>
+          <div class="map-viewport" id="map-viewport" tabindex="0" aria-label="Карта. Выберите зелёную шестерёнку как текущую станцию. Нажмите на диаграмму, чтобы выбрать пункт назначения; перетащите её или используйте стрелки, чтобы переместить. Стрелки на фоне перемещают карту.">
+            <div class="map-stage" id="map-stage">
+              <img class="map-image" src="Начальная транспортная сеть.png" alt="Карта Гвиней с железнодорожными терминалами" />
+              <svg class="annotation-layer" id="annotation-layer" viewBox="0 0 1878 1345" preserveAspectRatio="none" role="group" aria-label="Инженерные выноски терминалов"></svg>
+            </div>
+          </div>
+        </div>
+
+        <aside class="inspector" aria-labelledby="inspector-title">
+          <p class="eyebrow">Состояние маршрута</p>
+          <h2 id="inspector-title">Выберите узел</h2>
+          <p id="inspector-description" class="inspector-copy" aria-live="polite">Нажмите на шестерёнку или инженерную выноску на карте.</p>
+          <div class="terminal-summary" id="terminal-summary" hidden>
+            <span class="terminal-number" id="terminal-number">01</span>
+            <span id="terminal-location">Центральная Гвинея</span>
+          </div>
+          <form id="capacity-form" class="capacity-form" aria-label="Параметры грузопотока"></form>
+          <p class="legend-title">Сегменты</p>
+          <div class="legend" aria-label="Легенда диаграммы">
+            <span><i class="legend-filled"></i>заполнено</span>
+            <span><i class="legend-empty"></i>потенциал</span>
+            <span><i class="legend-coin"></i>монеты до соседа</span>
+            <span><i class="legend-current"></i>текущая станция</span>
+            <span><i class="legend-route"></i>кратчайший маршрут</span>
+          </div>
+        </aside>
+      </section>
+    </main>
+    <script src="transport-network-prototype.js"></script>
+  </body>
+</html>
