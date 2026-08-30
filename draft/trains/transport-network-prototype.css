@@ -31,3 +31,51 @@ h1,h2 { margin:0; } h1 { font-size:clamp(24px,3vw,38px); } h2 { font-size:25px; 
 .station-button:not(.is-locked) .callout-number { fill:#55976c; }.station-button:not(.is-locked) .callout-number-text { fill:#fff; }
 .station-button.is-current .callout-number { fill:#247453; stroke:#fff8e8; }.station-button.is-current .callout-number-text { fill:#fff; }
 .destination-chart .callout-card,.destination-chart .callout-caption,.destination-chart .bar-outline,.destination-chart .bar-filled,.destination-chart .bar-empty { pointer-events:none; }
+.station-hit { fill:rgba(0,0,0,.001); stroke:none; }
+.station-button.has-animation .callout-number { fill:#fff7e7; stroke:#314e3b; stroke-width:1.7; }
+.station-button.has-animation .callout-number-text { fill:#30291f; font-size:16px; }
+.station-button.has-animation.is-current .callout-number { fill:#fff7e7; stroke:#247453; stroke-width:4; }
+.station-button.has-animation.is-current .callout-number-text { fill:#30291f; }
+.station-button.has-animation:hover .callout-number,.station-button.has-animation:focus .callout-number { stroke:#1675a8; stroke-width:4; }
+
+/* Station 04 activity scene: all motion is decorative and never captures map input. */
+.station-animation-layer { pointer-events:none; }
+.train-orbit {
+  transform-box:view-box;
+  animation:station-train-orbit 3.6s linear infinite;
+  animation-delay:var(--orbit-delay);
+  will-change:transform;
+}
+.locomotive { filter:drop-shadow(0 2px 1px rgba(52,34,17,.35)); }
+.train-body,.train-boiler,.train-front,.train-cowcatcher { fill:var(--train-body); stroke:#1b1917; stroke-width:1.5; stroke-linejoin:round; }
+.train-roof,.train-chassis,.train-dark,.train-wheel-outer { fill:#3d3b38; stroke:#1b1917; stroke-width:1.4; stroke-linejoin:round; }
+.train-window { fill:#eadcae; stroke:#1b1917; stroke-width:1.3; }
+.train-trim,.train-front-cap { fill:var(--train-trim); stroke:#1b1917; stroke-width:1.2; }
+.train-wheel-rim { fill:var(--train-body); stroke:var(--train-trim); stroke-width:1.4; }
+.train-wheel-spokes { fill:none; stroke:var(--train-trim); stroke-width:.9; stroke-linecap:round; }
+.smoke-puff {
+  fill:#464441;
+  stroke:#1b1917;
+  stroke-width:1;
+  opacity:0;
+  transform-box:fill-box;
+  transform-origin:center;
+  animation:station-smoke-puff 1.2s linear infinite;
+  animation-delay:var(--smoke-delay);
+}
+@keyframes station-train-orbit {
+  from { transform:rotate(0deg); }
+  to { transform:rotate(360deg); }
+}
+@keyframes station-smoke-puff {
+  0% { opacity:0; transform:translate(0,0) scale(.35); }
+  10% { opacity:.92; }
+  68% { opacity:.48; }
+  100% { opacity:0; transform:translate(-18px,-10px) scale(2.15); }
+}
+@media (prefers-reduced-motion:reduce) {
+  .train-orbit { animation-play-state:paused; }
+  .train-orbit.is-red { animation-delay:0ms; }
+  .train-orbit.is-blue { animation-delay:-1.8s; }
+  .train-smoke { display:none; }
+}

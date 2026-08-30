@@ -16,8 +16,13 @@
   const CALLOUT_DRAG_THRESHOLD = 7;
   const COINS_PER_ROW = 4;
   const COIN_GAP = 46;
+  const TRAIN_ORBIT_DURATION = 3600;
+  const TRAIN_ORBIT_RADIUS = 34;
   const BAR_COLORS = ['#2d7050', '#c76b38', '#386f9a', '#a65661', '#9b7b22'];
   const OPEN_STATIONS = new Set([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  // Визуальная спецификация пока относится только к станции 04. Массив
+  // оставляет явную точку расширения, если такие сцены появятся у других узлов.
+  const ANIMATED_STATION_IDS = [4];
   // Граф повторяет видимые железнодорожные связи исходной карты. Обе стороны
   // перечислены явно, чтобы обход в ширину мог идти в любом направлении.
   const RAIL_GRAPH = { 1:[2,9], 2:[1,3], 3:[2], 4:[7], 5:[6], 6:[5,7,8,9], 7:[4,6], 8:[6], 9:[1,6] };
@@ -66,6 +71,9 @@
   const title = document.getElementById('inspector-title');
   const description = document.getElementById('inspector-description');
   const summary = document.getElementById('terminal-summary');
+  // Абсолютная эпоха сохраняет фазу CSS-анимации, когда SVG пересоздаётся
+  // после drag, изменения диаграммы или выбора маршрута.
+  const trainAnimationEpoch = performance.now();
 
   function svgElement(name, attributes, text) {
     const node = document.createElementNS(SVG_NS, name);
@@ -89,6 +97,7 @@
     const focusKey = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.focusKey : null;
     layer.replaceChildren();
     drawRoute();
+    drawStationAnimations();
     if (state.sourceId) drawCoins(state.sourceId);
     terminals.forEach((terminal) => {
       const [x, y] = terminal.point;
@@ -99,9 +108,11 @@
       const group = svgElement('g', { class: 'callout' });
       group.dataset.terminalId = terminal.id;
       group.append(svgElement('path', { class: 'callout-line', d: `M ${x} ${y} L ${x + dx * .52} ${y + dy * .52} L ${anchorX} ${anchorY}` }));
-      const station = svgElement('g', { class: `station-button${state.sourceId === terminal.id ? ' is-current' : ''}${OPEN_STATIONS.has(terminal.id) ? '' : ' is-locked'}`, tabindex: '0', role: 'button', 'aria-pressed': String(state.sourceId === terminal.id), 'data-focus-key': `station-${terminal.id}`, 'aria-label': OPEN_STATIONS.has(terminal.id) ? `Станция ${String(terminal.id).padStart(2, '0')}, ${terminal.region}. Выбрать исходной станцией.` : `Терминал ${String(terminal.id).padStart(2, '0')}: маршрут ещё не открыт.` });
-      station.append(svgElement('circle', { class: 'callout-number', cx: x, cy: y, r: 18 }));
-      station.append(svgElement('text', { class: 'callout-number-text', x, y: y + 1 }, String(terminal.id).padStart(2, '0')));
+      const hasAnimation = ANIMATED_STATION_IDS.includes(terminal.id);
+      const station = svgElement('g', { class: `station-button${state.sourceId === terminal.id ? ' is-current' : ''}${OPEN_STATIONS.has(terminal.id) ? '' : ' is-locked'}${hasAnimation ? ' has-animation' : ''}`, tabindex: '0', role: 'button', 'aria-pressed': String(state.sourceId === terminal.id), 'data-focus-key': `station-${terminal.id}`, 'aria-label': OPEN_STATIONS.has(terminal.id) ? `Станция ${String(terminal.id).padStart(2, '0')}, ${terminal.region}. Выбрать исходной станцией.` : `Терминал ${String(terminal.id).padStart(2, '0')}: маршрут ещё не открыт.` });
+      if (hasAnimation) station.append(svgElement('circle', { class: 'station-hit', cx: x, cy: y, r: 23 }));
+      station.append(svgElement('circle', { class: 'callout-number', cx: x, cy: y, r: hasAnimation ? 12 : 18 }));
+      station.append(svgElement('text', { class: 'callout-number-text', x, y: y + 1 }, hasAnimation ? String(terminal.id) : String(terminal.id).padStart(2, '0')));
       station.addEventListener('click', () => chooseSource(terminal.id));
       station.addEventListener('keydown', (event) => activateWithKeyboard(event, () => chooseSource(terminal.id)));
       group.append(station);
@@ -242,6 +253,97 @@
     }
     state.route.forEach((id) => { const [x, y] = terminals[id - 1].point; routeLayer.append(svgElement('circle', { class: 'route-stop', cx: x, cy: y, r: 24 })); });
     layer.append(routeLayer);
+  }
+
+  function drawStationAnimations() {
+    const elapsed = performance.now() - trainAnimationEpoch;
+    const animationLayer = svgElement('g', {
+      class: 'station-animation-layer',
+      'aria-hidden': 'true'
+    });
+
+    ANIMATED_STATION_IDS.forEach((stationId) => {
+      const [centerX, centerY] = terminals[stationId - 1].point;
+      drawOrbitingLocomotive(animationLayer, centerX, centerY, {
+        className: 'is-red',
+        body: '#b84032',
+        trim: '#d3a033',
+        scale: .52,
+        orbitOffset: 0,
+        smokeOffset: 0
+      }, elapsed);
+      drawOrbitingLocomotive(animationLayer, centerX, centerY, {
+        className: 'is-blue',
+        body: '#2670b8',
+        trim: '#d3a033',
+        scale: .48,
+        orbitOffset: TRAIN_ORBIT_DURATION / 2,
+        smokeOffset: 120
+      }, elapsed);
+    });
+
+    layer.append(animationLayer);
+  }
+
+  function drawOrbitingLocomotive(parent, centerX, centerY, palette, elapsed) {
+    const orbitProgress = (elapsed + palette.orbitOffset) % TRAIN_ORBIT_DURATION;
+    const orbit = svgElement('g', {
+      class: `train-orbit ${palette.className}`,
+      style: `transform-origin:${centerX}px ${centerY}px;--orbit-delay:${-orbitProgress}ms`
+    });
+    const carrier = svgElement('g', { transform: `translate(${centerX} ${centerY - TRAIN_ORBIT_RADIUS}) scale(${palette.scale})` });
+    drawSmoke(carrier, elapsed, palette.smokeOffset);
+    drawLocomotive(carrier, palette);
+    orbit.append(carrier);
+    parent.append(orbit);
+  }
+
+  function drawSmoke(parent, elapsed, phaseOffset) {
+    const smoke = svgElement('g', { class: 'train-smoke', transform: 'translate(10 -25)', 'aria-hidden': 'true' });
+    const puffDuration = 1200;
+    for (let index = 0; index < 5; index += 1) {
+      const puffProgress = (elapsed + phaseOffset + index * 240) % puffDuration;
+      const puff = svgElement('g', { class: 'smoke-puff', style: `--smoke-delay:${-puffProgress}ms` });
+      // Несколько перекрывающихся частей дают клубу рисованный силуэт вместо
+      // геометрически идеального круга из ранних вариантов прототипа.
+      puff.append(svgElement('circle', { cx: 0, cy: 0, r: 3.4 }));
+      puff.append(svgElement('circle', { cx: 3.2, cy: -1.8, r: 2.6 }));
+      puff.append(svgElement('circle', { cx: -2.8, cy: -2.2, r: 2.4 }));
+      smoke.append(puff);
+    }
+    parent.append(smoke);
+  }
+
+  function drawLocomotive(parent, palette) {
+    const train = svgElement('g', {
+      class: `locomotive ${palette.className}`,
+      style: `--train-body:${palette.body};--train-trim:${palette.trim}`,
+      'aria-hidden': 'true'
+    });
+
+    // Тёмный контур и слегка преувеличенные детали сохраняют читаемый силуэт
+    // на общей карте: кабина слева, котёл и решётка — спереди справа.
+    train.append(svgElement('rect', { class: 'train-chassis', x: -29, y: 3, width: 55, height: 7, rx: 2 }));
+    train.append(svgElement('rect', { class: 'train-body', x: -28, y: -17, width: 17, height: 21, rx: 2 }));
+    train.append(svgElement('path', { class: 'train-roof', d: 'M -31 -17 Q -30 -21 -26 -21 H -10 Q -7 -20 -7 -17 Z' }));
+    train.append(svgElement('rect', { class: 'train-window', x: -24, y: -13, width: 9, height: 8, rx: 1 }));
+    train.append(svgElement('rect', { class: 'train-boiler', x: -12, y: -12, width: 33, height: 16, rx: 8 }));
+    train.append(svgElement('circle', { class: 'train-front', cx: 20, cy: -4, r: 8 }));
+    train.append(svgElement('circle', { class: 'train-front-cap', cx: 22, cy: -4, r: 3 }));
+    train.append(svgElement('path', { class: 'train-dark', d: 'M 7 -13 L 7 -24 L 14 -24 L 13 -13 Z' }));
+    train.append(svgElement('rect', { class: 'train-trim', x: 5, y: -27, width: 11, height: 4, rx: 1 }));
+    train.append(svgElement('rect', { class: 'train-trim', x: -8, y: -17, width: 4, height: 7, rx: 2 }));
+    train.append(svgElement('path', { class: 'train-cowcatcher', d: 'M 23 3 L 34 13 L 22 13 Z' }));
+
+    [-19, -3, 14].forEach((wheelX) => {
+      const wheel = svgElement('g', { class: 'train-wheel', transform: `translate(${wheelX} 9)` });
+      wheel.append(svgElement('circle', { class: 'train-wheel-outer', cx: 0, cy: 0, r: 6 }));
+      wheel.append(svgElement('circle', { class: 'train-wheel-rim', cx: 0, cy: 0, r: 3.7 }));
+      wheel.append(svgElement('path', { class: 'train-wheel-spokes', d: 'M -3.5 0 H 3.5 M 0 -3.5 V 3.5 M -2.5 -2.5 L 2.5 2.5 M 2.5 -2.5 L -2.5 2.5' }));
+      train.append(wheel);
+    });
+
+    parent.append(train);
   }
 
   function drawCoins(sourceId) {
