@@ -83,6 +83,15 @@ report, JSON Schema, generated types, миграции, retention и права 
 Это устраняет необходимость в новой таблице, sidecar или диагностическом
 сервисе. Новый внешний вызов по-прежнему закрыт.
 
+Последнее разрешённое окно DR-19 выполнено 2026-08-30 с принятой верхней
+границей model timeout 90000 ms. Два первых отрицательных сценария дали
+ожидаемый `no_change`, 0 операций и прошли ручную рубрику 4/4. Третий вызов
+завершился общим `gateway_error`; no-retry hard stop исключил оба положительных
+сценария и повтор. После retention exact-zero cleanup удалил 3 run, 3 metrics,
+6 messages и 3 threads, Git остался неизменным, одноразовый контур уничтожен.
+Полная матрица и положительные пути всё ещё не доказаны, поэтому Stage 2
+остаётся `in_progress`, а Stage 3 закрыт.
+
 ## Реализованные границы
 
 - Portal получает личность только из серверной аутентификации, проверяет право
@@ -396,6 +405,25 @@ transcript, candidate, bearer, HMAC и provider payload в артефакт не
 существующая формула и PostgreSQL ceiling 120000 ms уже покрывают этот бюджет,
 поэтому миграция не требуется. Worker сохраняет обязательную явную настройку,
 `maxAttempts=1`/no-retry и запрет внешнего вызова без нового решения PM.
+
+DR-19 использовал эти принятые bounds ровно один раз: model timeout 90000 ms,
+Portal auth timeout 5000 ms, lease 100000 ms и retention 300000 ms. После
+свежего Sol-high `ACCEPT` сценарии `transient_conversation` и `existing_fact`
+вернули ожидаемый `no_change`, 0 операций и review 4/4 за 10233 и 8590 ms.
+`unconfirmed_agent_suggestion` завершился общим `gateway_error` без результата;
+no-retry hard stop исключил `confirmed_new_knowledge`, `correction` и повтор.
+После retention удалены 3 run, 3 metrics, 6 messages и 3 threads; active
+counts/text bytes равны нулю, manifest удалён, Git unchanged, disposable
+contour уничтожен. Канонический бесконтентный результат сохранён в
+[`dr19-content-free-report.json`](dr19-content-free-report.json).
+
+Увеличение timeout устранило прежний локальный предел, но не доказало
+стабильность внешнего поставщика. Постоянный отчёт намеренно сохраняет только
+общий `gateway_error`, поэтому точный класс сбоя DR-19 после cleanup неизвестен.
+До следующего окна требуется решение PM: оставить текущую диагностику,
+добавить allowlisted бесконтентную диагностику до cleanup либо менять
+публичный отчёт, retry-политику или provider. Ни один из этих вариантов не
+разрешён автоматически результатом DR-19.
 
 Перед каждым новым внешним окном необходимо:
 
