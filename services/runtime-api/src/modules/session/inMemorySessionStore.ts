@@ -13,6 +13,10 @@ import type {
   CreatedSession,
   ImmutableGameBundle,
   LockedSessionOperation,
+  PrivateInviteClaimStoreInput,
+  PrivateInviteClaimStoreResult,
+  PrivateSeatRecoveryInviteStoreInput,
+  PrivateSeatRecoveryInviteStoreResult,
   SessionAuthenticationInput,
   SessionCommandReceipt,
   SessionCommandTransaction,
@@ -29,6 +33,15 @@ import type {
   UpdateSessionOptions
 } from "@cubica/contracts-session";
 import { isValidImmutableBundleInput } from "../content/immutableBundle.ts";
+import type {
+  BeginFacilitatorDebriefAttemptInput,
+  BeginFacilitatorDebriefAttemptResult,
+  CompleteFacilitatorDebriefAttemptInput,
+  FacilitatorDebriefGenerationSource,
+  FacilitatorDebriefStatusSource,
+  FacilitatorDebriefStorePort,
+  StoredFacilitatorDebriefAttempt
+} from "../ai/facilitatorDebriefStore.ts";
 import { assertCommandTransactionResult } from "./commandTransactionValidation.ts";
 import { createPublicGameplayJournalByteAccumulator } from "./publicGameplayJournal.ts";
 import {
@@ -38,22 +51,32 @@ import {
 import {
   assertNextSessionVersion,
   assertProtectedEventSequenceUnchanged,
+  PrivateSeatRecoveryUnavailableError,
   SessionAuthenticationError,
+  SessionAuthorizationError,
   SessionStoreUnavailableError,
   SessionVersionConflictError,
   SessionWriteLockedError
 } from "./sessionStoreErrors.ts";
 import {
+  applyPrivateInviteClaim,
+  assertCreationPrincipalsMatchParticipants,
   assertSessionParticipantsImmutable,
-  assertSessionParticipantsMatchState
+  assertSessionParticipantsMatchState,
+  isPrivateSessionHostPrincipal,
+  resolvePrivateSeatRecoveryTarget
 } from "./sessionParticipants.ts";
 
 interface StoredPrincipal {
   principal: SessionPrincipal;
   credentialSha256: string;
+  credentialExpiresAt?: Date;
+  recoveryTokenSha256?: string;
+  recoveryTokenExpiresAt?: Date;
 }
 
-export class InMemorySessionStore<TState = unknown> implements SessionStorePort<TState> {
+export class InMemorySessionStore<TState = unknown>
+  implements SessionStorePort<TState>, FacilitatorDebriefStorePort<TState> {
   readonly mode = "in-memory";
   private readonly sessions = new Map<string, SessionRecord<TState>>();
   private readonly bundles = new Map<string, ImmutableGameBundle>();
@@ -61,6 +84,10 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
   private readonly receipts = new Map<string, SessionCommandReceipt>();
   private readonly eventsBySessionId = new Map<string, Array<SessionEventRecord>>();
   private readonly schedules = new Map<string, SessionSystemSchedule>();
+  private readonly facilitatorDebriefAttemptsBySessionId = new Map<
+    string,
+    Array<StoredFacilitatorDebriefAttempt>
+  >();
   /** Lifecycle metadata is separate so archiving cannot rewrite a snapshot. */
   private readonly archivedAtBySessionId = new Map<string, Date>();
   private readonly lockedSessionIds = new Set<string>();
@@ -68,6 +95,8 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
   async createSession(command: CreateSessionInput<TState>): Promise<CreatedSession<TState>> {
     assertBundleInput(command);
     assertSessionParticipantsMatchState(command.participants, command.initialState, { allowAgents: true });
+    const principalInputs = [command.principal, ...(command.additionalPrincipals ?? [])];
+    assertCreationPrincipalsMatchParticipants(principalInputs, command.participants);
     const sessionId = randomUUID();
     const now = new Date();
     const existingBundle = this.bundles.get(command.immutableBundle.bundleHash);
@@ -98,24 +127,27 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
       createdAt: now,
       updatedAt: now
     };
-    const principal: SessionPrincipal = {
-      principalId: command.principal.principalId,
-      sessionId,
-      kind: command.principal.kind,
-      role: command.principal.role,
-      actorScope: structuredClone(command.principal.actorScope),
-      createdAt: now
-    };
+    const storedPrincipals = principalInputs.map((principalInput): StoredPrincipal => ({
+      principal: {
+        principalId: principalInput.principalId,
+        sessionId,
+        kind: principalInput.kind,
+        role: principalInput.role,
+        actorScope: structuredClone(principalInput.actorScope),
+        createdAt: now
+      },
+      credentialSha256: principalInput.credentialSha256,
+      ...(principalInput.credentialExpiresAt === undefined
+        ? {}
+        : { credentialExpiresAt: new Date(principalInput.credentialExpiresAt) })
+    }));
 
     // All writes happen only after every invariant has been checked, which is
     // the in-memory equivalent of committing one database transaction.
     this.bundles.set(bundle.bundleHash, bundle);
     this.sessions.set(sessionId, snapshot);
-    this.principalsBySessionId.set(sessionId, [{
-      principal,
-      credentialSha256: command.principal.credentialSha256
-    }]);
-    return { session: clone(snapshot), principal: clone(principal) };
+    this.principalsBySessionId.set(sessionId, storedPrincipals);
+    return { session: clone(snapshot), principal: clone(storedPrincipals[0].principal) };
   }
 
   async getSession(sessionId: string): Promise<SessionRecord<TState> | null> {
@@ -127,9 +159,125 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
   async authenticateSession(input: SessionAuthenticationInput): Promise<SessionPrincipal | null> {
     if (this.archivedAtBySessionId.has(input.sessionId)) return null;
     const match = this.principalsBySessionId.get(input.sessionId)?.find(
-      (candidate) => candidate.credentialSha256 === input.credentialSha256
+      (candidate) => candidate.credentialExpiresAt === undefined &&
+        candidate.credentialSha256 === input.credentialSha256
     );
     return match === undefined ? null : clone(match.principal);
+  }
+
+  async issuePrivateSeatRecoveryInvite(
+    input: PrivateSeatRecoveryInviteStoreInput
+  ): Promise<PrivateSeatRecoveryInviteStoreResult | null> {
+    return this.withSessionLock(input.sessionId, async () => {
+      if (this.archivedAtBySessionId.has(input.sessionId)) return null;
+      const session = this.sessions.get(input.sessionId);
+      const issuer = this.findStoredPrincipal(input);
+      if (session === undefined || issuer === undefined) return null;
+      if (!isPrivateSessionHostPrincipal(session, issuer.principal)) {
+        throw new SessionAuthorizationError();
+      }
+      const target = resolvePrivateSeatRecoveryTarget(session, input.seatId);
+      const targetPrincipals = target === undefined ? [] : (this.principalsBySessionId.get(input.sessionId) ?? [])
+        .filter((candidate) =>
+          candidate.principal.kind === "participant" &&
+          candidate.principal.role === "player" &&
+          candidate.principal.actorScope.kind === "listed-actors" &&
+          candidate.principal.actorScope.actorIds.length === 1 &&
+          candidate.principal.actorScope.actorIds[0] === target.playerId &&
+          candidate.credentialExpiresAt === undefined
+        );
+      if (target === undefined || targetPrincipals.length !== 1) {
+        throw new PrivateSeatRecoveryUnavailableError();
+      }
+      if (
+        !/^[a-f0-9]{64}$/u.test(input.recoveryTokenSha256) ||
+        !Number.isFinite(input.issuedAt.valueOf()) ||
+        !Number.isFinite(input.recoveryTokenExpiresAt.valueOf()) ||
+        input.recoveryTokenExpiresAt.getTime() <= input.issuedAt.getTime() ||
+        (this.principalsBySessionId.get(input.sessionId) ?? []).some((candidate) =>
+          candidate.credentialSha256 === input.recoveryTokenSha256 ||
+          candidate.recoveryTokenSha256 === input.recoveryTokenSha256
+        )
+      ) {
+        throw new SessionStoreUnavailableError();
+      }
+      const targetPrincipal = targetPrincipals[0];
+      targetPrincipal.recoveryTokenSha256 = input.recoveryTokenSha256;
+      targetPrincipal.recoveryTokenExpiresAt = new Date(input.recoveryTokenExpiresAt);
+      return {
+        seatId: target.seatId,
+        playerId: target.playerId,
+        recoveryTokenExpiresAt: new Date(input.recoveryTokenExpiresAt)
+      };
+    });
+  }
+
+  async claimPrivateInvite(
+    input: PrivateInviteClaimStoreInput
+  ): Promise<PrivateInviteClaimStoreResult<TState> | null> {
+    return this.withSessionLock(input.sessionId, async () => {
+      if (
+        input.currentCredentialSha256 !== undefined &&
+        !/^[a-f0-9]{64}$/u.test(input.currentCredentialSha256)
+      ) {
+        throw new SessionStoreUnavailableError();
+      }
+      if (this.archivedAtBySessionId.has(input.sessionId)) return null;
+      const session = this.sessions.get(input.sessionId);
+      const principals = this.principalsBySessionId.get(input.sessionId) ?? [];
+      const currentPrincipal = input.currentCredentialSha256 === undefined
+        ? undefined
+        : principals.find((candidate) =>
+            candidate.credentialSha256 === input.currentCredentialSha256 &&
+            candidate.credentialExpiresAt === undefined
+          );
+      const initialPrincipal = principals.find((candidate) =>
+        candidate.credentialSha256 === input.inviteCredentialSha256 &&
+        candidate.credentialExpiresAt !== undefined &&
+        candidate.credentialExpiresAt.getTime() > input.claimedAt.getTime()
+      );
+      const recoveryPrincipal = principals.find((candidate) =>
+        candidate.recoveryTokenSha256 === input.inviteCredentialSha256 &&
+        candidate.recoveryTokenExpiresAt !== undefined &&
+        candidate.recoveryTokenExpiresAt.getTime() > input.claimedAt.getTime()
+      );
+      const principal = currentPrincipal === undefined
+        ? initialPrincipal ?? recoveryPrincipal
+        : currentPrincipal === recoveryPrincipal
+          ? recoveryPrincipal
+          : undefined;
+      if (session === undefined || principal === undefined || principal.principal.actorScope.kind !== "listed-actors") {
+        return null;
+      }
+      if (principals.some(
+        (candidate) => candidate.credentialSha256 === input.participantCredentialSha256
+      )) {
+        throw new SessionStoreUnavailableError();
+      }
+      if (recoveryPrincipal !== undefined) {
+        principal.credentialSha256 = input.participantCredentialSha256;
+        delete principal.recoveryTokenSha256;
+        delete principal.recoveryTokenExpiresAt;
+        return {
+          session: clone(session),
+          principal: clone(principal.principal),
+          transition: "credential-recovery"
+        };
+      }
+      const updated = applyPrivateInviteClaim(
+        session,
+        principal.principal.actorScope.actorIds[0],
+        input.claimedAt
+      );
+      principal.credentialSha256 = input.participantCredentialSha256;
+      delete principal.credentialExpiresAt;
+      this.sessions.set(input.sessionId, updated);
+      return {
+        session: clone(updated),
+        principal: clone(principal.principal),
+        transition: "initial-join"
+      };
+    });
   }
 
   async getCommandReceipt(input: SessionCommandTransactionInput): Promise<SessionCommandReceipt | null> {
@@ -218,6 +366,151 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
     });
   }
 
+  async readFacilitatorDebriefStatus(
+    input: SessionAuthenticationInput
+  ): Promise<FacilitatorDebriefStatusSource<TState> | null> {
+    return this.withSessionLock(input.sessionId, async () => {
+      const session = this.sessions.get(input.sessionId);
+      const principal = this.findStoredPrincipal(input);
+      if (session === undefined || principal?.principal.role !== "facilitator") return null;
+      const attempt = this.currentFacilitatorDebriefAttempt(input.sessionId);
+      assertFacilitatorDebriefAttemptSessionBinding(attempt, session);
+      return {
+        session: clone(session),
+        attempt: clone(attempt)
+      };
+    });
+  }
+
+  async readFacilitatorDebriefGenerationSource(
+    input: SessionAuthenticationInput,
+    limit: number
+  ): Promise<FacilitatorDebriefGenerationSource<TState> | null> {
+    assertPublicJournalLimit(limit);
+    return this.withSessionLock(input.sessionId, async () => {
+      const session = this.sessions.get(input.sessionId);
+      const principal = this.findStoredPrincipal(input);
+      const bundle = session === undefined ? undefined : this.bundles.get(session.bundleHash);
+      if (session === undefined || principal?.principal.role !== "facilitator" || bundle === undefined) {
+        return null;
+      }
+      const archivedAt = this.archivedAtBySessionId.get(input.sessionId);
+      const events: SessionEventRecord[] = [];
+      const accumulator = createPublicGameplayJournalByteAccumulator({
+        session,
+        lifecycle: archivedAt === undefined ? "active" : "archived",
+        ...(archivedAt === undefined ? {} : { archivedAt }),
+        maxEntries: limit
+      });
+      for (const event of this.eventsBySessionId.get(input.sessionId) ?? []) {
+        if (event.audience !== "public" || event.sequence > session.version.lastEventSequence) continue;
+        accumulator.addEvent(event);
+        events.push(event);
+        if (events.length === limit) break;
+      }
+      const attempt = this.currentFacilitatorDebriefAttempt(input.sessionId);
+      assertFacilitatorDebriefAttemptSessionBinding(attempt, session);
+      return {
+        session: clone(session),
+        attempt: clone(attempt),
+        bundle: clone(bundle),
+        lifecycle: archivedAt === undefined ? "active" : "archived",
+        ...(archivedAt === undefined ? {} : { archivedAt: new Date(archivedAt) }),
+        events: clone(events)
+      };
+    });
+  }
+
+  async beginFacilitatorDebriefAttempt(
+    input: BeginFacilitatorDebriefAttemptInput
+  ): Promise<BeginFacilitatorDebriefAttemptResult> {
+    assertFacilitatorDebriefBeginInput(input);
+    return this.withSessionLock(input.sessionId, async () => {
+      const session = this.sessions.get(input.sessionId);
+      const principal = this.findStoredPrincipal({
+        sessionId: input.sessionId,
+        credentialSha256: input.credentialSha256
+      });
+      if (session === undefined || principal?.principal.role !== "facilitator") {
+        return { kind: "authentication-failed" };
+      }
+      const snapshot = input.requestAudit.inputSnapshotWithoutJournal;
+      if (snapshot.gameId !== session.gameId || snapshot.bundleHash !== session.bundleHash) {
+        throw new SessionStoreUnavailableError();
+      }
+      if (session.version.stateVersion !== input.expectedStateVersion) {
+        return { kind: "version-conflict" };
+      }
+      const current = this.currentFacilitatorDebriefAttempt(input.sessionId);
+      if (current?.status === "ready") return { kind: "existing", attempt: clone(current) };
+      if (current?.status === "generating" &&
+          current.requestedAt.getTime() > input.staleGeneratingBefore.getTime()) {
+        return { kind: "existing", attempt: clone(current) };
+      }
+      if (current?.status === "generating") {
+        Object.assign(current, {
+          status: "failed" as const,
+          completedAt: new Date(input.requestedAt),
+          durationMs: Math.min(3_600_000, Math.max(0,
+            input.requestedAt.getTime() - current.requestedAt.getTime())),
+          error: {
+            code: "internal_error" as const,
+            message: "Предыдущий запуск не завершился; ведущий начал новую попытку."
+          }
+        });
+      }
+      const attempt: StoredFacilitatorDebriefAttempt = {
+        runId: input.runId,
+        sessionId: input.sessionId,
+        status: "generating",
+        expectedStateVersion: input.expectedStateVersion,
+        throughEventSequence: input.throughEventSequence,
+        journalSha256: input.journalSha256,
+        requestAudit: clone(input.requestAudit),
+        requestedAt: new Date(input.requestedAt)
+      };
+      const attempts = this.facilitatorDebriefAttemptsBySessionId.get(input.sessionId) ?? [];
+      attempts.push(attempt);
+      this.facilitatorDebriefAttemptsBySessionId.set(input.sessionId, attempts);
+      return { kind: "created", attempt: clone(attempt) };
+    });
+  }
+
+  async completeFacilitatorDebriefAttempt(
+    input: CompleteFacilitatorDebriefAttemptInput
+  ): Promise<StoredFacilitatorDebriefAttempt | null> {
+    return this.withSessionLock(input.sessionId, async () => {
+      const attempt = (this.facilitatorDebriefAttemptsBySessionId.get(input.sessionId) ?? [])
+        .find((candidate) => candidate.runId === input.runId);
+      if (attempt?.status !== "generating") return null;
+      const completed: StoredFacilitatorDebriefAttempt = {
+        ...attempt,
+        status: input.status,
+        completedAt: new Date(input.completedAt),
+        ...(input.audit.providerRequestId === undefined ? {} : {
+          providerRequestId: input.audit.providerRequestId
+        }),
+        ...((input.status === "failed" ? input.providerStatus : input.audit.providerStatus) === undefined
+          ? {}
+          : { providerStatus: input.status === "failed" ? input.providerStatus : input.audit.providerStatus }),
+        ...(input.audit.providerUsage === undefined ? {} : {
+          providerUsage: clone(input.audit.providerUsage)
+        }),
+        ...(input.audit.responseBytes === undefined ? {} : { responseBytes: input.audit.responseBytes }),
+        durationMs: input.audit.durationMs,
+        ...(input.audit.rawResponseUtf8 === undefined ? {} : {
+          rawResponseUtf8: input.audit.rawResponseUtf8
+        }),
+        ...(input.status === "ready"
+          ? { draft: clone(input.draft) }
+          : { error: clone(input.error) })
+      };
+      const attempts = this.facilitatorDebriefAttemptsBySessionId.get(input.sessionId)!;
+      attempts[attempts.indexOf(attempt)] = completed;
+      return clone(completed);
+    });
+  }
+
   async getImmutableBundle(bundleHash: string): Promise<ImmutableGameBundle | null> {
     const bundle = this.bundles.get(bundleHash);
     return bundle === undefined ? null : clone(bundle);
@@ -294,7 +587,8 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
     return this.withSessionLock(input.sessionId, async () => {
       const current = this.sessions.get(input.sessionId);
       const storedPrincipal = this.principalsBySessionId.get(input.sessionId)?.find(
-        (candidate) => candidate.credentialSha256 === input.credentialSha256
+        (candidate) => candidate.credentialExpiresAt === undefined &&
+          candidate.credentialSha256 === input.credentialSha256
       );
       if (
         current === undefined ||
@@ -472,7 +766,8 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
 
   private findStoredPrincipal(input: SessionAuthenticationInput): StoredPrincipal | undefined {
     return this.principalsBySessionId.get(input.sessionId)?.find(
-      (candidate) => candidate.credentialSha256 === input.credentialSha256
+      (candidate) => candidate.credentialExpiresAt === undefined &&
+        candidate.credentialSha256 === input.credentialSha256
     );
   }
 
@@ -493,6 +788,16 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
       .sort((left, right) => left.sequence - right.sequence);
     return clone({ session, archivedAt, principal, bundle, events, receipts });
   }
+
+  private currentFacilitatorDebriefAttempt(
+    sessionId: string
+  ): StoredFacilitatorDebriefAttempt | null {
+    const attempts = this.facilitatorDebriefAttemptsBySessionId.get(sessionId) ?? [];
+    return attempts.find((attempt) => attempt.status === "ready") ??
+      attempts.find((attempt) => attempt.status === "generating") ??
+      [...attempts].sort((left, right) =>
+        right.requestedAt.getTime() - left.requestedAt.getTime())[0] ?? null;
+  }
 }
 
 function assertBundleInput<TState>(command: CreateSessionInput<TState>): void {
@@ -511,6 +816,36 @@ function byteArraysEqual(left: Uint8Array, right: Uint8Array): boolean {
 
 function assertPublicJournalLimit(limit: number): void {
   if (!Number.isSafeInteger(limit) || limit <= 0) {
+    throw new SessionStoreUnavailableError();
+  }
+}
+
+function assertFacilitatorDebriefBeginInput(input: BeginFacilitatorDebriefAttemptInput): void {
+  const snapshot = input.requestAudit.inputSnapshotWithoutJournal;
+  if (!/^debrief_[A-Za-z0-9_-]{8,128}$/u.test(input.runId) ||
+      !/^[a-f0-9]{64}$/u.test(input.credentialSha256) ||
+      !Number.isSafeInteger(input.expectedStateVersion) || input.expectedStateVersion < 0 ||
+      !Number.isSafeInteger(input.throughEventSequence) || input.throughEventSequence < 0 ||
+      !/^sha256:[a-f0-9]{64}$/u.test(input.journalSha256) ||
+      !Number.isFinite(input.requestedAt.getTime()) ||
+      !Number.isFinite(input.staleGeneratingBefore.getTime()) ||
+      input.staleGeneratingBefore.getTime() > input.requestedAt.getTime() ||
+      snapshot.runId !== input.runId || snapshot.sessionId !== input.sessionId ||
+      snapshot.stateVersion !== input.expectedStateVersion ||
+      snapshot.throughEventSequence !== input.throughEventSequence ||
+      snapshot.journalSha256 !== input.journalSha256) {
+    throw new SessionStoreUnavailableError();
+  }
+}
+
+function assertFacilitatorDebriefAttemptSessionBinding<TState>(
+  attempt: StoredFacilitatorDebriefAttempt | null,
+  session: SessionRecord<TState>
+): void {
+  if (attempt === null) return;
+  const snapshot = attempt.requestAudit.inputSnapshotWithoutJournal;
+  if (attempt.sessionId !== session.sessionId || snapshot.gameId !== session.gameId ||
+      snapshot.bundleHash !== session.bundleHash) {
     throw new SessionStoreUnavailableError();
   }
 }

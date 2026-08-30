@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 import { createDefaultGameConfigData } from "@/presenter/game-config";
 import { loadPendingRuntimeCommand } from "@/presenter/command-outbox";
 import { playerPluginApi } from "@/plugins/player-plugin-api";
+import { registerFacilitatorDebriefAvailabilityProvider } from "@/plugins/phaser-scene-registry";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
@@ -119,6 +120,10 @@ const aiDrivenContent: PlayerFacingContent = {
 const aiDrivenSession = {
   sessionId: "ai-driven-session-id",
   gameId: "ai-driven-choice",
+  participants: [
+    { seatId: "p1", playerId: "p1", kind: "human" as const, joinState: "local" as const }
+  ],
+  actionAvailability: [],
   version: {
     sessionId: "ai-driven-session-id",
     stateVersion: 0,
@@ -317,6 +322,10 @@ const mockS1Ui: GamePlayerUiContent = {
 
 const mockSession = {
   sessionId: "test-session-id",
+  participants: [
+    { seatId: "p1", playerId: "p1", kind: "human" as const, joinState: "local" as const }
+  ],
+  actionAvailability: [],
   version: {
     sessionId: "test-session-id",
     stateVersion: 0,
@@ -479,6 +488,8 @@ describe("GamePlayer S1 DOM Rendering", () => {
       if (url === "/api/runtime/agent-turns") {
         return Promise.resolve(new Response(JSON.stringify({
           sessionId: aiDrivenSession.sessionId,
+          participants: aiDrivenSession.participants,
+          actionAvailability: aiDrivenSession.actionAvailability,
           version: {
             sessionId: aiDrivenSession.sessionId,
             stateVersion: 1,
@@ -937,6 +948,10 @@ describe("GamePlayer S1 DOM Rendering", () => {
     const session = {
       sessionId: "async-plugin-session",
       gameId,
+      participants: [
+        { seatId: "p1", playerId: "p1", kind: "human" as const, joinState: "local" as const }
+      ],
+      actionAvailability: [],
       version: { sessionId: "async-plugin-session", stateVersion: 1, lastEventSequence: 0 },
       state: {
         public: {
@@ -1363,6 +1378,125 @@ describe("GamePlayer S1 DOM Rendering", () => {
       expect(document.querySelector(".journal-list")).toBeNull();
       expect(document.querySelector(".mockup-list")).toBeNull();
     });
+  });
+});
+
+describe("GamePlayer facilitator debrief capability", () => {
+  const content: PlayerFacingContent = {
+    ...mockContent,
+    gameId: "neutral-debrief",
+    name: "Neutral debrief fixture"
+  };
+  const ui: GamePlayerUiContent = {
+    ...mockS1Ui,
+    gameId: "neutral-debrief"
+  };
+  const session = {
+    ...mockSession,
+    sessionId: "neutral-debrief-session",
+    gameId: "neutral-debrief",
+    privateInvites: [],
+    version: {
+      ...mockSession.version,
+      sessionId: "neutral-debrief-session",
+      stateVersion: 5
+    }
+  };
+  const absentDebrief = {
+    format: "cubica.facilitator-debrief",
+    schemaVersion: "1.0.0",
+    sessionId: session.sessionId,
+    gameId: session.gameId,
+    status: "absent",
+    canGenerate: true
+  };
+
+  function setupProvider(provider: Parameters<typeof registerFacilitatorDebriefAvailabilityProvider>[1]) {
+    localStorage.clear();
+    const dispose = registerFacilitatorDebriefAvailabilityProvider(content.gameId, provider);
+    const fetchMock = vi.fn((input: string | URL, init?: RequestInit) => {
+      const url = input.toString();
+      if (url === "/api/runtime/sessions") {
+        return Promise.resolve(new Response(JSON.stringify(session), { status: 201 }));
+      }
+      if (url.includes("/facilitator-debrief")) {
+        const body = init?.method === "POST"
+          ? { ...absentDebrief }
+          : absentDebrief;
+        return Promise.resolve(new Response(JSON.stringify(body), { status: 200 }));
+      }
+      return Promise.resolve(new Response("{}", { status: 200 }));
+    });
+    (global.fetch as any).mockImplementation(fetchMock);
+    return { dispose, fetchMock };
+  }
+
+  it("renders the terminal drawer for a neutral plugin and passes the exact state version", async () => {
+    const { dispose, fetchMock } = setupProvider(() => true);
+    try {
+      render(
+        <GamePlayer
+          config={createDefaultGameConfigData(content, ui)}
+          runtimeApiUrl="http://localhost:8080"
+          content={content}
+          mockups={[]}
+          gameUi={ui}
+        />
+      );
+
+      await waitFor(() => expect(screen.getByText("Открыть разбор ведущего")).toBeDefined());
+      fireEvent.click(screen.getByText("Открыть разбор ведущего"));
+      await waitFor(() => expect(screen.getByRole("button", { name: "Сформировать разбор" })).toBeDefined());
+      fireEvent.click(screen.getByRole("button", { name: "Сформировать разбор" }));
+      await waitFor(() => expect(fetchMock.mock.calls.some(([, init]) =>
+        init?.method === "POST" && JSON.parse(String(init.body)).expectedStateVersion === 5
+      )).toBe(true));
+      expect(screen.getByRole("button", { name: "Сформировать разбор" })).toBeDefined();
+    } finally {
+      dispose();
+    }
+  });
+
+  it.each([
+    { label: "provider returns false", provider: () => false },
+    { label: "provider throws", provider: () => { throw new Error("broken provider"); } }
+  ])("hides the terminal drawer when $label", async ({ provider }) => {
+    const { dispose } = setupProvider(provider);
+    try {
+      render(
+        <GamePlayer
+          config={createDefaultGameConfigData(content, ui)}
+          runtimeApiUrl="http://localhost:8080"
+          content={content}
+          mockups={[]}
+          gameUi={ui}
+        />
+      );
+
+      await waitFor(() => expect(screen.getByRole("heading", { name: "Участники" })).toBeDefined());
+      expect(screen.queryByText("Открыть разбор ведущего")).toBeNull();
+      expect(screen.queryByText("Разбор ещё не подготовлен")).toBeNull();
+    } finally {
+      dispose();
+    }
+  });
+
+  it("keeps the terminal drawer hidden when the plugin does not register a provider", async () => {
+    const { dispose } = setupProvider(() => true);
+    dispose();
+
+    render(
+      <GamePlayer
+        config={createDefaultGameConfigData(content, ui)}
+        runtimeApiUrl="http://localhost:8080"
+        content={content}
+        mockups={[]}
+        gameUi={ui}
+      />
+    );
+
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Участники" })).toBeDefined());
+    expect(screen.queryByText("Открыть разбор ведущего")).toBeNull();
   });
 });
 
@@ -2428,6 +2562,10 @@ describe("GamePlayer sticky screenKey regression (Finding 2)", () => {
   const stickyInitialSession = {
     sessionId: "sticky-session-1",
     gameId: stickyGameId,
+    participants: [
+      { seatId: "p1", playerId: "p1", kind: "human" as const, joinState: "local" as const }
+    ],
+    actionAvailability: [],
     version: { sessionId: "sticky-session-1", stateVersion: 0, lastEventSequence: 0 },
     state: {
       public: {

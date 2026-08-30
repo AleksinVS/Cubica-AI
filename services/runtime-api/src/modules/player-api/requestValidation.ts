@@ -1,11 +1,17 @@
 import type {
   CreateSessionRequest,
   DispatchActionInput,
+  FacilitatorDebriefGenerationRequest,
+  PrivateInviteClaimRequest,
+  PrivateSeatRecoveryInviteRequest,
   RestorePreviewSessionRequest,
   TransportRoadPreviewRequest
 } from "@cubica/contracts-session";
 import {
   getCreateSessionRequestValidationErrors,
+  validateFacilitatorDebriefGenerationRequestShape,
+  validatePrivateInviteClaimRequestShape,
+  validatePrivateSeatRecoveryInviteRequestShape,
   validateCreateSessionRequestShape
 } from "@cubica/contracts-session";
 import type { AgentTurnRequest } from "../ai/agentRuntime.ts";
@@ -139,6 +145,33 @@ export const parseCreateSessionRequest = (body: unknown): CreateSessionRequest =
 
 export const parseDispatchActionRequest = (body: unknown): DispatchActionInput => {
   return parseRuntimeCommand(body, "POST /actions body");
+};
+
+export const parsePrivateInviteClaimRequest = (body: unknown): PrivateInviteClaimRequest => {
+  if (!validatePrivateInviteClaimRequestShape(body)) {
+    throw new RequestValidationError("Private invite claim does not match the canonical request schema");
+  }
+  return body;
+};
+
+export const parsePrivateSeatRecoveryInviteRequest = (
+  body: unknown
+): PrivateSeatRecoveryInviteRequest => {
+  if (!validatePrivateSeatRecoveryInviteRequestShape(body)) {
+    throw new RequestValidationError("Seat recovery invite does not match the canonical request schema");
+  }
+  return body;
+};
+
+export const parseFacilitatorDebriefGenerationRequest = (
+  body: unknown
+): FacilitatorDebriefGenerationRequest => {
+  if (!validateFacilitatorDebriefGenerationRequestShape(body)) {
+    throw new RequestValidationError(
+      "Facilitator debrief generation does not match the canonical request schema"
+    );
+  }
+  return body;
 };
 
 function parseRuntimeCommand(body: unknown, label: string): DispatchActionInput {

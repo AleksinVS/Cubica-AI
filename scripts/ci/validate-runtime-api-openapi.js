@@ -85,6 +85,23 @@ const expectedOperations = [
     marker: "public-journal"
   },
   {
+    method: "get",
+    path: "/sessions/{sessionId}/facilitator-debrief",
+    operationId: "getFacilitatorDebrief",
+    tag: "Sessions",
+    marker: "facilitator-debrief"
+  },
+  {
+    method: "post",
+    path: "/sessions/{sessionId}/facilitator-debrief",
+    operationId: "generateFacilitatorDebrief",
+    tag: "Sessions",
+    marker: "facilitator-debrief"
+  },
+  { method: "post", path: "/sessions/{sessionId}/private-invite-claims", operationId: "claimPrivateInvite", tag: "Sessions", marker: "private-invite-claims" },
+  { method: "post", path: "/sessions/{sessionId}/seat-recovery-invites", operationId: "createSeatRecoveryInvite", tag: "Sessions", marker: "seat-recovery-invites" },
+  { method: "get", path: "/sessions/{sessionId}/events", operationId: "streamSessionVersionNotifications", tag: "Sessions", marker: "sessionVersionEventsMatch" },
+  {
     method: "post",
     path: "/sessions/{sessionId}/preview-restore",
     operationId: "restorePreviewSession",
@@ -294,7 +311,7 @@ function validateRefs(spec) {
 function validateRuntimeRouteMarkers() {
   const source = fs.readFileSync(httpServerPath, "utf8");
   for (const expected of expectedOperations) {
-    if (!source.includes(expected.marker)) {
+    if (expected.marker && !source.includes(expected.marker)) {
       fail(`httpServer.ts marker for ${expected.method.toUpperCase()} ${expected.path} was not found: ${expected.marker}`);
     }
   }
@@ -322,6 +339,12 @@ function validateSchemaCoverage(spec) {
     "ContentReloadResponse",
     "CreateSessionRequest",
     "CreatedSessionResponse",
+    "PrivateInviteClaimRequest",
+    "PrivateSeatRecoveryInviteRequest",
+    "PrivateInviteClaimResponse",
+    "PrivateInviteToken",
+    "PrivateSessionInvite",
+    "PrivateSessionInvites",
     "DispatchActionRequest",
     "ErrorResponse",
     "GameReadinessResponse",
@@ -336,6 +359,7 @@ function validateSchemaCoverage(spec) {
     "SessionParticipant",
     "SessionParticipants",
     "SessionStateVersion",
+    "SessionVersionNotification",
     "TransportRoadPreviewRequest",
     "TransportRoadPreviewResponse"
   ];
@@ -421,7 +445,7 @@ function validatePreciseRuntimeShapes(spec) {
     participant?.additionalProperties !== false ||
     JSON.stringify(participant.required) !== JSON.stringify(["seatId", "playerId", "kind", "joinState"]) ||
     JSON.stringify(participant.properties?.kind?.enum) !== JSON.stringify(["human", "agent"]) ||
-    participant.properties?.joinState?.const !== "local"
+    JSON.stringify(participant.properties?.joinState?.enum) !== JSON.stringify(["local", "invited", "joined"])
   ) {
     fail("SessionParticipant must remain the exact closed authoritative seat shape");
   }
@@ -496,6 +520,7 @@ function validateSessionTrustContract(spec) {
   }
   for (const [pathTemplate, method] of [
     ["/sessions/{sessionId}", "get"],
+    ["/sessions/{sessionId}/events", "get"],
     ["/sessions/{sessionId}/public-journal", "get"],
     ["/sessions/{sessionId}/preview-restore", "post"],
     ["/actions", "post"],
@@ -526,6 +551,64 @@ function validateSessionTrustContract(spec) {
   const preview = spec.components.schemas.TransportRoadPreviewRequest;
   if (preview.properties?.playerId !== undefined) {
     fail("Protected preview requests must not accept client-selected playerId");
+  }
+  const inviteToken = spec.components.schemas.PrivateInviteToken;
+  if (inviteToken?.pattern !== "^inv_[A-Za-z0-9_-]{43}$") {
+    fail("PrivateInviteToken must use the inv_ base64url profile");
+  }
+  const invite = spec.components.schemas.PrivateSessionInvite;
+  if (
+    invite?.additionalProperties !== false ||
+    JSON.stringify(invite.required) !== JSON.stringify(["seatId", "playerId", "inviteToken", "expiresAt"]) ||
+    invite.properties?.inviteToken?.$ref !== "#/components/schemas/PrivateInviteToken" ||
+    invite.properties?.expiresAt?.format !== "date-time"
+  ) {
+    fail("PrivateSessionInvite must remain the exact closed seat-bound invite shape");
+  }
+  if (spec.components.schemas.CreatedSessionResponse?.properties?.privateInvites?.$ref !==
+      "#/components/schemas/PrivateSessionInvites") {
+    fail("CreatedSessionResponse must expose optional creation-only privateInvites");
+  }
+  const eventStream = spec.paths?.["/sessions/{sessionId}/events"]?.get;
+  if (eventStream?.responses?.["200"]?.content?.["text/event-stream"]?.schema?.$ref !==
+      "#/components/schemas/SessionVersionNotification" ||
+      eventStream?.responses?.["429"]?.$ref !== "#/components/responses/TooManyRequests" ||
+      eventStream?.responses?.["503"]?.$ref !== "#/components/responses/Unavailable" ||
+      JSON.stringify(Object.keys(eventStream?.responses ?? {}).sort()) !==
+        JSON.stringify(["200", "401", "429", "503"])) {
+    fail("GET session events must expose only SessionVersionNotification and document 401/429/503");
+  }
+  const claim = spec.paths?.["/sessions/{sessionId}/private-invite-claims"]?.post;
+  if (JSON.stringify(claim?.security) !== JSON.stringify([{}, { SessionBearer: [] }]) ||
+      !claim?.description?.includes("initial invite or recovery invite") ||
+      claim?.requestBody?.$ref !== "#/components/requestBodies/PrivateInviteClaimRequest" ||
+      claim?.responses?.["200"]?.content?.["application/json"]?.schema?.$ref !==
+        "#/components/schemas/PrivateInviteClaimResponse" ||
+      claim?.responses?.["401"]?.$ref !== "#/components/responses/InvalidPrivateInvite" ||
+      claim?.responses?.["413"]?.$ref !== "#/components/responses/PayloadTooLarge" ||
+      claim?.responses?.["503"]?.$ref !== "#/components/responses/Unavailable" ||
+      JSON.stringify(Object.keys(claim?.responses ?? {}).sort()) !== JSON.stringify(["200", "400", "401", "413", "503"])) {
+    fail("Private invite claim must allow anonymous or same-principal recovery authentication and use canonical schemas");
+  }
+  const recoveryRequest = spec.components.schemas.PrivateSeatRecoveryInviteRequest;
+  if (recoveryRequest?.type !== "object" ||
+      JSON.stringify(recoveryRequest.required) !== JSON.stringify(["seatId"]) ||
+      recoveryRequest.properties?.seatId?.type !== "string" ||
+      recoveryRequest.properties?.seatId?.minLength !== 1 ||
+      recoveryRequest.additionalProperties !== false) {
+    fail("PrivateSeatRecoveryInviteRequest must be a closed object containing a non-empty seatId");
+  }
+  const recovery = spec.paths?.["/sessions/{sessionId}/seat-recovery-invites"]?.post;
+  if (recovery?.security?.[0]?.SessionBearer === undefined ||
+      recovery?.requestBody?.$ref !== "#/components/requestBodies/PrivateSeatRecoveryInviteRequest" ||
+      recovery?.responses?.["201"]?.content?.["application/json"]?.schema?.$ref !== "#/components/schemas/PrivateSessionInvite" ||
+      JSON.stringify(Object.keys(recovery?.responses ?? {}).sort()) !== JSON.stringify(["201", "400", "401", "403", "404", "413", "423", "503"])) {
+    fail("Seat recovery invite must expose the authenticated canonical request, invite response, and exact errors");
+  }
+  const claimResponse = spec.components.schemas.PrivateInviteClaimResponse;
+  if (claimResponse?.properties?.privateInvites !== undefined ||
+      claimResponse?.properties?.credential?.$ref !== "#/components/schemas/SessionCredential") {
+    fail("Private invite claim response must expose credential and never privateInvites");
   }
 }
 

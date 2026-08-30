@@ -118,6 +118,11 @@ export interface InteractiveBoardSpatialPreview {
 /** Player-facing session data supplied to both the scene and DOM controls. */
 export type InteractiveBoardSessionSnapshot = GameSession;
 
+/** Pure game-owned eligibility check for the facilitator debrief surface. */
+export type FacilitatorDebriefAvailabilityProvider = (
+  session: InteractiveBoardSessionSnapshot
+) => boolean;
+
 /**
  * Projects server-authorized field actions without loading Phaser.
  *
@@ -197,8 +202,14 @@ type AccessibleActionsRegistration = {
   readonly provider: AccessibleBoardActionsProvider;
 };
 
+type FacilitatorDebriefAvailabilityRegistration = {
+  readonly token: symbol;
+  readonly provider: FacilitatorDebriefAvailabilityProvider;
+};
+
 const registry = new Map<string, Registration>();
 const accessibleActionsRegistry = new Map<string, AccessibleActionsRegistration>();
+const facilitatorDebriefAvailabilityRegistry = new Map<string, FacilitatorDebriefAvailabilityRegistration>();
 
 /** Registers one factory and returns a disposer scoped to this registration. */
 export function registerPhaserSceneFactory(
@@ -247,4 +258,30 @@ export function resolveAccessibleBoardActionsProvider(
   gameId: string
 ): AccessibleBoardActionsProvider | undefined {
   return accessibleActionsRegistry.get(gameId)?.provider;
+}
+
+/**
+ * Registers a game-owned terminal eligibility projection for facilitator
+ * debrief. Ownership-aware disposal prevents an older preview bundle from
+ * removing a replacement provider during reload.
+ */
+export function registerFacilitatorDebriefAvailabilityProvider(
+  gameId: string,
+  provider: FacilitatorDebriefAvailabilityProvider
+): () => void {
+  const token = Symbol(gameId);
+  facilitatorDebriefAvailabilityRegistry.set(gameId, { token, provider });
+
+  return () => {
+    if (facilitatorDebriefAvailabilityRegistry.get(gameId)?.token === token) {
+      facilitatorDebriefAvailabilityRegistry.delete(gameId);
+    }
+  };
+}
+
+/** Resolves the active game-owned facilitator debrief eligibility provider. */
+export function resolveFacilitatorDebriefAvailabilityProvider(
+  gameId: string
+): FacilitatorDebriefAvailabilityProvider | undefined {
+  return facilitatorDebriefAvailabilityRegistry.get(gameId)?.provider;
 }

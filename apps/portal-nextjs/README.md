@@ -26,9 +26,12 @@ Copy `.env.example` to `.env.local` for local work and set:
 
 ```bash
 NEXT_PUBLIC_PORTAL_API_URL=http://localhost:1337
+NEXT_PUBLIC_PAYMENT_STUB_ENABLED=false
 ```
 
 `NEXT_PUBLIC_PORTAL_API_URL` is exposed to browser code by Next.js because launch-link copy and active-session listing are triggered from client components.
+
+`NEXT_PUBLIC_PAYMENT_STUB_ENABLED=true` exposes the test-purchase action only in a non-production Next.js run. The user must already be logged in with a pre-created account, and the backend must separately set `PAYMENT_STUB_ENABLED=true`. Production mode always hides and rejects this browser path regardless of the public setting.
 
 ## Portal API Integration
 

@@ -1,8 +1,6 @@
 import type { SessionSnapshot } from "@/lib/game-content-resolvers";
 import type { CubicaAgentTurnResult } from "@cubica/contracts-ai";
-import type {
-  TransportRoadPreviewResponse
-} from "@cubica/contracts-session";
+import type { PrivateSessionInvite, TransportRoadPreviewResponse } from "@cubica/contracts-session";
 import type {
   RuntimeActionEnvelope,
   RuntimeAgentTurnEnvelope
@@ -163,6 +161,7 @@ export async function createNewSessionWithOptions(input: {
   readonly gameId: string;
   readonly contentSourceId?: string;
   readonly participantCount?: number;
+  readonly accessMode?: "private-invite";
   readonly agentSeatCount?: number;
 }): Promise<SessionSnapshot> {
   const response = await fetch("/api/runtime/sessions", {
@@ -171,6 +170,7 @@ export async function createNewSessionWithOptions(input: {
     credentials: "same-origin",
     body: JSON.stringify({
       gameId: input.gameId,
+      ...(input.accessMode === undefined ? {} : { accessMode: input.accessMode }),
       ...(input.contentSourceId === undefined ? {} : { contentSourceId: input.contentSourceId }),
       ...(input.participantCount === undefined ? {} : { participantCount: input.participantCount }),
       ...(input.agentSeatCount === undefined ? {} : { agentSeatCount: input.agentSeatCount })
@@ -193,6 +193,66 @@ export async function resumeSession(sessionId: string): Promise<SessionSnapshot>
     throw await readRuntimeError(response, `Failed to resume session: ${response.status}`);
   }
   return parseJson<SessionSnapshot>(response);
+}
+
+export async function claimPrivateInvite(sessionId: string, inviteToken: string): Promise<SessionSnapshot> {
+  const response = await fetch(`/api/runtime/sessions/${encodeURIComponent(sessionId)}/private-invite-claims`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, credentials: "same-origin",
+    body: JSON.stringify({ inviteToken })
+  });
+  if (!response.ok) throw await readRuntimeError(response, `Failed to claim session invite: ${response.status}`);
+  return parseJson<SessionSnapshot>(response);
+}
+
+export async function recoverGuestSeat(sessionId: string, seatId: string): Promise<PrivateSessionInvite> {
+  const response = await fetch(`/api/runtime/sessions/${encodeURIComponent(sessionId)}/seat-recovery-invites`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify({ seatId })
+  });
+  if (!response.ok) {
+    throw await readRuntimeError(response, `Failed to recover guest seat: ${response.status}`);
+  }
+  return parseJson<PrivateSessionInvite>(response);
+}
+
+export type PrivateInviteFragment = { readonly sessionId: string; readonly inviteToken: string };
+
+/** Reads and clears the entire invite fragment synchronously before callers await. */
+export function consumePrivateInviteFragment(): PrivateInviteFragment | null {
+  if (typeof window === "undefined" || !window.location.hash) return null;
+  const raw = window.location.hash.slice(1);
+  const params = new URLSearchParams(raw);
+  const sessionId = params.get("sessionId");
+  const inviteToken = params.get("inviteToken");
+  if (sessionId === null && inviteToken === null) return null;
+  window.history.replaceState(null, document.title, `${window.location.pathname}${window.location.search}`);
+  if (!sessionId || !inviteToken) return null;
+  return { sessionId, inviteToken };
+}
+
+export type SessionEventSubscription = { stop: () => void };
+
+/** Notification-only transport; every notification triggers a full authenticated GET. */
+export function subscribeToSessionEvents(sessionId: string, onSnapshot: (snapshot: SessionSnapshot) => void): SessionEventSubscription {
+  let stopped = false;
+  let source: EventSource | null = null;
+  let refresh: Promise<void> | null = null;
+  let pendingRefresh = false;
+  const fullGet = () => {
+    if (stopped) return;
+    if (refresh) { pendingRefresh = true; return; }
+    refresh = resumeSession(sessionId).then((snapshot) => { if (!stopped) onSnapshot(snapshot); }).catch(() => undefined).finally(() => { refresh = null; if (pendingRefresh && !stopped) { pendingRefresh = false; fullGet(); } });
+  };
+  if (typeof window !== "undefined" && typeof window.EventSource === "function") {
+    fullGet();
+    source = new window.EventSource(`/api/runtime/sessions/${encodeURIComponent(sessionId)}/events`);
+    source.onmessage = fullGet;
+    source.addEventListener("version", fullGet);
+    source.onerror = () => { fullGet(); };
+  }
+  return { stop: () => { stopped = true; source?.close(); source = null; } };
 }
 
 /**

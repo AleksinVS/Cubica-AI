@@ -16,6 +16,7 @@ export {
 } from "./registration.ts";
 export { projectBoardSession } from "./board-state.ts";
 export { provideCardsMoneyTrainsAccessibleBoardActions } from "./accessible-actions.ts";
+export { provideCardsMoneyTrainsFacilitatorDebriefAvailability } from "./facilitator-debrief-availability.ts";
 export { createCardsMoneyTrainsScene } from "./scene.ts";
 
 /** Register both independent host controls and the Phaser scene. */

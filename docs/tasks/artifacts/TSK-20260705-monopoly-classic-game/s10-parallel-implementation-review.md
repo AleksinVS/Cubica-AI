@@ -1,17 +1,19 @@
 # S10: аудит параллельной реализации private invite network v1
 
-Статус: требуется согласовать две несовместимые архитектурные границы до
-интеграции. Коммит `99019ca` и его решения сохранены без изменений.
+Статус: аудит завершён; PM 2026-08-25 принял рекомендованный гибрид. Коммит
+`99019ca` сохранён как источник проверенных идей и тестов, но не сливается целиком.
 
 ## Основание проверки
 
 Параллельная ветка `agent/simplify-agent-instructions` реализует закрытую
-сетевую партию иначе, чем пакет решения S10, принятый PM 2026-08-24:
+сетевую партию иначе, чем исходный пакет решения S10, принятый PM 2026-08-24;
+ниже зафиксированы только отличия исторической ветки:
 
 - приглашение является долговечным многоразовым удостоверением места до
   архивации сессии;
-- `joinState` остаётся неизменяемым `local | private-invite` и не описывает
-  занятие места;
+- `joinState` в ветке остаётся неизменяемым `local | private-invite` и не
+  описывает занятие места; в принятом гибриде канонично
+  `local | invited | joined` с переходом `invited → joined`;
 - доставка использует Server-Sent Events (SSE — односторонний HTTP-поток)
   только с номерами версии и события, после которого клиент перечитывает
   полную персональную проекцию по HTTP;
@@ -96,22 +98,39 @@
 Этот гибрид сохраняет продуктовую функцию и защиту от повторного использования
 ссылки, но удаляет отдельный realtime-протокол и второй краткоживущий секрет.
 
-## Свежие доказательства
+## Итоговые доказательства recovery increment
 
-- `@cubica/contracts-session`: typecheck и 16/16 тестов — успешно.
-- Runtime API: typecheck и 59/59 сфокусированных тестов private invite,
-  participants, PostgreSQL и SSE-hub — успешно.
-- Player Web: typecheck и 86/86 тестов BFF, fragment, runtime client,
-  presenter и setup — успешно.
-- OpenAPI drift gate — успешно.
+- Contracts generator `--check`, schema parity и `verify:api-contracts` — PASS;
+  `@cubica/contracts-session` typecheck и `16/16` тестов — PASS.
+- Runtime typecheck — PASS. До финальной защиты гонки SSE focused
+  recovery/PostgreSQL/SSE — `53/53` и полный runtime — `411 pass / 3 skip / 0
+  fail` (`414`) прошли; после неё свежие session event hub `8/8` и private
+  invite/recovery `6/6` прошли.
+- Исторические результаты S10 от 2026-08-25: Player Web — `328/328`, typecheck
+  и production build — успешно; Estate Race two-browser E2E и PostgreSQL
+  restart проходят; desktop+narrow primary visual inspection принята для
+  закрытой альфы. Обновлённые recovery E2E/build/visual проверки приняты:
+  production player build — PASS, production Playwright Estate private network
+  — `1/1` PASS с явным loopback insecure-cookie flag.
+- Estate package — `53/53`; plugin — `37/37` и typecheck — PASS; disposable
+  PostgreSQL 17 migrations/restart — `2/2`.
 - Пробный cherry-pick на актуальный `origin/main` выявил 28 файлов,
   изменённых с обеих сторон, и 43 конфликтных участка; автоматическая
   интеграция неприемлема.
 
-Production build и браузерный E2E не запускались: на общем хосте практически
-исчерпан swap. Это не влияет на выявленный архитектурный конфликт и дефекты
-авторизации, но остаётся обязательным финальным доказательством после ручной
-композиции.
+Ограничение закрытой альфы дополнено узким реализованным recoverable handoff:
+для уже joined human guest seat ведущий выдаёт одну новую 24-часовую
+одноразовую recovery-ссылку, которая заменяет только pending capability и не
+отзывает текущий credential. Успешный claim поворачивает digest на том же
+principal; потеря ответа больше не требует пересоздания сессии. Recovery не
+является общей invite reissue: host seat, invited/local/agent seats, rooms и
+accounts исключены. Content/economy/product publication и production
+readiness остаются отдельными воротами. Браузерная cookie живёт 30 дней,
+тогда как runtime credential durable.
+
+Принятый гибрид не переносит многоразовый credential: invite используется ровно
+один раз и заменяется durable participant credential. Поэтому перечисленные
+выше дефекты исторической ветки не являются принятыми S10-ограничениями.
 
 Принятый процесс координации разных игровых требований и эксклюзивной
 shared-реализации записан в

@@ -11,6 +11,10 @@ import type {
   CreateSessionRequest,
   CreateSessionResponse,
   GetSessionResponse,
+  PrivateInviteClaimRequest,
+  PrivateInviteClaimResponse,
+  PrivateSeatRecoveryInviteRequest,
+  PrivateSessionInvite,
   PortablePublicGameplayJournal,
   RestorePreviewSessionRequest,
   RestorePreviewSessionResponse,
@@ -35,10 +39,19 @@ import { projectSessionActionAvailability } from "../runtime/actionAvailability.
 import { projectPlayerSessionState } from "./playerSessionProjection.ts";
 import {
   createLocalSessionAccess,
+  createParticipantSessionAccess,
+  createPrivateInviteAccess,
+  createPrivateInviteToken,
+  createSessionCredential,
   hashSessionCredential,
   resolveSessionViewerActor
 } from "./sessionAuthentication.ts";
-import { SessionAuthenticationError, SessionStoreUnavailableError } from "./sessionStoreErrors.ts";
+import {
+  PrivateInviteAuthenticationError,
+  SessionAuthenticationError,
+  SessionStoreUnavailableError,
+  SessionWriteLockedError
+} from "./sessionStoreErrors.ts";
 import {
   initializeTurnBasedSessionState,
   ParticipantCountValidationError,
@@ -48,14 +61,21 @@ import {
   buildPublicGameplayJournal,
   MAX_PUBLIC_JOURNAL_ENTRIES
 } from "./publicGameplayJournal.ts";
-import { materializeLocalSessionParticipants } from "./sessionParticipants.ts";
+import {
+  materializeLocalSessionParticipants,
+  materializePrivateSessionParticipants
+} from "./sessionParticipants.ts";
 
 type RuntimeState = Record<string, unknown>;
 
 interface SessionServiceOptions {
   sessionStore: SessionStorePort<RuntimeState>;
   agentSeatDriver?: AgentSeatDriver;
+  now?: () => Date;
+  onParticipantCredentialRotated?: (sessionId: string, principalId: string) => void;
 }
+
+const PRIVATE_INVITE_TTL_MS = 24 * 60 * 60 * 1000;
 
 export interface AuthenticatedSessionAccess {
   snapshot: SessionRecord<RuntimeState>;
@@ -75,10 +95,14 @@ export type AuthenticatedArchivedSessionAccess = ArchivedSessionAudit<RuntimeSta
 export class SessionService {
   private readonly sessionStore: SessionStorePort<RuntimeState>;
   private readonly agentSeatDriver?: AgentSeatDriver;
+  private readonly now: () => Date;
+  private readonly onParticipantCredentialRotated?: (sessionId: string, principalId: string) => void;
 
   constructor(options: SessionServiceOptions) {
     this.sessionStore = options.sessionStore;
     this.agentSeatDriver = options.agentSeatDriver;
+    this.now = options.now ?? (() => new Date());
+    this.onParticipantCredentialRotated = options.onParticipantCredentialRotated;
   }
 
   async createSession(request: CreateSessionRequest): Promise<CreateSessionResponse<RuntimeState>> {
@@ -87,6 +111,7 @@ export class SessionService {
       throw new RequestValidationError("gameId is required to create a session");
     }
 
+    const privateInvite = request.accessMode === "private-invite";
     await assertGameLaunchReady({
       gameId,
       contentSourceId: request.contentSourceId,
@@ -108,17 +133,28 @@ export class SessionService {
       }
       throw error;
     }
-    const participants = materializeLocalSessionParticipants(
-      initialState,
-      participantCount,
-      request.agentSeatCount ?? 0
-    );
+    if (privateInvite && participantCount < 2) {
+      throw new RequestValidationError("Private-invite sessions require at least two human participants");
+    }
+    const participants = privateInvite
+      ? materializePrivateSessionParticipants(initialState, participantCount)
+      : materializeLocalSessionParticipants(
+          initialState,
+          participantCount,
+          request.agentSeatCount ?? 0
+        );
     // A client never chooses its own trusted role. Facilitated mode is the one
     // current manifest rule that creates a facilitator controller.
     const sessionRole = bundle.manifest.config.sessionMode === "facilitated"
       ? "facilitator"
       : "player";
-    const localAccess = createLocalSessionAccess(sessionRole);
+    const hostAccess = privateInvite
+      ? createParticipantSessionAccess(participants[0].playerId, sessionRole)
+      : createLocalSessionAccess(sessionRole);
+    const inviteExpiresAt = new Date(this.now().getTime() + PRIVATE_INVITE_TTL_MS);
+    const inviteAccesses = privateInvite
+      ? participants.slice(1).map(({ playerId }) => createPrivateInviteAccess(playerId, inviteExpiresAt))
+      : [];
     const created = await this.sessionStore.createSession({
       gameId,
       ...(request.contentSourceId === undefined ? {} : { contentSourceId: request.contentSourceId }),
@@ -126,18 +162,21 @@ export class SessionService {
       participants,
       sessionRole,
       immutableBundle: toImmutableGameBundle(bundle),
-      principal: localAccess.principal
+      principal: hostAccess.principal,
+      ...(privateInvite
+        ? { additionalPrincipals: inviteAccesses.map(({ principal }) => principal) }
+        : {})
     });
     let driven: Awaited<ReturnType<AgentSeatDriver["drive"]>> | undefined;
     let recovered: {
       snapshot: SessionRecord<RuntimeState>;
       agentControl?: Awaited<ReturnType<typeof projectAgentControl>>;
     } | undefined;
-    if (this.agentSeatDriver !== undefined) {
+    if (!privateInvite && this.agentSeatDriver !== undefined) {
       try {
         driven = await this.agentSeatDriver.drive({
           sessionStore: this.sessionStore,
-          credentialSha256: localAccess.principal.credentialSha256,
+          credentialSha256: hostAccess.principal.credentialSha256,
           sessionId: created.session.sessionId
         });
       } catch (error) {
@@ -154,7 +193,7 @@ export class SessionService {
             try {
               const agentControl = await projectAgentControl({
                 sessionStore: this.sessionStore,
-                credentialSha256: localAccess.principal.credentialSha256,
+                credentialSha256: hostAccess.principal.credentialSha256,
                 snapshot: authoritative
               });
               if (agentControl !== undefined) {
@@ -195,7 +234,93 @@ export class SessionService {
       ...((driven?.agentControl ?? recovered?.agentControl) === undefined
         ? {}
         : { agentControl: driven?.agentControl ?? recovered?.agentControl }),
-      credential: localAccess.accessToken
+      credential: hostAccess.accessToken,
+      ...(privateInvite ? {
+        privateInvites: inviteAccesses.map(({ inviteToken, principal }, index) => ({
+          seatId: participants[index + 1].seatId,
+          playerId: participants[index + 1].playerId,
+          inviteToken,
+          expiresAt: principal.credentialExpiresAt.toISOString()
+        }))
+      } : {})
+    };
+  }
+
+  async claimPrivateInvite(
+    sessionId: SessionId,
+    request: PrivateInviteClaimRequest,
+    currentAccessToken?: string
+  ): Promise<PrivateInviteClaimResponse<RuntimeState>> {
+    const accessToken = createSessionCredential();
+    let claimed: Awaited<ReturnType<SessionStorePort<RuntimeState>["claimPrivateInvite"]>>;
+    try {
+      claimed = await this.sessionStore.claimPrivateInvite({
+        sessionId,
+        inviteCredentialSha256: hashSessionCredential(request.inviteToken),
+        participantCredentialSha256: hashSessionCredential(accessToken),
+        ...(currentAccessToken === undefined
+          ? {}
+          : { currentCredentialSha256: hashSessionCredential(currentAccessToken) }),
+        claimedAt: this.now()
+      });
+    } catch (error) {
+      // A concurrent claimant must not learn whether another request is
+      // redeeming the same capability. Invalid, expired, replayed and racing
+      // invite tokens therefore share one authentication response.
+      if (error instanceof SessionWriteLockedError) throw new PrivateInviteAuthenticationError();
+      throw error;
+    }
+    if (claimed === null) throw new PrivateInviteAuthenticationError();
+    if (claimed.transition === "credential-recovery") {
+      try {
+        this.onParticipantCredentialRotated?.(claimed.session.sessionId, claimed.principal.principalId);
+      } catch {
+        // Rotation is already committed. Notification cleanup must never turn
+        // that success into a credential-losing error response.
+      }
+    }
+    const bundle = await this.getPinnedBundle(claimed.session);
+    const actorPlayerId = resolveSessionViewerActor(claimed.session, claimed.principal);
+    return {
+      sessionId: claimed.session.sessionId,
+      gameId: claimed.session.gameId,
+      participants: claimed.session.participants,
+      version: claimed.session.version,
+      state: projectPlayerSessionState({
+        state: claimed.session.state,
+        stateModel: bundle.manifest.mechanics.stateModel,
+        ...(actorPlayerId === undefined ? {} : { actorPlayerId })
+      }),
+      actionAvailability: projectSessionActionAvailability(claimed.session, bundle, {
+        ...(actorPlayerId === undefined ? {} : { actorPlayerId }),
+        sessionRole: claimed.principal.role
+      }),
+      credential: accessToken
+    };
+  }
+
+  async issuePrivateSeatRecoveryInvite(
+    sessionId: SessionId,
+    accessToken: string,
+    request: PrivateSeatRecoveryInviteRequest
+  ): Promise<PrivateSessionInvite> {
+    const issuedAt = this.now();
+    const expiresAt = new Date(issuedAt.getTime() + PRIVATE_INVITE_TTL_MS);
+    const inviteToken = createPrivateInviteToken();
+    const issued = await this.sessionStore.issuePrivateSeatRecoveryInvite({
+      sessionId,
+      credentialSha256: hashSessionCredential(accessToken),
+      seatId: request.seatId,
+      recoveryTokenSha256: hashSessionCredential(inviteToken),
+      recoveryTokenExpiresAt: expiresAt,
+      issuedAt
+    });
+    if (issued === null) throw new SessionAuthenticationError();
+    return {
+      seatId: issued.seatId,
+      playerId: issued.playerId,
+      inviteToken,
+      expiresAt: issued.recoveryTokenExpiresAt.toISOString()
     };
   }
 
@@ -365,6 +490,25 @@ export class SessionService {
       throw new SessionAuthenticationError();
     }
     return { snapshot, principal, bundle: await this.getPinnedBundle(snapshot) };
+  }
+
+  /**
+   * Revalidate an already-resolved principal immediately before attaching a
+   * long-lived authenticated transport. This deliberately avoids bundle I/O
+   * so credential rotation cannot hide inside an authenticate-to-register gap.
+   */
+  async assertSessionPrincipalCredentialCurrent(
+    sessionId: SessionId,
+    accessToken: string,
+    expectedPrincipalId: string
+  ): Promise<void> {
+    const principal = await this.sessionStore.authenticateSession({
+      sessionId,
+      credentialSha256: hashSessionCredential(accessToken)
+    });
+    if (principal === null || principal.principalId !== expectedPrincipalId) {
+      throw new SessionAuthenticationError();
+    }
   }
 
   private async getPinnedBundle(snapshot: SessionRecord<RuntimeState>): Promise<GameBundle> {

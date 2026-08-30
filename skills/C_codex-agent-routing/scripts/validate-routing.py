@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+import re
 import subprocess
 import sys
 import tomllib
@@ -22,6 +23,7 @@ ROOT = Path(__file__).resolve().parents[3]
 CONFIG_PATH = ROOT / ".codex" / "config.toml"
 AGENTS_ROOT = ROOT / ".codex" / "agents"
 ROOT_INSTRUCTIONS = ROOT / "AGENTS.md"
+SKILL_PATH = ROOT / "skills" / "C_codex-agent-routing" / "SKILL.md"
 
 EXPECTED_PROFILES = {
     "lead-architect": ("gpt-5.6-sol", "high", "workspace-write"),
@@ -38,6 +40,18 @@ EXPECTED_PROFILES = {
     "critical-reviewer-high": ("gpt-5.6-sol", "high", "read-only"),
 }
 
+MODEL_LABELS = {
+    "gpt-5.6-sol": "Sol",
+    "gpt-5.6-terra": "Terra",
+    "gpt-5.6-luna": "Luna",
+}
+
+PROFILE_ROW = re.compile(
+    r"^\|[^|]+\|\s*`(?P<profile>[^`]+)`\s*\|\s*"
+    r"(?P<label>[^|]+?)\s*\|",
+    re.MULTILINE,
+)
+
 
 def load_toml(path: Path) -> dict[str, Any]:
     """Load one TOML file and report a precise configuration error."""
@@ -49,7 +63,7 @@ def load_toml(path: Path) -> dict[str, Any]:
 
 
 def validate_project_config(failures: list[str]) -> None:
-    """Check the shared Codex defaults and concurrency ceiling."""
+    """Check shared Codex defaults without pinning adaptive concurrency."""
     try:
         config = load_toml(CONFIG_PATH)
     except ValueError as error:
@@ -61,7 +75,6 @@ def validate_project_config(failures: list[str]) -> None:
         "model_reasoning_effort": "high",
     }
     expected_agents = {
-        "max_threads": 2,
         "max_depth": 1,
         "interrupt_message": True,
     }
@@ -74,6 +87,16 @@ def validate_project_config(failures: list[str]) -> None:
             )
 
     agents = config.get("agents", {})
+    for forbidden_key in (
+        "max_threads",
+        "max_concurrent_threads_per_session",
+    ):
+        if forbidden_key in agents:
+            failures.append(
+                f".codex/config.toml: agents.{forbidden_key} must be unset; "
+                "concurrency is adaptive within the current runtime and host limits"
+            )
+
     for key, expected in expected_agents.items():
         if agents.get(key) != expected:
             failures.append(
@@ -136,6 +159,48 @@ def validate_instruction_link(failures: list[str]) -> None:
         failures.append(f"AGENTS.md: missing link to {target}")
 
 
+def validate_skill_profile_table(failures: list[str]) -> None:
+    """Keep the human-readable model table aligned with executable profiles."""
+    try:
+        content = SKILL_PATH.read_text(encoding="utf-8")
+    except OSError as error:
+        failures.append(f"{SKILL_PATH.relative_to(ROOT)}: {error}")
+        return
+
+    rows: dict[str, list[str]] = {}
+    for match in PROFILE_ROW.finditer(content):
+        rows.setdefault(match.group("profile"), []).append(
+            match.group("label").strip()
+        )
+
+    for profile, (model, effort, _) in EXPECTED_PROFILES.items():
+        labels = rows.get(profile, [])
+        if not labels:
+            failures.append(f"{SKILL_PATH.relative_to(ROOT)}: missing table row for {profile}")
+            continue
+        if len(labels) > 1:
+            failures.append(
+                f"{SKILL_PATH.relative_to(ROOT)}: duplicate table rows for {profile}"
+            )
+            continue
+
+        model_label = MODEL_LABELS.get(model)
+        if model_label is None:
+            failures.append(f"No display label registered for Codex model {model}")
+            continue
+        expected_label = f"{model_label} {effort}"
+        if labels[0] != expected_label:
+            failures.append(
+                f"{SKILL_PATH.relative_to(ROOT)}: {profile} must be shown as "
+                f"{expected_label!r}, got {labels[0]!r}"
+            )
+
+    for unexpected in sorted(set(rows) - set(EXPECTED_PROFILES)):
+        failures.append(
+            f"{SKILL_PATH.relative_to(ROOT)}: table contains unknown profile {unexpected}"
+        )
+
+
 def validate_installed_models(failures: list[str]) -> None:
     """Confirm that local Codex supports every pinned model and effort pair."""
     try:
@@ -180,6 +245,7 @@ def main() -> int:
     validate_project_config(failures)
     validate_profiles(failures)
     validate_instruction_link(failures)
+    validate_skill_profile_table(failures)
     if args.check_installed_models:
         validate_installed_models(failures)
 

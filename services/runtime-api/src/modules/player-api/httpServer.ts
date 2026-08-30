@@ -7,12 +7,24 @@ import type { SessionStorePort } from "@cubica/contracts-session";
 import { HttpError } from "../errors.ts";
 import { AgentTurnService } from "../ai/agentRuntime.ts";
 import { AgentSeatDriver } from "../ai/agentSeatDriver.ts";
+import {
+  type FacilitatorDebriefProvider,
+  ZaiFacilitatorDebriefProvider
+} from "../ai/facilitatorDebriefProvider.ts";
+import { FacilitatorDebriefService } from "../ai/facilitatorDebriefService.ts";
+import type { FacilitatorDebriefStorePort } from "../ai/facilitatorDebriefStore.ts";
 import { SessionService } from "../session/session.service.ts";
 import { createSessionStoreFromEnvironment } from "../session/sessionStoreFactory.ts";
 import {
   hashSessionCredential,
+  readOptionalBearerCredential,
   requireBearerCredential
 } from "../session/sessionAuthentication.ts";
+import {
+  PrivateInviteAuthenticationError,
+  SessionAuthenticationError,
+  SessionStoreUnavailableError
+} from "../session/sessionStoreErrors.ts";
 import {
   RuntimeService,
   type RuntimeServiceDispatchTimings
@@ -41,9 +53,17 @@ import {
   parseAgentTurnRequest,
   parseCreateSessionRequest,
   parseDispatchActionRequest,
+  parseFacilitatorDebriefGenerationRequest,
+  parsePrivateInviteClaimRequest,
+  parsePrivateSeatRecoveryInviteRequest,
   parseRestorePreviewSessionRequest,
   parseTransportRoadPreviewRequest
 } from "./requestValidation.ts";
+import {
+  SessionVersionEventHub,
+  SessionVersionStreamCapacityError,
+  SessionVersionStreamReservationInvalidError
+} from "./sessionVersionEventHub.ts";
 
 type RuntimeState = Record<string, unknown>;
 
@@ -57,6 +77,8 @@ export interface RuntimeApiServerOptions {
   assetContentService?: Pick<ContentService, "getGameAssetIndex" | "getGameAssetFile" | "getGameStylesheetSource">;
   /** Shared command/Agent-Turn admission boundary for this runtime process. */
   commandAdmissionController?: CommandAdmissionController;
+  /** Injected transport only for deterministic tests; production uses server configuration. */
+  facilitatorDebriefProvider?: FacilitatorDebriefProvider;
 }
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../../../");
@@ -190,7 +212,25 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
   // controllers would let Agent Turns bypass the general command budget.
   const agentTurnService = new AgentTurnService(commandAdmissionController);
   const agentSeatDriver = new AgentSeatDriver(agentTurnService);
-  const sessionService = new SessionService({ sessionStore, agentSeatDriver });
+  const sessionVersionEvents = new SessionVersionEventHub();
+  const sessionService = new SessionService({
+    sessionStore,
+    agentSeatDriver,
+    onParticipantCredentialRotated: (sessionId, principalId) => {
+      sessionVersionEvents.disconnectPrincipal(sessionId, principalId);
+    }
+  });
+  const facilitatorDebriefStore = isFacilitatorDebriefStore(sessionStore)
+    ? sessionStore
+    : null;
+  const facilitatorDebriefService = facilitatorDebriefStore === null
+    ? null
+    : new FacilitatorDebriefService({
+      store: facilitatorDebriefStore,
+      provider: options.facilitatorDebriefProvider ?? new ZaiFacilitatorDebriefProvider({
+        apiKey: process.env.CUBICA_FACILITATOR_DEBRIEF_ZAI_API_KEY ?? ""
+      })
+    });
   const runtimeService = new RuntimeService(
     commandAdmissionController,
     options.random,
@@ -384,7 +424,81 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
           accessToken,
           parseRestorePreviewSessionRequest(body)
         );
+        sessionVersionEvents.publish(snapshot.version);
         sendJson(response, 200, snapshot);
+        return;
+      }
+
+      const privateInviteClaimMatch = request.method === "POST" &&
+        requestUrl.pathname.match(/^\/sessions\/([^/]+)\/private-invite-claims$/u);
+      if (privateInviteClaimMatch) {
+        const sessionId = decodePathSegment(privateInviteClaimMatch[1], "sessionId");
+        const body = await readJsonBody(request);
+        let currentAccessToken: string | undefined;
+        try {
+          currentAccessToken = readOptionalBearerCredential(request.headers);
+        } catch (error) {
+          if (error instanceof SessionAuthenticationError) {
+            throw new PrivateInviteAuthenticationError();
+          }
+          throw error;
+        }
+        const snapshot = await sessionService.claimPrivateInvite(
+          sessionId,
+          parsePrivateInviteClaimRequest(body),
+          currentAccessToken
+        );
+        sessionVersionEvents.publish(snapshot.version);
+        sendJson(response, 200, snapshot);
+        return;
+      }
+
+      const seatRecoveryInviteMatch = request.method === "POST" &&
+        requestUrl.pathname.match(/^\/sessions\/([^/]+)\/seat-recovery-invites$/u);
+      if (seatRecoveryInviteMatch) {
+        const sessionId = decodePathSegment(seatRecoveryInviteMatch[1], "sessionId");
+        const body = await readJsonBody(request);
+        const invite = await sessionService.issuePrivateSeatRecoveryInvite(
+          sessionId,
+          requireBearerCredential(request.headers),
+          parsePrivateSeatRecoveryInviteRequest(body)
+        );
+        sendJson(response, 201, invite);
+        return;
+      }
+
+      const sessionVersionEventsMatch = request.method === "GET" &&
+        requestUrl.pathname.match(/^\/sessions\/([^/]+)\/events$/u);
+      if (sessionVersionEventsMatch) {
+        const sessionId = decodePathSegment(sessionVersionEventsMatch[1], "sessionId");
+        const accessToken = requireBearerCredential(request.headers);
+        const access = await sessionService.authenticateSessionAccess(
+          sessionId,
+          accessToken
+        );
+        const reservation = sessionVersionEvents.reservePrincipal(
+          sessionId,
+          access.principal.principalId
+        );
+        try {
+          await sessionService.assertSessionPrincipalCredentialCurrent(
+            sessionId,
+            accessToken,
+            access.principal.principalId
+          );
+          sessionVersionEvents.subscribeReserved(response, access.snapshot.version, reservation);
+        } catch (error) {
+          sessionVersionEvents.cancelReservation(reservation);
+          if (error instanceof SessionVersionStreamCapacityError) {
+            response.setHeader("Retry-After", String(error.retryAfterSeconds));
+            sendJson(response, 429, { error: "Session event stream capacity is exhausted" });
+            return;
+          }
+          if (error instanceof SessionVersionStreamReservationInvalidError) {
+            throw new SessionAuthenticationError();
+          }
+          throw error;
+        }
         return;
       }
 
@@ -400,6 +514,25 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
           "Cache-Control": "no-store",
           "Content-Disposition": 'attachment; filename="game-public-journal.json"'
         });
+        return;
+      }
+
+      const facilitatorDebriefMatch =
+        (request.method === "GET" || request.method === "POST") &&
+        requestUrl.pathname.match(/^\/sessions\/([^/]+)\/facilitator-debrief$/u);
+      if (facilitatorDebriefMatch) {
+        if (facilitatorDebriefService === null) throw new SessionStoreUnavailableError();
+        const sessionId = decodePathSegment(facilitatorDebriefMatch[1], "sessionId");
+        const accessToken = requireBearerCredential(request.headers);
+        const debrief = request.method === "GET"
+          ? await facilitatorDebriefService.get(sessionId, accessToken)
+          : await facilitatorDebriefService.generate(
+            sessionId,
+            accessToken,
+            parseFacilitatorDebriefGenerationRequest(await readJsonBody(request))
+          );
+        response.setHeader("Cache-Control", "no-store");
+        sendJson(response, 200, debrief);
         return;
       }
 
@@ -423,6 +556,7 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
           accessToken: requireBearerCredential(request.headers),
           input: requestBody
         });
+        sessionVersionEvents.publish(dispatchResponse.version);
 
         const serverTiming = formatServerTimingHeader(timings);
         if (serverTiming !== undefined) {
@@ -451,6 +585,7 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
           credentialSha256: hashSessionCredential(requireBearerCredential(request.headers)),
           request: requestBody
         });
+        sessionVersionEvents.publish(agentTurnResponse.version);
 
         sendJson(response, 200, agentTurnResponse);
         return;
@@ -459,7 +594,7 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
       sendJson(response, 404, { error: "Not found" });
     } catch (error) {
       if (error instanceof HttpError) {
-        if (error.statusCode === 401) {
+        if (error instanceof SessionAuthenticationError) {
           response.setHeader("WWW-Authenticate", 'Bearer realm="cubica-session"');
         }
         if (error instanceof CommandAdmissionRejectedError) {
@@ -500,6 +635,7 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
         return;
       }
       closed = true;
+      sessionVersionEvents.close();
       if (server.listening) {
         await new Promise<void>((resolve, reject) => {
           server.close((error) => error ? reject(error) : resolve());
@@ -508,6 +644,16 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
       await sessionStore.close();
     }
   };
+}
+
+function isFacilitatorDebriefStore(
+  store: SessionStorePort<RuntimeState>
+): store is SessionStorePort<RuntimeState> & FacilitatorDebriefStorePort<RuntimeState> {
+  const candidate = store as Partial<FacilitatorDebriefStorePort<RuntimeState>>;
+  return typeof candidate.readFacilitatorDebriefStatus === "function" &&
+    typeof candidate.readFacilitatorDebriefGenerationSource === "function" &&
+    typeof candidate.beginFacilitatorDebriefAttempt === "function" &&
+    typeof candidate.completeFacilitatorDebriefAttempt === "function";
 }
 
 function assertEditorPreviewContentRoot(contentRoot: string): string {

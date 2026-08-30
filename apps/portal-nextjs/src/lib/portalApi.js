@@ -18,11 +18,9 @@ const TOKEN_STORAGE_KEYS = [
 
 const PRIMARY_TOKEN_STORAGE_KEY = "cubica.portal.jwt";
 export const PORTAL_AUTH_CHANGED_EVENT = "cubica.portal.auth.changed";
-const TEST_USER = {
-  username: "portal-test",
-  email: "portal-test@example.com",
-  password: "portal-test-password",
-};
+export const PAYMENT_STUB_AVAILABLE =
+  process.env.NODE_ENV !== "production" &&
+  process.env.NEXT_PUBLIC_PAYMENT_STUB_ENABLED === "true";
 
 export function getStoredJwt() {
   if (typeof window === "undefined") {
@@ -186,39 +184,6 @@ export async function copyLaunchLink({ purchaseId, linkId }) {
   };
 }
 
-export async function loginTestUser() {
-  const payload = await publicRequest("/api/auth/local", {
-    method: "POST",
-    body: JSON.stringify({
-      identifier: TEST_USER.email,
-      password: TEST_USER.password,
-    }),
-  });
-
-  storeJwt(payload?.jwt);
-  return payload;
-}
-
-export async function ensureTestUserSession() {
-  const existingToken = getStoredJwt();
-
-  if (existingToken) {
-    return { jwt: existingToken };
-  }
-
-  try {
-    const payload = await publicRequest("/api/auth/local/register", {
-      method: "POST",
-      body: JSON.stringify(TEST_USER),
-    });
-
-    storeJwt(payload?.jwt);
-    return payload;
-  } catch (error) {
-    return loginTestUser();
-  }
-}
-
 export async function createTestPurchase({
   gameSlug,
   packageType = "one-time",
@@ -226,7 +191,13 @@ export async function createTestPurchase({
   startDate,
   endDate,
 }) {
-  await ensureTestUserSession();
+  if (!PAYMENT_STUB_AVAILABLE) {
+    throw new Error("Payment stub is disabled in this portal environment");
+  }
+
+  if (!getStoredJwt()) {
+    throw new Error("Log in before using the payment stub");
+  }
 
   return request("/api/orders/payment-stub", {
     method: "POST",

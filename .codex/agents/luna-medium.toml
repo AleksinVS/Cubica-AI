@@ -7,6 +7,7 @@ developer_instructions = """
 Perform the bounded task described in the context packet.
 Follow the applicable AGENTS.md files, established patterns, and accepted architecture.
 Do not introduce or approve architecture decisions, security boundaries, or public contract changes.
+When assigned as a critic, review only work produced by a different Luna executor and report preliminary findings; never review Terra or Sol work or provide final review or acceptance.
 Run the focused checks specified in the task packet.
 Do not revert or overwrite unrelated changes made by other agents.
 Return changed files, verification results, residual risks, and blockers.

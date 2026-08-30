@@ -63,6 +63,20 @@ export class SessionAuthenticationError extends HttpError {
   }
 }
 
+/** Invalid, expired, replayed and racing invite capabilities are indistinguishable. */
+export class PrivateInviteAuthenticationError extends HttpError {
+  constructor() {
+    super(401, "Private invitation is invalid or unavailable.", "PRIVATE_INVITE_INVALID");
+  }
+}
+
+/** An authorized host cannot recover the requested seat through this boundary. */
+export class PrivateSeatRecoveryUnavailableError extends HttpError {
+  constructor() {
+    super(404, "Private seat recovery is unavailable.", "PRIVATE_SEAT_RECOVERY_UNAVAILABLE");
+  }
+}
+
 /** The authenticated principal is not permitted to perform the requested operation. */
 export class SessionAuthorizationError extends HttpError {
   constructor() {

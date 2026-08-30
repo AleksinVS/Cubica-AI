@@ -31,7 +31,8 @@ const JOBS = [
     schemaPath: ["components", "schemas", "SessionParticipant"],
     output: path.join(repoRoot, "packages", "contracts", "session", "src", "generated", "session-participant.ts"),
     rootName: "SessionParticipant",
-    compileRoot: true
+    compileRoot: true,
+    validationOnlyRootAllOf: true
   },
   {
     name: "session-participants-schema",
@@ -46,7 +47,8 @@ const JOBS = [
     schemaPath: ["components", "schemas", "CreateSessionRequest"],
     output: path.join(repoRoot, "packages", "contracts", "session", "src", "generated", "create-session-request.ts"),
     rootName: "CreateSessionRequest",
-    compileRoot: true
+    compileRoot: true,
+    validationOnlyRootAllOf: true
   },
   {
     name: "create-session-request-schema",
@@ -54,6 +56,114 @@ const JOBS = [
     schemaPath: ["components", "schemas", "CreateSessionRequest"],
     output: path.join(repoRoot, "packages", "contracts", "session", "src", "generated", "create-session-request.schema.json"),
     outputKind: "json-schema"
+  },
+  {
+    name: "private-session-invite",
+    schema: path.join(repoRoot, "docs", "architecture", "runtime-api-openapi.yaml"),
+    schemaPath: ["components", "schemas", "PrivateSessionInvite"],
+    output: path.join(repoRoot, "packages", "contracts", "session", "src", "generated", "private-session-invite.ts"),
+    rootName: "PrivateSessionInvite",
+    compileRoot: true
+  },
+  {
+    name: "private-invite-token",
+    schema: path.join(repoRoot, "docs", "architecture", "runtime-api-openapi.yaml"),
+    schemaPath: ["components", "schemas", "PrivateInviteToken"],
+    output: path.join(repoRoot, "packages", "contracts", "session", "src", "generated", "private-invite-token.ts"),
+    rootName: "PrivateInviteToken",
+    compileRoot: true
+  },
+  {
+    name: "session-credential",
+    schema: path.join(repoRoot, "docs", "architecture", "runtime-api-openapi.yaml"),
+    schemaPath: ["components", "schemas", "SessionCredential"],
+    output: path.join(repoRoot, "packages", "contracts", "session", "src", "generated", "session-credential.ts"),
+    rootName: "SessionCredential",
+    compileRoot: true
+  },
+  {
+    name: "private-session-invites-schema",
+    schema: path.join(repoRoot, "docs", "architecture", "runtime-api-openapi.yaml"),
+    schemaPath: ["components", "schemas", "PrivateSessionInvites"],
+    output: path.join(repoRoot, "packages", "contracts", "session", "src", "generated", "private-session-invites.schema.json"),
+    outputKind: "json-schema"
+  },
+  {
+    name: "private-session-invites-schema-module",
+    schema: path.join(repoRoot, "docs", "architecture", "runtime-api-openapi.yaml"),
+    schemaPath: ["components", "schemas", "PrivateSessionInvites"],
+    output: path.join(repoRoot, "packages", "contracts", "session", "src", "generated", "private-session-invites.schema.ts"),
+    outputKind: "typescript-schema",
+    exportName: "privateSessionInvitesSchema"
+  },
+  {
+    name: "private-invite-claim-request",
+    schema: path.join(repoRoot, "docs", "architecture", "runtime-api-openapi.yaml"),
+    schemaPath: ["components", "schemas", "PrivateInviteClaimRequest"],
+    output: path.join(repoRoot, "packages", "contracts", "session", "src", "generated", "private-invite-claim-request.ts"),
+    rootName: "PrivateInviteClaimRequest",
+    compileRoot: true
+  },
+  {
+    name: "private-invite-claim-request-schema",
+    schema: path.join(repoRoot, "docs", "architecture", "runtime-api-openapi.yaml"),
+    schemaPath: ["components", "schemas", "PrivateInviteClaimRequest"],
+    output: path.join(repoRoot, "packages", "contracts", "session", "src", "generated", "private-invite-claim-request.schema.json"),
+    outputKind: "json-schema"
+  },
+  {
+    name: "private-invite-claim-request-schema-module",
+    schema: path.join(repoRoot, "docs", "architecture", "runtime-api-openapi.yaml"),
+    schemaPath: ["components", "schemas", "PrivateInviteClaimRequest"],
+    output: path.join(repoRoot, "packages", "contracts", "session", "src", "generated", "private-invite-claim-request.schema.ts"),
+    outputKind: "typescript-schema",
+    exportName: "privateInviteClaimRequestSchema"
+  },
+  {
+    name: "private-seat-recovery-invite-request",
+    schema: path.join(repoRoot, "docs", "architecture", "runtime-api-openapi.yaml"),
+    schemaPath: ["components", "schemas", "PrivateSeatRecoveryInviteRequest"],
+    output: path.join(repoRoot, "packages", "contracts", "session", "src", "generated", "private-seat-recovery-invite-request.ts"),
+    rootName: "PrivateSeatRecoveryInviteRequest",
+    compileRoot: true
+  },
+  {
+    name: "private-seat-recovery-invite-request-schema",
+    schema: path.join(repoRoot, "docs", "architecture", "runtime-api-openapi.yaml"),
+    schemaPath: ["components", "schemas", "PrivateSeatRecoveryInviteRequest"],
+    output: path.join(repoRoot, "packages", "contracts", "session", "src", "generated", "private-seat-recovery-invite-request.schema.json"),
+    outputKind: "json-schema"
+  },
+  {
+    name: "private-seat-recovery-invite-request-schema-module",
+    schema: path.join(repoRoot, "docs", "architecture", "runtime-api-openapi.yaml"),
+    schemaPath: ["components", "schemas", "PrivateSeatRecoveryInviteRequest"],
+    output: path.join(repoRoot, "packages", "contracts", "session", "src", "generated", "private-seat-recovery-invite-request.schema.ts"),
+    outputKind: "typescript-schema",
+    exportName: "privateSeatRecoveryInviteRequestSchema"
+  },
+  {
+    name: "session-version-notification",
+    schema: path.join(repoRoot, "docs", "architecture", "runtime-api-openapi.yaml"),
+    schemaPath: ["components", "schemas", "SessionVersionNotification"],
+    output: path.join(repoRoot, "packages", "contracts", "session", "src", "generated", "session-version-notification.ts"),
+    rootName: "SessionVersionNotification",
+    compileRoot: true
+  },
+  {
+    name: "session-version-notification-schema",
+    schema: path.join(repoRoot, "docs", "architecture", "runtime-api-openapi.yaml"),
+    schemaPath: ["components", "schemas", "SessionVersionNotification"],
+    output: path.join(repoRoot, "packages", "contracts", "session", "src", "generated", "session-version-notification.schema.json"),
+    outputKind: "json-schema"
+  },
+  {
+    name: "session-version-notification-schema-module",
+    schema: path.join(repoRoot, "docs", "architecture", "runtime-api-openapi.yaml"),
+    schemaPath: ["components", "schemas", "SessionVersionNotification"],
+    output: path.join(repoRoot, "packages", "contracts", "session", "src", "generated", "session-version-notification.schema.ts"),
+    outputKind: "typescript-schema",
+    exportName: "sessionVersionNotificationSchema"
   },
   {
     name: "agent-control",
@@ -105,6 +215,27 @@ const JOBS = [
     rootName: "PortablePublicGameplayJournal",
     compileRoot: true,
     validationOnlyRootAllOf: true
+  },
+  {
+    name: "facilitator-debrief",
+    schema: path.join(repoRoot, "docs", "architecture", "schemas", "facilitator-debrief.schema.json"),
+    output: path.join(repoRoot, "packages", "contracts", "session", "src", "generated", "facilitator-debrief.ts"),
+    rootName: "FacilitatorDebriefResponse",
+    compileRoot: true,
+    validationOnlyRootAllOf: true
+  },
+  {
+    name: "facilitator-debrief-schema",
+    schema: path.join(repoRoot, "docs", "architecture", "schemas", "facilitator-debrief.schema.json"),
+    output: path.join(repoRoot, "packages", "contracts", "session", "src", "generated", "facilitator-debrief.schema.json"),
+    outputKind: "json-schema"
+  },
+  {
+    name: "facilitator-debrief-schema-module",
+    schema: path.join(repoRoot, "docs", "architecture", "schemas", "facilitator-debrief.schema.json"),
+    output: path.join(repoRoot, "packages", "contracts", "session", "src", "generated", "facilitator-debrief.schema.ts"),
+    outputKind: "typescript-schema",
+    exportName: "facilitatorDebriefSchema"
   }
 ];
 
@@ -202,6 +333,9 @@ async function generateOne(job) {
   }
   if (job.outputKind === "json-schema") {
     return `${JSON.stringify(source, null, 2)}\n`;
+  }
+  if (job.outputKind === "typescript-schema") {
+    return `/* eslint-disable */\n/** GENERATED FILE — DO NOT EDIT BY HAND. */\nexport const ${job.exportName} = ${JSON.stringify(source, null, 2)} as const;\n`;
   }
   const schema = normalizeSchemaForTypeGeneration(source, job);
   const compileOptions = job.schemaPath

@@ -42,7 +42,10 @@ import { InMemorySessionStore } from "../../../services/runtime-api/src/modules/
 import { createLocalSessionAccess } from "../../../services/runtime-api/src/modules/session/sessionAuthentication.ts";
 import { createAgentSeatCommandId } from "../../../services/runtime-api/src/modules/session/commandIdentity.ts";
 import { buildPlayerSessionProjection } from "../../../services/runtime-api/src/modules/session/playerSessionProjection.ts";
-import { materializeLocalSessionParticipants } from "../../../services/runtime-api/src/modules/session/sessionParticipants.ts";
+import {
+  materializeLocalSessionParticipants,
+  materializePrivateSessionParticipants
+} from "../../../services/runtime-api/src/modules/session/sessionParticipants.ts";
 import { initializeTurnBasedSessionState } from "../../../services/runtime-api/src/modules/session/turnBasedSessionState.ts";
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -108,20 +111,52 @@ const createReplay = async (mutateState, {
   mutateState?.(initialState);
   const immutableBundle = createImmutableBundleContent(manifest.meta.id, manifest);
   const store = new InMemorySessionStore();
+  const scopedActorId = actorScope.kind === "listed-actors" ? actorScope.actorIds[0] : undefined;
+  const participants = scopedActorId === undefined
+    ? materializeLocalSessionParticipants(initialState, participantCount)
+    : materializePrivateSessionParticipants(initialState, participantCount);
+  const scopedParticipant = participants.find(({ playerId }) => playerId === scopedActorId);
+  const scopedInviteCredentialSha256 = "e".repeat(64);
+  const principalInputs = scopedActorId === undefined
+    ? [{
+        principalId: "estate-race-test-controller",
+        kind: "local-controller",
+        role: "player",
+        actorScope: { kind: "all-session-actors" },
+        credentialSha256: testCredentialSha256
+      }]
+    : participants.map((participant, index) => ({
+        principalId: `estate-race-test-${participant.playerId}`,
+        kind: "participant",
+        role: "player",
+        actorScope: { kind: "listed-actors", actorIds: [participant.playerId] },
+        credentialSha256: participant.playerId === scopedActorId
+          ? participant.joinState === "invited"
+            ? scopedInviteCredentialSha256
+            : testCredentialSha256
+          : String(index + 1).repeat(64),
+        ...(participant.joinState === "invited"
+          ? { credentialExpiresAt: new Date("2099-01-01T00:00:00.000Z") }
+          : {})
+      }));
   const created = await store.createSession({
     gameId: manifest.meta.id,
     sessionRole: "player",
     initialState,
-    participants: materializeLocalSessionParticipants(initialState, participantCount),
+    participants,
     immutableBundle,
-    principal: {
-      principalId: "estate-race-test-controller",
-      kind: "local-controller",
-      role: "player",
-      actorScope,
-      credentialSha256: testCredentialSha256
-    }
+    principal: principalInputs[0],
+    ...(principalInputs.length === 1 ? {} : { additionalPrincipals: principalInputs.slice(1) })
   });
+  if (scopedParticipant?.joinState === "invited") {
+    const claimed = await store.claimPrivateInvite({
+      sessionId: created.session.sessionId,
+      inviteCredentialSha256: scopedInviteCredentialSha256,
+      participantCredentialSha256: testCredentialSha256,
+      claimedAt: new Date("2026-08-25T12:00:00.000Z")
+    });
+    assert.notEqual(claimed, null, "the scoped participant credential must be claimed before replay");
+  }
   const randomSamples = autoSetup
     ? [...setupSamples, ...setupDeckSamples, ...samples]
     : samples;

@@ -44,6 +44,8 @@ import { restorePreviewSession } from "@/presenter/runtime-client";
 import { SessionSetupPanel } from "@/components/session-setup-panel";
 import { SessionParticipants } from "@/components/session-participants";
 import { AgentControlPanel } from "@/components/agent-control-panel";
+import { FacilitatorDebriefPanel } from "@/components/facilitator-debrief-panel";
+import { resolveFacilitatorDebriefAvailabilityProvider } from "@/plugins/phaser-scene-registry";
 
 export type { PlayerFacingMockup as GameMockup };
 
@@ -327,6 +329,7 @@ export function GamePlayer({
 
     return () => {
       unsubscribe();
+      presenter.dispose();
       presenterRef.current = null;
     };
   }, [content, contentSourceId, gameUi, fullConfig, initialSessionId, playerPluginState.status]);
@@ -401,7 +404,7 @@ export function GamePlayer({
     void presenter.boot();
   };
 
-  const handleSessionSetup = (selection: { participantCount: number; agentSeatCount: number }) => {
+  const handleSessionSetup = (selection: { participantCount: number; agentSeatCount: number; accessMode?: "local" | "private-invite" }) => {
     void presenterRef.current?.createSessionFromSetup(selection);
   };
 
@@ -497,7 +500,7 @@ export function GamePlayer({
   if (agentControl.kind === "invalid") {
     return (
       <main ref={rootRef} className="shell game-player-root" style={rootStyle}>
-        <SessionParticipants participants={state.participants} />
+        <SessionParticipants sessionId={state.sessionId} privateInvites={state.privateInvites} participants={state.participants} actionAvailability={state.actionAvailability} hostManagementHint={state.hostManagementHint} onRecoverGuestSeat={async (seatId) => presenterRef.current?.recoverGuestSeat(seatId)} />
         <AgentControlPanel invalid onRefresh={handleRefreshAgentControl} />
       </main>
     );
@@ -505,7 +508,7 @@ export function GamePlayer({
   if (agentControl.kind === "valid" && agentControl.value.status === "paused") {
     return (
       <main ref={rootRef} className="shell game-player-root" style={rootStyle}>
-        <SessionParticipants participants={state.participants} />
+        <SessionParticipants sessionId={state.sessionId} privateInvites={state.privateInvites} participants={state.participants} actionAvailability={state.actionAvailability} hostManagementHint={state.hostManagementHint} onRecoverGuestSeat={async (seatId) => presenterRef.current?.recoverGuestSeat(seatId)} />
         <AgentControlPanel control={agentControl.value} onRefresh={handleRefreshAgentControl} />
       </main>
     );
@@ -520,14 +523,38 @@ export function GamePlayer({
     )
   );
   const sessionSnapshot = presenterRef.current?.sessionSnapshot ?? undefined;
+  const facilitatorDebriefAvailable = (() => {
+    if (playerPluginState.status !== "ready" || sessionSnapshot === undefined) {
+      return false;
+    }
+
+    const provider = resolveFacilitatorDebriefAvailabilityProvider(content.gameId);
+    if (provider === undefined) return false;
+    try {
+      return provider(sessionSnapshot) === true;
+    } catch {
+      return false;
+    }
+  })();
 
   return (
     <main ref={rootRef} className="shell game-player-root" style={rootStyle}>
-      <SessionParticipants participants={state.participants} />
+      <SessionParticipants sessionId={state.sessionId} privateInvites={state.privateInvites} participants={state.participants} actionAvailability={state.actionAvailability} hostManagementHint={state.hostManagementHint} onRecoverGuestSeat={async (seatId) => presenterRef.current?.recoverGuestSeat(seatId)} />
       {agentControl.kind === "valid" && agentControl.value.status === "facilitatorTakeover" ? (
         <AgentControlPanel control={agentControl.value} onRefresh={handleRefreshAgentControl} />
       ) : null}
       <PublicJournalDownload sessionId={state.sessionId} runtimeStatus={state.runtimeStatus} />
+      {facilitatorDebriefAvailable && sessionSnapshot ? (
+        <details className="facilitator-debrief-drawer">
+          <summary>Открыть разбор ведущего</summary>
+          <div className="facilitator-debrief-drawer-content">
+            <FacilitatorDebriefPanel
+              sessionId={sessionSnapshot.sessionId}
+              expectedStateVersion={sessionSnapshot.version.stateVersion}
+            />
+          </div>
+        </details>
+      ) : null}
       {activeManifestPanel && !keepsMapBehindPanel ? (
         <ManifestRenderer
           screenDefinition={activeManifestPanel}

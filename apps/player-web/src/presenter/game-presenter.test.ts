@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { GamePlayerUiContent, PlayerFacingContent } from "@cubica/contracts-manifest";
 
 import type { GameSession } from "@/types/game-state";
+import type { SessionSnapshot } from "@/lib/game-content-resolvers";
 import { createDefaultGameConfig, createDefaultGameConfigData } from "./game-config";
 import { GamePresenter } from "./game-presenter";
 import { ReactViewGateway } from "./react-view-gateway";
@@ -44,6 +45,7 @@ const turnSession = (
 });
 
 afterEach(() => {
+  vi.restoreAllMocks();
   vi.unstubAllGlobals();
   window.localStorage.clear();
   window.history.replaceState({}, "", "/");
@@ -230,6 +232,44 @@ describe("GamePresenter session recovery", () => {
     expect(presenter.sessionSnapshot?.sessionId).toBe("session-portal");
   });
 
+  it("uses only the invite claim flow when an invite fragment is present", async () => {
+    const content = neutralContent("neutral-private-claim", { min: 2, max: 2 });
+    const config = createDefaultGameConfig(createDefaultGameConfigData(content));
+    const claimedSession: GameSession = {
+      ...turnSession("p2", { p1: {}, p2: {} }),
+      sessionId: "session-guest",
+      gameId: content.gameId,
+      participants: [
+        { seatId: "p1", playerId: "p1", kind: "human", joinState: "joined" },
+        { seatId: "p2", playerId: "p2", kind: "human", joinState: "joined" }
+      ]
+    };
+    window.history.replaceState(
+      {},
+      "",
+      `/?gameId=${content.gameId}#sessionId=${claimedSession.sessionId}&inviteToken=opaque-invite`
+    );
+    window.localStorage.setItem(config.storageKey, "unrelated-local-session");
+    const fetchMock = vi.fn().mockResolvedValue(runtimeResponse(claimedSession, 0));
+    vi.stubGlobal("fetch", fetchMock);
+    const presenter = new GamePresenter({
+      gateway: new ReactViewGateway(),
+      content,
+      config
+    });
+
+    await presenter.boot();
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      `/api/runtime/sessions/${claimedSession.sessionId}/private-invite-claims`
+    );
+    expect(window.location.hash).toBe("");
+    expect(window.localStorage.getItem(config.storageKey)).toBe(claimedSession.sessionId);
+    expect(presenter.sessionSnapshot?.sessionId).toBe(claimedSession.sessionId);
+    expect(presenter.playerState.hostManagementHint).toBe(false);
+  });
+
   it("keeps automatic creation when the content has no agent-seat declaration", async () => {
     const content = neutralContent("neutral-auto-create");
     const session = { ...turnSession("p1"), gameId: content.gameId };
@@ -275,6 +315,168 @@ describe("GamePresenter session recovery", () => {
       participantCount: 2,
       agentSeatCount: 0
     });
+  });
+
+  it("sends an explicit private setup choice without agent seats", async () => {
+    const content = agentSeatContent("neutral-private-setup", 2);
+    const session = {
+      ...turnSession("p1"),
+      gameId: content.gameId,
+      privateInvites: [privateInvite("p2")]
+    };
+    const fetchMock = vi.fn().mockResolvedValue(runtimeResponse(session, 0));
+    vi.stubGlobal("fetch", fetchMock);
+    const presenter = new GamePresenter({
+      gateway: new ReactViewGateway(),
+      content,
+      config: createDefaultGameConfig(createDefaultGameConfigData(content))
+    });
+
+    await presenter.boot();
+    await presenter.createSessionFromSetup({
+      participantCount: 2,
+      agentSeatCount: 2,
+      accessMode: "private-invite"
+    });
+
+    expect(JSON.parse(String((fetchMock.mock.calls[0]?.[1] as RequestInit).body))).toEqual({
+      gameId: content.gameId,
+      participantCount: 2,
+      agentSeatCount: 0,
+      accessMode: "private-invite"
+    });
+    expect(presenter.playerState.privateInvites).toEqual(session.privateInvites);
+    expect(presenter.playerState.hostManagementHint).toBe(true);
+    expect(window.localStorage.getItem(`cubica-host-management:${session.sessionId}`)).toBe("1");
+    expect(window.localStorage.getItem(`cubica-host-management:${session.sessionId}`)).not.toContain("inv_");
+  });
+
+  it("restores the non-secret host hint on a later resume", async () => {
+    const content = neutralContent("neutral-private-resume", { min: 1, max: 1 });
+    const config = createDefaultGameConfig(createDefaultGameConfigData(content));
+    const created: GameSession = { ...turnSession("p1"), gameId: content.gameId, privateInvites: [privateInvite("p2")] };
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(runtimeResponse(created, 0))
+      .mockResolvedValueOnce(runtimeResponse(created, 0));
+    vi.stubGlobal("fetch", fetchMock);
+    const first = new GamePresenter({ gateway: new ReactViewGateway(), content, config });
+    await first.boot();
+    first.dispose();
+    const second = new GamePresenter({ gateway: new ReactViewGateway(), content, config });
+    await second.boot();
+    expect(second.playerState.hostManagementHint).toBe(true);
+    expect(window.localStorage.getItem(`cubica-host-management:${created.sessionId}`)).toBe("1");
+  });
+
+  it("keeps exactly one live subscription through boot and reset", async () => {
+    const content = neutralContent("neutral-subscription-lifecycle");
+    const first = { ...turnSession("p1"), gameId: content.gameId };
+    const second = { ...first, sessionId: "session-replacement" };
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(runtimeResponse(first, 0))
+      .mockResolvedValueOnce(runtimeResponse(second, 0));
+    vi.stubGlobal("fetch", fetchMock);
+    const stop = vi.fn();
+    const subscribe = vi.spyOn(runtimeClient, "subscribeToSessionEvents").mockReturnValue({ stop });
+    const presenter = new GamePresenter({
+      gateway: new ReactViewGateway(),
+      content,
+      config: createDefaultGameConfig(createDefaultGameConfigData(content))
+    });
+
+    await presenter.boot();
+    expect(subscribe).toHaveBeenCalledTimes(1);
+    await presenter.resetGame();
+    expect(subscribe).toHaveBeenCalledTimes(2);
+    expect(stop).toHaveBeenCalledTimes(1);
+  });
+
+  it("starts one subscription when setup creates the first session", async () => {
+    const content = agentSeatContent("neutral-setup-subscription", 2);
+    const session = { ...turnSession("p1"), gameId: content.gameId };
+    const fetchMock = vi.fn().mockResolvedValue(runtimeResponse(session, 0));
+    vi.stubGlobal("fetch", fetchMock);
+    const subscribe = vi.spyOn(runtimeClient, "subscribeToSessionEvents").mockReturnValue({ stop: vi.fn() });
+    const presenter = new GamePresenter({
+      gateway: new ReactViewGateway(),
+      content,
+      config: createDefaultGameConfig(createDefaultGameConfigData(content))
+    });
+
+    await presenter.boot();
+    expect(subscribe).not.toHaveBeenCalled();
+    await presenter.createSessionFromSetup({ participantCount: 2, agentSeatCount: 0, accessMode: "local" });
+    expect(subscribe).toHaveBeenCalledTimes(1);
+  });
+
+  it("preserves unclaimed creation invites across GET/action and removes joined invites", async () => {
+    const content = neutralContent("neutral-invite-snapshot");
+    const invite = privateInvite("p2");
+    const initial = {
+      ...turnSession("p1"),
+      gameId: content.gameId,
+      participants: [
+        { seatId: "p1", playerId: "p1", kind: "human" as const, joinState: "joined" as const },
+        { seatId: "p2", playerId: "p2", kind: "human" as const, joinState: "invited" as const }
+      ],
+      privateInvites: [invite]
+    };
+    const invitedSnapshot = { ...initial, privateInvites: undefined };
+    const joinedSnapshot = {
+      ...invitedSnapshot,
+      participants: invitedSnapshot.participants.map((participant) =>
+        participant.playerId === "p2" ? { ...participant, joinState: "joined" as const } : participant
+      )
+    };
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(runtimeResponse(invitedSnapshot, 1))
+      .mockResolvedValueOnce(runtimeResponse(invitedSnapshot, 2))
+      .mockResolvedValueOnce(runtimeResponse(joinedSnapshot, 3));
+    vi.stubGlobal("fetch", fetchMock);
+    const presenter = new GamePresenter({
+      gateway: new ReactViewGateway(),
+      content,
+      config: createDefaultGameConfig(createDefaultGameConfigData(content))
+    });
+    Reflect.set(presenter, "session", initial);
+    Reflect.set(presenter, "booting", false);
+
+    await presenter.refreshSession();
+    expect(presenter.playerState.privateInvites).toEqual([invite]);
+    await presenter.handleBoardAction("turn.advance");
+    expect(presenter.playerState.privateInvites).toEqual([invite]);
+    await presenter.refreshSession();
+    expect(presenter.playerState.privateInvites).toEqual([]);
+  });
+
+  it("resets a private session with private access and no agent seats", async () => {
+    const content = agentSeatContent("neutral-private-reset", 2);
+    const current = {
+      ...turnSession("p1"),
+      gameId: content.gameId,
+      participants: [
+        { seatId: "p1", playerId: "p1", kind: "human" as const, joinState: "joined" as const },
+        { seatId: "p2", playerId: "p2", kind: "human" as const, joinState: "invited" as const }
+      ]
+    };
+    const replacement = { ...current, sessionId: "session-private-reset", privateInvites: [privateInvite("p2")] };
+    const fetchMock = vi.fn().mockResolvedValue(runtimeResponse(replacement, 0));
+    vi.stubGlobal("fetch", fetchMock);
+    const presenter = new GamePresenter({
+      gateway: new ReactViewGateway(),
+      content,
+      config: createDefaultGameConfig(createDefaultGameConfigData(content))
+    });
+    Reflect.set(presenter, "session", current);
+    Reflect.set(presenter, "booting", false);
+
+    await presenter.resetGame();
+    expect(JSON.parse(String((fetchMock.mock.calls[0]?.[1] as RequestInit).body))).toMatchObject({
+      participantCount: 2,
+      agentSeatCount: 0,
+      accessMode: "private-invite"
+    });
+    expect(presenter.playerState.privateInvites).toHaveLength(1);
   });
 
   it("bounds agent seats, blocks duplicate setup submits and keeps a creation error on the form", async () => {
@@ -338,6 +540,177 @@ describe("GamePresenter session recovery", () => {
     });
     expect(presenter.sessionSnapshot?.sessionId).toBe(replacement.sessionId);
     expect(presenter.playerState.sessionSetup).toBeNull();
+  });
+});
+
+describe("GamePresenter monotonic snapshot adoption", () => {
+  it("does not let a delayed SSE GET roll a newer action response back", async () => {
+    const content = neutralContent("neutral-sse-action-race", { min: 2, max: 2 });
+    const invite = privateInvite("p2");
+    const participants = [
+      { seatId: "p1", playerId: "p1", kind: "human" as const, joinState: "joined" as const },
+      { seatId: "p2", playerId: "p2", kind: "human" as const, joinState: "invited" as const }
+    ];
+    const initial: GameSession = {
+      ...turnSession("p1", { p1: {}, p2: {} }),
+      gameId: content.gameId,
+      participants,
+      privateInvites: [invite],
+      actionAvailability: [{ actionId: "turn.advance", status: "available", basisStateVersion: 1 }]
+    };
+    const delayedSse: GameSession = {
+      ...initial,
+      version: { ...initial.version, stateVersion: 2, lastEventSequence: 2 },
+      state: { public: { marker: "stale-sse" }, secret: {} },
+      actionAvailability: [{ actionId: "turn.advance", status: "unavailable", basisStateVersion: 2 }],
+      privateInvites: undefined
+    };
+    const actionSnapshot: GameSession = {
+      ...initial,
+      version: { ...initial.version, stateVersion: 3, lastEventSequence: 3 },
+      state: { public: { marker: "new-action" }, secret: {} },
+      actionAvailability: [{ actionId: "turn.advance", status: "available", basisStateVersion: 3 }],
+      privateInvites: undefined
+    };
+    const sseGet = deferred<SessionSnapshot>();
+    let onSseSnapshot: ((snapshot: SessionSnapshot) => void) | undefined;
+    vi.spyOn(runtimeClient, "subscribeToSessionEvents").mockImplementation((_sessionId, onSnapshot) => {
+      onSseSnapshot = onSnapshot;
+      void sseGet.promise.then(onSnapshot);
+      return { stop: vi.fn() };
+    });
+    vi.stubGlobal("fetch", vi.fn()
+      .mockResolvedValueOnce(runtimeResponse(initial, 1))
+      .mockResolvedValueOnce(runtimeResponse(actionSnapshot, 3)));
+    const presenter = new GamePresenter({
+      gateway: new ReactViewGateway(),
+      content,
+      config: createDefaultGameConfig(createDefaultGameConfigData(content))
+    });
+
+    await presenter.boot();
+    expect(onSseSnapshot).toBeTypeOf("function");
+    await presenter.handleBoardAction("turn.advance");
+    sseGet.resolve(delayedSse);
+    await sseGet.promise;
+    await Promise.resolve();
+
+    expect(presenter.sessionSnapshot?.version).toMatchObject({ stateVersion: 3, lastEventSequence: 3 });
+    expect(presenter.sessionSnapshot?.state).toEqual(actionSnapshot.state);
+    expect(presenter.playerState.actionAvailability).toEqual(actionSnapshot.actionAvailability);
+    expect(presenter.playerState.privateInvites).toEqual([invite]);
+  });
+
+  it("adopts a newer SSE snapshot", async () => {
+    const content = neutralContent("neutral-newer-sse");
+    const initial = { ...turnSession("p1"), gameId: content.gameId };
+    const newer: GameSession = {
+      ...initial,
+      version: { ...initial.version, stateVersion: 1, lastEventSequence: 4 },
+      state: { public: { marker: "newer-sse" }, secret: {} }
+    };
+    const sseGet = deferred<SessionSnapshot>();
+    vi.spyOn(runtimeClient, "subscribeToSessionEvents").mockImplementation((_sessionId, onSnapshot) => {
+      void sseGet.promise.then(onSnapshot);
+      return { stop: vi.fn() };
+    });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(runtimeResponse(initial, 1)));
+    const presenter = new GamePresenter({
+      gateway: new ReactViewGateway(),
+      content,
+      config: createDefaultGameConfig(createDefaultGameConfigData(content))
+    });
+
+    await presenter.boot();
+    sseGet.resolve(newer);
+    await sseGet.promise;
+    await Promise.resolve();
+
+    expect(presenter.sessionSnapshot?.version).toMatchObject({ stateVersion: 1, lastEventSequence: 4 });
+    expect(presenter.sessionSnapshot?.state).toEqual(newer.state);
+  });
+
+  it("rejects a callback from a replaced credential lifecycle even when the session id matches", async () => {
+    const content = neutralContent("neutral-replaced-lifecycle");
+    const initial = { ...turnSession("p1"), gameId: content.gameId };
+    const replacement: GameSession = {
+      ...initial,
+      version: { ...initial.version, stateVersion: 2, lastEventSequence: 2 },
+      state: { public: { marker: "replacement" }, secret: {} }
+    };
+    const callbacks: Array<(snapshot: SessionSnapshot) => void> = [];
+    const priorLifecycleGet = deferred<SessionSnapshot>();
+    vi.spyOn(runtimeClient, "subscribeToSessionEvents").mockImplementation((_sessionId, onSnapshot) => {
+      callbacks.push(onSnapshot);
+      if (callbacks.length === 1) {
+        void priorLifecycleGet.promise.then(onSnapshot);
+      }
+      return { stop: vi.fn() };
+    });
+    vi.stubGlobal("fetch", vi.fn()
+      .mockResolvedValueOnce(runtimeResponse(initial, 1))
+      .mockResolvedValueOnce(runtimeResponse(replacement, 2)));
+    const presenter = new GamePresenter({
+      gateway: new ReactViewGateway(),
+      content,
+      config: createDefaultGameConfig(createDefaultGameConfigData(content))
+    });
+
+    await presenter.boot();
+    await presenter.boot();
+    priorLifecycleGet.resolve({
+      ...replacement,
+      version: { ...replacement.version, stateVersion: 99, lastEventSequence: 99 },
+      state: { public: { marker: "prior-lifecycle" }, secret: {} }
+    });
+    await priorLifecycleGet.promise;
+    await Promise.resolve();
+
+    expect(callbacks).toHaveLength(2);
+    expect(presenter.sessionSnapshot?.version.stateVersion).toBe(2);
+    expect(presenter.sessionSnapshot?.state).toEqual(replacement.state);
+  });
+
+  it("accepts an equal-cursor principal snapshot without erasing creation-only invites", async () => {
+    const content = neutralContent("neutral-equal-cursor", { min: 2, max: 2 });
+    const invite = privateInvite("p2");
+    const initial: GameSession = {
+      ...turnSession("p1", { p1: {}, p2: {} }),
+      gameId: content.gameId,
+      participants: [
+        { seatId: "p1", playerId: "p1", kind: "human", joinState: "joined" },
+        { seatId: "p2", playerId: "p2", kind: "human", joinState: "invited" }
+      ],
+      privateInvites: [invite],
+      actionAvailability: [{ actionId: "turn.advance", status: "unavailable", basisStateVersion: 1 }]
+    };
+    const equalCursor: GameSession = {
+      ...initial,
+      version: { ...initial.version, stateVersion: 1, lastEventSequence: 1 },
+      state: { public: { marker: "principal-refresh" }, secret: {} },
+      actionAvailability: [{ actionId: "turn.advance", status: "available", basisStateVersion: 1 }],
+      privateInvites: undefined
+    };
+    const sseGet = deferred<SessionSnapshot>();
+    vi.spyOn(runtimeClient, "subscribeToSessionEvents").mockImplementation((_sessionId, onSnapshot) => {
+      void sseGet.promise.then(onSnapshot);
+      return { stop: vi.fn() };
+    });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(runtimeResponse(initial, 1)));
+    const presenter = new GamePresenter({
+      gateway: new ReactViewGateway(),
+      content,
+      config: createDefaultGameConfig(createDefaultGameConfigData(content))
+    });
+
+    await presenter.boot();
+    sseGet.resolve(equalCursor);
+    await sseGet.promise;
+    await Promise.resolve();
+
+    expect(presenter.sessionSnapshot?.state).toEqual(equalCursor.state);
+    expect(presenter.playerState.actionAvailability).toEqual(equalCursor.actionAvailability);
+    expect(presenter.playerState.privateInvites).toEqual([invite]);
   });
 });
 
@@ -834,6 +1207,26 @@ function agentSeatContent(gameId: string, participantCount: number): PlayerFacin
       }
     }
   };
+}
+
+function privateInvite(playerId: string) {
+  return {
+    seatId: playerId,
+    playerId,
+    inviteToken: `inv_${playerId}`,
+    expiresAt: "2026-08-25T12:00:00.000Z"
+  };
+}
+
+function deferred<T>(): {
+  promise: Promise<T>;
+  resolve: (value: T) => void;
+} {
+  let resolve: (value: T) => void = () => undefined;
+  const promise = new Promise<T>((innerResolve) => {
+    resolve = innerResolve;
+  });
+  return { promise, resolve };
 }
 
 function fetchRequestVersions(fetchMock: ReturnType<typeof vi.fn>): number[] {

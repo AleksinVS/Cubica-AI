@@ -12,6 +12,7 @@ import type {
 } from "@cubica/player-web/plugin-api";
 
 import { provideCardsMoneyTrainsAccessibleBoardActions } from "./accessible-actions.ts";
+import { provideCardsMoneyTrainsFacilitatorDebriefAvailability } from "./facilitator-debrief-availability.ts";
 
 export const CARDS_MONEY_TRAINS_GAME_ID = "cards-money-trains";
 export const CARDS_MONEY_TRAINS_PLAYER_PLUGIN_ID = "cards-money-trains-player";
@@ -25,6 +26,10 @@ export function registerCardsMoneyTrainsPlayer(
     CARDS_MONEY_TRAINS_GAME_ID,
     provideCardsMoneyTrainsAccessibleBoardActions
   ) ?? (() => {});
+  const disposeFacilitatorDebrief = api.registerFacilitatorDebriefAvailabilityProvider?.(
+    CARDS_MONEY_TRAINS_GAME_ID,
+    provideCardsMoneyTrainsFacilitatorDebriefAvailability
+  ) ?? (() => {});
   const disposeScene = api.registerPhaserSceneFactory(
     CARDS_MONEY_TRAINS_GAME_ID,
     sceneFactory
@@ -33,5 +38,6 @@ export function registerCardsMoneyTrainsPlayer(
   return () => {
     disposeScene();
     disposeActions();
+    disposeFacilitatorDebrief();
   };
 }

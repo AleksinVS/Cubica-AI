@@ -49,6 +49,7 @@ Load only the entry points required for the current task:
 | Execution planning | [`docs/tasks/AGENTS.md`](docs/tasks/AGENTS.md) |
 | Selecting the next work | [`STRATEGY.md`](docs/tasks/STRATEGY.md) and [`NEXT_STEPS.md`](NEXT_STEPS.md) |
 | Browser diagnostics | [`local-browser-diagnostics.md`](docs/processes/local-browser-diagnostics.md) |
+| Shared Context7 and subagent MCP lifecycle | [`codex-subagent-mcp-lifecycle.md`](docs/processes/codex-subagent-mcp-lifecycle.md) |
 
 ### Context7 and external research
 
@@ -127,9 +128,11 @@ architecture but are not expected to know the codebase or ADR numbers.
   Delegate only a bounded independent result when it reduces latency or adds a
   justified independent review. Keep small, tightly coupled work with the
   primary agent.
-- Only the primary agent creates subagents. Keep at most two active at once and
-  give parallel writers non-overlapping ownership. Do not duplicate assignments
-  or delegate one known deterministic command.
+- Only the primary agent creates subagents. Start with one and add parallel
+  agents only for genuinely independent work, up to the current runtime limit
+  and safe host capacity. More than two active subagents require at least three
+  bounded workstreams with non-overlapping ownership and a clear net benefit.
+  Do not duplicate assignments or delegate one known deterministic command.
 - The primary agent of a root `TSK-*` is its coordinator and normally also its
   integrator. Game-specific investigation may run in parallel in `open` mode.
   Before any shared schema, Mechanics IR, runtime, player, storage, or trust
@@ -142,10 +145,18 @@ architecture but are not expected to know the codebase or ADR numbers.
   separately appointed integrator when risk requires it, composes them in a
   clean worktree. A semantic conflict stops integration and returns to PM when
   it crosses an architecture decision.
-- Pass a narrow context packet without full history: objective, established
-  facts, exact files, boundaries, criteria, checks, and stop conditions. The
+- Pass a narrow and deep context packet: exclude unrelated history, but include
+  every fact needed to finish safely within the assigned boundary—objective,
+  governing instructions and accepted decisions, relevant contracts and
+  dependencies, exact files or evidence, concurrent edits, criteria, checks,
+  and stop conditions. Do not save tokens by omitting material context. The
   primary agent verifies the result against contracts and fresh evidence, then
   closes unnecessary sessions.
+- Do not change user or project MCP configuration without an explicit request.
+  Never infer built-in subagent process ownership from PID/PGID snapshots or
+  signal suspected per-agent MCP groups. On a shared host, reclaim them only by
+  closing the whole confirmed Codex session after all of its agents finish, as
+  defined in [`codex-subagent-mcp-lifecycle.md`](docs/processes/codex-subagent-mcp-lifecycle.md).
 - Choose the narrowest checks that prove the changed behavior. Run full
   canonical verification at a stage or release boundary, after a high-risk
   shared-contract or infrastructure change, when explicitly requested, or when

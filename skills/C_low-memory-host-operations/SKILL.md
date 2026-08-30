@@ -80,6 +80,14 @@ exit handler. On success, failure, interruption, and timeout:
    supervisor child remains.
 5. Remove only the run's traces, snapshots, and logs under `.tmp/`.
 
+For local MCP processes left by built-in Codex subagents, follow
+`docs/processes/codex-subagent-mcp-lifecycle.md`. Do not infer ownership from
+before/after process snapshots or signal an apparent per-agent process group.
+Until Codex provides a durable lifecycle handle or an agent-owned cgroup, wait
+for every agent in that Codex session to finish and close the whole confirmed
+Codex session. If the session must remain active, leave its MCP processes
+running.
+
 Never use `drop_caches`, `swapoff -a`, blanket `pkill node`, automatic browser
 termination, or cache-directory deletion as routine cleanup. Linux reclaims file
 cache itself; these actions can create a new memory spike or destroy unrelated

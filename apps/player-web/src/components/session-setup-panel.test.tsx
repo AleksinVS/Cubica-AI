@@ -37,4 +37,23 @@ describe("SessionSetupPanel", () => {
     expect(screen.getByRole("alert").textContent).toContain("Сессия не создана");
     expect(screen.getByRole("button", { name: "Загрузка..." }).hasAttribute("disabled")).toBe(true);
   });
+
+  it("supports explicit local/private access and disables agent seats for private sessions", () => {
+    const onSubmit = vi.fn();
+    render(<SessionSetupPanel setup={setup} isPending={false} error={null} onSubmit={onSubmit} />);
+
+    expect((screen.getByLabelText("Локальная игра") as HTMLInputElement).checked).toBe(true);
+    fireEvent.click(screen.getByLabelText("Добавить ИИ-участника"));
+    fireEvent.click(screen.getByLabelText("Игра по приглашениям"));
+    expect(screen.queryByLabelText("Добавить ИИ-участника")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Начать игру" }));
+    expect(onSubmit).toHaveBeenCalledWith({
+      participantCount: 2,
+      agentSeatCount: 0,
+      accessMode: "private-invite"
+    });
+
+    fireEvent.click(screen.getByLabelText("Локальная игра"));
+    expect(screen.getByLabelText("Добавить ИИ-участника")).toBeTruthy();
+  });
 });

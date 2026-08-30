@@ -2,10 +2,25 @@ export type SessionId = string;
 export type PlayerId = string;
 export type EventId = string;
 export type * from "./generated/public-gameplay-journal.ts";
+export type * from "./generated/facilitator-debrief.ts";
 export type { CreateSessionRequest } from "./generated/create-session-request.ts";
 import type { SessionParticipant } from "./generated/session-participant.ts";
+import type { PrivateSessionInvite } from "./generated/private-session-invite.ts";
+import type { SessionCredential } from "./generated/session-credential.ts";
 export type { SessionParticipant } from "./generated/session-participant.ts";
 export { validateSessionParticipantsShape } from "./sessionParticipantValidation.ts";
+export type { PrivateSessionInvite } from "./generated/private-session-invite.ts";
+export type { PrivateInviteToken } from "./generated/private-invite-token.ts";
+export type { SessionCredential } from "./generated/session-credential.ts";
+export type { PrivateInviteClaimRequest } from "./generated/private-invite-claim-request.ts";
+export type { PrivateSeatRecoveryInviteRequest } from "./generated/private-seat-recovery-invite-request.ts";
+export type { SessionVersionNotification } from "./generated/session-version-notification.ts";
+export {
+  validatePrivateSessionInvitesShape,
+  validatePrivateInviteClaimRequestShape,
+  validatePrivateSeatRecoveryInviteRequestShape,
+  validateSessionVersionNotificationShape
+} from "./sessionNetworkValidation.ts";
 export {
   getCreateSessionRequestValidationErrors,
   validateCreateSessionRequestShape
@@ -13,6 +28,11 @@ export {
 import type { AgentControl } from "./generated/agent-control.ts";
 export type { AgentControl } from "./generated/agent-control.ts";
 export { validateAgentControlShape } from "./agentControlValidation.ts";
+export {
+  getFacilitatorDebriefContractErrors,
+  validateFacilitatorDebriefGenerationRequestShape,
+  validateFacilitatorDebriefResponseShape
+} from "./facilitatorDebriefValidation.ts";
 export type SessionRole = "player" | "facilitator" | "assistant" | "observer";
 export type SessionPrincipalId = string;
 
@@ -43,6 +63,8 @@ export interface CreateSessionPrincipalInput {
   actorScope: SessionPrincipal["actorScope"];
   /** Lowercase SHA-256 digest. The raw bearer credential must never reach storage. */
   credentialSha256: string;
+  /** Present only while this digest is a one-time private invitation. */
+  credentialExpiresAt?: Date;
 }
 
 /** Immutable, content-addressed rules captured when a session is created. */
@@ -134,6 +156,8 @@ export interface CreateSessionInput<TState = unknown> {
   sessionRole?: SessionRole;
   immutableBundle: CreateImmutableGameBundleInput;
   principal: CreateSessionPrincipalInput;
+  /** Seat-scoped invite principals persisted in the same creation transaction. */
+  additionalPrincipals?: ReadonlyArray<CreateSessionPrincipalInput>;
 }
 
 /** Session and principal records created atomically by a store adapter. */
@@ -208,11 +232,17 @@ export interface CreateSessionResponse<TState = unknown> {
   actionAvailability: Array<SessionActionAvailability>;
   agentControl?: AgentControl;
   /** Returned only by direct creation so a trusted BFF can store and hand it off. */
-  credential: string;
+  credential: SessionCredential;
+  privateInvites?: ReadonlyArray<PrivateSessionInvite>;
 }
 
 /** Public session projection returned after the one-time credential handoff. */
-export type GetSessionResponse<TState = unknown> = Omit<CreateSessionResponse<TState>, "credential">;
+export type GetSessionResponse<TState = unknown> = Omit<CreateSessionResponse<TState>, "credential" | "privateInvites">;
+
+/** Personal projection returned after a private invite token is consumed. */
+export interface PrivateInviteClaimResponse<TState = unknown> extends GetSessionResponse<TState> {
+  credential: SessionCredential;
+}
 
 export interface DispatchActionInput {
   sessionId: SessionId;
@@ -348,6 +378,36 @@ export interface SessionEventRecord {
 export interface SessionAuthenticationInput {
   sessionId: SessionId;
   credentialSha256: string;
+}
+
+/** Atomic consumption of an initial or recovery invite by one participant. */
+export interface PrivateInviteClaimStoreInput {
+  sessionId: SessionId;
+  inviteCredentialSha256: string;
+  participantCredentialSha256: string;
+  /** Optional durable credential proving that a recovery stays on the same principal. */
+  currentCredentialSha256?: string;
+  claimedAt: Date;
+}
+
+export interface PrivateInviteClaimStoreResult<TState = unknown> {
+  session: SessionRecord<TState>;
+  principal: SessionPrincipal;
+  transition: "initial-join" | "credential-recovery";
+}
+
+/** Authenticated host request to replace one pending recovery capability. */
+export interface PrivateSeatRecoveryInviteStoreInput extends SessionAuthenticationInput {
+  seatId: string;
+  recoveryTokenSha256: string;
+  recoveryTokenExpiresAt: Date;
+  issuedAt: Date;
+}
+
+export interface PrivateSeatRecoveryInviteStoreResult {
+  seatId: string;
+  playerId: PlayerId;
+  recoveryTokenExpiresAt: Date;
 }
 
 /**
@@ -542,6 +602,14 @@ export interface SessionStorePort<TState = unknown> {
   getSession(sessionId: SessionId): Promise<SessionRecord<TState> | null>;
   /** Authenticate a live session from a credential digest without exposing it. */
   authenticateSession(input: SessionAuthenticationInput): Promise<SessionPrincipal | null>;
+  /** Replace the pending recovery capability for one joined human guest seat. */
+  issuePrivateSeatRecoveryInvite(
+    input: PrivateSeatRecoveryInviteStoreInput
+  ): Promise<PrivateSeatRecoveryInviteStoreResult | null>;
+  /** Consume one unexpired initial or recovery invite atomically. */
+  claimPrivateInvite(
+    input: PrivateInviteClaimStoreInput
+  ): Promise<PrivateInviteClaimStoreResult<TState> | null>;
   /**
    * Close a live session without rewriting any gameplay or audit record.
    *

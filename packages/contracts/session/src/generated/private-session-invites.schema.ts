@@ -1,0 +1,42 @@
+/* eslint-disable */
+/** GENERATED FILE — DO NOT EDIT BY HAND. */
+export const privateSessionInvitesSchema = {
+  "type": "array",
+  "minItems": 1,
+  "items": {
+    "type": "object",
+    "required": [
+      "seatId",
+      "playerId",
+      "inviteToken",
+      "expiresAt"
+    ],
+    "properties": {
+      "seatId": {
+        "type": "string",
+        "minLength": 1
+      },
+      "playerId": {
+        "description": "Non-empty player identifier that cannot address JavaScript object prototype properties.",
+        "type": "string",
+        "minLength": 1,
+        "not": {
+          "enum": [
+            "__proto__",
+            "constructor",
+            "prototype"
+          ]
+        }
+      },
+      "inviteToken": {
+        "type": "string",
+        "pattern": "^inv_[A-Za-z0-9_-]{43}$"
+      },
+      "expiresAt": {
+        "type": "string",
+        "format": "date-time"
+      }
+    },
+    "additionalProperties": false
+  }
+} as const;

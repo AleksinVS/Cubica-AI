@@ -1,4 +1,5 @@
 import type { ViewCommand } from "@cubica/view-protocol";
+import type { SessionSnapshot } from "@/lib/game-content-resolvers";
 import type { PlayerFacingContent, GamePlayerUiContent } from "@cubica/contracts-manifest";
 import { ManifestAction } from "@cubica/contracts-manifest";
 import type {
@@ -14,7 +15,12 @@ import {
   previewTransportRoad as previewRuntimeTransportRoad,
   runAgentTurn as runRuntimeAgentTurn,
   RuntimeClientError,
-  shouldRetainPendingRuntimeCommand
+  shouldRetainPendingRuntimeCommand,
+  subscribeToSessionEvents,
+  claimPrivateInvite,
+  recoverGuestSeat,
+  consumePrivateInviteFragment,
+  type SessionEventSubscription
 } from "@/presenter/runtime-client";
 import {
   projectMetricViewsFromContent,
@@ -50,6 +56,10 @@ import {
 import { normalizeAgentControl } from "@/presenter/agent-control-validation";
 
 export type { ClientRequest, PlayerState } from "@/presenter/types";
+
+function hostManagementHintKey(sessionId: string): string {
+  return `cubica-host-management:${sessionId}`;
+}
 
 /**
  * Generic Presenter для игрового Web-плеера.
@@ -88,6 +98,9 @@ export class GamePresenter {
   private deterministicFallbackActive = false;
   private sessionSetup: PlayerSessionSetup | null = null;
   private readonly sessionSetupEnabled: boolean;
+  private sessionEvents: SessionEventSubscription | null = null;
+  private sessionLifecycle = 0;
+  private hostManagementHint = false;
 
   constructor(options: {
     gateway: ReactViewGateway;
@@ -113,6 +126,10 @@ export class GamePresenter {
    */
   get sessionSnapshot(): GameSession | null {
     return this.session;
+  }
+
+  dispose(): void {
+    this.beginSessionLifecycle();
   }
 
   /**
@@ -197,6 +214,9 @@ export class GamePresenter {
       runtimeFailurePolicy: this.runtimeFailurePolicy,
       agentRuntimeRequired: this.content.agentRuntime?.required === true,
       participants: this.session?.participants ?? [],
+      actionAvailability: this.session?.actionAvailability ?? [],
+      privateInvites: this.session?.privateInvites ?? [],
+      hostManagementHint: this.hostManagementHint,
       agentControl: normalizeAgentControl(this.session?.agentControl),
       sessionSetup: this.sessionSetup,
       error: this.error,
@@ -212,12 +232,17 @@ export class GamePresenter {
    * Выполняет начальную загрузку сессии.
    */
   async boot(): Promise<void> {
+    // A repeated boot replaces the old lifecycle rather than leaving an SSE
+    // listener attached to a session that is no longer presenter-owned.
+    const lifecycle = this.beginSessionLifecycle();
     this.booting = true;
     this.runtimeStatus = "booting";
     this.runtimeStatusReason = null;
     this.runtimeFailurePolicy = null;
     this.deterministicFallbackActive = false;
     this.clearError();
+    // Fragment removal is deliberately synchronous and precedes all network work.
+    const invite = consumePrivateInviteFragment();
     await this.syncView();
 
     try {
@@ -227,10 +252,17 @@ export class GamePresenter {
 
       const portalLaunchContext = readPortalLaunchContext();
 
-      if (portalLaunchContext) {
+      if (invite) {
+        const data = await claimPrivateInvite(invite.sessionId, invite.inviteToken);
+        if (!this.adoptSessionSnapshot(data, lifecycle, true)) return;
+        if (typeof window !== "undefined") window.localStorage.setItem(this.config.storageKey, data.sessionId);
+        this.clearError();
+        await this.recoverPendingCommandOrEnsureAiSurface();
+        return;
+      } else if (portalLaunchContext) {
         const data = await bindPortalLaunchSession(portalLaunchContext);
+        if (!this.adoptSessionSnapshot(data, lifecycle, true)) return;
         this.launchContext = portalLaunchContext;
-        this.session = { ...data, gameId: data.gameId || this.config.gameId };
         if (typeof window !== "undefined") {
           window.localStorage.setItem(
             launchScopedStorageKey(this.config.storageKey, portalLaunchContext),
@@ -250,7 +282,8 @@ export class GamePresenter {
       if (storedSessionId) {
         try {
           const data = await resumeSession(storedSessionId);
-          this.session = { ...data, gameId: this.config.gameId };
+          this.hostManagementHint = window.localStorage.getItem(hostManagementHintKey(storedSessionId)) === "1";
+          if (!this.adoptSessionSnapshot(data, lifecycle, true)) return;
           this.agentSurface = null;
           this.clearError();
           await this.recoverPendingCommandOrEnsureAiSurface();
@@ -265,7 +298,8 @@ export class GamePresenter {
           // Its former setup is not authenticated client state. The accepted
           // recovery path creates a manifest-minimum all-human replacement.
           const data = await this.createSession();
-          this.session = { ...data, gameId: this.config.gameId };
+          this.recordHostManagementHint(data);
+          if (!this.adoptSessionSnapshot(data, lifecycle, true)) return;
           if (typeof window !== "undefined") {
             window.localStorage.setItem(this.config.storageKey, data.sessionId);
           }
@@ -280,7 +314,8 @@ export class GamePresenter {
           return;
         }
         const data = await this.createSession();
-        this.session = { ...data, gameId: this.config.gameId };
+        this.recordHostManagementHint(data);
+        if (!this.adoptSessionSnapshot(data, lifecycle, true)) return;
         if (typeof window !== "undefined") {
           window.localStorage.setItem(this.config.storageKey, data.sessionId);
         }
@@ -289,13 +324,18 @@ export class GamePresenter {
         await this.recoverPendingCommandOrEnsureAiSurface();
       }
     } catch (err) {
-      this.captureError(err, "Failed to initialize player");
-    } finally {
-      this.booting = false;
-      if (this.runtimeStatus === "booting") {
-        this.runtimeStatus = this.session === null ? "unavailable" : "ready";
+      if (lifecycle === this.sessionLifecycle) {
+        this.captureError(err, "Failed to initialize player");
       }
-      await this.syncView();
+    } finally {
+      if (lifecycle === this.sessionLifecycle) {
+        this.booting = false;
+        if (this.runtimeStatus === "booting") {
+          this.runtimeStatus = this.session === null ? "unavailable" : "ready";
+        }
+        this.startSessionEvents(lifecycle);
+        await this.syncView();
+      }
     }
   }
 
@@ -303,12 +343,18 @@ export class GamePresenter {
    * Сбрасывает игру: удаляет localStorage и создаёт новую сессию.
    */
   async resetGame(): Promise<void> {
+    const lifecycle = this.beginSessionLifecycle();
     const declaredSetup = this.getSessionSetup();
     const resetOptions = this.session === null
       ? undefined
       : {
           participantCount: this.session.participants.length,
-          agentSeatCount: this.session.participants.filter((participant) => participant.kind === "agent").length
+          agentSeatCount: this.session.participants.some((participant) => participant.joinState !== "local")
+            ? 0
+            : this.session.participants.filter((participant) => participant.kind === "agent").length,
+          ...(this.session.participants.some((participant) => participant.joinState !== "local")
+            ? { accessMode: "private-invite" as const }
+            : {})
         };
     this.booting = true;
     this.runtimeStatus = "booting";
@@ -337,7 +383,8 @@ export class GamePresenter {
         this.sessionSetup = declaredSetup;
         return;
       }
-      this.session = { ...data, gameId: data.gameId || this.config.gameId };
+      if (!this.adoptSessionSnapshot(data, lifecycle, true)) return;
+      this.recordHostManagementHint(data);
       if (typeof window !== "undefined") {
         const storageKey = this.launchContext
           ? launchScopedStorageKey(this.config.storageKey, this.launchContext)
@@ -347,13 +394,18 @@ export class GamePresenter {
       this.clearError();
       await this.recoverPendingCommandOrEnsureAiSurface();
     } catch (err) {
-      this.captureError(err, "Failed to reset player");
-    } finally {
-      this.booting = false;
-      if (this.runtimeStatus === "booting") {
-        this.runtimeStatus = this.session === null ? "unavailable" : "ready";
+      if (lifecycle === this.sessionLifecycle) {
+        this.captureError(err, "Failed to reset player");
       }
-      await this.syncView();
+    } finally {
+      if (lifecycle === this.sessionLifecycle) {
+        this.booting = false;
+        if (this.runtimeStatus === "booting") {
+          this.runtimeStatus = this.session === null ? "unavailable" : "ready";
+        }
+        this.startSessionEvents(lifecycle);
+        await this.syncView();
+      }
     }
   }
 
@@ -361,6 +413,7 @@ export class GamePresenter {
   async createSessionFromSetup(selection: {
     participantCount: number;
     agentSeatCount: number;
+    accessMode?: "local" | "private-invite";
   }): Promise<void> {
     if (this.booting || this.session !== null || this.sessionSetup === null) {
       return;
@@ -371,6 +424,7 @@ export class GamePresenter {
       return;
     }
 
+    const lifecycle = this.beginSessionLifecycle();
     this.booting = true;
     this.runtimeStatus = "booting";
     this.runtimeStatusReason = null;
@@ -383,22 +437,30 @@ export class GamePresenter {
         this.sessionSetup = setup;
         return;
       }
-      const data = await this.createSession(selection);
-      this.session = { ...data, gameId: data.gameId || this.config.gameId };
+      const data = await this.createSession(selection.accessMode === "private-invite"
+        ? { participantCount: selection.participantCount, agentSeatCount: 0, accessMode: "private-invite" }
+        : { participantCount: selection.participantCount, agentSeatCount: selection.agentSeatCount });
+      if (!this.adoptSessionSnapshot(data, lifecycle, true)) return;
+      this.recordHostManagementHint(data);
       if (typeof window !== "undefined") {
         window.localStorage.setItem(this.config.storageKey, data.sessionId);
       }
       this.clearError();
       await this.recoverPendingCommandOrEnsureAiSurface();
     } catch (err) {
-      this.sessionSetup = setup;
-      this.captureError(err, "Failed to create player session");
-    } finally {
-      this.booting = false;
-      if (this.runtimeStatus === "booting") {
-        this.runtimeStatus = this.session === null ? "unavailable" : "ready";
+      if (lifecycle === this.sessionLifecycle) {
+        this.sessionSetup = setup;
+        this.captureError(err, "Failed to create player session");
       }
-      await this.syncView();
+    } finally {
+      if (lifecycle === this.sessionLifecycle) {
+        this.booting = false;
+        if (this.runtimeStatus === "booting") {
+          this.runtimeStatus = this.session === null ? "unavailable" : "ready";
+        }
+        this.startSessionEvents(lifecycle);
+        await this.syncView();
+      }
     }
   }
 
@@ -407,13 +469,18 @@ export class GamePresenter {
     if (this.session === null || this.booting || this.isPending) {
       return;
     }
+    const lifecycle = this.sessionLifecycle;
+    const sessionId = this.session.sessionId;
     try {
-      const refreshed = await resumeSession(this.session.sessionId);
-      this.session = { ...refreshed, gameId: this.config.gameId };
-      this.agentSurface = null;
-      this.clearError();
+      const refreshed = await resumeSession(sessionId);
+      if (this.adoptSessionSnapshot(refreshed, lifecycle)) {
+        this.agentSurface = null;
+        this.clearError();
+      }
     } catch (error) {
-      this.captureError(error, "Failed to refresh player session");
+      if (lifecycle === this.sessionLifecycle) {
+        this.captureError(error, "Failed to refresh player session");
+      }
     } finally {
       await this.syncView();
     }
@@ -446,6 +513,7 @@ export class GamePresenter {
     }
 
     this.isPending = true;
+    const lifecycle = this.sessionLifecycle;
     this.clearError();
     await this.syncView();
 
@@ -459,11 +527,12 @@ export class GamePresenter {
 
       // Runtime responses are authoritative complete snapshots. Treating them
       // as JSON Merge Patch could preserve deleted or secret-stale local keys.
-      this.session = { ...next, gameId: this.config.gameId };
-      this.agentSurface = null;
+      if (this.adoptSessionSnapshot(next, lifecycle)) {
+        this.agentSurface = null;
+      }
       this.clearError();
     } catch (err) {
-      await this.refreshSessionAfterVersionConflict(err);
+      await this.refreshSessionAfterVersionConflict(err, lifecycle);
       this.captureError(err, "Action dispatch failed");
     } finally {
       this.isPending = false;
@@ -493,16 +562,18 @@ export class GamePresenter {
     }
 
     this.isPending = true;
+    const lifecycle = this.sessionLifecycle;
     this.clearError();
     await this.syncView();
 
     try {
       const next = await this.dispatchGameIntent(actionId, payload);
-      this.session = { ...next, gameId: this.config.gameId };
-      this.agentSurface = null;
+      if (this.adoptSessionSnapshot(next, lifecycle)) {
+        this.agentSurface = null;
+      }
       this.clearError();
     } catch (error) {
-      await this.refreshSessionAfterVersionConflict(error);
+      await this.refreshSessionAfterVersionConflict(error, lifecycle);
       this.captureError(error, "Board action dispatch failed");
       throw error instanceof Error
         ? error
@@ -560,6 +631,7 @@ export class GamePresenter {
     }
 
     this.isPending = true;
+    const lifecycle = this.sessionLifecycle;
     this.clearError();
     await this.syncView();
 
@@ -569,19 +641,20 @@ export class GamePresenter {
         if (typeof actionId !== "string" || actionId.trim() === "") {
           throw new Error(`Surface Agent Turn "${action.id}" has no published actionId target.`);
         }
-        await this.runAgentTurn(actionId, surfacePayloadToRecord(action.payload));
+        await this.runAgentTurn(actionId, surfacePayloadToRecord(action.payload), lifecycle);
       } else {
         const actionId = action.target;
         if (typeof actionId !== "string" || actionId.trim() === "") {
           throw new Error(`Surface runtime action "${action.id}" has no published actionId target.`);
         }
         const next = await this.dispatchGameIntent(actionId, surfacePayloadToRecord(action.payload));
-        this.session = { ...next, gameId: this.config.gameId };
-        this.agentSurface = null;
+        if (this.adoptSessionSnapshot(next, lifecycle)) {
+          this.agentSurface = null;
+        }
       }
       this.clearError();
     } catch (err) {
-      await this.refreshSessionAfterVersionConflict(err);
+      await this.refreshSessionAfterVersionConflict(err, lifecycle);
       this.captureError(err, "Surface action failed");
     } finally {
       this.isPending = false;
@@ -662,12 +735,81 @@ export class GamePresenter {
       (this.content.executionMode === "ai-driven" || this.content.executionMode === "hybrid");
   }
 
-  private createSession(options?: { participantCount?: number; agentSeatCount?: number }): Promise<GameSession> {
+  private createSession(options?: { participantCount?: number; agentSeatCount?: number; accessMode?: "private-invite" }): Promise<GameSession> {
     return createNewSessionWithOptions({
       gameId: this.config.gameId,
       contentSourceId: this.contentSourceId,
       ...options
     }) as Promise<GameSession>;
+  }
+
+  async recoverGuestSeat(seatId: string) {
+    if (!this.session) throw new Error("Игровая сессия еще не готова.");
+    return recoverGuestSeat(this.session.sessionId, seatId);
+  }
+
+  private recordHostManagementHint(snapshot: GameSession): void {
+    this.hostManagementHint = Array.isArray(snapshot.privateInvites) && snapshot.privateInvites.length > 0;
+    if (this.hostManagementHint && typeof window !== "undefined") {
+      window.localStorage.setItem(hostManagementHintKey(snapshot.sessionId), "1");
+    }
+  }
+
+  private beginSessionLifecycle(): number {
+    this.sessionEvents?.stop();
+    this.sessionEvents = null;
+    this.sessionLifecycle += 1;
+    return this.sessionLifecycle;
+  }
+
+  private startSessionEvents(lifecycle: number): void {
+    if (lifecycle !== this.sessionLifecycle) return;
+    this.sessionEvents?.stop();
+    this.sessionEvents = null;
+    if (this.session === null) return;
+    const sessionId = this.session.sessionId;
+    this.sessionEvents = subscribeToSessionEvents(sessionId, (snapshot) => {
+      if (snapshot.sessionId !== sessionId) return;
+      if (this.adoptSessionSnapshot(snapshot, lifecycle)) {
+        void this.syncView();
+      }
+    });
+  }
+
+  /**
+   * Owns every authoritative snapshot replacement for one credential lifecycle.
+   * Cursors are lexicographically monotonic: stateVersion first, then event
+   * sequence. Equal cursors are deliberately refreshable because a GET is
+   * principal-scoped; creation-only invite tokens remain local until joined.
+   */
+  private adoptSessionSnapshot(
+    snapshot: SessionSnapshot,
+    lifecycle: number,
+    replaceCurrent = false
+  ): boolean {
+    if (lifecycle !== this.sessionLifecycle) return false;
+
+    const current = this.session;
+    if (!replaceCurrent && current !== null) {
+      if (snapshot.sessionId !== current.sessionId) return false;
+      const stateVersionDelta = snapshot.version.stateVersion - current.version.stateVersion;
+      const eventSequenceDelta = snapshot.version.lastEventSequence - current.version.lastEventSequence;
+      if (stateVersionDelta < 0 || (stateVersionDelta === 0 && eventSequenceDelta < 0)) {
+        return false;
+      }
+    }
+
+    const existingInvites = !replaceCurrent && current?.sessionId === snapshot.sessionId
+      ? current.privateInvites ?? []
+      : [];
+    const invites = snapshot.privateInvites ?? existingInvites;
+    const joined = new Set(snapshot.participants.filter((participant) => participant.joinState === "joined").map((participant) => participant.playerId));
+    this.session = {
+      ...snapshot,
+      gameId: snapshot.gameId || this.config.gameId,
+      privateInvites: invites.filter((invite) => !joined.has(invite.playerId))
+    };
+    return true;
   }
 
   private getSessionSetup(): PlayerSessionSetup | null {
@@ -740,7 +882,8 @@ export class GamePresenter {
 
   private async runAgentTurn(
     actionId: string,
-    params: Record<string, unknown>
+    params: Record<string, unknown>,
+    lifecycle = this.sessionLifecycle
   ): Promise<void> {
     if (this.session === null) {
       return;
@@ -763,7 +906,7 @@ export class GamePresenter {
     }
 
     const next = await this.sendAgentTurnEnvelope(envelope);
-    this.applyAgentTurnSnapshot(next);
+    this.applyAgentTurnSnapshot(next, lifecycle);
   }
 
   private async dispatchGameIntent(
@@ -819,6 +962,7 @@ export class GamePresenter {
   }
 
   private async retryPendingCommand(pending: PendingRuntimeCommand): Promise<void> {
+    const lifecycle = this.sessionLifecycle;
     if (pending.endpoint === "action") {
       const next = await dispatchRuntimeAction(pending.envelope).catch((error: unknown) => {
         if (!shouldRetainPendingRuntimeCommand(error)) {
@@ -827,19 +971,21 @@ export class GamePresenter {
         throw error;
       });
       clearPendingRuntimeCommand(pending.envelope.sessionId);
-      this.session = { ...next, gameId: this.config.gameId };
-      this.agentSurface = null;
+      if (this.adoptSessionSnapshot(next, lifecycle)) {
+        this.agentSurface = null;
+      }
       return;
     }
 
     const next = await this.sendAgentTurnEnvelope(pending.envelope);
-    this.applyAgentTurnSnapshot(next);
+    this.applyAgentTurnSnapshot(next, lifecycle);
   }
 
   private applyAgentTurnSnapshot(
-    next: Awaited<ReturnType<typeof runRuntimeAgentTurn>>
+    next: Awaited<ReturnType<typeof runRuntimeAgentTurn>>,
+    lifecycle: number
   ): void {
-    this.session = {
+    const snapshot: SessionSnapshot = {
       sessionId: next.sessionId,
       gameId: this.config.gameId,
       participants: next.participants,
@@ -848,6 +994,7 @@ export class GamePresenter {
       actionAvailability: next.actionAvailability,
       ...(next.agentControl === undefined ? {} : { agentControl: next.agentControl })
     };
+    if (!this.adoptSessionSnapshot(snapshot, lifecycle)) return;
     this.agentSurface = next.agentTurn.surface ?? null;
     this.runtimeStatus = "ready";
     this.runtimeStatusReason = null;
@@ -864,7 +1011,7 @@ export class GamePresenter {
    * repeating that action. The facilitator must review the new state and
    * explicitly submit a new intent, which prevents a hidden double payment.
    */
-  private async refreshSessionAfterVersionConflict(error: unknown): Promise<void> {
+  private async refreshSessionAfterVersionConflict(error: unknown, lifecycle: number): Promise<void> {
     if (!(error instanceof RuntimeClientError) || error.statusCode !== 409 || this.session === null) {
       return;
     }
@@ -876,8 +1023,9 @@ export class GamePresenter {
 
     try {
       const refreshed = await resumeSession(this.session.sessionId);
-      this.session = { ...refreshed, gameId: this.config.gameId };
-      this.agentSurface = null;
+      if (this.adoptSessionSnapshot(refreshed, lifecycle)) {
+        this.agentSurface = null;
+      }
     } catch {
       // Preserve the original 409 as the user-facing error. A subsequent boot
       // or manual reload will use the normal session recovery path.

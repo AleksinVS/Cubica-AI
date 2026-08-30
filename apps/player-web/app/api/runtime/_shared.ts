@@ -249,6 +249,33 @@ export async function browserSessionResponse(
   return response;
 }
 
+/** Redacts the durable credential returned by a private-invite claim. */
+export async function browserPrivateInviteClaimResponse(
+  upstream: Response,
+  sessionId: string,
+  options: { readonly secureCookie?: boolean } = {}
+): Promise<Response> {
+  const text = await upstream.text();
+  if (!upstream.ok) return proxyRuntimeText(upstream, text);
+  const parsed = parseRecord(text);
+  const credential = parsed?.credential;
+  if (parsed === null || parsed.sessionId !== sessionId || typeof credential !== "string" || credential === "") {
+    return NextResponse.json({ error: "Runtime claim response did not include a valid session credential." }, { status: 502 });
+  }
+  const { credential: _credential, ...safeSnapshot } = parsed;
+  const response = NextResponse.json(safeSnapshot, { status: upstream.status, headers: { "Cache-Control": "no-store" } });
+  setRuntimeCredentialCookie(response, sessionId, credential, { secure: options.secureCookie });
+  return response;
+}
+
+export function proxyRuntimeEventStream(upstream: Response): Response {
+  const isEventStream = (upstream.headers.get("content-type") ?? "").toLowerCase().startsWith("text/event-stream");
+  const headers = new Headers({ "Cache-Control": "no-store" });
+  if (isEventStream) { headers.set("Content-Type", "text/event-stream"); headers.set("Connection", "keep-alive"); }
+  else headers.set("Content-Type", upstream.headers.get("content-type") ?? "application/json; charset=utf-8");
+  return new Response(upstream.body, { status: upstream.status, headers });
+}
+
 /** Adds a runtime credential to an existing server-side handoff response. */
 export function setRuntimeCredentialCookie(
   response: NextResponse,
