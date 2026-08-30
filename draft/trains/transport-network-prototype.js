@@ -14,8 +14,8 @@
   const CARD_WIDTH = 125;
   const CARD_HEIGHT = 88;
   const CALLOUT_DRAG_THRESHOLD = 7;
-  const COINS_PER_ROW = 3;
-  const COIN_GAP = 74;
+  const COINS_PER_ROW = 4;
+  const COIN_GAP = 46;
   const BAR_COLORS = ['#2d7050', '#c76b38', '#386f9a', '#a65661', '#9b7b22'];
   const OPEN_STATIONS = new Set([1, 2, 3, 4, 5, 6, 7, 8, 9]);
   // Граф повторяет видимые железнодорожные связи исходной карты. Обе стороны
@@ -157,9 +157,9 @@
   function clampCalloutOffset(terminal, offset) {
     // Для открытых станций оставляем запас под самую большую фикстуру из
     // десяти монет: три строки не должны обрезаться краем SVG-карты.
-    const horizontalMargin = OPEN_STATIONS.has(terminal.id) ? 56 : 8;
+    const horizontalMargin = OPEN_STATIONS.has(terminal.id) ? 40 : 8;
     const topMargin = 8;
-    const bottomReserve = OPEN_STATIONS.has(terminal.id) ? 304 : 8;
+    const bottomReserve = OPEN_STATIONS.has(terminal.id) ? 152 : 8;
     const [pointX, pointY] = terminal.point;
     return [
       Math.max(horizontalMargin - pointX, Math.min(SVG_WIDTH - CARD_WIDTH - horizontalMargin - pointX, offset[0])),
@@ -252,16 +252,16 @@
       const values = COIN_FIXTURE[sourceId][neighbor] || [];
       const coins = svgElement('g', { role: 'img', 'pointer-events': 'none', 'aria-label': `До станции ${String(neighbor).padStart(2, '0')}: ${values.length} ${values.length === 1 ? 'монета' : 'монет'}, номиналы: ${values.join(', ')}.` });
       values.forEach((value, index) => {
-        const radius = value === 10 ? 34 : value === 5 ? 31 : value === 2 ? 29 : 27;
+        const radius = value === 10 ? 21 : value === 5 ? 20 : value === 2 ? 19 : 18;
         const fill = value === 10 ? '#d6a11e' : value === 5 ? '#b7653e' : value === 2 ? '#76a9b8' : '#d7d0bb';
         const row = Math.floor(index / COINS_PER_ROW);
         const column = index % COINS_PER_ROW;
         const rowCount = Math.min(COINS_PER_ROW, values.length - row * COINS_PER_ROW);
-        // Каждая строка центрируется под своей диаграммой. Три крупных
-        // монеты в строке остаются различимыми даже при масштабе карты 100%.
+        // Каждая строка центрируется под своей диаграммой. Цифры остаются
+        // крупными, а уменьшенные монеты образуют компактную группу 4 × 3.
         const rowStartX = card.x + card.width / 2 - ((rowCount - 1) * COIN_GAP) / 2;
         const coinX = rowStartX + column * COIN_GAP;
-        const coinY = card.y + card.height + 40 + row * COIN_GAP;
+        const coinY = card.y + card.height + 30 + row * COIN_GAP;
         coins.append(svgElement('circle', { class: 'neighbor-coin', cx: coinX, cy: coinY, r: radius, fill }));
         coins.append(svgElement('text', { class: 'coin-label', x: coinX, y: coinY + .5 }, value));
       });
