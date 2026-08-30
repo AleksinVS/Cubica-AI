@@ -26,6 +26,25 @@ describe('shadow worker import-safe configuration', () => {
     expect(readShadowWorkerConfig(configured())).not.toBeNull();
     expect(fetchSpy).not.toHaveBeenCalled();
   });
+
+  it('accepts the approved 90 second model timeout only with the full lease budget', () => {
+    const extended = {
+      ...configured(),
+      CUBICA_PRODUCT_CONTEXT_SHADOW_MODEL_TIMEOUT_MS: '90000',
+      CUBICA_PRODUCT_CONTEXT_SHADOW_AUTHORIZATION_TIMEOUT_MS: '5000',
+      CUBICA_PRODUCT_CONTEXT_SHADOW_WORKER_LEASE_MS: '100000',
+      CUBICA_PRODUCT_CONTEXT_SHADOW_MAX_ATTEMPTS: '1'
+    };
+    expect(readShadowWorkerConfig(extended)).toMatchObject({
+      modelTimeoutMs: 90_000, authorizationTimeoutMs: 5_000, leaseMs: 100_000
+    });
+    expect(readShadowWorkerConfig({
+      ...extended, CUBICA_PRODUCT_CONTEXT_SHADOW_MODEL_TIMEOUT_MS: '90001'
+    })).toBeNull();
+    expect(readShadowWorkerConfig({
+      ...extended, CUBICA_PRODUCT_CONTEXT_SHADOW_WORKER_LEASE_MS: '99999'
+    })).toBeNull();
+  });
 });
 
 function configured():NodeJS.ProcessEnv{return{

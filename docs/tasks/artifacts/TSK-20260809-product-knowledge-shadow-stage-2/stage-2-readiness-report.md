@@ -54,8 +54,9 @@ duration/input/output — ноль), затем cleanup обнулил сост�
 `knowledge_timestamp` берётся из server clock в начале вызова, передаётся в
 grounding и должен совпасть с parsed page timestamp; output не мутируется.
 47/47 gateway tests, typecheck/generated types прошли, Luna-xhigh review —
-`ACCEPT` без High/Medium. Постоянные timeout и retry остаются pending; 45s не
-становится default.
+`ACCEPT` без High/Medium. На этом этапе постоянные timeout и retry оставались
+pending; 45s не становился default. Верхняя граница timeout принята позднее в
+DR-03 после измерений DR-18, retry остаётся pending.
 
 После этого PM сохранил provider и модель, но перенёс синтез из ограниченного
 web-процесса в устойчивое асинхронное задание. Критическое ядро готово: Editor
@@ -390,6 +391,12 @@ Canonical бесконтентный результат сохранён в
 [`dr18-content-free-report.json`](dr18-content-free-report.json); exact
 transcript, candidate, bearer, HMAC и provider payload в артефакт не входят.
 
+После окна PM увеличил постоянную верхнюю границу model timeout worker до
+90000 ms. Для Portal auth timeout 5000 ms принята минимальная lease 100000 ms;
+существующая формула и PostgreSQL ceiling 120000 ms уже покрывают этот бюджет,
+поэтому миграция не требуется. Worker сохраняет обязательную явную настройку,
+`maxAttempts=1`/no-retry и запрет внешнего вызова без нового решения PM.
+
 Перед каждым новым внешним окном необходимо:
 
 1. создать отдельную базу, app-login с единственным membership в
@@ -410,15 +417,17 @@ transcript, candidate, bearer, HMAC и provider payload в артефакт не
 8. проверить локальную DR-15 диагностику: только allowlisted stage в
    существующем `last_error_code`, без raw provider payload, candidate,
    идентификаторов или содержимого; зафиксировать stage до cleanup;
-9. подтвердить точное соответствие DR-16: Z.AI Coding Plan `glm-4.7`, model
-   timeout 45000 ms, Portal auth timeout 5000 ms, lease 60000 ms, retention
-   300000 ms, `maxAttempts=1`, без retry и полный пятисценарный порядок;
+9. подтвердить актуальные bounds: Z.AI Coding Plan `glm-4.7`, explicit model
+   timeout не больше 90000 ms, Portal auth timeout 5000 ms, lease не меньше
+   model timeout + 10000 ms (для 90000 ms — 100000 ms), retention 300000 ms,
+   `maxAttempts=1`, без retry и полный пятисценарный порядок;
 10. не открывать Stage 3, активное чтение, применение кандидатов или Git-запись;
 
 До подтверждения этих пунктов тексты не отправляются. Сохранённый в `.env`
 Coding Plan key использовался только в явно разрешённых непроизводственных
 окнах и после них не остаётся в runtime-конфигурации.
 
-Асинхронный worker использовал явно проверенные bounds только в израсходованном
-окне DR-13; они не стали постоянным default. Lease любого будущего окна обязан
-покрывать модель, заключительную Portal-проверку и запас финальной записи.
+Исторические bounds израсходованных окон не стали default. Асинхронный worker
+по-прежнему требует явные значения, ограничивает model timeout сверху 90000 ms,
+а lease любого будущего окна обязан покрывать модель, заключительную
+Portal-проверку и запас финальной записи.

@@ -1051,3 +1051,15 @@ worker и не открывает второй путь к модели или �
   PostgreSQL container и private state уничтожены; сохранён только canonical
   [content-free report](../artifacts/TSK-20260809-product-knowledge-shadow-stage-2/dr18-content-free-report.json).
   DR-18 consumed, Stage 3 остаётся закрыт.
+
+### 2026-08-25 — основной AI agent, увеличение model timeout
+
+- Decision: после наблюдений DR-18 PM одобрил model timeout 90000 ms. Это
+  закрывает DR-03 как постоянную верхнюю границу worker, но не разрешает новое
+  внешнее окно.
+- Implementation: explicit worker config принимает до 90000 ms. Существующая
+  lease-проверка требует полный бюджет; для Portal auth 5000 ms минимальный
+  lease равен 100000 ms. Максимум lease в PostgreSQL остаётся 120000 ms, поэтому
+  schema/migration/storage не меняются.
+- Safety: default и retry не добавлены; 90001 ms и lease 99999 ms для сочетания
+  90000/5000 отклоняются fail-closed. Stage 3 остаётся закрыт.
