@@ -67,7 +67,7 @@ async function saveCurrentDocument(page: Page): Promise<string> {
   return saved.commit?.versionId ?? "";
 }
 
-test.describe("editor-web durable author history", () => {
+test.describe("editor-web durable author history", { tag: "@editor" }, () => {
   test("creates two Save versions and restores the older content as a new version", async ({ page, request }) => {
     // Two Save operations each run project-plugin validation. Production mode
     // is stable but the shared low-memory host can legitimately need more than

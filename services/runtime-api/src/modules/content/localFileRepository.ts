@@ -121,6 +121,37 @@ export class LocalFileGameRepository implements IGameRepository {
     return readFile(resolved, "utf-8");
   }
 
+  async getPublishedGameStylesheetsRaw(gameId: string): Promise<string | undefined> {
+    assertSafeGameId(gameId);
+    const metadataPath = path.resolve(this.repoRoot, "games", gameId, "published", "game-stylesheets.json");
+    try {
+      return await readFile(metadataPath, "utf-8");
+    } catch (error) {
+      if (typeof error === "object" && error !== null && "code" in error && (error as { code: string }).code === "ENOENT") {
+        return undefined;
+      }
+      throw error;
+    }
+  }
+
+  async getPublishedGameStylesheetRaw(gameId: string, gameRootRelativeFilePath: string): Promise<string> {
+    assertSafeGameId(gameId);
+    if (
+      path.isAbsolute(gameRootRelativeFilePath) ||
+      gameRootRelativeFilePath.includes("\0") ||
+      !gameRootRelativeFilePath.startsWith("published/")
+    ) {
+      throw new Error("Published stylesheet path must be relative to the game published artifact root.");
+    }
+
+    const gameRoot = path.resolve(this.repoRoot, "games", gameId);
+    const resolved = path.resolve(gameRoot, gameRootRelativeFilePath);
+    if (resolved === gameRoot || !resolved.startsWith(`${gameRoot}${path.sep}`)) {
+      throw new Error("Published stylesheet path must stay inside the game root.");
+    }
+    return readFile(resolved, "utf-8");
+  }
+
   async getGameAssetsRegistryRaw(gameId: string): Promise<string | undefined> {
     assertSafeGameId(gameId);
     const registryPath = path.resolve(this.repoRoot, "games", gameId, "assets", "assets.json");

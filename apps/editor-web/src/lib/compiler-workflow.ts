@@ -7,8 +7,9 @@
  * from learning authoring-only keys.
  */
 import { existsSync } from "node:fs";
+import { randomUUID } from "node:crypto";
 import path from "node:path";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 
 import {
@@ -113,6 +114,15 @@ export interface EditorPreviewSourceMap {
   readonly generatedFile: string;
   readonly sourceFile: string;
   readonly mappings: Record<string, readonly { readonly file: string; readonly pointer: string }[]>;
+  /**
+   * Sorted generated JSON Pointers whose entire subtree was omitted from
+   * `mappings` because it is a position-for-position verbatim copy of an
+   * ancestor's authoring subtree — see `mapGeneratedPointerToAuthoring`
+   * below and the identical field on `PreviewSelectionSourceMap` in
+   * preview-message-adapter.ts. Optional so a source map read before this
+   * field existed still resolves every pointer, just less precisely.
+   */
+  readonly verbatimSubtrees?: readonly string[];
 }
 
 interface AuthoringCompilerModule {
@@ -169,6 +179,8 @@ interface CompilerSourceMap {
   readonly generatedFile: string;
   readonly sourceFile: string;
   readonly mappings: Record<string, readonly CompilerSource[]>;
+  // See EditorPreviewSourceMap's identical field above.
+  readonly verbatimSubtrees?: readonly string[];
 }
 
 interface CompilerSource {
@@ -407,12 +419,25 @@ export function mapGeneratedPointerToAuthoring(
   sourceMap: CompilerSourceMap,
   generatedPointer: string
 ): CompilerSource | undefined {
-  let pointer = normalizeGeneratedPointer(generatedPointer);
+  const originalPointer = normalizeGeneratedPointer(generatedPointer);
+  let pointer = originalPointer;
 
   for (;;) {
     const sources = sourceMap.mappings[pointer];
     if (sources !== undefined && sources.length > 0) {
-      return sources[0];
+      const source = sources[0];
+      // See preview-message-adapter.ts's identical check for why this can
+      // only append the walked-past suffix when `pointer` is listed in
+      // `verbatimSubtrees` — an identical (non-listed) match's source already
+      // IS the answer, and appending to it would fabricate a pointer that
+      // does not exist.
+      if (sourceMap.verbatimSubtrees?.includes(pointer)) {
+        return {
+          file: source.file,
+          pointer: source.pointer + originalPointer.slice(pointer.length)
+        };
+      }
+      return source;
     }
 
     const parent = parentPointer(pointer);
@@ -448,7 +473,8 @@ export async function loadPreviewSelectionSourceMaps(
       sourceMaps.push({
         generatedFile: parsed.generatedFile,
         sourceFile: parsed.sourceFile,
-        mappings: parsed.mappings as EditorPreviewSourceMap["mappings"]
+        mappings: parsed.mappings as EditorPreviewSourceMap["mappings"],
+        verbatimSubtrees: Array.isArray(parsed.verbatimSubtrees) ? parsed.verbatimSubtrees : undefined
       });
     }
   }
@@ -780,9 +806,45 @@ function hasBlockingSource(diagnostics: readonly EditorCompilerDiagnostic[], sou
   return diagnostics.some((diagnostic) => diagnostic.severity === "error" && sources.has(diagnostic.source));
 }
 
-async function writeJsonFile(filePath: string, value: unknown): Promise<void> {
-  await mkdir(path.dirname(filePath), { recursive: true });
-  await writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+interface JsonWriteOperations {
+  readonly mkdir: typeof mkdir;
+  readonly writeFile: typeof writeFile;
+  readonly rename: typeof rename;
+  readonly rm: typeof rm;
+}
+
+const jsonWriteOperations: JsonWriteOperations = { mkdir, writeFile, rename, rm };
+
+async function writeJsonFile(
+  filePath: string,
+  value: unknown,
+  operations: JsonWriteOperations = jsonWriteOperations
+): Promise<void> {
+  const directory = path.dirname(filePath);
+  const tempPath = path.join(
+    directory,
+    `.${path.basename(filePath)}.${process.pid}.${randomUUID()}.tmp`
+  );
+
+  try {
+    await operations.mkdir(directory, { recursive: true });
+    // The temporary file is in the destination directory, so rename publishes
+    // a complete JSON document atomically rather than exposing a partial write.
+    await operations.writeFile(tempPath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+    await operations.rename(tempPath, filePath);
+  } catch (error) {
+    await operations.rm(tempPath, { force: true }).catch(() => undefined);
+    throw error;
+  }
+}
+
+/** Test-only seam for proving failed writes preserve the previously published manifest. */
+export async function writeJsonFileForTests(
+  filePath: string,
+  value: unknown,
+  operations: JsonWriteOperations
+): Promise<void> {
+  await writeJsonFile(filePath, value, operations);
 }
 
 function isCompileError(error: unknown): error is {

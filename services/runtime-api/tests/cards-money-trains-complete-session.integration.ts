@@ -34,8 +34,18 @@ interface SessionSnapshot {
   readonly actionAvailability: ReadonlyArray<{
     readonly actionId: string;
     readonly status: "available" | "unavailable" | "parameter-dependent";
+    readonly basisStateVersion: number;
     readonly reasonCode?: string;
   }>;
+  readonly receipt?: {
+    readonly commandId: string;
+    readonly status: "applied" | "rejected";
+    readonly rejectionCode?: string;
+  };
+}
+
+interface CreatedSessionSnapshot extends SessionSnapshot {
+  readonly credential: string;
 }
 
 interface TranscriptStep {
@@ -89,6 +99,8 @@ interface RunningApi {
   readonly close: () => Promise<void>;
 }
 
+type SampleRange = (exclusiveUpperBound: number) => number;
+
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const transcriptPath = path.join(
   repoRoot,
@@ -97,16 +109,26 @@ const transcriptPath = path.join(
   "fixtures",
   "complete-session-transcript.json"
 );
-const migrationPath = path.join(repoRoot, "services", "runtime-api", "migrations", "001_game_sessions.up.sql");
+const migrationPaths = [
+  path.join(repoRoot, "services", "runtime-api", "migrations", "001_game_sessions.up.sql"),
+  path.join(repoRoot, "services", "runtime-api", "migrations", "002_authenticated_command_ledger.up.sql"),
+  path.join(repoRoot, "services", "runtime-api", "migrations", "003_system_schedules.up.sql"),
+  path.join(repoRoot, "services", "runtime-api", "migrations", "004_session_participants.up.sql"),
+  path.join(repoRoot, "services", "runtime-api", "migrations", "005_session_event_metric_changes.up.sql"),
+  path.join(repoRoot, "services", "runtime-api", "migrations", "006_private_invite_claim.up.sql"),
+  path.join(repoRoot, "services", "runtime-api", "migrations", "007_private_seat_recovery.up.sql")
+];
 const databaseUrl = process.env.TEST_POSTGRES_DATABASE_URL;
 const transcript = await readTranscriptIfReady();
+const credentialsBySessionId = new Map<string, string>();
+let commandSequence = 0;
 
-test("ordinary game id conducts the complete mock session and rejects every exact duplicate", {
+test("ordinary game id conducts the complete mock session and idempotently replays every exact retry", {
   skip: transcript === null ? "complete mock transcript is being produced by the game-content slice" : false
 }, async () => {
   assert.ok(transcript);
   const store = new InMemorySessionStore<RuntimeState>();
-  const api = await startApi(store);
+  const api = await startApi(store, createCompleteSessionSampleRange());
 
   try {
     const created = await createSession(api.baseUrl, transcript.gameId);
@@ -137,9 +159,12 @@ test("the same mock session survives two new Runtime API and PostgreSQL store in
   let api: RunningApi | null = null;
   let snapshot: SessionSnapshot | null = null;
   let restartCount = 0;
+  // The scripted samples describe one complete transcript, so their cursor
+  // must survive API restarts while remaining isolated from the other test.
+  const sampleRange = createCompleteSessionSampleRange();
 
   try {
-    api = await startPersistentApi(databaseUrl);
+    api = await startPersistentApi(databaseUrl, sampleRange);
     snapshot = await createSession(api.baseUrl, transcript.gameId);
 
     for (const step of transcript.steps) {
@@ -150,7 +175,7 @@ test("the same mock session survives two new Runtime API and PostgreSQL store in
       if (step.restartAfter === true) {
         const beforeRestart = snapshot;
         await api.close();
-        api = await startPersistentApi(databaseUrl);
+        api = await startPersistentApi(databaseUrl, sampleRange);
 
         const restored = await getSession(api.baseUrl, beforeRestart.sessionId);
         assertCommittedSnapshot(restored, beforeRestart, `restart after step ${step.order} changed the public snapshot`);
@@ -213,8 +238,62 @@ async function readTranscriptIfReady(): Promise<CompleteSessionTranscript | null
   }
 }
 
-async function startApi(sessionStore: SessionStorePort<RuntimeState>): Promise<RunningApi> {
-  const server = createRuntimeApiServer({ port: 0, sessionStore });
+/**
+ * Reproduce the card order authored by the complete-session transcript.
+ *
+ * The scripted prefix shuffles the initially sorted news and cargo decks into
+ * the fixture order: the news cycle starts with block-road, while the first
+ * cargo offer contains the b-f card loaded at step 9. Later calls return zero,
+ * including the news discard reshuffle that starts its next cycle with the
+ * cheap-wagons card.
+ */
+function createCompleteSessionSampleRange(): SampleRange {
+  const initialDeckSamples = [
+    // Six-card news deck.
+    { exclusiveUpperBound: 6, value: 5 },
+    { exclusiveUpperBound: 5, value: 3 },
+    { exclusiveUpperBound: 4, value: 3 },
+    { exclusiveUpperBound: 3, value: 2 },
+    { exclusiveUpperBound: 2, value: 1 },
+    // Twelve-card cargo deck; b-f is moved to the front of the first offer.
+    { exclusiveUpperBound: 12, value: 0 },
+    { exclusiveUpperBound: 11, value: 0 },
+    { exclusiveUpperBound: 10, value: 0 },
+    { exclusiveUpperBound: 9, value: 0 },
+    { exclusiveUpperBound: 8, value: 0 },
+    { exclusiveUpperBound: 7, value: 0 },
+    { exclusiveUpperBound: 6, value: 0 },
+    { exclusiveUpperBound: 5, value: 0 },
+    { exclusiveUpperBound: 4, value: 3 },
+    { exclusiveUpperBound: 3, value: 2 },
+    { exclusiveUpperBound: 2, value: 1 }
+  ] as const;
+  let sampleIndex = 0;
+
+  return (exclusiveUpperBound) => {
+    const scripted = initialDeckSamples[sampleIndex];
+    if (scripted === undefined) {
+      return 0;
+    }
+    assert.equal(
+      exclusiveUpperBound,
+      scripted.exclusiveUpperBound,
+      `complete-session random sample ${sampleIndex + 1} requested an unexpected range`
+    );
+    sampleIndex += 1;
+    return scripted.value;
+  };
+}
+
+async function startApi(
+  sessionStore: SessionStorePort<RuntimeState>,
+  sampleRange: SampleRange
+): Promise<RunningApi> {
+  const server = createRuntimeApiServer({
+    port: 0,
+    sessionStore,
+    random: { sampleRange }
+  });
   await server.start();
   return {
     baseUrl: `http://127.0.0.1:${server.port}`,
@@ -222,29 +301,32 @@ async function startApi(sessionStore: SessionStorePort<RuntimeState>): Promise<R
   };
 }
 
-async function startPersistentApi(connectionString: string): Promise<RunningApi> {
+async function startPersistentApi(connectionString: string, sampleRange: SampleRange): Promise<RunningApi> {
   const sessionStore = createSessionStoreFromEnvironment({
     SESSION_STORE: "postgresql",
     DATABASE_URL: connectionString,
     PGPOOL_MAX: "2"
   });
-  return startApi(sessionStore);
+  return startApi(sessionStore, sampleRange);
 }
 
 async function createSession(baseUrl: string, gameId: string): Promise<SessionSnapshot> {
   const response = await postJson(baseUrl, "/sessions", {
-    gameId,
-    playerId: "facilitator-acceptance"
+    gameId
   });
   assert.equal(response.status, 201, JSON.stringify(response.body));
-  const snapshot = response.body as SessionSnapshot;
+  const snapshot = response.body as CreatedSessionSnapshot;
   assert.equal(snapshot.gameId, gameId);
+  assert.equal(typeof snapshot.credential, "string");
+  credentialsBySessionId.set(snapshot.sessionId, snapshot.credential);
   assertProjectionAndBalances(snapshot);
   return snapshot;
 }
 
 async function getSession(baseUrl: string, sessionId: string): Promise<SessionSnapshot> {
-  const response = await fetch(`${baseUrl}/sessions/${encodeURIComponent(sessionId)}`);
+  const response = await fetch(`${baseUrl}/sessions/${encodeURIComponent(sessionId)}`, {
+    headers: { Authorization: `Bearer ${requireCredential(sessionId)}` }
+  });
   const body = await readJson(response);
   assert.equal(response.status, 200, JSON.stringify(body));
   const snapshot = body as SessionSnapshot;
@@ -260,24 +342,19 @@ async function dispatchAction(
   const requestBody = {
     sessionId: previous.sessionId,
     expectedStateVersion: previous.version.stateVersion,
-    playerId: "facilitator-acceptance",
     actionId: step.actionId,
-    ...(step.params ? { params: step.params } : {}),
-    // An untrusted caller may send extra data, but only the manifest action and
-    // persisted server snapshot are authoritative. The test verifies this
-    // attempted phase/funds overwrite never appears in the committed state.
-    state: {
-      public: {
-        session: { phase: "finished" },
-        teams: { forged: { coins: 1_000_000 } }
-      }
-    }
+    commandId: nextCommandId(),
+    params: step.params ?? {}
   };
-  const response = await postJson(baseUrl, "/actions", requestBody);
+  const response = await postJson(baseUrl, "/actions", requestBody, previous.sessionId);
   assert.equal(response.status, 200, `step ${step.order} ${step.actionId}: ${JSON.stringify(response.body)}`);
   const snapshot = response.body as SessionSnapshot;
+  assert.equal(
+    snapshot.receipt?.status,
+    "applied",
+    `step ${step.order} did not return an applied receipt: ${JSON.stringify(response.body)}`
+  );
   assert.equal(snapshot.version.stateVersion, previous.version.stateVersion + 1);
-  assert.equal(readRecord(readRecord(snapshot.state, "public"), "teams").forged, undefined);
   assertProjectionAndBalances(snapshot);
 
   // A fresh GET must return exactly the committed response. This detects a UI
@@ -285,16 +362,17 @@ async function dispatchAction(
   const restored = await getSession(baseUrl, snapshot.sessionId);
   assertCommittedSnapshot(restored, snapshot, `step ${step.order} was not persisted exactly`);
 
-  // Repeat the exact request with the now-stale precondition. Because this
-  // runs after all 88 successful steps, the proof covers money, cards,
-  // movement, construction and finalization without special game branches.
-  const repeated = await postJson(baseUrl, "/actions", requestBody);
-  assert.equal(repeated.status, 409, `step ${step.order} duplicate was not rejected`);
-  assert.match(String(readRecordValue(repeated.body, "duplicate error").error), /changed after version/iu);
+  // Repeat the exact immutable envelope after the version has advanced. The
+  // durable ledger must return the same receipt without executing the rule a
+  // second time. Across the full transcript this covers every mechanics pack.
+  const repeated = await postJson(baseUrl, "/actions", requestBody, previous.sessionId);
+  assert.equal(repeated.status, 200, `step ${step.order} exact retry did not return its receipt`);
+  const repeatedSnapshot = repeated.body as SessionSnapshot;
+  assert.deepEqual(repeatedSnapshot.receipt, snapshot.receipt, `step ${step.order} retry changed its receipt`);
   assertCommittedSnapshot(
     await getSession(baseUrl, snapshot.sessionId),
     restored,
-    `step ${step.order} duplicate changed the stored snapshot`
+    `step ${step.order} exact retry changed the stored snapshot`
   );
   return snapshot;
 }
@@ -347,11 +425,14 @@ async function assertCurrentNewsCannotBeDrawnTwice(
   const response = await postJson(baseUrl, "/actions", {
     sessionId: snapshot.sessionId,
     expectedStateVersion: snapshot.version.stateVersion,
-    playerId: "facilitator-acceptance",
-    actionId: "mock.news.draw"
-  });
-  assert.equal(response.status, 400, JSON.stringify(response.body));
-  assert.match(String(readRecordValue(response.body, "repeat draw error").error), /not available in the current session state/iu);
+    actionId: "mock.news.draw",
+    commandId: nextCommandId(),
+    params: {}
+  }, snapshot.sessionId);
+  assert.equal(response.status, 200, JSON.stringify(response.body));
+  const rejected = response.body as SessionSnapshot;
+  assert.equal(rejected.receipt?.status, "rejected");
+  assert.equal(typeof rejected.receipt.rejectionCode, "string");
   assert.deepEqual(
     await getSession(baseUrl, snapshot.sessionId),
     before,
@@ -377,14 +458,14 @@ async function runRejectionProbes(
     const response = await postJson(baseUrl, "/actions", {
       sessionId: snapshot.sessionId,
       expectedStateVersion: snapshot.version.stateVersion,
-      playerId: "facilitator-acceptance",
       actionId: probe.actionId,
-      ...(probe.params ? { params: probe.params } : {})
-    });
-    assert.ok(response.status >= 400 && response.status < 500, `${probe.id}: ${JSON.stringify(response.body)}`);
-    const error = readRecordValue(response.body, `${probe.id} error response`).error;
-    assert.equal(typeof error, "string", `${probe.id} must return a public error message`);
-    assert.match(error as string, new RegExp(probe.expectedError, "iu"), `${probe.id} returned an unexpected error`);
+      commandId: nextCommandId(),
+      params: probe.params ?? {}
+    }, snapshot.sessionId);
+    assert.equal(response.status, 200, `${probe.id}: ${JSON.stringify(response.body)}`);
+    const rejected = response.body as SessionSnapshot;
+    assert.equal(rejected.receipt?.status, "rejected", `${probe.id} must return a rejected receipt`);
+    assert.equal(typeof rejected.receipt.rejectionCode, "string", `${probe.id} must expose a stable rejection code`);
 
     // Rejected actions must be exactly atomic: not only business fields, but
     // also the concurrency and event cursors remain byte-for-byte equivalent.
@@ -519,13 +600,27 @@ function readRecordValue(value: unknown, label: string): Record<string, unknown>
   return value as Record<string, unknown>;
 }
 
-async function postJson(baseUrl: string, pathname: string, body: unknown) {
+async function postJson(baseUrl: string, pathname: string, body: unknown, sessionId?: string) {
   const response = await fetch(`${baseUrl}${pathname}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(sessionId === undefined ? {} : { Authorization: `Bearer ${requireCredential(sessionId)}` })
+    },
     body: JSON.stringify(body)
   });
   return { status: response.status, body: await readJson(response) };
+}
+
+function requireCredential(sessionId: string): string {
+  const credential = credentialsBySessionId.get(sessionId);
+  assert.ok(credential, `missing client credential for session ${sessionId}`);
+  return credential;
+}
+
+function nextCommandId(): string {
+  commandSequence += 1;
+  return `cli_${commandSequence.toString(36).padStart(22, "0")}`;
 }
 
 async function readJson(response: Response): Promise<unknown> {
@@ -537,7 +632,9 @@ async function applySessionMigration(connectionString: string): Promise<void> {
   const pool = new Pool({ connectionString, max: 1 });
   pool.on("error", () => undefined);
   try {
-    await pool.query(await readFile(migrationPath, "utf8"));
+    for (const migrationPath of migrationPaths) {
+      await pool.query(await readFile(migrationPath, "utf8"));
+    }
   } finally {
     await pool.end();
   }

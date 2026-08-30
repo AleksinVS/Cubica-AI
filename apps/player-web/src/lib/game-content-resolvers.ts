@@ -1,6 +1,6 @@
 import type { PlayerFacingContent, PlayerFacingMockup } from "@cubica/contracts-manifest";
 
-import type { CreateSessionResponse, DispatchActionResponse } from "@cubica/contracts-session";
+import type { DispatchActionResponse, GetSessionResponse, PrivateSessionInvite } from "@cubica/contracts-session";
 
 export type { PlayerFacingMockup as GameMockup };
 
@@ -22,7 +22,11 @@ export interface ActionEntry {
   capability: string | null;
 }
 
-export type SessionSnapshot = CreateSessionResponse<Record<string, unknown>>;
+/** Browser-safe snapshot after the BFF has removed the one-time credential. */
+export type SessionSnapshot = GetSessionResponse<Record<string, unknown>> & {
+  /** Host-only safe invite metadata; the runtime credential is never included. */
+  readonly privateInvites?: ReadonlyArray<PrivateSessionInvite>;
+};
 export type ActionSnapshot = DispatchActionResponse<Record<string, unknown>>;
 
 /**
@@ -52,7 +56,6 @@ type PublicState = {
   timeline?: TimelineState;
   ui?: {
     activePanel?: string;
-    activeScreen?: string;
     lastCapabilityFamily?: string;
     lastCapability?: string;
     serverRequested?: boolean;
@@ -183,7 +186,6 @@ export function readTimeline(session: SessionSnapshot | null): TimelineState | u
  */
 export function readRuntimeUi(session: SessionSnapshot | null): {
   activePanel?: string;
-  activeScreen?: string;
   lastCapabilityFamily?: string;
   lastCapability?: string;
   serverRequested?: boolean;

@@ -10,7 +10,7 @@
   ],
   "properties": {
     "schemaVersion": {
-      "const": "1.0"
+      "const": "1.1"
     },
     "skills": {
       "type": "array",
@@ -59,6 +59,14 @@
           "externalRegistryPath": {
             "type": "string",
             "pattern": "^docs/agents/external-skills/registry\\.json$"
+          },
+          "requires": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
           }
         },
         "allOf": [

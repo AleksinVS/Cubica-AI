@@ -1,7 +1,10 @@
 import { ANTARCTICA_GAME_CONFIG_DATA } from "@cubica/antarctica-player-plugin/config-data";
 import { activate as activateAntarcticaPlayer } from "@cubica/antarctica-player-plugin";
+import { createHash } from "node:crypto";
 import { createDefaultGameConfigData } from "@/presenter/game-config";
+import { loadPendingRuntimeCommand } from "@/presenter/command-outbox";
 import { playerPluginApi } from "@/plugins/player-plugin-api";
+import { registerFacilitatorDebriefAvailabilityProvider } from "@/plugins/phaser-scene-registry";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
@@ -92,6 +95,7 @@ const aiDrivenContent: PlayerFacingContent = {
   locale: "en-US",
   executionMode: "ai-driven",
   agentRuntime: {
+    ...({ initialActionId: "agent.continue" } as { initialActionId: string }),
     agentId: "scenario-agent",
     runtimeId: "mock",
     required: true,
@@ -116,6 +120,10 @@ const aiDrivenContent: PlayerFacingContent = {
 const aiDrivenSession = {
   sessionId: "ai-driven-session-id",
   gameId: "ai-driven-choice",
+  participants: [
+    { seatId: "p1", playerId: "p1", kind: "human" as const, joinState: "local" as const }
+  ],
+  actionAvailability: [],
   version: {
     sessionId: "ai-driven-session-id",
     stateVersion: 0,
@@ -182,37 +190,37 @@ const mockS1Ui: GamePlayerUiContent = {
                     type: "cardComponent",
                     id: "card-1",
                     props: { text: "Тестовая карточка 1" },
-                    actions: { onClick: { command: "requestServer", payload: { cardId: "1" } } }
+                    actions: { onClick: { command: "requestServer", payload: { actionId: "opening.card.1", cardId: "1" } } }
                   },
                   {
                     type: "cardComponent",
                     id: "card-2",
                     props: { text: "Тестовая карточка 2" },
-                    actions: { onClick: { command: "requestServer", payload: { cardId: "2" } } }
+                    actions: { onClick: { command: "requestServer", payload: { actionId: "opening.card.2", cardId: "2" } } }
                   },
                   {
                     type: "cardComponent",
                     id: "card-3",
                     props: { text: "Тестовая карточка 3" },
-                    actions: { onClick: { command: "requestServer", payload: { cardId: "3" } } }
+                    actions: { onClick: { command: "requestServer", payload: { actionId: "opening.card.3", cardId: "3" } } }
                   },
                   {
                     type: "cardComponent",
                     id: "card-4",
                     props: { text: "Тестовая карточка 4" },
-                    actions: { onClick: { command: "requestServer", payload: { cardId: "4" } } }
+                    actions: { onClick: { command: "requestServer", payload: { actionId: "opening.card.4", cardId: "4" } } }
                   },
                   {
                     type: "cardComponent",
                     id: "card-5",
                     props: { text: "Тестовая карточка 5" },
-                    actions: { onClick: { command: "requestServer", payload: { cardId: "5" } } }
+                    actions: { onClick: { command: "requestServer", payload: { actionId: "opening.card.5", cardId: "5" } } }
                   },
                   {
                     type: "cardComponent",
                     id: "card-6",
                     props: { text: "Тестовая карточка 6" },
-                    actions: { onClick: { command: "requestServer", payload: { cardId: "6" } } }
+                    actions: { onClick: { command: "requestServer", payload: { actionId: "opening.card.6", cardId: "6" } } }
                   }
                 ]
               },
@@ -314,6 +322,10 @@ const mockS1Ui: GamePlayerUiContent = {
 
 const mockSession = {
   sessionId: "test-session-id",
+  participants: [
+    { seatId: "p1", playerId: "p1", kind: "human" as const, joinState: "local" as const }
+  ],
+  actionAvailability: [],
   version: {
     sessionId: "test-session-id",
     stateVersion: 0,
@@ -476,6 +488,8 @@ describe("GamePlayer S1 DOM Rendering", () => {
       if (url === "/api/runtime/agent-turns") {
         return Promise.resolve(new Response(JSON.stringify({
           sessionId: aiDrivenSession.sessionId,
+          participants: aiDrivenSession.participants,
+          actionAvailability: aiDrivenSession.actionAvailability,
           version: {
             sessionId: aiDrivenSession.sessionId,
             stateVersion: 1,
@@ -507,8 +521,9 @@ describe("GamePlayer S1 DOM Rendering", () => {
                   choices: [{ id: "continue", label: "Continue" }]
                 },
                 actions: [{
-                  id: "agent.continue",
+                  id: "continue-button",
                   kind: "agentTurn",
+                  target: "agent.continue",
                   label: "Continue",
                   payload: { choiceId: "continue" },
                   sideEffectPolicy: "system-approved"
@@ -561,9 +576,14 @@ describe("GamePlayer S1 DOM Rendering", () => {
       expect(screen.getByText("Осталось дней")).toBeDefined();
     });
 
+    // Since TSK-20260719 R4b the plugin declares the theme background as an
+    // "asset:" reference resolved through the game-asset index. This test's
+    // fetch mock serves no index, so the documented fail-closed contract
+    // applies: no resolvable asset — no background property at all (never a
+    // broken URL). Resolution itself is covered by game-asset-resolver.test.ts.
     expect(
       (document.querySelector(".game-player-root") as HTMLElement).style.getPropertyValue("--game-background-image")
-    ).toBe('url("/images/arctic-background.png")');
+    ).toBe("");
 
     // Check that top metrics are HIDDEN in S1 mode
     const topMetrics = document.querySelector(".metrics");
@@ -590,34 +610,24 @@ describe("GamePlayer S1 DOM Rendering", () => {
   });
 
   it("keeps game-variables-container and main-content-area side-by-side in leftsidebar layout", async () => {
-    // Simulate a runtime state that explicitly requests left-sidebar layout
-    const sessionWithLeftSidebar = {
-      ...mockSession,
-      state: {
-        ...mockSession.state,
-        public: {
-          ...mockSession.state.public,
-          ui: { activeScreen: "left-sidebar" }
-        }
+    // Layout is a design-time choice (ADR-093): the game declares the leftsidebar
+    // layout in its UI manifest, and the target screen declares its own
+    // leftsidebar layout_mode. No server-side activeScreen flag is involved.
+    const leftSidebarUi: GamePlayerUiContent = {
+      ...mockS1Ui,
+      defaultLayoutMode: "leftsidebar",
+      screens: {
+        ...mockS1Ui.screens,
+        S1: { ...mockS1Ui.screens.S1, layoutMode: "leftsidebar" }
       }
     };
 
-    (global.fetch as any).mockImplementation((url: string) => {
-      if (url.includes("/api/runtime/sessions")) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve(sessionWithLeftSidebar)
-        });
-      }
-      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
-    });
-
     render(
-      <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA} 
-        runtimeApiUrl="http://localhost:8080" 
-        content={mockContent} 
-        mockups={[]} 
-        gameUi={mockS1Ui} 
+      <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA}
+        runtimeApiUrl="http://localhost:8080"
+        content={mockContent}
+        mockups={[]}
+        gameUi={leftSidebarUi}
       />
     );
 
@@ -698,6 +708,24 @@ describe("GamePlayer S1 DOM Rendering", () => {
   });
 
   it("renders 6 cards and handles click with payload", async () => {
+    const fetchMock = global.fetch as ReturnType<typeof vi.fn>;
+    fetchMock.mockImplementation((url: string, options?: RequestInit) => {
+      if (url === "/api/runtime/actions") {
+        const body = JSON.parse(String(options?.body));
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            ...mockSession,
+            state: {
+              ...mockSession.state,
+              public: { ...mockSession.state.public, lastAction: body.actionId }
+            }
+          })
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(mockSession) });
+    });
+
     render(
       <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA} 
         runtimeApiUrl="http://localhost:8080" 
@@ -715,35 +743,21 @@ describe("GamePlayer S1 DOM Rendering", () => {
     const selectButtons = screen.getAllByRole("button", { name: /Выбрать/i });
     expect(selectButtons.length).toBe(6);
 
-    // Mock the action dispatch fetch to check payload
-    // Note: With mockContent (empty antarctica), boardCards is empty,
-    // so the S1 action routing falls back to "requestServer"
-    (global.fetch as any).mockImplementation((url: string, options: any) => {
-      if (url === "/api/runtime/actions") {
-        const body = JSON.parse(options.body);
-        // When boardCards is empty, falls back to requestServer
-        if (body.actionId === "requestServer") {
-          return Promise.resolve({
-            ok: true,
-            json: () => Promise.resolve({ ...mockSession, state: { ...mockSession.state, public: { ...mockSession.state.public, lastAction: "requestServer" } } })
-          });
-        }
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({ ...mockSession, state: { ...mockSession.state, public: { ...mockSession.state.public, lastAction: body.actionId } } })
-        });
-      }
-      return Promise.resolve({ ok: true, json: () => Promise.resolve(mockSession) });
+    // Wait for asynchronous session creation before isolating the click request.
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith("/api/runtime/sessions", expect.anything());
     });
+    fetchMock.mockClear();
 
     fireEvent.click(selectButtons[2]); // Card 3
 
     await waitFor(() => {
-      // With empty boardCards, should fallback to requestServer
-      expect(global.fetch).toHaveBeenCalledWith("/api/runtime/actions", expect.objectContaining({
-        body: expect.stringContaining('"actionId":"requestServer"')
+      expect(fetchMock).toHaveBeenCalledWith("/api/runtime/actions", expect.objectContaining({
+        body: expect.stringContaining('"actionId":"opening.card.3"')
       }));
     });
+    const actionRequest = fetchMock.mock.calls.find(([url]) => url === "/api/runtime/actions");
+    expect(JSON.parse(String(actionRequest?.[1]?.body)).params).toEqual({ cardId: "3" });
   });
 
   it("renders bottom control buttons and handles clicks", async () => {
@@ -854,7 +868,6 @@ describe("GamePlayer S1 DOM Rendering", () => {
       export function activate(api) {
         api.registerGameConfigData({
           gameId: "${gameId}",
-          playerId: "plugin-player",
           storageKey: "async-plugin-session-id",
           fallbackMetrics: [],
           topbarScreenKeys: [],
@@ -880,9 +893,6 @@ describe("GamePlayer S1 DOM Rendering", () => {
                   advanceLabel: "Continue"
                 }
               };
-            },
-            createManifestActionAdapter(_content, _gameState, dispatchAction) {
-              return (_command, payload) => dispatchAction(String(payload.advanceActionId ?? "noop"), payload);
             }
           };
         });
@@ -895,6 +905,9 @@ describe("GamePlayer S1 DOM Rendering", () => {
       target: "player-web",
       scope: "published",
       contentHash: "d".repeat(64),
+      // Published plugins must prove the exact bytes before import; keeping the
+      // digest next to this inline source makes the test exercise that boundary.
+      integrity: `sha256-${createHash("sha256").update(pluginSource, "utf8").digest("base64")}`,
       url: `data:text/javascript;base64,${Buffer.from(pluginSource, "utf8").toString("base64")}`
     };
     const content: PlayerFacingContent = {
@@ -935,6 +948,10 @@ describe("GamePlayer S1 DOM Rendering", () => {
     const session = {
       sessionId: "async-plugin-session",
       gameId,
+      participants: [
+        { seatId: "p1", playerId: "p1", kind: "human" as const, joinState: "local" as const }
+      ],
+      actionAvailability: [],
       version: { sessionId: "async-plugin-session", stateVersion: 1, lastEventSequence: 0 },
       state: {
         public: {
@@ -945,7 +962,16 @@ describe("GamePlayer S1 DOM Rendering", () => {
       }
     };
 
-    (global.fetch as any).mockImplementation((url: string) => {
+    (global.fetch as any).mockImplementation((input: string | URL) => {
+      const url = input.toString();
+      if (url === bundle.url) {
+        const bytes = Uint8Array.from(Buffer.from(pluginSource, "utf8"));
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          arrayBuffer: () => Promise.resolve(bytes.buffer)
+        });
+      }
       if (url.includes("/api/runtime/sessions")) {
         return Promise.resolve({
           ok: true,
@@ -959,7 +985,6 @@ describe("GamePlayer S1 DOM Rendering", () => {
       <GamePlayer
         config={{
           gameId,
-          playerId: "fallback-player",
           storageKey: "fallback-session-id",
           fallbackMetrics: [],
           topbarScreenKeys: ["S1"],
@@ -1067,8 +1092,11 @@ describe("GamePlayer S1 DOM Rendering", () => {
               cardId: "3",
               frontText: "Карточка 3",
               backText: "Результат Карточки 3",
+              // ADR-092 top-level shape: before/after of the whole turn. The
+              // resolver derives the badge value (after) and signed delta.
               metricChanges: [
-                { metricId: "pro", delta: 5 }
+                { metricId: "pro", before: 3, after: 8 },
+                { metricId: "rep", before: 0, after: 0 }
               ],
               at: "2026-04-10T12:00:00Z"
             }
@@ -1103,6 +1131,86 @@ describe("GamePlayer S1 DOM Rendering", () => {
       expect(document.querySelector(".journal-entry-columns")).not.toBeNull();
       expect(document.querySelector(".journal-variables-container")).not.toBeNull();
     });
+
+    // ADR-092: each declared metric renders as a badge (value + optional delta +
+    // caption). The changed metric shows its after-value and signed delta; the
+    // unchanged metric shows its value but no delta superscript.
+    const badges = document.querySelectorAll(".journal-variable-component");
+    expect(badges.length).toBe(2);
+    const values = Array.from(document.querySelectorAll(".journal-variable__value")).map(
+      (node) => node.textContent
+    );
+    expect(values).toContain("8");
+    const diffs = Array.from(document.querySelectorAll(".journal-variable__diff")).map(
+      (node) => node.textContent
+    );
+    // Only the changed metric (pro 3->8) renders a delta superscript.
+    expect(diffs).toEqual(["+5"]);
+    const captions = Array.from(document.querySelectorAll(".journal-variable__caption")).map(
+      (node) => node.textContent
+    );
+    expect(captions).toContain("Знания");
+  });
+
+  it("renders journal entries whose card fields are nested under data (runtime shape)", async () => {
+    // The runtime `core.event.emit` step nests all game-defined fields inside
+    // `data` and keeps only `summary` at the top level. This is the exact
+    // envelope a real Antarctica card resolution produces; the resolver must
+    // flatten it so the entry is recognized instead of filtered out.
+    const sessionWithRuntimeShapedLog = {
+      ...mockSession,
+      state: {
+        ...mockSession.state,
+        public: {
+          ...mockSession.state.public,
+          ui: { activePanel: "history" },
+          log: [
+            {
+              eventType: "opening.card.1.event.10",
+              audience: "public",
+              summary: "Результат первой карточки",
+              data: {
+                kind: "opening-card-resolution",
+                entityType: "card",
+                displayMode: "card",
+                stageId: "stage_intro",
+                cardId: "1"
+              }
+            }
+          ],
+          timeline: { ...mockSession.state.public.timeline }
+        }
+      }
+    };
+
+    (global.fetch as any).mockImplementation((url: string) => {
+      if (url.includes("/api/runtime/sessions")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(sessionWithRuntimeShapedLog)
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+
+    render(
+      <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA}
+        runtimeApiUrl="http://localhost:8080"
+        content={mockContent}
+        mockups={[]}
+        gameUi={generatedAntarcticaUi}
+      />
+    );
+
+    await waitFor(() => {
+      expect(document.querySelector(".journal-screen")).not.toBeNull();
+      // A card entry must render (not an empty-state), proving the nested
+      // envelope was flattened and passed the card filter.
+      expect(document.querySelector(".journal-entry-columns")).not.toBeNull();
+    });
+    // The top-level `summary` is projected as the resolution ("back") text and
+    // must be visible now that `{{entry.backText}}` binds the flat DTO field.
+    expect(screen.queryAllByText(/Результат первой карточки/).length).toBeGreaterThan(0);
   });
 
   it("filters runtime.server and requestServer entries from journal", async () => {
@@ -1270,6 +1378,125 @@ describe("GamePlayer S1 DOM Rendering", () => {
       expect(document.querySelector(".journal-list")).toBeNull();
       expect(document.querySelector(".mockup-list")).toBeNull();
     });
+  });
+});
+
+describe("GamePlayer facilitator debrief capability", () => {
+  const content: PlayerFacingContent = {
+    ...mockContent,
+    gameId: "neutral-debrief",
+    name: "Neutral debrief fixture"
+  };
+  const ui: GamePlayerUiContent = {
+    ...mockS1Ui,
+    gameId: "neutral-debrief"
+  };
+  const session = {
+    ...mockSession,
+    sessionId: "neutral-debrief-session",
+    gameId: "neutral-debrief",
+    privateInvites: [],
+    version: {
+      ...mockSession.version,
+      sessionId: "neutral-debrief-session",
+      stateVersion: 5
+    }
+  };
+  const absentDebrief = {
+    format: "cubica.facilitator-debrief",
+    schemaVersion: "1.0.0",
+    sessionId: session.sessionId,
+    gameId: session.gameId,
+    status: "absent",
+    canGenerate: true
+  };
+
+  function setupProvider(provider: Parameters<typeof registerFacilitatorDebriefAvailabilityProvider>[1]) {
+    localStorage.clear();
+    const dispose = registerFacilitatorDebriefAvailabilityProvider(content.gameId, provider);
+    const fetchMock = vi.fn((input: string | URL, init?: RequestInit) => {
+      const url = input.toString();
+      if (url === "/api/runtime/sessions") {
+        return Promise.resolve(new Response(JSON.stringify(session), { status: 201 }));
+      }
+      if (url.includes("/facilitator-debrief")) {
+        const body = init?.method === "POST"
+          ? { ...absentDebrief }
+          : absentDebrief;
+        return Promise.resolve(new Response(JSON.stringify(body), { status: 200 }));
+      }
+      return Promise.resolve(new Response("{}", { status: 200 }));
+    });
+    (global.fetch as any).mockImplementation(fetchMock);
+    return { dispose, fetchMock };
+  }
+
+  it("renders the terminal drawer for a neutral plugin and passes the exact state version", async () => {
+    const { dispose, fetchMock } = setupProvider(() => true);
+    try {
+      render(
+        <GamePlayer
+          config={createDefaultGameConfigData(content, ui)}
+          runtimeApiUrl="http://localhost:8080"
+          content={content}
+          mockups={[]}
+          gameUi={ui}
+        />
+      );
+
+      await waitFor(() => expect(screen.getByText("Открыть разбор ведущего")).toBeDefined());
+      fireEvent.click(screen.getByText("Открыть разбор ведущего"));
+      await waitFor(() => expect(screen.getByRole("button", { name: "Сформировать разбор" })).toBeDefined());
+      fireEvent.click(screen.getByRole("button", { name: "Сформировать разбор" }));
+      await waitFor(() => expect(fetchMock.mock.calls.some(([, init]) =>
+        init?.method === "POST" && JSON.parse(String(init.body)).expectedStateVersion === 5
+      )).toBe(true));
+      expect(screen.getByRole("button", { name: "Сформировать разбор" })).toBeDefined();
+    } finally {
+      dispose();
+    }
+  });
+
+  it.each([
+    { label: "provider returns false", provider: () => false },
+    { label: "provider throws", provider: () => { throw new Error("broken provider"); } }
+  ])("hides the terminal drawer when $label", async ({ provider }) => {
+    const { dispose } = setupProvider(provider);
+    try {
+      render(
+        <GamePlayer
+          config={createDefaultGameConfigData(content, ui)}
+          runtimeApiUrl="http://localhost:8080"
+          content={content}
+          mockups={[]}
+          gameUi={ui}
+        />
+      );
+
+      await waitFor(() => expect(screen.getByRole("heading", { name: "Участники" })).toBeDefined());
+      expect(screen.queryByText("Открыть разбор ведущего")).toBeNull();
+      expect(screen.queryByText("Разбор ещё не подготовлен")).toBeNull();
+    } finally {
+      dispose();
+    }
+  });
+
+  it("keeps the terminal drawer hidden when the plugin does not register a provider", async () => {
+    const { dispose } = setupProvider(() => true);
+    dispose();
+
+    render(
+      <GamePlayer
+        config={createDefaultGameConfigData(content, ui)}
+        runtimeApiUrl="http://localhost:8080"
+        content={content}
+        mockups={[]}
+        gameUi={ui}
+      />
+    );
+
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Участники" })).toBeDefined());
+    expect(screen.queryByText("Открыть разбор ведущего")).toBeNull();
   });
 });
 
@@ -1692,7 +1919,9 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
     await waitFor(() => {
       const renderer = document.querySelector(".game-renderer");
       expect(renderer).toBeDefined();
-      expect(screen.getByText("Ускорение процесса")).toBeDefined();
+      // TSK-20260719 W2-D: LGC-016 fix - i17 title/body restored from the
+      // reference spec (was reduced to a single short placeholder sentence).
+      expect(screen.getByText("Времени все меньше!..")).toBeDefined();
       expect(document.querySelector(".info-event-card")).toBeDefined();
       expect(document.querySelector(".info-event-illustration")).toBeDefined();
       expect(document.querySelector(".info-event-text")).toBeDefined();
@@ -1703,13 +1932,14 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
       expect((screen.getByRole("button", { name: /Вперед/i }) as HTMLButtonElement).disabled).toBe(false);
     });
 
+    // Since TSK-20260719 R7 (ARC-008) the manifest declares metric badge
+    // images as "asset:" references resolved through the game-asset index.
+    // This test serves no index, so the fail-closed contract renders badges
+    // without images (never a broken URL). Resolution itself is unit-tested
+    // in game-asset-resolver.test.ts; live badge rendering is covered by the
+    // R7 Playwright walkthrough and the S1 ui-compare gate.
     const metricImages = Array.from(document.querySelectorAll<HTMLElement>(".game-variable-image"));
-    expect(metricImages.length).toBe(8);
-    expect(
-      metricImages.every(
-        (node) => node.style.backgroundImage.includes("/images/left-sidebar/") || node.style.backgroundImage.includes("/images/top-sidebar/")
-      )
-    ).toBe(true);
+    expect(metricImages.length).toBe(0);
   });
 
   it("keeps the primary advance action wired for i17 info screen", async () => {
@@ -1734,8 +1964,12 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
 
       if (url === "/api/runtime/actions") {
         const body = JSON.parse(options.body);
-        expect(body.actionId).toBe("requestServer");
-        expect(body.payload).toEqual({ actionId: "opening.info.i17.advance" });
+        // The UI command is only a local binding. Runtime receives the exact
+        // published Game Intent with flat parameters, while actor identity
+        // comes from the authenticated session rather than request JSON.
+        expect(body.actionId).toBe("opening.info.i17.advance");
+        expect(body.params).toEqual({});
+        expect(body).not.toHaveProperty("playerId");
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve(sessionAtI17)
@@ -1764,6 +1998,109 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith("/api/runtime/actions", expect.any(Object));
     });
+
+    // Observing the POST is not the same as observing its completion. Wait for
+    // the successful response to clear the durable outbox so this component
+    // cannot leak an unfinished recovery command into the next DOM test.
+    await waitFor(() => {
+      expect(loadPendingRuntimeCommand(sessionAtI17.sessionId)).toBeNull();
+    });
+  });
+
+  // W2-B / ADR-093 + ADR-055: on card/board screens the forward arrow is game
+  // navigation. It advances the current board step when the game allows it
+  // (public.timeline.canAdvance) by dispatching the resolved card's advance plan
+  // (the same action the "Продолжить" continue button carries). "Назад" has no
+  // game transition (the monolith has only a forward button), so it stays
+  // visible but always disabled.
+  it("enables the board forward arrow and dispatches the played card's advance action when the board can advance", async () => {
+    const sessionAtBoardReady = {
+      ...mockSession,
+      state: {
+        ...mockSession.state,
+        public: {
+          ...mockSession.state.public,
+          // Board step 9 (screenId S2) after the player played card 3, an advance
+          // card whose advanceActionId is opening.card.3.advance.
+          timeline: { screenId: "S2", stepIndex: 9, stageId: "opening", canAdvance: true },
+          opening: { selectedCardId: "3" }
+        }
+      }
+    };
+
+    (global.fetch as any).mockImplementation((url: string, options: any) => {
+      if (url.includes("/api/runtime/sessions")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(sessionAtBoardReady) });
+      }
+      if (url === "/api/runtime/actions") {
+        const body = JSON.parse(options.body);
+        // The forward arrow dispatches the resolved card's published advance plan.
+        expect(body.actionId).toBe("opening.card.3.advance");
+        expect(body.params).toEqual({});
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(sessionAtBoardReady) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+
+    render(
+      <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA}
+        runtimeApiUrl="http://localhost:8080"
+        content={generatedAntarcticaContent}
+        mockups={[]}
+        gameUi={generatedAntarcticaUi}
+      />
+    );
+
+    await waitFor(() => {
+      expect((screen.getByRole("button", { name: /Вперед/i }) as HTMLButtonElement).disabled).toBe(false);
+    });
+    expect((screen.getByRole("button", { name: /Назад/i }) as HTMLButtonElement).disabled).toBe(true);
+
+    (global.fetch as any).mockClear();
+    fireEvent.click(screen.getByRole("button", { name: /Вперед/i }));
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith("/api/runtime/actions", expect.any(Object));
+    });
+    await waitFor(() => {
+      expect(loadPendingRuntimeCommand(sessionAtBoardReady.sessionId)).toBeNull();
+    });
+  });
+
+  it("keeps the board forward arrow disabled until the board can advance", async () => {
+    const sessionAtBoardWaiting = {
+      ...mockSession,
+      state: {
+        ...mockSession.state,
+        public: {
+          ...mockSession.state.public,
+          // Same board step, but no advance card played yet.
+          timeline: { screenId: "S2", stepIndex: 9, stageId: "opening", canAdvance: false }
+        }
+      }
+    };
+
+    (global.fetch as any).mockImplementation((url: string) => {
+      if (url.includes("/api/runtime/sessions")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(sessionAtBoardWaiting) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+
+    render(
+      <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA}
+        runtimeApiUrl="http://localhost:8080"
+        content={generatedAntarcticaContent}
+        mockups={[]}
+        gameUi={generatedAntarcticaUi}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Вперед/i })).toBeDefined();
+    });
+    expect((screen.getByRole("button", { name: /Вперед/i }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: /Назад/i }) as HTMLButtonElement).disabled).toBe(true);
   });
 
   it("renders i18 info screen when screenId=S1 and activeInfoId=i18", async () => {
@@ -1797,9 +2134,20 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
       />
     );
 
+    // TSK-20260719 W2-D: LGC-016 fix - i18 title/body restored from the
+    // reference spec (was reduced to a single short placeholder sentence).
     await waitFor(() => {
-      expect(screen.getByText("Отправка разведчиков")).toBeDefined();
-      expect(screen.getByText("Разведчики готовы к отправке.")).toBeDefined();
+      expect(screen.getByText("Прочь все сомнения!")).toBeDefined();
+      // dom-testing-library's default `getByText` normalizer collapses all
+      // whitespace in the rendered node's text to single spaces before
+      // comparing, but does NOT apply the same normalization to a string
+      // matcher - so the query below must already be whitespace-collapsed
+      // (paragraph breaks -> single space) to match the multi-paragraph body.
+      expect(
+        screen.getByText(
+          `Ожидая возвращения разведчиков, многие нервничали. Это придавало драматизма! Когда, наконец, они вернулись, все до одного (хотя некоторые были ранены), все вздохнули с облегчением. А разведчики стали народными героями, и дети надевали на них медали из льдинок и каких-то разноцветных штуковин. Это было очень трогательно! Ощущение победы витало в воздухе. Праздник, затеянный в честь разведгруппы, превратился в массовые гуляния, которые продолжались всю ночь. Героев постоянно окружали любопытные и требовали рассказать про экспедицию, айсберги, подводных чудовищ снова и снова... Необходимая медицинская помощь и усиленное питание были предоставлены всем разведчикам. Конечно, в том объеме, в котором удалось это заранее подготовить: ведь если не сделать подготовительные действия по сбору рыбы, то решение проблемы "зимнего жира" займет дополнительно почти неделю! В конце концов, когда эмоции немного стихли, было организовано содержательное совещание, все рассказы об экспедиции были тщательно проанализированы: величина айсбергов, возможность укрыться от ветров, условия для защиты яиц, прочая инфраструктура, насколько сложно будет добраться птенцам и пожилым пингвинам?.. Теперь уже не осталось места для сомнений в том, что переезд - это вполне реально и, более того, это даст для колонии ту безопасность, ради которой все и было затеяно. Но нужно было сделать выбор. И желательно - правильный!`
+        )
+      ).toBeDefined();
     });
   });
 
@@ -1834,11 +2182,22 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
       />
     );
 
+    // TSK-20260719 W2-D: LGC-016 fix - i19 title/body restored from the
+    // reference spec (was reduced to a single short placeholder sentence).
+    // i19 and i19_1 share the same reference title; only the body text tells
+    // the "made it in time" (i19) and "ran out of time" (i19_1) variants apart.
     await waitFor(() => {
       const renderer = document.querySelector(".game-renderer");
       expect(renderer).toBeDefined();
-      expect(screen.getByText("Последствия переезда")).toBeDefined();
-      expect(screen.getByText("После переезда началась работа над укреплением позиций.")).toBeDefined();
+      expect(screen.getByText("Великое переселение пингвинов…")).toBeDefined();
+      // See the i18 test above for why this query must already be
+      // whitespace-collapsed (dom-testing-library normalizes the rendered
+      // node's text, but not a string matcher).
+      expect(
+        screen.getByText(
+          `Вот и состоялся переезд... Конечно, не обошлось без различных досадных сбоев и непредвиденных обстоятельств, но они не были непреодолимы... Непреодолимо только время!.. К сожалению, времени не хватило, чтобы спасти всех пингвинов. Этот героический и одновременно трагический эпизод навсегда остался в памяти колонии. Эмоции постепенно улеглись, жизнь пошла своим чередом. Зима прошла на новом месте. Случались трудности. Новый айсберг отличался от прежнего: не было найдено богатых рыбой мест, было трудно предсказать направление ветра. Но все эти проблемы были не особенно серьезными. На следующий год разведчики нашли айсберг еще лучше, больше по площади и с большим количеством рыбных мест, имеющий очень комфортные параметры защиты от ветра. И, хотя это уже совсем другая история, но все-таки вопрос возник: а не стоит ли переехать снова?`
+        )
+      ).toBeDefined();
     });
   });
 
@@ -1873,11 +2232,21 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
       />
     );
 
+    // TSK-20260719 W2-D: LGC-016 fix - i19_1 title/body restored from the
+    // reference spec (was reduced to a single short placeholder sentence).
+    // See the note on the i19 test above for why the title is shared.
     await waitFor(() => {
       const renderer = document.querySelector(".game-renderer");
       expect(renderer).toBeDefined();
-      expect(screen.getByText("Быстрый переезд")).toBeDefined();
-      expect(screen.getByText("Переезд был осуществлен быстро.")).toBeDefined();
+      expect(screen.getByText("Великое переселение пингвинов…")).toBeDefined();
+      // See the i18 test above for why this query must already be
+      // whitespace-collapsed (dom-testing-library normalizes the rendered
+      // node's text, but not a string matcher).
+      expect(
+        screen.getByText(
+          `Вот и состоялся переезд... Конечно, не обошлось без различных досадных сбоев и непредвиденных обстоятельств, но они не были непреодолимы... Непреодолимо только время!.. Переезд уложился в расчетные семь дней. Времени было достаточно, удалось спасти всех пингвинов, и это - триумф! Зима прошла на новом месте. В колонии случались трудности. Новый айсберг отличался от прежнего: не было найдено богатых рыбой мест, было трудно предсказать направление ветра. Но все эти проблемы были не особенно серьезными. На следующий год разведчики нашли айсберг еще лучше, больше по площади и с большим количеством рыбных мест, имеющий очень комфортные параметры защиты от ветра. И, хотя это уже совсем другая история, но все-таки вопрос возник: а не стоит ли переехать снова?`
+        )
+      ).toBeDefined();
     });
   });
 
@@ -1912,10 +2281,12 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
       />
     );
 
+    // TSK-20260719 W2-D: LGC-016 fix - i20 title restored from the reference
+    // spec (was reduced to a single short placeholder sentence).
     await waitFor(() => {
       const renderer = document.querySelector(".game-renderer");
       expect(renderer).toBeDefined();
-      expect(screen.getByText("Второй переезд")).toBeDefined();
+      expect(screen.getByText("Правильный выбор!..")).toBeDefined();
       expect(screen.queryByText("Продолжить")).toBeNull();
       expect((screen.getByRole("button", { name: /Вперед/i }) as HTMLButtonElement).disabled).toBe(false);
     });
@@ -1955,8 +2326,10 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
     await waitFor(() => {
       const renderer = document.querySelector(".game-renderer");
       expect(renderer).toBeDefined();
-      expect(screen.getByText("Финальный экран")).toBeDefined();
-      expect(screen.getByText("История завершена.")).toBeDefined();
+      // Reference ending text restored by TSK-20260719 (LGC-017): title only,
+      // empty body — the monolith's single thank-you screen for both lines.
+      expect(screen.getByText("СПАСИБО ЗА ИГРУ!")).toBeDefined();
+      expect(screen.queryByText("История завершена.")).toBeNull();
       expect(screen.queryByText("Завершить")).toBeNull();
       expect((screen.getByRole("button", { name: /Вперед/i }) as HTMLButtonElement).disabled).toBe(false);
     });
@@ -2189,6 +2562,10 @@ describe("GamePlayer sticky screenKey regression (Finding 2)", () => {
   const stickyInitialSession = {
     sessionId: "sticky-session-1",
     gameId: stickyGameId,
+    participants: [
+      { seatId: "p1", playerId: "p1", kind: "human" as const, joinState: "local" as const }
+    ],
+    actionAvailability: [],
     version: { sessionId: "sticky-session-1", stateVersion: 0, lastEventSequence: 0 },
     state: {
       public: {

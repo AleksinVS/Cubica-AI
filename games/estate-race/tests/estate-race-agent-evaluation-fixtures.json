@@ -1,0 +1,66 @@
+{
+  "schemaVersion": "estate-race.agent-seat-evaluation/v1",
+  "gameId": "estate-race",
+  "scope": "These fixed snapshots prove legality and only the stated local preference. They are not a benchmark or claim of general strategic strength.",
+  "fixtures": [
+    {
+      "fixtureId": "estate-purchase-reserve",
+      "title": "Purchase an affordable unowned estate",
+      "scenario": "purchase",
+      "expectedIntent": { "actionId": "property.buy", "params": {} },
+      "boundedReasonableness": "In this snapshot the purchase is affordable and leaves more than 1,000 cash; only that local reserve fact is asserted.",
+      "notStrategicBenchmark": true
+    },
+    {
+      "fixtureId": "estate-auction-opening",
+      "title": "Open an auction at the exact minimum bid",
+      "scenario": "auction",
+      "expectedIntent": { "actionId": "property.auction.bid", "params": { "amount": 10 } },
+      "boundedReasonableness": "The bid is the current minimum and is affordable in this snapshot; no future-value claim is made.",
+      "notStrategicBenchmark": true
+    },
+    {
+      "fixtureId": "estate-jail-held-card",
+      "title": "Use an already held exit card",
+      "scenario": "jail-exit",
+      "expectedIntent": { "actionId": "jail.card.use.event", "params": {} },
+      "boundedReasonableness": "The actor has the matching card and this choice preserves the fixture's cash; it is not a universal jail policy.",
+      "notStrategicBenchmark": true
+    },
+    {
+      "fixtureId": "estate-building-open-window",
+      "title": "Open a house-building window for a complete group",
+      "scenario": "building",
+      "expectedIntent": { "actionId": "property.build", "params": { "unitKind": "house" } },
+      "boundedReasonableness": "The actor owns the complete undeveloped group, has ample cash and the bank has stock; no portfolio-wide optimum is claimed.",
+      "notStrategicBenchmark": true
+    },
+    {
+      "fixtureId": "estate-trade-open",
+      "title": "Open a draft with the only other active participant",
+      "scenario": "trade",
+      "expectedIntent": { "actionId": "trade.open", "params": { "targetPlayerId": "p1" } },
+      "boundedReasonableness": "This proves only that starting a reversible draft with the sole peer is legal; it does not rate an eventual offer.",
+      "notStrategicBenchmark": true
+    },
+    {
+      "fixtureId": "estate-liquidity-mortgage",
+      "title": "Create liquidity from an eligible unmortgaged asset",
+      "scenario": "liquidity",
+      "expectedIntent": { "actionId": "property.mortgage", "params": { "cellId": "cell-05" } },
+      "boundedReasonableness": "The actor cannot yet pay and this exact asset is eligible collateral; no ordering claim among multiple assets is made.",
+      "notStrategicBenchmark": true
+    },
+    {
+      "fixtureId": "estate-bankruptcy-private-cards",
+      "title": "Declare bankruptcy with the actor's exact two held cards",
+      "scenario": "bankruptcy",
+      "expectedIntent": {
+        "actionId": "bankruptcy.declare",
+        "params": { "heldCardId": "event-exit", "heldCardId2": "fund-exit" }
+      },
+      "boundedReasonableness": "The actor has insufficient cash and no remaining building, sale or mortgage liquidity; this is a terminal fixture fact, not strategy advice.",
+      "notStrategicBenchmark": true
+    }
+  ]
+}

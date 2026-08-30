@@ -1,181 +1,205 @@
 # AGENTS
 
-This file defines global rules for AI agents working in this repository.
+Short, stable rules for all AI agents working on Cubica. Domain-specific
+instructions live next to the code and documentation they govern.
 
----
+## Table of contents
 
-## Оглавление
+- [1. Scope and precedence](#1-scope-and-precedence)
+- [2. Context and sources](#2-context-and-sources)
+- [3. User communication](#3-user-communication)
+- [4. Architecture and documentation](#4-architecture-and-documentation)
+- [5. Code and contracts](#5-code-and-contracts)
+- [6. Execution and verification](#6-execution-and-verification)
+- [7. Game-led development](#7-game-led-development)
+- [8. Optional `$cubica` workflow](#8-optional-cubica-workflow)
+- [9. Temporary files](#9-temporary-files)
 
-- [1. Scope and precedence of `AGENTS.md`](#1-scope-and-precedence-of-agentsmd)
-- [2. General rules for agents](#2-general-rules-for-agents)
-- [2.1 Опциональный процесс `$cubica`](#21-опциональный-процесс-cubica)
-- [2.2 ADR and `PROJECT_ARCHITECTURE.md` synchronization](#22-adr-and-project_architecturemd-synchronization)
-- [3. Key project documents to read first](#3-key-project-documents-to-read-first)
-- [4. Work with temporary files](#4-work-with-temporary-files)
+## 1. Scope and precedence
 
----
+- Direct user and runtime instructions take precedence over repository files.
+- A target file is governed by the full instruction chain from the repository
+  root to its directory. A closer `AGENTS.md` wins on conflict;
+  `AGENTS.override.md` replaces `AGENTS.md` in the same directory. Read the
+  applicable chain for every affected area before working there. A root
+  override is forbidden: the global canonical file is `AGENTS.md`.
+- After a full context compaction, re-read the root and nearest local
+  instructions before continuing planning, implementation, or review. When
+  `$cubica` is active, also re-read `skills/C_cubica/SKILL.md`.
+- Canonical project skills live in `skills/`; `.codex/skills/` is only a
+  discovery bridge. Never execute snapshots from `skill-candidates/` as skills.
 
-## 1. Scope and precedence of `AGENTS.md`
+The root file must remain at or below 16 KiB. Every applicable instruction
+chain must remain at or below 28 KiB and the current agent's limit. Run
+`npm run verify:agent-instructions` to validate both constraints.
 
-- A **global**, short and stable `AGENTS.md` lives in the **repository root** (this file).
-- Each subsystem/service **may** have its own local `AGENTS.md`.
-- **Proximity rule:** always follow the **nearest** `AGENTS.md` (closest in the directory tree).
-- **Conflict rule:** if global and local rules conflict, the **local `AGENTS.md` has priority**.
+## 2. Context and sources
 
-Agents must always load and follow the nearest `AGENTS.md` before working in that area of the codebase.
+Load only the entry points required for the current task:
 
----
+| Need | Canonical source |
+| --- | --- |
+| Product context | [`PROJECT_OVERVIEW.md`](PROJECT_OVERVIEW.md) |
+| Repository navigation | [`PROJECT_STRUCTURE.yaml`](PROJECT_STRUCTURE.yaml) |
+| Architecture | [`PROJECT_ARCHITECTURE.md`](docs/architecture/PROJECT_ARCHITECTURE.md) and its local [`AGENTS.md`](docs/architecture/AGENTS.md) |
+| Gameplay slice delivery | [`gameplay-slices/README.md`](docs/architecture/gameplay-slices/README.md) |
+| Execution planning | [`docs/tasks/AGENTS.md`](docs/tasks/AGENTS.md) |
+| Selecting the next work | [`STRATEGY.md`](docs/tasks/STRATEGY.md) and [`NEXT_STEPS.md`](NEXT_STEPS.md) |
+| Browser diagnostics | [`local-browser-diagnostics.md`](docs/processes/local-browser-diagnostics.md) |
+| Shared Context7 and subagent MCP lifecycle | [`codex-subagent-mcp-lifecycle.md`](docs/processes/codex-subagent-mcp-lifecycle.md) |
 
+### Context7 and external research
 
-## 2. General rules for agents
+- Use Context7 when work depends on current or version-specific behavior of an
+  external library, framework, SDK, API, CLI, or cloud service. This includes
+  maintainer-recommended practices and evaluation of candidate tools not yet
+  used by Cubica.
+- Select the exact official source and version. Keep one query focused on one
+  concept. Never send secrets, personal data, or proprietary project code.
+- For Cubica facts, business logic, code review, and architecture, start with
+  repository evidence and checks. Use web research with primary sources for
+  broad comparisons; Context7 does not replace that research.
 
-Agents must always:
-1. **When planning, configuring, and developing, use Context7 MCP to get up-to-date documentation and best practices.**
-2. **After any full context compaction, reload the canonical process files**
-   - Re-read the nearest `AGENTS.md`.
-   - Re-read the project-local `skills/C_cubica/SKILL.md` when the current work uses the Cubica development workflow.
-   - Read project skills only from `skills/`; `.codex/skills/` is a Codex discovery bridge and must not contain independent copies.
-   - Treat this reload as mandatory before continuing implementation, review, or planning after a compaction boundary.
-3. **Maintain documentation**
-   - Create and update documentation wherever it is needed;
-   - Never leave documentation in a state that contradicts the actual code or structure.
-   - For all documentation files that are more than a few sections long, add a **Table of Contents** at the top.
-   - The Table of Contents should use **internal anchors/links** to sections within the same file.
+## 3. User communication
 
-4. **Write clear and rich comments in code**
-   - Comment code so that a **complete newcomer to the project** can quickly understand what is happening by reading:
-     - The file-level header comment (what this file/module is for).
-     - Function/method/class docstrings.
-     - Key inline comments for non-obvious logic and decisions.
-   - Comments should explain **why** something is done, not only **what** is done.
+Reply in Russian unless the user requests another language. Unless stated
+otherwise, treat the user as a product manager (PM): they own goals and approve
+architecture but are not expected to know the codebase or ADR numbers.
 
-5. **Rules for user interaction**
-   - Unless the user explicitly says otherwise, treat the user as a **product manager (PM)** who:
-     - manages the agents and owns product and architecture approvals;
-     - understands the product goals and the project architecture at a high level;
-     - is not expected to know the implementation stack, repository layout, code, or the numbers and contents of individual ADRs.
-   - Make every response self-contained for that PM context:
-     - never use an ADR number, file path, library name, code symbol, or internal project term as the sole explanation;
-     - on first mention, briefly explain what the referenced decision or component does, why it exists, and why it matters to the current product decision;
-     - use links and technical evidence as optional supporting detail, not as required reading for understanding the answer.
-   - Lead with the product outcome, risk, or decision that matters to the user. Then provide the necessary architecture explanation, and only then the implementation details or evidence.
-   - Clearly distinguish between:
-     - an already accepted project decision;
-     - a new architecture proposal that requires user approval;
-     - an implementation detail that the agent may decide autonomously;
-     - known technical debt or a temporary limitation.
-   - When requesting an architecture decision, explain in plain language:
-     - what must be decided;
-     - why the decision is needed now;
-     - the agent's recommended option and the reason for it;
-     - realistic alternatives and their trade-offs;
-     - what the approval enables, constrains, or postpones.
-   - For large reviews and plans, start with a short conclusion and priorities, then provide enough structured detail that the user does not need to open the referenced code or architecture documents to understand the recommendation.
-   - Prefer clear, standard terminology over slang or project-specific jargon.
-   - If a term might not be obvious to a new developer, treat it as non-standard and explain it (see the next point).
-   - When using a term that is not widely understood or is domain-specific (for example: “daemon”, “middleware”, “RPC gateway”, “filter graph”, or Russian terms like «демон», «промежуточное ПО», «шлюз RPC», «граф фильтров»):
-     - On its **first appearance** in a file or document, provide a **short definition**:
-       - In code: as an inline comment or part of the docstring.
-       - In docs: as a parenthetical definition or a short glossary-style note.
-   - After the first clear definition, you may use the term without repeating the explanation in that same file.
-   - Write in a simple and understandable way, avoiding complex phrasing and unnecessary professional jargon.
-   - When using a special or domain-specific term, give a short explanation or definition the first time it appears in the response, file, or document (this rule reinforces points 5–6 above).
-   - Avoid Anglicisms whenever possible.
+- Lead with the product outcome, risk, or decision, then explain architecture,
+  and only then provide implementation details.
+- Make the answer understandable without opening links. On first mention,
+  explain an internal component or specialist term and why it matters.
+- Clearly distinguish accepted decisions, new proposals requiring approval,
+  autonomous implementation details, and known technical debt.
+- When requesting an architecture decision, state what must be decided, why it
+  is needed now, the recommendation, realistic alternatives and consequences,
+  and what approval enables.
+- Use plain, standard language. Define specialist terms at first use. When
+  replying in Russian, avoid unnecessary anglicisms.
 
-6. **Write ADR for any architecture changes**
-   - When responding to or working on architectural decisions, proposals, or questions, the agent must always start its response by explicitly describing how it understood the decision/proposal/question.
-   - All architectural solutions must be reflected in the ADR.
-   - ADRs must contain only project architecture decisions, constraints, rejected alternatives, and consequences.
-   - ADRs must not be used as execution plans, slice trackers, next-step lists, or card-by-card migration specs.
-   - Delivery-specific bounded gameplay details must go in Gameplay Slice Records under `docs/architecture/gameplay-slices/`; task execution plans and handoffs go in `docs/tasks/active/`.
+## 4. Architecture and documentation
 
-7. **Manage subagent lifecycle**
-   - A subagent is a delegated worker process, thread, or external agent session started to perform a bounded part of the current task.
-   - After a subagent finishes its work and its result has been collected, the parent agent MUST explicitly close or terminate that subagent if it is no longer needed.
-   - Do not leave completed, failed, or obsolete subagent sessions running or open; this prevents dangling workers from blocking future agent spawns.
-   - Before reporting that a subagent-driven task is complete, check that no unnecessary subagents remain active.
+- Changes to a public contract, source of truth, trust or security boundary,
+  storage, compatibility, or material operating cost require a PM decision.
+  Classification and the ADR lifecycle are defined in
+  [`docs/architecture/AGENTS.md`](docs/architecture/AGENTS.md).
+- The primary agent accepts an architecture decision only after PM approval.
+  A subagent may research options or implement an accepted boundary, but it may
+  not approve a new one.
+- At the end of a large plan, look for fewer components, abstractions,
+  dependencies, and steps without losing functionality, quality, or safety.
+  Ask the PM before changing an accepted boundary.
+- Update affected maintained documentation with the code and leave no
+  contradictions. A document with six or more second-level sections needs a
+  table of contents with internal links. Change generated files only through
+  their generators.
+- `PROJECT_STRUCTURE.yaml` is the machine-readable map of the active structure,
+  not a historical inventory. Add `.desc.json` to a new significant directory.
+  After changing directories or `.desc.json`, run
+  `node scripts/dev/generate-structure.js`. Archives use `"_collapse": true`.
+- After changing the root `AGENTS.md`, run
+  `node scripts/dev/generate-claude-rules.cjs`. `CLAUDE.md` is only a generated
+  compatibility copy.
 
-8. **Развивать платформу через конкретные игры**
-   - По умолчанию новая продуктовая разработка начинается с вводных PM по конкретной игре и одного **вертикального среза** (законченного сценария от правил и состояния до интерфейса и проверок).
-   - Агент готовит и реализует единый план игрового среза. В плане он обязан отделить готовые возможности платформы, недостающие общие возможности и содержимое, которое остается только в этой игре.
-   - Архитектурные пробелы закрываются параллельно с игрой, но только в минимальном объеме, необходимом выбранному срезу. Не нужные ему платформенные блоки не реализуются «на будущее».
-   - До реализации агент выносит PM только существенные архитектурные вопросы: изменение публичных контрактов, источника истины, границ доверия и безопасности, хранения, совместимости игр или существенной стоимости эксплуатации. Выбор библиотек, внутренняя декомпозиция и распределение работы между субагентами не требуют согласования.
-   - Новая общая возможность доказывается сценарием выбранной игры и нейтральной тестовой фикстурой (минимальным набором тестовых данных без имен и правил этой игры).
-   - Этот режим не включает `$cubica`. Навык `$cubica` применяется только по прямому указанию пользователя. Полное описание режима хранится в `docs/tasks/STRATEGY.md`.
+## 5. Code and contracts
 
-9. **Manage architectural drift and legacy gaps**
-    - A gap between the current state and the target architecture is allowed, but it MUST be intentional, planned, and strictly documented as tech debt or legacy.
-    - Fixing such documented gaps has a high priority. Unplanned architectural drift is strictly prohibited.
+- Comments and docstrings should explain the purpose of a public boundary, an
+  invariant, or the reason for non-obvious logic. Do not narrate obvious code or
+  add boilerplate comments to every function or generated file.
+- Record an unavoidable gap from target architecture as bounded technical debt
+  with a removal plan. Unplanned architectural drift is forbidden.
+- A declarative cross-platform contract such as JSON Schema or OpenAPI remains
+  the source of truth for data shape. Validate it with a standard validator and
+  generate derived types. A handwritten guard or language-specific schema must
+  not duplicate that contract. Separate semantic and cross-field invariant
+  checks are allowed.
 
-10. **Platform purity over game-specific hacks**
-    - Any new game mechanic MUST be implemented by extending the manifest schema (capabilities, handlers, state extensions).
-    - NEVER add game-specific `if/else` branches or hardcode game IDs (e.g., "antarctica") in the core platform layers (like `services/runtime-api`).
-    - Before designing or implementing a game mechanic, the agent MUST explicitly analyze whether the mechanic is:
-      - **general**: useful for a whole class of games or the platform as a whole;
-      - **game-specific**: meaningful only for one concrete game or scenario.
-    - If the classification is unclear, the agent MUST clarify it with the user or document the assumption before implementation.
-    - General mechanics belong in platform contracts, schema extensions, reusable handlers, or shared renderer behavior. Game-specific mechanics belong in the concrete game bundle/plugin/manifest and must not leak into generic player/runtime layers.
+## 6. Execution and verification
 
-11. **Maintain PROJECT_STRUCTURE.yaml and .desc files**
-    - `PROJECT_STRUCTURE.yaml` is the single machine-readable source of truth for the repository layout.
-    - When adding new significant directories, you MUST create a `.desc.json` file inside them containing a short semantic description (1-2 sentences).
-    - After any structural changes (adding/removing folders or `.desc.json` files), you MUST run `node scripts/dev/generate-structure.js` to regenerate `PROJECT_STRUCTURE.yaml` and keep the architecture context up to date.
+- Before delegating Codex agents, apply
+  [`skills/C_codex-agent-routing/SKILL.md`](skills/C_codex-agent-routing/SKILL.md).
+  Other agent environments use an equivalent risk-based mapping while keeping
+  the shared process in
+  [`parallel-agent-coordination.md`](docs/processes/parallel-agent-coordination.md).
+  Delegate only a bounded independent result when it reduces latency or adds a
+  justified independent review. Keep small, tightly coupled work with the
+  primary agent.
+- Only the primary agent creates subagents. Start with one and add parallel
+  agents only for genuinely independent work, up to the current runtime limit
+  and safe host capacity. More than two active subagents require at least three
+  bounded workstreams with non-overlapping ownership and a clear net benefit.
+  Do not duplicate assignments or delegate one known deterministic command.
+- The primary agent of a root `TSK-*` is its coordinator and normally also its
+  integrator. Game-specific investigation may run in parallel in `open` mode.
+  Before any shared schema, Mechanics IR, runtime, player, storage, or trust
+  write, the coordinator publishes one `exclusive` owner and working branch for
+  the exact shared boundary in `NEXT_STEPS.md` on current `origin/main`, then
+  fetches and rechecks uniqueness before writing starts. Known complementary
+  game requirements must be synthesized before that owner starts writing.
+- Authors of dependent branches under one exclusive shared boundary hand off
+  their head SHA instead of merging independently. The coordinator, or a
+  separately appointed integrator when risk requires it, composes them in a
+  clean worktree. A semantic conflict stops integration and returns to PM when
+  it crosses an architecture decision.
+- Pass a narrow and deep context packet: exclude unrelated history, but include
+  every fact needed to finish safely within the assigned boundary—objective,
+  governing instructions and accepted decisions, relevant contracts and
+  dependencies, exact files or evidence, concurrent edits, criteria, checks,
+  and stop conditions. Do not save tokens by omitting material context. The
+  primary agent verifies the result against contracts and fresh evidence, then
+  closes unnecessary sessions.
+- Do not change user or project MCP configuration without an explicit request.
+  Never infer built-in subagent process ownership from PID/PGID snapshots or
+  signal suspected per-agent MCP groups. On a shared host, reclaim them only by
+  closing the whole confirmed Codex session after all of its agents finish, as
+  defined in [`codex-subagent-mcp-lifecycle.md`](docs/processes/codex-subagent-mcp-lifecycle.md).
+- Choose the narrowest checks that prove the changed behavior. Run full
+  canonical verification at a stage or release boundary, after a high-risk
+  shared-contract or infrastructure change, when explicitly requested, or when
+  narrower evidence is insufficient. Do not repeat expensive checks for
+  unchanged code.
+- Keep complete failure logs in `.tmp/` and pass only relevant excerpts into
+  context. Retry with a new hypothesis. Never run full suites, builds, or E2E in
+  parallel in one worktree.
+- Before claiming completion, apply
+  [`skills/verification-before-completion/SKILL.md`](skills/verification-before-completion/SKILL.md).
+  Report commands and results, intentionally omitted checks, and residual risk.
+- Before merging a completed branch into `main`, summarize the result and checks
+  and obtain approval unless the user already gave a direct merge instruction.
+  Integrate into current `main` from a clean separate worktree without rewriting
+  history.
 
-12. **ANTI-PATTERN: Declarative vs. Imperative Drift**
-    - NEVER replace declarative, cross-platform contracts (e.g., JSON Schema, OpenAPI specs) with language-specific imperative code (e.g., manual TypeScript type guards, Zod schemas isolated in backend code).
-    - JSON Schema is the Single Source of Truth (SSOT) for data structures like Game Manifests. Validation must be performed by executing a standard validator (like AJV) against the JSON Schema, not by writing manual `if (typeof x !== 'string')` checks.
+## 7. Game-led development
 
-13. **Scale verification to the size and risk of the change**
-    - A commit by itself is not a reason to run the entire project test suite.
-    - After an ordinary small or medium change, run only the focused tests for the changed behavior and the cheapest relevant static checks, such as type checking, schema validation, or `git diff --check`.
-    - After a large implementation block that changes several subsystem boundaries, run an expanded cross-subsystem verification once the block is stable. Do not repeat the same expensive checks after every intermediate commit when the verified code has not changed.
-    - Run the full canonical verification only at a stage boundary, before a release or final acceptance, after a high-risk change to shared contracts or infrastructure, when explicitly requested by the user, or when narrower evidence cannot establish safety.
-    - If a later edit affects behavior that was already checked, rerun the narrowest check that directly covers that behavior. Reuse still-current evidence for unaffected areas.
-    - In the handoff, state which checks were run, which were intentionally not run, and what residual risk remains.
+- Start product development with one concrete game and one complete vertical
+  slice. Do not implement unused features for hypothetical future needs.
+- Before changing a mechanic, classify it as general to a class of games or
+  specific to one package. Follow the local rules in
+  [`games/AGENTS.md`](games/AGENTS.md),
+  [`services/runtime-api/AGENTS.md`](services/runtime-api/AGENTS.md), and
+  [`packages/contracts/AGENTS.md`](packages/contracts/AGENTS.md) where relevant.
+- Build a new rule first from the existing Game Intent -> typed Mechanics IR
+  path and general operation catalog. Game-specific branches and hard-coded
+  game identifiers are forbidden in shared runtime and player layers.
+- If the language is insufficient, use the accepted isolated game-extension
+  boundary or ask the PM to approve a general operation or public schema
+  extension. Prove a general capability with both a game scenario and a neutral
+  fixture.
 
----
+## 8. Optional `$cubica` workflow
 
-## 2.1 Опциональный процесс `$cubica`
+Apply [`skills/C_cubica/SKILL.md`](skills/C_cubica/SKILL.md) only when the user
+explicitly requests `$cubica` or the autonomous Cubica workflow. In that mode,
+the user approves the root `TSK-*` plan and architecture decisions, while the
+orchestrator performs non-architectural work autonomously within those bounds.
+The full contract lives in the skill and ADR-068; an ordinary request to change
+code does not activate this workflow.
 
-При использовании проектного навыка `skills/C_cubica/SKILL.md` действуют правила ADR-068:
+## 9. Temporary files
 
-- только навык `$cubica` применяется по явному указанию пользователя; остальные навыки, включая перенесенные или адаптированные из `agent-skills` и `superpowers`, могут включаться автоматически по своим обычным правилам сопоставления запроса;
-- человек утверждает общий план корневой `TSK-*` и архитектурные решения;
-- явная команда реализовать ранее рассмотренный план считается его утверждением;
-- оркестратор самостоятельно принимает неархитектурные решения, декомпозирует работу, назначает субагентов, организует проверки и выполняет итоговую приемку;
-- самостоятельный результат может получить дочерний `TSK-*` с полем `Parent`, но нормативная глубина ограничена одним уровнем;
-- повторное согласование требуется при изменении архитектуры, цели, границ, основных результатов, общей приемки или существенного необратимого риска;
-- подтверждение прав, секретов и разрушительных внешних операций остается обязательной границей безопасности;
-- при частичном блокере оркестратор продолжает независимые части утвержденного плана;
-- временные задания и отчеты субагентов хранятся в `.tmp/agent-workflow/`, а не образуют параллельную систему планов.
-
-## 2.2 ADR and `PROJECT_ARCHITECTURE.md` synchronization
-
-When adding or changing any ADR, agents must update `docs/architecture/PROJECT_ARCHITECTURE.md` in the same change.
-
-- The accepted, proposed, or draft decision from the ADR must be reflected in `PROJECT_ARCHITECTURE.md` with the minimum sufficient description: the essence of the decision, key constraints, invariants, and consequences needed to understand the platform architecture unambiguously.
-- `PROJECT_ARCHITECTURE.md` must cover all current active and prospective ADRs. This includes `Accepted`, `Proposed`, and `Draft` ADRs that still describe a live or possible architecture direction.
-- Agents must keep `PROJECT_ARCHITECTURE.md` current when ADR status, scope, constraints, or consequences change.
-- For general architecture understanding, `PROJECT_ARCHITECTURE.md` should be enough. Read individual ADR files only when additional context, detailed alternatives, or deeper reasoning is needed.
-
-## 3. Key project documents to read first
-
-Before planning anything, use these entry points:
-
----
-
-- [PROJECT_OVERVIEW.md](/home/abc/projects/Cubica-AI/PROJECT_OVERVIEW.md) - high-level product and platform context.
-- [PROJECT_STRUCTURE.yaml](/home/abc/projects/Cubica-AI/PROJECT_STRUCTURE.yaml) - current repository layout and workspace map.
-- [docs/architecture/PROJECT_ARCHITECTURE.md](/home/abc/projects/Cubica-AI/docs/architecture/PROJECT_ARCHITECTURE.md) - canonical architecture overview and ADR cross-links.
-- [docs/architecture/gameplay-slices/README.md](/home/abc/projects/Cubica-AI/docs/architecture/gameplay-slices/README.md) - rules and index for bounded gameplay slice records; use these for delivery-specific migration details instead of ADRs.
-- [docs/tasks/STRATEGY.md](/home/abc/projects/Cubica-AI/docs/tasks/STRATEGY.md) - product-led development mode, strategic priorities, and rules for selecting platform work.
-- [NEXT_STEPS.md](/home/abc/projects/Cubica-AI/NEXT_STEPS.md) - current execution priorities and the next bounded slices.
-
----
-
-## 4. Work with temporary files
-
-- **Location:** All temporary files (screenshots, debug logs, intermediate artifacts) must be stored in the `.tmp/` directory at the repository root.
-- **Naming:** Use descriptive names with timestamps for screenshots (e.g., `.tmp/verification-topbar-2024-05-20.png`).
-- **Cleanup:** Agents are responsible for cleaning up their temporary files in `.tmp/` once the task is completed and verified. **Do not leave temporary files in the repository root.**
-- **Persistence:** Never commit files from the `.tmp/` directory to the repository.
+- Store screenshots, logs, and intermediate artifacts only under `.tmp/` with
+  descriptive names. Store temporary subagent packets under
+  `.tmp/agent-workflow/`.
+- Never add `.tmp/` to Git. At completion, remove only your own obsolete
+  artifacts; do not touch files owned by the user or other agents.

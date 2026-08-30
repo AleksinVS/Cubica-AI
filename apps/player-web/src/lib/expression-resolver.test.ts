@@ -4,7 +4,11 @@
 
 import { describe, expect, it } from "vitest";
 
-import { resolveExpressions, resolvePayloadExpressions } from "./expression-resolver";
+import {
+  resolveExpression,
+  resolveExpressions,
+  resolvePayloadExpressions
+} from "./expression-resolver";
 
 const state = {
   players: {
@@ -26,5 +30,36 @@ describe("turn-based expression bindings", () => {
       actionId: "property.buy",
       params: { cellId: "cell-02" }
     });
+  });
+
+  it("uses the same fallback semantics for text and action payload bindings", () => {
+    const expression = "{{state.public.missing || fallback}}";
+
+    expect(resolveExpression(expression, { public: {} })).toBe("fallback");
+    expect(resolveExpressions(`Result: ${expression}`, { public: {} })).toBe("Result: fallback");
+    expect(resolvePayloadExpressions(
+      { value: expression, quoted: "{{state.public.missing || 'not set'}}" },
+      { public: {} }
+    )).toEqual({ value: "fallback", quoted: "not set" });
+  });
+
+  it("resolves adjacent complete bindings independently", () => {
+    const bindingState = { public: { first: "alpha", second: "beta", third: 3 } };
+
+    expect(resolveExpressions("{{state.public.first}} {{state.public.second}}", bindingState))
+      .toBe("alpha beta");
+    expect(resolveExpressions(
+      "{{state.public.first}}/{{state.public.second}}/{{state.public.third}}",
+      bindingState
+    )).toBe("alpha/beta/3");
+    expect(resolveExpressions(
+      "Values: {{state.public.first}} and {{state.public.second}}.",
+      bindingState
+    )).toBe("Values: alpha and beta.");
+  });
+
+  it("keeps a single complete binding unwrapped", () => {
+    const value = { id: "bound-object" };
+    expect(resolveExpressions("{{bound}}", {}, { bound: value })).toBe(value);
   });
 });

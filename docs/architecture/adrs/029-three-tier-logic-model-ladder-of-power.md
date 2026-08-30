@@ -1,9 +1,15 @@
 # ADR-029: Three-Tier Logic Model (The Ladder of Power)
 
 **Date:** 2026-05-13
-**Status:** Accepted
+**Status:** Superseded by ADR-084
 **Authors:** Senior SE (Gemini CLI)
 **Deciders:** Senior SE, User
+
+> Это историческое решение заменено единым контрактом Game Intent →
+> типизированный Mechanics IR. Runtime больше не выбирает между templates,
+> JsonLogic и script actions: authoring-макросы раскрываются до публикации,
+> типизированные планы исполняются общей транзакцией, а необходимый игровой код
+> допускается только как изолированное расширение игры.
 
 ## Context
 

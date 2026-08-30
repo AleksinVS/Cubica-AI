@@ -50,6 +50,13 @@ const expectedOperations = [
   },
   {
     method: "get",
+    path: "/game-stylesheets/{gameId}/{stylesheetId}/{contentHash}.css",
+    operationId: "getGameStylesheet",
+    tag: "Content",
+    marker: "gameStylesheetMatch"
+  },
+  {
+    method: "get",
     path: "/games/{gameId}/player-content",
     operationId: "getPlayerContent",
     tag: "PlayerContent",
@@ -71,6 +78,30 @@ const expectedOperations = [
     marker: 'requestUrl.pathname.startsWith("/sessions/")'
   },
   {
+    method: "get",
+    path: "/sessions/{sessionId}/public-journal",
+    operationId: "getPublicGameplayJournal",
+    tag: "Sessions",
+    marker: "public-journal"
+  },
+  {
+    method: "get",
+    path: "/sessions/{sessionId}/facilitator-debrief",
+    operationId: "getFacilitatorDebrief",
+    tag: "Sessions",
+    marker: "facilitator-debrief"
+  },
+  {
+    method: "post",
+    path: "/sessions/{sessionId}/facilitator-debrief",
+    operationId: "generateFacilitatorDebrief",
+    tag: "Sessions",
+    marker: "facilitator-debrief"
+  },
+  { method: "post", path: "/sessions/{sessionId}/private-invite-claims", operationId: "claimPrivateInvite", tag: "Sessions", marker: "private-invite-claims" },
+  { method: "post", path: "/sessions/{sessionId}/seat-recovery-invites", operationId: "createSeatRecoveryInvite", tag: "Sessions", marker: "seat-recovery-invites" },
+  { method: "get", path: "/sessions/{sessionId}/events", operationId: "streamSessionVersionNotifications", tag: "Sessions", marker: "sessionVersionEventsMatch" },
+  {
     method: "post",
     path: "/sessions/{sessionId}/preview-restore",
     operationId: "restorePreviewSession",
@@ -78,6 +109,13 @@ const expectedOperations = [
     marker: "preview-restore"
   },
   { method: "post", path: "/actions", operationId: "dispatchAction", tag: "RuntimeActions", marker: 'requestUrl.pathname === "/actions"' },
+  {
+    method: "post",
+    path: "/action-previews/transport-road",
+    operationId: "previewTransportRoad",
+    tag: "RuntimeActions",
+    marker: 'requestUrl.pathname === "/action-previews/transport-road"'
+  },
   { method: "post", path: "/agent-turns", operationId: "runAgentTurn", tag: "AgentRuntime", marker: 'requestUrl.pathname === "/agent-turns"' }
 ];
 
@@ -147,6 +185,23 @@ function resolveJsonPointer(root, pointer) {
     current = current[part];
   }
   return current;
+}
+
+function resolveSchemaReference(spec, reference) {
+  if (reference.startsWith("#/")) {
+    return resolveJsonPointer(spec, reference);
+  }
+  const [relativeFile, fragment] = reference.split("#", 2);
+  const absolutePath = path.resolve(path.dirname(openApiPath), relativeFile);
+  let external;
+  try {
+    external = JSON.parse(fs.readFileSync(absolutePath, "utf8"));
+  } catch (error) {
+    fail(`Unable to read external OpenAPI schema ${reference}: ${error.message}`);
+  }
+  return fragment === undefined || fragment === ""
+    ? external
+    : resolveJsonPointer(external, `#${fragment}`);
 }
 
 function pathParameters(pathTemplate) {
@@ -247,7 +302,7 @@ function validateOperations(spec) {
 
 function validateRefs(spec) {
   for (const ref of collectRefs(spec)) {
-    if (resolveJsonPointer(spec, ref) === undefined) {
+    if (resolveSchemaReference(spec, ref) === undefined) {
       fail(`Unresolved OpenAPI reference: ${ref}`);
     }
   }
@@ -256,7 +311,7 @@ function validateRefs(spec) {
 function validateRuntimeRouteMarkers() {
   const source = fs.readFileSync(httpServerPath, "utf8");
   for (const expected of expectedOperations) {
-    if (!source.includes(expected.marker)) {
+    if (expected.marker && !source.includes(expected.marker)) {
       fail(`httpServer.ts marker for ${expected.method.toUpperCase()} ${expected.path} was not found: ${expected.marker}`);
     }
   }
@@ -277,21 +332,36 @@ function validateHistoricalSpecs() {
 function validateSchemaCoverage(spec) {
   const requiredSchemas = [
     "ActionResponse",
+    "AgentControl",
     "AgentTurnRequest",
     "AgentTurnResponse",
     "ContentReloadRequest",
     "ContentReloadResponse",
     "CreateSessionRequest",
+    "CreatedSessionResponse",
+    "PrivateInviteClaimRequest",
+    "PrivateSeatRecoveryInviteRequest",
+    "PrivateInviteClaimResponse",
+    "PrivateInviteToken",
+    "PrivateSessionInvite",
+    "PrivateSessionInvites",
     "DispatchActionRequest",
     "ErrorResponse",
     "GameReadinessResponse",
     "HealthResponse",
     "PlayerFacingContent",
+    "PortablePublicGameplayJournal",
+    "PublicCommandReceipt",
     "ReadinessResponse",
     "RestorePreviewSessionRequest",
     "RestorePreviewSessionResponse",
     "SessionResponse",
-    "SessionStateVersion"
+    "SessionParticipant",
+    "SessionParticipants",
+    "SessionStateVersion",
+    "SessionVersionNotification",
+    "TransportRoadPreviewRequest",
+    "TransportRoadPreviewResponse"
   ];
 
   for (const schemaName of requiredSchemas) {
@@ -314,7 +384,10 @@ function validateSchemaCoverage(spec) {
  * its conflict response were accidentally removed.
  */
 function validateActionConcurrencyContract(spec) {
-  const schema = spec.components.schemas.DispatchActionRequest;
+  const requestSchemaOrRef = spec.components.schemas.DispatchActionRequest;
+  const schema = typeof requestSchemaOrRef?.$ref === "string"
+    ? resolveSchemaReference(spec, requestSchemaOrRef.$ref)
+    : requestSchemaOrRef;
   if (!Array.isArray(schema.required) || !schema.required.includes("expectedStateVersion")) {
     fail("DispatchActionRequest must require expectedStateVersion");
   }
@@ -322,9 +395,238 @@ function validateActionConcurrencyContract(spec) {
   if (version?.type !== "integer" || version.minimum !== 0) {
     fail("DispatchActionRequest.expectedStateVersion must be an integer with minimum 0");
   }
+  for (const requiredField of ["sessionId", "actionId", "commandId", "params"]) {
+    if (!schema.required.includes(requiredField)) {
+      fail(`DispatchActionRequest must require ${requiredField}`);
+    }
+  }
+  if (schema.additionalProperties !== false) {
+    fail("DispatchActionRequest must be a closed transport envelope");
+  }
+  if (schema.properties?.commandId?.pattern !== "^cli_[A-Za-z0-9_-]{22}$") {
+    fail("DispatchActionRequest.commandId must use the external cli_ profile");
+  }
+  if (schema.properties?.playerId !== undefined || schema.properties?.payload !== undefined) {
+    fail("DispatchActionRequest must not expose trusted playerId or legacy payload");
+  }
   const conflict = spec.paths?.["/actions"]?.post?.responses?.["409"];
   if (conflict?.$ref !== "#/components/responses/Conflict") {
     fail("POST /actions must document the shared 409 Conflict response");
+  }
+
+  const agentConflict = spec.paths?.["/agent-turns"]?.post?.responses?.["409"];
+  if (agentConflict?.$ref !== "#/components/responses/Conflict") {
+    fail("POST /agent-turns must document the shared 409 Conflict response");
+  }
+
+  const previewSchema = spec.components.schemas.TransportRoadPreviewRequest;
+  if (!Array.isArray(previewSchema.required) || !previewSchema.required.includes("expectedStateVersion")) {
+    fail("TransportRoadPreviewRequest must require expectedStateVersion");
+  }
+  const previewVersion = previewSchema.properties?.expectedStateVersion;
+  if (previewVersion?.type !== "integer" || previewVersion.minimum !== 0) {
+    fail("TransportRoadPreviewRequest.expectedStateVersion must be an integer with minimum 0");
+  }
+  const previewConflict = spec.paths?.["/action-previews/transport-road"]?.post?.responses?.["409"];
+  if (previewConflict?.$ref !== "#/components/responses/Conflict") {
+    fail("POST /action-previews/transport-road must document the shared 409 Conflict response");
+  }
+}
+
+/** Locks small but security-relevant response and editor-preview shapes. */
+function validatePreciseRuntimeShapes(spec) {
+  const planHash = spec.components.schemas.PublicCommandReceipt?.properties?.planHash;
+  if (planHash?.pattern !== "^sha256:[a-f0-9]{64}$") {
+    fail("PublicCommandReceipt.planHash must use the sha256:<64 lowercase hex> profile");
+  }
+
+  const participant = spec.components.schemas.SessionParticipant;
+  if (
+    participant?.additionalProperties !== false ||
+    JSON.stringify(participant.required) !== JSON.stringify(["seatId", "playerId", "kind", "joinState"]) ||
+    JSON.stringify(participant.properties?.kind?.enum) !== JSON.stringify(["human", "agent"]) ||
+    JSON.stringify(participant.properties?.joinState?.enum) !== JSON.stringify(["local", "invited", "joined"])
+  ) {
+    fail("SessionParticipant must remain the exact closed authoritative seat shape");
+  }
+  const participantRef = "#/components/schemas/SessionParticipants";
+  for (const schemaName of [
+    "ActionResponse",
+    "AgentTurnResponse",
+    "CreatedSessionResponse",
+    "RestorePreviewSessionResponse",
+    "SessionResponse"
+  ]) {
+    const responseSchema = spec.components.schemas[schemaName];
+    if (!responseSchema.required?.includes("participants") ||
+        responseSchema.properties?.participants?.$ref !== participantRef) {
+      fail(`${schemaName} must require authoritative session participants`);
+    }
+  }
+
+  const agentControl = spec.components.schemas.AgentControl;
+  if (
+    agentControl?.additionalProperties !== false ||
+    JSON.stringify(agentControl.required) !== JSON.stringify(["playerId", "status", "reasonCode"]) ||
+    agentControl.properties?.playerId?.$ref !== "#/components/schemas/PlayerId" ||
+    JSON.stringify(agentControl.properties?.status?.enum) !==
+      JSON.stringify(["paused", "facilitatorTakeover"]) ||
+    JSON.stringify(agentControl.properties?.reasonCode?.enum) !==
+      JSON.stringify(["runtimeUnavailable", "invalidAttemptLimit", "fallbackUnavailable", "stepLimit"])
+  ) {
+    fail("AgentControl must remain the exact approved closed public status shape");
+  }
+  for (const schemaName of ["ActionResponse", "CreatedSessionResponse", "SessionResponse"]) {
+    if (spec.components.schemas[schemaName]?.properties?.agentControl?.$ref !==
+        "#/components/schemas/AgentControl") {
+      fail(`${schemaName} must expose optional AgentControl`);
+    }
+  }
+
+  const bundle = spec.components.schemas.LocalPlayerWebPluginBundle;
+  const required = new Set(Array.isArray(bundle?.required) ? bundle.required : []);
+  for (const field of ["gameId", "pluginId", "apiVersion", "target", "contentHash", "filePath"]) {
+    if (!required.has(field)) {
+      fail(`LocalPlayerWebPluginBundle must require ${field}`);
+    }
+  }
+  if (required.has("scope")) {
+    fail("LocalPlayerWebPluginBundle.scope must remain optional because the parser defaults it to preview");
+  }
+  if (bundle?.properties?.scope?.const !== "preview") {
+    fail("LocalPlayerWebPluginBundle.scope must allow only preview");
+  }
+  if (bundle?.properties?.apiVersion?.minLength !== 1 || bundle?.properties?.filePath?.minLength !== 1) {
+    fail("LocalPlayerWebPluginBundle apiVersion and filePath must be non-empty strings");
+  }
+  if (bundle?.properties?.file !== undefined) {
+    fail("LocalPlayerWebPluginBundle must use parser field filePath, not legacy file");
+  }
+
+  const stylesheetResponse = spec.paths?.["/game-stylesheets/{gameId}/{stylesheetId}/{contentHash}.css"]
+    ?.get?.responses?.["200"];
+  if (stylesheetResponse?.content?.["text/css"]?.schema?.type !== "string") {
+    fail("GET game stylesheet must document a text/css string response");
+  }
+  const stylesheetId = spec.components?.parameters?.StylesheetId;
+  if (stylesheetId?.schema?.pattern !== "^[a-z0-9][a-z0-9-]{0,63}$") {
+    fail("StylesheetId must match the runtime route's bounded identifier profile");
+  }
+}
+
+function validateSessionTrustContract(spec) {
+  if (spec.components?.securitySchemes?.SessionBearer?.scheme !== "bearer") {
+    fail("OpenAPI must declare the SessionBearer HTTP security scheme");
+  }
+  for (const [pathTemplate, method] of [
+    ["/sessions/{sessionId}", "get"],
+    ["/sessions/{sessionId}/events", "get"],
+    ["/sessions/{sessionId}/public-journal", "get"],
+    ["/sessions/{sessionId}/preview-restore", "post"],
+    ["/actions", "post"],
+    ["/action-previews/transport-road", "post"],
+    ["/agent-turns", "post"]
+  ]) {
+    const operation = spec.paths?.[pathTemplate]?.[method];
+    if (!Array.isArray(operation?.security) || operation.security[0]?.SessionBearer === undefined) {
+      fail(`${method.toUpperCase()} ${pathTemplate} must require SessionBearer authentication`);
+    }
+    if (operation.responses?.["401"]?.$ref !== "#/components/responses/Unauthorized") {
+      fail(`${method.toUpperCase()} ${pathTemplate} must document 401 Unauthorized`);
+    }
+  }
+
+  const create = spec.components.schemas.CreateSessionRequest;
+  if (
+    create.properties?.playerId !== undefined ||
+    create.properties?.participants !== undefined ||
+    create.additionalProperties !== false
+  ) {
+    fail("CreateSessionRequest must not accept client-selected playerId or unknown fields");
+  }
+  const agentSeatCount = create.properties?.agentSeatCount;
+  if (agentSeatCount?.type !== "integer" || agentSeatCount.minimum !== 0 || agentSeatCount.maximum !== 64) {
+    fail("CreateSessionRequest.agentSeatCount must be an optional bounded non-negative integer");
+  }
+  const preview = spec.components.schemas.TransportRoadPreviewRequest;
+  if (preview.properties?.playerId !== undefined) {
+    fail("Protected preview requests must not accept client-selected playerId");
+  }
+  const inviteToken = spec.components.schemas.PrivateInviteToken;
+  if (inviteToken?.pattern !== "^inv_[A-Za-z0-9_-]{43}$") {
+    fail("PrivateInviteToken must use the inv_ base64url profile");
+  }
+  const invite = spec.components.schemas.PrivateSessionInvite;
+  if (
+    invite?.additionalProperties !== false ||
+    JSON.stringify(invite.required) !== JSON.stringify(["seatId", "playerId", "inviteToken", "expiresAt"]) ||
+    invite.properties?.inviteToken?.$ref !== "#/components/schemas/PrivateInviteToken" ||
+    invite.properties?.expiresAt?.format !== "date-time"
+  ) {
+    fail("PrivateSessionInvite must remain the exact closed seat-bound invite shape");
+  }
+  if (spec.components.schemas.CreatedSessionResponse?.properties?.privateInvites?.$ref !==
+      "#/components/schemas/PrivateSessionInvites") {
+    fail("CreatedSessionResponse must expose optional creation-only privateInvites");
+  }
+  const eventStream = spec.paths?.["/sessions/{sessionId}/events"]?.get;
+  if (eventStream?.responses?.["200"]?.content?.["text/event-stream"]?.schema?.$ref !==
+      "#/components/schemas/SessionVersionNotification" ||
+      eventStream?.responses?.["429"]?.$ref !== "#/components/responses/TooManyRequests" ||
+      eventStream?.responses?.["503"]?.$ref !== "#/components/responses/Unavailable" ||
+      JSON.stringify(Object.keys(eventStream?.responses ?? {}).sort()) !==
+        JSON.stringify(["200", "401", "429", "503"])) {
+    fail("GET session events must expose only SessionVersionNotification and document 401/429/503");
+  }
+  const claim = spec.paths?.["/sessions/{sessionId}/private-invite-claims"]?.post;
+  if (JSON.stringify(claim?.security) !== JSON.stringify([{}, { SessionBearer: [] }]) ||
+      !claim?.description?.includes("initial invite or recovery invite") ||
+      claim?.requestBody?.$ref !== "#/components/requestBodies/PrivateInviteClaimRequest" ||
+      claim?.responses?.["200"]?.content?.["application/json"]?.schema?.$ref !==
+        "#/components/schemas/PrivateInviteClaimResponse" ||
+      claim?.responses?.["401"]?.$ref !== "#/components/responses/InvalidPrivateInvite" ||
+      claim?.responses?.["413"]?.$ref !== "#/components/responses/PayloadTooLarge" ||
+      claim?.responses?.["503"]?.$ref !== "#/components/responses/Unavailable" ||
+      JSON.stringify(Object.keys(claim?.responses ?? {}).sort()) !== JSON.stringify(["200", "400", "401", "413", "503"])) {
+    fail("Private invite claim must allow anonymous or same-principal recovery authentication and use canonical schemas");
+  }
+  const recoveryRequest = spec.components.schemas.PrivateSeatRecoveryInviteRequest;
+  if (recoveryRequest?.type !== "object" ||
+      JSON.stringify(recoveryRequest.required) !== JSON.stringify(["seatId"]) ||
+      recoveryRequest.properties?.seatId?.type !== "string" ||
+      recoveryRequest.properties?.seatId?.minLength !== 1 ||
+      recoveryRequest.additionalProperties !== false) {
+    fail("PrivateSeatRecoveryInviteRequest must be a closed object containing a non-empty seatId");
+  }
+  const recovery = spec.paths?.["/sessions/{sessionId}/seat-recovery-invites"]?.post;
+  if (recovery?.security?.[0]?.SessionBearer === undefined ||
+      recovery?.requestBody?.$ref !== "#/components/requestBodies/PrivateSeatRecoveryInviteRequest" ||
+      recovery?.responses?.["201"]?.content?.["application/json"]?.schema?.$ref !== "#/components/schemas/PrivateSessionInvite" ||
+      JSON.stringify(Object.keys(recovery?.responses ?? {}).sort()) !== JSON.stringify(["201", "400", "401", "403", "404", "413", "423", "503"])) {
+    fail("Seat recovery invite must expose the authenticated canonical request, invite response, and exact errors");
+  }
+  const claimResponse = spec.components.schemas.PrivateInviteClaimResponse;
+  if (claimResponse?.properties?.privateInvites !== undefined ||
+      claimResponse?.properties?.credential?.$ref !== "#/components/schemas/SessionCredential") {
+    fail("Private invite claim response must expose credential and never privateInvites");
+  }
+}
+
+function validatePublicJournalContract(spec) {
+  const schema = spec.components.schemas.PortablePublicGameplayJournal;
+  if (schema?.$ref !== "./schemas/public-gameplay-journal.schema.json") {
+    fail("PortablePublicGameplayJournal must reference the canonical public journal schema");
+  }
+  const operation = spec.paths?.["/sessions/{sessionId}/public-journal"]?.get;
+  if (operation?.responses?.["200"]?.content?.["application/json"]?.schema?.$ref !==
+      "./schemas/public-gameplay-journal.schema.json") {
+    fail("GET public journal must return the canonical public journal schema");
+  }
+  if (operation?.responses?.["413"]?.$ref !== "#/components/responses/PayloadTooLarge") {
+    fail("GET public journal must document the explicit 413 response");
+  }
+  if (operation?.responses?.["401"]?.$ref !== "#/components/responses/Unauthorized") {
+    fail("GET public journal must document 401 Unauthorized");
   }
 }
 
@@ -337,6 +639,9 @@ try {
   validateHistoricalSpecs();
   validateSchemaCoverage(spec);
   validateActionConcurrencyContract(spec);
+  validateSessionTrustContract(spec);
+  validatePreciseRuntimeShapes(spec);
+  validatePublicJournalContract(spec);
   console.log("validate-runtime-api-openapi: OK");
 } catch (error) {
   console.error("validate-runtime-api-openapi: failed");

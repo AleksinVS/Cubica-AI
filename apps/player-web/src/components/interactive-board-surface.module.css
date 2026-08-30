@@ -9,6 +9,90 @@
   overflow: hidden;
 }
 
+/*
+ * In a map-first workspace the board keeps the whole layer. The independent
+ * DOM actions become an overlay instead of a permanent sibling column, so
+ * accessibility does not reduce the spatial workspace.
+ */
+.surfaceMapFirst {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  grid-template-columns: minmax(0, 1fr);
+  background: #171612;
+}
+
+.surfaceMapFirst .canvasHost {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.surfaceMapFirst .accessibleControls {
+  position: absolute;
+  z-index: 4;
+  top: clamp(4.5rem, 9vh, 7rem);
+  right: 1rem;
+  width: min(21rem, calc(100% - 2rem));
+  max-height: min(68vh, 38rem);
+  border: 1px solid rgb(246 240 223 / 24%);
+  border-radius: 0.75rem;
+  box-shadow: 0 1.2rem 3rem rgb(0 0 0 / 38%);
+  /*
+   * A nearly opaque fill preserves legibility without recompositing a moving
+   * multi-megapixel canvas behind this panel on every pan or zoom frame.
+   */
+  background: rgb(29 27 22 / 98%);
+}
+
+.actionPanelToggle {
+  display: none;
+}
+
+.cameraControls {
+  position: absolute;
+  z-index: 6;
+  right: 1rem;
+  bottom: 1rem;
+  display: flex;
+  gap: 0.45rem;
+  padding: 0.45rem;
+  border: 1px solid rgb(246 240 223 / 24%);
+  border-radius: 0.7rem;
+  background: rgb(29 27 22 / 98%);
+  box-shadow: 0 0.8rem 2rem rgb(0 0 0 / 32%);
+}
+
+.cameraButton,
+.cameraButtonWide {
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid #bca46f;
+  border-radius: 0.45rem;
+  background: #2b281f;
+  color: #fff2b8;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.cameraButtonWide {
+  min-width: auto;
+}
+
+.cameraButton:focus-visible,
+.cameraButtonWide:focus-visible {
+  outline: 3px solid #fff2b8;
+  outline-offset: 3px;
+}
+
+.cameraButton:disabled,
+.cameraButtonWide:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 .canvasHost {
   min-width: 0;
   min-height: 26rem;
@@ -41,6 +125,41 @@
   list-style: none;
 }
 
+.actionForm {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.75rem;
+  border: 1px solid rgb(246 240 223 / 18%);
+  border-radius: 0.55rem;
+  background: rgb(255 255 255 / 4%);
+}
+
+.actionField {
+  display: grid;
+  gap: 0.3rem;
+  color: #e8dfc9;
+  font-size: 0.875rem;
+  line-height: 1.35;
+}
+
+.actionField select,
+.actionField input {
+  min-width: 0;
+  min-height: 2.5rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid #8f825f;
+  border-radius: 0.35rem;
+  background: #26231c;
+  color: #fff8e7;
+  font: inherit;
+}
+
+.actionField select:focus-visible,
+.actionField input:focus-visible {
+  outline: 3px solid #fff2b8;
+  outline-offset: 2px;
+}
+
 .actionButton {
   width: 100%;
   min-height: 2.75rem;
@@ -65,6 +184,40 @@
   opacity: 0.5;
 }
 
+.previewButton {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid #73b9aa;
+  border-radius: 0.35rem;
+  background: #183b35;
+  color: #d9fff5;
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.previewButton:focus-visible {
+  outline: 3px solid #b9fff0;
+  outline-offset: 3px;
+}
+
+.previewButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.previewResult {
+  margin: 0;
+  padding: 0.65rem 0.75rem;
+  border-left: 0.25rem solid #73b9aa;
+  background: rgb(24 59 53 / 72%);
+  color: #d9fff5;
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
 .actionDescription,
 .emptyActions {
   display: block;
@@ -85,6 +238,50 @@
   color: #ffe9e4;
 }
 
+/*
+ * A persistent action column is useful only when the viewport leaves enough
+ * untouched map beside it. On smaller desktop and tablet widths the same
+ * controls become an explicit, initially closed drawer: the map remains
+ * readable, while every action is still available as ordinary keyboard-safe
+ * DOM content.
+ */
+@media (max-width: 1500px) {
+  .surfaceMapFirst .actionPanelToggle {
+    position: absolute;
+    z-index: 7;
+    top: 4.5rem;
+    right: 1rem;
+    display: block;
+    min-height: 2.75rem;
+    padding: 0.55rem 0.85rem;
+    border: 1px solid #bca46f;
+    border-radius: 0.45rem;
+    background: #2b281f;
+    color: #fff2b8;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 0.8rem 2rem rgb(0 0 0 / 32%);
+  }
+
+  .surfaceMapFirst .actionPanelToggle:focus-visible {
+    outline: 3px solid #fff2b8;
+    outline-offset: 3px;
+  }
+
+  .surfaceMapFirst .accessibleControls {
+    top: 7.75rem;
+    display: none;
+    max-height: min(60vh, 38rem);
+    scrollbar-color: #bca46f #2b281f;
+    scrollbar-width: auto;
+  }
+
+  .surfaceMapFirst .accessibleControls[data-panel-open="true"] {
+    display: block;
+  }
+}
+
 @media (max-width: 800px) {
   .surface {
     grid-template-columns: 1fr;
@@ -93,5 +290,37 @@
   .accessibleControls {
     border-top: 1px solid rgb(246 240 223 / 18%);
     border-left: 0;
+  }
+
+  .surfaceMapFirst .accessibleControls {
+    top: 7.75rem;
+    right: 0.75rem;
+    /* The manifest action tray occupies the lowest safe area. Accessible
+       board actions remain independently usable immediately above it. */
+    bottom: 5.75rem;
+    left: 0.75rem;
+    width: auto;
+    max-height: none;
+    border: 1px solid rgb(246 240 223 / 24%);
+  }
+
+  .surfaceMapFirst .actionPanelToggle {
+    top: 0.75rem;
+    right: auto;
+    left: 0.75rem;
+  }
+
+  .cameraControls {
+    right: 0.75rem;
+    bottom: calc(42vh + 6.5rem);
+    left: 0.75rem;
+    overflow-x: auto;
+  }
+}
+
+@media (min-width: 801px) and (max-width: 900px) {
+  .surfaceMapFirst .cameraControls {
+    right: 0.75rem;
+    bottom: 6rem;
   }
 }

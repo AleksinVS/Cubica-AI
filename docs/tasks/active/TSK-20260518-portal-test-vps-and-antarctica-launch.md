@@ -358,6 +358,10 @@ Current validation notes:
 - `npm ci --prefix services/portal-backend` passed after retrying with longer npm fetch timeouts.
 - `npm run build --prefix services/portal-backend` passed for the Strapi admin build.
 - `apps/player-web` now contains the first portal launch binding path through `src/presenter/portal-launch-client.ts` and `GamePresenter`; remaining gaps are portal-player-runtime integration coverage, completion event handling, archive/journal behavior, deploy readiness and production policy for the payment stub.
+- `TSK-20260803-portal-access-control` закрыла кодовую блокировку внешнего тестового
+  запуска: object ownership, core route closure, fail-closed Robokassa callback и
+  двухсторонний non-production gate платёжной заглушки проверены. Перед открытием VPS
+  остаётся environment smoke по её артефакту `route-and-role-audit.md`.
 
 ## Artifacts
 
@@ -403,3 +407,10 @@ Current validation notes:
 - Added ADR-033 for portal runtime session binding.
 - Added task artifact `session-management-design.md` with link-type/game-type matrix, backend/frontend/runtime work items and acceptance.
 - Updated this TSK with remaining gaps, Slice 6 Player Runtime Binding, admin route shape and open decisions.
+
+### 2026-08-27 — Codex portal access-control handoff
+
+- Закрыты TL-12–TL-17 из ревью 2026-08-03 без нового сервиса или схемы.
+- Следующая работа этого трека начинается с preflight конкретного тестового VPS:
+  переменные окружения, роль custom actions и двухпользовательский smoke; затем можно
+  продолжать полный portal → runtime → Player → completion → journal сценарий.

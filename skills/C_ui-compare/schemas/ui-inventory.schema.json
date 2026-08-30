@@ -1,0 +1,233 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cubica.local/schemas/ui-comparison-inventory.v1.json",
+  "title": "Cubica UI Comparison Inventory",
+  "description": "Strict semantic inventory used before implementing or comparing a UI reference. It augments, but does not replace, the general ADR-016 design-artifact contract.",
+  "oneOf": [
+    {
+      "$ref": "#/definitions/standaloneInventory"
+    },
+    {
+      "$ref": "#/definitions/designArtifactInventory"
+    }
+  ],
+  "definitions": {
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "usageRights"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "owned-original",
+            "licensed",
+            "generated",
+            "third-party-reference"
+          ]
+        },
+        "uri": {
+          "type": "string",
+          "minLength": 1
+        },
+        "author": {
+          "type": "string",
+          "minLength": 1
+        },
+        "license": {
+          "type": "string",
+          "minLength": 1
+        },
+        "usageRights": {
+          "enum": [
+            "owned",
+            "licensed",
+            "authorized",
+            "style-reference-only",
+            "unknown"
+          ]
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "bounds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "x",
+        "y",
+        "width",
+        "height"
+      ],
+      "properties": {
+        "x": {
+          "type": "number",
+          "minimum": 0
+        },
+        "y": {
+          "type": "number",
+          "minimum": 0
+        },
+        "width": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "region": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "id",
+        "type",
+        "role",
+        "layer",
+        "bounds"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$"
+        },
+        "type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "role": {
+          "enum": [
+            "background",
+            "container",
+            "content",
+            "control",
+            "text",
+            "media",
+            "decor"
+          ]
+        },
+        "layer": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "bounds": {
+          "$ref": "#/definitions/bounds"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "selector": {
+          "type": "string",
+          "minLength": 1
+        },
+        "overlaps": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "allowDominant": {
+          "type": "boolean"
+        },
+        "elements": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/region"
+          }
+        }
+      }
+    },
+    "canvas": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "width",
+        "height"
+      ],
+      "properties": {
+        "width": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "standaloneInventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "$schema",
+        "schemaVersion",
+        "source",
+        "canvas",
+        "regions"
+      ],
+      "properties": {
+        "$schema": {
+          "const": "https://cubica.local/schemas/ui-comparison-inventory.v1.json"
+        },
+        "schemaVersion": {
+          "const": "1.0"
+        },
+        "source": {
+          "$ref": "#/definitions/source"
+        },
+        "canvas": {
+          "$ref": "#/definitions/canvas"
+        },
+        "regions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/region"
+          }
+        }
+      }
+    },
+    "designArtifactInventory": {
+      "allOf": [
+        {
+          "$ref": "https://cubica.platform/schemas/design-artifact.v1.json"
+        },
+        {
+          "type": "object",
+          "required": [
+            "image",
+            "provenance",
+            "regions"
+          ],
+          "properties": {
+            "provenance": {
+              "$ref": "#/definitions/source"
+            },
+            "image": {
+              "type": "object",
+              "required": [
+                "dimensions"
+              ]
+            },
+            "regions": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/definitions/region"
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

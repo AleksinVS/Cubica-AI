@@ -1,31 +1,49 @@
 {
   "schemaVersion": "1.0",
-  "policyVersion": "1.0.1",
+  "policyVersion": "1.1.1",
   "adapterVersion": "1.0.0",
   "sources": [
     {
       "id": "agents-general",
       "path": "AGENTS.md",
-      "heading": "2. General rules for agents",
-      "normalizedSha256": "7b9b167b5c699d383bb481c3635ba7d387ca9573b754e39d73dbaf3372817523"
+      "heading": "1. Scope and precedence",
+      "normalizedSha256": "6260e9fb5acb7fad47322229e3e71a4a531fd091599844c7c4071ff173aad992"
     },
     {
       "id": "agents-autonomous",
       "path": "AGENTS.md",
-      "heading": "2.1 Опциональный процесс `$cubica`",
-      "normalizedSha256": "61fe6acd5d193c1e6ade2eaa169eff3d3485144c41badd2a671fbf91b7f2b5ba"
+      "heading": "8. Optional `$cubica` workflow",
+      "normalizedSha256": "6da8bc7364d39053472b72b73a640880995d185509377bd7abbe908cf2d66e96"
     },
     {
       "id": "agents-adr-sync",
       "path": "AGENTS.md",
-      "heading": "2.2 ADR and `PROJECT_ARCHITECTURE.md` synchronization",
-      "normalizedSha256": "fc2d38704fbfa64ced73b4e47e7fb73aee1fe5d3777ff9031144ae9691e06bae"
+      "heading": "4. Architecture and documentation",
+      "normalizedSha256": "f7cb597b847a02864dd05c0037276870a45e7bdb4bfbea153b13cfcf36c6eac9"
     },
     {
       "id": "agents-temp",
       "path": "AGENTS.md",
-      "heading": "4. Work with temporary files",
-      "normalizedSha256": "5473d81c4605d4ad42d77408711c5595703c9f7a8780b0f5467f8f455998de1b"
+      "heading": "9. Temporary files",
+      "normalizedSha256": "e12e234ab369c6cdb1a7c62657905936251b063b83f0681583bb66cea7a7db74"
+    },
+    {
+      "id": "agents-contracts",
+      "path": "AGENTS.md",
+      "heading": "5. Code and contracts",
+      "normalizedSha256": "51e5893a35d6284951ec8509684d7bd5341ea4288a5ac440b03800114bb01d80"
+    },
+    {
+      "id": "agents-execution",
+      "path": "AGENTS.md",
+      "heading": "6. Execution and verification",
+      "normalizedSha256": "f1e343db4c9296cf77f18dc7feed5de6876d4576e301e58913ec2b893f655345"
+    },
+    {
+      "id": "architecture-lifecycle",
+      "path": "docs/architecture/AGENTS.md",
+      "heading": "Жизненный цикл ADR",
+      "normalizedSha256": "53dfd3b20191764438a4b14a221849ce9cf8cfedcc70ffd074c000829ad1fe1b"
     },
     {
       "id": "adr-031-decision",
@@ -37,19 +55,19 @@
       "id": "adr-068-decision",
       "path": "docs/architecture/adrs/068-human-approved-autonomous-agent-workflow.md",
       "heading": "Решение",
-      "normalizedSha256": "fab4bb792608e3bd5b21f9c6ec6cf2d25b4bd123ebe4687cd1f8e4cfcebd7259"
+      "normalizedSha256": "83a0cf0b91bf71ff993a5a0c4f1557ba542c01a1837e50f1f08183a42a9df343"
     },
     {
       "id": "adr-069-decision",
       "path": "docs/architecture/adrs/069-managed-external-skill-adaptation.md",
       "heading": "Решение",
-      "normalizedSha256": "94218861e8f26476aa93d4c5025d3585df238e30b20e7df4b4acd325a184a49b"
+      "normalizedSha256": "762ee2d417a6bc56a225f2e490c12f4d266b2e6287ee7b9276092b288fdbcb33"
     },
     {
       "id": "task-format",
       "path": "docs/tasks/README.md",
       "heading": "5. Формат рабочей задачи",
-      "normalizedSha256": "819d557f35cb86df977bdb6f191abf1e16bc401e854b52beeb43e5ffff13bc70"
+      "normalizedSha256": "29db3111ceb4bbca0ecbf00cf5437da45a305dd297e78d5eb3bf058c6a370a15"
     },
     {
       "id": "task-hierarchy",
@@ -89,8 +107,8 @@
       "statement": "Архитектурные решения согласуются с человеком и фиксируются в ADR с синхронным обновлением PROJECT_ARCHITECTURE.md.",
       "remediation": "Заменить автономное архитектурное решение остановкой затронутой части и подготовкой ADR.",
       "sourceIds": [
-        "agents-general",
         "agents-adr-sync",
+        "architecture-lifecycle",
         "adr-068-decision"
       ]
     },
@@ -140,6 +158,21 @@
       ]
     },
     {
+      "id": "activation.candidates-inert",
+      "severity": "block",
+      "tags": [
+        "activation",
+        "adaptation",
+        "global"
+      ],
+      "statement": "Неадаптированный внешний навык из skill-candidates является только референсом и не может выполняться, включаться или попадать в путь автоматического обнаружения.",
+      "remediation": "Оставить точный снимок в skill-candidates и материализовать отдельную очищенную проектную версию в skills после смысловой адаптации.",
+      "sourceIds": [
+        "agents-general",
+        "adr-069-decision"
+      ]
+    },
+    {
       "id": "orchestration.no-meta-bootstrap",
       "severity": "block",
       "tags": [
@@ -165,8 +198,8 @@
       "statement": "Запущенные субагенты получают ограниченное задание, проверяются главным агентом и явно закрываются.",
       "remediation": "Добавить границы задания, проверку различия и явное завершение либо удалить делегирование из навыка.",
       "sourceIds": [
-        "agents-general",
-        "agents-autonomous"
+        "agents-execution",
+        "adr-068-decision"
       ]
     },
     {
@@ -180,6 +213,7 @@
       "statement": "Внешний навык не должен автоматически менять ветку, рабочее дерево, историю, создавать commit, push, PR или worktree.",
       "remediation": "Заменить действие рекомендацией проверить состояние и выполнить операцию только по прямому запросу и с учетом локальных правил.",
       "sourceIds": [
+        "agents-execution",
         "adr-069-decision"
       ]
     },
@@ -195,8 +229,8 @@
       "statement": "Разрушительные, необратимые внешние операции, права и секреты требуют отдельного подтверждения.",
       "remediation": "Остановить затронутую операцию и запросить разрешение, продолжая независимую безопасную работу.",
       "sourceIds": [
-        "agents-autonomous",
-        "adr-068-decision"
+        "adr-068-decision",
+        "task-approval"
       ]
     },
     {
@@ -211,6 +245,7 @@
       "statement": "Доказательство выбирается по риску и области изменения; нельзя безусловно требовать полный набор тестов после каждой локальной правки.",
       "remediation": "Требовать свежую достаточную проверку конкретного утверждения и честно указывать непроверенные границы.",
       "sourceIds": [
+        "agents-execution",
         "adr-068-decision"
       ]
     },
@@ -225,7 +260,7 @@
       "statement": "Декларативные контракты и JSON Schema нельзя заменять изолированной императивной проверкой.",
       "remediation": "Расширить каноническую схему и валидировать стандартным JSON Schema validator.",
       "sourceIds": [
-        "agents-general"
+        "agents-contracts"
       ]
     },
     {

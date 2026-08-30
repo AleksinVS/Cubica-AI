@@ -7,6 +7,7 @@ import { ManifestRenderer } from "@/components/manifest/manifest-renderer";
 import { useLocale } from "@/components/locale-context";
 import type { LocaleStrings } from "@/lib/locale";
 import type { GameAssetResolver } from "@/lib/game-asset-resolver";
+import { createManifestActionAdapter } from "@/lib/manifest-action-adapter";
 
 /**
  * Безопасный рендерер для экранов без манифестного описания.
@@ -71,6 +72,14 @@ export function SafeModeRenderer({
   const state = gameState;
   const disabled = isPending || !sessionId;
   const previewPointers = buildSafeModePreviewPointers(state, content);
+  const publishedActionAdapter = createManifestActionAdapter({
+    dispatchAction,
+    onError: (message) => {
+      // Safe mode has no game-specific resolver. A missing actionId is a
+      // publication error and must stay visible instead of guessing a target.
+      console.error(message);
+    }
+  });
 
   // 1. Try game-specific builder from plugin → ManifestRenderer
   if (fallbackScreenBuilder) {
@@ -80,7 +89,7 @@ export function SafeModeRenderer({
         <ManifestRenderer
           screenDefinition={screen}
           metrics={metrics}
-          onAction={onManifestAction ?? ((command, payload) => dispatchAction(payload.cardId ? String(payload.cardId) : command))}
+          onAction={onManifestAction ?? publishedActionAdapter}
           screenKey={screenKey}
           rootRuntimePointer={previewPointers.root}
           layoutMode={layoutMode}
@@ -101,7 +110,7 @@ export function SafeModeRenderer({
       <ManifestRenderer
         screenDefinition={screenDef}
         metrics={metrics}
-        onAction={onManifestAction ?? createConventionActionAdapter(dispatchAction)}
+        onAction={onManifestAction ?? publishedActionAdapter}
         screenKey={screenKey}
         rootRuntimePointer={previewPointers.root}
         layoutMode={layoutMode}
@@ -119,7 +128,7 @@ export function SafeModeRenderer({
       <ManifestRenderer
         screenDefinition={screenDef}
         metrics={metrics}
-        onAction={onManifestAction ?? createConventionActionAdapter(dispatchAction)}
+        onAction={onManifestAction ?? publishedActionAdapter}
         screenKey={screenKey}
         rootRuntimePointer={previewPointers.root}
         layoutMode={layoutMode}
@@ -138,7 +147,7 @@ export function SafeModeRenderer({
         <ManifestRenderer
           screenDefinition={screenDef}
           metrics={metrics}
-          onAction={onManifestAction ?? createConventionActionAdapter(dispatchAction)}
+          onAction={onManifestAction ?? publishedActionAdapter}
           screenKey={screenKey}
           rootRuntimePointer={previewPointers.root}
           layoutMode={layoutMode}
@@ -157,7 +166,7 @@ export function SafeModeRenderer({
     <ManifestRenderer
       screenDefinition={fallbackScreenDef}
       metrics={metrics}
-      onAction={onManifestAction ?? createConventionActionAdapter(dispatchAction)}
+      onAction={onManifestAction ?? publishedActionAdapter}
       screenKey={screenKey}
       rootRuntimePointer="/actions"
       layoutMode={layoutMode}
@@ -167,36 +176,6 @@ export function SafeModeRenderer({
       assetResolver={assetResolver}
     />
   );
-}
-
-// --- Action adapter для convention-экранов ---
-// Преобразует manifest-команды в прямые dispatchAction вызовы
-function createConventionActionAdapter(dispatchAction: (actionId: string, payload?: Record<string, unknown>) => void) {
-  return (command: string, payload: Record<string, unknown>) => {
-    // Специальные команды панели
-    if (command === ManifestAction.SHOW_PANEL) {
-      dispatchAction(ManifestAction.SHOW_PANEL, payload);
-      return;
-    }
-    // Advance — извлечь advanceActionId из payload
-    if (command === ManifestAction.ADVANCE && payload.advanceActionId) {
-      dispatchAction(String(payload.advanceActionId));
-      return;
-    }
-    // RequestServer с actionId
-    if (command === ManifestAction.REQUEST_SERVER && payload.actionId) {
-      dispatchAction(String(payload.actionId));
-      return;
-    }
-    // RequestServer с cardId — извлечь selectActionId из gameState
-    if (command === ManifestAction.REQUEST_SERVER && payload.cardId) {
-      // cardId already passed — dispatch as-is, plugin resolves
-      dispatchAction(ManifestAction.REQUEST_SERVER, payload);
-      return;
-    }
-    // Fallback — передать команду как actionId
-    dispatchAction(command, payload);
-  };
 }
 
 // --- Builder functions ---
@@ -339,7 +318,7 @@ function buildInfoScreenDefinition(
       disabled,
       t,
       advanceActionId
-        ? { command: ManifestAction.ADVANCE, payload: { advanceActionId } }
+        ? { command: ManifestAction.ADVANCE, payload: { actionId: advanceActionId } }
         : undefined,
       previewPointers.forwardAction
     ),
@@ -466,7 +445,7 @@ function buildBoardScreenDefinition(
             disabled,
             t,
             selectedCardAdvanceActionId
-              ? { command: ManifestAction.ADVANCE, payload: { advanceActionId: selectedCardAdvanceActionId } }
+              ? { command: ManifestAction.ADVANCE, payload: { actionId: selectedCardAdvanceActionId } }
               : undefined,
             previewPointers.forwardAction
           ),

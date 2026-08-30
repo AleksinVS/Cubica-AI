@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cubica.platform/schemas/runtime-command.schema.json",
+  "title": "Cubica external runtime command",
+  "description": "Closed, untrusted transport envelope for one logical gameplay command. Authentication and actor identity are resolved by the server and therefore never appear here.",
+  "type": "object",
+  "required": [
+    "sessionId",
+    "actionId",
+    "commandId",
+    "expectedStateVersion",
+    "params"
+  ],
+  "properties": {
+    "sessionId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "actionId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    },
+    "commandId": {
+      "type": "string",
+      "description": "Stable across retries of the same logical command; cli_ plus 16 random base64url bytes.",
+      "pattern": "^cli_[A-Za-z0-9_-]{22}$"
+    },
+    "requestId": {
+      "type": "string",
+      "description": "Optional opaque identity of one delivery attempt; never an idempotency or authorization key.",
+      "pattern": "^[A-Za-z0-9_-]{16,128}$"
+    },
+    "expectedStateVersion": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "params": {
+      "type": "object",
+      "description": "Bounded flat parameter envelope. Action-specific paramsSchema applies narrower semantic constraints after content lookup.",
+      "maxProperties": 16,
+      "propertyNames": {
+        "pattern": "^(?!(?:__proto__|constructor|prototype)$)[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+      },
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "type": "string",
+            "maxLength": 256
+          },
+          {
+            "type": "number",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          {
+            "type": "boolean"
+          }
+        ]
+      }
+    }
+  },
+  "additionalProperties": false
+}

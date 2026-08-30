@@ -1,0 +1,2500 @@
+{
+  "apiVersion": "cubica.game/cards-money-trains-content-intake/v1",
+  "gameId": "cards-money-trains",
+  "locale": "ru-RU",
+  "status": "content-intake",
+  "publishable": false,
+  "source": {
+    "path": "draft/trains/Колоди + Новости.xlsx",
+    "sha256": "94dd2da5a5ae6f87a7bc138078abae309183e839714cf75c78a950630a21e9a5",
+    "sheets": [
+      "Колоды по терминалам",
+      "Новости (2 типов)"
+    ]
+  },
+  "summary": {
+    "cargoRecordCount": 174,
+    "baseCargoRecordCount": 112,
+    "newsAddedCargoRecordCount": 62,
+    "newsRecordCount": 34,
+    "cargoAdditionNewsCount": 10,
+    "ruleNewsCount": 24
+  },
+  "authorConfirmations": {
+    "oneSourceRowEqualsOneRuntimeCard": true,
+    "runtimeDeckLifecycleApproved": true
+  },
+  "unresolved": {
+    "executableNewsMappingComplete": false
+  },
+  "cargoRecords": [
+    {
+      "id": "cargo-source-row-002",
+      "sourceRow": 2,
+      "originNodeId": "terminal-1",
+      "destinationNodeId": "terminal-4",
+      "bankPayout": 15,
+      "sourceDeckLabel": "1 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-1"
+      }
+    },
+    {
+      "id": "cargo-source-row-003",
+      "sourceRow": 3,
+      "originNodeId": "terminal-1",
+      "destinationNodeId": "terminal-3",
+      "bankPayout": 12,
+      "sourceDeckLabel": "1 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-1"
+      }
+    },
+    {
+      "id": "cargo-source-row-004",
+      "sourceRow": 4,
+      "originNodeId": "terminal-1",
+      "destinationNodeId": "terminal-11",
+      "bankPayout": 19,
+      "sourceDeckLabel": "1 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-1"
+      }
+    },
+    {
+      "id": "cargo-source-row-005",
+      "sourceRow": 5,
+      "originNodeId": "terminal-1",
+      "destinationNodeId": "terminal-9",
+      "bankPayout": 13,
+      "sourceDeckLabel": "1 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-1"
+      }
+    },
+    {
+      "id": "cargo-source-row-006",
+      "sourceRow": 6,
+      "originNodeId": "terminal-1",
+      "destinationNodeId": "terminal-6",
+      "bankPayout": 11,
+      "sourceDeckLabel": "1 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-1"
+      }
+    },
+    {
+      "id": "cargo-source-row-007",
+      "sourceRow": 7,
+      "originNodeId": "terminal-10",
+      "destinationNodeId": "terminal-3",
+      "bankPayout": 21,
+      "sourceDeckLabel": "10 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-10"
+      }
+    },
+    {
+      "id": "cargo-source-row-008",
+      "sourceRow": 8,
+      "originNodeId": "terminal-10",
+      "destinationNodeId": "terminal-8",
+      "bankPayout": 16,
+      "sourceDeckLabel": "10 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-10"
+      }
+    },
+    {
+      "id": "cargo-source-row-009",
+      "sourceRow": 9,
+      "originNodeId": "terminal-10",
+      "destinationNodeId": "terminal-5",
+      "bankPayout": 14,
+      "sourceDeckLabel": "10 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-10"
+      }
+    },
+    {
+      "id": "cargo-source-row-010",
+      "sourceRow": 10,
+      "originNodeId": "terminal-10",
+      "destinationNodeId": "terminal-11",
+      "bankPayout": 13,
+      "sourceDeckLabel": "10 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-10"
+      }
+    },
+    {
+      "id": "cargo-source-row-011",
+      "sourceRow": 11,
+      "originNodeId": "terminal-10",
+      "destinationNodeId": "terminal-22",
+      "bankPayout": 20,
+      "sourceDeckLabel": "10 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-10"
+      }
+    },
+    {
+      "id": "cargo-source-row-012",
+      "sourceRow": 12,
+      "originNodeId": "terminal-10",
+      "destinationNodeId": "terminal-16",
+      "bankPayout": 21,
+      "sourceDeckLabel": "10 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-10"
+      }
+    },
+    {
+      "id": "cargo-source-row-013",
+      "sourceRow": 13,
+      "originNodeId": "terminal-11",
+      "destinationNodeId": "terminal-9",
+      "bankPayout": 15,
+      "sourceDeckLabel": "11 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-11"
+      }
+    },
+    {
+      "id": "cargo-source-row-014",
+      "sourceRow": 14,
+      "originNodeId": "terminal-11",
+      "destinationNodeId": "terminal-6",
+      "bankPayout": 10,
+      "sourceDeckLabel": "11 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-11"
+      }
+    },
+    {
+      "id": "cargo-source-row-015",
+      "sourceRow": 15,
+      "originNodeId": "terminal-11",
+      "destinationNodeId": "terminal-1",
+      "bankPayout": 19,
+      "sourceDeckLabel": "11 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-11"
+      }
+    },
+    {
+      "id": "cargo-source-row-016",
+      "sourceRow": 16,
+      "originNodeId": "terminal-11",
+      "destinationNodeId": "terminal-18",
+      "bankPayout": 21,
+      "sourceDeckLabel": "11 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-11"
+      }
+    },
+    {
+      "id": "cargo-source-row-017",
+      "sourceRow": 17,
+      "originNodeId": "terminal-11",
+      "destinationNodeId": "terminal-22",
+      "bankPayout": 8,
+      "sourceDeckLabel": "11 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-11"
+      }
+    },
+    {
+      "id": "cargo-source-row-018",
+      "sourceRow": 18,
+      "originNodeId": "terminal-11",
+      "destinationNodeId": "terminal-23",
+      "bankPayout": 16,
+      "sourceDeckLabel": "11 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-11"
+      }
+    },
+    {
+      "id": "cargo-source-row-019",
+      "sourceRow": 19,
+      "originNodeId": "terminal-12",
+      "destinationNodeId": "terminal-21",
+      "bankPayout": 20,
+      "sourceDeckLabel": "12 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-12"
+      }
+    },
+    {
+      "id": "cargo-source-row-020",
+      "sourceRow": 20,
+      "originNodeId": "terminal-12",
+      "destinationNodeId": "terminal-13",
+      "bankPayout": 13,
+      "sourceDeckLabel": "12 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-12"
+      }
+    },
+    {
+      "id": "cargo-source-row-021",
+      "sourceRow": 21,
+      "originNodeId": "terminal-12",
+      "destinationNodeId": "terminal-19",
+      "bankPayout": 24,
+      "sourceDeckLabel": "12 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-12"
+      }
+    },
+    {
+      "id": "cargo-source-row-022",
+      "sourceRow": 22,
+      "originNodeId": "terminal-12",
+      "destinationNodeId": "terminal-15",
+      "bankPayout": 31,
+      "sourceDeckLabel": "12 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-12"
+      }
+    },
+    {
+      "id": "cargo-source-row-023",
+      "sourceRow": 23,
+      "originNodeId": "terminal-13",
+      "destinationNodeId": "terminal-8",
+      "bankPayout": 20,
+      "sourceDeckLabel": "13 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-13"
+      }
+    },
+    {
+      "id": "cargo-source-row-024",
+      "sourceRow": 24,
+      "originNodeId": "terminal-13",
+      "destinationNodeId": "terminal-7",
+      "bankPayout": 12,
+      "sourceDeckLabel": "13 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-13"
+      }
+    },
+    {
+      "id": "cargo-source-row-025",
+      "sourceRow": 25,
+      "originNodeId": "terminal-13",
+      "destinationNodeId": "terminal-20",
+      "bankPayout": 12,
+      "sourceDeckLabel": "13 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-13"
+      }
+    },
+    {
+      "id": "cargo-source-row-026",
+      "sourceRow": 26,
+      "originNodeId": "terminal-13",
+      "destinationNodeId": "terminal-14",
+      "bankPayout": 15,
+      "sourceDeckLabel": "13 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-13"
+      }
+    },
+    {
+      "id": "cargo-source-row-027",
+      "sourceRow": 27,
+      "originNodeId": "terminal-13",
+      "destinationNodeId": "terminal-19",
+      "bankPayout": 13,
+      "sourceDeckLabel": "13 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-13"
+      }
+    },
+    {
+      "id": "cargo-source-row-028",
+      "sourceRow": 28,
+      "originNodeId": "terminal-13",
+      "destinationNodeId": "terminal-16",
+      "bankPayout": 12,
+      "sourceDeckLabel": "13 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-13"
+      }
+    },
+    {
+      "id": "cargo-source-row-029",
+      "sourceRow": 29,
+      "originNodeId": "terminal-14",
+      "destinationNodeId": "terminal-22",
+      "bankPayout": 25,
+      "sourceDeckLabel": "14 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-14"
+      }
+    },
+    {
+      "id": "cargo-source-row-030",
+      "sourceRow": 30,
+      "originNodeId": "terminal-14",
+      "destinationNodeId": "terminal-15",
+      "bankPayout": 15,
+      "sourceDeckLabel": "14 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-14"
+      }
+    },
+    {
+      "id": "cargo-source-row-031",
+      "sourceRow": 31,
+      "originNodeId": "terminal-14",
+      "destinationNodeId": "terminal-4",
+      "bankPayout": 34,
+      "sourceDeckLabel": "14 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-14"
+      }
+    },
+    {
+      "id": "cargo-source-row-032",
+      "sourceRow": 32,
+      "originNodeId": "terminal-15",
+      "destinationNodeId": "terminal-2",
+      "bankPayout": 40,
+      "sourceDeckLabel": "15 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-15"
+      }
+    },
+    {
+      "id": "cargo-source-row-033",
+      "sourceRow": 33,
+      "originNodeId": "terminal-15",
+      "destinationNodeId": "terminal-6",
+      "bankPayout": 32,
+      "sourceDeckLabel": "15 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-15"
+      }
+    },
+    {
+      "id": "cargo-source-row-034",
+      "sourceRow": 34,
+      "originNodeId": "terminal-15",
+      "destinationNodeId": "terminal-21",
+      "bankPayout": 33,
+      "sourceDeckLabel": "15 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-15"
+      }
+    },
+    {
+      "id": "cargo-source-row-035",
+      "sourceRow": 35,
+      "originNodeId": "terminal-15",
+      "destinationNodeId": "terminal-8",
+      "bankPayout": 38,
+      "sourceDeckLabel": "15 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-15"
+      }
+    },
+    {
+      "id": "cargo-source-row-036",
+      "sourceRow": 36,
+      "originNodeId": "terminal-15",
+      "destinationNodeId": "terminal-12",
+      "bankPayout": 29,
+      "sourceDeckLabel": "15 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-15"
+      }
+    },
+    {
+      "id": "cargo-source-row-037",
+      "sourceRow": 37,
+      "originNodeId": "terminal-15",
+      "destinationNodeId": "terminal-19",
+      "bankPayout": 20,
+      "sourceDeckLabel": "15 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-15"
+      }
+    },
+    {
+      "id": "cargo-source-row-038",
+      "sourceRow": 38,
+      "originNodeId": "terminal-16",
+      "destinationNodeId": "terminal-17",
+      "bankPayout": 17,
+      "sourceDeckLabel": "16 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-16"
+      }
+    },
+    {
+      "id": "cargo-source-row-039",
+      "sourceRow": 39,
+      "originNodeId": "terminal-16",
+      "destinationNodeId": "terminal-21",
+      "bankPayout": 18,
+      "sourceDeckLabel": "16 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-16"
+      }
+    },
+    {
+      "id": "cargo-source-row-040",
+      "sourceRow": 40,
+      "originNodeId": "terminal-16",
+      "destinationNodeId": "terminal-9",
+      "bankPayout": 22,
+      "sourceDeckLabel": "16 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-16"
+      }
+    },
+    {
+      "id": "cargo-source-row-041",
+      "sourceRow": 41,
+      "originNodeId": "terminal-16",
+      "destinationNodeId": "terminal-5",
+      "bankPayout": 20,
+      "sourceDeckLabel": "16 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-16"
+      }
+    },
+    {
+      "id": "cargo-source-row-042",
+      "sourceRow": 42,
+      "originNodeId": "terminal-17",
+      "destinationNodeId": "terminal-1",
+      "bankPayout": 23,
+      "sourceDeckLabel": "17 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-17"
+      }
+    },
+    {
+      "id": "cargo-source-row-043",
+      "sourceRow": 43,
+      "originNodeId": "terminal-17",
+      "destinationNodeId": "terminal-15",
+      "bankPayout": 11,
+      "sourceDeckLabel": "17 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-17"
+      }
+    },
+    {
+      "id": "cargo-source-row-044",
+      "sourceRow": 44,
+      "originNodeId": "terminal-17",
+      "destinationNodeId": "terminal-22",
+      "bankPayout": 13,
+      "sourceDeckLabel": "17 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-17"
+      }
+    },
+    {
+      "id": "cargo-source-row-045",
+      "sourceRow": 45,
+      "originNodeId": "terminal-17",
+      "destinationNodeId": "terminal-11",
+      "bankPayout": 16,
+      "sourceDeckLabel": "17 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-17"
+      }
+    },
+    {
+      "id": "cargo-source-row-046",
+      "sourceRow": 46,
+      "originNodeId": "terminal-17",
+      "destinationNodeId": "terminal-4",
+      "bankPayout": 19,
+      "sourceDeckLabel": "17 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-17"
+      }
+    },
+    {
+      "id": "cargo-source-row-047",
+      "sourceRow": 47,
+      "originNodeId": "terminal-18",
+      "destinationNodeId": "terminal-14",
+      "bankPayout": 12,
+      "sourceDeckLabel": "18 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-18"
+      }
+    },
+    {
+      "id": "cargo-source-row-048",
+      "sourceRow": 48,
+      "originNodeId": "terminal-18",
+      "destinationNodeId": "terminal-19",
+      "bankPayout": 12,
+      "sourceDeckLabel": "18 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-18"
+      }
+    },
+    {
+      "id": "cargo-source-row-049",
+      "sourceRow": 49,
+      "originNodeId": "terminal-18",
+      "destinationNodeId": "terminal-22",
+      "bankPayout": 17,
+      "sourceDeckLabel": "18 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-18"
+      }
+    },
+    {
+      "id": "cargo-source-row-050",
+      "sourceRow": 50,
+      "originNodeId": "terminal-18",
+      "destinationNodeId": "terminal-6",
+      "bankPayout": 17,
+      "sourceDeckLabel": "18 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-18"
+      }
+    },
+    {
+      "id": "cargo-source-row-051",
+      "sourceRow": 51,
+      "originNodeId": "terminal-19",
+      "destinationNodeId": "terminal-9",
+      "bankPayout": 25,
+      "sourceDeckLabel": "19 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-19"
+      }
+    },
+    {
+      "id": "cargo-source-row-052",
+      "sourceRow": 52,
+      "originNodeId": "terminal-19",
+      "destinationNodeId": "terminal-4",
+      "bankPayout": 23,
+      "sourceDeckLabel": "19 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-19"
+      }
+    },
+    {
+      "id": "cargo-source-row-053",
+      "sourceRow": 53,
+      "originNodeId": "terminal-19",
+      "destinationNodeId": "terminal-21",
+      "bankPayout": 27,
+      "sourceDeckLabel": "19 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-19"
+      }
+    },
+    {
+      "id": "cargo-source-row-054",
+      "sourceRow": 54,
+      "originNodeId": "terminal-19",
+      "destinationNodeId": "terminal-10",
+      "bankPayout": 30,
+      "sourceDeckLabel": "19 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-19"
+      }
+    },
+    {
+      "id": "cargo-source-row-055",
+      "sourceRow": 55,
+      "originNodeId": "terminal-19",
+      "destinationNodeId": "terminal-12",
+      "bankPayout": 28,
+      "sourceDeckLabel": "19 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-19"
+      }
+    },
+    {
+      "id": "cargo-source-row-056",
+      "sourceRow": 56,
+      "originNodeId": "terminal-19",
+      "destinationNodeId": "terminal-11",
+      "bankPayout": 26,
+      "sourceDeckLabel": "19 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-19"
+      }
+    },
+    {
+      "id": "cargo-source-row-057",
+      "sourceRow": 57,
+      "originNodeId": "terminal-2",
+      "destinationNodeId": "terminal-22",
+      "bankPayout": 35,
+      "sourceDeckLabel": "2 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-2"
+      }
+    },
+    {
+      "id": "cargo-source-row-058",
+      "sourceRow": 58,
+      "originNodeId": "terminal-2",
+      "destinationNodeId": "terminal-19",
+      "bankPayout": 23,
+      "sourceDeckLabel": "2 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-2"
+      }
+    },
+    {
+      "id": "cargo-source-row-059",
+      "sourceRow": 59,
+      "originNodeId": "terminal-2",
+      "destinationNodeId": "terminal-8",
+      "bankPayout": 16,
+      "sourceDeckLabel": "2 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-2"
+      }
+    },
+    {
+      "id": "cargo-source-row-060",
+      "sourceRow": 60,
+      "originNodeId": "terminal-2",
+      "destinationNodeId": "terminal-7",
+      "bankPayout": 21,
+      "sourceDeckLabel": "2 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-2"
+      }
+    },
+    {
+      "id": "cargo-source-row-061",
+      "sourceRow": 61,
+      "originNodeId": "terminal-2",
+      "destinationNodeId": "terminal-3",
+      "bankPayout": 10,
+      "sourceDeckLabel": "2 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-2"
+      }
+    },
+    {
+      "id": "cargo-source-row-062",
+      "sourceRow": 62,
+      "originNodeId": "terminal-20",
+      "destinationNodeId": "terminal-10",
+      "bankPayout": 20,
+      "sourceDeckLabel": "20 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-20"
+      }
+    },
+    {
+      "id": "cargo-source-row-063",
+      "sourceRow": 63,
+      "originNodeId": "terminal-20",
+      "destinationNodeId": "terminal-21",
+      "bankPayout": 17,
+      "sourceDeckLabel": "20 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-20"
+      }
+    },
+    {
+      "id": "cargo-source-row-064",
+      "sourceRow": 64,
+      "originNodeId": "terminal-20",
+      "destinationNodeId": "terminal-13",
+      "bankPayout": 10,
+      "sourceDeckLabel": "20 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-20"
+      }
+    },
+    {
+      "id": "cargo-source-row-065",
+      "sourceRow": 65,
+      "originNodeId": "terminal-21",
+      "destinationNodeId": "terminal-10",
+      "bankPayout": 20,
+      "sourceDeckLabel": "21 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-21"
+      }
+    },
+    {
+      "id": "cargo-source-row-066",
+      "sourceRow": 66,
+      "originNodeId": "terminal-21",
+      "destinationNodeId": "terminal-17",
+      "bankPayout": 18,
+      "sourceDeckLabel": "21 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-21"
+      }
+    },
+    {
+      "id": "cargo-source-row-067",
+      "sourceRow": 67,
+      "originNodeId": "terminal-21",
+      "destinationNodeId": "terminal-13",
+      "bankPayout": 14,
+      "sourceDeckLabel": "21 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-21"
+      }
+    },
+    {
+      "id": "cargo-source-row-068",
+      "sourceRow": 68,
+      "originNodeId": "terminal-21",
+      "destinationNodeId": "terminal-8",
+      "bankPayout": 21,
+      "sourceDeckLabel": "21 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-21"
+      }
+    },
+    {
+      "id": "cargo-source-row-069",
+      "sourceRow": 69,
+      "originNodeId": "terminal-21",
+      "destinationNodeId": "terminal-2",
+      "bankPayout": 34,
+      "sourceDeckLabel": "21 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-21"
+      }
+    },
+    {
+      "id": "cargo-source-row-070",
+      "sourceRow": 70,
+      "originNodeId": "terminal-21",
+      "destinationNodeId": "terminal-14",
+      "bankPayout": 30,
+      "sourceDeckLabel": "21 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-21"
+      }
+    },
+    {
+      "id": "cargo-source-row-071",
+      "sourceRow": 71,
+      "originNodeId": "terminal-22",
+      "destinationNodeId": "terminal-10",
+      "bankPayout": 20,
+      "sourceDeckLabel": "22 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-22"
+      }
+    },
+    {
+      "id": "cargo-source-row-072",
+      "sourceRow": 72,
+      "originNodeId": "terminal-22",
+      "destinationNodeId": "terminal-13",
+      "bankPayout": 9,
+      "sourceDeckLabel": "22 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-22"
+      }
+    },
+    {
+      "id": "cargo-source-row-073",
+      "sourceRow": 73,
+      "originNodeId": "terminal-22",
+      "destinationNodeId": "terminal-14",
+      "bankPayout": 19,
+      "sourceDeckLabel": "22 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-22"
+      }
+    },
+    {
+      "id": "cargo-source-row-074",
+      "sourceRow": 74,
+      "originNodeId": "terminal-22",
+      "destinationNodeId": "terminal-20",
+      "bankPayout": 14,
+      "sourceDeckLabel": "22 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-22"
+      }
+    },
+    {
+      "id": "cargo-source-row-075",
+      "sourceRow": 75,
+      "originNodeId": "terminal-23",
+      "destinationNodeId": "terminal-22",
+      "bankPayout": 17,
+      "sourceDeckLabel": "23 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-23"
+      }
+    },
+    {
+      "id": "cargo-source-row-076",
+      "sourceRow": 76,
+      "originNodeId": "terminal-23",
+      "destinationNodeId": "terminal-13",
+      "bankPayout": 18,
+      "sourceDeckLabel": "23 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-23"
+      }
+    },
+    {
+      "id": "cargo-source-row-077",
+      "sourceRow": 77,
+      "originNodeId": "terminal-23",
+      "destinationNodeId": "terminal-12",
+      "bankPayout": 10,
+      "sourceDeckLabel": "23 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-23"
+      }
+    },
+    {
+      "id": "cargo-source-row-078",
+      "sourceRow": 78,
+      "originNodeId": "terminal-23",
+      "destinationNodeId": "terminal-17",
+      "bankPayout": 12,
+      "sourceDeckLabel": "23 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-23"
+      }
+    },
+    {
+      "id": "cargo-source-row-079",
+      "sourceRow": 79,
+      "originNodeId": "terminal-23",
+      "destinationNodeId": "terminal-3",
+      "bankPayout": 32,
+      "sourceDeckLabel": "23 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-23"
+      }
+    },
+    {
+      "id": "cargo-source-row-080",
+      "sourceRow": 80,
+      "originNodeId": "terminal-23",
+      "destinationNodeId": "terminal-14",
+      "bankPayout": 20,
+      "sourceDeckLabel": "23 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-23"
+      }
+    },
+    {
+      "id": "cargo-source-row-081",
+      "sourceRow": 81,
+      "originNodeId": "terminal-3",
+      "destinationNodeId": "terminal-9",
+      "bankPayout": 14,
+      "sourceDeckLabel": "3 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-3"
+      }
+    },
+    {
+      "id": "cargo-source-row-082",
+      "sourceRow": 82,
+      "originNodeId": "terminal-3",
+      "destinationNodeId": "terminal-6",
+      "bankPayout": 20,
+      "sourceDeckLabel": "3 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-3"
+      }
+    },
+    {
+      "id": "cargo-source-row-083",
+      "sourceRow": 83,
+      "originNodeId": "terminal-3",
+      "destinationNodeId": "terminal-20",
+      "bankPayout": 19,
+      "sourceDeckLabel": "3 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-3"
+      }
+    },
+    {
+      "id": "cargo-source-row-084",
+      "sourceRow": 84,
+      "originNodeId": "terminal-3",
+      "destinationNodeId": "terminal-14",
+      "bankPayout": 26,
+      "sourceDeckLabel": "3 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-3"
+      }
+    },
+    {
+      "id": "cargo-source-row-085",
+      "sourceRow": 85,
+      "originNodeId": "terminal-4",
+      "destinationNodeId": "terminal-8",
+      "bankPayout": 13,
+      "sourceDeckLabel": "4 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-4"
+      }
+    },
+    {
+      "id": "cargo-source-row-086",
+      "sourceRow": 86,
+      "originNodeId": "terminal-4",
+      "destinationNodeId": "terminal-9",
+      "bankPayout": 16,
+      "sourceDeckLabel": "4 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-4"
+      }
+    },
+    {
+      "id": "cargo-source-row-087",
+      "sourceRow": 87,
+      "originNodeId": "terminal-4",
+      "destinationNodeId": "terminal-12",
+      "bankPayout": 13,
+      "sourceDeckLabel": "4 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-4"
+      }
+    },
+    {
+      "id": "cargo-source-row-088",
+      "sourceRow": 88,
+      "originNodeId": "terminal-4",
+      "destinationNodeId": "terminal-1",
+      "bankPayout": 19,
+      "sourceDeckLabel": "4 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-4"
+      }
+    },
+    {
+      "id": "cargo-source-row-089",
+      "sourceRow": 89,
+      "originNodeId": "terminal-5",
+      "destinationNodeId": "terminal-2",
+      "bankPayout": 20,
+      "sourceDeckLabel": "5 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-5"
+      }
+    },
+    {
+      "id": "cargo-source-row-090",
+      "sourceRow": 90,
+      "originNodeId": "terminal-5",
+      "destinationNodeId": "terminal-4",
+      "bankPayout": 11,
+      "sourceDeckLabel": "5 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-5"
+      }
+    },
+    {
+      "id": "cargo-source-row-091",
+      "sourceRow": 91,
+      "originNodeId": "terminal-5",
+      "destinationNodeId": "terminal-11",
+      "bankPayout": 13,
+      "sourceDeckLabel": "5 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-5"
+      }
+    },
+    {
+      "id": "cargo-source-row-092",
+      "sourceRow": 92,
+      "originNodeId": "terminal-5",
+      "destinationNodeId": "terminal-10",
+      "bankPayout": 15,
+      "sourceDeckLabel": "5 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-5"
+      }
+    },
+    {
+      "id": "cargo-source-row-093",
+      "sourceRow": 93,
+      "originNodeId": "terminal-5",
+      "destinationNodeId": "terminal-9",
+      "bankPayout": 11,
+      "sourceDeckLabel": "5 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-5"
+      }
+    },
+    {
+      "id": "cargo-source-row-094",
+      "sourceRow": 94,
+      "originNodeId": "terminal-6",
+      "destinationNodeId": "terminal-1",
+      "bankPayout": 15,
+      "sourceDeckLabel": "6 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-6"
+      }
+    },
+    {
+      "id": "cargo-source-row-095",
+      "sourceRow": 95,
+      "originNodeId": "terminal-6",
+      "destinationNodeId": "terminal-19",
+      "bankPayout": 35,
+      "sourceDeckLabel": "6 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-6"
+      }
+    },
+    {
+      "id": "cargo-source-row-096",
+      "sourceRow": 96,
+      "originNodeId": "terminal-6",
+      "destinationNodeId": "terminal-23",
+      "bankPayout": 15,
+      "sourceDeckLabel": "6 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-6"
+      }
+    },
+    {
+      "id": "cargo-source-row-097",
+      "sourceRow": 97,
+      "originNodeId": "terminal-6",
+      "destinationNodeId": "terminal-4",
+      "bankPayout": 8,
+      "sourceDeckLabel": "6 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-6"
+      }
+    },
+    {
+      "id": "cargo-source-row-098",
+      "sourceRow": 98,
+      "originNodeId": "terminal-6",
+      "destinationNodeId": "terminal-3",
+      "bankPayout": 20,
+      "sourceDeckLabel": "6 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-6"
+      }
+    },
+    {
+      "id": "cargo-source-row-099",
+      "sourceRow": 99,
+      "originNodeId": "terminal-7",
+      "destinationNodeId": "terminal-22",
+      "bankPayout": 12,
+      "sourceDeckLabel": "7 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-7"
+      }
+    },
+    {
+      "id": "cargo-source-row-100",
+      "sourceRow": 100,
+      "originNodeId": "terminal-7",
+      "destinationNodeId": "terminal-1",
+      "bankPayout": 13,
+      "sourceDeckLabel": "7 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-7"
+      }
+    },
+    {
+      "id": "cargo-source-row-101",
+      "sourceRow": 101,
+      "originNodeId": "terminal-7",
+      "destinationNodeId": "terminal-8",
+      "bankPayout": 10,
+      "sourceDeckLabel": "7 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-7"
+      }
+    },
+    {
+      "id": "cargo-source-row-102",
+      "sourceRow": 102,
+      "originNodeId": "terminal-7",
+      "destinationNodeId": "terminal-10",
+      "bankPayout": 9,
+      "sourceDeckLabel": "7 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-7"
+      }
+    },
+    {
+      "id": "cargo-source-row-103",
+      "sourceRow": 103,
+      "originNodeId": "terminal-7",
+      "destinationNodeId": "terminal-2",
+      "bankPayout": 16,
+      "sourceDeckLabel": "7 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-7"
+      }
+    },
+    {
+      "id": "cargo-source-row-104",
+      "sourceRow": 104,
+      "originNodeId": "terminal-8",
+      "destinationNodeId": "terminal-5",
+      "bankPayout": 12,
+      "sourceDeckLabel": "8 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-8"
+      }
+    },
+    {
+      "id": "cargo-source-row-105",
+      "sourceRow": 105,
+      "originNodeId": "terminal-8",
+      "destinationNodeId": "terminal-11",
+      "bankPayout": 15,
+      "sourceDeckLabel": "8 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-8"
+      }
+    },
+    {
+      "id": "cargo-source-row-106",
+      "sourceRow": 106,
+      "originNodeId": "terminal-8",
+      "destinationNodeId": "terminal-4",
+      "bankPayout": 14,
+      "sourceDeckLabel": "8 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-8"
+      }
+    },
+    {
+      "id": "cargo-source-row-107",
+      "sourceRow": 107,
+      "originNodeId": "terminal-8",
+      "destinationNodeId": "terminal-21",
+      "bankPayout": 31,
+      "sourceDeckLabel": "8 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-8"
+      }
+    },
+    {
+      "id": "cargo-source-row-108",
+      "sourceRow": 108,
+      "originNodeId": "terminal-9",
+      "destinationNodeId": "terminal-7",
+      "bankPayout": 11,
+      "sourceDeckLabel": "9 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-9"
+      }
+    },
+    {
+      "id": "cargo-source-row-109",
+      "sourceRow": 109,
+      "originNodeId": "terminal-9",
+      "destinationNodeId": "terminal-6",
+      "bankPayout": 7,
+      "sourceDeckLabel": "9 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-9"
+      }
+    },
+    {
+      "id": "cargo-source-row-110",
+      "sourceRow": 110,
+      "originNodeId": "terminal-9",
+      "destinationNodeId": "terminal-2",
+      "bankPayout": 8,
+      "sourceDeckLabel": "9 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-9"
+      }
+    },
+    {
+      "id": "cargo-source-row-111",
+      "sourceRow": 111,
+      "originNodeId": "terminal-9",
+      "destinationNodeId": "terminal-16",
+      "bankPayout": 21,
+      "sourceDeckLabel": "9 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-9"
+      }
+    },
+    {
+      "id": "cargo-source-row-112",
+      "sourceRow": 112,
+      "originNodeId": "terminal-9",
+      "destinationNodeId": "terminal-4",
+      "bankPayout": 15,
+      "sourceDeckLabel": "9 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-9"
+      }
+    },
+    {
+      "id": "cargo-source-row-113",
+      "sourceRow": 113,
+      "originNodeId": "terminal-9",
+      "destinationNodeId": "terminal-3",
+      "bankPayout": 15,
+      "sourceDeckLabel": "9 терминал",
+      "deck": {
+        "kind": "base-terminal",
+        "terminalId": "terminal-9"
+      }
+    },
+    {
+      "id": "cargo-source-row-114",
+      "sourceRow": 114,
+      "originNodeId": "terminal-4",
+      "destinationNodeId": "terminal-1",
+      "bankPayout": 17,
+      "sourceDeckLabel": "Колода новости 1",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-01"
+      }
+    },
+    {
+      "id": "cargo-source-row-115",
+      "sourceRow": 115,
+      "originNodeId": "terminal-4",
+      "destinationNodeId": "terminal-12",
+      "bankPayout": 13,
+      "sourceDeckLabel": "Колода новости 1",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-01"
+      }
+    },
+    {
+      "id": "cargo-source-row-116",
+      "sourceRow": 116,
+      "originNodeId": "terminal-4",
+      "destinationNodeId": "terminal-8",
+      "bankPayout": 15,
+      "sourceDeckLabel": "Колода новости 1",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-01"
+      }
+    },
+    {
+      "id": "cargo-source-row-117",
+      "sourceRow": 117,
+      "originNodeId": "terminal-4",
+      "destinationNodeId": "terminal-20",
+      "bankPayout": 19,
+      "sourceDeckLabel": "Колода новости 1",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-01"
+      }
+    },
+    {
+      "id": "cargo-source-row-118",
+      "sourceRow": 118,
+      "originNodeId": "terminal-4",
+      "destinationNodeId": "terminal-13",
+      "bankPayout": 17,
+      "sourceDeckLabel": "Колода новости 1",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-01"
+      }
+    },
+    {
+      "id": "cargo-source-row-119",
+      "sourceRow": 119,
+      "originNodeId": "terminal-10",
+      "destinationNodeId": "terminal-12",
+      "bankPayout": 25,
+      "sourceDeckLabel": "Колода новости 10",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-10"
+      }
+    },
+    {
+      "id": "cargo-source-row-120",
+      "sourceRow": 120,
+      "originNodeId": "terminal-10",
+      "destinationNodeId": "terminal-8",
+      "bankPayout": 25,
+      "sourceDeckLabel": "Колода новости 10",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-10"
+      }
+    },
+    {
+      "id": "cargo-source-row-121",
+      "sourceRow": 121,
+      "originNodeId": "terminal-10",
+      "destinationNodeId": "terminal-23",
+      "bankPayout": 25,
+      "sourceDeckLabel": "Колода новости 10",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-10"
+      }
+    },
+    {
+      "id": "cargo-source-row-122",
+      "sourceRow": 122,
+      "originNodeId": "terminal-16",
+      "destinationNodeId": "terminal-11",
+      "bankPayout": 14,
+      "sourceDeckLabel": "Колода новости 2",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-02"
+      }
+    },
+    {
+      "id": "cargo-source-row-123",
+      "sourceRow": 123,
+      "originNodeId": "terminal-16",
+      "destinationNodeId": "terminal-15",
+      "bankPayout": 16,
+      "sourceDeckLabel": "Колода новости 2",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-02"
+      }
+    },
+    {
+      "id": "cargo-source-row-124",
+      "sourceRow": 124,
+      "originNodeId": "terminal-16",
+      "destinationNodeId": "terminal-6",
+      "bankPayout": 20,
+      "sourceDeckLabel": "Колода новости 2",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-02"
+      }
+    },
+    {
+      "id": "cargo-source-row-125",
+      "sourceRow": 125,
+      "originNodeId": "terminal-16",
+      "destinationNodeId": "terminal-21",
+      "bankPayout": 21,
+      "sourceDeckLabel": "Колода новости 2",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-02"
+      }
+    },
+    {
+      "id": "cargo-source-row-126",
+      "sourceRow": 126,
+      "originNodeId": "terminal-16",
+      "destinationNodeId": "terminal-2",
+      "bankPayout": 27,
+      "sourceDeckLabel": "Колода новости 2",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-02"
+      }
+    },
+    {
+      "id": "cargo-source-row-127",
+      "sourceRow": 127,
+      "originNodeId": "terminal-22",
+      "destinationNodeId": "terminal-9",
+      "bankPayout": 21,
+      "sourceDeckLabel": "Колода новости 3",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-03"
+      }
+    },
+    {
+      "id": "cargo-source-row-128",
+      "sourceRow": 128,
+      "originNodeId": "terminal-22",
+      "destinationNodeId": "terminal-19",
+      "bankPayout": 24,
+      "sourceDeckLabel": "Колода новости 3",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-03"
+      }
+    },
+    {
+      "id": "cargo-source-row-129",
+      "sourceRow": 129,
+      "originNodeId": "terminal-22",
+      "destinationNodeId": "terminal-5",
+      "bankPayout": 20,
+      "sourceDeckLabel": "Колода новости 3",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-03"
+      }
+    },
+    {
+      "id": "cargo-source-row-130",
+      "sourceRow": 130,
+      "originNodeId": "terminal-22",
+      "destinationNodeId": "terminal-3",
+      "bankPayout": 34,
+      "sourceDeckLabel": "Колода новости 3",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-03"
+      }
+    },
+    {
+      "id": "cargo-source-row-131",
+      "sourceRow": 131,
+      "originNodeId": "terminal-6",
+      "destinationNodeId": "terminal-2",
+      "bankPayout": 15,
+      "sourceDeckLabel": "Колода новости 4",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-04"
+      }
+    },
+    {
+      "id": "cargo-source-row-132",
+      "sourceRow": 132,
+      "originNodeId": "terminal-6",
+      "destinationNodeId": "terminal-17",
+      "bankPayout": 21,
+      "sourceDeckLabel": "Колода новости 4",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-04"
+      }
+    },
+    {
+      "id": "cargo-source-row-133",
+      "sourceRow": 133,
+      "originNodeId": "terminal-6",
+      "destinationNodeId": "terminal-15",
+      "bankPayout": 35,
+      "sourceDeckLabel": "Колода новости 4",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-04"
+      }
+    },
+    {
+      "id": "cargo-source-row-134",
+      "sourceRow": 134,
+      "originNodeId": "terminal-6",
+      "destinationNodeId": "terminal-21",
+      "bankPayout": 24,
+      "sourceDeckLabel": "Колода новости 4",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-04"
+      }
+    },
+    {
+      "id": "cargo-source-row-135",
+      "sourceRow": 135,
+      "originNodeId": "terminal-6",
+      "destinationNodeId": "terminal-3",
+      "bankPayout": 21,
+      "sourceDeckLabel": "Колода новости 4",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-04"
+      }
+    },
+    {
+      "id": "cargo-source-row-136",
+      "sourceRow": 136,
+      "originNodeId": "terminal-3",
+      "destinationNodeId": "terminal-8",
+      "bankPayout": 23,
+      "sourceDeckLabel": "Колода новости 5",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-05"
+      }
+    },
+    {
+      "id": "cargo-source-row-137",
+      "sourceRow": 137,
+      "originNodeId": "terminal-3",
+      "destinationNodeId": "terminal-10",
+      "bankPayout": 27,
+      "sourceDeckLabel": "Колода новости 5",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-05"
+      }
+    },
+    {
+      "id": "cargo-source-row-138",
+      "sourceRow": 138,
+      "originNodeId": "terminal-3",
+      "destinationNodeId": "terminal-18",
+      "bankPayout": 35,
+      "sourceDeckLabel": "Колода новости 5",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-05"
+      }
+    },
+    {
+      "id": "cargo-source-row-139",
+      "sourceRow": 139,
+      "originNodeId": "terminal-3",
+      "destinationNodeId": "terminal-19",
+      "bankPayout": 35,
+      "sourceDeckLabel": "Колода новости 5",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-05"
+      }
+    },
+    {
+      "id": "cargo-source-row-140",
+      "sourceRow": 140,
+      "originNodeId": "terminal-3",
+      "destinationNodeId": "terminal-7",
+      "bankPayout": 26,
+      "sourceDeckLabel": "Колода новости 5",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-05"
+      }
+    },
+    {
+      "id": "cargo-source-row-141",
+      "sourceRow": 141,
+      "originNodeId": "terminal-3",
+      "destinationNodeId": "terminal-9",
+      "bankPayout": 10,
+      "sourceDeckLabel": "Колода новости 5",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-05"
+      }
+    },
+    {
+      "id": "cargo-source-row-142",
+      "sourceRow": 142,
+      "originNodeId": "terminal-3",
+      "destinationNodeId": "terminal-12",
+      "bankPayout": 25,
+      "sourceDeckLabel": "Колода новости 6",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-06"
+      }
+    },
+    {
+      "id": "cargo-source-row-143",
+      "sourceRow": 143,
+      "originNodeId": "terminal-3",
+      "destinationNodeId": "terminal-22",
+      "bankPayout": 25,
+      "sourceDeckLabel": "Колода новости 6",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-06"
+      }
+    },
+    {
+      "id": "cargo-source-row-144",
+      "sourceRow": 144,
+      "originNodeId": "terminal-11",
+      "destinationNodeId": "terminal-20",
+      "bankPayout": 25,
+      "sourceDeckLabel": "Колода новости 6",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-06"
+      }
+    },
+    {
+      "id": "cargo-source-row-145",
+      "sourceRow": 145,
+      "originNodeId": "terminal-11",
+      "destinationNodeId": "terminal-22",
+      "bankPayout": 25,
+      "sourceDeckLabel": "Колода новости 6",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-06"
+      }
+    },
+    {
+      "id": "cargo-source-row-146",
+      "sourceRow": 146,
+      "originNodeId": "terminal-12",
+      "destinationNodeId": "terminal-22",
+      "bankPayout": 25,
+      "sourceDeckLabel": "Колода новости 6",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-06"
+      }
+    },
+    {
+      "id": "cargo-source-row-147",
+      "sourceRow": 147,
+      "originNodeId": "terminal-12",
+      "destinationNodeId": "terminal-21",
+      "bankPayout": 25,
+      "sourceDeckLabel": "Колода новости 6",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-06"
+      }
+    },
+    {
+      "id": "cargo-source-row-148",
+      "sourceRow": 148,
+      "originNodeId": "terminal-20",
+      "destinationNodeId": "terminal-12",
+      "bankPayout": 25,
+      "sourceDeckLabel": "Колода новости 6",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-06"
+      }
+    },
+    {
+      "id": "cargo-source-row-149",
+      "sourceRow": 149,
+      "originNodeId": "terminal-20",
+      "destinationNodeId": "terminal-23",
+      "bankPayout": 25,
+      "sourceDeckLabel": "Колода новости 6",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-06"
+      }
+    },
+    {
+      "id": "cargo-source-row-150",
+      "sourceRow": 150,
+      "originNodeId": "terminal-21",
+      "destinationNodeId": "terminal-11",
+      "bankPayout": 25,
+      "sourceDeckLabel": "Колода новости 6",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-06"
+      }
+    },
+    {
+      "id": "cargo-source-row-151",
+      "sourceRow": 151,
+      "originNodeId": "terminal-21",
+      "destinationNodeId": "terminal-23",
+      "bankPayout": 25,
+      "sourceDeckLabel": "Колода новости 6",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-06"
+      }
+    },
+    {
+      "id": "cargo-source-row-152",
+      "sourceRow": 152,
+      "originNodeId": "terminal-22",
+      "destinationNodeId": "terminal-12",
+      "bankPayout": 25,
+      "sourceDeckLabel": "Колода новости 6",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-06"
+      }
+    },
+    {
+      "id": "cargo-source-row-153",
+      "sourceRow": 153,
+      "originNodeId": "terminal-22",
+      "destinationNodeId": "terminal-3",
+      "bankPayout": 25,
+      "sourceDeckLabel": "Колода новости 6",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-06"
+      }
+    },
+    {
+      "id": "cargo-source-row-154",
+      "sourceRow": 154,
+      "originNodeId": "terminal-23",
+      "destinationNodeId": "terminal-20",
+      "bankPayout": 25,
+      "sourceDeckLabel": "Колода новости 6",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-06"
+      }
+    },
+    {
+      "id": "cargo-source-row-155",
+      "sourceRow": 155,
+      "originNodeId": "terminal-23",
+      "destinationNodeId": "terminal-12",
+      "bankPayout": 25,
+      "sourceDeckLabel": "Колода новости 6",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-06"
+      }
+    },
+    {
+      "id": "cargo-source-row-156",
+      "sourceRow": 156,
+      "originNodeId": "terminal-13",
+      "destinationNodeId": "terminal-14",
+      "bankPayout": 25,
+      "sourceDeckLabel": "Колода новости 7",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-07"
+      }
+    },
+    {
+      "id": "cargo-source-row-157",
+      "sourceRow": 157,
+      "originNodeId": "terminal-13",
+      "destinationNodeId": "terminal-19",
+      "bankPayout": 25,
+      "sourceDeckLabel": "Колода новости 7",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-07"
+      }
+    },
+    {
+      "id": "cargo-source-row-158",
+      "sourceRow": 158,
+      "originNodeId": "terminal-14",
+      "destinationNodeId": "terminal-17",
+      "bankPayout": 25,
+      "sourceDeckLabel": "Колода новости 7",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-07"
+      }
+    },
+    {
+      "id": "cargo-source-row-159",
+      "sourceRow": 159,
+      "originNodeId": "terminal-14",
+      "destinationNodeId": "terminal-13",
+      "bankPayout": 25,
+      "sourceDeckLabel": "Колода новости 7",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-07"
+      }
+    },
+    {
+      "id": "cargo-source-row-160",
+      "sourceRow": 160,
+      "originNodeId": "terminal-15",
+      "destinationNodeId": "terminal-17",
+      "bankPayout": 25,
+      "sourceDeckLabel": "Колода новости 7",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-07"
+      }
+    },
+    {
+      "id": "cargo-source-row-161",
+      "sourceRow": 161,
+      "originNodeId": "terminal-15",
+      "destinationNodeId": "terminal-19",
+      "bankPayout": 25,
+      "sourceDeckLabel": "Колода новости 7",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-07"
+      }
+    },
+    {
+      "id": "cargo-source-row-162",
+      "sourceRow": 162,
+      "originNodeId": "terminal-17",
+      "destinationNodeId": "terminal-15",
+      "bankPayout": 25,
+      "sourceDeckLabel": "Колода новости 7",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-07"
+      }
+    },
+    {
+      "id": "cargo-source-row-163",
+      "sourceRow": 163,
+      "originNodeId": "terminal-17",
+      "destinationNodeId": "terminal-19",
+      "bankPayout": 25,
+      "sourceDeckLabel": "Колода новости 7",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-07"
+      }
+    },
+    {
+      "id": "cargo-source-row-164",
+      "sourceRow": 164,
+      "originNodeId": "terminal-18",
+      "destinationNodeId": "terminal-13",
+      "bankPayout": 25,
+      "sourceDeckLabel": "Колода новости 7",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-07"
+      }
+    },
+    {
+      "id": "cargo-source-row-165",
+      "sourceRow": 165,
+      "originNodeId": "terminal-18",
+      "destinationNodeId": "terminal-15",
+      "bankPayout": 25,
+      "sourceDeckLabel": "Колода новости 7",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-07"
+      }
+    },
+    {
+      "id": "cargo-source-row-166",
+      "sourceRow": 166,
+      "originNodeId": "terminal-19",
+      "destinationNodeId": "terminal-14",
+      "bankPayout": 25,
+      "sourceDeckLabel": "Колода новости 7",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-07"
+      }
+    },
+    {
+      "id": "cargo-source-row-167",
+      "sourceRow": 167,
+      "originNodeId": "terminal-19",
+      "destinationNodeId": "terminal-13",
+      "bankPayout": 25,
+      "sourceDeckLabel": "Колода новости 7",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-07"
+      }
+    },
+    {
+      "id": "cargo-source-row-168",
+      "sourceRow": 168,
+      "originNodeId": "terminal-5",
+      "destinationNodeId": "terminal-22",
+      "bankPayout": 25,
+      "sourceDeckLabel": "Колода новости 8",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-08"
+      }
+    },
+    {
+      "id": "cargo-source-row-169",
+      "sourceRow": 169,
+      "originNodeId": "terminal-5",
+      "destinationNodeId": "terminal-2",
+      "bankPayout": 25,
+      "sourceDeckLabel": "Колода новости 8",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-08"
+      }
+    },
+    {
+      "id": "cargo-source-row-170",
+      "sourceRow": 170,
+      "originNodeId": "terminal-7",
+      "destinationNodeId": "terminal-17",
+      "bankPayout": 30,
+      "sourceDeckLabel": "Колода новости 8",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-08"
+      }
+    },
+    {
+      "id": "cargo-source-row-171",
+      "sourceRow": 171,
+      "originNodeId": "terminal-7",
+      "destinationNodeId": "terminal-20",
+      "bankPayout": 30,
+      "sourceDeckLabel": "Колода новости 8",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-08"
+      }
+    },
+    {
+      "id": "cargo-source-row-172",
+      "sourceRow": 172,
+      "originNodeId": "terminal-20",
+      "destinationNodeId": "terminal-10",
+      "bankPayout": 30,
+      "sourceDeckLabel": "Колода новости 9",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-09"
+      }
+    },
+    {
+      "id": "cargo-source-row-173",
+      "sourceRow": 173,
+      "originNodeId": "terminal-20",
+      "destinationNodeId": "terminal-8",
+      "bankPayout": 30,
+      "sourceDeckLabel": "Колода новости 9",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-09"
+      }
+    },
+    {
+      "id": "cargo-source-row-174",
+      "sourceRow": 174,
+      "originNodeId": "terminal-21",
+      "destinationNodeId": "terminal-23",
+      "bankPayout": 30,
+      "sourceDeckLabel": "Колода новости 9",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-09"
+      }
+    },
+    {
+      "id": "cargo-source-row-175",
+      "sourceRow": 175,
+      "originNodeId": "terminal-21",
+      "destinationNodeId": "terminal-12",
+      "bankPayout": 30,
+      "sourceDeckLabel": "Колода новости 9",
+      "deck": {
+        "kind": "news-addition",
+        "newsId": "news-09"
+      }
+    }
+  ],
+  "newsRecords": [
+    {
+      "id": "news-01",
+      "sourceRow": 2,
+      "number": 1,
+      "category": "cargo-addition",
+      "sourceCategoryLabel": "Добавление карточек грузов",
+      "text": "Введен в эксплуатацию машиностроительный завод вблизи терминала 4, количество заказов из терминала увеличилось.",
+      "linkedCargoRecordIds": [
+        "cargo-source-row-114",
+        "cargo-source-row-115",
+        "cargo-source-row-116",
+        "cargo-source-row-117",
+        "cargo-source-row-118"
+      ]
+    },
+    {
+      "id": "news-02",
+      "sourceRow": 3,
+      "number": 2,
+      "category": "cargo-addition",
+      "sourceCategoryLabel": "Добавление карточек грузов",
+      "text": "Открыт новый цех, производящий бытовую технику. Дополнительный спрос на перевозку из терминала 16.",
+      "linkedCargoRecordIds": [
+        "cargo-source-row-122",
+        "cargo-source-row-123",
+        "cargo-source-row-124",
+        "cargo-source-row-125",
+        "cargo-source-row-126"
+      ]
+    },
+    {
+      "id": "news-03",
+      "sourceRow": 4,
+      "number": 3,
+      "category": "cargo-addition",
+      "sourceCategoryLabel": "Добавление карточек грузов",
+      "text": "Увеличились объемы перевозок сыпучих грузов. Дополнительный спрос на перевозку из терминала 22.",
+      "linkedCargoRecordIds": [
+        "cargo-source-row-127",
+        "cargo-source-row-128",
+        "cargo-source-row-129",
+        "cargo-source-row-130"
+      ]
+    },
+    {
+      "id": "news-04",
+      "sourceRow": 5,
+      "number": 4,
+      "category": "cargo-addition",
+      "sourceCategoryLabel": "Добавление карточек грузов",
+      "text": "Открыто новое угольное месторождение вблизи терминала 6, началась разработка. Повышен спрос на перевозки.",
+      "linkedCargoRecordIds": [
+        "cargo-source-row-131",
+        "cargo-source-row-132",
+        "cargo-source-row-133",
+        "cargo-source-row-134",
+        "cargo-source-row-135"
+      ]
+    },
+    {
+      "id": "news-05",
+      "sourceRow": 6,
+      "number": 5,
+      "category": "cargo-addition",
+      "sourceCategoryLabel": "Добавление карточек грузов",
+      "text": "Выросла предпринимательская активность и возник дополнительный спрос на перевозку изделий ручной работы из терминала 3.",
+      "linkedCargoRecordIds": [
+        "cargo-source-row-136",
+        "cargo-source-row-137",
+        "cargo-source-row-138",
+        "cargo-source-row-139",
+        "cargo-source-row-140",
+        "cargo-source-row-141"
+      ]
+    },
+    {
+      "id": "news-06",
+      "sourceRow": 7,
+      "number": 6,
+      "category": "cargo-addition",
+      "sourceCategoryLabel": "Добавление карточек грузов",
+      "text": "Из-за экономического роста повысилась прибыльность жд-перевозок между Левой Гвинеей и Южной Гвинеей Роршаха. Появились более выгодные контракты на вывоз грузов из терминалов 20, 21, 22, 12, 11, 23, 3.",
+      "linkedCargoRecordIds": [
+        "cargo-source-row-142",
+        "cargo-source-row-143",
+        "cargo-source-row-144",
+        "cargo-source-row-145",
+        "cargo-source-row-146",
+        "cargo-source-row-147",
+        "cargo-source-row-148",
+        "cargo-source-row-149",
+        "cargo-source-row-150",
+        "cargo-source-row-151",
+        "cargo-source-row-152",
+        "cargo-source-row-153",
+        "cargo-source-row-154",
+        "cargo-source-row-155"
+      ]
+    },
+    {
+      "id": "news-07",
+      "sourceRow": 8,
+      "number": 7,
+      "category": "cargo-addition",
+      "sourceCategoryLabel": "Добавление карточек грузов",
+      "text": "Экономическое партнерство между Нижней, Ультраправой и Народной Гвинеями привело к росту металлургической отрасли. Появились заявки на перевозку по более высоким ценам между терминалами 13, 14, 15, 17, 18, 19.",
+      "linkedCargoRecordIds": [
+        "cargo-source-row-156",
+        "cargo-source-row-157",
+        "cargo-source-row-158",
+        "cargo-source-row-159",
+        "cargo-source-row-160",
+        "cargo-source-row-161",
+        "cargo-source-row-162",
+        "cargo-source-row-163",
+        "cargo-source-row-164",
+        "cargo-source-row-165",
+        "cargo-source-row-166",
+        "cargo-source-row-167"
+      ]
+    },
+    {
+      "id": "news-08",
+      "sourceRow": 9,
+      "number": 8,
+      "category": "cargo-addition",
+      "sourceCategoryLabel": "Добавление карточек грузов",
+      "text": "Рекордный урожай картофеля в Белой Гвинее провоцирует высочайший спрос на перевозки из терминалов 5 и 7. Из-за дефицита перевозчиков цены на перевозку растут.",
+      "linkedCargoRecordIds": [
+        "cargo-source-row-168",
+        "cargo-source-row-169",
+        "cargo-source-row-170",
+        "cargo-source-row-171"
+      ]
+    },
+    {
+      "id": "news-09",
+      "sourceRow": 10,
+      "number": 9,
+      "category": "cargo-addition",
+      "sourceCategoryLabel": "Добавление карточек грузов",
+      "text": "Вследствие роста цен на бензин в Левой Гвинее повысился спрос на жд-перевозки. Клиенты готовы щедро платить за перевозки из терминалов 20 и 21.",
+      "linkedCargoRecordIds": [
+        "cargo-source-row-172",
+        "cargo-source-row-173",
+        "cargo-source-row-174",
+        "cargo-source-row-175"
+      ]
+    },
+    {
+      "id": "news-10",
+      "sourceRow": 11,
+      "number": 10,
+      "category": "cargo-addition",
+      "sourceCategoryLabel": "Добавление карточек грузов",
+      "text": "Месторождение графена открыто вблизи 10 терминала. Появились выгодные заказы на перевозки.",
+      "linkedCargoRecordIds": [
+        "cargo-source-row-119",
+        "cargo-source-row-120",
+        "cargo-source-row-121"
+      ]
+    },
+    {
+      "id": "news-11",
+      "sourceRow": 12,
+      "number": 11,
+      "category": "rule-modifier",
+      "sourceCategoryLabel": "Ограничения, пошлины, плюшки",
+      "text": "Стоят лоси в течение этого хода между терминалами 1 и 9.",
+      "linkedCargoRecordIds": []
+    },
+    {
+      "id": "news-12",
+      "sourceRow": 13,
+      "number": 12,
+      "category": "rule-modifier",
+      "sourceCategoryLabel": "Ограничения, пошлины, плюшки",
+      "text": "Сошел сель и повредил на 1 ход сообщение между терминалами 3 и 3,14.",
+      "linkedCargoRecordIds": []
+    },
+    {
+      "id": "news-13",
+      "sourceRow": 14,
+      "number": 13,
+      "category": "rule-modifier",
+      "sourceCategoryLabel": "Ограничения, пошлины, плюшки",
+      "text": "Сошла лавина между терминалами 8 и 9 ¾. Проезд закрыт на 1 ход.",
+      "linkedCargoRecordIds": []
+    },
+    {
+      "id": "news-14",
+      "sourceRow": 15,
+      "number": 14,
+      "category": "rule-modifier",
+      "sourceCategoryLabel": "Ограничения, пошлины, плюшки",
+      "text": "Введен прогрессивный налог на имущество: компании, владеющие 3 локомотивами/ 5 вагонами и более, каждый ход платят в банк по 1 монете за каждый вагон/локомотив сверх указанного количества",
+      "linkedCargoRecordIds": []
+    },
+    {
+      "id": "news-15",
+      "sourceRow": 16,
+      "number": 15,
+      "category": "rule-modifier",
+      "sourceCategoryLabel": "Ограничения, пошлины, плюшки",
+      "text": "Забастовка шахтеров: перекрыт проезд между терминалами 1 и 2 на 1 ход.",
+      "linkedCargoRecordIds": []
+    },
+    {
+      "id": "news-16",
+      "sourceRow": 17,
+      "number": 16,
+      "category": "rule-modifier",
+      "sourceCategoryLabel": "Ограничения, пошлины, плюшки",
+      "text": "Единоразовый сбор в бюджет: все команды, имеющие больше 15 монет по итогам прошлого хода, платят в банк 5 монет",
+      "linkedCargoRecordIds": []
+    },
+    {
+      "id": "news-17",
+      "sourceRow": 18,
+      "number": 17,
+      "category": "rule-modifier",
+      "sourceCategoryLabel": "Ограничения, пошлины, плюшки",
+      "text": "В результате землетрясения повреждены пути между терминалами 4 и 7 на 1 ход.",
+      "linkedCargoRecordIds": []
+    },
+    {
+      "id": "news-18",
+      "sourceRow": 19,
+      "number": 18,
+      "category": "rule-modifier",
+      "sourceCategoryLabel": "Ограничения, пошлины, плюшки",
+      "text": "Для борьбы с комарами введен режим ЧС и закрыт на 1 ход терминал 11.",
+      "linkedCargoRecordIds": []
+    },
+    {
+      "id": "news-19",
+      "sourceRow": 20,
+      "number": 19,
+      "category": "rule-modifier",
+      "sourceCategoryLabel": "Ограничения, пошлины, плюшки",
+      "text": "Сгорело депо одного из членов ж/д профсоюза. Каждая 5-ая единица техники команды отправляется в помощь погорельцу.",
+      "linkedCargoRecordIds": []
+    },
+    {
+      "id": "news-20",
+      "sourceRow": 21,
+      "number": 20,
+      "category": "rule-modifier",
+      "sourceCategoryLabel": "Ограничения, пошлины, плюшки",
+      "text": "На время приезда Ким Чен Хына (на 1 ход) закрыт для коммерческого использования терминал 12.",
+      "linkedCargoRecordIds": []
+    },
+    {
+      "id": "news-21",
+      "sourceRow": 22,
+      "number": 21,
+      "category": "rule-modifier",
+      "sourceCategoryLabel": "Ограничения, пошлины, плюшки",
+      "text": "Проводятся тестовые мероприятия на железной дороге, закрыт для въезда регион Белая Гвинея (терминалы 5 и 7)",
+      "linkedCargoRecordIds": []
+    },
+    {
+      "id": "news-22",
+      "sourceRow": 23,
+      "number": 22,
+      "category": "rule-modifier",
+      "sourceCategoryLabel": "Ограничения, пошлины, плюшки",
+      "text": "Введен разовый сбор в бюджет от всех железнодорожников для развития инфраструктуры. Каждый локомотив, использующийся в этот ход, делает платеж в бюджет в размере 1 монеты.",
+      "linkedCargoRecordIds": []
+    },
+    {
+      "id": "news-23",
+      "sourceRow": 24,
+      "number": 23,
+      "category": "rule-modifier",
+      "sourceCategoryLabel": "Ограничения, пошлины, плюшки",
+      "text": "Заказчики вынуждены уменьшить оплату услуг перевозок в связи с плохой экономической ситуацией. Вагончики, завершающие доставку грузов на этом ходу получают на 2 монеты меньше по своим контрактам.",
+      "linkedCargoRecordIds": []
+    },
+    {
+      "id": "news-24",
+      "sourceRow": 25,
+      "number": 24,
+      "category": "rule-modifier",
+      "sourceCategoryLabel": "Ограничения, пошлины, плюшки",
+      "text": "Повышенный спрос на перевозки привел к временному повышению цен: клиенты платят перевозчикам +3 монеты за грузы, доставленные на этом ходу.",
+      "linkedCargoRecordIds": []
+    },
+    {
+      "id": "news-25",
+      "sourceRow": 26,
+      "number": 25,
+      "category": "rule-modifier",
+      "sourceCategoryLabel": "Ограничения, пошлины, плюшки",
+      "text": "В рамках программы развития жд-транспорта каждой компании отрасли предоставляется купон на бесплатное обслуживание вагонов и локомотивов на 1 ход.",
+      "linkedCargoRecordIds": []
+    },
+    {
+      "id": "news-26",
+      "sourceRow": 27,
+      "number": 26,
+      "category": "rule-modifier",
+      "sourceCategoryLabel": "Ограничения, пошлины, плюшки",
+      "text": "В рамках программы развития жд-транспорта строительство путей (не более 6 сегментов), запланированное на этом ходу, осуществляется за счет государства.",
+      "linkedCargoRecordIds": []
+    },
+    {
+      "id": "news-27",
+      "sourceRow": 28,
+      "number": 27,
+      "category": "rule-modifier",
+      "sourceCategoryLabel": "Ограничения, пошлины, плюшки",
+      "text": "Южная Гвинея Роршаха инвестирует в развитие отрасли и строит жд-путь из терминала 12 в терминал 22 за счет бюджетных средств.",
+      "linkedCargoRecordIds": []
+    },
+    {
+      "id": "news-28",
+      "sourceRow": 29,
+      "number": 28,
+      "category": "rule-modifier",
+      "sourceCategoryLabel": "Ограничения, пошлины, плюшки",
+      "text": "В связи с блокировкой Левой Гвинеей Ленунецкого канала (вблизи 5 терминала), резко вырос спрос на вывоз грузов из Белой Гвинеи. За каждый вывезенный груз из терминалов 5 и 7 бонус из банка получает и перевозчик, и жд-оператор - по 1 монете.",
+      "linkedCargoRecordIds": []
+    },
+    {
+      "id": "news-29",
+      "sourceRow": 30,
+      "number": 29,
+      "category": "rule-modifier",
+      "sourceCategoryLabel": "Ограничения, пошлины, плюшки",
+      "text": "Ультраправая Гвинея вводит программу поддержки жд-транспорта из-за санкций, наложенных на ее флот. Государство платит по 1 монете вагону и локомотиву за каждый вывезенный груз из терминалов 14 и 15.",
+      "linkedCargoRecordIds": []
+    },
+    {
+      "id": "news-30",
+      "sourceRow": 31,
+      "number": 30,
+      "category": "rule-modifier",
+      "sourceCategoryLabel": "Ограничения, пошлины, плюшки",
+      "text": "Склады вагоностроительного завода опустели. На этом ходу нельзя купить новые вагоны.",
+      "linkedCargoRecordIds": []
+    },
+    {
+      "id": "news-31",
+      "sourceRow": 32,
+      "number": 31,
+      "category": "rule-modifier",
+      "sourceCategoryLabel": "Ограничения, пошлины, плюшки",
+      "text": "Склады машиностроительного завода опустели. На этом ходу нельзя купить новые локомотивы.",
+      "linkedCargoRecordIds": []
+    },
+    {
+      "id": "news-32",
+      "sourceRow": 33,
+      "number": 32,
+      "category": "rule-modifier",
+      "sourceCategoryLabel": "Ограничения, пошлины, плюшки",
+      "text": "Вследствие перепроизводства вагоностроительный завод делает скидку на покупку вагонов на этот ход. Вагон стоит 4 монеты.",
+      "linkedCargoRecordIds": []
+    },
+    {
+      "id": "news-33",
+      "sourceRow": 34,
+      "number": 33,
+      "category": "rule-modifier",
+      "sourceCategoryLabel": "Ограничения, пошлины, плюшки",
+      "text": "Вследствие перепроизводства машиностроительный завод делает скидку на покупку локомотивов на этот ход. Локомотив стоит 8 монет.",
+      "linkedCargoRecordIds": []
+    },
+    {
+      "id": "news-34",
+      "sourceRow": 35,
+      "number": 34,
+      "category": "rule-modifier",
+      "sourceCategoryLabel": "Ограничения, пошлины, плюшки",
+      "text": "Ввиду повышенного спроса на железнодорожные составы производители поднимают цены. С этого хода вагон стоит 6 монет, а локомотив 12 монет.",
+      "linkedCargoRecordIds": []
+    }
+  ]
+}

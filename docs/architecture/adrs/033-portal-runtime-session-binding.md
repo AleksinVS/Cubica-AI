@@ -1,7 +1,7 @@
 # ADR-033: Portal Runtime Session Binding
 
 - **Дата**: 2026-05-20
-- **Статус**: Accepted
+**Status:** Accepted
 - **Авторы**: Codex
 - **Компоненты**: Portal Backend, Portal Frontend, Player Web, Runtime API, Session, Admin
 
@@ -9,7 +9,7 @@
 
 - [Контекст](#контекст)
 - [Решение](#решение)
-- [Правила ссылок](#правила-ссылок)
+- [Политика доступа](#политика-доступа)
 - [Правила типа игры](#правила-типа-игры)
 - [Доменная модель](#доменная-модель)
 - [API boundary](#api-boundary)
@@ -17,21 +17,29 @@
 - [Журнал и архивирование](#журнал-и-архивирование)
 - [Отклоненные альтернативы](#отклоненные-альтернативы)
 - [Последствия](#последствия)
-- [Открытые решения](#открытые-решения)
 - [Связанные артефакты](#связанные-артефакты)
 
 ## Контекст
 
-ADR-032 закрепил границу: портал управляет покупками, ссылками запуска и доступом, а `runtime-api` владеет игровым состоянием. После первого тестового контура обнаружен архитектурный разрыв: portal link уже резолвится в `runtimeSessionId`, но `apps/player-web` продолжает старую browser-local модель и читает `sessionId` из `localStorage` по ключу игры.
+ADR-032 закрепил границу: портал управляет покупками, ссылками запуска и
+доступом, а Runtime API владеет игровым состоянием. Для сохранения этой границы
+нужен явный контракт между портальной сессией доступа и runtime-сессией: клиент
+не может самостоятельно выбирать игровое состояние из локального хранилища.
 
 Термины:
 
-- **Launch session** — портальная сессия доступа по ссылке: запись с токеном, счетчиком, сроком действия и связью с покупкой.
-- **Runtime session** — сессия игрового состояния в `runtime-api`: состояние, ход игрока и журнал ходов.
-- **Device binding** — привязка устройства игрока к runtime session внутри launch session; нужна для однопользовательских игр, где разные устройства должны получать свое состояние.
-- **Admin window** — административное окно сессии для консультанта или администратора, защищенное логином/паролем и проверкой прав.
+- **Портальная сессия доступа** — запись с токеном, сроком действия, политикой
+  доступа и связью с покупкой.
+- **Runtime-сессия** — сессия игрового состояния в Runtime API: состояние, ход
+  игрока и журнал ходов.
+- **Привязка устройства** — связь устройства игрока с runtime-сессией внутри
+  портальной сессии доступа; нужна там, где разные устройства должны получать
+  раздельное состояние.
+- **Административная поверхность** — защищённый интерфейс управления сессией
+  для консультанта или администратора.
 
-Без явного binding layer разные портальные ссылки в одном браузере могут попадать в одну и ту же runtime session, потому что player-web продолжает последний `localStorage` session id.
+Без явного слоя привязки разные портальные ссылки в одном браузере могут
+ошибочно попадать в одну runtime-сессию.
 
 ## Решение
 
@@ -39,49 +47,29 @@ ADR-032 закрепил границу: портал управляет пок�
 
 Портал остается владельцем доступа, а `runtime-api` остается владельцем состояния игры. Создание или продолжение runtime session должно происходить через backend boundary, а не через произвольное чтение `localStorage` в player-web.
 
-Целевая цепочка:
+Целевая цепочка состоит из проверки порталом токена, статуса, срока действия,
+покупки и политики доступа, после чего портал создаёт или возобновляет
+разрешённую привязку к runtime-сессии. Player Web использует только полученный
+из этой привязки идентификатор и не подменяет его локально сохранённым выбором.
 
-1. Консультант копирует ссылку в портале.
-2. Portal backend создает или переиспользует launch session по правилам типа ссылки.
-3. Игрок открывает `/launch/:token::counter`.
-4. Portal backend проверяет токен, счетчик, срок, статус, покупку и тип игры.
-5. Player Web получает launch context и запрашивает runtime binding.
-6. Portal backend решает, какой runtime session id вернуть:
-   - общий runtime session для one-time ссылки и multiplayer;
-   - device-bound runtime session для single-player day/month.
-7. Player Web использует runtime session id из portal binding как приоритетный источник и не подменяет его старым `localStorage`.
+Граница реализуется модулем portal/session: транспортный контроллер принимает
+HTTP-контекст, а правила доступа и привязки живут в сервисном слое. Физическое
+размещение модуля может меняться без изменения доменной модели.
 
-Для первого VPS эта boundary реализуется как Strapi custom API с thin controller и service logic, что соответствует Strapi-подходу: контроллер принимает HTTP-контекст, а бизнес-правила живут в service layer. В будущем этот блок можно вынести из Strapi в отдельный portal/session module без изменения доменной модели.
+## Политика доступа
 
-## Правила ссылок
+Коммерческий вариант доступа задаётся принятым полем `package_type`; его
+продуктовый контракт определяет:
 
-### One-Time
+- создаётся ли новая портальная сессия или переиспользуется существующая;
+- срок действия и допустимость повторного открытия;
+- должна ли runtime-сессия быть общей или привязанной к устройству;
+- переводятся ли покупка и сессия в архив после завершения;
+- доступен ли сохранённый журнал после завершения.
 
-- Одна покупка one-time имеет ровно одну launch session.
-- Ссылка бессрочная до полного прохождения игры.
-- Runtime session одна на ссылку независимо от устройства.
-- При повторном переходе открывается последнее состояние этой runtime session.
-- После полного прохождения покупка переводится в архив, `end_date` покупки заполняется датой завершения.
-- После завершения повторный переход открывает сохраненный журнал ходов, а не новую игру.
-
-### Day
-
-- Launch session действует в дату покупки с `00:00:00` до `23:59:59` по timezone `Europe/Moscow`.
-- Каждое копирование ссылки создает новую launch session.
-- Если нужно продлить ссылку на следующий день, пользователь обращается в поддержку; автоматическое продление не выполняется.
-- Runtime binding зависит от типа игры:
-  - single-player: отдельная runtime session на устройство;
-  - multiplayer: одна runtime session на launch session.
-
-### Month
-
-- Покупка задает купленный период.
-- Копирование ссылки допустимо только внутри купленного периода.
-- Каждое копирование создает новую launch session.
-- Каждая launch session действует 48 часов с момента генерации, но не должна выходить за предел купленного периода.
-- Runtime binding зависит от типа игры:
-  - single-player: отдельная runtime session на устройство;
-  - multiplayer: одна runtime session на launch session.
+Каталог конкретных тарифов, их названия и длительности не является частью ADR.
+Backend исполняет правила выбранного типа и ограничивает срок портальной
+сессии сроком покупки; интерфейс не может переопределять эти правила.
 
 ## Правила типа игры
 
@@ -89,7 +77,8 @@ ADR-032 закрепил границу: портал управляет пок�
 
 ### Single-Player
 
-- Для day/month launch session состояние возвращается отдельно для каждого устройства.
+- Когда политика требует раздельного состояния, каждому устройству возвращается
+  собственная runtime-сессия.
 - Устройство получает device token в cookie или другом стабильном browser storage.
 - Device token не должен давать права доступа сам по себе: он работает только внутри валидной launch session.
 - `launch_count` считается по числу созданных runtime sessions, то есть по новым device bindings.
@@ -99,11 +88,6 @@ ADR-032 закрепил границу: портал управляет пок�
 - Состояние привязано к номеру launch session, то есть к `counter` и token.
 - Все игроки, открывшие одну ссылку, попадают в одну runtime session.
 - `launch_count` для multiplayer увеличивается при создании runtime session для launch session, а не при каждом переходе игрока.
-- Портал показывает кнопку `Сессии` в строках ссылок многопользовательских игр.
-
-### One-Time Override
-
-One-time ссылка сильнее правила single-player device binding: она всегда ведет в одну runtime session. Это следует из продуктового правила "разовая ссылка всегда имеет только одну сессию и переходит на последнее состояние независимо от устройства".
 
 ## Доменная модель
 
@@ -112,7 +96,8 @@ One-time ссылка сильнее правила single-player device binding
 - `purchase`
   - `id`, `documentId`
   - `game_id`
-  - `package_type`: `one-time | day | month`
+  - `package_type`: тип приобретённого продукта; допустимые значения задаёт
+    продуктовый контракт
   - `start_date`, `end_date`
   - `status`: `active | completed | archived | revoked`
   - `completed_at`
@@ -150,7 +135,8 @@ One-time ссылка сильнее правила single-player device binding
   - `journal_payload`
   - `completed_at`
 
-`runtime_session_binding` is the missing bridge in the current implementation.
+`runtime_session_binding` является явной доменной связью между портальным
+доступом и игровым состоянием.
 
 ## API boundary
 
@@ -166,20 +152,21 @@ Portal-facing endpoints:
   - returns launch context, not an unverified browser-local runtime decision.
 - `POST /api/launch-sessions/resolve/:token/:counter/runtime-binding`
   - called by Player Web after resolve;
-  - receives device token when single-player day/month needs device-bound state;
+  - получает токен устройства, когда политика требует отдельного состояния;
   - creates/resumes runtime session through `runtime-api`;
   - records `binding-created` or `binding-resumed`.
 - `GET /api/launch-sessions/active`
   - authenticated consultant endpoint;
   - returns active launch sessions for a purchase/link.
 - `GET /api/launch-sessions/:id/journal`
-  - returns saved journal for completed one-time sessions.
+  - возвращает сохранённый журнал, если это разрешено политикой доступа.
 
 Player Web rules:
 
 - If launch context is present in URL, Player Web must use portal runtime binding first.
 - Stored `localStorage` session id may be used only when it belongs to the same launch context.
-- If no launch context exists, legacy local development behavior can still create a local runtime session, but this mode must be marked as local/demo.
+- Запуск без портального контекста является отдельным локальным режимом и не
+  даёт портальных прав доступа.
 
 Runtime API rules:
 
@@ -189,62 +176,52 @@ Runtime API rules:
 
 ## Admin window
 
-Canonical admin route variant:
+Канонический административный маршрут:
 
 ```text
 /launch/:token::counter/admin
 ```
 
-The plain product rule "add `admin` to the end of the link" maps to the route above.
-
-Admin window requirements:
+Требования к административной поверхности:
 
 - Requires login/password.
 - Requires consultant ownership of the purchase or admin role.
 - Opens session state/log controls for multiplayer launch session.
 - Must not be authorized only by URL knowledge.
-- The portal session list must include an `Admin` button that opens the same route.
+- Все административные поверхности используют тот же защищённый маршрут.
 
 ## Журнал и архивирование
 
-Completion flow:
+Runtime API отмечает runtime-сессию завершённой и публикует событие завершения
+со ссылкой на журнал или его проекцией. Portal backend фиксирует событие и
+изменяет статусы покупки и портальной сессии согласно политике доступа.
+Повторное открытие возвращает журнал только тогда, когда это разрешено политикой.
 
-1. Runtime API marks runtime session as completed.
-2. Runtime API exposes or sends completion event with journal payload or journal pointer.
-3. Portal backend records `completed` event.
-4. For one-time purchase:
-   - launch session becomes `completed`;
-   - purchase becomes `archived`;
-   - purchase `end_date` becomes completion date.
-5. Reopening the one-time link after completion returns journal route instead of player route.
-
-For `Antarctica`, the journal is general platform data: it is the game-visible move log saved from runtime state. The portal must not know Antarctica-specific steps or cards.
+Журнал является общей player-facing проекцией сохранённых runtime-событий.
+Портал не должен знать шаги, карточки или другие сущности конкретной игры.
 
 ## Отклоненные альтернативы
 
 - **Let Player Web continue using only `localStorage`** — rejected because different portal links in one browser collapse into one runtime session.
 - **Make Portal Backend own game state** — rejected because it violates ADR-032 and duplicates runtime-api responsibility.
 - **Encode all rules in URL parameters** — rejected because URL knowledge would become authority and admin access would be weak.
-- **Create a separate session service before test VPS** — postponed; Strapi custom API is enough for the first VPS if service boundaries and tests remain explicit.
+- **Create a separate session service immediately** — postponed; modular backend
+  placement is sufficient while service boundaries and tests remain explicit.
 
 ## Последствия
 
-- Current implementation keeps `launch-session.runtime_session_id` only for shared-session modes; device-specific sessions live in `runtime_session_binding`.
-- `apps/player-web` must prefer portal launch context over browser-local demo sessions.
-- A new Strapi content-type or equivalent table is needed for `runtime_session_binding`.
-- Runtime API needs either persisted sessions or a stable recovery path before VPS tests can guarantee resume after service restart.
-- The `Сессии` modal can use current `active` endpoint, but admin buttons and active runtime binding data require the binding model.
+- Общая runtime-сессия может храниться непосредственно в портальной сессии;
+  привязки к устройствам хранятся отдельно.
+- Player Web обязан отдавать приоритет портальному контексту над локальным
+  демонстрационным режимом.
+- Хранилище должно поддерживать отдельную сущность `runtime_session_binding`.
+- Runtime API должен обеспечивать устойчивое возобновление сессии после
+  перезапуска процесса.
 - Runtime binding creation must be protected by a unique binding key, otherwise parallel opens of the same shared link can create duplicate runtime sessions.
-
-## Открытые решения
-
-1. What exact journal DTO must Runtime API return for completed sessions? Recommendation: start with `runtimeSessionId`, `gameId`, `completedAt`, `entries[]`, and `summary`.
 
 ## Связанные артефакты
 
 - `docs/architecture/adrs/032-portal-session-launch-boundary.md`
-- `docs/tasks/active/TSK-20260518-portal-test-vps-and-antarctica-launch.md`
-- `docs/tasks/artifacts/TSK-20260518-portal-test-vps-and-antarctica-launch/session-management-design.md`
 - `docs/architecture/adrs/005-session-persistence.md`
 - `docs/architecture/adrs/011-multiplayer-architecture.md`
 - `docs/architecture/adrs/019-runtime-api-owns-content-loading-and-player-facing-content-api.md`

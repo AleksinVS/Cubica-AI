@@ -34,6 +34,7 @@ export function PreviewStage({ controller }: { controller: EditorWorkspaceContro
     previewChannel,
     previewUrl,
     previewIframeRef,
+    handlePreviewFrameLoad,
     effectivePreviewInspectMode,
     previewEntities,
     selectedPreviewEntityId,
@@ -180,7 +181,17 @@ export function PreviewStage({ controller }: { controller: EditorWorkspaceContro
                   : undefined
               }
             />
-            <iframe ref={previewIframeRef} title={t.previewStage.iframeTitle} src={previewUrl} allow="fullscreen" />
+            <iframe
+              key={previewUrl}
+              ref={previewIframeRef}
+              title={t.previewStage.iframeTitle}
+              src={previewUrl}
+              onLoad={handlePreviewFrameLoad}
+              allow="fullscreen"
+              // Scripts render the player, while its original origin is needed for
+              // the editor's strict message-origin check in use-editor-workspace.
+              sandbox="allow-scripts allow-same-origin"
+            />
             <PreviewSelectionOverlay
               disabled={!effectivePreviewInspectMode}
               entities={previewEntities}

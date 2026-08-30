@@ -11,8 +11,11 @@
 Структура:
 
 - `manifest/` — manifest bundle, metadata, content contracts
-- `session/` — session lifecycle, commands, query DTO, events
+- `session/` — session lifecycle, commands, query DTO, protected events and the
+  schema-generated portable public journal contract
 - `runtime/` — state delta, action result, effects, runtime envelopes
 - `ai/` — AI task/result contracts, eval/replay contracts
 
-На ближайшей фазе это каркас. Следующий шаг — начать переносить в него реальные DTO из `services/runtime-api`.
+Пакеты уже используются реальными runtime/player потребителями. JSON Schema
+остаётся источником истины для schema-backed поверхностей; оставшиеся старые
+session/runtime-типы переводятся на этот контур отдельными ограниченными срезами.

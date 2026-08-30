@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cubica.ai/schemas/session/public-gameplay-journal.schema.json",
+  "title": "PortablePublicGameplayJournal",
+  "description": "A read-only portable projection of confirmed public gameplay events.",
+  "type": "object",
+  "required": [
+    "format",
+    "schemaVersion",
+    "sessionId",
+    "gameId",
+    "lifecycle",
+    "sessionCreatedAt",
+    "throughEventSequence",
+    "entries"
+  ],
+  "properties": {
+    "format": { "const": "cubica.public-gameplay-journal" },
+    "schemaVersion": { "const": "1.0.0" },
+    "sessionId": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "gameId": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+    },
+    "lifecycle": { "enum": ["active", "archived"] },
+    "sessionCreatedAt": { "type": "string", "format": "date-time" },
+    "archivedAt": { "type": "string", "format": "date-time" },
+    "throughEventSequence": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "entries": {
+      "type": "array",
+      "maxItems": 65536,
+      "items": { "$ref": "#/$defs/PortablePublicGameplayJournalEntry" }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "lifecycle": { "const": "archived" } },
+        "required": ["lifecycle"]
+      },
+      "then": {
+        "properties": {
+          "archivedAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["archivedAt"]
+      },
+      "else": {
+        "properties": { "archivedAt": false }
+      }
+    }
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "CubicaJsonValue": {
+      "oneOf": [
+        { "type": "null" },
+        { "type": "boolean" },
+        { "type": "number" },
+        { "type": "string" },
+        {
+          "type": "array",
+          "items": { "$ref": "#/$defs/CubicaJsonValue" }
+        },
+        {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/CubicaJsonValue" }
+        }
+      ]
+    },
+    "PortablePublicGameplayJournalMetricChange": {
+      "type": "object",
+      "required": ["metricId", "before", "after"],
+      "properties": {
+        "metricId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "before": { "type": "number" },
+        "after": { "type": "number" }
+      },
+      "additionalProperties": false
+    },
+    "PortablePublicGameplayJournalEntry": {
+      "type": "object",
+      "required": ["eventId", "sequence", "eventType", "occurredAt", "summary", "data"],
+      "properties": {
+        "eventId": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "sequence": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "eventType": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "occurredAt": { "type": "string", "format": "date-time" },
+        "summary": { "$ref": "#/$defs/CubicaJsonValue" },
+        "data": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/CubicaJsonValue" }
+        },
+        "metricChanges": {
+          "type": "array",
+          "maxItems": 256,
+          "items": { "$ref": "#/$defs/PortablePublicGameplayJournalMetricChange" }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,332 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cubica.platform/games/cards-money-trains/vector-map-review.schema.json",
+  "title": "Cards, Money, Trains vector map review artifact",
+  "description": "Непубликационный результат извлечения открытых PDF-контуров из авторского AI-файла. Контуры остаются кандидатами до ручного назначения странам и областям.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "status",
+    "publishable",
+    "warning",
+    "source",
+    "referenceAnnotation",
+    "backgroundImage",
+    "coordinateSystem",
+    "calibration",
+    "terminalCandidates",
+    "boundaryCandidatePolicy",
+    "boundaryCandidates",
+    "summary"
+  ],
+  "properties": {
+    "$schema": { "type": "string", "minLength": 1 },
+    "schemaVersion": { "const": "1.0" },
+    "status": { "const": "review-draft" },
+    "publishable": { "const": false },
+    "warning": { "type": "string", "minLength": 1 },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "file",
+        "sha256",
+        "bytes",
+        "pdfVersion",
+        "pageObject",
+        "contentsObject",
+        "contentFilter",
+        "publicLayers",
+        "illustratorPrivateDataParsed"
+      ],
+      "properties": {
+        "file": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/definitions/sha256" },
+        "bytes": { "type": "integer", "minimum": 1 },
+        "pdfVersion": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+$" },
+        "pageObject": { "type": "integer", "minimum": 1 },
+        "contentsObject": { "type": "integer", "minimum": 1 },
+        "contentFilter": { "const": "FlateDecode" },
+        "publicLayers": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["map", "terminals"],
+          "properties": {
+            "map": { "const": "MC0" },
+            "terminals": { "const": "MC2" }
+          }
+        },
+        "illustratorPrivateDataParsed": { "const": false }
+      }
+    },
+    "referenceAnnotation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file", "sha256", "nodeSelector", "terminalCount"],
+      "properties": {
+        "file": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/definitions/sha256" },
+        "nodeSelector": { "const": "^terminal-[0-9]+$" },
+        "terminalCount": { "const": 23 }
+      }
+    },
+    "backgroundImage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file", "sha256", "bytes", "format", "pixelWidth", "pixelHeight"],
+      "properties": {
+        "file": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/definitions/sha256" },
+        "bytes": { "type": "integer", "minimum": 1 },
+        "format": { "const": "png" },
+        "pixelWidth": { "const": 5079 },
+        "pixelHeight": { "const": 3627 }
+      }
+    },
+    "coordinateSystem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["origin", "units", "width", "height"],
+      "properties": {
+        "origin": { "const": "top-left" },
+        "units": { "const": "design-pixel" },
+        "width": { "const": 5079 },
+        "height": { "const": 3627 }
+      }
+    },
+    "calibration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "method",
+        "pdfToCanonical",
+        "initialAxisAlignment",
+        "rmsErrorPx",
+        "meanErrorPx",
+        "maxErrorPx",
+        "acceptanceThresholdPx"
+      ],
+      "properties": {
+        "kind": { "const": "affine-least-squares" },
+        "method": {
+          "const": "23 terminal gear centers; deterministic bounding-box orientation match followed by six-parameter least-squares fit"
+        },
+        "pdfToCanonical": { "$ref": "#/definitions/affineMatrix" },
+        "initialAxisAlignment": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["scaleX", "scaleY", "offsetX", "offsetY"],
+          "properties": {
+            "scaleX": { "type": "number" },
+            "scaleY": { "type": "number" },
+            "offsetX": { "type": "number" },
+            "offsetY": { "type": "number" }
+          }
+        },
+        "rmsErrorPx": { "type": "number", "minimum": 0 },
+        "meanErrorPx": { "type": "number", "minimum": 0 },
+        "maxErrorPx": { "type": "number", "minimum": 0 },
+        "acceptanceThresholdPx": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
+    "terminalCandidates": {
+      "type": "array",
+      "minItems": 23,
+      "maxItems": 23,
+      "items": { "$ref": "#/definitions/terminalCandidate" }
+    },
+    "boundaryCandidatePolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceLayer",
+        "extractionScope",
+        "selectedPaintOperators",
+        "expectedTopLevelStrokeCount",
+        "excludedXObjects",
+        "excludedContent",
+        "semanticAssignment",
+        "requiresHumanClassification"
+      ],
+      "properties": {
+        "sourceLayer": { "const": "MC0" },
+        "extractionScope": { "const": "top-level-page-content-only" },
+        "selectedPaintOperators": {
+          "type": "array",
+          "const": ["S", "s"]
+        },
+        "expectedTopLevelStrokeCount": { "const": 981 },
+        "excludedXObjects": {
+          "type": "array",
+          "const": ["Im0", "Fm0", "Fm1", "Fm2", "Fm3", "Fm4"]
+        },
+        "excludedContent": {
+          "type": "array",
+          "const": ["known XObjects", "filled shapes", "text", "Illustrator private data"]
+        },
+        "semanticAssignment": { "const": null },
+        "requiresHumanClassification": { "const": true }
+      }
+    },
+    "boundaryCandidates": {
+      "type": "array",
+      "minItems": 981,
+      "maxItems": 981,
+      "items": { "$ref": "#/definitions/boundaryCandidate" }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "terminalCandidateCount",
+        "matchedTerminalCount",
+        "boundaryCandidateCount",
+        "assignedRegionCount",
+        "assignedCountryCount"
+      ],
+      "properties": {
+        "terminalCandidateCount": { "const": 23 },
+        "matchedTerminalCount": { "const": 23 },
+        "boundaryCandidateCount": { "const": 981 },
+        "assignedRegionCount": { "const": 0 },
+        "assignedCountryCount": { "const": 0 }
+      }
+    }
+  },
+  "definitions": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "point": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" }
+      }
+    },
+    "bounds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["minX", "minY", "maxX", "maxY"],
+      "properties": {
+        "minX": { "type": "number" },
+        "minY": { "type": "number" },
+        "maxX": { "type": "number" },
+        "maxY": { "type": "number" }
+      }
+    },
+    "affineMatrix": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["a", "b", "c", "d", "e", "f"],
+      "properties": {
+        "a": { "type": "number" },
+        "b": { "type": "number" },
+        "c": { "type": "number" },
+        "d": { "type": "number" },
+        "e": { "type": "number" },
+        "f": { "type": "number" }
+      }
+    },
+    "terminalCandidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "sourceOrder",
+        "mappedReferenceId",
+        "pdfPosition",
+        "canonicalPosition",
+        "referencePosition",
+        "residualPx"
+      ],
+      "properties": {
+        "id": { "type": "string", "pattern": "^vector-terminal-candidate-[0-9]{2}$" },
+        "sourceOrder": { "type": "integer", "minimum": 1, "maximum": 23 },
+        "mappedReferenceId": { "type": "string", "pattern": "^terminal-[0-9]+$" },
+        "pdfPosition": { "$ref": "#/definitions/point" },
+        "canonicalPosition": { "$ref": "#/definitions/point" },
+        "referencePosition": { "$ref": "#/definitions/point" },
+        "residualPx": { "type": "number", "minimum": 0 }
+      }
+    },
+    "strokeStyle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cmyk", "width", "lineCap", "lineJoin"],
+      "properties": {
+        "cmyk": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": { "type": "number", "minimum": 0, "maximum": 1 }
+        },
+        "width": { "type": "number", "minimum": 0 },
+        "lineCap": { "type": "integer", "minimum": 0, "maximum": 2 },
+        "lineJoin": { "type": "integer", "minimum": 0, "maximum": 2 }
+      }
+    },
+    "pathCommand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "points"],
+      "properties": {
+        "op": { "enum": ["M", "L", "C", "Z"] },
+        "points": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 3,
+          "items": { "$ref": "#/definitions/point" }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "op": { "enum": ["M", "L"] } } },
+          "then": { "properties": { "points": { "type": "array", "minItems": 1, "maxItems": 1 } } }
+        },
+        {
+          "if": { "properties": { "op": { "const": "C" } } },
+          "then": { "properties": { "points": { "type": "array", "minItems": 3, "maxItems": 3 } } }
+        },
+        {
+          "if": { "properties": { "op": { "const": "Z" } } },
+          "then": { "properties": { "points": { "type": "array", "maxItems": 0 } } }
+        }
+      ]
+    },
+    "boundaryCandidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "sourcePathIndex",
+        "sourceLayer",
+        "paintOperator",
+        "strokeStyle",
+        "pdfCommands",
+        "canonicalBounds",
+        "regionId",
+        "countryId",
+        "reviewStatus"
+      ],
+      "properties": {
+        "id": { "type": "string", "pattern": "^boundary-candidate-[0-9]{4}$" },
+        "sourcePathIndex": { "type": "integer", "minimum": 1 },
+        "sourceLayer": { "const": "MC0" },
+        "paintOperator": { "enum": ["S", "s"] },
+        "strokeStyle": { "$ref": "#/definitions/strokeStyle" },
+        "pdfCommands": {
+          "type": "array",
+          "minItems": 2,
+          "items": { "$ref": "#/definitions/pathCommand" }
+        },
+        "canonicalBounds": { "$ref": "#/definitions/bounds" },
+        "regionId": { "const": null },
+        "countryId": { "const": null },
+        "reviewStatus": { "const": "unclassified" }
+      }
+    }
+  }
+}

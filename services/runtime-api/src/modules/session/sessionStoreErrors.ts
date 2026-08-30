@@ -32,6 +32,65 @@ export class SessionStoreUnavailableError extends HttpError {
   }
 }
 
+/** The portable public journal exceeded one of its authenticated read limits. */
+export class PublicJournalTooLargeError extends HttpError {
+  constructor(message: string) {
+    super(413, message, "PUBLIC_JOURNAL_TOO_LARGE");
+  }
+}
+
+/**
+ * Generic snapshot writes must not fabricate or skip protected event ids.
+ *
+ * Only `withCommandTransaction` owns the event ledger and may advance its
+ * cursor together with the exact committed event rows. Editor restore and
+ * other trusted snapshot updates can advance `stateVersion`, but preserve the
+ * ledger cursor verbatim.
+ */
+export function assertProtectedEventSequenceUnchanged<TState>(
+  current: SessionRecord<TState>,
+  updated: SessionRecord<TState>
+): void {
+  if (updated.version.lastEventSequence !== current.version.lastEventSequence) {
+    throw new SessionStoreUnavailableError();
+  }
+}
+
+/** Missing or invalid session credential; callers must not infer membership. */
+export class SessionAuthenticationError extends HttpError {
+  constructor() {
+    super(401, "A valid Bearer credential is required for this session.", "SESSION_AUTHENTICATION_REQUIRED");
+  }
+}
+
+/** Invalid, expired, replayed and racing invite capabilities are indistinguishable. */
+export class PrivateInviteAuthenticationError extends HttpError {
+  constructor() {
+    super(401, "Private invitation is invalid or unavailable.", "PRIVATE_INVITE_INVALID");
+  }
+}
+
+/** An authorized host cannot recover the requested seat through this boundary. */
+export class PrivateSeatRecoveryUnavailableError extends HttpError {
+  constructor() {
+    super(404, "Private seat recovery is unavailable.", "PRIVATE_SEAT_RECOVERY_UNAVAILABLE");
+  }
+}
+
+/** The authenticated principal is not permitted to perform the requested operation. */
+export class SessionAuthorizationError extends HttpError {
+  constructor() {
+    super(403, "The authenticated session principal is not allowed to perform this operation.", "SESSION_FORBIDDEN");
+  }
+}
+
+/** One command identity cannot be rebound to different command contents. */
+export class CommandIdReusedError extends HttpError {
+  constructor(commandId: string) {
+    super(409, `Command "${commandId}" was already accepted with different contents.`, "COMMAND_ID_REUSED");
+  }
+}
+
 /**
  * A durable snapshot version always advances exactly once.
  *

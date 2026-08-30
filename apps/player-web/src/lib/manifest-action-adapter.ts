@@ -1,93 +1,46 @@
 import { ManifestAction } from "@cubica/contracts-manifest";
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
-
 /**
- * Separates UI routing metadata from deterministic action parameters.
+ * Separates the published action binding from schema-validated parameters.
  *
- * `actionId` tells player-web where to route the click; it is not part of a
- * game's params schema. New manifests can group parameters under `params`,
- * while older manifests may keep application fields beside `actionId`.
+ * The adapter never derives an action from card state, phase, command names,
+ * or game-specific maps. The UI manifest must publish the exact actionId.
  */
-const manifestActionParams = (
-  payload: Record<string, unknown>,
-  routingKeys: ReadonlySet<string>
-): Record<string, unknown> => {
-  if (isRecord(payload.params)) {
-    return payload.params;
-  }
+const publishedActionParams = (payload: Record<string, unknown>): Record<string, unknown> => {
   return Object.fromEntries(
-    Object.entries(payload).filter(([key]) => !routingKeys.has(key) && key !== "params")
+    Object.entries(payload).filter(([key]) => key !== "actionId" && key !== "params")
   );
 };
 
 /**
- * Creates an adapter that converts UI commands from the manifest
- * into runtime action IDs for dispatch.
- *
- * Supports two levels of customization:
- * 1. commandMap — static mapping of commands to actionId
- * 2. resolveActionId — dynamic resolution (e.g., finding cardId in boardCards)
- *
- * If neither commandMap nor resolveActionId are specified, a small default
- * set of runtime-oriented commands is used. Pure UI commands such as showPanel
- * are handled by the Presenter before this adapter is called.
+ * Routes a manifest UI event through one explicit published Game Intent.
+ * Local panel commands are handled by the Presenter and never reach here.
  */
 export function createManifestActionAdapter(options: {
-  /** Game-specific content (type unknown — plugin casts to its own type) */
-  gameContent: unknown;
-  /** Mapping of manifest commands to runtime action IDs */
-  commandMap?: Record<string, string>;
-  /** Dynamic command resolution. Called before commandMap lookup. */
-  resolveActionId?: (command: string, payload: Record<string, unknown>) => string | null;
-  /** Dispatch action callback */
-  dispatchAction: (actionId: string, payload?: Record<string, unknown>) => void;
-  /** Error callback */
-  onError: (message: string) => void;
+  readonly dispatchAction: (actionId: string, params?: Record<string, unknown>) => void;
+  readonly onError: (message: string) => void;
 }): (command: string, payload: Record<string, unknown>) => void {
-  const { commandMap, resolveActionId, dispatchAction, onError } = options;
+  const { dispatchAction, onError } = options;
 
   return (command: string, payload: Record<string, unknown>) => {
-    // 1. Try dynamic resolution (plugin may search by cardId etc.)
-    if (resolveActionId) {
-      const actionId = resolveActionId(command, payload);
-      if (actionId) {
-        dispatchAction(actionId, payload);
-        return;
-      }
-    }
-
-    // 2. Try static mapping
-    if (commandMap && command in commandMap) {
-      dispatchAction(commandMap[command], payload);
+    if (command !== ManifestAction.REQUEST_SERVER && command !== ManifestAction.ADVANCE) {
+      onError(`Manifest command "${command}" is not a published runtime action binding.`);
       return;
     }
 
-    // 3. Generic manifest-driven dispatch: simple games put the exact runtime
-    // action id into the UI payload, so no plugin resolver is needed.
-    if (command === ManifestAction.REQUEST_SERVER) {
-      const actionId = payload.actionId;
-      if (typeof actionId === "string" && actionId.trim()) {
-        dispatchAction(actionId, manifestActionParams(payload, new Set(["actionId"])));
-        return;
-      }
-
-      dispatchAction(ManifestAction.REQUEST_SERVER, payload);
+    const actionId = payload.actionId;
+    if (typeof actionId !== "string" || actionId.trim() === "") {
+      onError(`Manifest command "${command}" does not declare an explicit actionId.`);
       return;
     }
 
-    if (command === ManifestAction.ADVANCE) {
-      const actionId = payload.actionId ?? payload.advanceActionId;
-      if (typeof actionId === "string" && actionId.trim()) {
-        dispatchAction(actionId, manifestActionParams(payload, new Set(["actionId", "advanceActionId"])));
-        return;
-      }
-
-      dispatchAction(ManifestAction.ADVANCE, payload);
+    if (Object.hasOwn(payload, "params")) {
+      onError(
+        `Manifest command "${command}" uses the removed nested payload.params format; publish action parameters beside actionId.`
+      );
       return;
     }
 
-    onError(`Unknown manifest command: ${command}`);
+    dispatchAction(actionId, publishedActionParams(payload));
   };
 }

@@ -13,26 +13,26 @@
     {
       "screenKey": "facilitator",
       "conditions": {
-        "screenId": "facilitator",
-        "layoutMode": "topbar"
+        "screenId": "facilitator"
       }
     }
   ],
   "screens": {
     "facilitator": {
       "title": "Карты, деньги, поезда",
-      "layout_mode": "topbar",
+      "layout_mode": "map-first",
       "root": {
         "id": "facilitator.root",
         "type": "screenComponent",
         "props": {
-          "cssClass": "topbar-screen-shell"
+          "cssClass": "map-first-screen-shell"
         },
         "children": [
           {
             "id": "facilitator.statusbar",
             "type": "areaComponent",
             "props": {
+              "workspaceSlot": "status",
               "cssClass": "game-variables-container"
             },
             "children": [
@@ -46,10 +46,11 @@
             ]
           },
           {
-            "id": "facilitator.main",
+            "id": "facilitator.board-zone",
             "type": "areaComponent",
             "props": {
-              "cssClass": "main-content-area"
+              "workspaceSlot": "board",
+              "cssClass": "map-first-board-zone"
             },
             "children": [
               {
@@ -57,11 +58,21 @@
                 "type": "interactiveBoardSurface",
                 "props": {
                   "sceneId": "main",
-                  "designWidth": 1400,
-                  "designHeight": 1000,
+                  "designWidth": 5079,
+                  "designHeight": 3627,
                   "accessibleLabel": "Транспортная карта игры. Все доступные действия дублируются обычными кнопками под полем."
                 }
-              },
+              }
+            ]
+          },
+          {
+            "id": "facilitator.action-tray",
+            "type": "areaComponent",
+            "props": {
+              "workspaceSlot": "action-tray",
+              "cssClass": "map-first-action-tray"
+            },
+            "children": [
               {
                 "id": "facilitator.construction-controls",
                 "type": "areaComponent",
@@ -179,12 +190,22 @@
                     }
                   }
                 ]
-              },
+              }
+            ]
+          },
+          {
+            "id": "facilitator.context-panel",
+            "type": "areaComponent",
+            "props": {
+              "workspaceSlot": "context-panel",
+              "cssClass": "map-first-context-panel"
+            },
+            "children": [
               {
                 "id": "facilitator.content-gate",
                 "type": "richTextComponent",
                 "props": {
-                  "html": "<p><strong>До загрузки авторского содержимого:</strong> поле показывает только данные публичного snapshot. Колоды, выплаты, начальная сеть, координаты, области и демонстрационные перемещения не подменяются временными значениями.</p>"
+                  "html": "<p><strong>Нормативные материалы подключены:</strong> подтверждённая авторская карта с 982 областями, начальная сеть из 25 узлов и 10 дорог, 174 грузовые карты в 23 терминальных колодах, 34 одноразовые новости и описания 10 стран.</p><p>Все обычные фазы, учебные паузы, ручная экономика и защищённое завершение исполняются сервером; интерфейс показывает только публичное состояние и доступные действия.</p>"
                 }
               }
             ]

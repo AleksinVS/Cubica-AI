@@ -22,6 +22,17 @@ export interface PreviewSelectionSourceMap {
   readonly generatedFile: string;
   readonly sourceFile: string;
   readonly mappings: Record<string, readonly PreviewSourceMapping[]>;
+  /**
+   * Sorted generated JSON Pointers whose entire subtree was omitted from
+   * `mappings` because it is a position-for-position verbatim copy of an
+   * ancestor's authoring subtree (e.g. thousands of authored polygon vertices
+   * collapsing to one entry at their containing array). See
+   * `mapGeneratedPointerToAuthoring` below for how this is used. Optional so a
+   * source map produced before this field existed (or read before a rebuild)
+   * still works — it then behaves exactly as before: every pointer resolves
+   * to its nearest recorded ancestor's own pointer, just less precisely.
+   */
+  readonly verbatimSubtrees?: readonly string[];
 }
 
 export interface PlayerPreviewEntityMessage {
@@ -47,16 +58,34 @@ export interface PlayerPreviewEntitiesMessage {
 export interface PlayerPreviewSessionSnapshotMessage {
   readonly source: "cubica-player-web";
   readonly type: "previewSessionSnapshot";
-  readonly version: 1;
+  /** Version 2 removes the obsolete action `payload` alias in favour of `params`. */
+  readonly version: 2;
   readonly sessionId: string;
   readonly gameId?: string;
   readonly sessionVersion: PreviewSessionStateVersion;
   readonly state: Record<string, unknown>;
   readonly action?: {
     readonly actionId: string;
-    readonly payload?: Record<string, unknown>;
+    /** Canonical bounded parameters submitted with the published Game Intent. */
+    readonly params?: Record<string, unknown>;
     readonly timestamp: string;
   };
+}
+
+export interface PlayerPreviewRestoreResultMessage {
+  readonly source: "cubica-player-web";
+  readonly type: "previewRestoreResult";
+  readonly version: 1;
+  readonly requestId: string;
+  readonly ok: boolean;
+  readonly error?: string;
+  readonly sessionVersion?: PreviewSessionStateVersion;
+}
+
+export interface PlayerPreviewBridgeReadyMessage {
+  readonly source: "cubica-player-web";
+  readonly type: "previewBridgeReady";
+  readonly version: 1;
 }
 
 export interface PreviewDescriptorMappingResult {
@@ -82,7 +111,7 @@ export function isPlayerPreviewSessionSnapshotMessage(value: unknown): value is 
     return false;
   }
 
-  if (value.version !== 1 || typeof value.sessionId !== "string" || !isPlainRecord(value.state)) {
+  if (value.version !== 2 || typeof value.sessionId !== "string" || !isPlainRecord(value.state)) {
     return false;
   }
 
@@ -94,12 +123,39 @@ export function isPlayerPreviewSessionSnapshotMessage(value: unknown): value is 
     if (!isPlainRecord(value.action) || typeof value.action.actionId !== "string" || typeof value.action.timestamp !== "string") {
       return false;
     }
-    if (value.action.payload !== undefined && !isPlainRecord(value.action.payload)) {
+    if (value.action.params !== undefined && !isPlainRecord(value.action.params)) {
       return false;
     }
   }
 
   return value.gameId === undefined || typeof value.gameId === "string";
+}
+
+export function isPlayerPreviewRestoreResultMessage(value: unknown): value is PlayerPreviewRestoreResultMessage {
+  const baseIsValid = (
+    isPlainRecord(value) &&
+    value.source === "cubica-player-web" &&
+    value.type === "previewRestoreResult" &&
+    value.version === 1 &&
+    typeof value.requestId === "string" &&
+    value.requestId.length > 0 &&
+    value.requestId.length <= 128 &&
+    typeof value.ok === "boolean" &&
+    (value.error === undefined || typeof value.error === "string")
+  );
+  if (!baseIsValid) {
+    return false;
+  }
+  return value.sessionVersion === undefined || isSessionStateVersion(value.sessionVersion);
+}
+
+export function isPlayerPreviewBridgeReadyMessage(value: unknown): value is PlayerPreviewBridgeReadyMessage {
+  return (
+    isPlainRecord(value) &&
+    value.source === "cubica-player-web" &&
+    value.type === "previewBridgeReady" &&
+    value.version === 1
+  );
 }
 
 export function mapPlayerPreviewEntitiesToAuthoringDescriptors(
@@ -177,12 +233,31 @@ export function mapGeneratedPointerToAuthoring(
   sourceMap: PreviewSelectionSourceMap,
   generatedPointer: string
 ): PreviewSourceMapping | undefined {
-  let pointer = normalizeGeneratedPointer(generatedPointer);
+  const originalPointer = normalizeGeneratedPointer(generatedPointer);
+  let pointer = originalPointer;
 
   for (;;) {
     const sources = sourceMap.mappings[pointer];
     if (sources !== undefined && sources.length > 0) {
-      return sources[0];
+      const source = sources[0];
+      // The compiler omits an entry for two reasons (see the source map's
+      // `verbatimSubtrees` doc comment and authoring-compiler.cjs's
+      // `isPositionalMatch`): this pointer's source is byte-identical to
+      // `pointer`'s (nothing to append — `source` IS the answer), or its
+      // whole subtree is copied verbatim from `pointer`'s subtree, in which
+      // case `pointer` is listed here and the exact source is recovered by
+      // appending the remaining generated-pointer path — the same suffix we
+      // walked past on the way here — to `source`'s own pointer. Appending
+      // that suffix for an *identical* match (not listed) would fabricate a
+      // pointer that does not exist, which is exactly why this must check
+      // membership rather than always appending.
+      if (sourceMap.verbatimSubtrees?.includes(pointer)) {
+        return {
+          file: source.file,
+          pointer: source.pointer + originalPointer.slice(pointer.length)
+        };
+      }
+      return source;
     }
 
     const parent = parentPointer(pointer);

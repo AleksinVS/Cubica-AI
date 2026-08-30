@@ -7,7 +7,9 @@
     "player-web": {
       "entry": "src/index.ts",
       "contributes": {
-        "phaserSceneFactory": true
+        "phaserSceneFactory": true,
+        "accessibleBoardActionsProvider": true,
+        "facilitatorDebriefAvailabilityProvider": true
       }
     }
   },

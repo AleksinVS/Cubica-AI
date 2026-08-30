@@ -1,0 +1,472 @@
+{
+  "$schema": "vector-map-classification.schema.json",
+  "schemaVersion": "1.0",
+  "status": "review-draft",
+  "publishable": false,
+  "warning": "ЧЕРНОВИК ПРОВЕРКИ: назначения ролей и стран предложены по точным исходным стилям, но ещё не подтверждены человеком. Файл нельзя использовать для полигонализации или сборки runtime-манифеста.",
+  "rawReview": {
+    "file": "vector-map.review.json",
+    "sha256": "0daf28a0cc7de3ff007787e7fdd072d8e96038c5b027d2f8fa8defb14a049dc4",
+    "sourceFile": "../../../draft/trains/Карта Гвиней  а4.ai",
+    "sourceSha256": "453703c064cf6aa6220f5059f83c9fa33404310f5a65cce5529900f0ddee1806"
+  },
+  "countryCatalog": [
+    {
+      "id": "cmt-country-proud",
+      "title": "Гордая Гвинея",
+      "reviewStatus": "proposed",
+      "confirmationStatus": "unconfirmed"
+    },
+    {
+      "id": "cmt-country-north",
+      "title": "Северная Гвинея",
+      "reviewStatus": "proposed",
+      "confirmationStatus": "unconfirmed"
+    },
+    {
+      "id": "cmt-country-white",
+      "title": "Белая Гвинея",
+      "reviewStatus": "proposed",
+      "confirmationStatus": "unconfirmed"
+    },
+    {
+      "id": "cmt-country-central",
+      "title": "Центральная Гвинея",
+      "reviewStatus": "proposed",
+      "confirmationStatus": "unconfirmed"
+    },
+    {
+      "id": "cmt-country-south-rorschach",
+      "title": "Южная Гвинея Роршаха",
+      "reviewStatus": "proposed",
+      "confirmationStatus": "unconfirmed"
+    },
+    {
+      "id": "cmt-country-left",
+      "title": "Левая Гвинея",
+      "reviewStatus": "proposed",
+      "confirmationStatus": "unconfirmed"
+    },
+    {
+      "id": "cmt-country-lower",
+      "title": "Нижняя Гвинея",
+      "reviewStatus": "proposed",
+      "confirmationStatus": "unconfirmed"
+    },
+    {
+      "id": "cmt-country-subbelly",
+      "title": "Подбрюшинная Гвинея",
+      "reviewStatus": "proposed",
+      "confirmationStatus": "unconfirmed"
+    },
+    {
+      "id": "cmt-country-ultra-right",
+      "title": "Ультраправая Гвинея",
+      "reviewStatus": "proposed",
+      "confirmationStatus": "unconfirmed"
+    },
+    {
+      "id": "cmt-country-people",
+      "title": "Народная Гвинея",
+      "reviewStatus": "proposed",
+      "confirmationStatus": "unconfirmed"
+    }
+  ],
+  "styleClassifications": [
+    {
+      "styleGroupId": "boundary-style-9e4104634fe748f3",
+      "strokeStyle": {
+        "cmyk": [
+          0.184,
+          0.404,
+          0.39,
+          0.061
+        ],
+        "width": 1.193,
+        "lineCap": 1,
+        "lineJoin": 1
+      },
+      "expectedCandidateCount": 117,
+      "proposedRole": "country-internal-boundary",
+      "proposedCountryId": "cmt-country-lower",
+      "disposition": "include",
+      "reviewStatus": "proposed",
+      "confirmationStatus": "unconfirmed",
+      "rationale": "Точный цветовой стиль предложен как внутренние границы Нижней Гвинеи."
+    },
+    {
+      "styleGroupId": "boundary-style-05613de878d55f53",
+      "strokeStyle": {
+        "cmyk": [
+          0.212,
+          0.235,
+          0.39,
+          0.044
+        ],
+        "width": 1.193,
+        "lineCap": 0,
+        "lineJoin": 0
+      },
+      "expectedCandidateCount": 27,
+      "proposedRole": "country-internal-boundary",
+      "proposedCountryId": "cmt-country-left",
+      "disposition": "include",
+      "reviewStatus": "proposed",
+      "confirmationStatus": "unconfirmed",
+      "rationale": "Первая из двух групп одного цвета предложена как внутренние границы Левой Гвинеи; различаются исходные окончания и стыки линий."
+    },
+    {
+      "styleGroupId": "boundary-style-d2c9a64ee7c60767",
+      "strokeStyle": {
+        "cmyk": [
+          0.212,
+          0.235,
+          0.39,
+          0.044
+        ],
+        "width": 1.193,
+        "lineCap": 1,
+        "lineJoin": 1
+      },
+      "expectedCandidateCount": 86,
+      "proposedRole": "country-internal-boundary",
+      "proposedCountryId": "cmt-country-left",
+      "disposition": "include",
+      "reviewStatus": "proposed",
+      "confirmationStatus": "unconfirmed",
+      "rationale": "Вторая из двух групп одного цвета предложена как внутренние границы Левой Гвинеи; точные атрибуты стиля сохраняются раздельно."
+    },
+    {
+      "styleGroupId": "boundary-style-d9634f77dbb96351",
+      "strokeStyle": {
+        "cmyk": [
+          0.225,
+          0.124,
+          0.38,
+          0.006
+        ],
+        "width": 1.193,
+        "lineCap": 0,
+        "lineJoin": 0
+      },
+      "expectedCandidateCount": 92,
+      "proposedRole": "country-internal-boundary",
+      "proposedCountryId": "cmt-country-people",
+      "disposition": "include",
+      "reviewStatus": "proposed",
+      "confirmationStatus": "unconfirmed",
+      "rationale": "Точный цветовой стиль предложен как внутренние границы Народной Гвинеи."
+    },
+    {
+      "styleGroupId": "boundary-style-65b3840088ca67e0",
+      "strokeStyle": {
+        "cmyk": [
+          0.268,
+          0.243,
+          0.33,
+          0.055
+        ],
+        "width": 1.193,
+        "lineCap": 0,
+        "lineJoin": 0
+      },
+      "expectedCandidateCount": 107,
+      "proposedRole": "country-internal-boundary",
+      "proposedCountryId": "cmt-country-north",
+      "disposition": "include",
+      "reviewStatus": "proposed",
+      "confirmationStatus": "unconfirmed",
+      "rationale": "Точный цветовой стиль предложен как внутренние границы Северной Гвинеи."
+    },
+    {
+      "styleGroupId": "boundary-style-76dd8e58d3742538",
+      "strokeStyle": {
+        "cmyk": [
+          0.274,
+          0.203,
+          0.214,
+          0.023
+        ],
+        "width": 1.193,
+        "lineCap": 0,
+        "lineJoin": 0
+      },
+      "expectedCandidateCount": 25,
+      "proposedRole": "country-internal-boundary",
+      "proposedCountryId": "cmt-country-white",
+      "disposition": "include",
+      "reviewStatus": "proposed",
+      "confirmationStatus": "unconfirmed",
+      "rationale": "Точный цветовой стиль предложен как внутренние границы Белой Гвинеи."
+    },
+    {
+      "styleGroupId": "boundary-style-349d6ba82fc758cb",
+      "strokeStyle": {
+        "cmyk": [
+          0.327,
+          0.411,
+          0.369,
+          0.169
+        ],
+        "width": 1.193,
+        "lineCap": 0,
+        "lineJoin": 0
+      },
+      "expectedCandidateCount": 26,
+      "proposedRole": "country-internal-boundary",
+      "proposedCountryId": "cmt-country-proud",
+      "disposition": "include",
+      "reviewStatus": "proposed",
+      "confirmationStatus": "unconfirmed",
+      "rationale": "Точный цветовой стиль предложен как внутренние границы Гордой Гвинеи."
+    },
+    {
+      "styleGroupId": "boundary-style-61a181ed096b1ce3",
+      "strokeStyle": {
+        "cmyk": [
+          0.34,
+          0.257,
+          0.265,
+          0.053
+        ],
+        "width": 0.994,
+        "lineCap": 0,
+        "lineJoin": 0
+      },
+      "expectedCandidateCount": 68,
+      "proposedRole": "country-internal-boundary",
+      "proposedCountryId": "cmt-country-subbelly",
+      "disposition": "include",
+      "reviewStatus": "proposed",
+      "confirmationStatus": "unconfirmed",
+      "rationale": "Точный цветовой стиль предложен как внутренние границы Подбрюшинной Гвинеи."
+    },
+    {
+      "styleGroupId": "boundary-style-e7d445c9585bf3a3",
+      "strokeStyle": {
+        "cmyk": [
+          0.348,
+          0.225,
+          0.448,
+          0.056
+        ],
+        "width": 1.193,
+        "lineCap": 0,
+        "lineJoin": 0
+      },
+      "expectedCandidateCount": 51,
+      "proposedRole": "country-internal-boundary",
+      "proposedCountryId": "cmt-country-central",
+      "disposition": "include",
+      "reviewStatus": "proposed",
+      "confirmationStatus": "unconfirmed",
+      "rationale": "Точный цветовой стиль предложен как внутренние границы Центральной Гвинеи."
+    },
+    {
+      "styleGroupId": "boundary-style-6c9078405490c235",
+      "strokeStyle": {
+        "cmyk": [
+          0.35,
+          0.324,
+          0.43,
+          0.137
+        ],
+        "width": 1.193,
+        "lineCap": 0,
+        "lineJoin": 0
+      },
+      "expectedCandidateCount": 229,
+      "proposedRole": "country-internal-boundary",
+      "proposedCountryId": "cmt-country-south-rorschach",
+      "disposition": "include",
+      "reviewStatus": "proposed",
+      "confirmationStatus": "unconfirmed",
+      "rationale": "Точный цветовой стиль предложен как внутренние границы Южной Гвинеи Роршаха."
+    },
+    {
+      "styleGroupId": "boundary-style-ed69f38bca191059",
+      "strokeStyle": {
+        "cmyk": [
+          0.369,
+          0.463,
+          0.472,
+          0.3
+        ],
+        "width": 1.988,
+        "lineCap": 1,
+        "lineJoin": 1
+      },
+      "expectedCandidateCount": 1,
+      "proposedRole": "outer-map-boundary",
+      "proposedCountryId": null,
+      "disposition": "include",
+      "reviewStatus": "proposed",
+      "confirmationStatus": "unconfirmed",
+      "rationale": "Единственный широкий контур предложен как внешняя граница игровой суши."
+    },
+    {
+      "styleGroupId": "boundary-style-0ccb80e64e528b32",
+      "strokeStyle": {
+        "cmyk": [
+          0.39,
+          0.599,
+          0.659,
+          0.515
+        ],
+        "width": 1.193,
+        "lineCap": 0,
+        "lineJoin": 0
+      },
+      "expectedCandidateCount": 1,
+      "proposedRole": "major-boundary-fragment",
+      "proposedCountryId": null,
+      "disposition": "include",
+      "reviewStatus": "proposed",
+      "confirmationStatus": "unconfirmed",
+      "rationale": "Одна из трёх точных групп общего стиля предложена как крупная межстрановая граница или её фрагмент."
+    },
+    {
+      "styleGroupId": "boundary-style-4d1d710697aa6604",
+      "strokeStyle": {
+        "cmyk": [
+          0.39,
+          0.599,
+          0.659,
+          0.515
+        ],
+        "width": 1.193,
+        "lineCap": 1,
+        "lineJoin": 0
+      },
+      "expectedCandidateCount": 5,
+      "proposedRole": "major-boundary-fragment",
+      "proposedCountryId": null,
+      "disposition": "include",
+      "reviewStatus": "proposed",
+      "confirmationStatus": "unconfirmed",
+      "rationale": "Одна из трёх точных групп общего стиля предложена как крупная межстрановая граница или её фрагмент."
+    },
+    {
+      "styleGroupId": "boundary-style-365e84244ab00a4f",
+      "strokeStyle": {
+        "cmyk": [
+          0.39,
+          0.599,
+          0.659,
+          0.515
+        ],
+        "width": 1.193,
+        "lineCap": 2,
+        "lineJoin": 0
+      },
+      "expectedCandidateCount": 6,
+      "proposedRole": "major-boundary-fragment",
+      "proposedCountryId": null,
+      "disposition": "include",
+      "reviewStatus": "proposed",
+      "confirmationStatus": "unconfirmed",
+      "rationale": "Одна из трёх точных групп общего стиля предложена как крупная межстрановая граница или её фрагмент."
+    },
+    {
+      "styleGroupId": "boundary-style-a9ebb4bf97ee0d30",
+      "strokeStyle": {
+        "cmyk": [
+          0.421,
+          0.223,
+          0.359,
+          0.051
+        ],
+        "width": 1.193,
+        "lineCap": 1,
+        "lineJoin": 1
+      },
+      "expectedCandidateCount": 137,
+      "proposedRole": "country-internal-boundary",
+      "proposedCountryId": "cmt-country-ultra-right",
+      "disposition": "include",
+      "reviewStatus": "proposed",
+      "confirmationStatus": "unconfirmed",
+      "rationale": "Точный цветовой стиль предложен как внутренние границы Ультраправой Гвинеи."
+    },
+    {
+      "styleGroupId": "boundary-style-5202aa0a091b65a6",
+      "strokeStyle": {
+        "cmyk": [
+          0.421,
+          0.459,
+          0.489,
+          0.338
+        ],
+        "width": 1.988,
+        "lineCap": 1,
+        "lineJoin": 1
+      },
+      "expectedCandidateCount": 1,
+      "proposedRole": "ambiguous-closed-contour",
+      "proposedCountryId": null,
+      "disposition": "hold",
+      "reviewStatus": "proposed",
+      "confirmationStatus": "unconfirmed",
+      "rationale": "Замкнутый широкий контур нельзя безопасно считать границей, рамкой или отдельным объектом без ручного визуального подтверждения."
+    },
+    {
+      "styleGroupId": "boundary-style-53ed13e598493e1d",
+      "strokeStyle": {
+        "cmyk": [
+          0.503,
+          0.579,
+          0.713,
+          0.633
+        ],
+        "width": 0.815,
+        "lineCap": 0,
+        "lineJoin": 0
+      },
+      "expectedCandidateCount": 1,
+      "proposedRole": "page-frame",
+      "proposedCountryId": null,
+      "disposition": "exclude",
+      "reviewStatus": "proposed",
+      "confirmationStatus": "unconfirmed",
+      "rationale": "Тонкая прямоугольная рамка страницы не относится к геометрии игровой карты."
+    },
+    {
+      "styleGroupId": "boundary-style-3e765994d9a9701b",
+      "strokeStyle": {
+        "cmyk": [
+          0.503,
+          0.579,
+          0.713,
+          0.633
+        ],
+        "width": 0.822,
+        "lineCap": 0,
+        "lineJoin": 0
+      },
+      "expectedCandidateCount": 1,
+      "proposedRole": "page-frame",
+      "proposedCountryId": null,
+      "disposition": "exclude",
+      "reviewStatus": "proposed",
+      "confirmationStatus": "unconfirmed",
+      "rationale": "Тонкая прямоугольная рамка страницы не относится к геометрии игровой карты."
+    }
+  ],
+  "openIssues": [
+    {
+      "id": "classify-ambiguous-closed-contour",
+      "kind": "ambiguous-closed-contour",
+      "styleGroupId": "boundary-style-5202aa0a091b65a6",
+      "status": "open",
+      "question": "Что обозначает отдельный широкий замкнутый контур: игровую границу, декоративный объект или служебную рамку?"
+    }
+  ],
+  "summary": {
+    "rawStyleGroupCount": 18,
+    "classifiedCandidateCount": 981,
+    "proposedBoundaryCandidateCount": 978,
+    "heldCandidateCount": 1,
+    "excludedCandidateCount": 2,
+    "confirmedSemanticAssignmentCount": 0
+  }
+}

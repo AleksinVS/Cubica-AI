@@ -1,0 +1,13 @@
+{
+  ".": "Записи ограниченных игровых срезов с правилами, состоянием, интерфейсом и проверками конкретной поставки.",
+  "040-estate-race-random-initial-order.md": "Завершение Estate Race S1: одноразовый серверный жребий точных 2–6 участников через типизированную record-map коллекцию.",
+  "041-estate-race-auction-and-rent.md": "Estate Race S2: game-owned последовательный аукцион и рента участков, линий и коммунальных объектов без застройки.",
+  "042-estate-race-decks-and-jail.md": "Estate Race S3: две скрытые колоды, удерживаемая карта выхода и полный game-owned цикл тюрьмы.",
+  "043-estate-race-buildings-mortgage-and-shortage.md": "Estate Race S4: уровни строений, физический запас банка, залог и последовательный аукцион дефицита.",
+  "044-estate-race-trade-obligation-and-bankruptcy.md": "Estate Race S5: сделки, обязательства, ликвидность и банкротство банку или участнику.",
+  "045-estate-race-terminal-local-game.md": "Estate Race S6: game-owned terminal outcome, последний активный участник и полный локальный transcript.",
+  "046-estate-race-product-surface-and-methodology.md": "Estate Race S7: оригинальная публичная поверхность, визуальная система и необязательный обучающий режим.",
+  "047-estate-race-session-participants.md": "Estate Race S8: общая session-owned модель локальных участников без сетевого lifecycle и игровых веток в платформе.",
+  "048-cards-money-trains-portable-public-journal.md": "CMT: общий переносимый журнал подтверждённых публичных событий с безопасной выгрузкой без ИИ-интерпретации.",
+  "049-estate-race-local-agent-seat.md": "Estate Race S9: одно локальное агентское место, actor-scoped Game Intent, bounded fallback и fail-closed Player Web."
+}

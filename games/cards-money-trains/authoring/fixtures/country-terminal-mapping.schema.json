@@ -1,0 +1,143 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cubica.example/schemas/cards-money-trains-country-terminal-mapping.schema.json",
+  "title": "Cards, Money, Trains confirmed country and terminal mapping",
+  "description": "Author-confirmed links between the ten country descriptions and numbered terminals 1–23. This contract deliberately excludes map polygons and boundary classification, which still require a separate visual review.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "apiVersion",
+    "gameId",
+    "locale",
+    "status",
+    "publishable",
+    "confirmation",
+    "geometry",
+    "countries"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "./country-terminal-mapping.schema.json"
+    },
+    "apiVersion": {
+      "const": "cubica.game/cards-money-trains-country-terminal-mapping/v1"
+    },
+    "gameId": {
+      "const": "cards-money-trains"
+    },
+    "locale": {
+      "const": "ru-RU"
+    },
+    "status": {
+      "const": "author-confirmed"
+    },
+    "publishable": {
+      "const": true
+    },
+    "confirmation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "countryTitles",
+        "numberedTerminalMembership",
+        "specialPointsExcluded"
+      ],
+      "properties": {
+        "countryTitles": {
+          "const": true
+        },
+        "numberedTerminalMembership": {
+          "const": true
+        },
+        "specialPointsExcluded": {
+          "const": true
+        }
+      }
+    },
+    "geometry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "countryPolygonsConfirmed",
+        "regionPolygonsConfirmed",
+        "vectorStyleClassificationConfirmed"
+      ],
+      "properties": {
+        "countryPolygonsConfirmed": {
+          "const": false
+        },
+        "regionPolygonsConfirmed": {
+          "const": false
+        },
+        "vectorStyleClassificationConfirmed": {
+          "const": false
+        }
+      }
+    },
+    "countries": {
+      "type": "array",
+      "minItems": 10,
+      "maxItems": 10,
+      "items": {
+        "$ref": "#/$defs/country"
+      }
+    }
+  },
+  "$defs": {
+    "countryId": {
+      "type": "string",
+      "enum": [
+        "cmt-country-proud",
+        "cmt-country-north",
+        "cmt-country-white",
+        "cmt-country-central",
+        "cmt-country-south-rorschach",
+        "cmt-country-left",
+        "cmt-country-lower",
+        "cmt-country-subbelly",
+        "cmt-country-ultra-right",
+        "cmt-country-people"
+      ]
+    },
+    "sourceRecordId": {
+      "type": "string",
+      "pattern": "^country-description-review-(?:0[1-9]|10)$"
+    },
+    "terminalId": {
+      "type": "string",
+      "pattern": "^terminal-(?:[1-9]|1[0-9]|2[0-3])$"
+    },
+    "country": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "countryId",
+        "title",
+        "sourceRecordId",
+        "terminalIds"
+      ],
+      "properties": {
+        "countryId": {
+          "$ref": "#/$defs/countryId"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "sourceRecordId": {
+          "$ref": "#/$defs/sourceRecordId"
+        },
+        "terminalIds": {
+          "type": "array",
+          "maxItems": 23,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/terminalId"
+          }
+        }
+      }
+    }
+  }
+}

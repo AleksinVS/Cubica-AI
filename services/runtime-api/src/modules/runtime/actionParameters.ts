@@ -3,7 +3,8 @@
  * resource references. JSON Schema owns the accepted shape; the imperative
  * reference lookup only enforces live-state invariants JSON Schema cannot see.
  */
-import AjvLib, { type ValidateFunction } from "ajv";
+import Ajv2020Lib from "ajv/dist/2020.js";
+import type { ValidateFunction } from "ajv";
 import type {
   RuntimeManifestActionDefinition,
   RuntimeResolvedReference
@@ -17,14 +18,18 @@ type AjvConstructor = new (options?: Record<string, unknown>) => {
   addKeyword: (definition: Record<string, unknown>) => void;
   compile: (schema: unknown) => ValidateFunction;
 };
-const Ajv = (AjvLib as unknown as { default?: AjvConstructor }).default ??
-  (AjvLib as unknown as AjvConstructor);
-const ajv = new Ajv({ allErrors: true, strict: true, strictRequired: false });
+const Ajv2020 = (Ajv2020Lib as unknown as { default?: AjvConstructor }).default ??
+  (Ajv2020Lib as unknown as AjvConstructor);
+// Parameter schemas are part of the Game Intent 2020-12 contract. Keeping a
+// dedicated strict validator prevents accidental mixing with draft-07 manifest
+// schemas and rejects every undeclared schema keyword at compilation time.
+const ajv = new Ajv2020({ allErrors: true, strict: true });
 // `x-cubica-ref` is a schema annotation. Ajv validates its schema when the
 // manifest loads; live object existence is checked below against session state.
 ajv.addKeyword({ keyword: "x-cubica-ref", schemaType: "object", valid: true });
 
 const validatorCache = new WeakMap<object, ValidateFunction>();
+const subsetValidatorCache = new WeakMap<object, Map<string, ValidateFunction>>();
 const forbiddenKeys = new Set(["__proto__", "constructor", "prototype"]);
 
 const isRecord = (value: unknown): value is JsonRecord =>
@@ -52,10 +57,15 @@ export const validateActionParameters = (
 ): Record<string, unknown> => {
   const schema = definition.paramsSchema;
   if (!schema) {
-    if (inputParams !== undefined) {
+    const params = inputParams ?? {};
+    // The public command envelope always carries `params`. For older or
+    // hand-built definitions that omit paramsSchema, absence means the same
+    // strict empty-object schema the compiler now materializes—not that any
+    // caller-supplied field is accepted.
+    if (Object.keys(params).length > 0) {
       throw new RequestValidationError(`Action "${definition.actionId}" does not accept params`);
     }
-    return {};
+    return params;
   }
 
   const params = inputParams ?? {};
@@ -98,6 +108,81 @@ const readReferenceAnnotations = (
   return result;
 };
 
+/**
+ * Validate a bounded subset of action parameters using the action's own JSON
+ * Schema declarations.
+ *
+ * Road preview uses this for endpoint references only: accepting contribution
+ * or other action fields here would blur the boundary between a read-only
+ * estimate and the later authoritative command. Reusing the declared property
+ * schemas also prevents a second, imperative definition of valid references.
+ */
+export const validateActionReferenceParameterSubset = (
+  definition: RuntimeManifestActionDefinition,
+  inputParams: Record<string, unknown> | undefined,
+  parameterNames: ReadonlyArray<string>,
+  options: { requiredVisibility?: "public" | "secret" } = {}
+): Record<string, unknown> => {
+  const uniqueNames = [...new Set(parameterNames)];
+  if (uniqueNames.length !== parameterNames.length || uniqueNames.length === 0) {
+    throw new RequestValidationError("Action preview must declare a non-empty set of distinct reference parameters");
+  }
+  const sourceProperties = isRecord(definition.paramsSchema?.properties)
+    ? definition.paramsSchema.properties
+    : {};
+  const selectedProperties: JsonRecord = {};
+  for (const parameterName of uniqueNames) {
+    if (forbiddenKeys.has(parameterName)) {
+      throw new RequestValidationError("Action preview declares a forbidden reference parameter name");
+    }
+    const propertySchema = sourceProperties[parameterName];
+    const reference = isRecord(propertySchema) && isRecord(propertySchema["x-cubica-ref"])
+      ? propertySchema["x-cubica-ref"]
+      : undefined;
+    if (!reference) {
+      throw new RequestValidationError(
+        `Action parameter "${parameterName}" is not a schema-declared resource reference`
+      );
+    }
+    if (options.requiredVisibility && reference.visibility !== options.requiredVisibility) {
+      throw new RequestValidationError(
+        `Action parameter "${parameterName}" is not declared for ${options.requiredVisibility} preview visibility`
+      );
+    }
+    selectedProperties[parameterName] = propertySchema;
+  }
+
+  const params = inputParams ?? {};
+  for (const key of Object.keys(params)) {
+    if (forbiddenKeys.has(key)) {
+      throw new RequestValidationError("Action preview params contain a forbidden property name");
+    }
+  }
+  const cacheOwner = definition as object;
+  let validatorsBySelection = subsetValidatorCache.get(cacheOwner);
+  if (!validatorsBySelection) {
+    validatorsBySelection = new Map();
+    subsetValidatorCache.set(cacheOwner, validatorsBySelection);
+  }
+  const selectionKey = `${[...uniqueNames].sort().join("\u0000")}|${options.requiredVisibility ?? "any"}`;
+  let validator = validatorsBySelection.get(selectionKey);
+  if (!validator) {
+    validator = compileValidator({
+      type: "object",
+      additionalProperties: false,
+      properties: selectedProperties,
+      required: [...uniqueNames].sort()
+    });
+    validatorsBySelection.set(selectionKey, validator);
+  }
+  if (!validator(params)) {
+    throw new RequestValidationError(
+      `Action "${definition.actionId}" preview params failed schema validation: ${formatValidationErrors(validator)}`
+    );
+  }
+  return params;
+};
+
 const resolveReferenceRecord = (
   state: RuntimeState,
   annotation: ReferenceAnnotation,
@@ -122,10 +207,15 @@ const resolveReferenceRecord = (
 export const resolveActionReferences = (
   definition: RuntimeManifestActionDefinition,
   params: Record<string, unknown>,
-  state: RuntimeState
+  state: RuntimeState,
+  onlyParameterNames?: ReadonlyArray<string>
 ): Record<string, RuntimeResolvedReference> => {
   const resolved: Record<string, RuntimeResolvedReference> = {};
+  const selectedNames = onlyParameterNames ? new Set(onlyParameterNames) : undefined;
   for (const [paramName, annotation] of readReferenceAnnotations(definition)) {
+    if (selectedNames && !selectedNames.has(paramName)) {
+      continue;
+    }
     const rawId = params[paramName];
     const id = typeof rawId === "string" ? rawId : undefined;
     const resource = id === undefined ? undefined : resolveReferenceRecord(state, annotation, id);

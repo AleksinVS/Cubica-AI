@@ -1,7 +1,7 @@
 # ADR-006: View Adapters Deployment Architecture
 
-## Status
-Accepted
+**Status:** Accepted
+
 
 ## Context
 Платформа Cubica должна поддерживать игру через различные интерфейсы (View): Web-браузер, Telegram (Bot/MiniApp), Discord и потенциально другие.

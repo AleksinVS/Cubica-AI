@@ -269,7 +269,7 @@ export function upsertRuntimeSnapshotInTrace(
           ? undefined
           : {
               actionId: action.actionId,
-              payload: action.payload ?? {},
+              params: action.params ?? {},
               timestamp: action.timestamp
             }
       } as unknown as JsonValue
@@ -638,15 +638,6 @@ async function postPreviewTraceUpdate(body: {
   if (!response.ok) {
     const payload = (await response.json().catch(() => ({}))) as { readonly error?: string };
     throw new Error(payload.error ?? `Preview trace update failed with HTTP ${response.status}.`);
-  }
-}
-
-/** Reads the `sessionId` query parameter from a preview player URL. */
-export function readSessionIdFromPreviewUrl(value: string): string | undefined {
-  try {
-    return new URL(value).searchParams.get("sessionId") ?? undefined;
-  } catch {
-    return undefined;
   }
 }
 

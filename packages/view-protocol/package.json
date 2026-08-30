@@ -8,8 +8,11 @@
   "types": "src/index.ts",
   "scripts": {
     "build": "echo \"[view-protocol] source-only TS package consumed via src; no build step\"",
-    "test": "echo \"[view-protocol] source-only package; behavior is covered by consumer test suites (player-web)\"",
+    "test": "vitest run",
     "lint": "echo \"[view-protocol] no dedicated lint step\""
+  },
+  "devDependencies": {
+    "vitest": "^2.1.0"
   },
   "keywords": [
     "cubica",

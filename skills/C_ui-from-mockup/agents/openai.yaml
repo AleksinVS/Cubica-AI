@@ -1,3 +1,4 @@
 interface:
   display_name: "C_ui-from-mockup"
   short_description: "Разработка UI по изображению-макету"
+  default_prompt: "Use $ui-from-mockup to implement this interface from the supplied reference and verify the result."

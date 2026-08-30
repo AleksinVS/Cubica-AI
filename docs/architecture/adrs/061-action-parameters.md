@@ -1,9 +1,17 @@
 # ADR-061: Параметры действий манифеста (action parameters)
 
-- **Status**: Accepted (2026-07-06)
+**Status:** Accepted (2026-07-06)
 - **Date**: 2026-07-06
 - **Author**: AI Agent (по заказу владельца проекта)
 - **Context**: Runtime platform capabilities / manifest action contract
+
+> [!IMPORTANT]
+> Поправка ADR-084: контракт `paramsSchema` и строгая входная валидация
+> сохраняются. Разделы про передачу параметров в runtime JsonLogic,
+> `when`/guards и значения legacy effects заменены типизированными Mechanics
+> expressions, assertions и commands. Параметры остаются инертными данными и
+> попадают в состояние только через явно типизированную команду; серверный
+> `json-logic-js` executor удалён.
 
 ## Оглавление
 
@@ -130,5 +138,5 @@ ADR-074 добавляет узкую проверяемую семантику 
   ADR-040 (политика расширения runtime-api), ADR-058 (потребители в настольных
   играх), ADR-060 (params-schema в availableActions), ADR-062 (первый потребитель),
   ADR-074 (объявленные схемой ссылки на динамические ресурсы сессии).
-- `docs/tasks/active/TSK-20260706-flow-simulation-platform-capabilities.md` —
+- `docs/tasks/archive/TSK-20260706-flow-simulation-platform-capabilities.md` —
   исполнительная программа.

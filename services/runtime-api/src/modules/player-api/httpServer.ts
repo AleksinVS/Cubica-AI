@@ -6,9 +6,35 @@ import { fileURLToPath } from "node:url";
 import type { SessionStorePort } from "@cubica/contracts-session";
 import { HttpError } from "../errors.ts";
 import { AgentTurnService } from "../ai/agentRuntime.ts";
+import { AgentSeatDriver } from "../ai/agentSeatDriver.ts";
+import {
+  type FacilitatorDebriefProvider,
+  ZaiFacilitatorDebriefProvider
+} from "../ai/facilitatorDebriefProvider.ts";
+import { FacilitatorDebriefService } from "../ai/facilitatorDebriefService.ts";
+import type { FacilitatorDebriefStorePort } from "../ai/facilitatorDebriefStore.ts";
 import { SessionService } from "../session/session.service.ts";
 import { createSessionStoreFromEnvironment } from "../session/sessionStoreFactory.ts";
-import { RuntimeService } from "../runtime/runtime.service.ts";
+import {
+  hashSessionCredential,
+  readOptionalBearerCredential,
+  requireBearerCredential
+} from "../session/sessionAuthentication.ts";
+import {
+  PrivateInviteAuthenticationError,
+  SessionAuthenticationError,
+  SessionStoreUnavailableError
+} from "../session/sessionStoreErrors.ts";
+import {
+  RuntimeService,
+  type RuntimeServiceDispatchTimings
+} from "../runtime/runtime.service.ts";
+import {
+  BoundedInMemoryCommandAdmissionController,
+  CommandAdmissionRejectedError,
+  type CommandAdmissionController
+} from "../runtime/commandAdmission.ts";
+import type { SessionRandomProviderInput } from "../runtime/sessionRandom.ts";
 import {
   clearPlayerFacingContentCache,
   contentService,
@@ -19,6 +45,7 @@ import {
   type ContentService,
   type LocalPlayerWebPluginBundle
 } from "../content/contentService.ts";
+import { serializePublicGameplayJournal } from "../session/publicGameplayJournal.ts";
 import { buildGameReadinessResponse, buildReadinessResponse } from "../admin/health.ts";
 import {
   assertContentSourceId,
@@ -26,8 +53,17 @@ import {
   parseAgentTurnRequest,
   parseCreateSessionRequest,
   parseDispatchActionRequest,
-  parseRestorePreviewSessionRequest
+  parseFacilitatorDebriefGenerationRequest,
+  parsePrivateInviteClaimRequest,
+  parsePrivateSeatRecoveryInviteRequest,
+  parseRestorePreviewSessionRequest,
+  parseTransportRoadPreviewRequest
 } from "./requestValidation.ts";
+import {
+  SessionVersionEventHub,
+  SessionVersionStreamCapacityError,
+  SessionVersionStreamReservationInvalidError
+} from "./sessionVersionEventHub.ts";
 
 type RuntimeState = Record<string, unknown>;
 
@@ -35,8 +71,14 @@ export interface RuntimeApiServerOptions {
   port?: number;
   /** Explicit dev/test seam; production resolves and validates environment config. */
   sessionStore?: SessionStorePort<RuntimeState>;
+  /** Process-local deterministic-test seam; never populated from HTTP or environment. */
+  random?: SessionRandomProviderInput;
   /** Test seam for an isolated filesystem repository; production uses the singleton. */
-  assetContentService?: Pick<ContentService, "getGameAssetIndex" | "getGameAssetFile">;
+  assetContentService?: Pick<ContentService, "getGameAssetIndex" | "getGameAssetFile" | "getGameStylesheetSource">;
+  /** Shared command/Agent-Turn admission boundary for this runtime process. */
+  commandAdmissionController?: CommandAdmissionController;
+  /** Injected transport only for deterministic tests; production uses server configuration. */
+  facilitatorDebriefProvider?: FacilitatorDebriefProvider;
 }
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../../../");
@@ -47,17 +89,92 @@ const editorWorktreesRoots = parseEditorPreviewWorktreesRoots(
   process.env.EDITOR_PREVIEW_WORKTREES_ROOTS,
   defaultEditorWorktreesRoot
 );
+// This cap applies before JSON parsing, authentication and Mechanics budgets.
+// It is intentionally generous enough for editor preview snapshots while
+// preventing an unauthenticated request from growing process memory without a
+// bound. Narrow action-specific schemas impose much smaller semantic limits.
+const MAX_JSON_BODY_BYTES = 2 * 1024 * 1024;
+const MAX_SERVER_TIMING_DURATION_MS = Number.MAX_SAFE_INTEGER;
+const SERVER_TIMING_METRICS = [
+  ["dispatch", "dispatchMs"],
+  ["scheduler", "schedulerMs"],
+  ["reload", "reloadMs"],
+  ["projection", "projectionMs"],
+  ["action-availability", "actionAvailabilityMs"],
+  ["total", "totalMs"]
+] as const satisfies ReadonlyArray<
+  readonly [string, keyof RuntimeServiceDispatchTimings]
+>;
 
 const sendJson = (response: ServerResponse, statusCode: number, payload: unknown) => {
   response.writeHead(statusCode, { "Content-Type": "application/json; charset=utf-8" });
   response.end(JSON.stringify(payload));
 };
 
+const sendSerializedJson = (
+  response: ServerResponse,
+  statusCode: number,
+  serialized: string,
+  headers: Record<string, string>
+) => {
+  response.writeHead(statusCode, {
+    "Content-Type": "application/json; charset=utf-8",
+    ...headers
+  });
+  response.end(serialized);
+};
+
+/**
+ * Serialize coarse internal action timings using the standard `Server-Timing`
+ * response header. Metric names are fixed rather than derived from runtime
+ * data, and durations are bounded finite decimals, so neither game content nor
+ * an unexpected numeric value can inject another response header.
+ *
+ * Scheduler and reload are intentionally omitted when dispatch did not commit
+ * state and therefore did not run the post-commit scheduler pass.
+ */
+export function formatServerTimingHeader(
+  timings: Partial<RuntimeServiceDispatchTimings>
+): string | undefined {
+  const metrics: string[] = [];
+
+  for (const [metricName, timingKey] of SERVER_TIMING_METRICS) {
+    const duration = formatServerTimingDuration(timings[timingKey]);
+    if (duration !== undefined) {
+      metrics.push(`${metricName};dur=${duration}`);
+    }
+  }
+
+  return metrics.length > 0 ? metrics.join(", ") : undefined;
+}
+
+function formatServerTimingDuration(duration: number | undefined): string | undefined {
+  if (
+    duration === undefined ||
+    !Number.isFinite(duration) ||
+    duration < 0 ||
+    duration > MAX_SERVER_TIMING_DURATION_MS
+  ) {
+    return undefined;
+  }
+  return duration.toFixed(3);
+}
+
 const readJsonBody = async (request: IncomingMessage): Promise<unknown> => {
   const chunks: Buffer[] = [];
+  let byteLength = 0;
+  const declaredLength = readDeclaredContentLength(request);
+  if (declaredLength !== undefined && declaredLength > MAX_JSON_BODY_BYTES) {
+    throw new HttpError(413, `Request body exceeds the ${MAX_JSON_BODY_BYTES}-byte limit`);
+  }
 
   for await (const chunk of request) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    byteLength += buffer.byteLength;
+    if (byteLength > MAX_JSON_BODY_BYTES) {
+      throw new HttpError(413, `Request body exceeds the ${MAX_JSON_BODY_BYTES}-byte limit`);
+    }
+    chunks.push(buffer);
   }
 
   if (!chunks.length) {
@@ -72,13 +189,53 @@ const readJsonBody = async (request: IncomingMessage): Promise<unknown> => {
   }
 };
 
+function readDeclaredContentLength(request: IncomingMessage): number | undefined {
+  const raw = request.headers["content-length"];
+  if (raw === undefined) return undefined;
+  if (!/^\d+$/u.test(raw)) {
+    throw new HttpError(400, "Content-Length must be a non-negative integer");
+  }
+  const value = Number(raw);
+  if (!Number.isSafeInteger(value)) {
+    throw new HttpError(413, `Request body exceeds the ${MAX_JSON_BODY_BYTES}-byte limit`);
+  }
+  return value;
+}
+
 export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
   const port = options.port ?? Number(process.env.PORT ?? 3001);
   const assetContentService = options.assetContentService ?? contentService;
   const sessionStore = options.sessionStore ?? createSessionStoreFromEnvironment();
-  const sessionService = new SessionService({ sessionStore });
-  const runtimeService = new RuntimeService();
-  const agentTurnService = new AgentTurnService();
+  const commandAdmissionController = options.commandAdmissionController ??
+    new BoundedInMemoryCommandAdmissionController();
+  // Both mutation endpoints must share counters; constructing separate
+  // controllers would let Agent Turns bypass the general command budget.
+  const agentTurnService = new AgentTurnService(commandAdmissionController);
+  const agentSeatDriver = new AgentSeatDriver(agentTurnService);
+  const sessionVersionEvents = new SessionVersionEventHub();
+  const sessionService = new SessionService({
+    sessionStore,
+    agentSeatDriver,
+    onParticipantCredentialRotated: (sessionId, principalId) => {
+      sessionVersionEvents.disconnectPrincipal(sessionId, principalId);
+    }
+  });
+  const facilitatorDebriefStore = isFacilitatorDebriefStore(sessionStore)
+    ? sessionStore
+    : null;
+  const facilitatorDebriefService = facilitatorDebriefStore === null
+    ? null
+    : new FacilitatorDebriefService({
+      store: facilitatorDebriefStore,
+      provider: options.facilitatorDebriefProvider ?? new ZaiFacilitatorDebriefProvider({
+        apiKey: process.env.CUBICA_FACILITATOR_DEBRIEF_ZAI_API_KEY ?? ""
+      })
+    });
+  const runtimeService = new RuntimeService(
+    commandAdmissionController,
+    options.random,
+    agentSeatDriver
+  );
   let activePort = port;
   let closed = false;
 
@@ -183,6 +340,24 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
         return;
       }
 
+      const gameStylesheetMatch = request.method === "GET" &&
+        requestUrl.pathname.match(
+          /^\/game-stylesheets\/([a-z0-9][a-z0-9-]{0,63})\/([a-z0-9][a-z0-9-]{0,63})\/([a-f0-9]{64})\.css$/u
+        );
+      if (gameStylesheetMatch) {
+        const [, gameId, stylesheetId, contentHash] = gameStylesheetMatch;
+        assertGameId(gameId, "gameId");
+        const delivery = await assetContentService.getGameStylesheetSource({ gameId, stylesheetId, contentHash });
+        response.writeHead(200, {
+          "Access-Control-Allow-Origin": "*",
+          "Cache-Control": "public, max-age=31536000, immutable",
+          "Content-Type": delivery.contentType,
+          "X-Content-Type-Options": "nosniff"
+        });
+        response.end(delivery.text);
+        return;
+      }
+
       const publishedPluginBundleMatch = request.method === "GET" &&
         requestUrl.pathname.match(/^\/published-plugin-bundles\/([^/]+)\/([^/]+)\/([a-f0-9]{64})\.mjs$/u);
       if (publishedPluginBundleMatch) {
@@ -243,22 +418,130 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
       if (previewRestoreMatch) {
         const [, encodedSessionId] = previewRestoreMatch;
         const body = await readJsonBody(request);
+        const accessToken = requireBearerCredential(request.headers);
         const snapshot = await sessionService.restorePreviewSession(
           decodeURIComponent(encodedSessionId),
+          accessToken,
           parseRestorePreviewSessionRequest(body)
         );
+        sessionVersionEvents.publish(snapshot.version);
         sendJson(response, 200, snapshot);
+        return;
+      }
+
+      const privateInviteClaimMatch = request.method === "POST" &&
+        requestUrl.pathname.match(/^\/sessions\/([^/]+)\/private-invite-claims$/u);
+      if (privateInviteClaimMatch) {
+        const sessionId = decodePathSegment(privateInviteClaimMatch[1], "sessionId");
+        const body = await readJsonBody(request);
+        let currentAccessToken: string | undefined;
+        try {
+          currentAccessToken = readOptionalBearerCredential(request.headers);
+        } catch (error) {
+          if (error instanceof SessionAuthenticationError) {
+            throw new PrivateInviteAuthenticationError();
+          }
+          throw error;
+        }
+        const snapshot = await sessionService.claimPrivateInvite(
+          sessionId,
+          parsePrivateInviteClaimRequest(body),
+          currentAccessToken
+        );
+        sessionVersionEvents.publish(snapshot.version);
+        sendJson(response, 200, snapshot);
+        return;
+      }
+
+      const seatRecoveryInviteMatch = request.method === "POST" &&
+        requestUrl.pathname.match(/^\/sessions\/([^/]+)\/seat-recovery-invites$/u);
+      if (seatRecoveryInviteMatch) {
+        const sessionId = decodePathSegment(seatRecoveryInviteMatch[1], "sessionId");
+        const body = await readJsonBody(request);
+        const invite = await sessionService.issuePrivateSeatRecoveryInvite(
+          sessionId,
+          requireBearerCredential(request.headers),
+          parsePrivateSeatRecoveryInviteRequest(body)
+        );
+        sendJson(response, 201, invite);
+        return;
+      }
+
+      const sessionVersionEventsMatch = request.method === "GET" &&
+        requestUrl.pathname.match(/^\/sessions\/([^/]+)\/events$/u);
+      if (sessionVersionEventsMatch) {
+        const sessionId = decodePathSegment(sessionVersionEventsMatch[1], "sessionId");
+        const accessToken = requireBearerCredential(request.headers);
+        const access = await sessionService.authenticateSessionAccess(
+          sessionId,
+          accessToken
+        );
+        const reservation = sessionVersionEvents.reservePrincipal(
+          sessionId,
+          access.principal.principalId
+        );
+        try {
+          await sessionService.assertSessionPrincipalCredentialCurrent(
+            sessionId,
+            accessToken,
+            access.principal.principalId
+          );
+          sessionVersionEvents.subscribeReserved(response, access.snapshot.version, reservation);
+        } catch (error) {
+          sessionVersionEvents.cancelReservation(reservation);
+          if (error instanceof SessionVersionStreamCapacityError) {
+            response.setHeader("Retry-After", String(error.retryAfterSeconds));
+            sendJson(response, 429, { error: "Session event stream capacity is exhausted" });
+            return;
+          }
+          if (error instanceof SessionVersionStreamReservationInvalidError) {
+            throw new SessionAuthenticationError();
+          }
+          throw error;
+        }
+        return;
+      }
+
+      const publicJournalMatch = request.method === "GET" &&
+        requestUrl.pathname.match(/^\/sessions\/([^/]+)\/public-journal$/u);
+      if (publicJournalMatch) {
+        const sessionId = decodePathSegment(publicJournalMatch[1], "sessionId");
+        const journal = await sessionService.getPublicGameplayJournal(
+          sessionId,
+          requireBearerCredential(request.headers)
+        );
+        sendSerializedJson(response, 200, serializePublicGameplayJournal(journal), {
+          "Cache-Control": "no-store",
+          "Content-Disposition": 'attachment; filename="game-public-journal.json"'
+        });
+        return;
+      }
+
+      const facilitatorDebriefMatch =
+        (request.method === "GET" || request.method === "POST") &&
+        requestUrl.pathname.match(/^\/sessions\/([^/]+)\/facilitator-debrief$/u);
+      if (facilitatorDebriefMatch) {
+        if (facilitatorDebriefService === null) throw new SessionStoreUnavailableError();
+        const sessionId = decodePathSegment(facilitatorDebriefMatch[1], "sessionId");
+        const accessToken = requireBearerCredential(request.headers);
+        const debrief = request.method === "GET"
+          ? await facilitatorDebriefService.get(sessionId, accessToken)
+          : await facilitatorDebriefService.generate(
+            sessionId,
+            accessToken,
+            parseFacilitatorDebriefGenerationRequest(await readJsonBody(request))
+          );
+        response.setHeader("Cache-Control", "no-store");
+        sendJson(response, 200, debrief);
         return;
       }
 
       if (request.method === "GET" && requestUrl.pathname.startsWith("/sessions/")) {
         const sessionId = requestUrl.pathname.slice("/sessions/".length);
-        const snapshot = await sessionService.getSession(sessionId);
-
-        if (!snapshot) {
-          sendJson(response, 404, { error: `Session "${sessionId}" was not found` });
-          return;
-        }
+        const snapshot = await sessionService.getSession(
+          sessionId,
+          requireBearerCredential(request.headers)
+        );
 
         sendJson(response, 200, snapshot);
         return;
@@ -268,26 +551,29 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
         const body = await readJsonBody(request);
         const requestBody = parseDispatchActionRequest(body);
 
-        const sessionSnapshot = await sessionService.getSession(requestBody.sessionId);
-        if (!sessionSnapshot) {
-          throw new HttpError(404, `Session "${requestBody.sessionId}" was not found`);
-        }
-
-        const { response: dispatchResponse } = await runtimeService.dispatch({
+        const { response: dispatchResponse, timings } = await runtimeService.dispatch({
           sessionStore: sessionService.getSessionStore(),
-          gameId: sessionSnapshot.gameId,
-          contentSourceId: await sessionService.getContentSourceId(requestBody.sessionId),
-          input: {
-            sessionId: requestBody.sessionId,
-            expectedStateVersion: requestBody.expectedStateVersion,
-            playerId: requestBody.playerId,
-            actionId: requestBody.actionId,
-            params: requestBody.params,
-            payload: requestBody.payload
-          }
+          accessToken: requireBearerCredential(request.headers),
+          input: requestBody
         });
+        sessionVersionEvents.publish(dispatchResponse.version);
 
+        const serverTiming = formatServerTimingHeader(timings);
+        if (serverTiming !== undefined) {
+          response.setHeader("Server-Timing", serverTiming);
+        }
         sendJson(response, 200, dispatchResponse);
+        return;
+      }
+
+      if (request.method === "POST" && requestUrl.pathname === "/action-previews/transport-road") {
+        const body = await readJsonBody(request);
+        const preview = await runtimeService.previewTransportRoad({
+          sessionStore: sessionService.getSessionStore(),
+          accessToken: requireBearerCredential(request.headers),
+          input: parseTransportRoadPreviewRequest(body)
+        });
+        sendJson(response, 200, preview);
         return;
       }
 
@@ -296,9 +582,10 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
         const requestBody = parseAgentTurnRequest(body);
         const agentTurnResponse = await agentTurnService.runTurn({
           sessionStore: sessionService.getSessionStore(),
-          contentSourceId: await sessionService.getContentSourceId(requestBody.sessionId),
+          credentialSha256: hashSessionCredential(requireBearerCredential(request.headers)),
           request: requestBody
         });
+        sessionVersionEvents.publish(agentTurnResponse.version);
 
         sendJson(response, 200, agentTurnResponse);
         return;
@@ -307,7 +594,16 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
       sendJson(response, 404, { error: "Not found" });
     } catch (error) {
       if (error instanceof HttpError) {
-        sendJson(response, error.statusCode, { error: error.message });
+        if (error instanceof SessionAuthenticationError) {
+          response.setHeader("WWW-Authenticate", 'Bearer realm="cubica-session"');
+        }
+        if (error instanceof CommandAdmissionRejectedError) {
+          response.setHeader("Retry-After", String(error.retryAfterSeconds));
+        }
+        sendJson(response, error.statusCode, {
+          error: error.message,
+          ...(error.code === undefined ? {} : { code: error.code })
+        });
         return;
       }
 
@@ -339,6 +635,7 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
         return;
       }
       closed = true;
+      sessionVersionEvents.close();
       if (server.listening) {
         await new Promise<void>((resolve, reject) => {
           server.close((error) => error ? reject(error) : resolve());
@@ -347,6 +644,16 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
       await sessionStore.close();
     }
   };
+}
+
+function isFacilitatorDebriefStore(
+  store: SessionStorePort<RuntimeState>
+): store is SessionStorePort<RuntimeState> & FacilitatorDebriefStorePort<RuntimeState> {
+  const candidate = store as Partial<FacilitatorDebriefStorePort<RuntimeState>>;
+  return typeof candidate.readFacilitatorDebriefStatus === "function" &&
+    typeof candidate.readFacilitatorDebriefGenerationSource === "function" &&
+    typeof candidate.beginFacilitatorDebriefAttempt === "function" &&
+    typeof candidate.completeFacilitatorDebriefAttempt === "function";
 }
 
 function assertEditorPreviewContentRoot(contentRoot: string): string {
@@ -404,6 +711,14 @@ function assertString(value: unknown, pathLabel: string): string {
     throw new HttpError(400, `${pathLabel} must be a non-empty string.`);
   }
   return value;
+}
+
+function decodePathSegment(value: string, pathLabel: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    throw new HttpError(400, `${pathLabel} must be a valid URL path segment.`);
+  }
 }
 
 function assertPluginId(value: string, pathLabel: string): void {

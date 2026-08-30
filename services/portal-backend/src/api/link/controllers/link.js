@@ -29,32 +29,18 @@ module.exports = createCoreController('api::link.link', ({ strapi }) => ({
       return ctx.badRequest("Missing user or purchase ID");
     }
 
-
-    
-    // Find the purchase by documentId
-    /* UNSAFE!!! Any user who knows a purchaseId could fetch someone elses purchase
     const purchase = await strapi.db.query('api::purchase.purchase').findOne({
-      where: { documentId: purchaseId },
+      where: {
+        documentId: purchaseId,
+        users_permissions_user: { id: user.id },
+      },
       populate: { links: true, game: { select: ['id'] } },
-      users_permissions_user: { connect: [{ id: user.id }] }, 
     });
-    
 
-    if (!purchase) {
-      return ctx.notFound("Purchase not found");
-    } */
-   // Secure lookup: purchase must belong to the current user
-   const purchase = await strapi.db.query('api::purchase.purchase').findOne({
-  where: {
-    documentId: purchaseId,
-    users_permissions_user: { id: user.id }, 
-  },
-  populate: { links: true, game: { select: ['id'] } },
-});
-if (!purchase) return ctx.notFound('Purchase not found');
+    if (!purchase) return ctx.notFound('Purchase not found');
 
 
-      const type = purchase.package_type;
+    const type = purchase.package_type;
     const now = new Date(); // single source of truth
 
     // Reuse one-time link if already exists

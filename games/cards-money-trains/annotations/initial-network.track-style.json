@@ -1,0 +1,50 @@
+{
+  "$schema": "./initial-network.track-style.schema.json",
+  "schemaVersion": "1.0",
+  "status": "measurement",
+  "publishable": false,
+  "warning": "Измерение авторского рисунка сети, а не игровое содержимое. Файл описывает, как выглядит дорога и значок станции на авторском изображении, и служит обоснованием постоянных величин в отрисовке игрока.",
+  "source": {
+    "path": "draft/trains/Начальная транспортная сеть.png",
+    "root": "repo",
+    "width": 5079,
+    "height": 3627,
+    "sha256": "e6460c1fccbf2f3b520c81b1fdc3bd26fb7d78a881889d56fb5712c5b19e2b1b"
+  },
+  "coordinateSystem": {
+    "origin": "top-left",
+    "units": "design-pixel",
+    "width": 5079,
+    "height": 3627
+  },
+  "method": {
+    "horizontalRoad": "Дорога 6 ↔ 9¾ горизонтальна на эталоне, поэтому вертикальный разрез поперёк неё разделяет рельсы без пересчёта углов.",
+    "strokeWidth": "Ширина штриха измерена на половине глубины цвета: это стандартный способ измерить мягкий край и не зависит от сглаживающей каймы.",
+    "ink": "Цвет — среднее по самой тёмной пятой части точек рельса.",
+    "stationMark": "Значок станции измерен по радиусам вокруг центра станции 6, полустанок — вокруг отметки 9¾."
+  },
+  "track": {
+    "railGaugePx": 18.6,
+    "railOffsetPx": 9.3,
+    "railWidthPx": 5.1,
+    "sleeperSpacingPx": 17.5,
+    "sleeperWidthPx": 4,
+    "sleeperLengthPx": 27.6,
+    "sleeperHalfLengthPx": 13.8,
+    "inkHex": "#553418",
+    "sampledSleepers": 20,
+    "sampledRailColumns": 263
+  },
+  "station": {
+    "teeth": 10,
+    "toothUpwardOffsetDeg": -0.2,
+    "tipRadiusPx": 58.8,
+    "rootRadiusPx": 48.8,
+    "discRadiusPx": 33.3,
+    "waypointRadiusPx": 30,
+    "greenHex": "#427246",
+    "discHex": "#d8cab6",
+    "labelInkHex": "#685642",
+    "labelCapHeightPx": 33
+  }
+}

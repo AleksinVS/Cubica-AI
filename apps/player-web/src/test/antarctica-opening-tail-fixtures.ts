@@ -166,8 +166,6 @@ export const openingTailStep30WithSelectedCardSessionSnapshot: SessionSnapshot =
         },
       },
       log: [],
-    },
-    secret: {
       opening: {
         selectedCardId: "55",
       },
@@ -379,8 +377,6 @@ export const openingTailStep32WithSelectedGoCard61SessionSnapshot: SessionSnapsh
         },
       },
       log: [],
-    },
-    secret: {
       opening: {
         selectedCardId: "61",
       },
@@ -483,8 +479,6 @@ export const openingTailStep32WithSelectedGoCard66SessionSnapshot: SessionSnapsh
         },
       },
       log: [],
-    },
-    secret: {
       opening: {
         selectedCardId: "66",
       },
@@ -721,8 +715,6 @@ export const openingTailStep34WithSelectedGoCard68SessionSnapshot: SessionSnapsh
         },
       },
       log: [],
-    },
-    secret: {
       opening: {
         selectedCardId: "68",
       },
@@ -861,8 +853,6 @@ export const openingTailStep36WithSelectedGoCard69SessionSnapshot: SessionSnapsh
         },
       },
       log: [],
-    },
-    secret: {
       opening: {
         selectedCardId: "69",
       },

@@ -2,8 +2,6 @@ import type { NextConfig } from "next";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const runtimeApiUrl = process.env.RUNTIME_API_URL ?? "http://127.0.0.1:3001";
-
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   outputFileTracingRoot: path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../"),
@@ -16,18 +14,6 @@ const nextConfig: NextConfig = {
     // Production entries are loaded on first use instead of all at startup. This
     // lowers the resident set when both web applications share an 8 GiB host.
     preloadEntriesOnStart: false
-  },
-  async rewrites() {
-    return [
-      {
-        source: "/api/runtime/player-content/:gameId",
-        destination: `${runtimeApiUrl}/games/:gameId/player-content`
-      },
-      {
-        source: "/api/runtime/:path*",
-        destination: `${runtimeApiUrl}/:path*`
-      }
-    ];
   }
 };
 

@@ -1,0 +1,495 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cubica.platform/games/cards-money-trains/vector-map-polygonization-review.schema.json",
+  "title": "Cards, Money, Trains vector map polygonization review",
+  "description": "Непубликационный диагностический результат полигонализации проверенных векторных линий. Все ограниченные грани остаются кандидатами до визуального подтверждения.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schemaVersion",
+    "status",
+    "publishable",
+    "warning",
+    "provenance",
+    "policy",
+    "summary",
+    "snapClusters",
+    "candidateRegions",
+    "excludedSpaces",
+    "diagnostics",
+    "blockingFindings"
+  ],
+  "properties": {
+    "$schema": { "const": "vector-map-polygonization-review.schema.json" },
+    "schemaVersion": { "const": "1.1" },
+    "status": { "const": "review-draft" },
+    "publishable": { "const": false },
+    "warning": { "type": "string", "minLength": 1 },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rawReview",
+        "classification",
+        "topologyReview",
+        "source",
+        "calibration",
+        "toolchain",
+        "algorithm"
+      ],
+      "properties": {
+        "rawReview": { "$ref": "#/definitions/fileDigest" },
+        "classification": { "$ref": "#/definitions/fileDigest" },
+        "topologyReview": { "$ref": "#/definitions/fileDigest" },
+        "source": { "$ref": "#/definitions/fileDigest" },
+        "calibration": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "coordinateSpace",
+            "width",
+            "height",
+            "rmsErrorPx",
+            "maxErrorPx"
+          ],
+          "properties": {
+            "kind": { "const": "affine-least-squares" },
+            "coordinateSpace": { "const": "canonical-map-pixels" },
+            "width": { "const": 5079 },
+            "height": { "const": 3627 },
+            "rmsErrorPx": { "type": "number", "minimum": 0 },
+            "maxErrorPx": { "type": "number", "minimum": 0 }
+          }
+        },
+        "toolchain": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["node", "python", "numpy", "shapely", "geos"],
+          "properties": {
+            "node": { "type": "string", "minLength": 1 },
+            "python": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+.*$" },
+            "numpy": { "const": "2.5.1" },
+            "shapely": { "const": "2.1.2" },
+            "geos": { "const": "3.13.1" }
+          }
+        },
+        "algorithm": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "flattening",
+            "flattenTolerancePx",
+            "endpointSnapPolicy",
+            "snapThresholdPx",
+            "intersectionNoding",
+            "polygonization"
+          ],
+          "properties": {
+            "flattening": {
+              "const": "recursive-de-casteljau-canonical-chord-bound"
+            },
+            "flattenTolerancePx": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 0.25
+            },
+            "endpointSnapPolicy": {
+              "const": "approved-topology-pairs-only-centroid"
+            },
+            "snapThresholdPx": { "const": 3 },
+            "intersectionNoding": { "const": "shapely.unary_union" },
+            "polygonization": { "const": "shapely.polygonize_full" }
+          }
+        }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "semanticAssignmentsConfirmed",
+        "externalInfiniteFaceExcluded",
+        "excludedInternalSpaceCandidateId",
+        "excludedInternalSpaceInterpretation",
+        "additionalSyntheticConnectionsAllowed",
+        "runtimeIntegrationAllowed"
+      ],
+      "properties": {
+        "semanticAssignmentsConfirmed": { "const": false },
+        "externalInfiniteFaceExcluded": { "const": true },
+        "excludedInternalSpaceCandidateId": {
+          "const": "boundary-candidate-0978"
+        },
+        "excludedInternalSpaceInterpretation": {
+          "const": "review-assumption-not-author-confirmed"
+        },
+        "additionalSyntheticConnectionsAllowed": { "const": false },
+        "runtimeIntegrationAllowed": { "const": false }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "includedPathCount",
+        "excludedClosedContourCount",
+        "approvedSnapPairCount",
+        "snapClusterCount",
+        "flattenedSegmentCount",
+        "nodedLineCount",
+        "polygonizedFaceCount",
+        "candidateRegionCount",
+        "excludedInternalFaceCount",
+        "cutEdgeCount",
+        "dangleCount",
+        "invalidRingCount",
+        "endpointToLineCandidateCount",
+        "candidateInteriorRingCount",
+        "candidateMultiPolygonCount",
+        "blockingFindingCount"
+      ],
+      "properties": {
+        "includedPathCount": { "const": 978 },
+        "excludedClosedContourCount": { "const": 1 },
+        "approvedSnapPairCount": { "const": 15 },
+        "snapClusterCount": { "type": "integer", "minimum": 1, "maximum": 15 },
+        "flattenedSegmentCount": { "type": "integer", "minimum": 978 },
+        "nodedLineCount": { "type": "integer", "minimum": 1 },
+        "polygonizedFaceCount": { "type": "integer", "minimum": 0 },
+        "candidateRegionCount": { "type": "integer", "minimum": 0 },
+        "excludedInternalFaceCount": { "type": "integer", "minimum": 0 },
+        "cutEdgeCount": { "type": "integer", "minimum": 0 },
+        "dangleCount": { "type": "integer", "minimum": 0 },
+        "invalidRingCount": { "type": "integer", "minimum": 0 },
+        "endpointToLineCandidateCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20000
+        },
+        "candidateInteriorRingCount": { "type": "integer", "minimum": 0 },
+        "candidateMultiPolygonCount": { "const": 0 },
+        "blockingFindingCount": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "snapClusters": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 15,
+      "items": { "$ref": "#/definitions/snapCluster" }
+    },
+    "candidateRegions": {
+      "type": "array",
+      "maxItems": 4096,
+      "items": { "$ref": "#/definitions/regionCandidate" }
+    },
+    "excludedSpaces": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": { "$ref": "#/definitions/excludedSpace" }
+    },
+    "diagnostics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cuts",
+        "dangles",
+        "invalidRings",
+        "endpointToLineCandidates"
+      ],
+      "properties": {
+        "cuts": {
+          "type": "array",
+          "maxItems": 20000,
+          "items": { "$ref": "#/definitions/diagnosticLine" }
+        },
+        "dangles": {
+          "type": "array",
+          "maxItems": 20000,
+          "items": { "$ref": "#/definitions/diagnosticLine" }
+        },
+        "invalidRings": {
+          "type": "array",
+          "maxItems": 20000,
+          "items": { "$ref": "#/definitions/diagnosticLine" }
+        },
+        "endpointToLineCandidates": {
+          "type": "array",
+          "maxItems": 20000,
+          "items": { "$ref": "#/definitions/endpointToLineCandidate" }
+        }
+      }
+    },
+    "blockingFindings": {
+      "type": "array",
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "kind", "message"],
+        "properties": {
+          "id": {
+            "enum": [
+              "candidate-regions-contain-holes",
+              "candidate-region-limit-exceeded",
+              "linework-requires-additional-review",
+              "candidate-regions-contain-multipolygons"
+            ]
+          },
+          "kind": {
+            "enum": [
+              "architecture-review-required",
+              "geometry-review-required"
+            ]
+          },
+          "message": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "geometryFingerprint": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "sourceCandidateId": {
+      "type": "string",
+      "pattern": "^boundary-candidate-[0-9]{4}$"
+    },
+    "fileDigest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file", "sha256"],
+      "properties": {
+        "file": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/definitions/sha256" }
+      }
+    },
+    "point": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" }
+      }
+    },
+    "bounds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["minX", "minY", "maxX", "maxY"],
+      "properties": {
+        "minX": { "type": "number" },
+        "minY": { "type": "number" },
+        "maxX": { "type": "number" },
+        "maxY": { "type": "number" }
+      }
+    },
+    "coordinate": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": { "type": "number" }
+    },
+    "linearRing": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 200000,
+      "items": { "$ref": "#/definitions/coordinate" }
+    },
+    "polygonGeometry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "coordinates"],
+      "properties": {
+        "type": { "const": "Polygon" },
+        "coordinates": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1024,
+          "items": { "$ref": "#/definitions/linearRing" }
+        }
+      }
+    },
+    "endpointMember": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["candidateId", "endpoint", "originalPoint"],
+      "properties": {
+        "candidateId": {
+          "type": "string",
+          "pattern": "^boundary-candidate-[0-9]{4}$"
+        },
+        "endpoint": { "enum": ["start", "end"] },
+        "originalPoint": { "$ref": "#/definitions/point" }
+      }
+    },
+    "snapCluster": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "members",
+        "canonicalPoint",
+        "maximumDisplacementPx"
+      ],
+      "properties": {
+        "members": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 16,
+          "items": { "$ref": "#/definitions/endpointMember" }
+        },
+        "canonicalPoint": { "$ref": "#/definitions/point" },
+        "maximumDisplacementPx": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 3
+        }
+      }
+    },
+    "regionCandidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "reviewStatus",
+        "authorConfirmed",
+        "geometryFingerprint",
+        "sourceCandidateIds",
+        "areaPx2",
+        "bounds",
+        "representativePoint",
+        "interiorRingCount",
+        "geometry"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^region-candidate-[0-9]{4}$"
+        },
+        "reviewStatus": { "const": "candidate" },
+        "authorConfirmed": { "const": false },
+        "geometryFingerprint": { "$ref": "#/definitions/geometryFingerprint" },
+        "sourceCandidateIds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 981,
+          "uniqueItems": true,
+          "items": { "$ref": "#/definitions/sourceCandidateId" }
+        },
+        "areaPx2": { "type": "number", "exclusiveMinimum": 0 },
+        "bounds": { "$ref": "#/definitions/bounds" },
+        "representativePoint": { "$ref": "#/definitions/point" },
+        "interiorRingCount": { "type": "integer", "minimum": 0 },
+        "geometry": { "$ref": "#/definitions/polygonGeometry" }
+      }
+    },
+    "excludedSpace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceCandidateId",
+        "interpretation",
+        "authorConfirmed",
+        "geometryFingerprint",
+        "areaPx2",
+        "bounds",
+        "matchedPolygonizedFaceIds",
+        "geometry"
+      ],
+      "properties": {
+        "sourceCandidateId": { "const": "boundary-candidate-0978" },
+        "interpretation": {
+          "const": "impassable-internal-space-review-assumption"
+        },
+        "authorConfirmed": { "const": false },
+        "geometryFingerprint": { "$ref": "#/definitions/geometryFingerprint" },
+        "areaPx2": { "type": "number", "exclusiveMinimum": 0 },
+        "bounds": { "$ref": "#/definitions/bounds" },
+        "matchedPolygonizedFaceIds": {
+          "type": "array",
+          "maxItems": 4096,
+          "items": {
+            "type": "string",
+            "pattern": "^excluded-face-[0-9]{4}$"
+          }
+        },
+        "geometry": { "$ref": "#/definitions/polygonGeometry" }
+      }
+    },
+    "diagnosticLine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "geometryFingerprint",
+        "sourceCandidateIds",
+        "lengthPx",
+        "bounds",
+        "coordinates"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^(cut|dangle|invalid-ring)-[0-9]{4}$"
+        },
+        "geometryFingerprint": { "$ref": "#/definitions/geometryFingerprint" },
+        "sourceCandidateIds": {
+          "type": "array",
+          "maxItems": 981,
+          "uniqueItems": true,
+          "items": { "$ref": "#/definitions/sourceCandidateId" }
+        },
+        "lengthPx": { "type": "number", "exclusiveMinimum": 0 },
+        "bounds": { "$ref": "#/definitions/bounds" },
+        "coordinates": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 200000,
+          "items": { "$ref": "#/definitions/coordinate" }
+        }
+      }
+    },
+    "endpointToLineCandidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "geometryFingerprint",
+        "endpointSourceCandidateId",
+        "endpoint",
+        "lineSourceCandidateId",
+        "endpointPoint",
+        "projectedPoint",
+        "distancePx"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^endpoint-to-line-[0-9]{4}$"
+        },
+        "geometryFingerprint": { "$ref": "#/definitions/geometryFingerprint" },
+        "endpointSourceCandidateId": {
+          "$ref": "#/definitions/sourceCandidateId"
+        },
+        "endpoint": { "enum": ["start", "end"] },
+        "lineSourceCandidateId": {
+          "$ref": "#/definitions/sourceCandidateId"
+        },
+        "endpointPoint": { "$ref": "#/definitions/point" },
+        "projectedPoint": { "$ref": "#/definitions/point" },
+        "distancePx": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 3
+        }
+      }
+    }
+  }
+}

@@ -1,7 +1,7 @@
 import styled from "styled-components";
 import { FaStar } from "react-icons/fa";
 import { useState } from "react";
-import { createTestPurchase } from "@/lib/portalApi";
+import { createTestPurchase, PAYMENT_STUB_AVAILABLE } from "@/lib/portalApi";
 
 const InfoWrapper = styled.div`
     display: flex;
@@ -274,21 +274,23 @@ const InfoContainer = ({ title, slug, reviews, priceLaunch, priceDay, priceMonth
                 <span>{prices.priceDay} ₽/день</span>
                 <span>{priceMonth} ₽/месяц</span>
             </PriceWrapper>
-            <PurchaseOptions aria-label="Тип покупки">
-                {PACKAGE_OPTIONS.map((option) => (
-                    <OptionButton
-                        key={option.type}
-                        type="button"
-                        $isSelected={packageType === option.type}
-                        onClick={() => setPackageType(option.type)}
-                    >
-                        <OptionTitle>{option.title}</OptionTitle>
-                        <OptionMeta>{prices[option.priceKey]} ₽</OptionMeta>
-                        <OptionMeta>{option.meta}</OptionMeta>
-                    </OptionButton>
-                ))}
-            </PurchaseOptions>
-            {packageType !== "one-time" ? (
+            {PAYMENT_STUB_AVAILABLE ? (
+                <PurchaseOptions aria-label="Тип тестовой покупки">
+                    {PACKAGE_OPTIONS.map((option) => (
+                        <OptionButton
+                            key={option.type}
+                            type="button"
+                            $isSelected={packageType === option.type}
+                            onClick={() => setPackageType(option.type)}
+                        >
+                            <OptionTitle>{option.title}</OptionTitle>
+                            <OptionMeta>{prices[option.priceKey]} ₽</OptionMeta>
+                            <OptionMeta>{option.meta}</OptionMeta>
+                        </OptionButton>
+                    ))}
+                </PurchaseOptions>
+            ) : null}
+            {PAYMENT_STUB_AVAILABLE && packageType !== "one-time" ? (
                 <DateField>
                     {packageType === "day" ? "Дата игры" : "Дата начала подписки"}
                     <input
@@ -300,12 +302,16 @@ const InfoContainer = ({ title, slug, reviews, priceLaunch, priceDay, priceMonth
             ) : null}
             <ButtonGroup>
                 <button>Играть</button>
-                <button type="button" disabled={isBuying} onClick={handleTestPurchase}>
-                    {isBuying ? "Покупаем..." : `Купить: ${selectedOption.title}`}
-                </button>
+                {PAYMENT_STUB_AVAILABLE ? (
+                    <button type="button" disabled={isBuying} onClick={handleTestPurchase}>
+                        {isBuying ? "Покупаем..." : `Тестовая покупка: ${selectedOption.title}`}
+                    </button>
+                ) : null}
 
             </ButtonGroup>
-            <StatusText role="status">{purchaseStatus}</StatusText>
+            {PAYMENT_STUB_AVAILABLE ? (
+                <StatusText role="status">{purchaseStatus}</StatusText>
+            ) : null}
             <Delimeter />
             <Description>{description}</Description>
             <Delimeter />

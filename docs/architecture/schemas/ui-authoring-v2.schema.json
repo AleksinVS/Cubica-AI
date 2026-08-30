@@ -54,8 +54,22 @@
             "entry_point": {
               "$ref": "https://cubica.platform/schemas/manifest-authoring-common.schema.json#/definitions/entityId"
             },
+            "default_layout_mode": {
+              "type": "string",
+              "enum": ["leftsidebar", "topbar", "map-first", "auto"],
+              "description": "Design-time layout the game presents for this channel (ADR-093). The compiler passes it through to ui.manifest.json.default_layout_mode unchanged. Screen routing matches conditions.layoutMode against this value instead of server-side UI state."
+            },
             "theme": {
               "type": "object"
+            },
+            "stylesheets": {
+              "type": "array",
+              "description": "Optional game-owned CSS assets for this channel (ADR-091). Authors list stylesheet asset references as asset:<id>; the compiler passes them through to ui.manifest.json.stylesheets unchanged (compiler pass-through is delivered in TSK-20260719 block R3).",
+              "items": {
+                "type": "string",
+                "pattern": "^asset:[a-z0-9][a-z0-9-]{0,63}$"
+              },
+              "uniqueItems": true
             },
             "screens": {
               "type": "array",
@@ -127,7 +141,8 @@
               "type": "string"
             },
             "layout_mode": {
-              "type": "string"
+              "type": "string",
+              "enum": ["leftsidebar", "topbar", "map-first", "auto"]
             },
             "layout_id": {
               "type": "string"
@@ -142,9 +157,115 @@
               "$ref": "#/definitions/uiComponent"
             }
           },
-          "additionalProperties": true
+          "additionalProperties": true,
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "layout_mode": { "const": "map-first" }
+                },
+                "required": ["layout_mode"]
+              },
+              "then": {
+                "properties": {
+                  "root": {
+                    "type": "object",
+                    "required": ["type", "children"],
+                    "properties": {
+                      "type": { "const": "screenComponent" },
+                      "children": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": { "$ref": "#/definitions/mapFirstWorkspaceZone" },
+                        "contains": {
+                          "type": "object",
+                          "required": ["type", "props"],
+                          "properties": {
+                            "type": { "const": "areaComponent" },
+                            "props": {
+                              "type": "object",
+                              "required": ["workspaceSlot"],
+                              "properties": {
+                                "workspaceSlot": { "const": "board" }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "else": {
+                "properties": {
+                  "root": {
+                    "not": { "$ref": "#/definitions/componentTreeContainsWorkspaceSlot" }
+                  }
+                }
+              }
+            }
+          ]
         }
       ]
+    },
+    "workspaceSlot": {
+      "type": "string",
+      "description": "Semantic placement owned by the generic map-first workspace.",
+      "enum": [
+        "board",
+        "status",
+        "primary-panel",
+        "context-panel",
+        "action-tray",
+        "floating-controls",
+        "overlay"
+      ]
+    },
+    "componentTreeContainsWorkspaceSlot": {
+      "description": "Recursive detector used to forbid workspaceSlot outside direct map-first zones.",
+      "anyOf": [
+        {
+          "type": "object",
+          "required": ["props"],
+          "properties": {
+            "props": {
+              "type": "object",
+              "required": ["workspaceSlot"]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["children"],
+          "properties": {
+            "children": {
+              "type": "array",
+              "contains": { "$ref": "#/definitions/componentTreeContainsWorkspaceSlot" }
+            }
+          }
+        }
+      ]
+    },
+    "mapFirstWorkspaceZone": {
+      "type": "object",
+      "description": "A direct child of a map-first screen root. Nested components cannot declare another workspace zone.",
+      "required": ["type", "props"],
+      "properties": {
+        "type": { "const": "areaComponent" },
+        "props": {
+          "type": "object",
+          "required": ["workspaceSlot"],
+          "properties": {
+            "workspaceSlot": { "$ref": "#/definitions/workspaceSlot" }
+          }
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "not": { "$ref": "#/definitions/componentTreeContainsWorkspaceSlot" }
+          }
+        }
+      }
     },
     "uiComponent": {
       "allOf": [
@@ -168,7 +289,10 @@
               "type": "string"
             },
             "props": {
-              "type": "object"
+              "type": "object",
+              "properties": {
+                "workspaceSlot": { "$ref": "#/definitions/workspaceSlot" }
+              }
             },
             "style": {
               "type": "object"
@@ -192,7 +316,48 @@
               }
             }
           },
-          "additionalProperties": true
+          "additionalProperties": true,
+          "allOf": [
+            {
+              "if": {
+                "required": ["props"],
+                "properties": {
+                  "props": {
+                    "type": "object",
+                    "required": ["workspaceSlot"]
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "type": { "const": "areaComponent" }
+                }
+              }
+            },
+            {
+              "if": {
+                "required": ["type"],
+                "properties": {
+                  "type": { "const": "cardComponent" }
+                }
+              },
+              "then": {
+                "properties": {
+                  "props": {
+                    "type": "object",
+                    "properties": {
+                      "backText": {
+                        "description": "Public content of the card's back face. When present with visualState 'resolved', the common renderer shows it as the active face."
+                      },
+                      "visualState": {
+                        "description": "Presenter-derived visual state. The value 'resolved' selects backText when backText is present and does not itself perform a game action or reveal secret data."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          ]
         }
       ]
     }

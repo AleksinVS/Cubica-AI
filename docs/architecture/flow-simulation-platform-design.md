@@ -6,9 +6,20 @@
 нормативную спецификацию первой фикстурной игры класса — «Мини-конвейер»
 (`games/conveyor-mini/`), которую целиком реализует агент.
 
-Статус: действующий дизайн (сопровождает Accepted ADR-061/062, приняты 2026-07-06). Исполнительные программы:
-`docs/tasks/active/TSK-20260706-flow-simulation-platform-capabilities.md` (платформа)
+Статус: частично заменён ADR-084 (параметры действий, Phaser-канал и игровое
+поведение сохраняются; runtime effects/guards/JsonLogic executor заменены).
+Исполнительные программы:
+`docs/tasks/archive/TSK-20260706-flow-simulation-platform-capabilities.md` (исторический план платформы)
 и `docs/tasks/active/TSK-20260706-conveyor-mini-game.md` (игра).
+
+> [!IMPORTANT]
+> Разделы с `random.seed`, `metric.set`, `when`, runtime guards, JsonLogic-
+> контекстом и полными `effects[]` JSON являются исторической исполнительной
+> формой и не копируются. Действующий серверный контракт — Game Intent →
+> типизированный Mechanics IR по ADR-084. JsonLogic в этой области остаётся
+> только ограниченным языком player-facing computed metrics. Контент, баланс,
+> Phaser-границы и приёмочные результаты «Мини-конвейера» остаются входом для
+> перепривязки.
 
 ## Оглавление
 
@@ -94,31 +105,33 @@ runtime владеет границами раундов. Phaser-сцена — 
 
 ### 4.0. Нормативный справочник новых конструкций
 
-Этот раздел — **нормативный**: имена полей, значения, сигнатуры и ограничения
-ниже являются контрактом. Разделы 4.1–4.6 дают пояснения и примеры; при
-расхождении приоритет у справочника. Все JSON- и TS-примеры самодостаточны.
+Этот раздел остаётся нормативным только для `paramsSchema`, Phaser-канала,
+`simulationSurface`, plugin API и клиентской утилиты seeded PRNG. Серверные
+`random.seed`, JsonLogic-контекст и effects-примеры заменены ADR-084 и служат
+только описанием требуемого поведения. Все относящиеся к ним JSON-примеры
+должны быть заново выражены через текущую схему Mechanics IR.
 
-**Куда что кладётся при реализации:**
+**Историческая раскладка удалённого runtime-контракта (не реализовывать):**
 
 | Артефакт | Место |
 |---|---|
-| Схемные конструкции манифеста (`paramsSchema`, `random.seed`) | `docs/architecture/schemas/game-manifest.schema.json` |
+| `paramsSchema` остаётся в схеме; `random.seed` в старом effect registry удалён | `paramsSchema` — `docs/architecture/schemas/game-manifest.schema.json`; случайность — текущий Mechanics catalog |
 | Компонент `simulationSurface` | `docs/architecture/schemas/ui-manifest.schema.json` |
 | Точка вклада `phaserSceneFactory` | `docs/architecture/schemas/plugin.schema.json` |
 | Перегенерация TS-контрактов | `npm run generate:contracts`, проверка — `npm run verify:contracts-schema-parity` |
-| Валидация `params`, обработчик `random.seed` | `services/runtime-api/src/modules/runtime/` (по образцу существующих обработчиков) |
+| Валидация `params`; старый обработчик `random.seed` не восстанавливается | input admission runtime; случайность — типизированный модуль Mechanics |
 | Расширение `DispatchActionInput` | `packages/contracts/session` + `requestValidation.ts` |
 | Phaser-хост, контракт сцены, seeded PRNG | `apps/player-web` (`plugin-api` — публичные типы и утилита) |
 | Фикстурная игра | `games/conveyor-mini/` (отдельная программа TSK) |
 
-**Реестр новых конструкций:**
+**Исторический реестр конструкций:**
 
 | Конструкция | Где | Форма |
 |---|---|---|
 | Параметры действия | `actions.<id>.paramsSchema` | JSON Schema плоского объекта; ограничения в §4.1 |
 | Параметры в запросе | `POST /actions` body | необязательное поле `params: object` |
-| Ветка параметров | контекст данных JsonLogic | `params` — провалидированный объект (или `{}`) |
-| Зерно раунда | реестр эффектов | `{"op": "random.seed", "storePath": "<JSON Pointer в /public/>"}` |
+| Ветка параметров | типизированное выражение Mechanics | `params` — провалидированный объект (или `{}`) |
+| Зерно раунда | Mechanics algorithm/command | типизированная запись без публичного JSON Pointer |
 | Точка вклада сцены | `plugin.json` → `targets["player-web"].contributes` | `"phaserSceneFactory": true` |
 | Компонент поверхности | UI-манифест, компоненты экрана | `{"type": "simulationSurface", "sceneId": "...", "designWidth": 960, "designHeight": 540}` |
 | Экспорт плагина | entry-модуль плагина | `export const createSimulationScene: PhaserSceneFactory` |
@@ -479,6 +492,11 @@ POST /actions
 
 ### 6.4. Действия (полные JSON)
 
+> [!CAUTION]
+> Полные JSON ниже больше не являются исполнимым контрактом. Они фиксируют
+> входы, формулы, проверки и результаты действий для миграции в Game Intents и
+> Mechanics IR; `effects[]`, `when` и runtime JsonLogic не восстанавливаются.
+
 Формула очков (нормативная): после каждого раунда
 `score = max(0, score + correct*10 - missed*5)`.
 
@@ -786,6 +804,11 @@ export function buildSpawnPlan(
 ## 9. Указания агенту-исполнителю
 
 Раздел адресован агентам, реализующим TSK-программы трека. Правила обязательны.
+
+> [!IMPORTANT]
+> Указания ниже применяются только к сохраняющимся Phaser/UI/params частям и
+> игровому поведению. Любое указание создать handler старого эффекта, общий
+> JsonLogic builder или скопировать `effects[]` отменено ADR-084.
 
 **Порядок работы:**
 

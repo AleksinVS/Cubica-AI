@@ -1,0 +1,29 @@
+/*
+ * Game-owned stylesheet for the simple-choice fixture (ADR-091).
+ *
+ * WHY this file exists: it proves the whole game-owned stylesheets channel end
+ * to end on a tiny, harmless fixture — authoring -> compile -> registry ->
+ * publish -> runtime-api -> renderer. It is NOT platform CSS: it lives in the
+ * game package and is delivered through the ADR-063 asset channel.
+ *
+ * Rule for image references (ADR-091): use `asset:<id>` tokens only, never a
+ * baked-in path. The publish pipeline (build-game-stylesheets.cjs) rewrites the
+ * token below into the content-addressable channel URL of `accent-mark`.
+ */
+
+.info-main-content h1 {
+  /* Accent colour for the fixture screen heading. */
+  color: #0b7285;
+}
+
+.info-main-content h1::before {
+  content: "";
+  display: inline-block;
+  width: 0.7em;
+  height: 0.7em;
+  margin-right: 0.4em;
+  vertical-align: baseline;
+  background-image: url(asset:accent-mark);
+  background-size: contain;
+  background-repeat: no-repeat;
+}

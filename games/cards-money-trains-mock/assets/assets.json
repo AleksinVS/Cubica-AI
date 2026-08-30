@@ -3,6 +3,14 @@
   "assets": [
     {
       "id": "board-guinea-optimized",
+      "file": "images/guinea-map.webp",
+      "kind": "image",
+      "origin": {
+        "type": "authored-in-repo"
+      }
+    },
+    {
+      "id": "mock-board-geometry-fixture",
       "file": "images/mock-board.svg",
       "kind": "image",
       "origin": {

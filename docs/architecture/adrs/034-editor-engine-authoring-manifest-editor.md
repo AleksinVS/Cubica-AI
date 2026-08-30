@@ -1,7 +1,7 @@
 # ADR-034: Editor Engine For Authoring Manifest Editing
 
 - **Дата**: 2026-05-22
-- **Статус**: Draft
+**Status:** Draft
 - **Авторы**: Codex
 - **Компоненты**: Game Editor, Editor Engine, Manifest Authoring, Manifest Compiler, Player Web Preview
 - **Связанные решения**: ADR-025, ADR-030, ADR-031
@@ -22,8 +22,7 @@
 - [12. Рассмотренные варианты](#12-рассмотренные-варианты)
 - [13. Отклоненные альтернативы](#13-отклоненные-альтернативы)
 - [14. Последствия](#14-последствия)
-- [15. Открытые вопросы](#15-открытые-вопросы)
-- [16. Связанные артефакты](#16-связанные-артефакты)
+- [15. Связанные артефакты](#15-связанные-артефакты)
 
 ## 1. Понимание решения
 
@@ -179,7 +178,11 @@ Tree view нужен для задач, где flow-chart намеренно с�
 
 Tree view не должен мутировать локальный React state отдельно от DocumentStore. Его edit callbacks должны возвращать editor intents или JSON Patch. Если выбранная open-source библиотека умеет inline edit, эти callbacks должны только валидировать намерение и передавать его в editor-engine; библиотека не становится источником истины.
 
-Для первого production slice на 2026-05-22 принято использовать собственный React renderer поверх framework-agnostic `TreeViewModel`. `json-edit-react` и `@uiw/react-json-view/editor` рассмотрены через Context7 spike, но не выбраны для первого среза: обе библиотеки удобны для tree UI, однако их edit APIs основаны на library callbacks и key-path arrays, а Cubica нужен явный JSON Pointer contract и запрет library-owned mutable JSON state. Это решение не запрещает будущий adapter, если он сохранит тот же `TreeViewModel`/DocumentStore boundary.
+Принято использовать собственный React renderer поверх framework-agnostic
+`TreeViewModel`. Рассмотренные готовые tree UI библиотеки не выбраны напрямую:
+их edit API опирается на library callbacks и key-path arrays, а Cubica нужен
+явный JSON Pointer contract и запрет library-owned mutable JSON state. Будущий
+adapter допустим, если сохраняет `TreeViewModel`/DocumentStore boundary.
 
 Минимальный контракт `TreeViewModel`:
 
@@ -208,21 +211,11 @@ Tree view не должен мутировать локальный React state 
 
 ## 9. UI и UX
 
-Первый экран должен быть рабочим пространством автора, а не landing page.
-
-Основные области:
-
-- верхняя панель: game selector, channel selector, save, validate, compile, preview, undo, redo;
-- центральная область: переключаемые или совместимые views `Graph`, `Tree` and `JSON text`;
-- плавающий property panel рядом с выбранным узлом;
-- нижняя diagnostics panel для ошибок и предупреждений;
-- боковая навигация может использовать JSON tree или document outline, но tree view остается отдельным режимом редактирования, а не только меню навигации.
-
-Property panel по умолчанию плавающий. Пользователь может закрепить его как боковую панель, если редактирует большой объект. На узких экранах он превращается в нижнюю панель.
-
-Property panel не должен объяснять пользователю устройство редактора длинным встроенным текстом. Подсказки берутся из `title`, `description`, `examples`, `_semantics` и UI schema.
-
-Лучшие JSON-редакторы обычно используют несколько синхронных представлений: text, tree, table/form. Поэтому DocumentStore не должен зависеть от flow-chart или Monaco. Целевой editor-engine должен иметь три способа редактирования JSON: flow-chart для смысловых связей, tree view для полной структуры и text editor для точного контроля.
+Редактор предоставляет синхронизированные графическое, древовидное, текстовое
+и формовое представления одного `DocumentStore`. Ни одно представление не
+становится самостоятельным источником состояния. Подсказки полей выводятся из
+JSON Schema, UI schema и authoring metadata; конкретная компоновка рабочего
+пространства остаётся вне архитектурного контракта.
 
 ## 10. Валидация и диагностика
 
@@ -313,7 +306,7 @@ JSON tree отрисовывается собственным UI-компоне�
 Минусы:
 
 - больше собственного UI-кода и тестов;
-- schema-aware structural actions нужно добавлять поэтапно.
+- schema-aware structural actions требуют явного расширения контракта.
 
 Статус: принят для первого JSON tree slice.
 
@@ -346,7 +339,10 @@ JSON tree отрисовывается собственным UI-компоне�
 - Включить remote schema fetching по умолчанию. Отклонено: нарушает детерминированность и усложняет безопасность.
 - Переписывать весь authoring JSON при каждом visual edit. Отклонено: это ухудшает review, undo/redo и conflict handling.
 - Реализовать JSON tree как локальный React state, который меняет объект в обход DocumentStore. Отклонено: это создает четвертый источник поведения рядом с flow-chart, Monaco и property panel.
-- Использовать `json-edit-react` или `@uiw/react-json-view/editor` напрямую как editable tree в первом срезе. Отклонено: для текущих требований безопаснее собственный renderer над `TreeViewModel`, потому что он не создает промежуточный mutable JSON state и не переводит JSON Pointer в неявный library-specific path contract.
+- Использовать готовую библиотеку напрямую как editable tree. Отклонено: для
+  текущих требований безопаснее собственный renderer над `TreeViewModel`,
+  потому что он не создаёт промежуточный mutable JSON state и не переводит
+  JSON Pointer в неявный library-specific path contract.
 
 ## 14. Последствия
 
@@ -365,20 +361,7 @@ Trade-offs:
 - нужно поддерживать две карты: compiler source map и text location map;
 - UI schema становится новым tooling artifact, который нужно версионировать и валидировать.
 
-## 15. Открытые вопросы
-
-- Где хранить projection rules: в `packages/editor-engine`, `docs/architecture/schemas`, authoring package или отдельном registry.
-- Нужен ли отдельный JSON Schema для `editor.layout.json`.
-- Какой минимальный schema-aware набор structural tree operations (`add/remove/rename/reorder`) разрешить после scalar `set value`.
-- Нужно ли сохранять collapse/expand state дерева в `editor.layout.json` и какой schema contract нужен для этого state.
-- Нужно ли поддерживать collaborative editing в первом production slice.
-- Какой минимальный набор graph operations разрешить в первом writable MVP.
-
-## 16. Связанные артефакты
+## 15. Связанные артефакты
 
 - `services/game-editor/docs/editor-engine-authoring-manifest-editor.md`
-- `docs/tasks/archive/TSK-20260522-editor-engine-authoring-manifest-editor.md`
-- `docs/tasks/artifacts/TSK-20260522-editor-engine-authoring-manifest-editor/execution-matrix.md`
-- `docs/tasks/archive/TSK-20260522-editor-engine-json-tree-view.md`
-- `docs/tasks/artifacts/TSK-20260522-editor-engine-json-tree-view/execution-matrix.md`
 - `docs/architecture/adrs/035-editor-engine-progressive-semantic-graph-ux.md`

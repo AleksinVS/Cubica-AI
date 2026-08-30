@@ -41,16 +41,18 @@ Use `.env.example` as the baseline and set public URLs for the deployed portal, 
 PORTAL_PUBLIC_URL=https://portal.example.test
 PLAYER_PUBLIC_URL=https://player.example.test
 RUNTIME_API_URL=https://runtime.example.test
+PORTAL_TEST_CORS_ORIGIN=http://test-host.example:12345
 PAYMENT_STUB_ENABLED=true
 ```
 
 Keep Strapi secrets (`APP_KEYS`, `API_TOKEN_SALT`, `ADMIN_JWT_SECRET`, `TRANSFER_TOKEN_SALT`, `JWT_SECRET`) unique per VPS environment.
+`PORTAL_TEST_CORS_ORIGIN` is optional and must contain one exact additional browser origin, including the port when applicable. Local origins and the configured public portal/player origins remain allowed without it.
 
 ## Payment Stub
 
-`POST /orders/payment-stub` creates a paid order and purchase for the authenticated user without Robokassa. It is intended for test launch flows only and is disabled unless `PAYMENT_STUB_ENABLED=true`.
+`POST /orders/payment-stub` creates a paid order and purchase for the authenticated user without Robokassa. It is intended for test launch flows only and is disabled unless `PAYMENT_STUB_ENABLED=true`. The request must carry a JWT for an existing portal user; the backend never creates or logs in a test account.
 
-For local browser testing, Strapi CORS allows `PORTAL_PUBLIC_URL` plus the local portal ports used by the current test contour. With the portal on `http://localhost:3010`, clicking `Купить` on `/games/antarctica` logs in the local test user and calls this endpoint directly.
+For local browser testing, Strapi CORS allows `PORTAL_PUBLIC_URL` plus the local portal ports used by the current test contour. Enable `NEXT_PUBLIC_PAYMENT_STUB_ENABLED=true` in the non-production portal, log in with a pre-created test account, and then use the `Тестовая покупка` action. The browser opt-in and this backend gate must both be enabled.
 
 Request body:
 
@@ -89,6 +91,8 @@ The existing Robokassa flow remains available:
 
 - `GET /robokassa/payment-link?documentId=<orderDocumentId>`
 - `POST /robokassa/result`
+
+The payment-link request requires an authenticated JWT and returns a link only when the order belongs to that user.
 
 Configure Robokassa with:
 

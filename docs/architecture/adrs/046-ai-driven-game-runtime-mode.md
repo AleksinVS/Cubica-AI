@@ -1,10 +1,13 @@
 # ADR-046: AI-Driven Game Runtime Mode
 
 - **Дата**: 2026-06-11
-- **Статус**: Accepted
+**Status:** Accepted
 - **Авторы**: Codex
 - **Компоненты**: Runtime API, Player Web, Game Manifests, Agent Runtime, AI Contracts, Cubica Surface, Portal, Session State
-- **Связанные решения**: ADR-001, ADR-003, ADR-004, ADR-025, ADR-029, ADR-040, ADR-043, ADR-044, ADR-045
+- **Связанные решения**: ADR-001, ADR-003, ADR-004, ADR-025, ADR-029, ADR-040, ADR-043, ADR-044, ADR-045, ADR-084
+- **Изменяющий контракт заменён ADR-084:** прямые agent effects и patches
+  удалены; долговременное изменение проходит через
+  schema-validated outcome → опубликованный Game Intent → Mechanics IR
 
 ## Оглавление
 
@@ -27,13 +30,13 @@
 
 ## 2. Контекст
 
-Текущий canonical slice исполняет `Antarctica` and `simple-choice` детерминированно: manifest actions, deterministic handlers, session state and player-facing content projection. Это остаётся важным baseline, потому он даёт проверяемость, воспроизводимость и запуск без LLM-инфраструктуры.
+Текущий canonical slice исполняет `Antarctica` и `simple-choice` воспроизводимо: опубликованные Game Intents проходят через типизированный Mechanics IR, состояние сессии и безопасную player-facing projection. Это остаётся важным baseline, потому что он даёт проверяемость, воспроизводимость и запуск без LLM-инфраструктуры.
 
 При этом целевая LLM-first архитектура проекта уже предполагала, что LLM может выступать игровым движком. ADR-045 добавил Cubica Surface как внутренний декларативный контракт для UI-поверхностей, которые могут генерироваться агентом. Нужно явно связать эти идеи с runtime: некоторые игры должны иметь право объявить agent runtime обязательной частью игрового исполнения.
 
 ## 3. Термины
 
-- **Deterministic game** - игра, где состояние меняется только через манифест, deterministic handlers and runtime API без обязательного обращения к ИИ-агенту.
+- **Deterministic game** - игра, где состояние меняется только через опубликованные Game Intents, Mechanics IR и Runtime API без обязательного обращения к ИИ-агенту.
 - **AI-driven game** - игра, где ИИ-агент является обязательной частью runtime: он получает контекст сессии, принимает или предлагает ход, возвращает состояние, UI-поверхность and available actions.
 - **Hybrid game** - игра, где часть хода исполняется deterministic-механиками, а часть шагов явно делегируется агенту.
 - **Agent Runtime** - backend-граница, которая исполняет agent turn: вызывает модель или локального агента, применяет политики, вызывает разрешённые инструменты and возвращает структурированный результат.
@@ -58,9 +61,13 @@ Cubica вводит AI-driven game runtime mode как first-class platform capa
    - Runtime routes agent-driven turns through an Agent Runtime adapter with auth, rate limits, audit and replay metadata.
 
 3. **Agent output is structured and validated before it mutates state.**
-   - Agent can return narration, `CubicaSurface`, available player actions, tool-call requests, state effects, JSON Patch-like deltas or diagnostics.
+   - Agent can return narration, `CubicaSurface`, available player actions,
+     tool-call requests, game-declared structured outcomes or diagnostics.
    - `runtime-api` or a future extracted game-engine boundary validates all outputs against Cubica JSON Schema and semantic rules.
    - Agent does not write directly to databases, manifests, session rows or plugin files.
+   - A durable outcome becomes parameters of a fixed published `actionId` and
+     is applied through Mechanics IR. Direct state effects and JSON Patch-like
+     deltas remain only as migration input until the ADR-084 cutover.
 
 4. **AI-generated UI can be primary gameplay UI.**
    - In AI-driven games, `CubicaSurface` is allowed to be the primary current screen, not only helper UI.
@@ -68,7 +75,9 @@ Cubica вводит AI-driven game runtime mode как first-class platform capa
    - Arbitrary HTML, arbitrary React components and executable JavaScript remain forbidden in production gameplay.
 
 5. **Agent controls game flow through declared capabilities.**
-   - The agent may choose the next scene, generate a surface, ask for structured player input, call allowed tools or propose state effects.
+   - The agent may choose an available Game Intent, generate a surface, ask for
+     structured player input, call allowed tools or propose a game-declared
+     structured outcome.
    - Each capability must be declared in the manifest or platform contracts.
    - New mechanics still follow ADR-040: if a mechanic is reusable, it becomes a platform capability; if game-specific, it stays in the game bundle/plugin/manifest and does not leak into core runtime.
 
@@ -88,10 +97,12 @@ Cubica вводит AI-driven game runtime mode как first-class platform capa
 3. Agent Runtime can be required for an AI-driven game, but it remains behind Cubica runtime/session APIs.
 4. Agent-authored surfaces are untrusted until schema and catalog validation pass.
 5. Agent state, AG-UI state and provider message state are not authoritative Cubica state.
-6. Every mutating agent output becomes a Cubica effect, command or patch and passes validation before persistence.
+6. Every mutating agent output becomes schema-validated parameters of a fixed
+   published Game Intent and passes the ordinary Mechanics IR transaction;
+   agent-selected IR, effect kinds and state paths are forbidden.
 7. Deterministic games and deterministic paths must keep working without Agent Runtime.
 8. AI-driven games must declare failure policy before publish or launch.
-9. `state.secret` exposure to agents must be role-scoped and manifest/policy controlled.
+9. Текущий безопасный профиль Agent Runtime передаёт player-facing public state и фиксированную проекцию `/meta` + `/actions`, но не передаёт `state.secret`. Расширение профиля требует одновременно schema-first контракта, role-scoped projector и тестов отсутствия утечек; одно новое значение enum без проектора запрещено.
 10. Replay/audit metadata is mandatory for production AI-driven sessions.
 
 ## 6. Границы по слоям
@@ -115,7 +126,7 @@ Runtime API owns:
 - session state and event log;
 - agent-turn orchestration boundary;
 - validation of agent outputs;
-- persistence of accepted effects;
+- атомарная фиксация выбранного Game Intent, его Mechanics-событий и квитанции;
 - readiness status for required Agent Runtime.
 
 Runtime API does not own:
@@ -191,7 +202,7 @@ Positive:
 
 Costs and risks:
 
-- Runtime contracts become more complex because they must represent agent turns and validated agent effects.
+- Runtime contracts become more complex because they must represent agent turns and schema-validated Game Intent selection.
 - Launch readiness must include Agent Runtime configuration for AI-driven games.
 - AI-driven sessions need stronger observability, cost controls, rate limits and failure handling.
 - Authoring tools must help designers choose execution mode and failure policy.

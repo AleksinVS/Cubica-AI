@@ -11,7 +11,11 @@
  * - Background workers (none exist in this block)
  */
 
-import type { GameManifestExecutionMode } from "@cubica/contracts-manifest";
+import type {
+  GameManifestAgentRuntimeConfig,
+  GameManifestAgentSeatConfig,
+  GameManifestExecutionMode
+} from "@cubica/contracts-manifest";
 import type { SessionStorePort } from "@cubica/contracts-session";
 import {
   buildAgentRuntimeUnavailableMessage,
@@ -240,7 +244,9 @@ export async function buildGameReadinessResponse(input: {
     const manifest = await loadGameManifest(input.gameId, input.contentSourceId);
     const executionMode = manifest.executionMode ?? "deterministic";
     const agentRuntime = checkAgentRuntimeReadiness(manifest.agentRuntime);
-    const ready = calculateReadiness(contentCheck, sessionStoreCheck) && agentRuntime.status === "ok";
+    const runtimeReady = manifest.config.runtimeReady !== false;
+    const ready = calculateReadiness(contentCheck, sessionStoreCheck) &&
+      runtimeReady && agentRuntime.status === "ok";
 
     return {
       ready,
@@ -251,8 +257,9 @@ export async function buildGameReadinessResponse(input: {
       dependencies: {
         ...baseDependencies,
         gameContent: {
-          status: "ok",
-          gameId: input.gameId
+          status: runtimeReady ? "ok" : "error",
+          gameId: input.gameId,
+          ...(runtimeReady ? {} : { message: "Game content is not ready for runtime sessions." })
         },
         agentRuntime
       }
@@ -283,8 +290,15 @@ export async function buildGameReadinessResponse(input: {
 export async function assertGameLaunchReady(input: {
   gameId: string;
   contentSourceId?: string;
+  participantCount?: number;
+  agentSeatCount?: number;
 }): Promise<void> {
   const manifest = await loadGameManifest(input.gameId, input.contentSourceId);
+  if (manifest.config.runtimeReady === false) {
+    // Blockers remain an authoring/admin diagnostic. The public launch error
+    // does not echo arbitrary content details or make clients interpret them.
+    throw new HttpError(409, `Game "${input.gameId}" is not ready to start a runtime session.`);
+  }
   const agentRuntime = checkAgentRuntimeReadiness(manifest.agentRuntime);
   if (agentRuntime.status !== "ok") {
     if (
@@ -292,8 +306,43 @@ export async function assertGameLaunchReady(input: {
       typeof manifest.agentRuntime.deterministicFallbackActionId === "string" &&
       manifest.agentRuntime.deterministicFallbackActionId.length > 0
     ) {
-      return;
+      // The game-wide AI entry flow has its accepted deterministic fallback.
+      // A seat-scoped agent session is checked separately below and still
+      // requires a reachable provider plus its own ordered candidates.
+    } else {
+      throw new HttpError(503, buildAgentRuntimeUnavailableMessage(input.gameId, agentRuntime));
     }
-    throw new HttpError(503, buildAgentRuntimeUnavailableMessage(input.gameId, agentRuntime));
+  }
+
+  assertAgentSeatLaunchReady({
+    gameId: input.gameId,
+    participantCount: input.participantCount ?? manifest.config.players.min,
+    agentSeatCount: input.agentSeatCount,
+    agentSeats: manifest.config.players.agentSeats,
+    agentRuntime: manifest.agentRuntime
+  });
+}
+
+/** Session-scoped semantic checks layered on the canonical manifest/request shapes. */
+export function assertAgentSeatLaunchReady(input: {
+  gameId: string;
+  participantCount: number;
+  agentSeatCount?: number;
+  agentSeats?: GameManifestAgentSeatConfig;
+  agentRuntime?: GameManifestAgentRuntimeConfig;
+}): void {
+  if (input.agentSeatCount === undefined || input.agentSeatCount === 0) return;
+  if (input.agentSeats === undefined) {
+    throw new HttpError(400, `Game "${input.gameId}" does not declare local agent seats.`);
+  }
+  if (input.agentSeatCount > input.agentSeats.max || input.agentSeatCount > input.participantCount) {
+    throw new HttpError(
+      400,
+      `Requested agent seats must not exceed the declared maximum or participant count (${input.participantCount}).`
+    );
+  }
+  const seatRuntime = checkAgentRuntimeReadiness(input.agentRuntime, { requireConfigured: true });
+  if (seatRuntime.status !== "ok") {
+    throw new HttpError(503, buildAgentRuntimeUnavailableMessage(input.gameId, seatRuntime));
   }
 }

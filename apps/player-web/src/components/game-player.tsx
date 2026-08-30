@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import type {
   PlayerFacingContent,
@@ -24,6 +24,7 @@ import { ManifestRenderer } from "@/components/manifest/manifest-renderer";
 import { SafeModeRenderer } from "@/components/safe-mode-renderer";
 import { CubicaSurfaceRenderer } from "@/components/surface/cubica-surface-renderer";
 import { RuntimeStatusPanel } from "@/components/runtime-status-panel";
+import { PublicJournalDownload } from "@/components/public-journal-download";
 import {
   useEditorPreviewBridge,
   type EditorPreviewCompletedAction,
@@ -32,9 +33,19 @@ import {
 import {
   createEmptyGameAssetResolver,
   loadGameAssetResolver,
+  resolveThemeBackgroundStyle,
   uiUsesGameAssets,
   type GameAssetResolver
 } from "@/lib/game-asset-resolver";
+import { applyGameStylesheetLinks } from "@/lib/game-stylesheet-links";
+import type { PlayerLayoutMode } from "@/lib/player-layout-mode";
+import { createManifestActionAdapter } from "@/lib/manifest-action-adapter";
+import { restorePreviewSession } from "@/presenter/runtime-client";
+import { SessionSetupPanel } from "@/components/session-setup-panel";
+import { SessionParticipants } from "@/components/session-participants";
+import { AgentControlPanel } from "@/components/agent-control-panel";
+import { FacilitatorDebriefPanel } from "@/components/facilitator-debrief-panel";
+import { resolveFacilitatorDebriefAvailabilityProvider } from "@/plugins/phaser-scene-registry";
 
 export type { PlayerFacingMockup as GameMockup };
 
@@ -86,6 +97,19 @@ export function GamePlayer({
     () => playerPluginBundles.map((bundle) => `${bundle.scope}:${bundle.pluginId}:${bundle.contentHash}`).join("|"),
     [playerPluginBundles]
   );
+  // TSK-20260719 R4b: whether the game needs the asset index (ADR-063) is
+  // still decided from the UI manifest alone (`uiUsesGameAssets(gameUi)`),
+  // not from the plugin config's themeBackgroundImage — a game that declares
+  // an `asset:<id>` background AND uses `asset:` anywhere in its UI manifest
+  // (the common case; every screen carries at least one such reference once
+  // migrated) already loads the resolver through this existing check. A game
+  // that used *only* a config-level `asset:` theme background with no
+  // UI-manifest asset reference at all would need this check widened to also
+  // look at `fullConfig.themeBackgroundImage`; left as a known, narrow gap
+  // (documented below) rather than reordering hook initialization around a
+  // config value that is not always available on the first render (a
+  // registered plugin's config only replaces the server default once
+  // `playerPluginState.status === "ready"`).
   const needsGameAssets = useMemo(() => uiUsesGameAssets(gameUi), [gameUi]);
   const [gameAssets, setGameAssets] = useState<GameAssetResolver | null>(
     () => needsGameAssets ? null : createEmptyGameAssetResolver()
@@ -111,7 +135,7 @@ export function GamePlayer({
 
   const [playerState, setPlayerState] = useState<PlayerState | null>(null);
   const [screenKey, setScreenKey] = useState<string | undefined>(undefined);
-  const [layoutMode, setLayoutMode] = useState<"leftsidebar" | "topbar">("topbar");
+  const [layoutMode, setLayoutMode] = useState<PlayerLayoutMode>("topbar");
   const [activePanel, setActivePanel] = useState<string | null>(null);
   const [lastCompletedPreviewAction, setLastCompletedPreviewAction] = useState<EditorPreviewCompletedAction | undefined>(
     undefined
@@ -135,6 +159,26 @@ export function GamePlayer({
     };
   }, [content.gameId, needsGameAssets, runtimeApiUrl]);
 
+  // Game-owned stylesheets (ADR-091): inject a <link> per declared asset:<id>
+  // once the asset resolver is loaded, and remove them on unmount/reload. The
+  // stable signature avoids re-injecting when the array identity changes but its
+  // contents do not. The renderer stays game-agnostic — it applies whatever the
+  // manifest lists without knowing the game.
+  const gameStylesheetSignature = useMemo(
+    () => (gameUi?.stylesheets ?? []).join("|"),
+    [gameUi?.stylesheets]
+  );
+  useEffect(() => {
+    const references = gameUi?.stylesheets;
+    if (references === undefined || references.length === 0 || gameAssets === null) {
+      return;
+    }
+    return applyGameStylesheetLinks({ references, resolver: gameAssets });
+    // gameStylesheetSignature captures the reference contents; gameAssets flips
+    // from null to the loaded resolver.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameStylesheetSignature, gameAssets]);
+
   const presenterRef = useRef<GamePresenter | null>(null);
   const rootRef = useRef<HTMLElement | null>(null);
   const previewSessionSnapshot = useMemo<EditorPreviewSessionSnapshot | undefined>(() => {
@@ -150,12 +194,25 @@ export function GamePlayer({
       state: snapshot.state
     };
   }, [playerState]);
+  const handleEditorPreviewRestore = useCallback(async (request: {
+    readonly sessionId: string;
+    readonly state: Record<string, unknown>;
+    readonly version: { readonly stateVersion: number; readonly lastEventSequence: number };
+    readonly targetEventSequence?: number;
+  }) => {
+    const activeSessionId = presenterRef.current?.sessionSnapshot?.sessionId;
+    if (activeSessionId === undefined || request.sessionId !== activeSessionId) {
+      throw new Error("Preview restore request does not match the active player session.");
+    }
+    return restorePreviewSession(request);
+  }, []);
   useEditorPreviewBridge(rootRef, {
     enabled: editorPreviewMode,
     parentOrigin: editorPreviewParentOrigin,
     refreshSignal: `${screenKey ?? ""}:${layoutMode}:${activePanel ?? ""}:${playerState?.sessionId ?? ""}:${playerState?.log?.length ?? 0}`,
     sessionSnapshot: previewSessionSnapshot,
-    lastCompletedAction: lastCompletedPreviewAction
+    lastCompletedAction: lastCompletedPreviewAction,
+    onRestorePreviewSession: handleEditorPreviewRestore
   });
 
   useEffect(() => {
@@ -208,7 +265,10 @@ export function GamePlayer({
       content,
       gameUi,
       config: fullConfig,
-      contentSourceId
+      contentSourceId,
+      // Editor preview already owns a concrete runtime session. Showing the
+      // local-player setup there would replace that authoritative preview.
+      sessionSetupEnabled: !editorPreviewMode
     });
     presenterRef.current = presenter;
 
@@ -246,7 +306,7 @@ export function GamePlayer({
         }
         case "NAVIGATE": {
           const nextScreenKey = command.payload?.screenKey as string | undefined;
-          const nextLayoutMode = command.payload?.layoutMode as "leftsidebar" | "topbar" | undefined;
+          const nextLayoutMode = command.payload?.layoutMode as PlayerLayoutMode | undefined;
           if (nextScreenKey) {
             setScreenKey(nextScreenKey);
           }
@@ -269,6 +329,7 @@ export function GamePlayer({
 
     return () => {
       unsubscribe();
+      presenter.dispose();
       presenterRef.current = null;
     };
   }, [content, contentSourceId, gameUi, fullConfig, initialSessionId, playerPluginState.status]);
@@ -296,7 +357,7 @@ export function GamePlayer({
     ) {
       setLastCompletedPreviewAction({
         actionId,
-        payload: payload ?? {},
+        params: payload ?? {},
         timestamp
       });
     }
@@ -310,12 +371,12 @@ export function GamePlayer({
       return;
     }
 
-    const adapter = presenter.createManifestActionAdapter(
-      (actionId, actionPayload) => handleAction(actionId, actionPayload),
-      (message) => {
+    const adapter = createManifestActionAdapter({
+      dispatchAction: (actionId, actionParams) => handleAction(actionId, actionParams),
+      onError: (message) => {
         console.error(message);
       }
-    );
+    });
     adapter(command, payload);
   };
 
@@ -343,6 +404,14 @@ export function GamePlayer({
     void presenter.boot();
   };
 
+  const handleSessionSetup = (selection: { participantCount: number; agentSeatCount: number; accessMode?: "local" | "private-invite" }) => {
+    void presenterRef.current?.createSessionFromSetup(selection);
+  };
+
+  const handleRefreshAgentControl = () => {
+    void presenterRef.current?.refreshSession();
+  };
+
   const handleSurfaceAction = (action: Parameters<GamePresenter["handleSurfaceAction"]>[0]) => {
     const presenter = presenterRef.current;
     if (!presenter) return;
@@ -360,14 +429,26 @@ export function GamePlayer({
     await presenter.handleBoardAction(actionId, payload ?? {});
   };
 
+  const handleBoardRoadPreview = (
+    actionId: string,
+    params: Record<string, unknown>
+  ) => {
+    const presenter = presenterRef.current;
+    if (!presenter) {
+      return Promise.reject(new Error("Игровая сессия еще не готова к расчёту дороги."));
+    }
+    return presenter.previewTransportRoad(actionId, params);
+  };
+
   const state = playerState;
-  const rootStyle = fullConfig.themeBackgroundImage
-    ? ({
-        // WHY: shared layouts consume a neutral CSS variable. Only an active
-        // game plugin can provide the game-owned asset assigned to it.
-        "--game-background-image": `url(${JSON.stringify(fullConfig.themeBackgroundImage)})`
-      } as CSSProperties)
-    : undefined;
+  // WHY: shared layouts consume a neutral CSS variable. Only an active game
+  // plugin can provide the game-owned asset assigned to it. TSK-20260719 R4b:
+  // themeBackgroundImage may itself be an `asset:<id>` marker, resolved
+  // through the same fail-closed channel as every other image property
+  // (ADR-063) — an ordinary path/URL still passes through unchanged.
+  const rootStyle = resolveThemeBackgroundStyle(fullConfig.themeBackgroundImage, gameAssets) as
+    | CSSProperties
+    | undefined;
 
   if (playerPluginState.status === "error") {
     return (
@@ -388,6 +469,19 @@ export function GamePlayer({
     );
   }
 
+  if (state.sessionSetup) {
+    return (
+      <main ref={rootRef} className="shell game-player-root" style={rootStyle}>
+        <SessionSetupPanel
+          setup={state.sessionSetup}
+          isPending={state.booting}
+          error={state.error}
+          onSubmit={handleSessionSetup}
+        />
+      </main>
+    );
+  }
+
   if (state.runtimeStatus !== "ready") {
     return (
       <main ref={rootRef} className="shell game-player-root" style={rootStyle}>
@@ -402,13 +496,66 @@ export function GamePlayer({
     );
   }
 
+  const agentControl = state.agentControl;
+  if (agentControl.kind === "invalid") {
+    return (
+      <main ref={rootRef} className="shell game-player-root" style={rootStyle}>
+        <SessionParticipants sessionId={state.sessionId} privateInvites={state.privateInvites} participants={state.participants} actionAvailability={state.actionAvailability} hostManagementHint={state.hostManagementHint} onRecoverGuestSeat={async (seatId) => presenterRef.current?.recoverGuestSeat(seatId)} />
+        <AgentControlPanel invalid onRefresh={handleRefreshAgentControl} />
+      </main>
+    );
+  }
+  if (agentControl.kind === "valid" && agentControl.value.status === "paused") {
+    return (
+      <main ref={rootRef} className="shell game-player-root" style={rootStyle}>
+        <SessionParticipants sessionId={state.sessionId} privateInvites={state.privateInvites} participants={state.participants} actionAvailability={state.actionAvailability} hostManagementHint={state.hostManagementHint} onRecoverGuestSeat={async (seatId) => presenterRef.current?.recoverGuestSeat(seatId)} />
+        <AgentControlPanel control={agentControl.value} onRefresh={handleRefreshAgentControl} />
+      </main>
+    );
+  }
+
   const metrics = state.metrics;
   const activeManifestPanel = state.activePanel ? gameUi?.panels?.[state.activePanel] : undefined;
+  const activeManifestScreen = screenKey ? gameUi?.screens[screenKey] : undefined;
+  const keepsMapBehindPanel = Boolean(
+    activeManifestPanel && activeManifestScreen && (
+      activeManifestScreen.layoutMode === "map-first" || layoutMode === "map-first"
+    )
+  );
   const sessionSnapshot = presenterRef.current?.sessionSnapshot ?? undefined;
+  const facilitatorDebriefAvailable = (() => {
+    if (playerPluginState.status !== "ready" || sessionSnapshot === undefined) {
+      return false;
+    }
+
+    const provider = resolveFacilitatorDebriefAvailabilityProvider(content.gameId);
+    if (provider === undefined) return false;
+    try {
+      return provider(sessionSnapshot) === true;
+    } catch {
+      return false;
+    }
+  })();
 
   return (
     <main ref={rootRef} className="shell game-player-root" style={rootStyle}>
-      {activeManifestPanel ? (
+      <SessionParticipants sessionId={state.sessionId} privateInvites={state.privateInvites} participants={state.participants} actionAvailability={state.actionAvailability} hostManagementHint={state.hostManagementHint} onRecoverGuestSeat={async (seatId) => presenterRef.current?.recoverGuestSeat(seatId)} />
+      {agentControl.kind === "valid" && agentControl.value.status === "facilitatorTakeover" ? (
+        <AgentControlPanel control={agentControl.value} onRefresh={handleRefreshAgentControl} />
+      ) : null}
+      <PublicJournalDownload sessionId={state.sessionId} runtimeStatus={state.runtimeStatus} />
+      {facilitatorDebriefAvailable && sessionSnapshot ? (
+        <details className="facilitator-debrief-drawer">
+          <summary>Открыть разбор ведущего</summary>
+          <div className="facilitator-debrief-drawer-content">
+            <FacilitatorDebriefPanel
+              sessionId={sessionSnapshot.sessionId}
+              expectedStateVersion={sessionSnapshot.version.stateVersion}
+            />
+          </div>
+        </details>
+      ) : null}
+      {activeManifestPanel && !keepsMapBehindPanel ? (
         <ManifestRenderer
           screenDefinition={activeManifestPanel}
           metrics={metrics}
@@ -423,6 +570,7 @@ export function GamePlayer({
           content={content}
           session={sessionSnapshot}
           onBoardAction={handleBoardAction}
+          onBoardRoadPreview={handleBoardRoadPreview}
           assetResolver={gameAssets}
           isPending={state.isPending}
         />
@@ -432,23 +580,49 @@ export function GamePlayer({
           isPending={state.isPending}
           onAction={handleSurfaceAction}
         />
-      ) : screenKey && gameUi?.screens[screenKey] ? (
-        <ManifestRenderer
-          screenDefinition={gameUi.screens[screenKey]}
-          metrics={metrics}
-          onAction={handleManifestAction}
-          screenKey={screenKey}
-          layoutMode={layoutMode}
-          metricBackgroundImages={fullConfig.metricBackgroundImages}
-          gameState={state as Record<string, unknown>}
-          designArtifacts={gameUi?.designArtifacts}
-          editorPreviewMode={editorPreviewMode}
-          content={content}
-          session={sessionSnapshot}
-          onBoardAction={handleBoardAction}
-          assetResolver={gameAssets}
-          isPending={state.isPending}
-        />
+      ) : screenKey && activeManifestScreen ? (
+        <>
+          <ManifestRenderer
+            screenDefinition={activeManifestScreen}
+            metrics={metrics}
+            onAction={handleManifestAction}
+            screenKey={screenKey}
+            layoutMode={layoutMode}
+            metricBackgroundImages={fullConfig.metricBackgroundImages}
+            gameState={state as Record<string, unknown>}
+            designArtifacts={gameUi?.designArtifacts}
+            editorPreviewMode={editorPreviewMode}
+            content={content}
+            session={sessionSnapshot}
+            onBoardAction={handleBoardAction}
+            onBoardRoadPreview={handleBoardRoadPreview}
+            assetResolver={gameAssets}
+            isPending={state.isPending}
+          />
+          {keepsMapBehindPanel && activeManifestPanel ? (
+            <div className="map-first-manifest-panel-layer" role="presentation">
+              <ManifestRenderer
+                screenDefinition={activeManifestPanel}
+                metrics={metrics}
+                onAction={handleManifestAction}
+                screenKey={state.activePanel ?? undefined}
+                rootRuntimePointer={`/panels/${state.activePanel}/root`}
+                layoutMode={layoutMode}
+                metricBackgroundImages={fullConfig.metricBackgroundImages}
+                gameState={state as Record<string, unknown>}
+                designArtifacts={gameUi?.designArtifacts}
+                editorPreviewMode={editorPreviewMode}
+                content={content}
+                session={sessionSnapshot}
+                onBoardAction={handleBoardAction}
+                onBoardRoadPreview={handleBoardRoadPreview}
+                assetResolver={gameAssets}
+                isPending={state.isPending}
+                embeddedOverlay
+              />
+            </div>
+          ) : null}
+        </>
       ) : state.booting || !state.sessionId ? (
         <div className="loading-state">
           <div className="loading-spinner" />
@@ -461,7 +635,7 @@ export function GamePlayer({
           metrics={metrics}
           fallbackMetrics={fullConfig.fallbackMetrics}
           gameUi={gameUi}
-          layoutMode={layoutMode}
+          layoutMode={layoutMode === "map-first" ? "topbar" : layoutMode}
           screenKey={screenKey}
           dispatchAction={handleAction}
           fallbackScreenBuilder={fullConfig.fallbackScreenBuilder}

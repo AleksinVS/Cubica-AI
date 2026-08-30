@@ -1,5 +1,7 @@
 import type { AgentSurfaceState } from "@/types/game-state";
 import type { GameManifestAgentFailurePolicy, GameMetricView } from "@cubica/contracts-manifest";
+import type { AgentControl, PrivateSessionInvite, SessionActionAvailability, SessionParticipant } from "@cubica/contracts-session";
+import type { PlayerLayoutMode } from "@/lib/player-layout-mode";
 
 /**
  * Запрос от View или системы к Presenter.
@@ -28,6 +30,20 @@ export interface ClientRequest {
 
 export type PlayerRuntimeStatus = "booting" | "ready" | "paused" | "retry" | "unavailable";
 
+export type PlayerSessionSetup = {
+  /** Initial participant count shown by the generic setup surface. */
+  participantCount: number;
+  minParticipants: number;
+  maxParticipants: number;
+  maxAgentSeats: number;
+  accessMode?: "local" | "private-invite";
+};
+
+export type NormalizedAgentControl =
+  | { readonly kind: "absent" }
+  | { readonly kind: "valid"; readonly value: AgentControl }
+  | { readonly kind: "invalid" };
+
 /**
  * Публичное состояние игрока, которое Presenter синхронизирует с View.
  *
@@ -42,7 +58,7 @@ export type PlayerState = Record<string, unknown> & {
   metrics: Record<string, unknown>;
   metricViews: Record<string, GameMetricView>;
   screenKey: string | null;
-  layoutMode: "leftsidebar" | "topbar";
+  layoutMode: PlayerLayoutMode;
   activePanel: string | null;
   runtimeStatus: PlayerRuntimeStatus;
   runtimeStatusReason: string | null;
@@ -53,6 +69,12 @@ export type PlayerState = Record<string, unknown> & {
   booting: boolean;
   isPending: boolean;
   agentSurface: AgentSurfaceState;
+  participants: ReadonlyArray<SessionParticipant>;
+  actionAvailability: ReadonlyArray<SessionActionAvailability>;
+  privateInvites: ReadonlyArray<PrivateSessionInvite>;
+  hostManagementHint: boolean;
+  agentControl: NormalizedAgentControl;
+  sessionSetup: PlayerSessionSetup | null;
 
   /* Runtime log entries for journal renderer */
   log: Array<Record<string, unknown>>;

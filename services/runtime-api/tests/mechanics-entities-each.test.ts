@@ -1,0 +1,864 @@
+/**
+ * Neutral contract proof for bounded per-entity Mechanics execution.
+ *
+ * The fixture models generic primary and related objects. It proves canonical
+ * iteration, trusted item identity, exact static multiplication, relation
+ * composition and transaction rollback without importing any concrete game.
+ */
+
+import assert from "node:assert/strict";
+import { createRequire } from "node:module";
+import test from "node:test";
+import type {
+  AssertStep,
+  CubicaMechanicsIRV1Alpha1,
+  EntitiesEachStep,
+  GameManifestTransportNetworkModelMap,
+  RelationAttachStep
+} from "@cubica/contracts-manifest";
+
+import {
+  executeMechanicsTransaction,
+  MechanicsExecutionError
+} from "../src/modules/mechanics/index.ts";
+
+const require = createRequire(import.meta.url);
+const {
+  recommendedModuleLockForOperations
+} = require("../../../scripts/manifest-tools/mechanics-modules.cjs") as {
+  recommendedModuleLockForOperations: (
+    operations: Array<string>
+  ) => CubicaMechanicsIRV1Alpha1["moduleLock"];
+};
+const {
+  checkMechanicsBundle,
+  MechanicsSemanticError
+} = require("../../../scripts/manifest-tools/mechanics-checker.cjs") as {
+  MechanicsSemanticError: new (...args: Array<unknown>) => Error & { code: string };
+  checkMechanicsBundle: (
+    mechanics: CubicaMechanicsIRV1Alpha1,
+    options: { networkModels: GameManifestTransportNetworkModelMap }
+  ) => {
+    costs: Record<string, {
+      steps: number;
+      expressionNodes: number;
+      algorithmWork: number;
+      scannedEntities: number;
+      resultEntities: number;
+      writes: number;
+    }>;
+  };
+};
+const {
+  validateMechanicsSchema
+} = require("../../../scripts/manifest-tools/mechanics-validator.cjs") as {
+  validateMechanicsSchema: (
+    mechanics: unknown
+  ) => { valid: boolean; errors: Array<unknown> };
+};
+const {
+  mechanicsSha256
+} = require("../../../scripts/manifest-tools/mechanics-canonicalize.cjs") as {
+  mechanicsSha256: (value: unknown) => string;
+};
+const {
+  lowerMechanicsAuthoring
+} = require("../../../scripts/manifest-tools/authoring-compiler.cjs") as {
+  lowerMechanicsAuthoring: (
+    source: Record<string, unknown>,
+    sourceFile: string
+  ) => {
+    mechanics: CubicaMechanicsIRV1Alpha1;
+  };
+};
+
+const HASH = `sha256:${"0".repeat(64)}`;
+
+const NETWORK_MODELS: GameManifestTransportNetworkModelMap = {
+  main: {
+    visibility: "public",
+    nodeCollection: "nodes",
+    edgeCollection: "edges",
+    waypointObjectType: "fixture.node",
+    edgeObjectType: "fixture.edge",
+    nodeStateFacet: "availability",
+    buildableNodeStates: ["open"],
+    edgeStateFacet: "availability",
+    splittableEdgeStates: ["open"],
+    builtEdgeState: "open",
+    sequenceEndpoint: "sequence",
+    regions: [{
+      id: "region",
+      polygon: [
+        { x: 0, y: 0 },
+        { x: 10, y: 0 },
+        { x: 0, y: 10 }
+      ]
+    }],
+    movement: {
+      vehicleCollection: "primaryObjects",
+      vehicleObjectTypes: ["fixture.primary"],
+      vehicleStateFacet: "availability",
+      movableVehicleStates: ["active"],
+      locationAttribute: "nodeId",
+      traversableNodeStates: ["open"],
+      traversableEdgeStates: ["open"],
+      capacityCollection: "primaryObjects",
+      capacityObjectTypes: ["fixture.primary"],
+      capacityLocationAttribute: "nodeId",
+      capacityStateFacet: "availability",
+      capacityOccupyingStates: ["active"],
+      maxVehiclesPerNode: 4,
+      coupledCollection: "relatedObjects",
+      coupledObjectTypes: ["fixture.related"],
+      coupledStateFacet: "availability",
+      couplableVehicleStates: ["active"],
+      coupledVehicleAttribute: "attachedPrimaryId",
+      coupledLocationAttribute: "nodeId",
+      compatibleCouplings: [{
+        vehicleObjectType: "fixture.primary",
+        coupledObjectTypes: ["fixture.related"]
+      }],
+      maxCoupledVehicles: 4
+    }
+  }
+};
+
+function storedField(
+  kind: "facet" | "attribute",
+  name: string,
+  valueType: string
+) {
+  return {
+    storage: { kind, name },
+    valueType,
+    access: "read-write" as const
+  };
+}
+
+function createMechanics(): CubicaMechanicsIRV1Alpha1 {
+  const mechanics: CubicaMechanicsIRV1Alpha1 = {
+    apiVersion: "cubica.dev/mechanics/v1alpha1",
+    budgetProfile: "turn-based-standard-v1",
+    moduleLock: recommendedModuleLockForOperations([
+      "core.entities.select",
+      "core.entities.order",
+      "core.entities.each",
+      "relation.attach",
+      "core.assert"
+    ]),
+    stateModel: {
+      types: {
+        "core.string": { kind: "string" },
+        "core.optional-string": { kind: "option", itemType: "core.string" },
+        "core.integer": { kind: "integer", minimum: 0, maximum: 10_000 },
+        "fixture.status": {
+          kind: "enum",
+          values: ["active", "open"]
+        },
+        "fixture.json": {
+          kind: "json",
+          maxDepth: 8,
+          maxNodes: 128,
+          maxUtf8Bytes: 4_096
+        }
+      },
+      endpoints: {
+        sequence: {
+          audienceRef: "public",
+          storage: { root: "public", segments: ["sequence"] },
+          valueType: "core.integer",
+          access: "read-write"
+        }
+      },
+      collections: {
+        nodes: {
+          audienceRef: "public",
+          storage: { root: "public", segments: ["nodes"] },
+          capacity: 8,
+          stableKey: "map-key",
+          itemTypes: ["fixture.node"],
+          fields: {
+            availability: storedField("facet", "availability", "fixture.status"),
+            networkId: storedField("attribute", "networkId", "core.string"),
+            position: storedField("attribute", "position", "fixture.json")
+          }
+        },
+        edges: {
+          audienceRef: "public",
+          storage: { root: "public", segments: ["edges"] },
+          capacity: 8,
+          stableKey: "map-key",
+          itemTypes: ["fixture.edge"],
+          fields: {
+            availability: storedField("facet", "availability", "fixture.status"),
+            networkId: storedField("attribute", "networkId", "core.string"),
+            fromNodeId: storedField("attribute", "fromNodeId", "core.string"),
+            toNodeId: storedField("attribute", "toNodeId", "core.string"),
+            geometry: storedField("attribute", "geometry", "fixture.json")
+          }
+        },
+        primaryObjects: {
+          audienceRef: "public",
+          storage: { root: "public", segments: ["primaryObjects"] },
+          capacity: 4,
+          stableKey: "map-key",
+          itemTypes: ["fixture.primary"],
+          fields: {
+            availability: storedField("facet", "availability", "fixture.status"),
+            networkId: storedField("attribute", "networkId", "core.string"),
+            nodeId: storedField("attribute", "nodeId", "core.string")
+          }
+        },
+        relatedObjects: {
+          audienceRef: "public",
+          storage: { root: "public", segments: ["relatedObjects"] },
+          capacity: 4,
+          stableKey: "map-key",
+          itemTypes: ["fixture.related"],
+          fields: {
+            availability: storedField("facet", "availability", "fixture.status"),
+            networkId: storedField("attribute", "networkId", "core.string"),
+            nodeId: storedField("attribute", "nodeId", "core.string"),
+            attachedPrimaryId: storedField(
+              "attribute",
+              "attachedPrimaryId",
+              "core.optional-string"
+            ),
+            rank: storedField("attribute", "rank", "core.integer")
+          }
+        }
+      },
+      events: {}
+    },
+    plans: {
+      attachAll: {
+        planHash: HASH,
+        transaction: {
+          steps: [
+            selectRelatedStep(),
+            orderRelatedStep(),
+            eachAttachStep(false)
+          ]
+        }
+      },
+      rollbackAll: {
+        planHash: HASH,
+        transaction: {
+          steps: [
+            selectRelatedStep(),
+            orderRelatedStep(),
+            eachAttachStep(true)
+          ]
+        }
+      },
+      isolateBodyResults: {
+        planHash: HASH,
+        transaction: {
+          steps: [
+            selectRelatedStep(),
+            orderRelatedStep(),
+            eachResultIsolationStep()
+          ]
+        }
+      }
+    }
+  };
+  return finalizePlanHashes(mechanics);
+}
+
+function selectRelatedStep(): CubicaMechanicsIRV1Alpha1["plans"][string]["transaction"]["steps"][number] {
+  return {
+    id: "selected",
+    kind: "query",
+    op: "core.entities.select",
+    selector: {
+      collection: "relatedObjects",
+      objectTypes: ["fixture.related"],
+      facets: {
+        availability: { op: "value.literal", value: "active" }
+      },
+      cardinality: { min: 2, max: 2 }
+    }
+  };
+}
+
+function orderRelatedStep(): CubicaMechanicsIRV1Alpha1["plans"][string]["transaction"]["steps"][number] {
+  return {
+    id: "ordered",
+    kind: "command",
+    op: "core.entities.order",
+    selection: { op: "value.result", stepId: "selected" },
+    keys: [{
+      source: { kind: "current-field", field: "rank" },
+      direction: "descending",
+      missing: "error"
+    }],
+    tieBreak: { kind: "canonical-id" }
+  };
+}
+
+function eachAttachStep(
+  rejectLast: boolean
+): EntitiesEachStep {
+  const attachOne: RelationAttachStep = {
+    id: "attachOne",
+    kind: "command" as const,
+    op: "relation.attach" as const,
+    networkId: "main",
+    primary: { op: "value.literal" as const, value: "primary" },
+    related: [{
+      op: "value.item" as const,
+      area: "identity" as const,
+      field: "id" as const
+    }]
+  };
+  const rejectOmega: AssertStep = {
+    id: "rejectOmega",
+    kind: "assert" as const,
+    op: "core.assert" as const,
+    predicate: {
+      op: "predicate.compare" as const,
+      operator: "ne" as const,
+      left: {
+        op: "value.item" as const,
+        area: "identity" as const,
+        field: "id" as const
+      },
+      right: { op: "value.literal" as const, value: "omega" }
+    },
+    errorCode: "FIXTURE_REJECTED"
+  };
+  return {
+    id: "attachEach",
+    kind: "command",
+    op: "core.entities.each",
+    selection: { op: "value.result", stepId: "ordered" },
+    // Writing the two bounded tuple variants explicitly keeps this test
+    // aligned with the generated 1..16 body contract.
+    body: rejectLast ? [attachOne, rejectOmega] : [attachOne]
+  };
+}
+
+function eachResultIsolationStep(): EntitiesEachStep {
+  return {
+    id: "isolateEach",
+    kind: "command",
+    op: "core.entities.each",
+    selection: { op: "value.result", stepId: "ordered" },
+    body: [
+      {
+        id: "conditionallySelectedPrimary",
+        kind: "query",
+        op: "core.entities.select",
+        when: {
+          op: "predicate.compare",
+          operator: "eq",
+          left: { op: "value.item", area: "identity", field: "id" },
+          right: { op: "value.literal", value: "alpha" }
+        },
+        selector: {
+          collection: "primaryObjects",
+          cardinality: { min: 1, max: 1 }
+        }
+      },
+      {
+        id: "consumeCurrentIterationSelection",
+        kind: "command",
+        op: "core.entities.update",
+        selection: {
+          op: "value.result",
+          stepId: "conditionallySelectedPrimary"
+        },
+        attributeValues: {
+          nodeId: { op: "value.literal", value: "changed" }
+        }
+      }
+    ]
+  };
+}
+
+function finalizePlanHashes(
+  mechanics: CubicaMechanicsIRV1Alpha1
+): CubicaMechanicsIRV1Alpha1 {
+  // networkModels is bound by digest, not by embedded value -- must mirror
+  // checkMechanicsBundle in scripts/manifest-tools/mechanics-checker.cjs.
+  const networkModelsHash = mechanicsSha256(NETWORK_MODELS);
+  for (const [planId, plan] of Object.entries(mechanics.plans)) {
+    plan.planHash = mechanicsSha256({
+      apiVersion: mechanics.apiVersion,
+      budgetProfile: mechanics.budgetProfile,
+      moduleLock: mechanics.moduleLock,
+      stateModel: mechanics.stateModel,
+      objectModels: {},
+      networkModelsHash,
+      planId,
+      transaction: plan.transaction
+    });
+  }
+  return mechanics;
+}
+
+function createState() {
+  return {
+    public: {
+      sequence: 0,
+      nodes: {
+        node: {
+          objectType: "fixture.node",
+          facets: { availability: "open" },
+          attributes: {
+            networkId: "main",
+            position: { x: 0, y: 0 }
+          }
+        }
+      },
+      edges: {},
+      primaryObjects: {
+        primary: {
+          objectType: "fixture.primary",
+          facets: { availability: "active" },
+          attributes: {
+            networkId: "main",
+            nodeId: "node"
+          }
+        }
+      },
+      // Reverse insertion order relative to rank: omega is stored first but
+      // ranks 2, alpha is stored second but ranks 1. That mismatch is what
+      // proves the walk follows the ORDER RESULT (rank descending -> omega,
+      // alpha) rather than either JavaScript object order or the alphabet.
+      relatedObjects: {
+        omega: {
+          objectType: "fixture.related",
+          facets: { availability: "active" },
+          attributes: {
+            networkId: "main",
+            nodeId: "node",
+            attachedPrimaryId: null,
+            rank: 2
+          }
+        },
+        alpha: {
+          objectType: "fixture.related",
+          facets: { availability: "active" },
+          attributes: {
+            networkId: "main",
+            nodeId: "node",
+            attachedPrimaryId: null,
+            rank: 1
+          }
+        }
+      }
+    }
+  };
+}
+
+test("schema and checker admit bounded relation composition with exact multiplied cost", () => {
+  const mechanics = createMechanics();
+  const schema = validateMechanicsSchema(mechanics);
+  assert.equal(schema.valid, true, JSON.stringify(schema.errors));
+
+  const checked = checkMechanicsBundle(mechanics, {
+    networkModels: NETWORK_MODELS
+  });
+  assert.deepEqual(
+    {
+      steps: checked.costs.attachAll.steps,
+      expressionNodes: checked.costs.attachAll.expressionNodes,
+      algorithmWork: checked.costs.attachAll.algorithmWork,
+      scannedEntities: checked.costs.attachAll.scannedEntities,
+      writes: checked.costs.attachAll.writes
+    },
+    {
+      // Three top-level steps plus one body step for each of two entities.
+      steps: 5,
+      // One selector expression plus two body expressions multiplied by two.
+      expressionNodes: 5,
+      // Eight ordering units plus four canonical-iteration units.
+      algorithmWork: 12,
+      // Select/order scan four each; relation scans four twice.
+      scannedEntities: 16,
+      writes: 2
+    }
+  );
+});
+
+test("authoring derives body module dependencies instead of locking only the outer core step", () => {
+  const published = createMechanics();
+  const source = {
+    apiVersion: published.apiVersion,
+    budgetProfile: published.budgetProfile,
+    stateModel: published.stateModel,
+    plans: Object.fromEntries(
+      Object.entries(published.plans).map(([planId, plan]) => [
+        planId,
+        { transaction: structuredClone(plan.transaction) }
+      ])
+    )
+  };
+  const lowered = lowerMechanicsAuthoring(
+    source,
+    "/virtual/neutral-each.authoring.json"
+  );
+
+  assert.ok(lowered.mechanics.moduleLock["cubica.core"]);
+  assert.ok(lowered.mechanics.moduleLock["cubica.ordering"]);
+  assert.ok(lowered.mechanics.moduleLock["cubica.relations"]);
+});
+
+test("runtime walks an ordered selection in its order and exposes only trusted item identity", () => {
+  const mechanics = createMechanics();
+  const original = createState();
+  const output = executeMechanicsTransaction({
+    mechanics,
+    plan: mechanics.plans.attachAll,
+    state: original,
+    actorContext: { sessionRole: "player" },
+    networkModels: NETWORK_MODELS
+  });
+
+  const related = (
+    output.candidateState.public as {
+      relatedObjects: Record<string, {
+        attributes: { attachedPrimaryId: string | null };
+      }>;
+    }
+  ).relatedObjects;
+  assert.equal(related.alpha.attributes.attachedPrimaryId, "primary");
+  assert.equal(related.omega.attributes.attachedPrimaryId, "primary");
+  assert.deepEqual(output.result, {
+    kind: "entities-each",
+    collectionId: "relatedObjects",
+    count: 2
+  });
+  const relationAudit = output.audit.filter(
+    (entry) => entry.operation === "relation.attach"
+  );
+  assert.deepEqual(
+    relationAudit.map((entry) => entry.stepId),
+    [
+      "attachEach[0].attachOne",
+      "attachEach[1].attachOne"
+    ]
+  );
+  // ADR-102: the plan says `order by rank descending`, so the walk must be
+  // omega (rank 2) then alpha (rank 1). Before that decision the runtime
+  // re-sorted here into alphabetical order and this same assertion read
+  // ["alpha", "omega"] — that re-sort is exactly what threw away a drawn
+  // order and made turn order impossible to record.
+  assert.deepEqual(
+    relationAudit.map((entry) =>
+      (entry.result as { relatedIds: Array<string> }).relatedIds[0]),
+    ["omega", "alpha"],
+    "audit operation results must prove the walk followed the ordering step"
+  );
+});
+
+test("failure in a later canonical iteration rolls back all earlier mutations", () => {
+  const mechanics = createMechanics();
+  const original = createState();
+
+  assert.throws(
+    () => executeMechanicsTransaction({
+      mechanics,
+      plan: mechanics.plans.rollbackAll,
+      state: original,
+      actorContext: { sessionRole: "player" },
+      networkModels: NETWORK_MODELS
+    }),
+    (error: unknown) =>
+      error instanceof MechanicsExecutionError &&
+      error.code === "FIXTURE_REJECTED"
+  );
+
+  assert.equal(
+    original.public.relatedObjects.alpha.attributes.attachedPrimaryId,
+    null
+  );
+  assert.equal(
+    original.public.relatedObjects.omega.attributes.attachedPrimaryId,
+    null
+  );
+});
+
+test("a skipped body producer cannot expose the previous iteration result", () => {
+  const mechanics = createMechanics();
+  assert.doesNotThrow(() =>
+    checkMechanicsBundle(mechanics, { networkModels: NETWORK_MODELS }));
+  const original = createState();
+
+  assert.throws(
+    () => executeMechanicsTransaction({
+      mechanics,
+      plan: mechanics.plans.isolateBodyResults,
+      state: original,
+      actorContext: { sessionRole: "player" },
+      networkModels: NETWORK_MODELS
+    }),
+    (error: unknown) =>
+      error instanceof MechanicsExecutionError &&
+      error.code === "MECHANICS_RESULT_TYPE_MISMATCH"
+  );
+
+  // Alpha's first iteration did update the candidate, but omega receives the
+  // current skipped sentinel rather than alpha's protected selection. The
+  // resulting failure discards the whole candidate and leaves input untouched.
+  assert.equal(
+    original.public.primaryObjects.primary.attributes.nodeId,
+    "node"
+  );
+});
+
+test("nested iteration is schema-invalid and semantic traversal rejects it without recursion", () => {
+  const mechanics = createMechanics();
+  const each = mechanics.plans.attachAll.transaction.steps[2];
+  assert.equal(each.op, "core.entities.each");
+  if (each.op !== "core.entities.each") return;
+
+  const nested = structuredClone(each);
+  each.body = [nested as never];
+  assert.equal(validateMechanicsSchema(mechanics).valid, false);
+  assert.throws(
+    () => checkMechanicsBundle(mechanics, { networkModels: NETWORK_MODELS }),
+    (error: unknown) =>
+      error instanceof MechanicsSemanticError &&
+      error.code === "MECHANICS_EACH_NESTED"
+  );
+
+  // The schema body points to the non-iteration union, so a very deep value
+  // below the rejected nested object is never recursively interpreted as Step.
+  let deep: Record<string, unknown> = { terminal: true };
+  for (let index = 0; index < 10_000; index += 1) deep = { child: deep };
+  (nested as unknown as Record<string, unknown>).untrustedDepth = deep;
+  assert.doesNotThrow(() => validateMechanicsSchema(mechanics));
+  assert.equal(validateMechanicsSchema(mechanics).valid, false);
+});
+
+test("checker rejects conditional sources and multiplication above the selected budget", () => {
+  const conditional = createMechanics();
+  const conditionalSource = conditional.plans.attachAll.transaction.steps[1];
+  assert.equal(conditionalSource.op, "core.entities.order");
+  if (conditionalSource.op !== "core.entities.order") return;
+  conditionalSource.when = {
+    op: "predicate.constant",
+    value: true
+  };
+  finalizePlanHashes(conditional);
+  assert.throws(
+    () => checkMechanicsBundle(conditional, { networkModels: NETWORK_MODELS }),
+    (error: unknown) =>
+      error instanceof MechanicsSemanticError &&
+      error.code === "MECHANICS_EACH_SOURCE_CONDITIONAL"
+  );
+
+  const oversized = createMechanics();
+  const related = oversized.stateModel.collections.relatedObjects;
+  related.capacity = 4_096;
+  const selected = oversized.plans.attachAll.transaction.steps[0];
+  assert.equal(selected.op, "core.entities.select");
+  if (selected.op !== "core.entities.select") return;
+  selected.selector.cardinality.max = 4_096;
+  const ordered = oversized.plans.attachAll.transaction.steps[1];
+  assert.equal(ordered.op, "core.entities.order");
+  if (ordered.op !== "core.entities.order") return;
+  finalizePlanHashes(oversized);
+  assert.throws(
+    () => checkMechanicsBundle(oversized, { networkModels: NETWORK_MODELS }),
+    (error: unknown) =>
+      error instanceof MechanicsSemanticError &&
+      error.code === "MECHANICS_STATIC_BUDGET_EXCEEDED"
+  );
+});
+
+/**
+ * Prove that every plan hash still depends on the full network geometry after
+ * checkMechanicsBundle switched from embedding `networkModels` by value to
+ * folding a single `networkModelsHash` digest into each plan's hash input
+ * (see the "Why the digest is equivalent" comment in mechanics-checker.cjs).
+ *
+ * A digest is only as trustworthy as its sensitivity to its input: this test
+ * mutates one coordinate of one region polygon -- the exact kind of change a
+ * future author might make to the real cards-money-trains map -- and checks
+ * that every published plan hash is rejected as stale, while leaving the
+ * network models untouched keeps every plan hash valid.
+ */
+test("every plan hash still changes when one region polygon coordinate changes", () => {
+  const mechanics = createMechanics();
+
+  // Unchanged network models: the plan hashes createMechanics() published
+  // (via finalizePlanHashes, which hashes NETWORK_MODELS) must still match
+  // what checkMechanicsBundle recomputes from the same network models --
+  // changing nothing leaves every plan hash identical.
+  assert.doesNotThrow(() => checkMechanicsBundle(mechanics, { networkModels: NETWORK_MODELS }));
+
+  // Move one vertex of the sole region's polygon by a tiny amount. The
+  // triangle stays simple (no self-intersection, no zero-length edge), so any
+  // rejection below is caused by exactly one thing: the plan hash no longer
+  // matching what checkMechanicsBundle recomputes from the mutated bytes.
+  const mutatedNetworkModels = structuredClone(NETWORK_MODELS);
+  const mutatedPoint = mutatedNetworkModels.main.regions[0].polygon[1];
+  assert.deepEqual(mutatedPoint, { x: 10, y: 0 });
+  mutatedPoint.x = 10.000001;
+
+  // Directly recompute, per plan, the hash that checkMechanicsBundle would
+  // now expect and prove it differs from the one createMechanics() published
+  // against the original geometry. This is the load-bearing assertion: the
+  // digest is sensitive to a single coordinate, so the universal binding (every
+  // plan depends on the full network graph) survives the by-value -> by-digest
+  // change untouched.
+  const mutatedNetworkModelsHash = mechanicsSha256(mutatedNetworkModels);
+  for (const [planId, plan] of Object.entries(mechanics.plans)) {
+    const recomputedHash = mechanicsSha256({
+      apiVersion: mechanics.apiVersion,
+      budgetProfile: mechanics.budgetProfile,
+      moduleLock: mechanics.moduleLock,
+      stateModel: mechanics.stateModel,
+      objectModels: {},
+      networkModelsHash: mutatedNetworkModelsHash,
+      planId,
+      transaction: plan.transaction
+    });
+    assert.notEqual(recomputedHash, plan.planHash);
+  }
+
+  // End to end: checkMechanicsBundle itself rejects the now-stale plan
+  // hashes as soon as it sees the mutated network models.
+  assert.throws(
+    () => checkMechanicsBundle(mechanics, { networkModels: mutatedNetworkModels }),
+    (error: unknown) =>
+      error instanceof MechanicsSemanticError &&
+      error.code === "MECHANICS_PLAN_HASH_MISMATCH"
+  );
+
+  // Re-publishing the plan hashes against the mutated network models makes
+  // them agree again -- the binding tracks content, not a stale snapshot.
+  const republished = createMechanics();
+  const republishedNetworkModelsHash = mechanicsSha256(mutatedNetworkModels);
+  for (const [planId, plan] of Object.entries(republished.plans)) {
+    plan.planHash = mechanicsSha256({
+      apiVersion: republished.apiVersion,
+      budgetProfile: republished.budgetProfile,
+      moduleLock: republished.moduleLock,
+      stateModel: republished.stateModel,
+      objectModels: {},
+      networkModelsHash: republishedNetworkModelsHash,
+      planId,
+      transaction: plan.transaction
+    });
+  }
+  assert.doesNotThrow(() => checkMechanicsBundle(republished, { networkModels: mutatedNetworkModels }));
+});
+
+/**
+ * A plan that writes each item's own iteration position into its `rank`
+ * attribute. This is the shape ADR-102 exists for: the ONLY way a plan can
+ * turn an order into a per-entity value, because every other write assigns one
+ * value to the whole selection at once.
+ */
+function writePositionPlan(ordered: boolean): CubicaMechanicsIRV1Alpha1 {
+  const mechanics = createMechanics();
+  const steps: Array<CubicaMechanicsIRV1Alpha1["plans"][string]["transaction"]["steps"][number]> = [
+    selectRelatedStep(),
+    ...(ordered ? [orderRelatedStep()] : []),
+    {
+      id: "writeEach",
+      kind: "command",
+      op: "core.entities.each",
+      selection: { op: "value.result", stepId: ordered ? "ordered" : "selected" },
+      body: [{
+        id: "writeOne",
+        kind: "command",
+        op: "core.entity.attributes.patch",
+        entity: {
+          collection: "relatedObjects",
+          entityId: { op: "value.item", area: "identity", field: "id" }
+        },
+        patches: [{
+          operation: "set",
+          path: ["rank"],
+          value: { op: "value.item", area: "identity", field: "position" }
+        }]
+      }]
+    }
+  ];
+  mechanics.plans.writePositions = {
+    planHash: HASH,
+    transaction: { steps }
+  } as CubicaMechanicsIRV1Alpha1["plans"][string];
+  return finalizePlanHashes(mechanics);
+}
+
+const ranksAfterWritingPositions = (ordered: boolean): Record<string, unknown> => {
+  const mechanics = writePositionPlan(ordered);
+  const output = executeMechanicsTransaction({
+    mechanics,
+    plan: mechanics.plans.writePositions,
+    state: createState(),
+    actorContext: { sessionRole: "player" },
+    networkModels: NETWORK_MODELS
+  });
+  const related = (
+    output.candidateState.public as {
+      relatedObjects: Record<string, { attributes: { rank: unknown } }>;
+    }
+  ).relatedObjects;
+  return { alpha: related.alpha.attributes.rank, omega: related.omega.attributes.rank };
+};
+
+test("an item can read its own position, and the position follows the ordering step", () => {
+  // Ordered by rank descending, so omega (rank 2) is walked first.
+  assert.deepEqual(
+    ranksAfterWritingPositions(true),
+    { omega: 0, alpha: 1 },
+    "positions must follow the order the plan established, not the alphabet"
+  );
+});
+
+test("a plain selection carries no order, so its walk stays canonical", () => {
+  // No ordering step: the id order of a plain selection is an artefact of how
+  // the collection happened to be stored and must never be observable, so the
+  // walk is canonical and alpha comes first — even though omega is stored
+  // first and outranks it.
+  assert.deepEqual(
+    ranksAfterWritingPositions(false),
+    { alpha: 0, omega: 1 },
+    "an unordered selection must still be walked in canonical identifier order"
+  );
+});
+
+test("publication admits a position read inside an iteration and refuses one outside it", () => {
+  const inside = writePositionPlan(true);
+  const schema = validateMechanicsSchema(inside);
+  assert.equal(schema.valid, true, JSON.stringify(schema.errors));
+  assert.doesNotThrow(() => checkMechanicsBundle(inside, { networkModels: NETWORK_MODELS }));
+
+  // The same read, but in a single-entity write that no bounded iteration
+  // surrounds. There the question "which position?" has no answer, so
+  // publication must refuse it rather than let the runtime decide later.
+  const outside = createMechanics();
+  outside.plans.positionOutsideIteration = {
+    planHash: HASH,
+    transaction: {
+      steps: [{
+        id: "writeOne",
+        kind: "command",
+        op: "core.entity.attributes.patch",
+        entity: {
+          collection: "relatedObjects",
+          entityId: { op: "value.literal", value: "alpha" }
+        },
+        patches: [{
+          operation: "set",
+          path: ["rank"],
+          value: { op: "value.item", area: "identity", field: "position" }
+        }]
+      }]
+    }
+  } as CubicaMechanicsIRV1Alpha1["plans"][string];
+  const finalized = finalizePlanHashes(outside);
+  assert.throws(
+    () => checkMechanicsBundle(finalized, { networkModels: NETWORK_MODELS }),
+    /position is readable only inside a bounded entity iteration/u
+  );
+});

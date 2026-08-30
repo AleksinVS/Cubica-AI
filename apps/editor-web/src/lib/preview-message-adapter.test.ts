@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  isPlayerPreviewBridgeReadyMessage,
   isPlayerPreviewEntitiesMessage,
+  isPlayerPreviewRestoreResultMessage,
   isPlayerPreviewSessionSnapshotMessage,
   mapGeneratedPointerToAuthoring,
   mapPlayerPreviewEntitiesToAuthoringDescriptors,
@@ -47,7 +49,7 @@ describe("preview message adapter", () => {
       isPlayerPreviewSessionSnapshotMessage({
         source: "cubica-player-web",
         type: "previewSessionSnapshot",
-        version: 1,
+        version: 2,
         sessionId: "session-1",
         gameId: "example",
         sessionVersion: {
@@ -58,7 +60,7 @@ describe("preview message adapter", () => {
         state: { public: { timeline: { stepIndex: 2 } } },
         action: {
           actionId: "advance",
-          payload: { source: "test" },
+          params: { source: "test" },
           timestamp: "2026-06-01T00:00:00.000Z"
         }
       })
@@ -68,7 +70,7 @@ describe("preview message adapter", () => {
       isPlayerPreviewSessionSnapshotMessage({
         source: "cubica-player-web",
         type: "previewSessionSnapshot",
-        version: 1,
+        version: 2,
         sessionId: "session-1",
         sessionVersion: {
           sessionId: "session-1",
@@ -78,6 +80,35 @@ describe("preview message adapter", () => {
         state: {}
       })
     ).toBe(false);
+  });
+
+  it("accepts only versioned bridge-ready and bounded restore-result messages", () => {
+    expect(isPlayerPreviewBridgeReadyMessage({
+      source: "cubica-player-web",
+      type: "previewBridgeReady",
+      version: 1
+    })).toBe(true);
+    expect(isPlayerPreviewBridgeReadyMessage({
+      source: "cubica-player-web",
+      type: "previewBridgeReady",
+      version: 2
+    })).toBe(false);
+
+    expect(isPlayerPreviewRestoreResultMessage({
+      source: "cubica-player-web",
+      type: "previewRestoreResult",
+      version: 1,
+      requestId: "restore-1",
+      ok: true,
+      sessionVersion: { sessionId: "session-1", stateVersion: 2, lastEventSequence: 1 }
+    })).toBe(true);
+    expect(isPlayerPreviewRestoreResultMessage({
+      source: "cubica-player-web",
+      type: "previewRestoreResult",
+      version: 1,
+      requestId: "",
+      ok: true
+    })).toBe(false);
   });
 
   it("maps runtime pointers to authoring pointers through source maps", () => {
@@ -119,5 +150,45 @@ describe("preview message adapter", () => {
   it("matches repository-relative and authoring-relative file names", () => {
     expect(sourceFileMatchesAuthoringFile("games/example/authoring/ui/web.authoring.json", "ui/web.authoring.json", "example")).toBe(true);
     expect(sourceFileMatchesAuthoringFile("games/example/authoring/game.authoring.json", "ui/web.authoring.json", "example")).toBe(false);
+  });
+
+  it("reconstructs the exact authoring pointer under a verbatim subtree, without touching non-verbatim ancestors", () => {
+    // A large literal subtree (e.g. authored polygon vertices) is published as
+    // one recorded entry plus a `verbatimSubtrees` marker, instead of one
+    // entry per vertex — see authoring-compiler.cjs's `isPositionalMatch`.
+    const verbatimMap: PreviewSelectionSourceMap = {
+      generatedFile: "games/example/game.manifest.json",
+      sourceFile: "games/example/authoring/game.authoring.json",
+      mappings: {
+        "/networkModels": [
+          { file: "games/example/authoring/game.authoring.json", pointer: "/root/networkModels" }
+        ]
+      },
+      verbatimSubtrees: ["/networkModels"]
+    };
+
+    // A pointer several levels below the sole recorded entry is reconstructed
+    // exactly (the recorded pointer plus the walked-past relative path), not
+    // just resolved to the container's own pointer.
+    expect(mapGeneratedPointerToAuthoring(verbatimMap, "/networkModels/main/regions/0/polygon/1/x")).toEqual({
+      file: "games/example/authoring/game.authoring.json",
+      pointer: "/root/networkModels/main/regions/0/polygon/1/x"
+    });
+
+    // Querying the anchor pointer itself is unaffected (empty suffix).
+    expect(mapGeneratedPointerToAuthoring(verbatimMap, "/networkModels")).toEqual({
+      file: "games/example/authoring/game.authoring.json",
+      pointer: "/root/networkModels"
+    });
+
+    // The pre-existing `sourceMap` fixture above has no `verbatimSubtrees` at
+    // all, so an ancestor match there must keep returning the ancestor's own
+    // pointer unchanged — appending would fabricate a pointer that was never
+    // recorded. This is the identical-match (rule 1) case, and it must never
+    // be confused with the verbatim (rule 2) one exercised above.
+    expect(mapGeneratedPointerToAuthoring(sourceMap, "/screens/S1/root/somethingElse")).toEqual({
+      file: "games/example/authoring/ui/web.authoring.json",
+      pointer: "/root/screens/0/root"
+    });
   });
 });

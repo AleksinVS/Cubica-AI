@@ -1,21 +1,24 @@
 /**
  * Public entrypoint for the explicitly test-only Cards Money Trains plugin.
  *
- * The plugin registers one Phaser scene factory and returns its scoped
- * disposer. Phaser remains platform-owned and is injected into the factory.
+ * The plugin registers an engine-independent action projection and one Phaser
+ * scene factory. Phaser remains platform-owned and is injected into the scene.
  */
 
 import type { PlayerPluginApi } from "@cubica/player-web/plugin-api";
 
-import { createCardsMoneyTrainsScene } from "./scene";
+import { createCardsMoneyTrainsScene } from "./scene.ts";
+import { registerCardsMoneyTrainsPlayer } from "./registration.ts";
 
-export const CARDS_MONEY_TRAINS_GAME_ID = "cards-money-trains-mock";
-export const CARDS_MONEY_TRAINS_PLAYER_PLUGIN_ID = "cards-money-trains-mock-player";
+export {
+  CARDS_MONEY_TRAINS_GAME_ID,
+  CARDS_MONEY_TRAINS_PLAYER_PLUGIN_ID
+} from "./registration.ts";
+export { projectBoardSession } from "./board-state.ts";
+export { provideCardsMoneyTrainsAccessibleBoardActions } from "./accessible-actions.ts";
+export { createCardsMoneyTrainsScene } from "./scene.ts";
 
-export { projectBoardSession } from "./board-state";
-export { createCardsMoneyTrainsScene } from "./scene";
-
-/** Register the game-owned scene and return the registration disposer. */
+/** Register both independent host controls and the Phaser scene. */
 export function activate(api: PlayerPluginApi): () => void {
-  return api.registerPhaserSceneFactory(CARDS_MONEY_TRAINS_GAME_ID, createCardsMoneyTrainsScene);
+  return registerCardsMoneyTrainsPlayer(api, createCardsMoneyTrainsScene);
 }

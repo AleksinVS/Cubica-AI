@@ -1,0 +1,259 @@
+{
+  "gameId": "antarctica",
+  "assets": [
+    {
+      "id": "arctic-background",
+      "file": "images/arctic-background.png",
+      "kind": "image",
+      "origin": { "type": "authored-in-repo" }
+    },
+    {
+      "id": "arrow-left",
+      "file": "images/arrow-left.png",
+      "kind": "image",
+      "origin": { "type": "authored-in-repo" }
+    },
+    {
+      "id": "arrow-right",
+      "file": "images/arrow-right.png",
+      "kind": "image",
+      "origin": { "type": "authored-in-repo" }
+    },
+    {
+      "id": "journal-log",
+      "file": "images/jurnal-hodov.png",
+      "kind": "image",
+      "origin": { "type": "authored-in-repo" }
+    },
+    {
+      "id": "hint",
+      "file": "images/podskazka.png",
+      "kind": "image",
+      "origin": { "type": "authored-in-repo" }
+    },
+    {
+      "id": "left-sidebar-days",
+      "file": "images/left-sidebar/days.png",
+      "kind": "image",
+      "origin": { "type": "authored-in-repo" }
+    },
+    {
+      "id": "left-sidebar-doverie",
+      "file": "images/left-sidebar/doverie.png",
+      "kind": "image",
+      "origin": { "type": "authored-in-repo" }
+    },
+    {
+      "id": "left-sidebar-energia",
+      "file": "images/left-sidebar/energia.png",
+      "kind": "image",
+      "origin": { "type": "authored-in-repo" }
+    },
+    {
+      "id": "left-sidebar-konstruktiv",
+      "file": "images/left-sidebar/konstruktiv.png",
+      "kind": "image",
+      "origin": { "type": "authored-in-repo" }
+    },
+    {
+      "id": "left-sidebar-kontakt",
+      "file": "images/left-sidebar/kontakt.png",
+      "kind": "image",
+      "origin": { "type": "authored-in-repo" }
+    },
+    {
+      "id": "left-sidebar-kontrol",
+      "file": "images/left-sidebar/kontrol.png",
+      "kind": "image",
+      "origin": { "type": "authored-in-repo" }
+    },
+    {
+      "id": "left-sidebar-status",
+      "file": "images/left-sidebar/status.png",
+      "kind": "image",
+      "origin": { "type": "authored-in-repo" }
+    },
+    {
+      "id": "left-sidebar-znania",
+      "file": "images/left-sidebar/znania.png",
+      "kind": "image",
+      "origin": { "type": "authored-in-repo" }
+    },
+    {
+      "id": "top-sidebar-days-top",
+      "file": "images/top-sidebar/days-top.png",
+      "kind": "image",
+      "origin": { "type": "authored-in-repo" }
+    },
+    {
+      "id": "top-sidebar-doverie",
+      "file": "images/top-sidebar/doverie.png",
+      "kind": "image",
+      "origin": { "type": "authored-in-repo" }
+    },
+    {
+      "id": "top-sidebar-energia",
+      "file": "images/top-sidebar/energia.png",
+      "kind": "image",
+      "origin": { "type": "authored-in-repo" }
+    },
+    {
+      "id": "top-sidebar-konstruktiv",
+      "file": "images/top-sidebar/konstruktiv.png",
+      "kind": "image",
+      "origin": { "type": "authored-in-repo" }
+    },
+    {
+      "id": "top-sidebar-kontakt",
+      "file": "images/top-sidebar/kontakt.png",
+      "kind": "image",
+      "origin": { "type": "authored-in-repo" }
+    },
+    {
+      "id": "top-sidebar-kontrol",
+      "file": "images/top-sidebar/kontrol.png",
+      "kind": "image",
+      "origin": { "type": "authored-in-repo" }
+    },
+    {
+      "id": "top-sidebar-status",
+      "file": "images/top-sidebar/status.png",
+      "kind": "image",
+      "origin": { "type": "authored-in-repo" }
+    },
+    {
+      "id": "top-sidebar-znaniya",
+      "file": "images/top-sidebar/znaniya.png",
+      "kind": "image",
+      "origin": { "type": "authored-in-repo" }
+    },
+    {
+      "id": "info-i0",
+      "file": "images/i0.png",
+      "kind": "image",
+      "origin": { "type": "authored-in-repo" }
+    },
+    {
+      "id": "info-i02",
+      "file": "images/i02.png",
+      "kind": "image",
+      "origin": { "type": "authored-in-repo" }
+    },
+    {
+      "id": "info-i03",
+      "file": "images/i03.png",
+      "kind": "image",
+      "origin": { "type": "authored-in-repo" }
+    },
+    {
+      "id": "info-i1",
+      "file": "images/i1.png",
+      "kind": "image",
+      "origin": { "type": "authored-in-repo" }
+    },
+    {
+      "id": "info-i10",
+      "file": "images/i10.png",
+      "kind": "image",
+      "origin": { "type": "authored-in-repo" }
+    },
+    {
+      "id": "info-i12",
+      "file": "images/i12.png",
+      "kind": "image",
+      "origin": { "type": "authored-in-repo" }
+    },
+    {
+      "id": "info-i13",
+      "file": "images/i13.png",
+      "kind": "image",
+      "origin": { "type": "authored-in-repo" }
+    },
+    {
+      "id": "info-i14",
+      "file": "images/i14.png",
+      "kind": "image",
+      "origin": { "type": "authored-in-repo" }
+    },
+    {
+      "id": "info-i15",
+      "file": "images/i15.png",
+      "kind": "image",
+      "origin": { "type": "authored-in-repo" }
+    },
+    {
+      "id": "info-i16",
+      "file": "images/i16.png",
+      "kind": "image",
+      "origin": { "type": "authored-in-repo" }
+    },
+    {
+      "id": "info-i17",
+      "file": "images/i17.png",
+      "kind": "image",
+      "origin": { "type": "authored-in-repo" }
+    },
+    {
+      "id": "info-i18",
+      "file": "images/i18.png",
+      "kind": "image",
+      "origin": { "type": "authored-in-repo" }
+    },
+    {
+      "id": "info-i20",
+      "file": "images/i20.png",
+      "kind": "image",
+      "origin": { "type": "authored-in-repo" }
+    },
+    {
+      "id": "info-i3",
+      "file": "images/i3.png",
+      "kind": "image",
+      "origin": { "type": "authored-in-repo" }
+    },
+    {
+      "id": "info-i34",
+      "file": "images/i34.png",
+      "kind": "image",
+      "origin": { "type": "authored-in-repo" }
+    },
+    {
+      "id": "info-i4",
+      "file": "images/i4.png",
+      "kind": "image",
+      "origin": { "type": "authored-in-repo" }
+    },
+    {
+      "id": "info-i5",
+      "file": "images/i5.png",
+      "kind": "image",
+      "origin": { "type": "authored-in-repo" }
+    },
+    {
+      "id": "info-i7",
+      "file": "images/i7.png",
+      "kind": "image",
+      "origin": { "type": "authored-in-repo" }
+    },
+    {
+      "id": "info-i8",
+      "file": "images/i8.png",
+      "kind": "image",
+      "origin": { "type": "authored-in-repo" }
+    },
+    {
+      "id": "info-i9",
+      "file": "images/i9.png",
+      "kind": "image",
+      "origin": { "type": "authored-in-repo" }
+    }
+  ],
+  "stylesheets": [
+    {
+      "id": "antarctica-theme",
+      "file": "styles/antarctica.css",
+      "kind": "css",
+      "origin": { "type": "authored-in-repo" }
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 # ADR-064: Стратегия клиентского ядра — headless core и адаптеры каналов (supersedes ADR-014)
 
-- Статус: Accepted (2026-07-07)
+**Status:** Accepted (2026-07-07)
 - Дата: 2026-07-07
 - Заменяет: ADR-014 (Viewers Library Architecture)
 - Связанные ADR: ADR-002 (Abstract View Protocol), ADR-025/056 (JSON Schema — SSOT и генерация контрактов), ADR-037/039 (plugin-архитектура), ADR-051 (API First), ADR-055 (чистота рендерера), ADR-059 (мультиплеер в монолите), ADR-060 (агентные игроки), ADR-062 (Phaser-канал)

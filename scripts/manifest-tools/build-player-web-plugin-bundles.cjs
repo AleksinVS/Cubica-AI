@@ -6,7 +6,10 @@
  * production through runtime-api, while runtime-api never executes the browser
  * plugin code. The script validates `plugin.json` with JSON Schema, runs the
  * platform-owned typecheck command directly through Node, and writes
- * content-addressed bundle metadata for each game.
+ * content-addressed bundle metadata for each game. Both the hexadecimal
+ * content hash and mandatory SRI-style SHA-256 integrity value are calculated
+ * from the exact bytes written to disk; player-web verifies the latter before
+ * executing a published artifact.
  */
 
 const fs = require("node:fs");

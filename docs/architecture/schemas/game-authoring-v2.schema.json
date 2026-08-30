@@ -40,6 +40,7 @@
             "meta",
             "config",
             "logic",
+            "mechanics",
             "state"
           ],
           "properties": {
@@ -56,6 +57,10 @@
             },
             "logic": {
               "$ref": "#/definitions/gameLogic"
+            },
+            "mechanics": {
+              "type": "object",
+              "description": "Authoring form validated by the separate strict JSON Schema 2020-12 Mechanics authoring contract before macro lowering. The compiler then derives the exact module lock and hashes and validates the emitted runtime bundle."
             },
             "objectTypes": {
               "$ref": "#/definitions/gameObjectTypeMap"
@@ -186,7 +191,7 @@
     },
     "gameLogic": {
       "type": "object",
-      "description": "Authoring-only logical structure. The compiler maps actions/templates into runtime fields and keeps chronology for editor projections.",
+      "description": "Authoring-only logical structure. The compiler maps game-intent actions into immutable Mechanics plan bindings and keeps chronology for editor projections.",
       "required": [
         "actions"
       ],
@@ -219,10 +224,12 @@
             "$ref": "#/definitions/gameAction"
           }
         },
-        "templates": {
-          "type": "object",
-          "description": "Optional runtime deterministic action templates.",
-          "additionalProperties": true
+        "pendingActions": {
+          "type": "array",
+          "description": "Authoring-only Game Intent definitions used to type-check plans that are not yet published. The compiler must never copy these entries into runtime actions.",
+          "items": {
+            "$ref": "#/definitions/gameAction"
+          }
         }
       },
       "additionalProperties": true
@@ -305,14 +312,22 @@
           "type": "object",
           "required": [
             "id",
-            "handlerType"
+            "binding"
           ],
           "properties": {
             "id": {
               "$ref": "https://cubica.platform/schemas/manifest-authoring-common.schema.json#/definitions/entityId"
             },
-            "handlerType": {
-              "type": "string"
+            "binding": {
+              "type": "object",
+              "required": ["kind", "planRef"],
+              "properties": {
+                "kind": { "const": "mechanics-plan" },
+                "planRef": {
+                  "$ref": "https://cubica.platform/schemas/manifest-authoring-common.schema.json#/definitions/entityId"
+                }
+              },
+              "additionalProperties": false
             },
             "displayName": {
               "type": "string"
@@ -326,11 +341,9 @@
             "capabilityFamily": {
               "type": "string"
             },
-            "deterministic": {
-              "type": "object"
-            },
-            "params": {
-              "type": "object"
+            "invocation": {
+              "description": "Optional in authoring; the compiler normalizes an omitted value to external before hashing.",
+              "enum": ["external", "system"]
             },
             "paramsSchema": {
               "type": "object"
@@ -460,9 +473,6 @@
       "type": "object",
       "description": "Presenter projection rule for one object facet value.",
       "properties": {
-        "actionIdFrom": {
-          "type": "string"
-        },
         "fields": {
           "type": "object",
           "additionalProperties": {

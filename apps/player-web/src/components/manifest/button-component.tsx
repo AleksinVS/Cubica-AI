@@ -4,6 +4,7 @@ import type {
 } from "@cubica/contracts-manifest";
 import { resolveExpressions, resolvePayloadExpressions } from "@/lib/expression-resolver";
 import type { PreviewElementAttributes } from "./preview-metadata";
+import type { PlayerLayoutMode } from "@/lib/player-layout-mode";
 import type { GameSession } from "@/types/game-state";
 import {
   isSessionActionUnavailable,
@@ -30,7 +31,7 @@ export function ButtonComponent({
 }: {
   component: GameUiComponent<GameUiButtonComponentProps>;
   onAction: (command: string, payload: Record<string, unknown>) => void;
-  layoutMode?: "leftsidebar" | "topbar";
+  layoutMode?: PlayerLayoutMode;
   localContext?: Record<string, unknown>;
   gameState?: Record<string, unknown>;
   previewAttributes?: PreviewElementAttributes;

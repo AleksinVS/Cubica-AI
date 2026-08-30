@@ -79,11 +79,14 @@
             "language": "ru",
             "updatedAt": "2026-06-12T00:00:00Z"
           },
-          "handlerType": "manifest-data",
           "capabilityFamily": "runtime.server",
           "capability": "authoring-v2.choice.accept",
           "displayName": "Accept the choice",
-          "description": "Minimal action emitted from authoring v2 into the runtime action map."
+          "description": "Minimal action emitted from authoring v2 into the runtime action map.",
+          "binding": {
+            "kind": "mechanics-plan",
+            "planRef": "choice.accept"
+          }
         }
       ]
     },
@@ -99,6 +102,38 @@
         }
       },
       "secret": {}
+    },
+    "mechanics": {
+      "apiVersion": "cubica.dev/mechanics/v1alpha1",
+      "budgetProfile": "turn-based-standard-v1",
+      "stateModel": {
+        "types": {
+          "core.string": {
+            "kind": "string"
+          }
+        },
+        "endpoints": {},
+        "collections": {},
+        "events": {}
+      },
+      "plans": {
+        "choice.accept": {
+          "transaction": {
+            "steps": [
+              {
+                "id": "available",
+                "kind": "assert",
+                "op": "core.assert",
+                "predicate": {
+                  "op": "predicate.constant",
+                  "value": true
+                },
+                "errorCode": "ACTION_PRECONDITION_FAILED"
+              }
+            ]
+          }
+        }
+      }
     }
   }
 }

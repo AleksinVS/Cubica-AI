@@ -1,0 +1,3 @@
+{
+  ".": "Ассеты игры Antarctica для канала ADR-063 (изображения, реестр assets.json, 41 запись). TSK-20260719 R4b: рендерер резолвит asset:<id> для screenComponent/gameVariableComponent/imageComponent-свойств и для themeBackgroundImage плагина; фон, шаблон info-иллюстраций и left-sidebar/top-sidebar-бейджи метрик переведены на asset:<id>. TSK-20260719 R7: metric_specs (подписи/алиасы/asset:<id> изображения топбара и левого сайдбара) добавлены в games/antarctica/authoring/ui/web.authoring.json; плагинный словарь metricBackgroundImages сведён к пустому объекту — топбар-бейджи резолвятся напрямую через собственный asset:<id> каждого gameVariableComponent. LEGACY-0023 закрыт."
+}

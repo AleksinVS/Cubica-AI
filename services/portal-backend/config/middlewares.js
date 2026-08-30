@@ -3,7 +3,6 @@ const localCorsOrigins = [
   'http://localhost:3002',
   'http://localhost:3010',
   'http://127.0.0.1:3203',
-  'http://45.32.22.80:12345',
 ];
 
 function allowedCorsOrigins() {
@@ -11,6 +10,7 @@ function allowedCorsOrigins() {
     process.env.PORTAL_PUBLIC_URL,
     process.env.PLAYER_PUBLIC_URL,
     process.env.STRAPI_ADMIN_BACKEND_URL,
+    process.env.PORTAL_TEST_CORS_ORIGIN,
     ...localCorsOrigins,
   ].filter(Boolean);
 }

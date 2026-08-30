@@ -1,7 +1,7 @@
 # ADR-051: API First Contract For Modular Monolith
 
 - **Дата**: 2026-06-13
-- **Статус**: Accepted
+**Status:** Accepted
 - **Авторы**: Codex
 - **Компоненты**: `services/runtime-api`, `apps/player-web`, `apps/editor-web`, `packages/contracts/*`, OpenAPI contracts, CI, future Router/Game Engine/Game Repository services
 - **Связанные решения**: ADR-017, ADR-019, ADR-025, ADR-031, ADR-038, ADR-040, ADR-046
@@ -151,11 +151,10 @@ For every new or changed current HTTP endpoint:
 
 ## 8. Валидация и CI
 
-The execution task must add CI gates that cover:
+CI must enforce:
 
 - OpenAPI syntax validation;
-- endpoint inventory drift between `httpServer.ts` and
-  `runtime-api-openapi.yaml`;
+- drift between supported external endpoints and `runtime-api-openapi.yaml`;
 - schema validation for representative request/response fixtures;
 - contract tests for player-facing content, session creation, action dispatch
   and Agent Turn;
@@ -222,8 +221,6 @@ Costs and risks:
 
 ## 12. Связанные артефакты
 
-- `docs/tasks/archive/TSK-20260613-runtime-api-openapi-contract.md` - execution
-  package for this ADR.
 - `docs/architecture/PROJECT_ARCHITECTURE.md` - canonical architecture summary.
 - `PROJECT_OVERVIEW.md` - high-level project architecture overview.
 - `docs/architecture/router-openapi.yaml` - future Router reference.

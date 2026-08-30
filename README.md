@@ -9,6 +9,7 @@
 - Текущие приоритеты: `NEXT_STEPS.md`.
 - Правила задач и передачи артефактов: `docs/tasks/README.md`.
 - Ручные debug-скрипты: `scripts/debug/README.md`.
+- Локальная браузерная диагностика: `docs/processes/local-browser-diagnostics.md`.
 
 ## Разработка на Windows
 - Рекомендуемый путь рабочей копии: `C:\Work\Tallent\Cubica`, оболочка — PowerShell.

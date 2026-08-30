@@ -4,23 +4,27 @@
  * manifest uses only the operator subset the player-web evaluator supports
  * (LEGACY-0022).
  *
- * Why: the runtime evaluates JsonLogic with the full `json-logic-js` library,
- * while `apps/player-web/src/lib/metric-projection.ts` implements a small,
- * documented subset for computed metrics. If a manifest used an operator outside
- * that subset, the metric would compute one value in the runtime and silently
- * become `undefined` in player-web — a channel divergence. This check keeps the
- * two channels in agreement without duplicating a full evaluator.
+ * Why: JsonLogic is retained only for player-facing computed metrics.
+ * `apps/player-web/src/lib/metric-projection.ts` intentionally implements a
+ * small, documented subset, so a shipped expression outside that subset would
+ * silently become `undefined` in the browser. Server-side gameplay rules use
+ * typed Mechanics expressions and are deliberately outside this validator.
  *
- * SUPPORTED must stay in sync with SUPPORTED_METRIC_JSONLOGIC_OPERATORS in
- * apps/player-web/src/lib/metric-projection.ts.
+ * The supported list is read from player-web through the TypeScript AST, so
+ * the evaluator itself remains the only literal source of truth.
  */
 const fs = require("node:fs");
 const path = require("node:path");
+const { collectStringArrayConstant } = require("./typescript-import-analysis.cjs");
 
 const repoRoot = path.resolve(__dirname, "..", "..");
 const gamesRoot = path.join(repoRoot, "games");
-
-const SUPPORTED = new Set(["var", "+", "-", "*", "/", "min", "max"]);
+const metricProjectionPath = path.join(repoRoot, "apps", "player-web", "src", "lib", "metric-projection.ts");
+const SUPPORTED = new Set(collectStringArrayConstant(
+  fs.readFileSync(metricProjectionPath, "utf8"),
+  metricProjectionPath,
+  "SUPPORTED_METRIC_JSONLOGIC_OPERATORS"
+));
 
 function fail(message) {
   console.error(`validate-metric-jsonlogic-subset: ${message}`);

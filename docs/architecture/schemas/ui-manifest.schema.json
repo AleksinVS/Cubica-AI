@@ -59,6 +59,15 @@
       },
       "additionalProperties": true
     },
+    "stylesheets": {
+      "type": "array",
+      "description": "Optional game-owned CSS assets to load for this channel (ADR-091). Each item references a stylesheet registered in games/<id>/assets/assets.json via the channel-neutral form asset:<id>. The player-web renderer injects them game-agnostically after platform styles when the game mounts and removes them on unmount; source url() image references are rewritten to content-addressable channel URLs at publish time.",
+      "items": {
+        "type": "string",
+        "pattern": "^asset:[a-z0-9][a-z0-9-]{0,63}$"
+      },
+      "uniqueItems": true
+    },
     "screens": {
       "type": "object",
       "description": "Registry of UI screens for this UI manifest.",
@@ -71,7 +80,8 @@
             "title": { "type": "string" },
             "layout_mode": {
               "type": "string",
-              "description": "Runtime layout hint used by the player presenter, for example topbar or leftsidebar."
+              "enum": ["leftsidebar", "topbar", "map-first", "auto"],
+              "description": "Runtime layout selected by the player presenter. map-first makes one spatial board the full-screen workspace and places semantic UI zones above it."
             },
             "layout_id": {
               "type": "string",
@@ -89,7 +99,54 @@
               "$ref": "#/definitions/uiComponent"
             }
           },
-          "additionalProperties": false
+          "additionalProperties": false,
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "layout_mode": { "const": "map-first" }
+                },
+                "required": ["layout_mode"]
+              },
+              "then": {
+                "properties": {
+                  "root": {
+                    "type": "object",
+                    "required": ["type", "children"],
+                    "properties": {
+                      "type": { "const": "screenComponent" },
+                      "children": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": { "$ref": "#/definitions/mapFirstWorkspaceZone" },
+                        "contains": {
+                          "type": "object",
+                          "required": ["type", "props"],
+                          "properties": {
+                            "type": { "const": "areaComponent" },
+                            "props": {
+                              "type": "object",
+                              "required": ["workspaceSlot"],
+                              "properties": {
+                                "workspaceSlot": { "const": "board" }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "else": {
+                "properties": {
+                  "root": {
+                    "not": { "$ref": "#/definitions/componentTreeContainsWorkspaceSlot" }
+                  }
+                }
+              }
+            }
+          ]
         }
       },
       "additionalProperties": false
@@ -107,6 +164,11 @@
     "entry_point": {
       "type": "string",
       "description": "Identifier of the start screen to render (must exist in 'screens')."
+    },
+    "default_layout_mode": {
+      "type": "string",
+      "enum": ["leftsidebar", "topbar", "map-first", "auto"],
+      "description": "Design-time layout the game presents for this channel (ADR-093). The game developer chooses it at UI design time; the screen router matches screen_routing[].conditions.layoutMode against this value instead of any server-side UI state. The final layout of a selected screen is still driven by that screen's own layout_mode. When absent the player treats the layout as 'topbar'. Layout is a presentation property and must not be stored in server game state."
     },
     "layouts": {
       "type": "object",
@@ -192,7 +254,8 @@
         },
         "layout_mode": {
           "type": "string",
-          "description": "Runtime layout hint used by the player presenter, for example topbar or leftsidebar."
+          "enum": ["leftsidebar", "topbar", "map-first", "auto"],
+          "description": "Runtime layout selected by the player presenter. Workspace slots remain screen-only and are not valid inside transient panels."
         },
         "layout_id": {
           "type": "string",
@@ -210,7 +273,16 @@
           "$ref": "#/definitions/uiComponent"
         }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "properties": {
+            "root": {
+              "not": { "$ref": "#/definitions/componentTreeContainsWorkspaceSlot" }
+            }
+          }
+        }
+      ]
     },
     "uiComponentType": {
       "type": "string",
@@ -240,13 +312,15 @@
         "designWidth": {
           "type": "integer",
           "minimum": 320,
-          "maximum": 1920,
+          "maximum": 100000,
+          "description": "Ширина логической координатной плоскости сцены, а не физического canvas или окна браузера. Клиент обязан ограничивать размер поверхности вывода независимо от этого значения.",
           "default": 1400
         },
         "designHeight": {
           "type": "integer",
           "minimum": 320,
-          "maximum": 1920,
+          "maximum": 100000,
+          "description": "Высота логической координатной плоскости сцены, а не физического canvas или окна браузера. Клиент обязан ограничивать размер поверхности вывода независимо от этого значения.",
           "default": 1000
         },
         "accessibleLabel": {
@@ -268,6 +342,65 @@
       "required": [
         "sceneId"
       ]
+    },
+    "workspaceSlot": {
+      "type": "string",
+      "description": "Semantic placement owned by the generic map-first workspace. Games select a role; the player decides its physical position and stacking.",
+      "enum": [
+        "board",
+        "status",
+        "primary-panel",
+        "context-panel",
+        "action-tray",
+        "floating-controls",
+        "overlay"
+      ]
+    },
+    "componentTreeContainsWorkspaceSlot": {
+      "description": "Recursive detector used to forbid workspaceSlot outside direct map-first zones.",
+      "anyOf": [
+        {
+          "type": "object",
+          "required": ["props"],
+          "properties": {
+            "props": {
+              "type": "object",
+              "required": ["workspaceSlot"]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["children"],
+          "properties": {
+            "children": {
+              "type": "array",
+              "contains": { "$ref": "#/definitions/componentTreeContainsWorkspaceSlot" }
+            }
+          }
+        }
+      ]
+    },
+    "mapFirstWorkspaceZone": {
+      "type": "object",
+      "description": "A direct child of a map-first screen root. Nested children are ordinary components and cannot declare another workspace zone.",
+      "required": ["type", "props"],
+      "properties": {
+        "type": { "const": "areaComponent" },
+        "props": {
+          "type": "object",
+          "required": ["workspaceSlot"],
+          "properties": {
+            "workspaceSlot": { "$ref": "#/definitions/workspaceSlot" }
+          }
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "not": { "$ref": "#/definitions/componentTreeContainsWorkspaceSlot" }
+          }
+        }
+      }
     },
     "uiComponent": {
       "type": "object",
@@ -295,7 +428,10 @@
         },
         "props": {
           "type": "object",
-          "description": "Component-specific properties, may include data bindings like {{state.public.hp}}."
+          "description": "Component-specific properties, may include data bindings like {{state.public.hp}}.",
+          "properties": {
+            "workspaceSlot": { "$ref": "#/definitions/workspaceSlot" }
+          }
         },
         "style": {
           "$ref": "#/definitions/uiStyle"
@@ -336,6 +472,213 @@
       },
       "additionalProperties": false,
       "allOf": [
+        {
+          "if": {
+            "required": ["props"],
+            "properties": {
+              "props": {
+                "type": "object",
+                "required": ["workspaceSlot"]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "type": { "const": "areaComponent" }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "buttonComponent"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "required": [
+              "props"
+            ],
+            "properties": {
+              "props": {
+                "type": "object",
+                "required": [
+                  "caption"
+                ],
+                "properties": {
+                  "caption": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "richTextComponent"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "required": [
+              "props"
+            ],
+            "properties": {
+              "props": {
+                "type": "object",
+                "required": [
+                  "html"
+                ],
+                "properties": {
+                  "html": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "imageComponent"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "required": [
+              "props"
+            ],
+            "properties": {
+              "props": {
+                "type": "object",
+                "required": [
+                  "src"
+                ],
+                "properties": {
+                  "src": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "gameVariableComponent"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "required": [
+              "props"
+            ],
+            "properties": {
+              "props": {
+                "type": "object",
+                "anyOf": [
+                  {
+                    "required": ["metricId"],
+                    "properties": {
+                      "metricId": { "type": "string", "minLength": 1 }
+                    }
+                  },
+                  {
+                    "required": ["caption"],
+                    "properties": {
+                      "caption": { "type": "string", "minLength": 1 }
+                    }
+                  },
+                  {
+                    "required": ["value"],
+                    "properties": {
+                      "value": { "type": "string", "minLength": 1 }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "cardComponent"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "required": [
+              "props"
+            ],
+            "properties": {
+              "props": {
+                "type": "object",
+                "properties": {
+                  "backText": {
+                    "description": "Public content of the card's back face. When this field is present and visualState resolves to 'resolved', the common card renderer shows this content as the active face."
+                  },
+                  "visualState": {
+                    "description": "Presenter-derived visual state. The value 'resolved' shows backText when backText is present; this presentation state does not itself perform a game action or reveal secret server data."
+                  }
+                },
+                "anyOf": [
+                  {
+                    "required": ["text"],
+                    "properties": {
+                      "text": { "type": "string", "minLength": 1 }
+                    }
+                  },
+                  {
+                    "required": ["title"],
+                    "properties": {
+                      "title": { "type": "string", "minLength": 1 }
+                    }
+                  },
+                  {
+                    "required": ["summary"],
+                    "properties": {
+                      "summary": { "type": "string", "minLength": 1 }
+                    }
+                  },
+                  {
+                    "required": ["backText"],
+                    "properties": {
+                      "backText": { "type": "string", "minLength": 1 }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
         {
           "if": {
             "properties": {

@@ -2,8 +2,9 @@
  * Prepares a runtime/player preview from editor-web.
  *
  * The route compiles the selected game's authoring manifests, checks runtime
- * readiness over HTTP, creates a runtime-api session when available, and
- * returns a player-web URL. Runtime unavailability is reported as a structured
+ * readiness over HTTP, publishes the temporary content source, and returns a
+ * player-web URL. Player Web creates the browser-owned runtime session through
+ * its credential-protecting BFF after the iframe loads. Runtime unavailability is reported as a structured
  * readiness diagnostic with HTTP 200 so the UI can show it without treating it
  * as a route crash.
  */
@@ -19,11 +20,16 @@ import {
   validateAndBundleProjectPlugins,
   type PlayerWebPluginBundleForRuntime
 } from "@/lib/project-plugin-validation";
+import { randomUUID } from "node:crypto";
 
 export const runtime = "nodejs";
 
 const runtimeApiUrl = process.env.RUNTIME_API_URL ?? "http://127.0.0.1:3001";
 const playerWebUrl = process.env.PLAYER_WEB_URL ?? "http://127.0.0.1:3000";
+// Cold publication of a geometry-heavy game can legitimately take tens of
+// seconds. Keep the liveness probe short, but give bounded content/session
+// operations enough time to finish their measured first-load work.
+const previewRuntimeOperationTimeoutMs = 30_000;
 
 export async function POST(request: Request) {
   try {
@@ -139,7 +145,7 @@ async function prepareRuntimeSession(
         contentRoot: contentSource?.contentRoot,
         pluginBundles: contentSource?.pluginBundles
       }),
-      signal: AbortSignal.timeout(2500)
+      signal: AbortSignal.timeout(previewRuntimeOperationTimeoutMs)
     }).catch((error: unknown) => {
       if (contentSource !== undefined) {
         throw error;
@@ -151,26 +157,12 @@ async function prepareRuntimeSession(
       return readinessFailure(body.error ?? `runtime-api content reload returned HTTP ${reloadResponse.status}.`);
     }
 
-    const sessionResponse = await fetch(new URL("/sessions", runtimeApiUrl), {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ gameId, playerId: "editor-preview", contentSourceId: contentSource?.contentSourceId }),
-      signal: AbortSignal.timeout(2500)
-    });
-    if (!sessionResponse.ok) {
-      const body = (await sessionResponse.json().catch(() => ({}))) as { readonly error?: string };
-      return readinessFailure(body.error ?? `runtime-api session creation returned HTTP ${sessionResponse.status}.`);
-    }
-
-    const session = (await sessionResponse.json()) as { readonly sessionId?: string };
-    if (typeof session.sessionId !== "string") {
-      return readinessFailure("runtime-api did not return a sessionId for preview.");
-    }
-
     const playerUrl = new URL(playerWebUrl);
     playerUrl.searchParams.set("gameId", gameId);
     playerUrl.searchParams.set("preview", "1");
-    playerUrl.searchParams.set("sessionId", session.sessionId);
+    // A fresh scope prevents localStorage from resuming an older preview
+    // session whose content source or runtime snapshot belongs to a prior run.
+    playerUrl.searchParams.set("previewInstanceId", randomUUID());
     if (contentSource !== undefined) {
       playerUrl.searchParams.set("contentSourceId", contentSource.contentSourceId);
     }
@@ -181,7 +173,6 @@ async function prepareRuntimeSession(
     return {
       ready: true,
       playerUrl: playerUrl.toString(),
-      sessionId: session.sessionId,
       diagnostics: []
     };
   } catch (error) {

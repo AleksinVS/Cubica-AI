@@ -1,0 +1,112 @@
+{
+  "$schema": "./country-terminal-mapping.schema.json",
+  "apiVersion": "cubica.game/cards-money-trains-country-terminal-mapping/v1",
+  "gameId": "cards-money-trains",
+  "locale": "ru-RU",
+  "status": "author-confirmed",
+  "publishable": true,
+  "confirmation": {
+    "countryTitles": true,
+    "numberedTerminalMembership": true,
+    "specialPointsExcluded": true
+  },
+  "geometry": {
+    "countryPolygonsConfirmed": false,
+    "regionPolygonsConfirmed": false,
+    "vectorStyleClassificationConfirmed": false
+  },
+  "countries": [
+    {
+      "countryId": "cmt-country-proud",
+      "title": "Гордая Гвинея",
+      "sourceRecordId": "country-description-review-01",
+      "terminalIds": []
+    },
+    {
+      "countryId": "cmt-country-north",
+      "title": "Северная Гвинея",
+      "sourceRecordId": "country-description-review-02",
+      "terminalIds": [
+        "terminal-4",
+        "terminal-6",
+        "terminal-8",
+        "terminal-9",
+        "terminal-10"
+      ]
+    },
+    {
+      "countryId": "cmt-country-white",
+      "title": "Белая Гвинея",
+      "sourceRecordId": "country-description-review-03",
+      "terminalIds": [
+        "terminal-5",
+        "terminal-7"
+      ]
+    },
+    {
+      "countryId": "cmt-country-central",
+      "title": "Центральная Гвинея",
+      "sourceRecordId": "country-description-review-04",
+      "terminalIds": [
+        "terminal-1",
+        "terminal-2"
+      ]
+    },
+    {
+      "countryId": "cmt-country-south-rorschach",
+      "title": "Южная Гвинея Роршаха",
+      "sourceRecordId": "country-description-review-05",
+      "terminalIds": [
+        "terminal-3",
+        "terminal-11",
+        "terminal-12",
+        "terminal-22",
+        "terminal-23"
+      ]
+    },
+    {
+      "countryId": "cmt-country-left",
+      "title": "Левая Гвинея",
+      "sourceRecordId": "country-description-review-06",
+      "terminalIds": [
+        "terminal-20",
+        "terminal-21"
+      ]
+    },
+    {
+      "countryId": "cmt-country-lower",
+      "title": "Нижняя Гвинея",
+      "sourceRecordId": "country-description-review-07",
+      "terminalIds": [
+        "terminal-13",
+        "terminal-17"
+      ]
+    },
+    {
+      "countryId": "cmt-country-subbelly",
+      "title": "Подбрюшинная Гвинея",
+      "sourceRecordId": "country-description-review-08",
+      "terminalIds": [
+        "terminal-16"
+      ]
+    },
+    {
+      "countryId": "cmt-country-ultra-right",
+      "title": "Ультраправая Гвинея",
+      "sourceRecordId": "country-description-review-09",
+      "terminalIds": [
+        "terminal-14",
+        "terminal-15"
+      ]
+    },
+    {
+      "countryId": "cmt-country-people",
+      "title": "Народная Гвинея",
+      "sourceRecordId": "country-description-review-10",
+      "terminalIds": [
+        "terminal-18",
+        "terminal-19"
+      ]
+    }
+  ]
+}

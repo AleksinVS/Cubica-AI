@@ -63,8 +63,8 @@
         },
         "integrity": {
           "type": "string",
-          "description": "SRI-style digest for optional preload/script integrity checks.",
-          "pattern": "^sha256-[A-Za-z0-9+/]+={0,2}$"
+          "description": "Required SHA-256 digest that player-web verifies over fetched bytes before executing the published bundle.",
+          "pattern": "^sha256-[A-Za-z0-9+/]{43}=$"
         },
         "filePath": {
           "type": "string",

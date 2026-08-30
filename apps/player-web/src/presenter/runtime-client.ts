@@ -1,5 +1,10 @@
 import type { SessionSnapshot } from "@/lib/game-content-resolvers";
 import type { CubicaAgentTurnResult } from "@cubica/contracts-ai";
+import type { PrivateSessionInvite, TransportRoadPreviewResponse } from "@cubica/contracts-session";
+import type {
+  RuntimeActionEnvelope,
+  RuntimeAgentTurnEnvelope
+} from "@/presenter/command-outbox";
 
 export type ActionSnapshot = SessionSnapshot;
 
@@ -7,15 +12,31 @@ async function parseJson<T>(response: Response): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+type PublicCommandReceipt = {
+  readonly status?: unknown;
+  readonly rejectionCode?: unknown;
+};
+
 export class RuntimeClientError extends Error {
   readonly statusCode: number;
   readonly statusText: string;
+  /** Runtime explicitly confirmed that retrying this command is unnecessary. */
+  readonly terminal: boolean;
+  /** The server asked the client to retry, or failed before a stable answer. */
+  readonly retryable: boolean;
 
-  constructor(message: string, options: { statusCode: number; statusText: string }) {
+  constructor(message: string, options: {
+    statusCode: number;
+    statusText: string;
+    terminal?: boolean;
+    retryable?: boolean;
+  }) {
     super(message);
     this.name = "RuntimeClientError";
     this.statusCode = options.statusCode;
     this.statusText = options.statusText;
+    this.terminal = options.terminal === true;
+    this.retryable = options.retryable === true && !this.terminal;
   }
 
   get status(): number {
@@ -57,15 +78,26 @@ export type GameReadinessSnapshot = {
 async function readRuntimeError(response: Response, fallback: string): Promise<RuntimeClientError> {
   const text = await response.text();
   let message = fallback;
+  let terminal = false;
   if (text.trim().length > 0) {
     try {
-      const payload = JSON.parse(text) as { error?: unknown; message?: unknown };
+      const payload = JSON.parse(text) as {
+        error?: unknown;
+        message?: unknown;
+        terminal?: unknown;
+        receipt?: PublicCommandReceipt;
+      };
       const candidate = typeof payload.error === "string"
         ? payload.error
         : typeof payload.message === "string"
           ? payload.message
-          : undefined;
-      message = candidate ?? text;
+          : typeof payload.receipt?.rejectionCode === "string"
+            ? payload.receipt.rejectionCode
+            : undefined;
+      // A syntactically valid but unknown JSON error shape must not revive
+      // removed receipt fields through its serialized representation.
+      message = candidate ?? fallback;
+      terminal = payload.terminal === true || payload.receipt?.status === "rejected";
     } catch {
       message = text;
     }
@@ -73,29 +105,75 @@ async function readRuntimeError(response: Response, fallback: string): Promise<R
 
   return new RuntimeClientError(message, {
     statusCode: response.status,
-    statusText: response.statusText
+    statusText: response.statusText,
+    // Once an HTTP response exists, only the explicit transient profiles are
+    // eligible for an automatic replay of the same immutable command. Stable
+    // client errors (including 400/401/403/404/409/413) must not poison the
+    // persistent outbox across every later page load.
+    terminal: terminal || !isRetryableRuntimeStatus(response.status),
+    retryable: isRetryableRuntimeStatus(response.status)
   });
+}
+
+/**
+ * Decides whether an immutable command must remain in the browser outbox.
+ *
+ * A non-HTTP exception means the browser cannot know whether runtime admitted
+ * the command, so exact-command replay is required. HTTP 408, 429 and 5xx are
+ * explicitly retryable. Every other received HTTP result is deterministic and
+ * releases the outbox; an admitted rejected receipt is terminal as well.
+ */
+export function shouldRetainPendingRuntimeCommand(error: unknown): boolean {
+  return !(error instanceof RuntimeClientError) || error.retryable;
+}
+
+function isRetryableRuntimeStatus(statusCode: number): boolean {
+  return statusCode === 408 || statusCode === 429 || statusCode >= 500;
+}
+
+/** Converts an admitted HTTP 200 rejection into the same terminal error path. */
+async function parseCommandResponse<T extends object>(
+  response: Response,
+  fallback: string
+): Promise<T> {
+  const payload = await parseJson<T & { readonly receipt?: PublicCommandReceipt }>(response);
+  if (payload.receipt?.status === "rejected") {
+    const message = typeof payload.receipt.rejectionCode === "string"
+      ? payload.receipt.rejectionCode
+      : fallback;
+    throw new RuntimeClientError(message, {
+      statusCode: response.status,
+      statusText: response.statusText,
+      terminal: true
+    });
+  }
+  return payload;
 }
 
 /**
  * Создаёт новую игровую сессию через runtime-api.
  */
-export async function createNewSession(gameId: string, playerId: string): Promise<SessionSnapshot> {
-  return createNewSessionWithOptions({ gameId, playerId });
+export async function createNewSession(gameId: string, participantCount?: number): Promise<SessionSnapshot> {
+  return createNewSessionWithOptions({ gameId, participantCount });
 }
 
 export async function createNewSessionWithOptions(input: {
   readonly gameId: string;
-  readonly playerId: string;
   readonly contentSourceId?: string;
+  readonly participantCount?: number;
+  readonly accessMode?: "private-invite";
+  readonly agentSeatCount?: number;
 }): Promise<SessionSnapshot> {
   const response = await fetch("/api/runtime/sessions", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
     body: JSON.stringify({
       gameId: input.gameId,
-      playerId: input.playerId,
-      ...(input.contentSourceId === undefined ? {} : { contentSourceId: input.contentSourceId })
+      ...(input.accessMode === undefined ? {} : { accessMode: input.accessMode }),
+      ...(input.contentSourceId === undefined ? {} : { contentSourceId: input.contentSourceId }),
+      ...(input.participantCount === undefined ? {} : { participantCount: input.participantCount }),
+      ...(input.agentSeatCount === undefined ? {} : { agentSeatCount: input.agentSeatCount })
     })
   });
   if (!response.ok) {
@@ -108,9 +186,102 @@ export async function createNewSessionWithOptions(input: {
  * Возобновляет существующую сессию по её идентификатору.
  */
 export async function resumeSession(sessionId: string): Promise<SessionSnapshot> {
-  const response = await fetch(`/api/runtime/sessions/${sessionId}`);
+  const response = await fetch(`/api/runtime/sessions/${encodeURIComponent(sessionId)}`, {
+    credentials: "same-origin"
+  });
   if (!response.ok) {
     throw await readRuntimeError(response, `Failed to resume session: ${response.status}`);
+  }
+  return parseJson<SessionSnapshot>(response);
+}
+
+export async function claimPrivateInvite(sessionId: string, inviteToken: string): Promise<SessionSnapshot> {
+  const response = await fetch(`/api/runtime/sessions/${encodeURIComponent(sessionId)}/private-invite-claims`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, credentials: "same-origin",
+    body: JSON.stringify({ inviteToken })
+  });
+  if (!response.ok) throw await readRuntimeError(response, `Failed to claim session invite: ${response.status}`);
+  return parseJson<SessionSnapshot>(response);
+}
+
+export async function recoverGuestSeat(sessionId: string, seatId: string): Promise<PrivateSessionInvite> {
+  const response = await fetch(`/api/runtime/sessions/${encodeURIComponent(sessionId)}/seat-recovery-invites`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify({ seatId })
+  });
+  if (!response.ok) {
+    throw await readRuntimeError(response, `Failed to recover guest seat: ${response.status}`);
+  }
+  return parseJson<PrivateSessionInvite>(response);
+}
+
+export type PrivateInviteFragment = { readonly sessionId: string; readonly inviteToken: string };
+
+/** Reads and clears the entire invite fragment synchronously before callers await. */
+export function consumePrivateInviteFragment(): PrivateInviteFragment | null {
+  if (typeof window === "undefined" || !window.location.hash) return null;
+  const raw = window.location.hash.slice(1);
+  const params = new URLSearchParams(raw);
+  const sessionId = params.get("sessionId");
+  const inviteToken = params.get("inviteToken");
+  if (sessionId === null && inviteToken === null) return null;
+  window.history.replaceState(null, document.title, `${window.location.pathname}${window.location.search}`);
+  if (!sessionId || !inviteToken) return null;
+  return { sessionId, inviteToken };
+}
+
+export type SessionEventSubscription = { stop: () => void };
+
+/** Notification-only transport; every notification triggers a full authenticated GET. */
+export function subscribeToSessionEvents(sessionId: string, onSnapshot: (snapshot: SessionSnapshot) => void): SessionEventSubscription {
+  let stopped = false;
+  let source: EventSource | null = null;
+  let refresh: Promise<void> | null = null;
+  let pendingRefresh = false;
+  const fullGet = () => {
+    if (stopped) return;
+    if (refresh) { pendingRefresh = true; return; }
+    refresh = resumeSession(sessionId).then((snapshot) => { if (!stopped) onSnapshot(snapshot); }).catch(() => undefined).finally(() => { refresh = null; if (pendingRefresh && !stopped) { pendingRefresh = false; fullGet(); } });
+  };
+  if (typeof window !== "undefined" && typeof window.EventSource === "function") {
+    fullGet();
+    source = new window.EventSource(`/api/runtime/sessions/${encodeURIComponent(sessionId)}/events`);
+    source.onmessage = fullGet;
+    source.addEventListener("version", fullGet);
+    source.onerror = () => { fullGet(); };
+  }
+  return { stop: () => { stopped = true; source?.close(); source = null; } };
+}
+
+/**
+ * Restores a server-authoritative editor-preview snapshot through Player Web's
+ * credential-holding BFF. Browser code supplies state/version only; the
+ * session bearer remains in the session-scoped HttpOnly cookie.
+ */
+export async function restorePreviewSession(input: {
+  readonly sessionId: string;
+  readonly state: Record<string, unknown>;
+  readonly version: {
+    readonly stateVersion: number;
+    readonly lastEventSequence: number;
+  };
+  readonly targetEventSequence?: number;
+}): Promise<SessionSnapshot> {
+  const response = await fetch(`/api/runtime/sessions/${encodeURIComponent(input.sessionId)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify({
+      state: input.state,
+      version: input.version,
+      targetEventSequence: input.targetEventSequence,
+      reason: "editor-preview-rollback"
+    })
+  });
+  if (!response.ok) {
+    throw await readRuntimeError(response, `Failed to restore preview session: ${response.status}`);
   }
   return parseJson<SessionSnapshot>(response);
 }
@@ -119,58 +290,75 @@ export async function resumeSession(sessionId: string): Promise<SessionSnapshot>
  * Отправляет игровое действие в runtime-api и возвращает обновлённое состояние.
  */
 export async function dispatchAction(
-  sessionId: string,
-  playerId: string,
-  actionId: string,
-  expectedStateVersion: number,
-  payload: Record<string, unknown> = {}
+  envelope: RuntimeActionEnvelope
 ): Promise<ActionSnapshot> {
-  const hasParams = Object.keys(payload).length > 0;
   const response = await fetch("/api/runtime/actions", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    // Deterministic manifest actions consume schema-validated `params`
-    // (ADR-061). Omit that field for parameterless actions because the runtime
-    // deliberately distinguishes "no parameter contract" from an empty input.
-    // Keep `payload` while legacy handlers still read it; whenever params are
-    // present both names describe one user intent and must never diverge.
-    body: JSON.stringify({
-      sessionId,
-      expectedStateVersion,
-      playerId,
-      actionId,
-      ...(hasParams ? { params: payload } : {}),
-      payload
-    })
+    credentials: "same-origin",
+    // The immutable envelope is reused byte-for-byte for network retries.
+    // Actor identity is intentionally absent and comes from BFF authentication.
+    body: JSON.stringify(envelope)
   });
   if (!response.ok) {
-    throw await readRuntimeError(response, `Action "${actionId}" failed`);
+    throw await readRuntimeError(response, `Action "${envelope.actionId}" failed`);
   }
-  return parseJson<ActionSnapshot>(response);
+  return parseCommandResponse<ActionSnapshot>(response, `Action "${envelope.actionId}" was rejected`);
+}
+
+/**
+ * Requests a non-authoritative road calculation for one immutable snapshot.
+ *
+ * The preview has its own read-only endpoint instead of sharing the mutating
+ * action path. That separation prevents a route estimate from paying money,
+ * advancing the session version or consuming authoritative randomness.
+ */
+export interface RuntimeTransportRoadPreviewRequest {
+  readonly sessionId: string;
+  readonly expectedStateVersion: number;
+  readonly actionId: string;
+  readonly params: Record<string, unknown>;
+}
+
+export async function previewTransportRoad(
+  input: RuntimeTransportRoadPreviewRequest
+): Promise<TransportRoadPreviewResponse> {
+  const response = await fetch("/api/runtime/action-previews/transport-road", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify(input)
+  });
+  if (!response.ok) {
+    throw await readRuntimeError(response, `Road preview for action "${input.actionId}" failed`);
+  }
+  return parseJson<TransportRoadPreviewResponse>(response);
 }
 
 /**
  * Runs one AI-driven Agent Turn through the runtime-api.
  *
  * The browser sends player intent only. Runtime-api builds the authoritative
- * Agent Turn input, validates the Agent Runtime result and persists accepted
- * effects before this client sees the returned `CubicaSurface`.
+ * Agent Turn input, validates its selected published Game Intent and executes
+ * that intent through authoritative mechanics before this client sees the
+ * returned `CubicaSurface`.
  */
 export async function runAgentTurn(
-  sessionId: string,
-  playerId: string,
-  actionId?: string,
-  payload: unknown = {}
+  envelope: RuntimeAgentTurnEnvelope
 ): Promise<AgentTurnSnapshot> {
   const response = await fetch("/api/runtime/agent-turns", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ sessionId, playerId, actionId, payload })
+    credentials: "same-origin",
+    body: JSON.stringify(envelope)
   });
   if (!response.ok) {
-    throw await readRuntimeError(response, actionId === undefined ? "Agent Turn failed" : `Agent Turn "${actionId}" failed`);
+    throw await readRuntimeError(
+      response,
+      `Agent Turn "${envelope.actionId}" failed`
+    );
   }
-  return parseJson<AgentTurnSnapshot>(response);
+  return parseCommandResponse<AgentTurnSnapshot>(response, `Agent Turn "${envelope.actionId}" was rejected`);
 }
 
 /**

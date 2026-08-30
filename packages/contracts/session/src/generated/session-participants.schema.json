@@ -1,0 +1,67 @@
+{
+  "type": "array",
+  "minItems": 1,
+  "items": {
+    "description": "Stable immutable server-owned seat binding. Private-invite seats move from invited to joined; seatId, playerId and kind remain immutable, and agents cannot use network join states.",
+    "type": "object",
+    "required": [
+      "seatId",
+      "playerId",
+      "kind",
+      "joinState"
+    ],
+    "properties": {
+      "seatId": {
+        "type": "string",
+        "minLength": 1
+      },
+      "playerId": {
+        "description": "Non-empty player identifier that cannot address JavaScript object prototype properties.",
+        "type": "string",
+        "minLength": 1,
+        "not": {
+          "enum": [
+            "__proto__",
+            "constructor",
+            "prototype"
+          ]
+        }
+      },
+      "kind": {
+        "enum": [
+          "human",
+          "agent"
+        ]
+      },
+      "joinState": {
+        "enum": [
+          "local",
+          "invited",
+          "joined"
+        ]
+      }
+    },
+    "allOf": [
+      {
+        "not": {
+          "required": [
+            "kind",
+            "joinState"
+          ],
+          "properties": {
+            "kind": {
+              "const": "agent"
+            },
+            "joinState": {
+              "enum": [
+                "invited",
+                "joined"
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "additionalProperties": false
+  }
+}

@@ -1,6 +1,6 @@
 # ADR-009: Centralized Asset Management Strategy
 
-- **Status**: Accepted
+**Status:** Accepted
 - **Date**: 2025-11-27
 - **Author**: AI Agent
 - **Context**: Game Manifest Architecture

@@ -6,7 +6,10 @@
   "targets": {
     "player-web": {
       "entry": "src/index.ts",
-      "contributes": { "phaserSceneFactory": true }
+      "contributes": {
+        "phaserSceneFactory": true,
+        "accessibleBoardActionsProvider": true
+      }
     }
   },
   "validation": { "typecheck": "typecheck", "test": "test" },

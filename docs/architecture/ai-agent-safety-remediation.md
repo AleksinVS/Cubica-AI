@@ -26,20 +26,20 @@ MVP migration intentionally introduced a mock Agent Runtime and a first Surface 
 This document defines the remediation target:
 
 - agent cannot approve its own mutating tool call;
-- failed Agent Turn cannot persist effects;
-- manifest capabilities become executable runtime gates;
+- failed Agent Turn cannot select or execute a gameplay intent;
+- an agent may choose only an actor-scoped published Game Intent (игровое действие, описанное в терминах конкретной игры);
 - channel projections do not expose unsupported actions;
 - external provider backend cannot be enabled without auth and audit gates.
 
-Implementation status as of 2026-06-12: the MVP code path implements these gates for contracts, runtime-api, editor-web and player-web. Durable audit storage for accepted/rejected Agent Turns remains a future infrastructure step; the event-log contract builders already enforce `effectCount: 0` for rejected turns.
+Implementation status as of 2026-07-15: Agent Turn no longer accepts direct state effects. The model returns exactly one `selectedIntent` with `actionId` and bounded `params`; runtime verifies that the intent is published and available for the current actor, executes its Mechanics IR in the common session transaction, and writes the common durable command receipt. A rejected turn records no `selectedActionId` and cannot change the session.
 
 ## 2. Что Нужно Исправить
 
 | Finding | Target Fix | Owner Layer |
 | --- | --- | --- |
 | `approved=true` is read from tool args | Replace argument-based approval with Cubica approval envelope produced by UI/human flow | `apps/editor-web`, `packages/contracts/ai` |
-| `ok=false` result can still carry persisted effects | Reject or ignore effects for failed Agent Turn and log rejected turn with zero effects | `services/runtime-api`, `packages/contracts/ai` |
-| `allowedCapabilities` is descriptive | Add capability policy mapping and enforce it before persistence | `packages/contracts/ai`, `services/runtime-api`, manifest docs |
+| `ok=false` result can still carry a mutating choice | Reject `selectedIntent` and gameplay Surface for a failed Agent Turn | `services/runtime-api`, `packages/contracts/ai` |
+| A model can invent low-level state changes | Expose only actor-scoped published Game Intents and execute the selected intent through Mechanics IR | `packages/contracts/ai`, `services/runtime-api`, game manifest |
 | Surface action can be valid globally but unsupported by player | Add channel action policy validation | `packages/contracts/ai`, `services/runtime-api`, `apps/player-web` |
 | Telegram/Phaser projections return diagnostics but still expose actions | Add projection status and suppress actions on validation errors | `packages/contracts/ai` |
 | External AG-UI backend can be configured without token | Require production auth policy for external backend | `apps/editor-web`, docs/deploy policy |
@@ -78,18 +78,20 @@ Agent Turn result
   -> JSON Schema validation
   -> semantic validation
   -> ok/status gate
-  -> capability gate
+  -> published and actor-scoped intent gate
   -> channel policy gate
-  -> persist accepted effects
-  -> write accepted/rejected event log
+  -> execute selected intent through Mechanics IR
+  -> commit state, events and command receipt atomically
 ```
 
 Rules:
 
 - `ok: false` means rejected.
 - Rejected turn writes audit/replay entry only.
-- Rejected turn has `effectCount: 0`.
-- Runtime may show a diagnostic message, but it must not use returned effects or gameplay actions.
+- Rejected turn has no `selectedActionId`.
+- An accepted result contains exactly one `selectedIntent: { actionId, params }`.
+- `actionId` must be present in the trusted `availableIntents` input for this actor and snapshot.
+- Runtime may show a diagnostic message, but it must not execute an unpublished, unavailable or malformed intent.
 
 ### 3.3. Channel Surface Flow
 
@@ -124,11 +126,11 @@ Telegram and Phaser policy:
 Add or extend contracts in `packages/contracts/ai`:
 
 - `CubicaAgentApprovalEnvelope`;
-- `CubicaAgentCapabilityPolicy`;
-- `CubicaAgentCapabilityRule`;
+- `CubicaPublishedGameIntent`;
+- `CubicaAgentSelectedIntent`;
 - `CubicaSurfaceChannelActionPolicy`;
 - projection result status: `ok`, `diagnostics`, `actionsSuppressed`;
-- Agent Turn semantic rule: `ok=false` cannot include accepted effects.
+- Agent Turn semantic rule: `ok=false` cannot include a selected intent or primary gameplay Surface.
 
 The schema source remains JSON Schema/AJV. TypeScript-only checks are not enough.
 
@@ -138,10 +140,13 @@ Runtime API must enforce:
 
 - Agent Turn rejected when result schema or semantic validation fails;
 - Agent Turn rejected when `ok=false`;
-- no effects are persisted for rejected turns;
-- every effect target is checked against capability policy;
-- every available action and Surface action is checked against channel/action policy;
-- accepted/rejected log entry is built for each turn once persistence audit storage exists;
+- AI-driven configuration must explicitly allow `selectPublishedIntent` and declare one exact `initialActionId`;
+- no Game Intent is executed for rejected turns;
+- the Agent Turn input contains only currently published actor-scoped intents;
+- the selected intent is checked again through the normal action parameter, role, reference and Mechanics validation path;
+- the Agent Turn entry intent is excluded from selectable intents, preventing recursive Agent Turn calls;
+- every Surface action is checked against channel/action policy and targets an exact published `actionId`;
+- accepted/rejected command receipts use the common durable command ledger;
 - deterministic games remain independent from Agent Runtime.
 
 The mock Agent Runtime can remain as a deterministic test adapter, but it must pass the same gates as a provider adapter.
@@ -188,9 +193,10 @@ Required tests:
 | Editor approval | Agent-supplied `approved=true` does not execute mutating tool without approval envelope |
 | Editor approval | Valid approval envelope allows exactly the scoped change |
 | Editor approval | Stale approval envelope fails closed |
-| Agent Turn | `ok=false` with effects does not mutate session |
-| Agent Turn | effect outside declared capability is rejected |
-| Agent Turn | accepted effect inside capability is persisted |
+| Agent Turn | `ok=false` with `selectedIntent` does not mutate session |
+| Agent Turn | invented or unavailable `actionId` is rejected |
+| Agent Turn | a published selected intent is executed through Mechanics IR and one command receipt |
+| Agent Turn | the Agent Turn entry action cannot be selected recursively |
 | Surface Web player | `editorTool`/`portalCommand`/unsafe `openUrl` rejected for primary gameplay |
 | Telegram projection | invalid Surface suppresses inline buttons |
 | Phaser projection | invalid Surface suppresses interactive zones |

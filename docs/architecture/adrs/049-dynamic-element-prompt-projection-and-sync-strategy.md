@@ -1,7 +1,7 @@
 # ADR-049: Dynamic Element Prompt Projection And Sync Strategy
 
 - **Дата**: 2026-06-13
-- **Статус**: Accepted
+**Status:** Accepted
 - **Авторы**: Codex
 - **Компоненты**: Authoring manifests, UI authoring manifests, Game Editor, editor-engine, Agent UI, manifest schemas
 - **Связанные решения**: ADR-025, ADR-030, ADR-034, ADR-036, ADR-048
@@ -22,7 +22,6 @@
 - [12. Инварианты](#12-инварианты)
 - [13. Альтернативы](#13-альтернативы)
 - [14. Последствия](#14-последствия)
-- [15. Открытые вопросы реализации](#15-открытые-вопросы-реализации)
 
 ## 1. Понимание решения
 
@@ -37,7 +36,9 @@
 
 ## 2. Контекст
 
-ADR-048 ввел `_prompt` и `_promptTemplate`. Первый реализованный срез хранит `raw` и `normalized` inline в authoring JSON, потому это было минимально безопасной формой для первого schema slice.
+ADR-048 ввёл `_prompt` и `_promptTemplate`. Legacy-форма хранит `raw` и
+`normalized` inline в authoring JSON; она остаётся миграционным входом, а не
+целевым контрактом синхронизации.
 
 После обсуждения выявлены проблемы:
 
@@ -107,7 +108,7 @@ ADR-048 ввел `_prompt` и `_promptTemplate`. Первый реализова
   "_prompt": {
     "version": 3,
     "status": "confirmed",
-    "ref": "prompts/cards/alena-choice.prompt.md",
+    "ref": "prompts/items/example-choice.prompt.md",
     "contentHash": "sha256:...",
     "origin": "user",
     "language": "ru",
@@ -127,7 +128,8 @@ ADR-048 ввел `_prompt` и `_promptTemplate`. Первый реализова
 - `language` - язык static residue.
 - `updatedAt` - время последнего подтвержденного изменения.
 
-JSON Schema будущего среза должна разрешать либо `staticText`, либо `ref + contentHash`, но не оба варианта одновременно.
+JSON Schema разрешает либо `staticText`, либо `ref + contentHash`, но не оба
+варианта одновременно.
 
 Полный compiled prompt не хранится. Он строится как:
 
@@ -151,15 +153,11 @@ Dynamic YAML projection (динамическая YAML-проекция) - эт�
 Пример:
 
 ```yaml
-Карточка выбора:
-  Текст на лицевой стороне: "Поговорить с Аленой"
-  Действие при выборе: "Заручиться поддержкой Алены и открыть следующий экран"
-  Изменения показателей:
-    Знания: +1
-    Доверие: +2
-    Энергия: +1
-    Статус: +1
-    Время: +1
+Интерактивный объект:
+  Видимый текст: "Example choice"
+  Действие при выборе: "Apply declared action"
+  Изменение показателя:
+    Значение: +1
 ```
 
 Сборщик проекции должен строить скрытую source map, которая не видна пользователю по умолчанию:
@@ -170,8 +168,8 @@ Dynamic YAML projection (динамическая YAML-проекция) - эт�
   "locale": "ru",
   "entries": [
     {
-      "displayPath": ["Карточка выбора", "Текст на лицевой стороне"],
-      "sourcePointer": "/root/logic/actions/0/params/frontText",
+      "displayPath": ["Интерактивный объект", "Видимый текст"],
+      "sourcePointer": "/root/content/items/0/label",
       "schemaPointer": "https://cubica.platform/schemas/game-authoring.v2.json#/definitions/gameAction/properties/params",
       "valueHash": "sha256:..."
     }
@@ -211,9 +209,9 @@ Field dictionary (словарь полей) - это authoring/editor metadata,
         "label": "Видимое название",
         "aliases": ["Название действия", "Подпись действия"]
       },
-      "semanticType:game.DecisionCard/params/frontText": {
-        "label": "Текст на лицевой стороне",
-        "aliases": ["Лицевая сторона", "Текст карточки"]
+      "semanticType:game.InteractiveItem/params/label": {
+        "label": "Видимый текст",
+        "aliases": ["Подпись", "Текст элемента"]
       }
     }
   }
@@ -245,12 +243,12 @@ Prompt draft builder (сборщик стартовой заготовки) до
 Пример результата:
 
 ```text
-Создать описание элемента на основе прототипа "Карточка выбора".
+Создать описание элемента на основе нейтрального прототипа.
 
 Текущее содержимое:
-- Заголовок: Принять решение
-- Действие: Заручиться поддержкой выбранного персонажа
-- Эффект: score +1
+- Заголовок: Example item
+- Действие: Apply declared action
+- Эффект: metric +1
 
 Дополните авторский смысл, методическую цель и ограничения поведения.
 ```
@@ -355,7 +353,8 @@ YAML принимается как presentation format только для promp
 
 - **Оставить `raw + normalized` навсегда.** Отклоняется как основной будущий путь: два текстовых поля одного смысла создают drift внутри самого `_prompt`.
 - **Хранить только `raw`.** Недостаточно: пользовательский ввод может быть неструктурированным и тяжелым для дальнейшего agent parsing.
-- **Хранить один полный `text`, а raw в journal.** Упрощает первый срез, но все равно дублирует динамическую структуру JSON внутри prompt.
+- **Хранить один полный `text`, а raw в journal.** Упрощает форму, но всё равно
+  дублирует динамическую структуру JSON внутри prompt.
 - **Всегда генерировать prompt из структуры.** Отклоняется: теряется невосстановимое авторское намерение.
 - **Показывать пользователю локализованную копию JSON.** Отклоняется: технические поля смешиваются с игровым смыслом и ухудшают reverse direction.
 - **Хранить русские labels на каждом элементе.** Отклоняется: справочные названия начнут расходиться между экземплярами.
@@ -385,15 +384,3 @@ YAML принимается как presentation format только для promp
 - reverse direction зависит от качества агента, поэтому обязателен `EditorChangeSet` с проверками;
 - covered pointers сначала будут неполными;
 - external Markdown потребует file-aware editor operations.
-
-## 15. Открытые вопросы реализации
-
-- Как назвать persisted поле: `staticText`, `residue`, `authorIntent` или `notes`.
-- Нужен ли `status: draft` в persisted `_prompt`, если unsaved draft живет только в UI.
-- Когда предлагать вынести inline prompt в Markdown.
-- Как переносить external prompt file при копировании элемента.
-- Какие first element families получить prototype-specific starter extractors.
-- Где хранить raw input history: `PatchJournalStep`, отдельный prompt journal или Git history достаточно.
-- Как мигрировать текущий ADR-048 first slice `raw/normalized` без поломки существующих fixtures.
-- Где физически должен жить editor manifest overlay для field dictionary.
-- Нужно ли показывать технические source pointers пользователю в advanced mode или держать их только в sidecar context.

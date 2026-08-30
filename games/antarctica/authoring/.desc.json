@@ -1,3 +1,3 @@
 {
-  "description": "Authoring manifests for Antarctica game and UI channels. These are the editable source files that compile into runtime game.manifest.json and ui.manifest.json via the ADR-030 authoring compiler."
+  ".": "Authoring manifests for Antarctica game and UI channels. These are the editable source files that compile into runtime game.manifest.json and ui.manifest.json via the ADR-030 authoring compiler."
 }

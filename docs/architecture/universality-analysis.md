@@ -1,10 +1,11 @@
 # Architecture Universality Analysis
 
 **Date:** 2026-05-08  
-**Status:** Analysis (not yet an ADR — decisions require separate ADR entries)
+**Status:** Historical analysis; superseded recommendations are retained as evidence
 
 ## Table of Contents
 
+- [Status Notice — Read Before Using](#status-notice--read-before-using)
 - [1. Executive Summary](#1-executive-summary)
 - [2. Current Architecture Overview](#2-current-architecture-overview)
 - [3. What Works Well](#3-what-works-well)
@@ -18,6 +19,31 @@
 - [Appendix C: Manifest Structure Summary](#appendix-c-manifest-structure-summary)
 
 ---
+
+## Status Notice — Read Before Using
+
+> [!IMPORTANT]
+> This document is a dated repository analysis from 2026-05-08. It is not a
+> current implementation guide or an architecture decision. ADR-084 and the
+> completed Game Intent → Cubica Mechanics IR migration supersede its action
+> dispatch recommendations and several observations labelled “Current”. Keep
+> the body and appendices as historical evidence; verify any file, count or
+> runtime statement against the current repository before acting on it.
+
+The most important superseded points are:
+
+| Historical observation or proposal | Current contract |
+|---|---|
+| Presenter resolves a UI command through `resolveActionId`, `commandMap` and default names | UI bindings target one exact published `actionId`; Presenter routes it without game-rule fallback or subject-state selection |
+| Action metadata is described as `deterministic` | An action has `binding.kind = "mechanics-plan"`, `planRef` and compiled definition/plan hashes |
+| Runtime mutation is inferred from plugin action conventions | Server executes schema-valid typed Mechanics IR over an explicitly declared `stateModel` |
+| Plugin resolution is allowed to determine the write command | Actor-scoped availability is projected by the server; the client or plugin cannot select internal `op`, plan or module |
+| An AI agent may need a separate mutation route | Agent Runtime selects one published Game Intent and uses the same authenticated command transaction |
+
+The historical recommendations about localization, generic rendering,
+game-specific leakage and separating data from presentation can still be useful
+as problem evidence. They do not override later ADRs, JSON Schemas or the
+current implementation.
 
 ## 1. Executive Summary
 

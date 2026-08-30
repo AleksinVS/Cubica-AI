@@ -20,8 +20,11 @@ export type {
   AuthoredInRepoOrigin,
   GameAssetEntry,
   RootGameAssets,
+  StylesheetAssetEntry,
   ThirdPartyOrigin
 } from "./generated/game-assets.ts";
+export type * from "./generated/mechanics-plan.ts";
+export type * from "./generated/game-intent.ts";
 
 /**
  * Generic game state type. Game plugins extend this with their own
@@ -30,260 +33,42 @@ export type {
  */
 export type GameState = Record<string, unknown>;
 
-export type GameManifestId = string;
-export type GameManifestVersion = string;
-export type GameManifestLocale = string;
-export type GameManifestPath = string;
+export type * from "./generated/game-manifest.ts";
+import type {
+  GameManifest,
+  GameManifestAgentFailurePolicy,
+  GameManifestExecutionMode,
+  GameManifestId,
+  GameManifestLocale,
+  GameManifestObjectModelMap,
+  GameManifestObjectFacetValue,
+  GameManifestPlayerConfig,
+  GameManifestTraining,
+  GameManifestVersion
+} from "./generated/game-manifest.ts";
+import type {
+  GameManifestActionParamsSchema,
+  GameManifestSessionRole
+} from "./generated/game-intent.ts";
 
+/** Repository or delivery reference to one published game bundle. */
 export interface ManifestBundleRef {
   gameId: GameManifestId;
   version?: GameManifestVersion;
   channel?: string;
 }
 
-export interface GameManifestDocumentRef {
-  path: GameManifestPath;
-  kind?: string;
-  title?: string;
-  note?: string;
-}
-
-export interface GameManifestDesignArtifactRef {
-  path: GameManifestPath;
-  kind: "mockup" | "wireframe" | "concept" | "storyboard" | "reference" | "asset" | string;
-  title?: string;
-  note?: string;
-}
-
-export interface GameManifestCompetency {
-  id: string;
-  name: string;
-  description?: string;
-}
-
-export interface GameManifestTraining {
-  format: "single" | "group" | "facilitated" | string;
-  duration?: {
-    minMinutes?: number;
-    maxMinutes?: number;
-  };
-  competencies?: Array<GameManifestCompetency>;
-}
-
-export interface GameManifestMeta {
-  id: GameManifestId;
-  version: GameManifestVersion;
-  name: string;
-  description: string;
-  author?: string;
-  schemaVersion: string;
-  minEngineVersion?: string;
-  tags?: Array<string>;
-  training?: GameManifestTraining;
-  references?: Array<GameManifestDocumentRef>;
-}
-
-export interface GameManifestPlayerConfig {
-  min: number;
-  max: number;
-}
-
-export interface GameManifestSettings {
-  mode: string;
-  locale: GameManifestLocale;
-}
-
-/** Ordered phases for a lightweight turn model; the first phase starts each turn. */
-export interface GameManifestTurnModel {
-  phases: Array<string>;
-}
-
-export interface GameManifestConfig {
-  players: GameManifestPlayerConfig;
-  settings: GameManifestSettings;
-  /** Facilitated sessions derive a trusted local facilitator role at creation. */
-  sessionMode?: "standard" | "facilitated";
-  turnModel?: GameManifestTurnModel;
-}
-
-export type GameManifestSessionRole = "player" | "facilitator" | "assistant" | "observer";
-
-/** Schema-owned semantic restriction for an otherwise inert string parameter. */
-export interface GameManifestCubicaReference {
-  kind: "object" | "action-resource";
-  collection: string;
-  network?: string;
-  allowedTypes?: Array<string>;
-  visibility: GameManifestObjectVisibility;
-}
-
-export interface GameManifestStringActionParamSchema {
-  type: "string";
-  maxLength: number;
-  minLength?: number;
-  enum?: Array<string>;
-  const?: string;
-  pattern?: string;
-  "x-cubica-ref"?: GameManifestCubicaReference;
-}
-
-export interface GameManifestNumericActionParamSchema {
-  type: "integer" | "number";
-  minimum?: number;
-  maximum?: number;
-  exclusiveMinimum?: number;
-  exclusiveMaximum?: number;
-  enum?: Array<number>;
-}
-
-export interface GameManifestBooleanActionParamSchema {
-  type: "boolean";
-}
-
-export type GameManifestActionParamPropertySchema =
-  | GameManifestStringActionParamSchema
-  | GameManifestNumericActionParamSchema
-  | GameManifestBooleanActionParamSchema;
-
-export interface GameManifestActionParamsSchema {
-  type: "object";
-  additionalProperties: false;
-  properties: Record<string, GameManifestActionParamPropertySchema>;
-  required?: Array<string>;
-}
-
-export interface GameManifestMetricBase {
-  /** Stable gameplay metric id used by state, effects and UI references. */
-  metricId: string;
-  /** Canonical player-facing metric label owned by the game manifest. */
-  label: string;
-  /** Canonical gameplay explanation, reusable by every player channel. */
-  description?: string;
-  /** Optional lookup aliases kept for compatibility with legacy logs or UI. */
-  aliases?: Array<string>;
-  /** Optional value format hint for presenter projections. */
-  format?: "number" | "integer" | "text" | string;
-}
-
-export interface GameManifestStateMetricDefinition extends GameManifestMetricBase {
-  kind: "state";
-  /** Dot path inside runtime state, for example public.metrics.time. */
-  statePath: string;
-}
-
-export interface GameManifestComputedMetricDefinition extends GameManifestMetricBase {
-  kind: "computed";
-  /**
-   * Declarative expression for a metric derived from authoritative state.
-   * The expression is evaluated by the player-facing projection and must not
-   * create an independently mutable runtime metric.
-   */
-  computed: {
-    expression: JsonLogicExpression;
-  };
-}
-
-export type GameManifestMetricDefinition =
-  | GameManifestStateMetricDefinition
-  | GameManifestComputedMetricDefinition;
-
-export interface GameManifestContentRules {
-  /** Optional game-owned day limit used by time-based training scenarios. */
-  dayLimit?: number;
-  [key: string]: unknown;
-}
-
-export interface GameManifestContentData {
-  /** Canonical metric catalog owned by the game manifest. */
-  metrics?: Array<GameManifestMetricDefinition>;
-  /** Game-owned rule constants exposed to declarative computed metrics. */
-  rules?: GameManifestContentRules;
-  [key: string]: unknown;
-}
-
-export interface GameManifestContent {
-  scenario?: GameManifestDocumentRef;
-  scripts?: Array<GameManifestDocumentRef>;
-  data?: GameManifestContentData;
-  design?: {
-    mockups?: Array<GameManifestDesignArtifactRef>;
-    references?: Array<GameManifestDesignArtifactRef>;
-  };
-  methodology?: {
-    participants?: GameManifestDocumentRef;
-    facilitators?: GameManifestDocumentRef;
-  };
-  /** Game-specific content is keyed by gameId. */
-  [key: string]: unknown;
-}
-
-export interface GameManifestEngineConfig {
-  systemPrompt: string;
-  modelConfig?: {
-    temperature?: number;
-    maxTokens?: number;
-    topP?: number;
-    seed?: number;
-  };
-}
-
-export type GameManifestExecutionMode = "deterministic" | "hybrid" | "ai-driven";
-export type GameManifestAgentFailurePolicy = "pause" | "retry" | "deterministicFallback" | "facilitatorTakeover";
-
-/**
- * Agent Runtime dependency declared by a game manifest.
- *
- * Agent Runtime means the server-side boundary that executes one AI agent turn.
- * The manifest declares only allowed Cubica capabilities and catalogs; provider
- * SDK details stay outside the manifest and outside player clients.
- */
-export interface GameManifestAgentRuntimeConfig {
-  agentId: string;
-  runtimeId?: string;
-  required: boolean;
-  allowedCapabilities: Array<string>;
-  allowedTools?: Array<string>;
-  surfaceCatalog: Array<string>;
-  failurePolicy: GameManifestAgentFailurePolicy;
-  deterministicFallbackActionId?: string;
-  contextExposurePolicy?: {
-    publicState: boolean;
-    secretState?: "none" | "role-scoped";
-    manifestProjection?: Array<string>;
-  };
-}
-
-/** A participant reference resolved by runtime, never converted into a client-controlled state path. */
+/** A participant reference resolved by runtime, never treated as a client-controlled state path. */
 export type GameManifestPlayerRef = string | { fromPath: string };
 
-/** Initial per-participant state expanded into `state.players.p1...pN`. */
-export interface GameManifestPlayersTemplate {
-  metrics: Record<string, number>;
-  flags?: Record<string, boolean>;
-  objects?: Record<string, unknown>;
-  status?: "active" | "eliminated";
-  visibility?: {
-    metrics?: "public" | "private";
-    flags?: "public" | "private";
-  };
-}
-
-export interface GameManifestState<TPublicState = Record<string, unknown>, TSecretState = Record<string, unknown>> {
-  public: TPublicState;
-  secret?: TSecretState;
-  playersTemplate?: GameManifestPlayersTemplate;
-}
-
-export type GameManifestObjectScope = "session";
-export type GameManifestObjectVisibility = "public" | "secret";
-export type GameManifestObjectFacetValue = string | number | boolean;
+/** Convenient public name for the state object generated from the manifest schema. */
+export type GameManifestState = GameManifest["state"];
 
 /**
  * Runtime shape of one object instance stored in session state.
  *
- * Gameplay object means an authoritative in-session entity such as a card,
- * resource, character or board cell. Static text stays in content data; mutable
- * data lives in facets and attributes.
+ * This is a derived state value rather than a manifest document definition;
+ * its facet values reuse the schema-generated manifest scalar contract.
  */
 export interface GameManifestObjectState {
   objectType: string;
@@ -294,526 +79,17 @@ export interface GameManifestObjectState {
 export type GameManifestObjectStateCollection = Record<string, GameManifestObjectState>;
 export type GameManifestObjectStateMap = Record<string, GameManifestObjectStateCollection>;
 
-export interface GameManifestObjectFacetModel {
-  initial: GameManifestObjectFacetValue;
-  values: Array<GameManifestObjectFacetValue>;
-}
-
-/**
- * Presenter rule for deriving UI-ready fields from content plus object state.
- *
- * `summaryFrom` and related fields name a source property in the merged object
- * data. The Presenter resolves the source and passes plain props to React.
- */
-export interface GameManifestObjectViewRule {
-  visible?: boolean;
-  interactive?: boolean;
-  titleFrom?: string;
-  summaryFrom?: string;
-  textFrom?: string;
-  visualState?: string;
-  actionIdFrom?: string;
-  selectLabelFrom?: string;
-  fields?: Record<string, string>;
-}
-
-export interface GameManifestObjectModel {
-  collection: string;
-  idField?: string;
-  scope: GameManifestObjectScope;
-  facets: Record<string, GameManifestObjectFacetModel>;
-  view?: {
-    facets?: Record<string, GameManifestObjectViewRule>;
-  };
-}
-
-export type GameManifestObjectModelMap = Record<string, GameManifestObjectModel>;
-
-export interface GameManifestCanonicalPoint {
-  x: number;
-  y: number;
-}
-
-export interface GameManifestTransportRegion {
-  id: string;
-  polygon: Array<GameManifestCanonicalPoint>;
-}
-
-/** Declarative collection and invariant bindings for one-edge vehicle movement. */
-export interface GameManifestTransportMovementModel {
-  vehicleCollection: string;
-  vehicleObjectTypes: Array<string>;
-  vehicleStateFacet?: string;
-  movableVehicleStates?: Array<GameManifestObjectFacetValue>;
-  locationAttribute: string;
-  actionPointsAttribute: string;
-  traversableNodeStates: Array<GameManifestObjectFacetValue>;
-  traversableEdgeStates: Array<GameManifestObjectFacetValue>;
-  capacityCollection: string;
-  capacityObjectTypes: Array<string>;
-  capacityLocationAttribute: string;
-  /** Optional explicit occupancy state contract for a separate capacity collection. */
-  capacityStateFacet?: string;
-  capacityOccupyingStates?: Array<GameManifestObjectFacetValue>;
-  maxVehiclesPerNode: number;
-  coupledCollection: string;
-  coupledObjectTypes: Array<string>;
-  coupledStateFacet?: string;
-  couplableVehicleStates?: Array<GameManifestObjectFacetValue>;
-  coupledVehicleAttribute: string;
-  coupledLocationAttribute: string;
-  /** Optional coupling contract; both fields are present together when attach/detach is enabled. */
-  compatibleCouplings?: Array<{
-    vehicleObjectType: string;
-    coupledObjectTypes: Array<string>;
-  }>;
-  maxCoupledVehicles?: number;
-}
-
-/** Declarative collection and attribute bindings for completing carried cargo. */
-export interface GameManifestTransportCargoDeliveryModel {
-  wagonCollection: string;
-  wagonObjectTypes: Array<string>;
-  cargoCollection: string;
-  cargoObjectTypes: Array<string>;
-  locationAttribute: string;
-  cargoReferenceAttribute: string;
-  attachedVehicleAttribute: string;
-  cargoDestinationAttribute: string;
-  /** Optional loading contract; all three fields are present together. */
-  cargoOriginAttribute?: string;
-  cargoStateFacet: string;
-  loadableCargoStates?: Array<GameManifestObjectFacetValue>;
-  loadedCargoState?: GameManifestObjectFacetValue;
-  deliverableCargoStates: Array<GameManifestObjectFacetValue>;
-  deliveredCargoState: GameManifestObjectFacetValue;
-  /** Optional shortest-route settlement contract; all six fields are present together. */
-  payoutAttribute?: string;
-  ownerParticipantIdAttribute?: string;
-  participantCollectionPath?: string;
-  participantBalanceAttribute?: string;
-  tariffPerEdge?: number;
-  settledRouteLengthAttribute?: string;
-}
-
+/** Derived ranking result used by presenters and tests, not a manifest input shape. */
 export interface GameManifestRankingGroup {
   id: string;
   participantIds: Array<string>;
 }
 
+/** Derived ranking source descriptor used by game-owned presentation helpers. */
 export interface GameManifestRankingAssetSource {
   collectionPath: string;
   ownerAttribute: string;
   valueAttribute: string;
-}
-
-/** Declarative binding between generic object collections and one transport graph. */
-export interface GameManifestTransportNetworkModel {
-  visibility: GameManifestObjectVisibility;
-  nodeCollection: string;
-  edgeCollection: string;
-  waypointObjectType: string;
-  edgeObjectType: string;
-  nodeStateFacet: string;
-  buildableNodeStates: Array<GameManifestObjectFacetValue>;
-  edgeStateFacet: string;
-  splittableEdgeStates: Array<GameManifestObjectFacetValue>;
-  builtEdgeState: GameManifestObjectFacetValue;
-  sequencePath: string;
-  roadCostPerRegionSegment: number;
-  waypointCost: number;
-  regions: Array<GameManifestTransportRegion>;
-  movement?: GameManifestTransportMovementModel;
-  cargoDelivery?: GameManifestTransportCargoDeliveryModel;
-}
-
-export type GameManifestTransportNetworkModelMap = Record<string, GameManifestTransportNetworkModel>;
-
-export type GameManifestNumericExpression =
-  | number
-  | { [operator: string]: JsonLogicExpression | Array<JsonLogicExpression> };
-
-export type GameManifestMetricEndpoint =
-  | { scope: "bank" }
-  | { scope: "state"; path: string }
-  | {
-      scope: "player";
-      /** Runtime-resolved participant; never interpreted as a client-owned state path. */
-      playerId: GameManifestPlayerRef;
-      metricId: string;
-    };
-
-export interface GameManifestConstructionPayment {
-  balancePath: string;
-  amount: GameManifestNumericExpression;
-}
-
-export interface GameManifestObjectStateGuard {
-  visibility?: GameManifestObjectVisibility;
-  collection: string;
-  objectId: string | number;
-  objectType?: string;
-  facets?: Record<string, GameManifestObjectFacetValue>;
-  attributes?: Record<string, unknown>;
-}
-
-/**
- * Links deterministic metadata back to the exact legacy artifact used for extraction.
- */
-export interface GameManifestDeterministicSourceRef {
-  sourceKind: "legacy-opening-card" | string;
-  sourceFile: GameManifestPath;
-  legacyCardId: string;
-  lineIndex?: number | string;
-  stepIndex?: number | string;
-}
-
-/**
- * Minimal guard shape for deterministic opening-card and team-selection slices.
- */
-export interface GameManifestDeterministicStateCondition {
-  path: string;
-  operator: "==" | "!=" | ">" | ">=" | "<" | "<=" | "exists" | "not_exists";
-  value?: unknown;
-}
-
-/**
- * Generic "how many items in a collection satisfy a field condition" check.
- *
- * Shared by deterministic effect conditions and deterministic guards so that
- * counting-with-threshold ("at least N of these ids have field == equals") is
- * one platform primitive rather than a game-specific guard shape. Reads
- * `path` as a JSON Pointer object, then for each id in `ids` reads `field`
- * (a `/`-separated sub-path relative to the item) and counts matches of
- * `equals` (default `true`); passes when the count reaches `countAtLeast`.
- */
-export interface GameManifestDeterministicCollectionCount {
-  path: string;
-  ids: Array<string>;
-  field: string;
-  equals?: unknown;
-  countAtLeast: number | string;
-}
-
-export interface GameManifestDeterministicGuard {
-  timeline?: {
-    line?: string;
-    stepIndex?: number | string;
-    canAdvance?: boolean | string;
-  };
-  /**
-   * Generic object-state guards. These check authoritative object state in
-   * state.public.objects or state.secret.objects without game-specific code.
-   */
-  object?: GameManifestObjectStateGuard | Array<GameManifestObjectStateGuard>;
-  stateConditions?: Array<GameManifestDeterministicStateCondition>;
-  /**
-   * Generic collection-count guard(s): the guard-side counterpart of the
-   * effect-condition `collectionCount`. `board` (Antarctica card resolution)
-   * migrated onto this generic form (ADR-041 §7.2).
-   */
-  collectionCount?: GameManifestDeterministicCollectionCount | Array<GameManifestDeterministicCollectionCount>;
-  jsonLogic?: JsonLogicExpression;
-  turn?: {
-    actorIsActive?: boolean;
-    phase?: string;
-  };
-  [key: string]: unknown;
-}
-
-/**
- * JsonLogic expression — a recursive JSON structure evaluated by json-logic-js.
- * JsonLogic is a small JSON-based rules format; operator arguments can be a
- * single value (`{"var":"public.metrics.pro"}`) or a list of nested values.
- */
-export type JsonLogicExpression =
-  | string
-  | number
-  | boolean
-  | null
-  | { [operator: string]: JsonLogicExpression | Array<JsonLogicExpression> };
-
-export type GameManifestDeterministicMetricOperator = ">" | "<" | "==";
-
-/**
- * Bounded metric comparison used by explicit deterministic card-local hooks.
- */
-export interface GameManifestDeterministicMetricCondition {
-  metricId: string;
-  operator: GameManifestDeterministicMetricOperator;
-  threshold: number | string;
-}
-
-/**
- * Проверяемое условие эффекта. Это не код игры, а небольшая JSON-форма,
- * которую `runtime-api` умеет вычислить по текущему состоянию.
- */
-export type GameManifestDeterministicEffectCondition =
-  | { readFrom?: "current" | "preAction"; metric: GameManifestDeterministicMetricCondition }
-  | { readFrom?: "current" | "preAction"; state: GameManifestDeterministicStateCondition }
-  | { readFrom?: "current" | "preAction"; jsonLogic: JsonLogicExpression }
-  | {
-      readFrom?: "current" | "preAction";
-      collectionCount: GameManifestDeterministicCollectionCount;
-    }
-  | { all: Array<GameManifestDeterministicEffectCondition> }
-  | { any: Array<GameManifestDeterministicEffectCondition> }
-  | { not: GameManifestDeterministicEffectCondition };
-
-export interface GameManifestDeterministicEffectBase {
-  /** Optional guard for this single effect. Omitted means "always apply". */
-  when?: GameManifestDeterministicEffectCondition;
-}
-
-/**
- * Проверяемый эффект манифеста: небольшая операция, которую `runtime-api`
- * умеет проверить и применить без запуска произвольного игрового кода.
- */
-export type GameManifestDeterministicEffect =
-  | (GameManifestDeterministicEffectBase & {
-      op: "runtime.server.request";
-    })
-  | (GameManifestDeterministicEffectBase & {
-      op: "timeline.set";
-      line?: string;
-      stepIndex?: number | string;
-      stageId?: string;
-      screenId?: string;
-      activeInfoId?: string;
-      canAdvance?: boolean | string;
-    })
-  | (GameManifestDeterministicEffectBase & {
-      op: "random.roll";
-      dice: string;
-      storePath: string;
-    })
-  | (GameManifestDeterministicEffectBase & {
-      op: "deck.shuffle";
-      deckId: string;
-      source: string;
-    })
-  | (GameManifestDeterministicEffectBase & {
-      op: "deck.draw";
-      deckId: string;
-      storePath: string;
-      onEmpty: "reshuffle-discard" | "fail";
-    })
-  | (GameManifestDeterministicEffectBase & {
-      op: "metric.add";
-      metricId: string;
-      delta: number | string | JsonLogicExpression;
-      scope?: "session" | "player";
-      playerId?: GameManifestPlayerRef;
-    })
-  | (GameManifestDeterministicEffectBase & {
-      op: "metric.set";
-      metricId: string;
-      value: GameManifestNumericExpression;
-      scope?: "session" | "player";
-      playerId?: GameManifestPlayerRef;
-    })
-  | (GameManifestDeterministicEffectBase & {
-      op: "turn.next";
-    })
-  | (GameManifestDeterministicEffectBase & {
-      op: "turn.phase.set";
-      phase: string;
-    })
-  | (GameManifestDeterministicEffectBase & {
-      op: "metric.transfer";
-      from: GameManifestMetricEndpoint;
-      to: GameManifestMetricEndpoint;
-      amount: GameManifestNumericExpression;
-      onInsufficient: "fail";
-    })
-  | (GameManifestDeterministicEffectBase & {
-      op: "transport.road.build";
-      networkId: string;
-      fromNodeParam: string;
-      toNodeParam: string;
-      payments: Array<GameManifestConstructionPayment>;
-    })
-  | (GameManifestDeterministicEffectBase & {
-      op: "transport.waypoint.build";
-      networkId: string;
-      edgeParam: string;
-      positionParam: string;
-      payments: Array<GameManifestConstructionPayment>;
-    })
-  | (GameManifestDeterministicEffectBase & {
-      op: "transport.vehicle.move";
-      networkId: string;
-      vehicleParam: string;
-      edgeParam: string;
-    })
-  | (GameManifestDeterministicEffectBase & {
-      op: "transport.vehicle.attach";
-      networkId: string;
-      vehicleParam: string;
-      coupledVehicleParams: Array<string>;
-    })
-  | (GameManifestDeterministicEffectBase & {
-      op: "transport.vehicle.detach";
-      networkId: string;
-      vehicleParam: string;
-      coupledVehicleParams: Array<string>;
-    })
-  | (GameManifestDeterministicEffectBase & {
-      op: "transport.cargo.load";
-      networkId: string;
-      wagonParam: string;
-      cargoParam: string;
-    })
-  | (GameManifestDeterministicEffectBase & {
-      op: "transport.cargo.deliver";
-      networkId: string;
-      wagonParam: string;
-      cargoParam: string;
-    })
-  | (GameManifestDeterministicEffectBase & {
-      op: "ranking.compute";
-      participantCollectionPath: string;
-      balanceAttribute: string;
-      groups: Array<GameManifestRankingGroup>;
-      assetSources: Array<GameManifestRankingAssetSource>;
-      storePath: string;
-    })
-  | (GameManifestDeterministicEffectBase & {
-      op: "state.patch";
-      patches: Array<GameManifestDeterministicStatePatch>;
-    })
-  | (GameManifestDeterministicEffectBase & {
-      op: "flag.set";
-      path: string;
-      values: Record<string, boolean>;
-    })
-  | (GameManifestDeterministicEffectBase & {
-      op: "counter.add";
-      path: string;
-      delta: number | string;
-    })
-  | (GameManifestDeterministicEffectBase & {
-      op: "collection.append";
-      path: string;
-      value: unknown;
-    })
-  | (GameManifestDeterministicEffectBase & {
-      op: "object.create";
-      visibility: GameManifestObjectVisibility;
-      collection: string;
-      objectId: string | number;
-      objectType: string;
-      facets?: Record<string, GameManifestObjectFacetValue>;
-      attributes?: Record<string, unknown>;
-    })
-  | (GameManifestDeterministicEffectBase & {
-      op: "object.state.set";
-      visibility: GameManifestObjectVisibility;
-      collection: string;
-      objectId: string | number;
-      facet: string;
-      value: GameManifestObjectFacetValue;
-    })
-  | (GameManifestDeterministicEffectBase & {
-      op: "object.attribute.patch";
-      visibility: GameManifestObjectVisibility;
-      collection: string;
-      objectId: string | number;
-      patches: Array<GameManifestObjectAttributePatch>;
-    })
-  | (GameManifestDeterministicEffectBase & {
-      op: "ui.panel.open";
-      panelId: string;
-    })
-  | (GameManifestDeterministicEffectBase & {
-      op: "ui.screen.open";
-      screenId: string;
-      layoutId?: string;
-    })
-  | (GameManifestDeterministicEffectBase & {
-      op: "log.append";
-      kind: string;
-      summary: string;
-      displayMode?: "card" | "summary" | "hidden" | string;
-      entityType?: "card" | "choice" | "info" | string;
-      stageId?: string;
-      cardId?: string;
-      memberId?: string;
-      backText?: string;
-      target?: "public.log";
-      /** If true, the runtime stores metric snapshots around this action. */
-      auditMetrics?: boolean;
-      data?: Record<string, unknown>;
-    });
-
-export interface GameManifestDeterministicStatePatch {
-  op: "add" | "replace" | "remove" | "increment" | "append";
-  path: string;
-  value?: unknown;
-}
-
-export interface GameManifestObjectAttributePatch {
-  op: "add" | "replace" | "remove" | "increment" | "append";
-  path: string;
-  value?: unknown;
-}
-
-export interface GameManifestDeterministicActionMetadata {
-  provenance?: Array<GameManifestDeterministicSourceRef>;
-  guard?: GameManifestDeterministicGuard;
-  effects?: Array<GameManifestDeterministicEffect>;
-}
-
-export interface GameManifestActionDefinition {
-  handlerType: "script" | "ui" | "ai" | "system" | "unknown" | string;
-  templateId?: string;
-  params?: Record<string, unknown>;
-  paramsSchema?: GameManifestActionParamsSchema;
-  allowedSessionRoles?: Array<GameManifestSessionRole>;
-  capabilityFamily?: string;
-  capability?: string;
-  function?: string;
-  displayName?: string;
-  description?: string;
-  tags?: Array<string>;
-  payloadSchema?: Record<string, unknown>;
-  deterministic?: GameManifestDeterministicActionMetadata;
-  /**
-   * Action-specific deterministic overrides merged on top of the resolved
-   * template. Used when a template-based action needs extra guard fields or
-   * effects without redefining the whole template.
-   *
-   * This mirrors `GameManifestActionDefinition.overrides` in
-   * `docs/architecture/schemas/game-manifest.schema.json` (JSON Schema is the
-   * single source of truth per ADR-025/ADR-056). The runtime reads it through
-   * this typed field instead of an untyped `raw.overrides` lookup.
-   */
-  overrides?: {
-    deterministic?: GameManifestDeterministicActionMetadata;
-  };
-  raw?: Record<string, unknown>;
-}
-
-export type GameManifestActionMap = Record<string, GameManifestActionDefinition>;
-
-export type GameManifestTemplateMap = Record<string, Partial<GameManifestActionDefinition>>;
-
-export interface GameManifest<
-  TPublicState = Record<string, unknown>,
-  TSecretState = Record<string, unknown>,
-  TActions extends GameManifestActionMap = GameManifestActionMap
-> {
-  meta: GameManifestMeta;
-  config: GameManifestConfig;
-  content?: GameManifestContent;
-  engine?: GameManifestEngineConfig;
-  executionMode?: GameManifestExecutionMode;
-  agentRuntime?: GameManifestAgentRuntimeConfig;
-  state: GameManifestState<TPublicState, TSecretState>;
-  actions: TActions;
-  objectModels?: GameManifestObjectModelMap;
-  networkModels?: GameManifestTransportNetworkModelMap;
-  templates?: GameManifestTemplateMap;
 }
 
 export interface ManifestBundle<
@@ -861,6 +137,27 @@ export type GameUiComponentType =
   | "interactiveBoardSurface";
 
 /**
+ * Layout policy selected declaratively by a UI screen or panel.
+ * `map-first` gives the spatial board the whole workspace while the remaining
+ * semantic zones are rendered as platform-owned layers above it.
+ */
+export type GameUiLayoutMode = "leftsidebar" | "topbar" | "map-first" | "auto";
+
+/**
+ * Stable semantic roles available to direct zones of a map-first screen.
+ * The role describes purpose, not CSS coordinates or stacking order; those
+ * remain owned by the delivery channel so the same manifest can adapt safely.
+ */
+export type GameUiWorkspaceSlot =
+  | "board"
+  | "status"
+  | "primary-panel"
+  | "context-panel"
+  | "action-tray"
+  | "floating-controls"
+  | "overlay";
+
+/**
  * Props for screenComponent in S1 layout.
  */
 export interface GameUiScreenComponentProps {
@@ -887,6 +184,11 @@ export interface GameUiScreenComponentProps {
  */
 export interface GameUiAreaComponentProps {
   cssClass?: string;
+  /**
+   * Semantic placement for a direct areaComponent child of a map-first screen
+   * root. It is invalid on nested areas and in all other layout modes.
+   */
+  workspaceSlot?: GameUiWorkspaceSlot;
   /**
    * Declarative topbar-layout CSS modifier(s) (ADR-055): applied by the generic
    * renderer only when the screen is in topbar layout mode. This replaces the
@@ -935,7 +237,7 @@ export interface GameUiGameVariableComponentProps {
 }
 
 /**
- * Props for cardComponent (interactive card) in S1.
+ * Props for cardComponent in manifest-driven interfaces.
  */
 export interface GameUiCardComponentProps {
   /** Simple text (backward compatible, single-field rendering). */
@@ -944,13 +246,20 @@ export interface GameUiCardComponentProps {
   title?: string;
   /** Card summary for multi-field rendering (front face text). */
   summary?: string;
-  /** Back (flipped/result) text shown after the card is selected. */
+  /**
+   * Public content of the back face. When this field is present and the
+   * presenter supplies `visualState: "resolved"`, the common renderer shows
+   * this content as the active face. This is presentation, not secret reveal.
+   */
   backText?: string;
   /** Chip labels displayed as metadata tags. */
   chips?: Array<string>;
   /** Label for the select/choose button inside the card. */
   selectLabel?: string;
-  /** Visual state for CSS class selection. */
+  /**
+   * Presenter-derived visual state. `"resolved"` selects `backText` when a
+   * back face exists; changing this value does not itself perform a game action.
+   */
   visualState?: "default" | "selected" | "locked" | "resolved" | string;
   /** Presenter-derived visibility flag. Components obey it but do not derive it. */
   visible?: boolean | string;
@@ -1046,9 +355,13 @@ export interface GameUiComponent<
    */
   if?: string;
   /**
-   * Component-specific options are optional in ui-manifest.schema.json.
-   * Structural containers may therefore omit this object entirely; renderers
-   * must treat the omission as an empty object.
+   * Structural containers may omit component-specific options; renderers must
+   * treat that omission as an empty object. The JSON Schema requires `props`
+   * and the minimum meaningful field for built-in leaf components (for
+   * example, `caption` for a button and `html` for rich text). This broad base
+   * interface stays optional because the concrete prop requirement depends on
+   * the discriminating `type` value and custom extension components remain
+   * schema-defined by their own contracts.
    */
   props?: TProps;
   children?: Array<GameUiComponent>;
@@ -1113,7 +426,7 @@ export interface GameUiScreenDefinition {
    * When specified, the renderer uses this directly instead of heuristic resolution.
    * When absent or "auto", the renderer falls back to convention-based layout selection.
    */
-  layoutMode?: "leftsidebar" | "topbar" | "auto";
+  layoutMode?: GameUiLayoutMode;
   /**
    * Design region annotations from mockup files.
    * Provides layout hints (direction, padding, gap, alignment) from design artifacts.
@@ -1138,7 +451,7 @@ export interface GameUiPanelDefinition {
    * Explicit layout mode for this panel. Most web panels use topbar because
    * they sit above the current game screen instead of replacing timeline state.
    */
-  layoutMode?: "leftsidebar" | "topbar" | "auto";
+  layoutMode?: GameUiLayoutMode;
   designRegions?: DesignRegion[];
   root: GameUiComponent;
 }
@@ -1204,6 +517,17 @@ export interface GamePlayerUiContent {
    */
   entryPoint: string;
   /**
+   * Design-time layout the game presents for this channel (ADR-093).
+   *
+   * Chosen by the game developer at UI design time. The screen router matches
+   * `screenRouting[].conditions.layoutMode` against this value to pick a layout
+   * variant screen (for example S1 topbar vs S1_LEFT leftsidebar), instead of
+   * reading any server-side UI state. The final layout of the selected screen is
+   * still driven by that screen's own `layoutMode`. When omitted the player
+   * treats the layout as `topbar`.
+   */
+  defaultLayoutMode?: GameUiLayoutMode;
+  /**
    * All available screen definitions keyed by screenId.
    * Covers S1 (opening entry) and bounded opening-tail screens:
    * - S1: opening entry screen with left-sidebar layout
@@ -1232,6 +556,16 @@ export interface GamePlayerUiContent {
   metricSpecs?: Array<MetricConfigSpec>;
   /** Design artifact registry from the UI manifest (for reference/metadata). */
   designArtifacts?: Record<string, GameUiDesignArtifactRef>;
+  /**
+   * Game-owned CSS assets to load for this channel (ADR-091), each referenced
+   * by the channel-neutral `asset:<id>` form. The player-web renderer resolves
+   * them through the game asset index and injects a `<link>` per entry after
+   * platform styles when the game mounts, removing them on unmount. Unknown ids
+   * fail closed (the stylesheet is not injected). The renderer stays
+   * game-agnostic: it loads whatever the manifest declares without knowing the
+   * game.
+   */
+  stylesheets?: Array<string>;
 }
 
 /**
@@ -1280,7 +614,7 @@ export interface ScreenRoutingEntry {
     /** Active info ID to match (e.g., "i19", "i19_1"). */
     activeInfoId?: string;
     /** Layout preference when this routing applies. */
-    layoutMode?: "leftsidebar" | "topbar";
+    layoutMode?: GameUiLayoutMode;
   };
 }
 
@@ -1338,6 +672,8 @@ export interface PlayerFacingContent {
 
 export interface PlayerFacingAgentRuntimeConfig {
   agentId?: string;
+  /** Published Game Intent the player channel sends for the first AI turn. */
+  initialActionId?: string;
   runtimeId?: string;
   required: boolean;
   failurePolicy: GameManifestAgentFailurePolicy;
@@ -1361,7 +697,11 @@ export interface PlayerWebPluginBundleReference {
   target: "player-web";
   scope: PlayerWebPluginBundleScope;
   contentHash: string;
-  /** Optional Subresource Integrity-style digest for published artifacts. */
+  /**
+   * SHA-256 digest verified over fetched bytes before browser execution.
+   * Required for published artifacts; preview may omit it only because the
+   * editor artifact is session-scoped and not yet published.
+   */
   integrity?: string;
   url: string;
 }

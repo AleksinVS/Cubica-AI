@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.0",
+  "schemaVersion": "1.1",
   "skills": [
     {
       "catalogName": "C_cubica",
@@ -8,6 +8,14 @@
       "capability": "orchestration.cubica",
       "activationMode": "explicit",
       "canonicalSkillPath": "skills/C_cubica/SKILL.md"
+    },
+    {
+      "catalogName": "C_codex-agent-routing",
+      "runtimeName": "codex-agent-routing",
+      "origin": "internal",
+      "capability": "orchestration.codex-routing",
+      "activationMode": "automatic",
+      "canonicalSkillPath": "skills/C_codex-agent-routing/SKILL.md"
     },
     {
       "catalogName": "C_external-skill-adapter",
@@ -57,7 +65,10 @@
       "origin": "internal",
       "capability": "ui.mockup-implementation",
       "activationMode": "automatic",
-      "canonicalSkillPath": "skills/C_ui-from-mockup/SKILL.md"
+      "canonicalSkillPath": "skills/C_ui-from-mockup/SKILL.md",
+      "requires": [
+        "C_ui-compare"
+      ]
     }
   ]
 }

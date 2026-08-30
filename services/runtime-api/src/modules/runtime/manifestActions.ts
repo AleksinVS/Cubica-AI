@@ -1,71 +1,64 @@
 import type { GameBundle } from "../content/manifestLoader.ts";
-import type { GameManifestActionMap } from "@cubica/contracts-manifest";
+import type { GameIntentCatalog } from "@cubica/contracts-manifest";
 import type { RuntimeManifestActionDefinition } from "@cubica/contracts-runtime";
+import { compareCanonicalIds } from "../mechanics/canonicalOrder.ts";
 
-type ManifestActionsShape = GameManifestActionMap | Record<string, unknown>;
+const readActionsObject = (bundle: GameBundle): GameIntentCatalog => bundle.manifest.actions;
 
-const readActionsObject = (bundle: GameBundle): ManifestActionsShape => {
-  const actions = bundle.manifest.actions;
-  if (!actions || typeof actions !== "object" || Array.isArray(actions)) {
-    return {};
-  }
-
-  return actions as ManifestActionsShape;
-};
+const actionDefinitionCache = new WeakMap<
+  GameBundle,
+  ReadonlyArray<RuntimeManifestActionDefinition>
+>();
 
 export function listManifestActionDefinitions(bundle: GameBundle): Array<RuntimeManifestActionDefinition> {
-  return Object.entries(readActionsObject(bundle)).map(([actionId, raw]) => {
-    const action = raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
-    const handlerType =
-      typeof action.handlerType === "string"
-        ? action.handlerType
-        : typeof action.handler_type === "string"
-          ? action.handler_type
-          : "unknown";
-    const functionName =
-      typeof action.function === "string"
-        ? action.function
-        : typeof action.functionName === "string"
-          ? action.functionName
-          : undefined;
-    const capabilityFamily =
-      typeof action.capabilityFamily === "string"
-        ? action.capabilityFamily
-        : typeof action.capability_family === "string"
-          ? action.capability_family
-          : undefined;
-    const capability =
-      typeof action.capability === "string"
-        ? action.capability
-        : typeof action.capability_name === "string"
-          ? action.capability_name
-          : undefined;
+  const cached = actionDefinitionCache.get(bundle);
+  if (cached) {
+    // Preserve the established mutable-array return contract without exposing
+    // the shared cached container. Its definition objects remain frozen.
+    return [...cached];
+  }
 
-    const templateId = typeof action.templateId === "string" ? action.templateId : undefined;
-    const params = isObjectRecord(action.params) ? action.params : undefined;
-    const paramsSchema = isObjectRecord(action.paramsSchema) ? action.paramsSchema : undefined;
-    const allowedSessionRoles = Array.isArray(action.allowedSessionRoles)
-      ? action.allowedSessionRoles.filter((role): role is "player" | "facilitator" | "assistant" | "observer" =>
-          role === "player" || role === "facilitator" || role === "assistant" || role === "observer")
-      : undefined;
+  // PostgreSQL JSONB and other manifest transports do not promise to retain
+  // author insertion order. Sorting at this trust boundary keeps every action
+  // consumer—including the agent catalog—independent of storage key order.
+  const definitions = Object.entries(readActionsObject(bundle))
+    .sort(([leftActionId], [rightActionId]) => compareCanonicalIds(leftActionId, rightActionId))
+    .map(([actionId, action]) => {
+      // Game Intent validation has already admitted this catalog. This single
+      // explicit unknown bridge exists only because the runtime contract keeps
+      // an immutable raw JSON view for hashing and diagnostics.
+      const raw = action as unknown as Record<string, unknown>;
+      const allowedSessionRoles = action.allowedSessionRoles
+        ? [...action.allowedSessionRoles]
+        : undefined;
+      if (allowedSessionRoles) {
+        Object.freeze(allowedSessionRoles);
+      }
+      const definition: RuntimeManifestActionDefinition = {
+        actionId,
+        // Current publication requires invocation. The fallback exists only
+        // for integrity-checked historic immutable bundles on exact receipt
+        // replay; old actions were exclusively external.
+        invocation: action.invocation ?? "external",
+        definitionHash: action.definitionHash,
+        binding: action.binding,
+        capabilityFamily: action.capabilityFamily,
+        capability: action.capability,
+        functionName: action.function,
+        paramsSchema: action.paramsSchema as unknown as Record<string, unknown> | undefined,
+        allowedSessionRoles,
+        raw
+      };
+      return Object.freeze(definition);
+    });
 
-    return {
-      actionId,
-      handlerType,
-      capabilityFamily,
-      capability,
-      functionName,
-      templateId,
-      params,
-      paramsSchema,
-      allowedSessionRoles,
-      raw: action
-    };
-  });
+  // The returned catalog is shared by all consumers of the same immutable
+  // bundle. Freezing both the array and its copied role lists prevents one
+  // consumer from corrupting ordering or authorization data for another.
+  const immutableDefinitions = Object.freeze(definitions);
+  actionDefinitionCache.set(bundle, immutableDefinitions);
+  return [...immutableDefinitions];
 }
-
-const isObjectRecord = (value: unknown): value is Record<string, unknown> =>
-  !!value && typeof value === "object" && !Array.isArray(value);
 
 export function getManifestActionDefinition(bundle: GameBundle, actionId: string) {
   return listManifestActionDefinitions(bundle).find((definition) => definition.actionId === actionId) ?? null;

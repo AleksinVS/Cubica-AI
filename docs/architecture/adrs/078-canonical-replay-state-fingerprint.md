@@ -1,6 +1,6 @@
 # ADR-078: Канонический отпечаток состояния для replay
 
-- **Статус:** Accepted
+**Status:** Accepted
 - **Дата:** 2026-07-12
 - **Автор:** Codex по подтверждённому решению PM
 - **Компоненты:** deterministic runtime, replay/eval, игровые сессии

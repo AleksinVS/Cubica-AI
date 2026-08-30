@@ -42,6 +42,9 @@ export const ru = {
   /** Panel button: move history */
   journal: "журнал ходов",
 
+  /** Download the server-authoritative public gameplay journal */
+  downloadJournal: "Скачать журнал",
+
   /** Panel button: hint */
   hint: "подсказка",
 
@@ -68,6 +71,62 @@ export const ru = {
 
   /** Journal overlay heading */
   journalHeading: "Журнал ходов",
+
+  /**
+   * Entry-point kicker shown above the "missing gameId" error title.
+   * "Точка входа" (entry point) is the generic Next.js route that boots any
+   * game; it stays game-agnostic on purpose (CLAUDE.md rule 10) and must not
+   * name a concrete game.
+   */
+  entryMissingGameIdKicker: "Точка входа плеера",
+
+  /** Entry-point error title shown when the URL has no ?gameId= query parameter */
+  entryMissingGameIdTitle: "Не указан идентификатор игры",
+
+  /** Entry-point error description explaining how to fix the URL */
+  entryMissingGameIdDescription:
+    "Добавьте параметр ?gameId=<идентификатор игры> к адресу страницы, чтобы запустить игру.",
+
+  sessionSetupKicker: "Настройка сессии",
+  sessionSetupTitle: "Кто участвует в игре?",
+  sessionSetupDescription: "Выберите состав участников перед запуском. Настройку нельзя изменить после создания сессии.",
+  participantCountLabel: "Количество участников",
+  participantModeLabel: "Тип участников",
+  sessionAccessModeLabel: "Доступ к сессии",
+  localSessionChoice: "Локальная игра",
+  privateInviteChoice: "Игра по приглашениям",
+  humanOnlyChoice: "Только люди",
+  agentSeatChoice: "Добавить ИИ-участника",
+  agentSeatCountLabel: "Количество ИИ-участников",
+  startSession: "Начать игру",
+  participantsTitle: "Участники",
+  humanParticipant: "Человек",
+  aiParticipant: "ИИ",
+  localParticipant: "Вы",
+  invitedParticipant: "Приглашён",
+  joinedParticipant: "Подключён",
+  waitingForTurn: "Ожидание хода другого участника",
+  privateInvitesTitle: "Приглашения",
+  copyInviteLink: "Скопировать ссылку",
+  recoverGuestSeat: "Восстановить приглашение",
+  recoveryLoading: "Подготовка...",
+  inviteCopied: "Ссылка скопирована",
+  recoveryError: "Не удалось подготовить приглашение.",
+  recoveryFallbackPrompt: "Скопируйте ссылку приглашения",
+  recoveryFallbackNotice: "Ссылка показана в отдельном окне; она не сохранена в браузере.",
+  agentControlKicker: "Управление ИИ-участником",
+  agentPausedTitle: "Ход ИИ-участника приостановлен",
+  agentPausedDescription: "Действия недоступны до восстановления сервиса. Повторите проверку состояния игры, когда сервис будет готов.",
+  agentTakeoverTitle: "Управление передано ведущему",
+  agentTakeoverDescription: "ИИ-участник не смог продолжить. Вы можете выполнить его обычное действие в этой сессии.",
+  agentControlIntegrityTitle: "Состояние участника не удалось проверить",
+  agentControlIntegrityDescription: "Действия заблокированы до получения корректного состояния от игрового сервера.",
+  agentControlReasons: {
+    runtimeUnavailable: "Сервис ИИ-агента недоступен.",
+    invalidAttemptLimit: "ИИ-агент исчерпал допустимые попытки.",
+    fallbackUnavailable: "Резервное действие недоступно.",
+    stepLimit: "Достигнут предел шагов ИИ-участника."
+  },
 } as const;
 
 export type LocaleKey = keyof typeof ru;

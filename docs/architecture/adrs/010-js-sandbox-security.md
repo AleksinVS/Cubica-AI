@@ -1,6 +1,6 @@
 # ADR-010: JS Sandbox Security Strategy
 
-- **Status**: Accepted
+**Status:** Accepted
 - **Date**: 2025-11-27
 - **Author**: AI Agent
 - **Context**: Hybrid Execution and Backend Security

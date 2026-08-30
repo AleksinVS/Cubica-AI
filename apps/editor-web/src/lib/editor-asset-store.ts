@@ -21,7 +21,7 @@
  * extension and usage counting matches asset references by convention (a string
  * field whose value points at a media file), never by a hardcoded game id.
  */
-import { mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
+import { lstat, mkdir, readFile, readdir, realpath, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { EditorRepositoryError, listAuthoringFiles, openAuthoringFile } from "./editor-repository";
@@ -72,6 +72,45 @@ function assetsDirectory(repoRoot: string, gameId: string): string {
     throw new EditorRepositoryError("Asset requests require a safe gameId.", 400);
   }
   return path.join(repoRoot, "games", gameId, "assets");
+}
+
+interface AssetBaseDirectory {
+  readonly lexicalPath: string;
+  readonly realPath: string;
+}
+
+/**
+ * Resolves the assets root before resolving an asset below it. A real path is
+ * the filesystem's physical location after symbolic links have been followed;
+ * comparing it prevents a harmless-looking path from escaping the game tree.
+ */
+async function getAssetBaseDirectory(repoRoot: string, gameId: string): Promise<AssetBaseDirectory> {
+  const lexicalPath = assetsDirectory(repoRoot, gameId);
+  const repoRealPath = await realpath(repoRoot);
+  const gameRealPath = await realpath(path.join(repoRoot, "games", gameId));
+  // The game segment is user-selected input. It must name this exact worktree
+  // child, not a repository symlink to another game or an external directory.
+  if (gameRealPath !== path.join(repoRealPath, "games", gameId)) {
+    throw new EditorRepositoryError("Game directory is not inside the canonical repository games root.", 400);
+  }
+  const realPath = await realpath(lexicalPath);
+  // The assets directory itself may be a symbolic link. Merely accepting any
+  // resolved descendant of the game would let `assets -> authoring` expose
+  // source manifests through the asset API, so the canonical root must be the
+  // literal `assets` child of the canonical game directory.
+  if (realPath !== path.join(gameRealPath, "assets")) {
+    throw new EditorRepositoryError("Assets directory is not the canonical game assets root.", 400);
+  }
+  return { lexicalPath, realPath };
+}
+
+function assertPathInside(targetPath: string, basePath: string, message: string): void {
+  const relativePath = path.relative(basePath, targetPath);
+  if (relativePath === "" || (!relativePath.startsWith("..") && !path.isAbsolute(relativePath))) {
+    return;
+  }
+
+  throw new EditorRepositoryError(message, 400);
 }
 
 function isMissingFileError(error: unknown): boolean {
@@ -167,14 +206,22 @@ export async function listGameAssets(input: {
   readonly gameId: string;
   readonly repoRoot: string;
 }): Promise<{ readonly assets: readonly GameAssetSummary[] }> {
-  const directory = assetsDirectory(input.repoRoot, input.gameId);
-  const relativePaths = await collectFilesRecursively(directory, "");
+  let directory: AssetBaseDirectory;
+  try {
+    directory = await getAssetBaseDirectory(input.repoRoot, input.gameId);
+  } catch (error) {
+    if (isMissingFileError(error)) {
+      return { assets: [] };
+    }
+    throw error;
+  }
+  const relativePaths = await collectFilesRecursively(directory.realPath, "");
   const usage = await buildUsageIndex(input.gameId, input.repoRoot);
 
   const assets: GameAssetSummary[] = [];
   for (const relativePath of relativePaths) {
     const name = relativePath.split("/").pop() ?? relativePath;
-    const fileStat = await stat(path.join(directory, relativePath)).catch(() => undefined);
+    const fileStat = await stat(path.join(directory.realPath, relativePath)).catch(() => undefined);
     if (fileStat === undefined || !fileStat.isFile()) {
       continue;
     }
@@ -213,11 +260,29 @@ export async function resolveGameAssetFile(input: {
   readonly repoRoot: string;
   readonly relativePath: string;
 }): Promise<{ readonly absolutePath: string; readonly type: GameAssetType; readonly name: string; readonly size: number }> {
-  const directory = assetsDirectory(input.repoRoot, input.gameId);
+  const directory = await getAssetBaseDirectory(input.repoRoot, input.gameId).catch((error: unknown) => {
+    if (isMissingFileError(error)) {
+      throw new EditorRepositoryError("Asset file was not found.", 404);
+    }
+    throw error;
+  });
   // Accept either a bare assets-relative path or the full project-relative form.
-  const stripped = input.relativePath.replace(new RegExp(`^games/${input.gameId}/assets/`, "u"), "");
+  const projectRelativePrefix = `games/${input.gameId}/assets/`;
+  const stripped = input.relativePath.startsWith(projectRelativePrefix)
+    ? input.relativePath.slice(projectRelativePrefix.length)
+    : input.relativePath;
   const relativePath = normalizeAssetRelativePath(stripped);
-  const absolutePath = path.join(directory, relativePath);
+  const lexicalPath = path.resolve(directory.lexicalPath, relativePath);
+  assertPathInside(lexicalPath, directory.lexicalPath, "Asset path escapes the assets directory.");
+
+  let absolutePath: string;
+  try {
+    absolutePath = await realpath(lexicalPath);
+  } catch {
+    throw new EditorRepositoryError("Asset file was not found.", 404);
+  }
+  assertPathInside(absolutePath, directory.realPath, "Resolved asset escapes the assets directory.");
+
   const fileStat = await stat(absolutePath).catch(() => undefined);
   if (fileStat === undefined || !fileStat.isFile()) {
     throw new EditorRepositoryError("Asset file was not found.", 404);
@@ -245,8 +310,11 @@ export interface WriteGameAssetInput {
  */
 export async function writeGameAsset(input: WriteGameAssetInput): Promise<GameAssetSummary> {
   const relativePath = normalizeAssetRelativePath(input.relativePath);
-  const directory = assetsDirectory(input.repoRoot, input.gameId);
-  const target = path.join(directory, relativePath);
+  const lexicalDirectory = assetsDirectory(input.repoRoot, input.gameId);
+  await mkdir(lexicalDirectory, { recursive: true });
+  const directory = await getAssetBaseDirectory(input.repoRoot, input.gameId);
+  const target = path.resolve(directory.lexicalPath, relativePath);
+  assertPathInside(target, directory.lexicalPath, "Asset path escapes the assets directory.");
 
   let bytes: Buffer;
   try {
@@ -259,6 +327,23 @@ export async function writeGameAsset(input: WriteGameAssetInput): Promise<GameAs
   }
 
   await mkdir(path.dirname(target), { recursive: true });
+  const parentRealPath = await realpath(path.dirname(target));
+  assertPathInside(parentRealPath, directory.realPath, "Asset directory escapes the assets root.");
+
+  try {
+    const targetRealPath = await realpath(target);
+    assertPathInside(targetRealPath, directory.realPath, "Resolved asset escapes the assets directory.");
+  } catch (error) {
+    if (!isMissingFileError(error)) {
+      throw error;
+    }
+    // A dangling link has no real target, but writeFile would create that target
+    // wherever the link points. Treat it as an escaped path rather than writing.
+    const targetMetadata = await lstat(target).catch(() => undefined);
+    if (targetMetadata?.isSymbolicLink()) {
+      throw new EditorRepositoryError("Resolved asset escapes the assets directory.", 400);
+    }
+  }
   await writeFile(target, bytes);
 
   const name = relativePath.split("/").pop() ?? relativePath;

@@ -1,24 +1,38 @@
 /**
- * Replay-stable pseudo-random numbers for deterministic game sessions.
+ * Command-local server randomness for neutral Mechanics operations.
  *
- * The session stores only the algorithm id, a 128-bit seed and the number of
- * consumed 32-bit values. Rebuilding the internal words from that tuple makes
- * a saved snapshot sufficient for exact replay and avoids hidden process state.
+ * Production uses Node's cryptographic integer source and deliberately keeps
+ * no generator state in the game session. Tests may inject a bounded sampler
+ * through the internal input object; this is a process-local test seam, not a
+ * session profile or a public gameplay capability.
  */
-import { randomBytes } from "node:crypto";
-
-export const SESSION_RANDOM_ALGORITHM = "xoshiro128ss-v1" as const;
-
-export interface SessionRandomState {
-  alg: typeof SESSION_RANDOM_ALGORITHM;
-  seed: string;
-  counter: number;
-}
+import { randomInt as cryptoRandomInt } from "node:crypto";
 
 export interface DiceRollResult {
   values: Array<number>;
   total: number;
   isDouble: boolean;
+}
+
+/** Result of one unbiased choice from a bounded list. */
+export interface SessionRandomChoice<T> {
+  value: T;
+  index: number;
+}
+
+/** Internal source used by every neutral random Mechanics operation. */
+export interface SessionRandomProvider {
+  rollDice(purposeId: string, dice: string): DiceRollResult;
+  shuffle<T>(purposeId: string, input: ReadonlyArray<T>): Array<T>;
+  choose<T>(purposeId: string, input: ReadonlyArray<T>): SessionRandomChoice<T>;
+}
+
+export interface SessionRandomProviderInput {
+  /**
+   * Internal test seam. Production omits it and uses `node:crypto.randomInt`.
+   * The callback must return an integer in `[0, exclusiveUpperBound)`.
+   */
+  sampleRange?: (exclusiveUpperBound: number) => number;
 }
 
 interface ParsedDice {
@@ -27,144 +41,83 @@ interface ParsedDice {
 }
 
 const UINT32_RANGE = 0x1_0000_0000;
-const SEED_PATTERN = /^[0-9a-f]{32}$/u;
 const DICE_PATTERN = /^([1-9][0-9]?)d([1-9][0-9]{0,3})$/u;
+const PURPOSE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/u;
+const FORBIDDEN_RECORD_KEYS = new Set(["__proto__", "constructor", "prototype"]);
 
-const rotateLeft = (value: number, shift: number): number =>
-  ((value << shift) | (value >>> (32 - shift))) >>> 0;
-
-/** One normative xoshiro128** step; mutates the four-word working state. */
-const nextUint32 = (words: Array<number>): number => {
-  const result = Math.imul(rotateLeft(Math.imul(words[1], 5) >>> 0, 7), 9) >>> 0;
-  const t = (words[1] << 9) >>> 0;
-
-  words[2] = (words[2] ^ words[0]) >>> 0;
-  words[3] = (words[3] ^ words[1]) >>> 0;
-  words[1] = (words[1] ^ words[2]) >>> 0;
-  words[0] = (words[0] ^ words[3]) >>> 0;
-  words[2] = (words[2] ^ t) >>> 0;
-  words[3] = rotateLeft(words[3], 11);
-
-  return result;
-};
-
-const parseSeed = (seed: string): Array<number> => {
-  if (!SEED_PATTERN.test(seed)) {
-    throw new Error("Session random seed must contain exactly 32 lowercase hexadecimal characters");
+/** Validate the authored purpose identifier without giving it persistence semantics. */
+export const assertSessionRandomPurposeId = (purposeId: string): void => {
+  if (
+    !PURPOSE_ID_PATTERN.test(purposeId) ||
+    FORBIDDEN_RECORD_KEYS.has(purposeId)
+  ) {
+    throw new Error("Session random purpose id is invalid");
   }
-
-  const words = [0, 8, 16, 24].map((offset) => Number.parseInt(seed.slice(offset, offset + 8), 16) >>> 0);
-  // xoshiro has one forbidden all-zero state. The fixed replacement is part of
-  // the public replay contract, so changing it would require a new algorithm id.
-  return words.every((word) => word === 0) ? [1, 2, 3, 4] : words;
 };
 
 const parseDice = (dice: string): ParsedDice => {
   const match = DICE_PATTERN.exec(dice);
-  if (!match) {
-    throw new Error(`Dice notation "${dice}" must use NdM`);
-  }
-
+  if (!match) throw new Error(`Invalid dice notation "${dice}"; expected NdM`);
   const count = Number(match[1]);
   const sides = Number(match[2]);
-  if (!Number.isSafeInteger(count) || count < 1 || count > 99) {
-    throw new Error("Dice count must be an integer from 1 to 99");
-  }
-  if (!Number.isSafeInteger(sides) || sides < 2 || sides > 1000) {
-    throw new Error("Dice side count must be an integer from 2 to 1000");
-  }
-
+  if (count < 1 || count > 99) throw new Error("Dice count must be between 1 and 99");
+  if (sides < 2 || sides > 1000) throw new Error("Dice side count must be between 2 and 1000");
   return { count, sides };
 };
 
-const assertRandomState = (state: SessionRandomState) => {
-  if (state.alg !== SESSION_RANDOM_ALGORITHM) {
-    throw new Error(`Unsupported session random algorithm "${String(state.alg)}"`);
-  }
-  if (!Number.isSafeInteger(state.counter) || state.counter < 0) {
-    throw new Error("Session random counter must be a non-negative safe integer");
-  }
-};
-
 /**
- * Rebuild the deterministic generator at the persisted counter and expose one
- * unbiased integer sampler. Keeping this logic shared prevents dice and deck
- * operations from advancing the replay counter differently.
+ * Build a fresh command-local provider.
+ *
+ * `crypto.randomInt(max)` performs unbiased bounded sampling. A failed command
+ * may consume system entropy, but it leaves no accepted game result; a retry
+ * is therefore allowed to choose another value until one transaction commits.
  */
-const createRangeSampler = (state: SessionRandomState) => {
-  assertRandomState(state);
-  const words = parseSeed(state.seed);
-  for (let index = 0; index < state.counter; index += 1) {
-    nextUint32(words);
-  }
+export const createSessionRandomProvider = (
+  input: SessionRandomProviderInput = {}
+): SessionRandomProvider => {
+  const sampleRange = input.sampleRange ?? ((range: number) => cryptoRandomInt(range));
 
-  let counter = state.counter;
-  const sample = (range: number): number => {
+  const sample = (purposeId: string, range: number): number => {
+    assertSessionRandomPurposeId(purposeId);
     if (!Number.isSafeInteger(range) || range < 1 || range > UINT32_RANGE) {
       throw new Error("Random range must be a positive safe integer no larger than 2^32");
     }
-    const limit = Math.floor(UINT32_RANGE / range) * range;
-    while (true) {
-      const value = nextUint32(words);
-      counter += 1;
-      if (value < limit) return value % range;
+    const value = sampleRange(range);
+    if (!Number.isSafeInteger(value) || value < 0 || value >= range) {
+      throw new Error("Server random source returned a value outside its requested range");
+    }
+    return value;
+  };
+
+  return {
+    rollDice(purposeId, dice) {
+      const parsed = parseDice(dice);
+      const values = Array.from(
+        { length: parsed.count },
+        () => sample(purposeId, parsed.sides) + 1
+      );
+      return {
+        values,
+        total: values.reduce((sum, value) => sum + value, 0),
+        isDouble: values.length === 2 && values[0] === values[1]
+      };
+    },
+    shuffle<T>(purposeId: string, inputValues: ReadonlyArray<T>): Array<T> {
+      assertSessionRandomPurposeId(purposeId);
+      const values = [...inputValues];
+      for (let index = values.length - 1; index > 0; index -= 1) {
+        const swapIndex = sample(purposeId, index + 1);
+        [values[index], values[swapIndex]] = [values[swapIndex], values[index]];
+      }
+      return values;
+    },
+    choose<T>(purposeId: string, inputValues: ReadonlyArray<T>): SessionRandomChoice<T> {
+      assertSessionRandomPurposeId(purposeId);
+      if (inputValues.length === 0) {
+        throw new Error("Cannot choose a server-random value from an empty list");
+      }
+      const index = inputValues.length === 1 ? 0 : sample(purposeId, inputValues.length);
+      return { value: inputValues[index], index };
     }
   };
-
-  return {
-    sample,
-    snapshot: (): SessionRandomState => ({ alg: state.alg, seed: state.seed, counter })
-  };
-};
-
-/** Create a fresh session state; tests may pass a seed to obtain a fixed replay. */
-export const createSessionRandomState = (seed = randomBytes(16).toString("hex")): SessionRandomState => {
-  parseSeed(seed);
-  return {
-    alg: SESSION_RANDOM_ALGORITHM,
-    seed,
-    counter: 0
-  };
-};
-
-/**
- * Roll dice without modulo bias and return the next persisted random state.
- * Every rejected sample still advances `counter`, which is essential for replay.
- */
-export const rollSessionDice = (
-  state: SessionRandomState,
-  dice: string
-): { random: SessionRandomState; result: DiceRollResult } => {
-  const parsed = parseDice(dice);
-  const sampler = createRangeSampler(state);
-  const sampleSide = (): number => {
-    return sampler.sample(parsed.sides) + 1;
-  };
-
-  const values = Array.from({ length: parsed.count }, sampleSide);
-  return {
-    random: sampler.snapshot(),
-    result: {
-      values,
-      total: values.reduce((sum, value) => sum + value, 0),
-      isDouble: values.length === 2 && values[0] === values[1]
-    }
-  };
-};
-
-/**
- * Fisher–Yates shuffle backed by the persisted session PRNG. The input is not
- * mutated, and every chosen index advances the same replay counter as dice.
- */
-export const shuffleSessionValues = <T>(
-  state: SessionRandomState,
-  input: ReadonlyArray<T>
-): { random: SessionRandomState; values: Array<T> } => {
-  const sampler = createRangeSampler(state);
-  const values = [...input];
-  for (let index = values.length - 1; index > 0; index -= 1) {
-    const swapIndex = sampler.sample(index + 1);
-    [values[index], values[swapIndex]] = [values[swapIndex], values[index]];
-  }
-  return { random: sampler.snapshot(), values };
 };

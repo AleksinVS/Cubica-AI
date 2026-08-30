@@ -10,317 +10,52 @@
  * CI (scripts/ci/validate-contracts-schema-parity.js) fails if this file
  * drifts from the schema. Type/field changes must be made in the schema.
  */
+import type {GameIntentCatalog} from "./game-intent.ts";
+import type {CubicaMechanicsIRV1Alpha1} from "./mechanics-plan.ts";
+
 
 /**
  * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
- * via the `definition` "GameManifest".
- *
- * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
- * via the `definition` "RootGameManifest".
+ * via the `definition` "GameManifestConfig".
  */
-export type GameManifest = {
+export type GameManifestConfig = {
   [k: string]: unknown;
 } & {
-  actions: GameManifestActionMap;
-  config: GameManifestConfig;
-  content?: GameManifestContent;
-  engine?: GameManifestEngineConfig;
-  executionMode?: GameManifestExecutionMode;
-  agentRuntime?: GameManifestAgentRuntimeConfig;
-  meta: GameManifestMeta;
-  objectModels?: GameManifestObjectModelMap;
-  networkModels?: GameManifestTransportNetworkModelMap;
-  state: GameManifestState3Calias942026824741387426494202682402184393Cstring2Cunknown3E2Calias942026824741387426494202682402184393Cstring2Cunknown3E3E;
+  players: GameManifestPlayerConfig;
+  settings: GameManifestSettings;
+  sessionMode?: "standard" | "facilitated";
   /**
-   * Reusable deterministic logic templates. Actions reference these via templateId.
+   * Explicit publication gate. False prevents new runtime sessions while authoring content is incomplete.
    */
-  templates?: {
-    [k: string]: GameManifestTemplateDefinition;
-  };
+  runtimeReady?: boolean;
+  /**
+   * Bounded internal reasons explaining why runtimeReady is false.
+   *
+   * @minItems 1
+   * @maxItems 64
+   */
+  runtimeBlockers?: [string, ...string[]];
+  turnModel?: GameManifestTurnModel;
 };
 /**
- * A schema-validated runtime effect. Effects are data, not executable plugin code.
+ * Bounded identifier safe for use as an own object key or JSON Pointer segment.
  *
  * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
- * via the `definition` "GameManifestDeterministicEffect".
+ * via the `definition` "GameManifestSafeIdentifier".
  */
-export type GameManifestDeterministicEffect =
-  | {
-      op: "runtime.server.request";
-      when?: GameManifestDeterministicEffectCondition;
-    }
-  | {
-      [k: string]: unknown;
-    }
-  | {
-      dice: string;
-      op: "random.roll";
-      storePath: string;
-      when?: GameManifestDeterministicEffectCondition;
-    }
-  | {
-      op: "deck.shuffle";
-      deckId: GameManifestSafeIdentifier;
-      source: string;
-      when?: GameManifestDeterministicEffectCondition;
-    }
-  | {
-      op: "deck.draw";
-      deckId: GameManifestSafeIdentifier;
-      storePath: string;
-      onEmpty: "reshuffle-discard" | "fail";
-      when?: GameManifestDeterministicEffectCondition;
-    }
-  | {
-      op: "turn.next";
-      when?: GameManifestDeterministicEffectCondition;
-    }
-  | {
-      op: "turn.phase.set";
-      phase: string;
-      when?: GameManifestDeterministicEffectCondition;
-    }
-  | {
-      op: "metric.transfer";
-      from: GameManifestMetricEndpoint;
-      to: GameManifestMetricEndpoint;
-      amount: GameManifestNumericExpression;
-      onInsufficient: "fail";
-      when?: GameManifestDeterministicEffectCondition;
-    }
-  | {
-      op: "transport.road.build";
-      networkId: string;
-      fromNodeParam: string;
-      toNodeParam: string;
-      payments: GameManifestConstructionPayment[];
-      when?: GameManifestDeterministicEffectCondition;
-    }
-  | {
-      op: "transport.waypoint.build";
-      networkId: string;
-      edgeParam: string;
-      positionParam: string;
-      payments: GameManifestConstructionPayment[];
-      when?: GameManifestDeterministicEffectCondition;
-    }
-  | {
-      op: "transport.vehicle.move";
-      networkId: string;
-      vehicleParam: string;
-      edgeParam: string;
-      when?: GameManifestDeterministicEffectCondition;
-    }
-  | {
-      op: "transport.vehicle.attach";
-      networkId: string;
-      vehicleParam: string;
-      /**
-       * @minItems 1
-       */
-      coupledVehicleParams: [GameManifestSafeIdentifier, ...GameManifestSafeIdentifier[]];
-      when?: GameManifestDeterministicEffectCondition;
-    }
-  | {
-      op: "transport.vehicle.detach";
-      networkId: string;
-      vehicleParam: string;
-      /**
-       * @minItems 1
-       */
-      coupledVehicleParams: [GameManifestSafeIdentifier, ...GameManifestSafeIdentifier[]];
-      when?: GameManifestDeterministicEffectCondition;
-    }
-  | {
-      op: "transport.cargo.load";
-      networkId: string;
-      wagonParam: string;
-      cargoParam: string;
-      when?: GameManifestDeterministicEffectCondition;
-    }
-  | {
-      op: "transport.cargo.deliver";
-      networkId: string;
-      wagonParam: string;
-      cargoParam: string;
-      when?: GameManifestDeterministicEffectCondition;
-    }
-  | {
-      op: "ranking.compute";
-      participantCollectionPath: string;
-      balanceAttribute: string;
-      /**
-       * @minItems 1
-       */
-      groups: [
-        {
-          id: GameManifestSafeIdentifier;
-          /**
-           * @minItems 1
-           */
-          participantIds: [GameManifestSafeIdentifier, ...GameManifestSafeIdentifier[]];
-        },
-        ...{
-          id: GameManifestSafeIdentifier;
-          /**
-           * @minItems 1
-           */
-          participantIds: [GameManifestSafeIdentifier, ...GameManifestSafeIdentifier[]];
-        }[]
-      ];
-      assetSources: {
-        collectionPath: string;
-        ownerAttribute: string;
-        valueAttribute: string;
-      }[];
-      storePath: string;
-      when?: GameManifestDeterministicEffectCondition;
-    }
-  | {
-      op: "state.patch";
-      /**
-       * @minItems 1
-       */
-      patches: [GameManifestDeterministicStatePatch, ...GameManifestDeterministicStatePatch[]];
-      when?: GameManifestDeterministicEffectCondition;
-    }
-  | {
-      op: "flag.set";
-      path: string;
-      values: {
-        [k: string]: boolean;
-      };
-      when?: GameManifestDeterministicEffectCondition;
-    }
-  | {
-      delta: number | string;
-      op: "counter.add";
-      path: string;
-      when?: GameManifestDeterministicEffectCondition;
-    }
-  | {
-      op: "collection.append";
-      path: string;
-      value: unknown;
-      when?: GameManifestDeterministicEffectCondition;
-    }
-  | {
-      attributes?: {
-        [k: string]: unknown;
-      };
-      collection: string;
-      facets?: {
-        [k: string]: GameManifestObjectFacetValue;
-      };
-      objectId: string | number;
-      objectType: string;
-      op: "object.create";
-      visibility: GameManifestObjectVisibility;
-      when?: GameManifestDeterministicEffectCondition;
-    }
-  | {
-      collection: string;
-      facet: string;
-      objectId: string | number;
-      op: "object.state.set";
-      value: GameManifestObjectFacetValue;
-      visibility: GameManifestObjectVisibility;
-      when?: GameManifestDeterministicEffectCondition;
-    }
-  | {
-      collection: string;
-      objectId: string | number;
-      op: "object.attribute.patch";
-      /**
-       * @minItems 1
-       */
-      patches: [GameManifestObjectAttributePatch, ...GameManifestObjectAttributePatch[]];
-      visibility: GameManifestObjectVisibility;
-      when?: GameManifestDeterministicEffectCondition;
-    }
-  | {
-      op: "ui.panel.open";
-      panelId: string;
-      when?: GameManifestDeterministicEffectCondition;
-    }
-  | {
-      layoutId?: string;
-      op: "ui.screen.open";
-      screenId: string;
-      when?: GameManifestDeterministicEffectCondition;
-    }
-  | {
-      backText?: string;
-      cardId?: string;
-      data?: {
-        [k: string]: unknown;
-      };
-      displayMode?: string;
-      entityType?: string;
-      kind: string;
-      memberId?: string;
-      op: "log.append";
-      stageId?: string;
-      summary: string;
-      target?: "public.log";
-      when?: GameManifestDeterministicEffectCondition;
-      /**
-       * If true, runtime-api stores metric snapshots before and after this action in the appended log entry.
-       */
-      auditMetrics?: boolean;
-    };
+export type GameManifestSafeIdentifier = string;
 /**
- * A schema-validated condition for a single manifest effect. Conditions are data, not executable game code.
+ * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
+ * via the `definition` "GameManifestLocale".
+ */
+export type GameManifestLocale = string;
+/**
+ * Canonical metric metadata. State metrics read authoritative state; computed metrics are player-facing derived values.
  *
  * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
- * via the `definition` "GameManifestDeterministicEffectCondition".
+ * via the `definition` "GameManifestMetricDefinition".
  */
-export type GameManifestDeterministicEffectCondition =
-  | {
-      metric: GameManifestDeterministicMetricCondition;
-      readFrom?: "current" | "preAction";
-    }
-  | {
-      state: GameManifestDeterministicStateCondition;
-      readFrom?: "current" | "preAction";
-    }
-  | {
-      collectionCount: {
-        countAtLeast: number | string;
-        equals?: unknown;
-        field: string;
-        /**
-         * @minItems 1
-         */
-        ids: [string, ...string[]];
-        path: string;
-      };
-      readFrom?: "current" | "preAction";
-    }
-  | {
-      jsonLogic: JsonLogicExpression;
-      readFrom?: "current" | "preAction";
-    }
-  | {
-      /**
-       * @minItems 1
-       */
-      all: [GameManifestDeterministicEffectCondition, ...GameManifestDeterministicEffectCondition[]];
-    }
-  | {
-      /**
-       * @minItems 1
-       */
-      any: [GameManifestDeterministicEffectCondition, ...GameManifestDeterministicEffectCondition[]];
-    }
-  | {
-      not: GameManifestDeterministicEffectCondition;
-    };
-/**
- * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
- * via the `definition` "GameManifestDeterministicMetricOperator".
- */
-export type GameManifestDeterministicMetricOperator = ">" | "<" | "==";
+export type GameManifestMetricDefinition = GameManifestStateMetricDefinition | GameManifestComputedMetricDefinition;
 /**
  * Recursive JsonLogic expression. Operators map either to one nested expression, for example {"var":"public.metrics.pro"}, or to an array of nested expressions.
  *
@@ -336,104 +71,10 @@ export type JsonLogicExpression =
       [k: string]: JsonLogicExpression | JsonLogicExpression[];
     };
 /**
- * Bounded identifier safe for use as an own object key or JSON Pointer segment.
- *
- * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
- * via the `definition` "GameManifestSafeIdentifier".
- */
-export type GameManifestSafeIdentifier = string;
-/**
- * Explicitly scoped endpoint for transfers between the bank, shared state, and participant balances.
- *
- * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
- * via the `definition` "GameManifestMetricEndpoint".
- */
-export type GameManifestMetricEndpoint =
-  | {
-      scope: "bank";
-    }
-  | {
-      scope: "state";
-      path: string;
-    }
-  | {
-      scope: "player";
-      playerId: GameManifestPlayerRef;
-      metricId: string;
-    };
-/**
- * A literal player id, a trusted actor token, or a public-state pointer that resolves to a player id.
- *
- * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
- * via the `definition` "GameManifestPlayerRef".
- */
-export type GameManifestPlayerRef =
-  | string
-  | ("{{actor}}" | "{{activePlayer}}")
-  | {
-      fromPath: string;
-    };
-/**
- * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
- * via the `definition` "GameManifestNumericExpression".
- */
-export type GameManifestNumericExpression = number | JsonLogicExpression;
-/**
- * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
- * via the `definition` "GameManifestObjectFacetValue".
- */
-export type GameManifestObjectFacetValue = string | number | boolean;
-/**
- * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
- * via the `definition` "GameManifestObjectVisibility".
- */
-export type GameManifestObjectVisibility = "public" | "secret";
-/**
  * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
  * via the `definition` "GameManifestPath".
  */
 export type GameManifestPath = string;
-/**
- * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
- * via the `definition` "GameManifestSessionRole".
- */
-export type GameManifestSessionRole = "player" | "facilitator" | "assistant" | "observer";
-/**
- * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
- * via the `definition` "GameManifestActionParamPropertySchema".
- */
-export type GameManifestActionParamPropertySchema =
-  GameManifestStringActionParamSchema | GameManifestNumericActionParamSchema | GameManifestBooleanActionParamSchema;
-/**
- * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
- * via the `definition` "GameManifestStringActionParamSchema".
- */
-export type GameManifestStringActionParamSchema = {
-  [k: string]: unknown;
-} & {
-  type: "string";
-  minLength?: number;
-  maxLength: number;
-  /**
-   * @minItems 1
-   */
-  enum?: [string, ...string[]];
-  const?: string;
-  pattern?: string;
-  "x-cubica-ref"?: GameManifestCubicaReference;
-};
-/**
- * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
- * via the `definition` "GameManifestLocale".
- */
-export type GameManifestLocale = string;
-/**
- * Canonical metric metadata. State metrics read authoritative state; computed metrics are player-facing derived values.
- *
- * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
- * via the `definition` "GameManifestMetricDefinition".
- */
-export type GameManifestMetricDefinition = GameManifestStateMetricDefinition | GameManifestComputedMetricDefinition;
 /**
  * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
  * via the `definition` "GameManifestExecutionMode".
@@ -470,300 +111,99 @@ export type GameManifestId = string;
 export type GameManifestVersion = string;
 /**
  * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
+ * via the `definition` "GameManifestObjectFacetValue".
+ */
+export type GameManifestObjectFacetValue = string | number | boolean;
+/**
+ * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
  * via the `definition` "GameManifestObjectScope".
  */
 export type GameManifestObjectScope = "session";
+/**
+ * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
+ * via the `definition` "GameManifestObjectVisibility".
+ */
+export type GameManifestObjectVisibility = "public" | "secret";
+/**
+ * Schema-first transport polyline. Runtime may derive intermediate points for a transaction, but every manifest-declared stored point uses the canonical coordinate contract; endpoints must match the owning graph nodes and consecutive points must differ, which semantic validation checks because JSON Schema cannot compare array entries.
+ *
+ * @minItems 2
+ * @maxItems 20000
+ *
+ * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
+ * via the `definition` "GameManifestCanonicalPolyline".
+ */
+export type GameManifestCanonicalPolyline = [
+  GameManifestCanonicalPoint,
+  GameManifestCanonicalPoint,
+  ...GameManifestCanonicalPoint[]
+];
 
 export interface GameManifestSchemaDefs {
   [k: string]: unknown;
 }
 /**
  * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
- * via the `definition` "GameManifestActionMap".
- */
-export interface GameManifestActionMap {
-  [k: string]: GameManifestActionDefinition;
-}
-/**
- * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
- * via the `definition` "GameManifestActionDefinition".
- */
-export interface GameManifestActionDefinition {
-  capability?: string;
-  capabilityFamily?: string;
-  description?: string;
-  deterministic?: GameManifestDeterministicActionMetadata;
-  displayName?: string;
-  function?: string;
-  handlerType: string;
-  /**
-   * @minItems 1
-   */
-  allowedSessionRoles?: [GameManifestSessionRole, ...GameManifestSessionRole[]];
-  /**
-   * Action-specific deterministic overrides merged on top of the resolved template. Used when a template-based action needs extra effects.
-   */
-  overrides?: {
-    deterministic?: GameManifestDeterministicActionMetadata;
-  };
-  params?: {
-    [k: string]: unknown;
-  };
-  paramsSchema?: GameManifestActionParamsSchema;
-  payloadSchema?: {
-    [k: string]: unknown;
-  };
-  raw?: {
-    [k: string]: unknown;
-  };
-  tags?: string[];
-  templateId?: string;
-}
-/**
- * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
- * via the `definition` "GameManifestDeterministicActionMetadata".
- */
-export interface GameManifestDeterministicActionMetadata {
-  /**
-   * Small manifest-declared operations that runtime-api can validate and apply without executing arbitrary game code.
-   */
-  effects?: GameManifestDeterministicEffect[];
-  guard?: GameManifestDeterministicGuard;
-  provenance?: GameManifestDeterministicSourceRef[];
-}
-/**
- * Bounded metric comparison used by explicit deterministic card-local hooks.
+ * via the `definition` "GameManifest".
  *
  * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
- * via the `definition` "GameManifestDeterministicMetricCondition".
+ * via the `definition` "RootGameManifest".
  */
-export interface GameManifestDeterministicMetricCondition {
-  metricId: string;
-  operator: GameManifestDeterministicMetricOperator;
-  threshold: number | string;
-}
-/**
- * Minimal guard shape for deterministic opening-card and team-selection slices.
- *
- * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
- * via the `definition` "GameManifestDeterministicStateCondition".
- */
-export interface GameManifestDeterministicStateCondition {
-  operator: "==" | "!=" | ">" | ">=" | "<" | "<=" | "exists" | "not_exists";
-  path: string;
-  value?: unknown;
-}
-/**
- * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
- * via the `definition` "GameManifestConstructionPayment".
- */
-export interface GameManifestConstructionPayment {
-  balancePath: string;
-  amount: GameManifestNumericExpression;
-}
-/**
- * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
- * via the `definition` "GameManifestDeterministicStatePatch".
- */
-export interface GameManifestDeterministicStatePatch {
-  op: "add" | "replace" | "remove" | "increment" | "append";
-  path: string;
-  value?: unknown;
-}
-/**
- * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
- * via the `definition` "GameManifestObjectAttributePatch".
- */
-export interface GameManifestObjectAttributePatch {
-  op: "add" | "replace" | "remove" | "increment" | "append";
-  path: string;
-  value?: unknown;
-}
-/**
- * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
- * via the `definition` "GameManifestDeterministicGuard".
- */
-export interface GameManifestDeterministicGuard {
-  collectionCount?:
-    | GameManifestDeterministicCollectionCount
-    | [GameManifestDeterministicCollectionCount, ...GameManifestDeterministicCollectionCount[]];
-  jsonLogic?: JsonLogicExpression;
-  object?: GameManifestObjectStateGuard | [GameManifestObjectStateGuard, ...GameManifestObjectStateGuard[]];
-  stateConditions?: GameManifestDeterministicStateCondition[];
-  timeline?: {
-    canAdvance?: boolean | string;
-    line?: string;
-    stepIndex?: number | string;
-  };
-  turn?: {
-    actorIsActive?: boolean;
-    phase?: string;
-  };
-  [k: string]: unknown;
-}
-/**
- * Generic collection-count check: counts items in a collection whose field equals a value and requires a threshold. Shared by deterministic effect conditions and guards (ADR-041 §7.2).
- *
- * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
- * via the `definition` "GameManifestDeterministicCollectionCount".
- */
-export interface GameManifestDeterministicCollectionCount {
-  countAtLeast: number | string;
-  equals?: unknown;
-  field: string;
+export interface GameManifest {
   /**
-   * @minItems 1
+   * Published Game Intent catalog. Its complete structure is validated by the separate JSON Schema 2020-12 contract.
    */
-  ids: [string, ...string[]];
-  path: string;
-}
-/**
- * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
- * via the `definition` "GameManifestObjectStateGuard".
- */
-export interface GameManifestObjectStateGuard {
-  attributes?: {
-    [k: string]: unknown;
-  };
-  collection: string;
-  facets?: {
-    [k: string]: GameManifestObjectFacetValue;
-  };
-  objectId: string | number;
-  objectType?: string;
-  visibility?: GameManifestObjectVisibility;
-}
-/**
- * Links deterministic metadata back to the exact legacy artifact used for extraction.
- *
- * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
- * via the `definition` "GameManifestDeterministicSourceRef".
- */
-export interface GameManifestDeterministicSourceRef {
-  legacyCardId: string;
-  lineIndex?: number | string;
-  sourceFile: GameManifestPath;
-  sourceKind: string;
-  stepIndex?: number | string;
-}
-/**
- * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
- * via the `definition` "GameManifestActionParamsSchema".
- */
-export interface GameManifestActionParamsSchema {
-  type: "object";
-  additionalProperties: false;
-  properties: {
-    [k: string]: GameManifestActionParamPropertySchema;
-  };
+  actions: GameIntentCatalog;
+  config: GameManifestConfig;
+  content?: GameManifestContent;
+  engine?: GameManifestEngineConfig;
+  executionMode?: GameManifestExecutionMode;
+  agentRuntime?: GameManifestAgentRuntimeConfig;
+  meta: GameManifestMeta;
+  objectModels?: GameManifestObjectModelMap;
+  networkModels?: GameManifestTransportNetworkModelMap;
+  state: GameManifestState3Calias942026824741387426494202682402184393Cstring2Cunknown3E2Calias942026824741387426494202682402184393Cstring2Cunknown3E3E;
   /**
-   * @maxItems 16
+   * Canonical Mechanics IR bundle. Its complete structure is validated by the separate JSON Schema 2020-12 contract.
    */
-  required?:
-    | []
-    | [string]
-    | [string, string]
-    | [string, string, string]
-    | [string, string, string, string]
-    | [string, string, string, string, string]
-    | [string, string, string, string, string, string]
-    | [string, string, string, string, string, string, string]
-    | [string, string, string, string, string, string, string, string]
-    | [string, string, string, string, string, string, string, string, string]
-    | [string, string, string, string, string, string, string, string, string, string]
-    | [string, string, string, string, string, string, string, string, string, string, string]
-    | [string, string, string, string, string, string, string, string, string, string, string, string]
-    | [string, string, string, string, string, string, string, string, string, string, string, string, string]
-    | [string, string, string, string, string, string, string, string, string, string, string, string, string, string]
-    | [
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string
-      ]
-    | [
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string
-      ];
-}
-/**
- * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
- * via the `definition` "GameManifestCubicaReference".
- */
-export interface GameManifestCubicaReference {
-  kind: "object" | "action-resource";
-  collection: string;
-  network?: string;
-  /**
-   * @minItems 1
-   */
-  allowedTypes?: [string, ...string[]];
-  visibility: GameManifestObjectVisibility;
-}
-/**
- * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
- * via the `definition` "GameManifestNumericActionParamSchema".
- */
-export interface GameManifestNumericActionParamSchema {
-  type: "integer" | "number";
-  minimum?: number;
-  maximum?: number;
-  exclusiveMinimum?: number;
-  exclusiveMaximum?: number;
-  /**
-   * @minItems 1
-   */
-  enum?: [number, ...number[]];
-}
-/**
- * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
- * via the `definition` "GameManifestBooleanActionParamSchema".
- */
-export interface GameManifestBooleanActionParamSchema {
-  type: "boolean";
-}
-/**
- * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
- * via the `definition` "GameManifestConfig".
- */
-export interface GameManifestConfig {
-  players: GameManifestPlayerConfig;
-  settings: GameManifestSettings;
-  sessionMode?: "standard" | "facilitated";
-  turnModel?: GameManifestTurnModel;
+  mechanics: CubicaMechanicsIRV1Alpha1;
 }
 /**
  * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
  * via the `definition` "GameManifestPlayerConfig".
  */
 export interface GameManifestPlayerConfig {
+  agentSeats?: GameManifestAgentSeatConfig;
   max: number;
   min: number;
+}
+/**
+ * Optional local agent-seat policy. Runtime assigns the last requested seats and uses the ordered fallback candidates after bounded invalid selections.
+ *
+ * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
+ * via the `definition` "GameManifestAgentSeatConfig".
+ */
+export interface GameManifestAgentSeatConfig {
+  max: number;
+  invalidAttemptLimit: number;
+  /**
+   * @minItems 1
+   * @maxItems 73
+   */
+  deterministicFallbackCandidates: [
+    GameManifestAgentSeatFallbackCandidate,
+    ...GameManifestAgentSeatFallbackCandidate[]
+  ];
+}
+/**
+ * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
+ * via the `definition` "GameManifestAgentSeatFallbackCandidate".
+ */
+export interface GameManifestAgentSeatFallbackCandidate {
+  actionId: GameManifestSafeIdentifier;
+  params: {
+    [k: string]: string | number | boolean;
+  };
 }
 /**
  * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
@@ -786,6 +226,8 @@ export interface GameManifestTurnModel {
   phases: [string, ...string[]];
 }
 /**
+ * Known platform content fields plus game-specific content keyed by gameId.
+ *
  * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
  * via the `definition` "GameManifestContent".
  */
@@ -801,12 +243,7 @@ export interface GameManifestContent {
   };
   scenario?: GameManifestDocumentRef;
   scripts?: GameManifestDocumentRef[];
-  /**
-   * Game-specific content is keyed by gameId.
-   */
-  [k: string]: {
-    [k: string]: unknown;
-  };
+  [k: string]: unknown;
 }
 /**
  * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
@@ -896,6 +333,10 @@ export interface GameManifestEngineConfig {
  */
 export interface GameManifestAgentRuntimeConfig {
   agentId: string;
+  /**
+   * Published Game Intent dispatched to start an AI-driven or hybrid interaction. The compiler verifies that this action exists in the same immutable manifest.
+   */
+  initialActionId?: string;
   runtimeId?: string;
   required: boolean;
   allowedCapabilities: string[];
@@ -903,10 +344,20 @@ export interface GameManifestAgentRuntimeConfig {
   surfaceCatalog: string[];
   failurePolicy: GameManifestAgentFailurePolicy;
   deterministicFallbackActionId?: string;
-  contextExposurePolicy?: {
-    publicState: boolean;
-    secretState?: "none" | "role-scoped";
-    manifestProjection?: string[];
+  contextExposurePolicy: {
+    /**
+     * Current fail-closed profile exposes the player-facing public projection. Other profiles require a schema and projector extension.
+     */
+    publicState: true;
+    /**
+     * Secret state is not exposed to Agent Runtime until a role-scoped projector is implemented and reviewed.
+     */
+    secretState: "none";
+    /**
+     * @minItems 2
+     * @maxItems 2
+     */
+    manifestProjection: ["/meta" | "/actions", "/meta" | "/actions"];
   };
 }
 /**
@@ -986,7 +437,6 @@ export interface GameManifestObjectFacetModel {
  * via the `definition` "GameManifestObjectViewRule".
  */
 export interface GameManifestObjectViewRule {
-  actionIdFrom?: string;
   fields?: {
     [k: string]: string;
   };
@@ -1026,24 +476,29 @@ export interface GameManifestTransportNetworkModel {
    */
   splittableEdgeStates: [GameManifestObjectFacetValue, ...GameManifestObjectFacetValue[]];
   builtEdgeState: GameManifestObjectFacetValue;
-  sequencePath: string;
-  roadCostPerRegionSegment: number;
-  waypointCost: number;
+  sequenceEndpoint: GameManifestSafeIdentifier;
   /**
+   * Canonical region polygons. The number of regions is deliberately unbounded: the cost of geometry work scales with the total number of polygon vertices, which stays bounded, and not with how those vertices are grouped into regions. Pairwise work is filtered spatially before it is done and before it is priced, so a map of many small areas is admitted; a real author map of 917 areas with 78 352 vertices is the measured reference.
+   *
    * @minItems 1
    */
   regions: [GameManifestTransportRegion, ...GameManifestTransportRegion[]];
+  roadPlanning?: GameManifestTransportRoadPlanning;
   movement?: GameManifestTransportMovementModel;
-  cargoDelivery?: GameManifestTransportCargoDeliveryModel;
 }
 /**
+ * Bounded simple polygon with optional inner rings. A final point equal to the first is an optional explicit closure and is not counted as an additional canonical vertex.
+ *
  * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
  * via the `definition` "GameManifestTransportRegion".
  */
 export interface GameManifestTransportRegion {
   id: string;
   /**
+   * Outer ring of the region.
+   *
    * @minItems 3
+   * @maxItems 2049
    */
   polygon: [
     GameManifestCanonicalPoint,
@@ -1051,14 +506,49 @@ export interface GameManifestTransportRegion {
     GameManifestCanonicalPoint,
     ...GameManifestCanonicalPoint[]
   ];
+  /**
+   * Inner rings: areas enclosed by the outer ring that do not belong to this region, such as an enclave that is a region of its own. Planning algorithm region-segment-minimum-v3 supports them: the region is split into triangles for path finding, and an inner ring needs no special case there. An enclave and the region around it share one closed border, which is one navigation crossing.
+   *
+   * @maxItems 64
+   */
+  holes?: [
+    GameManifestCanonicalPoint,
+    GameManifestCanonicalPoint,
+    GameManifestCanonicalPoint,
+    ...GameManifestCanonicalPoint[]
+  ][];
 }
 /**
  * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
  * via the `definition` "GameManifestCanonicalPoint".
  */
 export interface GameManifestCanonicalPoint {
+  /**
+   * Canonical geometry coordinate on the 1e-6 storage grid.
+   */
   x: number;
+  /**
+   * Canonical geometry coordinate on the 1e-6 storage grid.
+   */
   y: number;
+}
+/**
+ * Explicit opt-in contract for authoritative minimum-region road planning (ADR-100). Only the region polygons and one checksum are declared here. The navigation graph — which pairs of regions border each other and along which line — is derived from the polygons by runtime and is deliberately not stored: it carries no information the polygons do not already carry, and on a real author map it was larger than the polygons themselves. geometryHash is the proof that the package publisher derived the same graph from the same polygons; runtime derives the graph again on load and refuses the package if the checksum differs. Derive geometryHash with the shared map-annotation pipeline rather than by hand.
+ *
+ * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
+ * via the `definition` "GameManifestTransportRoadPlanning".
+ */
+export interface GameManifestTransportRoadPlanning {
+  mode: "region-segment-minimum";
+  algorithmVersion: "region-segment-minimum-v3";
+  geometryVersion: string;
+  geometryHash: string;
+  /**
+   * Version 2 has nothing left to decide by chance: the corridor is chosen by a deterministic search and the line inside it is unique. The shorter line wins; an exact tie is broken by codepoint order of the point list.
+   */
+  tieBreak: "shortest-then-codepoint";
+  boundaryPolicy: "lowest-region-id";
+  excludedRegionIdsEndpoint?: GameManifestSafeIdentifier;
 }
 /**
  * Declarative rules for moving authoritative vehicles through one network edge.
@@ -1078,7 +568,6 @@ export interface GameManifestTransportMovementModel {
    */
   movableVehicleStates?: [GameManifestObjectFacetValue, ...GameManifestObjectFacetValue[]];
   locationAttribute: string;
-  actionPointsAttribute: string;
   /**
    * @minItems 1
    */
@@ -1133,57 +622,39 @@ export interface GameManifestTransportMovementModel {
   maxCoupledVehicles?: number;
 }
 /**
- * Declarative object bindings for completing cargo carried by a coupled vehicle.
- *
- * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
- * via the `definition` "GameManifestTransportCargoDeliveryModel".
- */
-export interface GameManifestTransportCargoDeliveryModel {
-  wagonCollection: string;
-  /**
-   * @minItems 1
-   */
-  wagonObjectTypes: [string, ...string[]];
-  cargoCollection: string;
-  /**
-   * @minItems 1
-   */
-  cargoObjectTypes: [string, ...string[]];
-  locationAttribute: string;
-  cargoReferenceAttribute: string;
-  attachedVehicleAttribute: string;
-  cargoDestinationAttribute: string;
-  cargoOriginAttribute?: string;
-  cargoStateFacet: string;
-  /**
-   * @minItems 1
-   */
-  loadableCargoStates?: [GameManifestObjectFacetValue, ...GameManifestObjectFacetValue[]];
-  loadedCargoState?: GameManifestObjectFacetValue;
-  /**
-   * @minItems 1
-   */
-  deliverableCargoStates: [GameManifestObjectFacetValue, ...GameManifestObjectFacetValue[]];
-  deliveredCargoState: GameManifestObjectFacetValue;
-  payoutAttribute?: string;
-  ownerParticipantIdAttribute?: string;
-  participantCollectionPath?: string;
-  participantBalanceAttribute?: string;
-  tariffPerEdge?: number;
-  settledRouteLengthAttribute?: string;
-}
-/**
  * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
  * via the `definition` "GameManifestState<alias-942026824-74138-74264-942026824-0-218439<string,unknown>,alias-942026824-74138-74264-942026824-0-218439<string,unknown>>".
  */
 export interface GameManifestState3Calias942026824741387426494202682402184393Cstring2Cunknown3E2Calias942026824741387426494202682402184393Cstring2Cunknown3E3E {
-  public: {
-    [k: string]: unknown;
-  };
-  secret?: {
-    [k: string]: unknown;
-  };
+  public: GameManifestStateScopeGeometryProjection;
+  secret?: GameManifestStateScopeGeometryProjection;
   playersTemplate?: GameManifestPlayersTemplate;
+}
+/**
+ * Public or secret state scope whose dynamic object collections apply the shared stored-geometry contract without constraining game-specific attributes.
+ *
+ * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
+ * via the `definition` "GameManifestStateScopeGeometryProjection".
+ */
+export interface GameManifestStateScopeGeometryProjection {
+  /**
+   * Dynamic object collections. Any stored object geometry.polyline is validated by the canonical schema regardless of collection, visibility, or game-specific object type.
+   */
+  objects?: {
+    [k: string]: {
+      [k: string]: {
+        attributes?: {
+          geometry?: {
+            polyline?: GameManifestCanonicalPolyline;
+            [k: string]: unknown;
+          };
+          [k: string]: unknown;
+        };
+        [k: string]: unknown;
+      };
+    };
+  };
+  [k: string]: unknown;
 }
 /**
  * Template expanded by runtime into state.players for every local participant.
@@ -1206,41 +677,4 @@ export interface GameManifestPlayersTemplate {
     flags?: "public" | "private";
     metrics?: "public" | "private";
   };
-}
-/**
- * A reusable template for deterministic action logic. Referenced by actions via templateId. Same structure as GameManifestActionDefinition but handlerType is not required (provided by the action).
- *
- * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
- * via the `definition` "GameManifestTemplateDefinition".
- */
-export interface GameManifestTemplateDefinition {
-  deterministic: GameManifestDeterministicActionMetadata;
-  handlerType?: string;
-}
-/**
- * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
- * via the `definition` "GameManifestObjectState".
- */
-export interface GameManifestObjectState {
-  attributes?: {
-    [k: string]: unknown;
-  };
-  facets: {
-    [k: string]: GameManifestObjectFacetValue;
-  };
-  objectType: string;
-}
-/**
- * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
- * via the `definition` "GameManifestObjectStateCollection".
- */
-export interface GameManifestObjectStateCollection {
-  [k: string]: GameManifestObjectState;
-}
-/**
- * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
- * via the `definition` "GameManifestObjectStateMap".
- */
-export interface GameManifestObjectStateMap {
-  [k: string]: GameManifestObjectStateCollection;
 }

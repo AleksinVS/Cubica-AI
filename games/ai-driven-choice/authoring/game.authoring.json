@@ -43,13 +43,11 @@
     "executionMode": "ai-driven",
     "agentRuntime": {
       "agentId": "scenario-agent",
+      "initialActionId": "agent.request-choice",
       "runtimeId": "mock",
       "required": true,
       "allowedCapabilities": [
-        "advanceStep"
-      ],
-      "allowedTools": [
-        "agent.nextTurn"
+        "selectPublishedIntent"
       ],
       "surfaceCatalog": [
         "cubica.choiceList"
@@ -74,7 +72,7 @@
             "id": "continue",
             "title": "Continue through agent",
             "summary": "Ask the scenario agent to produce the next validated UI surface.",
-            "actionId": "agent.continue"
+            "actionId": "agent.request-choice"
           }
         ]
       }
@@ -111,7 +109,7 @@
     "logic": {
       "_type": "game.Logic",
       "_label": "AI-driven fixture logic",
-      "_semantics": "This fixture intentionally has no deterministic gameplay actions; Agent Runtime owns progression.",
+      "_semantics": "Agent Runtime selects one published Game Intent; Mechanics IR alone owns authoritative progression.",
       "flows": [
         {
           "id": "main",
@@ -126,14 +124,300 @@
               "_label": "Agent surface",
               "_semantics": "Initial state before the first Agent Turn.",
               "screenId": "agent",
-              "actionIds": []
+              "actionIds": [
+                "agent.request-choice"
+              ]
             }
           ]
         }
       ],
       "systems": [],
       "rules": [],
-      "actions": []
+      "actions": [
+        {
+          "id": "agent.request-choice",
+          "_type": "game.Action",
+          "_label": "Ask the scenario agent",
+          "_semantics": "Published non-recursive entry intent for the Agent Turn endpoint.",
+          "displayName": "Ask the scenario agent",
+          "binding": {
+            "kind": "mechanics-plan",
+            "planRef": "agent.request-choice"
+          }
+        },
+        {
+          "id": "agent.choice.resolve",
+          "_type": "game.Action",
+          "_label": "Resolve the agent choice",
+          "_semantics": "Authoritative Game Intent selected by Agent Runtime and executed by Mechanics IR.",
+          "displayName": "Resolve the agent choice",
+          "binding": {
+            "kind": "mechanics-plan",
+            "planRef": "agent.choice.resolve"
+          }
+        }
+      ]
+    },
+    "mechanics": {
+      "apiVersion": "cubica.dev/mechanics/v1alpha1",
+      "budgetProfile": "turn-based-standard-v1",
+      "stateModel": {
+        "types": {
+          "core.string": {
+            "kind": "string"
+          },
+          "core.integer": {
+            "kind": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "core.bounded-json": {
+            "kind": "json",
+            "maxDepth": 16,
+            "maxNodes": 4096,
+            "maxUtf8Bytes": 262144
+          },
+          "core.event-journal-entry": {
+            "kind": "record",
+            "fields": {
+              "eventType": {
+                "typeRef": "core.string",
+                "optional": false
+              },
+              "audience": {
+                "typeRef": "core.string",
+                "optional": false
+              },
+              "summary": {
+                "typeRef": "core.string",
+                "optional": false
+              },
+              "data": {
+                "typeRef": "core.bounded-json",
+                "optional": true
+              }
+            }
+          },
+          "core.event-journal": {
+            "kind": "list",
+            "itemType": "core.event-journal-entry",
+            "maxItems": 16384
+          },
+          "agent.choice-resolved-event": {
+            "kind": "record",
+            "fields": {
+              "kind": {
+                "typeRef": "core.string",
+                "optional": false
+              },
+              "source": {
+                "typeRef": "core.string",
+                "optional": false
+              }
+            }
+          },
+          "core.player-projection-json": {
+            "kind": "json",
+            "maxDepth": 32,
+            "maxNodes": 32768,
+            "maxUtf8Bytes": 262144
+          }
+        },
+        "endpoints": {
+          "public.metrics.turns": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "metrics",
+                "turns"
+              ]
+            },
+            "valueType": "core.integer",
+            "access": "read-write"
+          },
+          "public.choice.outcome": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "choice",
+                "outcome"
+              ]
+            },
+            "valueType": "core.string",
+            "access": "read-write"
+          },
+          "public.log": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "log"
+              ]
+            },
+            "valueType": "core.event-journal",
+            "access": "read-write"
+          },
+          "projection.public.choice": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "choice"
+              ]
+            },
+            "valueType": "core.player-projection-json",
+            "access": "read-only",
+            "usage": "projection-only"
+          },
+          "projection.public.flags": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "flags"
+              ]
+            },
+            "valueType": "core.player-projection-json",
+            "access": "read-only",
+            "usage": "projection-only"
+          },
+          "projection.public.log": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "log"
+              ]
+            },
+            "valueType": "core.player-projection-json",
+            "access": "read-only",
+            "usage": "projection-only"
+          },
+          "projection.public.metrics": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "metrics"
+              ]
+            },
+            "valueType": "core.player-projection-json",
+            "access": "read-only",
+            "usage": "projection-only"
+          },
+          "projection.public.timeline": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "timeline"
+              ]
+            },
+            "valueType": "core.player-projection-json",
+            "access": "read-only",
+            "usage": "projection-only"
+          },
+          "projection.public.ui": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "ui"
+              ]
+            },
+            "valueType": "core.player-projection-json",
+            "access": "read-only",
+            "usage": "projection-only"
+          }
+        },
+        "collections": {},
+        "events": {
+          "agent.choice.resolved": {
+            "audienceRef": "public",
+            "payloadType": "agent.choice-resolved-event",
+            "journalEndpoint": {
+              "endpoint": "public.log"
+            }
+          }
+        }
+      },
+      "plans": {
+        "agent.request-choice": {
+          "transaction": {
+            "steps": [
+              {
+                "id": "verifyAgentEntry",
+                "kind": "assert",
+                "op": "core.assert",
+                "predicate": {
+                  "op": "predicate.constant",
+                  "value": true
+                },
+                "errorCode": "AGENT_ENTRY_INVALID"
+              }
+            ]
+          }
+        },
+        "agent.choice.resolve": {
+          "transaction": {
+            "steps": [
+              {
+                "id": "incrementTurn",
+                "kind": "command",
+                "op": "core.number.add",
+                "target": {
+                  "endpoint": "public.metrics.turns"
+                },
+                "delta": {
+                  "op": "value.literal",
+                  "value": 1
+                }
+              },
+              {
+                "id": "recordOutcome",
+                "kind": "command",
+                "op": "core.state.patch",
+                "patches": [
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.choice.outcome"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": "accepted"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "emitResolution",
+                "kind": "command",
+                "op": "core.event.emit",
+                "eventType": "agent.choice.resolved",
+                "summary": {
+                  "op": "value.literal",
+                  "value": "The scenario agent selected a published Game Intent."
+                },
+                "audience": "public",
+                "data": {
+                  "kind": {
+                    "op": "value.literal",
+                    "value": "agent-turn"
+                  },
+                  "source": {
+                    "op": "value.literal",
+                    "value": "mock"
+                  }
+                },
+                "auditMetrics": true
+              }
+            ]
+          }
+        }
+      }
     }
   }
 }

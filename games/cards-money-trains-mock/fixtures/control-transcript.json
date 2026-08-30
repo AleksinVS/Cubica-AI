@@ -5,7 +5,7 @@
   "preconditions": {
     "phase": "setup",
     "allTeamCoins": 10,
-    "existingEdgeForWaypoint": "mock-edge-a-b",
+    "existingEdgeForWaypoint": "mock-edge-e-f",
     "unconnectedRoadEndpoints": [
       "mock-terminal-b",
       "mock-terminal-d"
@@ -206,7 +206,7 @@
       "order": 19,
       "actionId": "construction.waypoint.build",
       "params": {
-        "edgeId": "mock-edge-a-b",
+        "edgeId": "mock-edge-e-f",
         "positionT": 0.5,
         "whiteContribution": 3,
         "redContribution": 2,

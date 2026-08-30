@@ -83,7 +83,13 @@ function buildValidator(schemaFile: string): ValidateFunction {
   // parent level or is intentionally forbidden and cannot be re-listed locally.
   // `required` is still fully enforced; only the authoring lint is relaxed.
   // Documented bounded exception in LEGACY-0016.
-  const ajv = new Ajv({ allErrors: true, strict: true, allowUnionTypes: true, strictRequired: false });
+  const ajv = new Ajv({
+    allErrors: true,
+    strict: true,
+    allowUnionTypes: true,
+    strictRequired: false,
+    multipleOfPrecision: 5
+  });
   addFormats(ajv);
   const schema = readJson(join(schemasRoot, schemaFile)) as Record<string, unknown>;
   return ajv.compile(schema);
@@ -106,6 +112,75 @@ describe("shipped game manifests validate against game-manifest.schema.json", ()
     expect(gameManifestFiles.length).toBeGreaterThan(0);
   });
 
+  it("accepts a neutral deterministic agent-seat declaration without an AI entry action", () => {
+    const neutral = {
+      meta: {
+        id: "neutral-agent-seat-schema",
+        version: "1.0.0",
+        name: "Neutral agent seat schema",
+        description: "Schema fixture",
+        schemaVersion: "2.0.0"
+      },
+      config: {
+        players: {
+          min: 2,
+          max: 2,
+          agentSeats: {
+            max: 1,
+            invalidAttemptLimit: 2,
+            deterministicFallbackCandidates: [{ actionId: "turn.pass", params: {} }]
+          }
+        },
+        settings: { mode: "local", locale: "en" }
+      },
+      executionMode: "deterministic",
+      agentRuntime: {
+        agentId: "neutral-agent",
+        runtimeId: "mock",
+        required: false,
+        allowedCapabilities: ["selectPublishedIntent"],
+        surfaceCatalog: [],
+        failurePolicy: "pause",
+        contextExposurePolicy: {
+          publicState: true,
+          secretState: "none",
+          manifestProjection: ["/meta", "/actions"]
+        }
+      },
+      state: { public: {} },
+      actions: {},
+      mechanics: {}
+    };
+    expect(validateGameManifest(neutral)).toBe(true);
+
+    const missingFallback = structuredClone(neutral);
+    delete (missingFallback.config.players.agentSeats as Partial<{
+      deterministicFallbackCandidates: unknown;
+    }>).deterministicFallbackCandidates;
+    expect(validateGameManifest(missingFallback)).toBe(false);
+
+    const invalidAttemptLimit = structuredClone(neutral);
+    invalidAttemptLimit.config.players.agentSeats.invalidAttemptLimit = 0;
+    expect(validateGameManifest(invalidAttemptLimit)).toBe(false);
+
+    const maximumFallbacks = structuredClone(neutral);
+    maximumFallbacks.config.players.agentSeats.deterministicFallbackCandidates = Array.from(
+      { length: 73 },
+      (_, index) => ({ actionId: `turn.pass-${index}`, params: {} })
+    );
+    expect(validateGameManifest(maximumFallbacks)).toBe(true);
+
+    const excessiveFallbacks = structuredClone(maximumFallbacks);
+    excessiveFallbacks.config.players.agentSeats.deterministicFallbackCandidates.push({
+      actionId: "turn.pass-73",
+      params: {}
+    });
+    expect(validateGameManifest(excessiveFallbacks)).toBe(false);
+    expect(formatErrors(validateGameManifest)).toContain(
+      "/config/players/agentSeats/deterministicFallbackCandidates must NOT have more than 73 items"
+    );
+  });
+
   for (const filePath of gameManifestFiles) {
     it(`validates ${relative(repoRoot, filePath)}`, () => {
       const data = readJson(filePath);
@@ -116,6 +191,63 @@ describe("shipped game manifests validate against game-manifest.schema.json", ()
       expect(valid).toBe(true);
     });
   }
+
+  it("executes the canonical polyline contract through stored object geometry", () => {
+    type GeometryManifest = {
+      state: {
+        public: {
+          objects: {
+            networkEdges: Record<string, {
+              attributes: { geometry: { polyline: Array<{ x: number; y: number }> } };
+            }>;
+          };
+        };
+        secret?: {
+          objects: {
+            networkEdges: Record<string, {
+              attributes: { geometry: { polyline: Array<{ x: number; y: number }> } };
+            }>;
+          };
+        };
+      };
+    };
+    const source = readJson(join(gamesRoot, "cards-money-trains", "game.manifest.json")) as GeometryManifest;
+    const edgeId = Object.keys(source.state.public.objects.networkEdges).sort()[0];
+    const point = source.state.public.objects.networkEdges[edgeId].attributes.geometry.polyline[0];
+
+    const tooShort = structuredClone(source);
+    tooShort.state.public.objects.networkEdges[edgeId].attributes.geometry.polyline = [{ ...point }];
+    expect(validateGameManifest(tooShort)).toBe(false);
+    expect(formatErrors(validateGameManifest)).toContain("/geometry/polyline");
+
+    const tooLong = structuredClone(source);
+    tooLong.state.public.objects.networkEdges[edgeId].attributes.geometry.polyline =
+      Array.from({ length: 20_001 }, () => ({ ...point }));
+    expect(validateGameManifest(tooLong)).toBe(false);
+    expect(formatErrors(validateGameManifest)).toContain("/geometry/polyline");
+
+    const offGrid = structuredClone(source);
+    offGrid.state.public.objects.networkEdges[edgeId].attributes.geometry.polyline[0].x += 0.0000001;
+    expect(validateGameManifest(offGrid)).toBe(false);
+    expect(formatErrors(validateGameManifest)).toContain("/geometry/polyline/0/x");
+
+    const secretOffGrid = structuredClone(source);
+    secretOffGrid.state.secret = {
+      objects: {
+        networkEdges: {
+          hidden: {
+            attributes: {
+              geometry: {
+                polyline: [{ x: point.x + 0.0000001, y: point.y }, { ...point }]
+              }
+            }
+          }
+        }
+      }
+    };
+    expect(validateGameManifest(secretOffGrid)).toBe(false);
+    expect(formatErrors(validateGameManifest)).toContain("/state/secret/objects/networkEdges/hidden/attributes/geometry/polyline/0/x");
+  });
 });
 
 describe("shipped UI manifests validate against ui-manifest.schema.json", () => {
@@ -157,10 +289,146 @@ describe("interactive board surface UI contract", () => {
     expect(validateUiManifest(fixture)).toBe(true);
   });
 
+  it("accepts a high-detail logical map plane larger than the browser viewport", () => {
+    const highDetailMap = structuredClone(fixture) as any;
+    highDetailMap.screens.board.root.props.designWidth = 5079;
+    highDetailMap.screens.board.root.props.designHeight = 3627;
+    expect(validateUiManifest(highDetailMap)).toBe(true);
+  });
+
+  it("rejects an unbounded logical map plane", () => {
+    const invalid = structuredClone(fixture) as any;
+    invalid.screens.board.root.props.designWidth = 100001;
+    expect(validateUiManifest(invalid)).toBe(false);
+  });
+
   it("rejects a board surface without scene id", () => {
     const invalid = structuredClone(fixture) as any;
     delete invalid.screens.board.root.props.sceneId;
     expect(validateUiManifest(invalid)).toBe(false);
+  });
+});
+
+describe("map-first workspace UI contract", () => {
+  const validateUiManifest = buildValidator("ui-manifest.schema.json");
+  const fixture = {
+    meta: { id: "neutral.workspace.web", version: "1.0.0", game_id: "neutral-workspace" },
+    entry_point: "workspace",
+    screens: {
+      workspace: {
+        type: "screen",
+        layout_mode: "map-first",
+        root: {
+          type: "screenComponent",
+          children: [
+            {
+              type: "areaComponent",
+              props: { workspaceSlot: "board" },
+              children: [
+                {
+                  type: "interactiveBoardSurface",
+                  props: { sceneId: "neutral-scene", accessibleLabel: "Spatial workspace" }
+                }
+              ]
+            },
+            {
+              type: "areaComponent",
+              props: { workspaceSlot: "status" },
+              children: [{ type: "richTextComponent", props: { html: "Ready" } }]
+            }
+          ]
+        }
+      }
+    }
+  };
+
+  it("accepts neutral direct workspace zones with one board", () => {
+    const valid = validateUiManifest(fixture);
+    if (!valid) {
+      throw new Error(`neutral map-first fixture failed schema validation: ${formatErrors(validateUiManifest)}`);
+    }
+    expect(valid).toBe(true);
+  });
+
+  it("rejects an unsupported workspace slot", () => {
+    const invalid = structuredClone(fixture) as any;
+    invalid.screens.workspace.root.children[1].props.workspaceSlot = "side-widget";
+    expect(validateUiManifest(invalid)).toBe(false);
+  });
+
+  it("rejects a map-first screen without a direct board zone", () => {
+    const invalid = structuredClone(fixture) as any;
+    invalid.screens.workspace.root.children[0].props.workspaceSlot = "primary-panel";
+    expect(validateUiManifest(invalid)).toBe(false);
+  });
+
+  it("rejects workspace slots nested below a direct zone", () => {
+    const invalid = structuredClone(fixture) as any;
+    invalid.screens.workspace.root.children[1].children[0] = {
+      type: "areaComponent",
+      props: { workspaceSlot: "overlay" }
+    };
+    expect(validateUiManifest(invalid)).toBe(false);
+  });
+
+  it("rejects workspace slots in a non-map-first screen", () => {
+    const invalid = structuredClone(fixture) as any;
+    invalid.screens.workspace.layout_mode = "topbar";
+    expect(validateUiManifest(invalid)).toBe(false);
+  });
+
+  it("rejects direct zones that are not area components", () => {
+    const invalid = structuredClone(fixture) as any;
+    invalid.screens.workspace.root.children[1] = {
+      type: "richTextComponent",
+      props: { html: "Ready", workspaceSlot: "status" }
+    };
+    expect(validateUiManifest(invalid)).toBe(false);
+  });
+});
+
+describe("built-in leaf component UI contract", () => {
+  const validateUiManifest = buildValidator("ui-manifest.schema.json");
+  const manifestWithRoot = (root: Record<string, unknown>) => ({
+    meta: { id: "neutral.leaf.web", version: "1.0.0", game_id: "neutral-leaf" },
+    entry_point: "main",
+    screens: {
+      main: {
+        type: "screen",
+        root
+      }
+    }
+  });
+
+  it.each([
+    ["button caption", { type: "buttonComponent", props: {} }],
+    ["rich text body", { type: "richTextComponent", props: {} }],
+    ["image source", { type: "imageComponent", props: {} }],
+    ["metric binding", { type: "gameVariableComponent", props: {} }],
+    ["non-empty metric binding", { type: "gameVariableComponent", props: { metricId: "" } }],
+    ["card content", { type: "cardComponent", props: {} }],
+    ["non-empty card content", { type: "cardComponent", props: { title: "" } }],
+    ["non-empty card back content", { type: "cardComponent", props: { backText: "" } }]
+  ])("rejects a built-in leaf without %s", (_label, root) => {
+    expect(validateUiManifest(manifestWithRoot(root))).toBe(false);
+  });
+
+  it("accepts the public two-sided card contract", () => {
+    expect(validateUiManifest(manifestWithRoot({
+      type: "cardComponent",
+      props: {
+        title: "Neutral option",
+        backText: "Neutral result",
+        visualState: "resolved"
+      }
+    }))).toBe(true);
+  });
+
+  it("keeps props optional for structural containers", () => {
+    expect(validateUiManifest(manifestWithRoot({
+      type: "areaComponent",
+      children: [{ type: "richTextComponent", props: { html: "Ready" } }]
+    }))).toBe(true);
   });
 });
 

@@ -1,7 +1,11 @@
 const fs = require('fs');
 const path = require('path');
 
-const EXCLUDED = ['.git', 'node_modules', '.next', '.tmp', 'sandbox', 'draft'];
+// 'draft' is intentionally NOT excluded: the strict described-only filter below
+// hides its one-off debug files (LEGACY-0073), while explicitly described
+// reference material (e.g. the Antarctica UI visual reference prototype)
+// stays visible on the map.
+const EXCLUDED = ['.git', 'node_modules', '.next', '.tmp', 'sandbox'];
 const MAX_DEPTH = 3;
 
 function readJsonFileStrict(filePath) {
@@ -39,6 +43,20 @@ function buildTree(dirPath, rootPath = process.cwd(), depth = 0) {
   }
 
   const descs = getDescriptions(dirPath);
+
+  // Directories that declare "_collapse": true in their .desc.json (archives)
+  // are rendered as a single "directory..." line without children.
+  // PROJECT_STRUCTURE.yaml is a navigation map of the current repository, so
+  // historical content (completed tasks, old snapshots) must not be listed
+  // file-by-file. Per-file descriptions may still live in the archive's own
+  // .desc.json where governance checks require them; they are metadata only.
+  if (depth > 0 && descs._collapse === true) {
+    const collapsedDesc = descs['.'] || null;
+    return {
+      node: { _isDir: true, desc: collapsedDesc, children: {} },
+      hasDescribedContent: collapsedDesc !== null
+    };
+  }
   const result = {
     _isDir: true,
     desc: descs['.'] || null,
@@ -105,8 +123,9 @@ const header = `# PROJECT STRUCTURE
 # AUTO-GENERATED FILE - DO NOT EDIT MANUALLY.
 # Use \`node scripts/dev/generate-structure.js\` to update.
 # This file provides a machine-readable overview of the repository layout.
-# Note: 'draft', 'sandbox', '.tmp' and 'node_modules' are excluded.
+# Note: 'sandbox', '.tmp' and 'node_modules' are excluded; 'draft' shows only explicitly described entries.
 # Note: ONLY documented files and directories (via .desc.json or package.json) are shown.
+# Note: archive directories ("_collapse": true in their .desc.json) are shown as a single line without contents.
 
 `;
 

@@ -1,38 +1,203 @@
 /**
- * PostgreSQL-backed runtime session store.
+ * PostgreSQL-backed authenticated session and command-ledger store.
  *
- * A complete state transition runs on one checked-out client and one database
- * transaction. `SELECT ... FOR UPDATE NOWAIT` holds an exclusive row lock from
- * the initial read until the replacement JSONB snapshot commits, preventing two
- * long-running turns from computing from the same state.
+ * Every mutating operation uses one checked-out client. A gameplay command
+ * locks its session row, authenticates the principal, reads any prior receipt,
+ * and commits the next state plus the new receipt in the same transaction.
  */
 
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import type {
+  ArchivedSessionAudit,
   CreateSessionInput,
+  CreatedSession,
+  ImmutableGameBundle,
   LockedSessionOperation,
+  PrivateInviteClaimStoreInput,
+  PrivateInviteClaimStoreResult,
+  PrivateSeatRecoveryInviteStoreInput,
+  PrivateSeatRecoveryInviteStoreResult,
+  SessionAuthenticationInput,
+  SessionCommandReceipt,
+  SessionCommandTransaction,
+  SessionCommandTransactionInput,
+  SessionEventRecord,
+  SessionPrincipal,
+  SessionPublicJournalSource,
   SessionRecord,
   SessionRole,
   SessionStorePort,
+  SessionSystemCommandTransaction,
+  SessionSystemCommandTransactionInput,
+  SessionSystemSchedule,
+  SessionSystemScheduleMutation,
   UpdateSessionOptions
 } from "@cubica/contracts-session";
 import type { Pool, PoolClient, QueryResult, QueryResultRow } from "pg";
+import { isValidImmutableBundleInput } from "../content/immutableBundle.ts";
+import type {
+  BeginFacilitatorDebriefAttemptInput,
+  BeginFacilitatorDebriefAttemptResult,
+  CompleteFacilitatorDebriefAttemptInput,
+  FacilitatorDebriefGenerationSource,
+  FacilitatorDebriefStatusSource,
+  FacilitatorDebriefStorePort,
+  StoredFacilitatorDebriefAttempt
+} from "../ai/facilitatorDebriefStore.ts";
+import { assertCommandTransactionResult } from "./commandTransactionValidation.ts";
+import {
+  createSystemCommandFingerprint,
+  createSystemCommandId,
+  requireProtectedMechanicsAudit
+} from "./commandIdentity.ts";
 import {
   assertNextSessionVersion,
+  assertProtectedEventSequenceUnchanged,
+  PrivateSeatRecoveryUnavailableError,
+  SessionAuthenticationError,
+  SessionAuthorizationError,
+  PublicJournalTooLargeError,
   SessionStoreUnavailableError,
   SessionVersionConflictError,
   SessionWriteLockedError
 } from "./sessionStoreErrors.ts";
+import { createPublicGameplayJournalByteAccumulator } from "./publicGameplayJournal.ts";
+import {
+  applyPrivateInviteClaim,
+  assertCreationPrincipalsMatchParticipants,
+  assertSessionParticipantsImmutable,
+  assertSessionParticipantsMatchState,
+  isPrivateSessionHostPrincipal,
+  resolvePrivateSeatRecoveryTarget
+} from "./sessionParticipants.ts";
 
 interface SessionRow extends QueryResultRow {
   session_id: string;
   game_id: string;
-  player_id: string | null;
+  bundle_hash: string;
   content_source_id: string | null;
   session_role: SessionRole | null;
+  participants: unknown;
   state: unknown;
   state_version: string | number;
   last_event_sequence: string | number;
+  created_at: Date | string;
+  updated_at: Date | string;
+}
+
+interface ArchivedSessionRow extends SessionRow {
+  archived_at: Date | string;
+}
+
+interface PublicJournalSessionRow extends QueryResultRow {
+  session_id: string;
+  game_id: string;
+  state_version: string | number;
+  last_event_sequence: string | number;
+  created_at: Date | string;
+  archived_at: Date | string | null;
+}
+
+interface DebriefSessionRow extends SessionRow {
+  archived_at: Date | string | null;
+}
+
+interface FacilitatorDebriefAttemptRow extends QueryResultRow {
+  run_id: string;
+  session_id: string;
+  status: StoredFacilitatorDebriefAttempt["status"];
+  expected_state_version: string | number;
+  through_event_sequence: string | number;
+  journal_sha256: string;
+  provider: string;
+  endpoint: string;
+  model: string;
+  prompt_version: string;
+  system_prompt: string;
+  system_prompt_sha256: string;
+  provider_parameters: unknown;
+  request_body_sha256: string;
+  request_bytes: string | number;
+  input_snapshot_without_journal: unknown;
+  provider_request_id: string | null;
+  provider_status: number | null;
+  provider_usage: unknown | null;
+  response_bytes: number | null;
+  duration_ms: number | null;
+  raw_response_utf8: string | null;
+  draft: unknown | null;
+  error: unknown | null;
+  requested_at: Date | string;
+  completed_at: Date | string | null;
+}
+
+interface PrincipalRow extends QueryResultRow {
+  principal_id: string;
+  session_id: string;
+  principal_kind: SessionPrincipal["kind"];
+  session_role: SessionRole;
+  actor_scope: unknown;
+  created_at: Date | string;
+}
+
+interface BundleRow extends QueryResultRow {
+  bundle_hash: string;
+  game_id: string;
+  canonical_bytes: Uint8Array;
+  canonical_bundle: unknown;
+  created_at: Date | string;
+}
+
+interface ReceiptRow extends QueryResultRow {
+  receipt_id: string;
+  session_id: string;
+  principal_id: string;
+  command_id: string;
+  fingerprint: string;
+  action_id: string;
+  actor_id: string | null;
+  bundle_hash: string;
+  definition_hash: string;
+  plan_hash: string | null;
+  state_version_before: string | number;
+  state_version_after: string | number;
+  status: SessionCommandReceipt["status"];
+  event_refs: unknown;
+  public_receipt: unknown;
+  command_result: unknown | null;
+  audit: unknown;
+  created_at: Date | string;
+}
+
+interface EventRow extends QueryResultRow {
+  event_id: string;
+  session_id: string;
+  sequence: string | number;
+  receipt_id: string;
+  command_id: string;
+  action_id: string;
+  principal_id: string;
+  actor_id: string | null;
+  audience: SessionEventRecord["audience"];
+  event_type: string;
+  summary: unknown;
+  event_data: unknown;
+  metric_changes: unknown;
+  created_at: Date | string;
+}
+
+interface SystemScheduleRow extends QueryResultRow {
+  schedule_id: string;
+  session_id: string;
+  bundle_hash: string;
+  action_id: string;
+  params: unknown;
+  definition_hash: string;
+  trigger: unknown;
+  false_policy: SessionSystemSchedule["falsePolicy"];
+  max_occurrences: string | number;
+  next_occurrence: string | number;
+  status: SessionSystemSchedule["status"];
   created_at: Date | string;
   updated_at: Date | string;
 }
@@ -44,7 +209,7 @@ interface SessionReadinessRow extends QueryResultRow {
   can_update: boolean;
 }
 
-/** Minimal node-postgres client surface used by the adapter and its unit tests. */
+/** Minimal node-postgres client surface used by the adapter and unit tests. */
 export interface SessionDatabaseClient {
   query<TRow extends QueryResultRow = QueryResultRow>(
     text: string,
@@ -53,7 +218,7 @@ export interface SessionDatabaseClient {
   release(error?: Error | boolean): void;
 }
 
-/** Minimal node-postgres pool surface used by the adapter and its unit tests. */
+/** Minimal node-postgres pool surface used by the adapter and unit tests. */
 export interface SessionDatabasePool {
   query<TRow extends QueryResultRow = QueryResultRow>(
     text: string,
@@ -63,23 +228,67 @@ export interface SessionDatabasePool {
   end(): Promise<void>;
 }
 
+interface SessionDatabaseQueryable {
+  query<TRow extends QueryResultRow = QueryResultRow>(
+    text: string,
+    values?: unknown[]
+  ): Promise<QueryResult<TRow>>;
+}
+
 const SESSION_COLUMNS = `
   id AS session_id,
   game_id,
-  player_id,
+  bundle_hash,
   content_source_id,
   session_role,
+  participants,
   state,
   state_version,
   last_event_sequence,
   created_at,
   updated_at
 `;
-
-const SELECT_SESSION = `SELECT ${SESSION_COLUMNS} FROM game_sessions WHERE id = $1`;
+const PUBLIC_JOURNAL_SESSION_COLUMNS = `
+  s.id AS session_id,
+  s.game_id,
+  s.state_version,
+  s.last_event_sequence,
+  s.created_at
+`;
+const SELECT_SESSION = `SELECT ${SESSION_COLUMNS}
+  FROM game_sessions
+  WHERE id = $1 AND archived_at IS NULL AND bundle_hash IS NOT NULL`;
 const SELECT_SESSION_FOR_UPDATE = `${SELECT_SESSION} FOR UPDATE NOWAIT`;
+const SELECT_ARCHIVED_SESSION = `SELECT ${SESSION_COLUMNS}, archived_at
+  FROM game_sessions
+  WHERE id = $1 AND archived_at IS NOT NULL AND bundle_hash IS NOT NULL`;
+const SYSTEM_SCHEDULE_COLUMNS = `
+  schedule_id,
+  session_id,
+  bundle_hash,
+  action_id,
+  params,
+  definition_hash,
+  trigger,
+  false_policy,
+  max_occurrences,
+  next_occurrence,
+  status,
+  created_at,
+  updated_at
+`;
+const PUBLIC_JOURNAL_EVENT_BATCH_SIZE = 128;
+const FACILITATOR_DEBRIEF_ATTEMPT_COLUMNS = `
+  run_id, session_id, status, expected_state_version, through_event_sequence,
+  journal_sha256, provider, endpoint, model, prompt_version, system_prompt,
+  system_prompt_sha256, provider_parameters, request_body_sha256, request_bytes,
+  input_snapshot_without_journal, provider_request_id, provider_status,
+  provider_usage, response_bytes, duration_ms, raw_response_utf8, draft, error,
+  requested_at, completed_at
+`;
 
-export class PostgresSessionStore<TState = unknown> implements SessionStorePort<TState> {
+export class PostgresSessionStore<TState = unknown>
+  implements SessionStorePort<TState>, FacilitatorDebriefStorePort<TState> {
   readonly mode = "postgresql";
   private readonly pool: SessionDatabasePool;
 
@@ -87,27 +296,100 @@ export class PostgresSessionStore<TState = unknown> implements SessionStorePort<
     this.pool = pool;
   }
 
-  async createSession(input: CreateSessionInput<TState>): Promise<SessionRecord<TState>> {
+  async createSession(input: CreateSessionInput<TState>): Promise<CreatedSession<TState>> {
+    assertCreateInput(input);
+    assertSessionParticipantsMatchState(input.participants, input.initialState, { allowAgents: true });
+    const principalInputs = [input.principal, ...(input.additionalPrincipals ?? [])];
+    assertCreationPrincipalsMatchParticipants(principalInputs, input.participants);
     const sessionId = randomUUID();
+    const now = new Date();
+    let client: SessionDatabaseClient;
     try {
-      const result = await this.pool.query<SessionRow>(
-        `INSERT INTO game_sessions (
-        id, game_id, player_id, content_source_id, session_role, state,
-        state_version, last_event_sequence
-      ) VALUES ($1, $2, $3, $4, $5, $6::jsonb, 0, 0)
-      RETURNING ${SESSION_COLUMNS}`,
+      client = await this.pool.connect();
+    } catch (error) {
+      throw mapDatabaseOperationalError(error);
+    }
+    let transactionStarted = false;
+    let releaseError: Error | boolean | undefined;
+
+    try {
+      await queryClient(client, sessionId, "BEGIN");
+      transactionStarted = true;
+      const bundleWrite = await queryClient<BundleRow>(
+        client,
+        sessionId,
+        `INSERT INTO game_bundles (bundle_hash, game_id, canonical_bytes, canonical_bundle)
+         VALUES ($1, $2, $3::bytea, $4::jsonb)
+         ON CONFLICT (bundle_hash) DO UPDATE
+           SET bundle_hash = EXCLUDED.bundle_hash
+           WHERE game_bundles.game_id = EXCLUDED.game_id
+             AND game_bundles.canonical_bytes = EXCLUDED.canonical_bytes
+             AND game_bundles.canonical_bundle = EXCLUDED.canonical_bundle
+         RETURNING bundle_hash, game_id, canonical_bytes, canonical_bundle, created_at`,
+        [
+          input.immutableBundle.bundleHash,
+          input.immutableBundle.gameId,
+          Buffer.from(input.immutableBundle.canonicalBytes),
+          JSON.stringify(input.immutableBundle.canonicalBundle)
+        ]
+      );
+      if (bundleWrite.rowCount !== 1) {
+        throw new SessionStoreUnavailableError();
+      }
+
+      const sessionWrite = await queryClient<SessionRow>(
+        client,
+        sessionId,
+         `INSERT INTO game_sessions (
+           id, game_id, bundle_hash, content_source_id, session_role, participants, state,
+           state_version, last_event_sequence
+         ) VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb, 0, 0)
+         RETURNING ${SESSION_COLUMNS}`,
         [
           sessionId,
           input.gameId,
-          input.playerId ?? null,
+          input.immutableBundle.bundleHash,
           input.contentSourceId ?? null,
           input.sessionRole ?? null,
+          JSON.stringify(input.participants),
           JSON.stringify(input.initialState)
         ]
       );
-      return mapSessionRow<TState>(requireSingleRow(result));
+      let primaryPrincipal: PrincipalRow | undefined;
+      for (const principalInput of principalInputs) {
+        const principalWrite = await queryClient<PrincipalRow>(
+          client,
+          sessionId,
+          `INSERT INTO session_principals (
+             principal_id, session_id, principal_kind, session_role,
+             actor_scope, credential_sha256, credential_expires_at
+           ) VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7)
+           RETURNING principal_id, session_id, principal_kind, session_role, actor_scope, created_at`,
+          [
+            principalInput.principalId,
+            sessionId,
+            principalInput.kind,
+            principalInput.role,
+            JSON.stringify(principalInput.actorScope),
+            principalInput.credentialSha256,
+            principalInput.credentialExpiresAt ?? null
+          ]
+        );
+        const principalRow = requireSingleRow(principalWrite);
+        if (primaryPrincipal === undefined) primaryPrincipal = principalRow;
+      }
+      await queryClient(client, sessionId, "COMMIT");
+      return {
+        session: mapSessionRow<TState>(requireSingleRow(sessionWrite)),
+        principal: mapPrincipalRow(primaryPrincipal ?? failMissingPrimaryPrincipal())
+      };
     } catch (error) {
+      if (transactionStarted) {
+        releaseError = await rollbackAfterFailure(client, error);
+      }
       throw mapDatabaseOperationalError(error);
+    } finally {
+      client.release(releaseError);
     }
   }
 
@@ -115,6 +397,740 @@ export class PostgresSessionStore<TState = unknown> implements SessionStorePort<
     try {
       const result = await this.pool.query<SessionRow>(SELECT_SESSION, [sessionId]);
       return result.rows[0] === undefined ? null : mapSessionRow<TState>(result.rows[0]);
+    } catch (error) {
+      throw mapDatabaseOperationalError(error);
+    }
+  }
+
+  async authenticateSession(input: SessionAuthenticationInput): Promise<SessionPrincipal | null> {
+    try {
+      const result = await this.pool.query<PrincipalRow>(
+        `SELECT p.principal_id, p.session_id, p.principal_kind, p.session_role,
+                p.actor_scope, p.created_at
+         FROM session_principals p
+         JOIN game_sessions s ON s.id = p.session_id
+         WHERE p.session_id = $1 AND p.credential_sha256 = $2
+           AND p.credential_expires_at IS NULL
+           AND s.archived_at IS NULL AND s.bundle_hash IS NOT NULL`,
+        [input.sessionId, input.credentialSha256]
+      );
+      return result.rows[0] === undefined ? null : mapPrincipalRow(result.rows[0]);
+    } catch (error) {
+      throw mapDatabaseOperationalError(error);
+    }
+  }
+
+  async issuePrivateSeatRecoveryInvite(
+    input: PrivateSeatRecoveryInviteStoreInput
+  ): Promise<PrivateSeatRecoveryInviteStoreResult | null> {
+    if (
+      !/^[a-f0-9]{64}$/u.test(input.recoveryTokenSha256) ||
+      !Number.isFinite(input.issuedAt.valueOf()) ||
+      !Number.isFinite(input.recoveryTokenExpiresAt.valueOf()) ||
+      input.recoveryTokenExpiresAt.getTime() <= input.issuedAt.getTime()
+    ) {
+      throw new SessionStoreUnavailableError();
+    }
+    let client: SessionDatabaseClient;
+    try {
+      client = await this.pool.connect();
+    } catch (error) {
+      throw mapDatabaseOperationalError(error);
+    }
+    let transactionStarted = false;
+    let releaseError: Error | boolean | undefined;
+    try {
+      await queryClient(client, input.sessionId, "BEGIN");
+      transactionStarted = true;
+      const sessionRead = await queryClient<SessionRow>(
+        client,
+        input.sessionId,
+        SELECT_SESSION_FOR_UPDATE,
+        [input.sessionId]
+      );
+      const currentRow = sessionRead.rows[0];
+      if (currentRow === undefined) {
+        await queryClient(client, input.sessionId, "COMMIT");
+        return null;
+      }
+      const current = mapSessionRow<TState>(currentRow);
+      const issuerRead = await queryClient<PrincipalRow>(
+        client,
+        input.sessionId,
+        `SELECT principal_id, session_id, principal_kind, session_role, actor_scope, created_at
+         FROM session_principals
+         WHERE session_id = $1 AND credential_sha256 = $2
+           AND credential_expires_at IS NULL
+         FOR UPDATE`,
+        [input.sessionId, input.credentialSha256]
+      );
+      const issuerRow = issuerRead.rows[0];
+      if (issuerRow === undefined) {
+        await queryClient(client, input.sessionId, "COMMIT");
+        return null;
+      }
+      if (!isPrivateSessionHostPrincipal(current, mapPrincipalRow(issuerRow))) {
+        throw new SessionAuthorizationError();
+      }
+      const target = resolvePrivateSeatRecoveryTarget(current, input.seatId);
+      if (target === undefined) throw new PrivateSeatRecoveryUnavailableError();
+      const targetRead = await queryClient<PrincipalRow>(
+        client,
+        input.sessionId,
+        `SELECT principal_id, session_id, principal_kind, session_role, actor_scope, created_at
+         FROM session_principals
+         WHERE session_id = $1 AND principal_kind = 'participant'
+           AND session_role = 'player' AND credential_expires_at IS NULL
+         FOR UPDATE`,
+        [input.sessionId]
+      );
+      const targetPrincipals = targetRead.rows
+        .map(mapPrincipalRow)
+        .filter((principal) =>
+          principal.actorScope.kind === "listed-actors" &&
+          principal.actorScope.actorIds.length === 1 &&
+          principal.actorScope.actorIds[0] === target.playerId
+        );
+      if (targetPrincipals.length !== 1) throw new PrivateSeatRecoveryUnavailableError();
+      const targetPrincipal = targetPrincipals[0];
+      const write = await queryClient(
+        client,
+        input.sessionId,
+        `UPDATE session_principals
+         SET recovery_token_sha256 = $3, recovery_token_expires_at = $4
+         WHERE session_id = $1 AND principal_id = $2
+           AND credential_expires_at IS NULL`,
+        [
+          input.sessionId,
+          targetPrincipal.principalId,
+          input.recoveryTokenSha256,
+          input.recoveryTokenExpiresAt
+        ]
+      );
+      if (write.rowCount !== 1) throw new SessionStoreUnavailableError();
+      await queryClient(client, input.sessionId, "COMMIT");
+      return {
+        seatId: target.seatId,
+        playerId: target.playerId,
+        recoveryTokenExpiresAt: input.recoveryTokenExpiresAt
+      };
+    } catch (error) {
+      if (transactionStarted) releaseError = await rollbackAfterFailure(client, error);
+      throw mapDatabaseOperationalError(error);
+    } finally {
+      client.release(releaseError);
+    }
+  }
+
+  async claimPrivateInvite(
+    input: PrivateInviteClaimStoreInput
+  ): Promise<PrivateInviteClaimStoreResult<TState> | null> {
+    if (
+      input.currentCredentialSha256 !== undefined &&
+      !/^[a-f0-9]{64}$/u.test(input.currentCredentialSha256)
+    ) {
+      throw new SessionStoreUnavailableError();
+    }
+    let client: SessionDatabaseClient;
+    try {
+      client = await this.pool.connect();
+    } catch (error) {
+      throw mapDatabaseOperationalError(error);
+    }
+    let transactionStarted = false;
+    let releaseError: Error | boolean | undefined;
+    try {
+      await queryClient(client, input.sessionId, "BEGIN");
+      transactionStarted = true;
+      const sessionRead = await queryClient<SessionRow>(
+        client,
+        input.sessionId,
+        SELECT_SESSION_FOR_UPDATE,
+        [input.sessionId]
+      );
+      const currentRow = sessionRead.rows[0];
+      if (currentRow === undefined) {
+        await queryClient(client, input.sessionId, "COMMIT");
+        return null;
+      }
+      const currentPrincipalRead = input.currentCredentialSha256 === undefined
+        ? undefined
+        : await queryClient<PrincipalRow>(
+            client,
+            input.sessionId,
+            `SELECT principal_id, session_id, principal_kind, session_role, actor_scope, created_at
+             FROM session_principals
+             WHERE session_id = $1 AND credential_sha256 = $2
+               AND credential_expires_at IS NULL
+             FOR UPDATE`,
+            [input.sessionId, input.currentCredentialSha256]
+          );
+      const currentPrincipalRow = currentPrincipalRead?.rows[0];
+      const principalRead = currentPrincipalRow === undefined
+        ? await queryClient<PrincipalRow>(
+            client,
+            input.sessionId,
+            `SELECT principal_id, session_id, principal_kind, session_role, actor_scope, created_at
+             FROM session_principals
+             WHERE session_id = $1 AND credential_sha256 = $2
+               AND credential_expires_at IS NOT NULL AND credential_expires_at > $3
+             FOR UPDATE`,
+            [input.sessionId, input.inviteCredentialSha256, input.claimedAt]
+          )
+        : { rows: [], rowCount: 0 };
+      const recoveryRead = principalRead.rows[0] === undefined
+        ? await queryClient<PrincipalRow>(
+            client,
+            input.sessionId,
+            `SELECT principal_id, session_id, principal_kind, session_role, actor_scope, created_at
+             FROM session_principals
+             WHERE session_id = $1 AND recovery_token_sha256 = $2
+               AND recovery_token_expires_at IS NOT NULL
+               AND recovery_token_expires_at > $3
+               AND credential_expires_at IS NULL
+             FOR UPDATE`,
+            [input.sessionId, input.inviteCredentialSha256, input.claimedAt]
+          )
+        : undefined;
+      const candidatePrincipalRow = principalRead.rows[0] ?? recoveryRead?.rows[0];
+      const principalRow = currentPrincipalRow === undefined ||
+        currentPrincipalRow.principal_id === recoveryRead?.rows[0]?.principal_id
+        ? candidatePrincipalRow
+        : undefined;
+      if (principalRow === undefined) {
+        await queryClient(client, input.sessionId, "COMMIT");
+        return null;
+      }
+      const principal = mapPrincipalRow(principalRow);
+      if (principal.kind !== "participant" || principal.actorScope.kind !== "listed-actors") {
+        throw new SessionStoreUnavailableError();
+      }
+      if (recoveryRead?.rows[0] !== undefined) {
+        const principalWrite = await queryClient(
+          client,
+          input.sessionId,
+          `UPDATE session_principals
+           SET credential_sha256 = $3,
+               recovery_token_sha256 = NULL,
+               recovery_token_expires_at = NULL
+           WHERE session_id = $1 AND principal_id = $2
+             AND recovery_token_sha256 = $4
+             AND recovery_token_expires_at > $5
+             AND credential_expires_at IS NULL`,
+          [
+            input.sessionId,
+            principal.principalId,
+            input.participantCredentialSha256,
+            input.inviteCredentialSha256,
+            input.claimedAt
+          ]
+        );
+        if (principalWrite.rowCount !== 1) throw new SessionStoreUnavailableError();
+        await queryClient(client, input.sessionId, "COMMIT");
+        return {
+          session: mapSessionRow<TState>(currentRow),
+          principal,
+          transition: "credential-recovery"
+        };
+      }
+      const updated = applyPrivateInviteClaim(
+        mapSessionRow<TState>(currentRow),
+        principal.actorScope.actorIds[0],
+        input.claimedAt
+      );
+      const principalWrite = await queryClient(
+        client,
+        input.sessionId,
+        `UPDATE session_principals
+         SET credential_sha256 = $3, credential_expires_at = NULL
+         WHERE session_id = $1 AND principal_id = $2
+           AND credential_sha256 = $4 AND credential_expires_at > $5`,
+        [
+          input.sessionId,
+          principal.principalId,
+          input.participantCredentialSha256,
+          input.inviteCredentialSha256,
+          input.claimedAt
+        ]
+      );
+      if (principalWrite.rowCount !== 1) throw new SessionStoreUnavailableError();
+      const sessionWrite = await queryClient<SessionRow>(
+        client,
+        input.sessionId,
+        `UPDATE game_sessions
+         SET participants = $2::jsonb, state_version = $3, updated_at = $4
+         WHERE id = $1 AND state_version = $5
+         RETURNING ${SESSION_COLUMNS}`,
+        [
+          input.sessionId,
+          JSON.stringify(updated.participants),
+          updated.version.stateVersion,
+          input.claimedAt,
+          parseSafeInteger(currentRow.state_version)
+        ]
+      );
+      if (sessionWrite.rowCount !== 1) throw new SessionStoreUnavailableError();
+      await queryClient(client, input.sessionId, "COMMIT");
+      return {
+        session: mapSessionRow<TState>(requireSingleRow(sessionWrite)),
+        principal,
+        transition: "initial-join"
+      };
+    } catch (error) {
+      if (transactionStarted) releaseError = await rollbackAfterFailure(client, error);
+      throw mapDatabaseOperationalError(error);
+    } finally {
+      client.release(releaseError);
+    }
+  }
+
+  async getCommandReceipt(input: SessionCommandTransactionInput): Promise<SessionCommandReceipt | null> {
+    try {
+      const result = await this.pool.query<ReceiptRow>(
+        `${SELECT_RECEIPT}
+         WHERE session_id = $1 AND command_id = $3
+           AND principal_id = (
+             SELECT principal_id FROM session_principals
+             WHERE session_id = $1 AND credential_sha256 = $2
+               AND credential_expires_at IS NULL
+           )
+           AND EXISTS (
+             SELECT 1 FROM game_sessions
+             WHERE id = $1 AND archived_at IS NULL AND bundle_hash IS NOT NULL
+           )`,
+        [input.sessionId, input.credentialSha256, input.commandId]
+      );
+      return result.rows[0] === undefined ? null : mapReceiptRow(result.rows[0]);
+    } catch (error) {
+      throw mapDatabaseOperationalError(error);
+    }
+  }
+
+  async archiveSession(
+    input: SessionAuthenticationInput
+  ): Promise<ArchivedSessionAudit<TState> | null> {
+    return this.runArchivedSessionTransaction(input, true);
+  }
+
+  async readArchivedSession(
+    input: SessionAuthenticationInput
+  ): Promise<ArchivedSessionAudit<TState> | null> {
+    return this.runArchivedSessionTransaction(input, false);
+  }
+
+  async readPublicJournalSource(
+    input: SessionAuthenticationInput,
+    limit: number
+  ): Promise<SessionPublicJournalSource<TState> | null> {
+    if (!Number.isSafeInteger(limit) || limit <= 0) throw new SessionStoreUnavailableError();
+    let client: SessionDatabaseClient;
+    try {
+      client = await this.pool.connect();
+    } catch (error) {
+      throw mapDatabaseOperationalError(error);
+    }
+    let transactionStarted = false;
+    let releaseError: Error | boolean | undefined;
+    try {
+      await queryClient(client, input.sessionId, "BEGIN ISOLATION LEVEL REPEATABLE READ");
+      transactionStarted = true;
+      const sessionRead = await queryClient<PublicJournalSessionRow>(
+        client,
+        input.sessionId,
+        `SELECT ${PUBLIC_JOURNAL_SESSION_COLUMNS}, s.archived_at
+         FROM game_sessions s
+         JOIN session_principals p ON p.session_id = s.id
+         WHERE s.id = $1 AND p.credential_sha256 = $2
+           AND p.credential_expires_at IS NULL
+           AND s.bundle_hash IS NOT NULL
+           AND (s.archived_at IS NULL OR p.session_role = 'facilitator')`,
+        [input.sessionId, input.credentialSha256]
+      );
+      const row = sessionRead.rows[0];
+      if (row === undefined) {
+        await queryClient(client, input.sessionId, "COMMIT");
+        return null;
+      }
+      const session = mapPublicJournalSessionRow<TState>(row);
+      const archivedAt = row.archived_at === null ? undefined : new Date(row.archived_at);
+      const accumulator = createPublicGameplayJournalByteAccumulator({
+        session,
+        lifecycle: archivedAt === undefined ? "active" : "archived",
+        ...(archivedAt === undefined ? {} : { archivedAt }),
+        maxEntries: limit
+      });
+      const events: SessionEventRecord[] = [];
+      let afterSequence = 0;
+      let exhausted = false;
+      while (events.length < limit && !exhausted) {
+        const eventRead = await queryClient<EventRow>(
+          client,
+          input.sessionId,
+          `${SELECT_EVENT}
+           WHERE session_id = $1 AND audience = 'public' AND sequence > $2 AND sequence <= $3
+           ORDER BY sequence ASC
+           LIMIT $4`,
+          [input.sessionId, afterSequence, parseSafeInteger(row.last_event_sequence), PUBLIC_JOURNAL_EVENT_BATCH_SIZE]
+        );
+        if (eventRead.rows.length === 0) break;
+        for (const eventRow of eventRead.rows) {
+          const event = mapEventRow(eventRow);
+          accumulator.addEvent(event);
+          events.push(event);
+          afterSequence = event.sequence;
+          if (events.length === limit) break;
+        }
+        exhausted = eventRead.rows.length < PUBLIC_JOURNAL_EVENT_BATCH_SIZE;
+      }
+      await queryClient(client, input.sessionId, "COMMIT");
+      return {
+        session,
+        lifecycle: archivedAt === undefined ? "active" : "archived",
+        ...(archivedAt === undefined ? {} : { archivedAt }),
+        events
+      };
+    } catch (error) {
+      if (transactionStarted) releaseError = await rollbackAfterFailure(client, error);
+      throw mapDatabaseOperationalError(error);
+    } finally {
+      client.release(releaseError);
+    }
+  }
+
+  async readFacilitatorDebriefStatus(
+    input: SessionAuthenticationInput
+  ): Promise<FacilitatorDebriefStatusSource<TState> | null> {
+    try {
+      const sessionRead = await this.pool.query<DebriefSessionRow>(
+        `SELECT ${SESSION_COLUMNS}, archived_at
+         FROM game_sessions
+         WHERE id = $1 AND bundle_hash IS NOT NULL
+           AND EXISTS (
+             SELECT 1 FROM session_principals p
+             WHERE p.session_id = game_sessions.id
+               AND p.credential_sha256 = $2
+               AND p.credential_expires_at IS NULL
+               AND p.session_role = 'facilitator'
+           )`,
+        [input.sessionId, input.credentialSha256]
+      );
+      const row = sessionRead.rows[0];
+      if (row === undefined) return null;
+      const session = mapSessionRow<TState>(row);
+      const attempt = await readCurrentFacilitatorDebriefAttempt(this.pool, input.sessionId);
+      assertFacilitatorDebriefAttemptSessionBinding(attempt, session);
+      return {
+        session,
+        attempt
+      };
+    } catch (error) {
+      throw mapDatabaseOperationalError(error);
+    }
+  }
+
+  async readFacilitatorDebriefGenerationSource(
+    input: SessionAuthenticationInput,
+    limit: number
+  ): Promise<FacilitatorDebriefGenerationSource<TState> | null> {
+    if (!Number.isSafeInteger(limit) || limit <= 0) throw new SessionStoreUnavailableError();
+    let client: SessionDatabaseClient;
+    try {
+      client = await this.pool.connect();
+    } catch (error) {
+      throw mapDatabaseOperationalError(error);
+    }
+    let transactionStarted = false;
+    let releaseError: Error | boolean | undefined;
+    try {
+      await queryClient(client, input.sessionId, "BEGIN ISOLATION LEVEL REPEATABLE READ");
+      transactionStarted = true;
+      const sessionRead = await queryClient<DebriefSessionRow>(
+        client,
+        input.sessionId,
+        `SELECT ${SESSION_COLUMNS}, archived_at
+         FROM game_sessions
+         WHERE id = $1 AND bundle_hash IS NOT NULL
+           AND EXISTS (
+             SELECT 1 FROM session_principals p
+             WHERE p.session_id = game_sessions.id
+               AND p.credential_sha256 = $2
+               AND p.credential_expires_at IS NULL
+               AND p.session_role = 'facilitator'
+           )`,
+        [input.sessionId, input.credentialSha256]
+      );
+      const row = sessionRead.rows[0];
+      if (row === undefined) {
+        await queryClient(client, input.sessionId, "COMMIT");
+        return null;
+      }
+      const session = mapSessionRow<TState>(row);
+      const archivedAt = row.archived_at === null ? undefined : new Date(row.archived_at);
+      const bundleRead = await queryClient<BundleRow>(
+        client,
+        input.sessionId,
+        `SELECT bundle_hash, game_id, canonical_bytes, canonical_bundle, created_at
+         FROM game_bundles WHERE bundle_hash = $1`,
+        [session.bundleHash]
+      );
+      const bundleRow = bundleRead.rows[0];
+      if (bundleRow === undefined) throw new SessionStoreUnavailableError();
+      const attempt = await readCurrentFacilitatorDebriefAttempt(client, input.sessionId);
+      assertFacilitatorDebriefAttemptSessionBinding(attempt, session);
+      const events: SessionEventRecord[] = [];
+      const accumulator = createPublicGameplayJournalByteAccumulator({
+        session,
+        lifecycle: archivedAt === undefined ? "active" : "archived",
+        ...(archivedAt === undefined ? {} : { archivedAt }),
+        maxEntries: limit
+      });
+      let afterSequence = 0;
+      let exhausted = false;
+      while (events.length < limit && !exhausted) {
+        const eventRead = await queryClient<EventRow>(
+          client,
+          input.sessionId,
+          `${SELECT_EVENT}
+           WHERE session_id = $1 AND audience = 'public' AND sequence > $2 AND sequence <= $3
+           ORDER BY sequence ASC
+           LIMIT $4`,
+          [input.sessionId, afterSequence, session.version.lastEventSequence,
+            PUBLIC_JOURNAL_EVENT_BATCH_SIZE]
+        );
+        if (eventRead.rows.length === 0) break;
+        for (const eventRow of eventRead.rows) {
+          const event = mapEventRow(eventRow);
+          accumulator.addEvent(event);
+          events.push(event);
+          afterSequence = event.sequence;
+          if (events.length === limit) break;
+        }
+        exhausted = eventRead.rows.length < PUBLIC_JOURNAL_EVENT_BATCH_SIZE;
+      }
+      await queryClient(client, input.sessionId, "COMMIT");
+      return {
+        session,
+        attempt,
+        bundle: mapBundleRow(bundleRow),
+        lifecycle: archivedAt === undefined ? "active" : "archived",
+        ...(archivedAt === undefined ? {} : { archivedAt }),
+        events
+      };
+    } catch (error) {
+      if (transactionStarted) releaseError = await rollbackAfterFailure(client, error);
+      throw mapDatabaseOperationalError(error);
+    } finally {
+      client.release(releaseError);
+    }
+  }
+
+  async beginFacilitatorDebriefAttempt(
+    input: BeginFacilitatorDebriefAttemptInput
+  ): Promise<BeginFacilitatorDebriefAttemptResult> {
+    assertFacilitatorDebriefBeginInput(input);
+    let client: SessionDatabaseClient;
+    try {
+      client = await this.pool.connect();
+    } catch (error) {
+      throw mapDatabaseOperationalError(error);
+    }
+    let transactionStarted = false;
+    let releaseError: Error | boolean | undefined;
+    try {
+      await queryClient(client, input.sessionId, "BEGIN");
+      transactionStarted = true;
+      const sessionRead = await queryClient<DebriefSessionRow>(
+        client,
+        input.sessionId,
+        `SELECT ${SESSION_COLUMNS}, archived_at
+         FROM game_sessions
+         WHERE id = $1 AND bundle_hash IS NOT NULL
+           AND EXISTS (
+             SELECT 1 FROM session_principals p
+             WHERE p.session_id = game_sessions.id
+               AND p.credential_sha256 = $2
+               AND p.credential_expires_at IS NULL
+               AND p.session_role = 'facilitator'
+           )
+         FOR UPDATE NOWAIT`,
+        [input.sessionId, input.credentialSha256]
+      );
+      const row = sessionRead.rows[0];
+      if (row === undefined) {
+        await queryClient(client, input.sessionId, "COMMIT");
+        return { kind: "authentication-failed" };
+      }
+      if (parseSafeInteger(row.state_version) !== input.expectedStateVersion) {
+        await queryClient(client, input.sessionId, "COMMIT");
+        return { kind: "version-conflict" };
+      }
+      const snapshot = input.requestAudit.inputSnapshotWithoutJournal;
+      if (snapshot.gameId !== row.game_id || snapshot.bundleHash !== row.bundle_hash) {
+        throw new SessionStoreUnavailableError();
+      }
+      const current = await readCurrentFacilitatorDebriefAttempt(client, input.sessionId);
+      if (current?.status === "ready" ||
+          current?.status === "generating" &&
+          current.requestedAt.getTime() > input.staleGeneratingBefore.getTime()) {
+        await queryClient(client, input.sessionId, "COMMIT");
+        return { kind: "existing", attempt: current };
+      }
+      if (current?.status === "generating") {
+        const staleWrite = await queryClient(
+          client,
+          input.sessionId,
+          `UPDATE facilitator_debrief_attempts
+           SET status = 'failed', completed_at = $3,
+               duration_ms = LEAST(3600000, GREATEST(0,
+                 FLOOR(EXTRACT(EPOCH FROM ($3::timestamptz - requested_at)) * 1000)::integer)),
+               error = $4::jsonb
+           WHERE session_id = $1 AND run_id = $2 AND status = 'generating'
+           RETURNING run_id`,
+          [
+            input.sessionId,
+            current.runId,
+            input.requestedAt,
+            JSON.stringify({
+              code: "internal_error",
+              message: "Предыдущий запуск не завершился; ведущий начал новую попытку."
+            })
+          ]
+        );
+        if (staleWrite.rowCount !== 1) throw new SessionStoreUnavailableError();
+      }
+      const audit = input.requestAudit;
+      const inserted = await queryClient<FacilitatorDebriefAttemptRow>(
+        client,
+        input.sessionId,
+        `INSERT INTO facilitator_debrief_attempts (
+           run_id, session_id, status, expected_state_version,
+           through_event_sequence, journal_sha256, provider, endpoint, model,
+           prompt_version, system_prompt, system_prompt_sha256,
+           provider_parameters, request_body_sha256, request_bytes,
+           input_snapshot_without_journal, requested_at
+         ) VALUES (
+           $1, $2, 'generating', $3, $4, $5, $6, $7, $8, $9, $10, $11,
+           $12::jsonb, $13, $14, $15::jsonb, $16
+         )
+         RETURNING ${FACILITATOR_DEBRIEF_ATTEMPT_COLUMNS}`,
+        [
+          input.runId,
+          input.sessionId,
+          input.expectedStateVersion,
+          input.throughEventSequence,
+          input.journalSha256,
+          audit.provider,
+          audit.endpoint,
+          audit.model,
+          audit.promptVersion,
+          audit.systemPrompt,
+          audit.systemPromptSha256,
+          JSON.stringify(audit.parameters),
+          audit.requestBodySha256,
+          audit.requestBytes,
+          JSON.stringify(audit.inputSnapshotWithoutJournal),
+          input.requestedAt
+        ]
+      );
+      const attempt = mapFacilitatorDebriefAttemptRow(requireSingleRow(inserted));
+      await queryClient(client, input.sessionId, "COMMIT");
+      return { kind: "created", attempt };
+    } catch (error) {
+      if (transactionStarted) releaseError = await rollbackAfterFailure(client, error);
+      throw mapDatabaseOperationalError(error);
+    } finally {
+      client.release(releaseError);
+    }
+  }
+
+  async completeFacilitatorDebriefAttempt(
+    input: CompleteFacilitatorDebriefAttemptInput
+  ): Promise<StoredFacilitatorDebriefAttempt | null> {
+    const providerStatus = input.status === "ready"
+      ? input.audit.providerStatus
+      : input.providerStatus ?? input.audit.providerStatus;
+    try {
+      const result = await this.pool.query<FacilitatorDebriefAttemptRow>(
+        `UPDATE facilitator_debrief_attempts
+         SET status = $3, completed_at = $4, provider_request_id = $5,
+             provider_status = $6, provider_usage = $7::jsonb,
+             response_bytes = $8, duration_ms = $9, raw_response_utf8 = $10,
+             draft = $11::jsonb, error = $12::jsonb
+         WHERE session_id = $1 AND run_id = $2 AND status = 'generating'
+         RETURNING ${FACILITATOR_DEBRIEF_ATTEMPT_COLUMNS}`,
+        [
+          input.sessionId,
+          input.runId,
+          input.status,
+          input.completedAt,
+          input.audit.providerRequestId ?? null,
+          providerStatus ?? null,
+          input.audit.providerUsage === undefined ? null : JSON.stringify(input.audit.providerUsage),
+          input.audit.responseBytes ?? null,
+          input.audit.durationMs,
+          input.audit.rawResponseUtf8 ?? null,
+          input.status === "ready" ? JSON.stringify(input.draft) : null,
+          input.status === "failed" ? JSON.stringify(input.error) : null
+        ]
+      );
+      return result.rows[0] === undefined ? null : mapFacilitatorDebriefAttemptRow(result.rows[0]);
+    } catch (error) {
+      throw mapDatabaseOperationalError(error);
+    }
+  }
+
+  async getImmutableBundle(bundleHash: string): Promise<ImmutableGameBundle | null> {
+    try {
+      const result = await this.pool.query<BundleRow>(
+        `SELECT bundle_hash, game_id, canonical_bytes, canonical_bundle, created_at
+         FROM game_bundles WHERE bundle_hash = $1`,
+        [bundleHash]
+      );
+      return result.rows[0] === undefined ? null : mapBundleRow(result.rows[0]);
+    } catch (error) {
+      throw mapDatabaseOperationalError(error);
+    }
+  }
+
+  async getSessionEvents(sessionId: string, afterSequence = 0): Promise<Array<SessionEventRecord>> {
+    if (!Number.isSafeInteger(afterSequence) || afterSequence < 0) throw new SessionStoreUnavailableError();
+    try {
+      const result = await this.pool.query<EventRow>(
+        `${SELECT_EVENT}
+         WHERE session_id = $1 AND sequence > $2
+           AND EXISTS (
+             SELECT 1 FROM game_sessions s
+             WHERE s.id = session_events.session_id
+               AND s.archived_at IS NULL AND s.bundle_hash IS NOT NULL
+           )
+         ORDER BY sequence ASC`,
+        [sessionId, afterSequence]
+      );
+      return result.rows.map(mapEventRow);
+    } catch (error) {
+      throw mapDatabaseOperationalError(error);
+    }
+  }
+
+  async listPendingSystemSchedules(sessionId: string, limit = 64): Promise<Array<SessionSystemSchedule>> {
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 64) {
+      throw new SessionStoreUnavailableError();
+    }
+    try {
+      const result = await this.pool.query<SystemScheduleRow>(
+        `SELECT ${SYSTEM_SCHEDULE_COLUMNS}
+         FROM system_schedules
+         WHERE session_id = $1 AND status = 'pending'
+           AND EXISTS (
+             SELECT 1 FROM game_sessions s
+             WHERE s.id = system_schedules.session_id
+               AND s.archived_at IS NULL AND s.bundle_hash IS NOT NULL
+           )
+         ORDER BY created_at ASC, schedule_id ASC
+         LIMIT $2`,
+        [sessionId, limit]
+      );
+      return result.rows.map(mapSystemScheduleRow);
     } catch (error) {
       throw mapDatabaseOperationalError(error);
     }
@@ -136,111 +1152,278 @@ export class PostgresSessionStore<TState = unknown> implements SessionStorePort<
     sessionId: string,
     operation: LockedSessionOperation<TState, TResult>
   ): Promise<TResult> {
-    // node-postgres requires all statements in a transaction to use the same
-    // checked-out client; pool.query() here would allow a different connection
-    // and silently release the row-level lock boundary.
-    let client: SessionDatabaseClient;
-    try {
-      client = await this.pool.connect();
-    } catch (error) {
-      throw mapDatabaseOperationalError(error);
-    }
-    let transactionStarted = false;
-    let releaseError: Error | boolean | undefined;
-
-    try {
-      await queryClient(client, sessionId, "BEGIN");
-      transactionStarted = true;
-      const selected = await queryClient<SessionRow>(client, sessionId, SELECT_SESSION_FOR_UPDATE, [sessionId]);
-      const current = selected.rows[0] === undefined ? null : mapSessionRow<TState>(selected.rows[0]);
+    return this.runLockedTransaction(sessionId, async (client, current) => {
       const operationResult = await operation(current);
-
       if (operationResult.updatedSession !== undefined) {
         if (current === null) {
           throw new SessionVersionConflictError(sessionId, 0);
         }
-
-        const updated = operationResult.updatedSession;
-        assertNextSessionVersion(sessionId, current, updated);
-        const write = await queryClient<SessionRow>(
-          client,
-          sessionId,
-          `UPDATE game_sessions SET
-            game_id = $2,
-            player_id = $3,
-            content_source_id = $4,
-            session_role = $5,
-            state = $6::jsonb,
-            state_version = $7,
-            last_event_sequence = $8,
-            updated_at = $9
-          WHERE id = $1 AND state_version = $10
-          RETURNING ${SESSION_COLUMNS}`,
-          [
-            sessionId,
-            updated.gameId,
-            updated.playerId ?? null,
-            updated.contentSourceId ?? null,
-            updated.sessionRole ?? null,
-            JSON.stringify(updated.state),
-            updated.version.stateVersion,
-            updated.version.lastEventSequence,
-            updated.updatedAt,
-            current.version.stateVersion
-          ]
-        );
-
-        if (write.rowCount !== 1) {
-          throw new SessionVersionConflictError(sessionId, current.version.stateVersion);
-        }
+        assertProtectedEventSequenceUnchanged(current, operationResult.updatedSession);
+        await this.writeUpdatedSession(client, current, operationResult.updatedSession);
       }
-
-      await queryClient(client, sessionId, "COMMIT");
       return operationResult.result;
-    } catch (error) {
-      if (transactionStarted) {
-        try {
-          await client.query("ROLLBACK");
-        } catch (rollbackError) {
-          // Preserve the original operation error. The broken connection is
-          // removed from the pool via release(error), while readiness exposes
-          // a wider database outage without leaking driver details.
-          releaseError = asReleaseError(rollbackError);
-        }
-      } else if (error instanceof SessionStoreUnavailableError) {
-        releaseError = error;
+    });
+  }
+
+  async withCommandTransaction<TResult>(
+    input: SessionCommandTransactionInput,
+    operation: SessionCommandTransaction<TState, TResult>
+  ): Promise<TResult> {
+    return this.runLockedTransaction(input.sessionId, async (client, current) => {
+      if (current === null) {
+        throw new SessionAuthenticationError();
       }
-      throw error;
-    } finally {
-      client.release(releaseError);
+      const principalRead = await queryClient<PrincipalRow>(
+        client,
+        input.sessionId,
+        `SELECT principal_id, session_id, principal_kind, session_role, actor_scope, created_at
+         FROM session_principals
+         WHERE session_id = $1 AND credential_sha256 = $2
+           AND credential_expires_at IS NULL`,
+        [input.sessionId, input.credentialSha256]
+      );
+      const principalRow = principalRead.rows[0];
+      if (principalRow === undefined) {
+        throw new SessionAuthenticationError();
+      }
+      const principal = mapPrincipalRow(principalRow);
+
+      const bundleRead = await queryClient<BundleRow>(
+        client,
+        input.sessionId,
+        `SELECT bundle_hash, game_id, canonical_bytes, canonical_bundle, created_at
+         FROM game_bundles WHERE bundle_hash = $1`,
+        [current.bundleHash]
+      );
+      const bundleRow = bundleRead.rows[0];
+      if (bundleRow === undefined) {
+        throw new SessionStoreUnavailableError();
+      }
+      const receiptRead = await queryClient<ReceiptRow>(
+        client,
+        input.sessionId,
+        `${SELECT_RECEIPT}
+         WHERE session_id = $1 AND principal_id = $2 AND command_id = $3`,
+        [input.sessionId, principal.principalId, input.commandId]
+      );
+      const existingReceipt = receiptRead.rows[0] === undefined
+        ? undefined
+        : mapReceiptRow(receiptRead.rows[0]);
+      const operationResult = await operation({
+        currentSession: current,
+        principal,
+        bundle: mapBundleRow(bundleRow),
+        ...(existingReceipt === undefined ? {} : { existingReceipt }),
+        getCommandReceipt: async (commandId) => {
+          const receipt = await queryClient<ReceiptRow>(
+            client,
+            input.sessionId,
+            `${SELECT_RECEIPT}
+             WHERE session_id = $1 AND principal_id = $2 AND command_id = $3`,
+            [input.sessionId, principal.principalId, commandId]
+          );
+          return receipt.rows[0] === undefined ? null : mapReceiptRow(receipt.rows[0]);
+        }
+      });
+
+      assertCommandTransactionResult({
+        input,
+        current,
+        principal,
+        existingReceipt,
+        updatedSession: operationResult.updatedSession,
+        receipt: operationResult.receipt,
+        events: operationResult.events
+      });
+      if (operationResult.updatedSession !== undefined) {
+        await this.writeUpdatedSession(client, current, operationResult.updatedSession);
+      }
+      if (operationResult.receipt !== undefined) {
+        await insertReceipt(client, operationResult.receipt);
+      }
+      if (operationResult.events !== undefined && operationResult.events.length > 0) {
+        await insertEvents(client, operationResult.events);
+      }
+      const scheduleMutations = operationResult.scheduleMutations ?? [];
+      if (scheduleMutations.length > 0) {
+        if (operationResult.receipt?.status !== "applied" || operationResult.updatedSession === undefined) {
+          throw new SessionStoreUnavailableError();
+        }
+        assertScheduleMutationInputs(current, scheduleMutations);
+        await applyScheduleMutations(client, current, scheduleMutations);
+      }
+      return operationResult.result;
+    });
+  }
+
+  async withSystemCommandTransaction<TResult>(
+    input: SessionSystemCommandTransactionInput,
+    operation: SessionSystemCommandTransaction<TState, TResult>
+  ): Promise<TResult> {
+    if (!isExactSystemCommandId(input)) {
+      throw new SessionAuthenticationError();
     }
+
+    return this.runLockedTransaction(input.sessionId, async (client, current) => {
+      if (current === null) {
+        throw new SessionAuthenticationError();
+      }
+
+      const principalId = systemSchedulerPrincipalId(current.sessionId);
+      // Idempotency wins over occurrence state: a delivery retried after the
+      // occurrence was consumed must still recover its terminal receipt.
+      const receiptRead = await queryClient<ReceiptRow>(
+        client,
+        input.sessionId,
+        `${SELECT_RECEIPT}
+         WHERE session_id = $1 AND principal_id = $2 AND command_id = $3`,
+        [input.sessionId, principalId, input.commandId]
+      );
+      const existingReceipt = receiptRead.rows[0] === undefined
+        ? undefined
+        : mapReceiptRow(receiptRead.rows[0]);
+
+      const scheduleRead = await queryClient<SystemScheduleRow>(
+        client,
+        input.sessionId,
+        `SELECT ${SYSTEM_SCHEDULE_COLUMNS}
+         FROM system_schedules
+         WHERE session_id = $1 AND schedule_id = $2
+         FOR UPDATE`,
+        [input.sessionId, input.scheduleId]
+      );
+      const scheduleRow = scheduleRead.rows[0];
+      if (scheduleRow === undefined) {
+        throw new SessionAuthenticationError();
+      }
+      const schedule = mapSystemScheduleRow(scheduleRow);
+      if (schedule.sessionId !== current.sessionId || schedule.bundleHash !== current.bundleHash) {
+        throw new SessionAuthenticationError();
+      }
+
+      const bundleRead = await queryClient<BundleRow>(
+        client,
+        input.sessionId,
+        `SELECT bundle_hash, game_id, canonical_bytes, canonical_bundle, created_at
+         FROM game_bundles WHERE bundle_hash = $1`,
+        [current.bundleHash]
+      );
+      const bundleRow = bundleRead.rows[0];
+      if (bundleRow === undefined) {
+        throw new SessionStoreUnavailableError();
+      }
+
+      const principal = systemSchedulerPrincipal(current.sessionId, schedule.createdAt);
+      if (existingReceipt !== undefined) {
+        assertSystemReceiptPins(input, schedule, existingReceipt);
+      } else if (schedule.status !== "pending" || schedule.nextOccurrence !== input.occurrence) {
+        throw new SessionAuthenticationError();
+      }
+
+      const operationResult = await operation({
+        currentSession: current,
+        principal,
+        bundle: mapBundleRow(bundleRow),
+        schedule,
+        ...(existingReceipt === undefined ? {} : { existingReceipt }),
+        getCommandReceipt: async (commandId) => {
+          const receipt = await queryClient<ReceiptRow>(
+            client,
+            input.sessionId,
+            `${SELECT_RECEIPT}
+             WHERE session_id = $1 AND principal_id = $2 AND command_id = $3`,
+            [input.sessionId, principal.principalId, commandId]
+          );
+          return receipt.rows[0] === undefined ? null : mapReceiptRow(receipt.rows[0]);
+        }
+      });
+      assertSystemDisposition(existingReceipt, operationResult);
+      assertCommandTransactionResult({
+        input: { sessionId: input.sessionId, commandId: input.commandId, credentialSha256: "" },
+        current,
+        principal,
+        existingReceipt,
+        updatedSession: operationResult.updatedSession,
+        receipt: operationResult.receipt,
+        events: operationResult.events
+      });
+      if (operationResult.receipt !== undefined) {
+        assertSystemReceiptPins(input, schedule, operationResult.receipt);
+      }
+
+      if (operationResult.updatedSession !== undefined) {
+        await this.writeUpdatedSession(client, current, operationResult.updatedSession);
+      }
+      if (operationResult.receipt !== undefined) {
+        await insertReceipt(client, operationResult.receipt);
+      }
+      if (operationResult.events !== undefined && operationResult.events.length > 0) {
+        await insertEvents(client, operationResult.events);
+      }
+      if (existingReceipt === undefined && operationResult.scheduleDisposition !== "defer") {
+        await consumeScheduleOccurrence(client, schedule);
+      }
+      return operationResult.result;
+    });
   }
 
   async checkReadiness(): Promise<void> {
     try {
-      // The CTE validates the exact columns without reading session contents.
-      // Privilege and read-only checks ensure readiness means the process can
-      // perform its real SELECT/INSERT/UPDATE workload, not only open a socket.
       const result = await this.pool.query<SessionReadinessRow>(`
-        WITH schema_probe AS (
-          SELECT id, game_id, player_id, content_source_id, session_role, state,
-                 history, state_version, last_event_sequence, created_at, updated_at
-          FROM game_sessions
-          LIMIT 0
+        WITH session_probe AS (
+          SELECT id, game_id, bundle_hash, content_source_id, session_role, state,
+                 participants, history, state_version, last_event_sequence, archived_at, created_at, updated_at
+          FROM game_sessions LIMIT 0
+        ), principal_probe AS (
+          SELECT principal_id, session_id, principal_kind, session_role,
+                 actor_scope, credential_sha256, credential_expires_at,
+                 recovery_token_sha256, recovery_token_expires_at, created_at
+          FROM session_principals LIMIT 0
+        ), bundle_probe AS (
+          SELECT bundle_hash, game_id, canonical_bytes, canonical_bundle, created_at
+          FROM game_bundles LIMIT 0
+        ), receipt_probe AS (
+          SELECT receipt_id, session_id, principal_id, command_id, fingerprint,
+                 action_id, actor_id, bundle_hash, definition_hash, plan_hash,
+                 state_version_before, state_version_after, status, event_refs,
+                 public_receipt, command_result, audit, created_at
+          FROM command_receipts LIMIT 0
+        ), event_probe AS (
+          SELECT event_id, session_id, sequence, receipt_id, command_id, action_id,
+                 principal_id, actor_id, audience, event_type, summary, event_data, metric_changes, created_at
+          FROM session_events LIMIT 0
+        ), schedule_probe AS (
+          SELECT ${SYSTEM_SCHEDULE_COLUMNS}
+          FROM system_schedules LIMIT 0
+        ), facilitator_debrief_probe AS (
+          SELECT ${FACILITATOR_DEBRIEF_ATTEMPT_COLUMNS}
+          FROM facilitator_debrief_attempts LIMIT 0
         )
         SELECT
           current_setting('transaction_read_only') = 'off' AS writable,
-          has_table_privilege(current_user, 'game_sessions', 'SELECT') AS can_select,
-          has_table_privilege(current_user, 'game_sessions', 'INSERT') AS can_insert,
-          has_table_privilege(current_user, 'game_sessions', 'UPDATE') AS can_update
+          has_table_privilege(current_user, 'game_sessions', 'SELECT')
+            AND has_table_privilege(current_user, 'session_principals', 'SELECT')
+            AND has_table_privilege(current_user, 'game_bundles', 'SELECT')
+            AND has_table_privilege(current_user, 'command_receipts', 'SELECT')
+            AND has_table_privilege(current_user, 'session_events', 'SELECT')
+            AND has_table_privilege(current_user, 'system_schedules', 'SELECT')
+            AND has_table_privilege(current_user, 'facilitator_debrief_attempts', 'SELECT') AS can_select,
+          has_table_privilege(current_user, 'game_sessions', 'INSERT')
+            AND has_table_privilege(current_user, 'session_principals', 'INSERT')
+            AND has_table_privilege(current_user, 'game_bundles', 'INSERT')
+            AND has_table_privilege(current_user, 'command_receipts', 'INSERT')
+            AND has_table_privilege(current_user, 'session_events', 'INSERT')
+            AND has_table_privilege(current_user, 'system_schedules', 'INSERT')
+            AND has_table_privilege(current_user, 'facilitator_debrief_attempts', 'INSERT') AS can_insert,
+          has_table_privilege(current_user, 'game_sessions', 'UPDATE')
+            AND has_table_privilege(current_user, 'session_principals', 'UPDATE')
+            AND has_table_privilege(current_user, 'system_schedules', 'UPDATE')
+            AND has_table_privilege(current_user, 'facilitator_debrief_attempts', 'UPDATE') AS can_update
       `);
       const readiness = result.rows[0];
       if (
-        readiness === undefined ||
-        readiness.writable !== true ||
-        readiness.can_select !== true ||
-        readiness.can_insert !== true ||
-        readiness.can_update !== true
+        readiness === undefined || readiness.writable !== true || readiness.can_select !== true ||
+        readiness.can_insert !== true || readiness.can_update !== true
       ) {
         throw new SessionStoreUnavailableError();
       }
@@ -251,6 +1434,559 @@ export class PostgresSessionStore<TState = unknown> implements SessionStorePort<
 
   async close(): Promise<void> {
     await this.pool.end();
+  }
+
+  /**
+   * Authenticate and materialize one archive on a single checked-out client.
+   *
+   * The archive write touches only `archived_at`. All audit records are then
+   * read in the same transaction so callers never receive a partially
+   * assembled lifecycle boundary.
+   */
+  private async runArchivedSessionTransaction(
+    input: SessionAuthenticationInput,
+    shouldArchive: boolean
+  ): Promise<ArchivedSessionAudit<TState> | null> {
+    let client: SessionDatabaseClient;
+    try {
+      client = await this.pool.connect();
+    } catch (error) {
+      throw mapDatabaseOperationalError(error);
+    }
+    let transactionStarted = false;
+    let releaseError: Error | boolean | undefined;
+
+    try {
+      await queryClient(client, input.sessionId, "BEGIN");
+      transactionStarted = true;
+      const principalRead = await queryClient<PrincipalRow>(
+        client,
+        input.sessionId,
+        `SELECT p.principal_id, p.session_id, p.principal_kind, p.session_role,
+                p.actor_scope, p.created_at
+         FROM session_principals p
+         JOIN game_sessions s ON s.id = p.session_id
+         WHERE p.session_id = $1 AND p.credential_sha256 = $2
+           AND p.credential_expires_at IS NULL
+           AND p.session_role = 'facilitator'
+           AND s.bundle_hash IS NOT NULL
+           ${shouldArchive ? "" : "AND s.archived_at IS NOT NULL"}`,
+        [input.sessionId, input.credentialSha256]
+      );
+      const principalRow = principalRead.rows[0];
+      if (principalRow === undefined) {
+        await queryClient(client, input.sessionId, "COMMIT");
+        return null;
+      }
+
+      const archivedRead = shouldArchive
+        ? await queryClient<ArchivedSessionRow>(
+          client,
+          input.sessionId,
+          `UPDATE game_sessions
+           SET archived_at = COALESCE(archived_at, CURRENT_TIMESTAMP)
+           WHERE id = $1 AND bundle_hash IS NOT NULL
+           RETURNING ${SESSION_COLUMNS}, archived_at`,
+          [input.sessionId]
+        )
+        : await queryClient<ArchivedSessionRow>(
+          client,
+          input.sessionId,
+          SELECT_ARCHIVED_SESSION,
+          [input.sessionId]
+        );
+      const archivedRow = archivedRead.rows[0];
+      if (archivedRow === undefined) {
+        await queryClient(client, input.sessionId, "COMMIT");
+        return null;
+      }
+
+      // Keep the audit reads sequential on one client. node-postgres queues
+      // client queries, and spelling out that order makes the transactional
+      // snapshot and scripted-adapter contract unambiguous.
+      const bundleRead = await queryClient<BundleRow>(
+        client,
+        input.sessionId,
+        `SELECT bundle_hash, game_id, canonical_bytes, canonical_bundle, created_at
+         FROM game_bundles WHERE bundle_hash = $1`,
+        [archivedRow.bundle_hash]
+      );
+      const eventRead = await queryClient<EventRow>(
+        client,
+        input.sessionId,
+        `${SELECT_EVENT}
+         WHERE session_id = $1
+         ORDER BY sequence ASC`,
+        [input.sessionId]
+      );
+      const receiptRead = await queryClient<ReceiptRow>(
+        client,
+        input.sessionId,
+        `${SELECT_RECEIPT}
+         WHERE session_id = $1
+         ORDER BY created_at ASC, receipt_id ASC`,
+        [input.sessionId]
+      );
+      const bundleRow = bundleRead.rows[0];
+      if (bundleRow === undefined) throw new SessionStoreUnavailableError();
+
+      const audit: ArchivedSessionAudit<TState> = {
+        session: mapSessionRow<TState>(archivedRow),
+        archivedAt: new Date(archivedRow.archived_at),
+        principal: mapPrincipalRow(principalRow),
+        bundle: mapBundleRow(bundleRow),
+        events: eventRead.rows.map(mapEventRow),
+        receipts: receiptRead.rows.map(mapReceiptRow)
+      };
+      await queryClient(client, input.sessionId, "COMMIT");
+      return audit;
+    } catch (error) {
+      if (transactionStarted) {
+        releaseError = await rollbackAfterFailure(client, error);
+      }
+      throw mapDatabaseOperationalError(error);
+    } finally {
+      client.release(releaseError);
+    }
+  }
+
+  private async runLockedTransaction<TResult>(
+    sessionId: string,
+    operation: (client: SessionDatabaseClient, current: SessionRecord<TState> | null) => Promise<TResult>
+  ): Promise<TResult> {
+    let client: SessionDatabaseClient;
+    try {
+      client = await this.pool.connect();
+    } catch (error) {
+      throw mapDatabaseOperationalError(error);
+    }
+    let transactionStarted = false;
+    let releaseError: Error | boolean | undefined;
+    try {
+      await queryClient(client, sessionId, "BEGIN");
+      transactionStarted = true;
+      const selected = await queryClient<SessionRow>(client, sessionId, SELECT_SESSION_FOR_UPDATE, [sessionId]);
+      const current = selected.rows[0] === undefined ? null : mapSessionRow<TState>(selected.rows[0]);
+      const result = await operation(client, current);
+      await queryClient(client, sessionId, "COMMIT");
+      return result;
+    } catch (error) {
+      if (transactionStarted) {
+        releaseError = await rollbackAfterFailure(client, error);
+      }
+      throw error;
+    } finally {
+      client.release(releaseError);
+    }
+  }
+
+  private async writeUpdatedSession(
+    client: SessionDatabaseClient,
+    current: SessionRecord<TState>,
+    updated: SessionRecord<TState>
+  ): Promise<void> {
+    assertNextSessionVersion(current.sessionId, current, updated);
+    assertSessionParticipantsImmutable(current, updated);
+    if (updated.bundleHash !== current.bundleHash || updated.gameId !== current.gameId) {
+      throw new SessionStoreUnavailableError();
+    }
+    const write = await queryClient<SessionRow>(
+      client,
+      current.sessionId,
+      `UPDATE game_sessions SET
+         content_source_id = $2,
+         session_role = $3,
+         state = $4::jsonb,
+         state_version = $5,
+         last_event_sequence = $6,
+         updated_at = $7
+       WHERE id = $1 AND state_version = $8 AND archived_at IS NULL
+       RETURNING ${SESSION_COLUMNS}`,
+      [
+        current.sessionId,
+        updated.contentSourceId ?? null,
+        updated.sessionRole ?? null,
+        JSON.stringify(updated.state),
+        updated.version.stateVersion,
+        updated.version.lastEventSequence,
+        updated.updatedAt,
+        current.version.stateVersion
+      ]
+    );
+    if (write.rowCount !== 1) {
+      throw new SessionVersionConflictError(current.sessionId, current.version.stateVersion);
+    }
+  }
+}
+
+const SELECT_RECEIPT = `SELECT
+  receipt_id, session_id, principal_id, command_id, fingerprint, action_id,
+  actor_id, bundle_hash, definition_hash, plan_hash, state_version_before,
+  state_version_after, status, event_refs, public_receipt, command_result, audit, created_at
+  FROM command_receipts`;
+
+const SELECT_EVENT = `SELECT
+  event_id, session_id, sequence, receipt_id, command_id, action_id,
+  principal_id, actor_id, audience, event_type, summary, event_data, metric_changes, created_at
+  FROM session_events`;
+
+async function insertReceipt(client: SessionDatabaseClient, receipt: SessionCommandReceipt): Promise<void> {
+  await queryClient(
+    client,
+    receipt.sessionId,
+    `INSERT INTO command_receipts (
+       receipt_id, session_id, principal_id, command_id, fingerprint, action_id,
+       actor_id, bundle_hash, definition_hash, plan_hash, state_version_before,
+       state_version_after, status, event_refs, public_receipt, command_result, audit, created_at
+     ) VALUES (
+       $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
+       $14::jsonb, $15::jsonb, $16::jsonb, $17::jsonb, $18
+     )`,
+    [
+      receipt.receiptId,
+      receipt.sessionId,
+      receipt.principalId,
+      receipt.commandId,
+      receipt.fingerprint,
+      receipt.actionId,
+      receipt.actorId ?? null,
+      receipt.bundleHash,
+      receipt.definitionHash,
+      receipt.planHash ?? null,
+      receipt.stateVersionBefore,
+      receipt.stateVersionAfter,
+      receipt.status,
+      JSON.stringify(receipt.eventRefs),
+      JSON.stringify(receipt.publicReceipt),
+      receipt.result === undefined ? null : JSON.stringify(receipt.result),
+      JSON.stringify(receipt.audit),
+      receipt.createdAt
+    ]
+  );
+}
+
+async function insertEvents(
+  client: SessionDatabaseClient,
+  events: ReadonlyArray<SessionEventRecord>
+): Promise<void> {
+  for (const event of events) {
+    const metricChanges = event.metricChanges === undefined
+      ? undefined
+      : parseMetricChanges(event.metricChanges);
+    await queryClient(
+      client,
+      event.sessionId,
+      `INSERT INTO session_events (
+         event_id, session_id, sequence, receipt_id, command_id, action_id,
+         principal_id, actor_id, audience, event_type, summary, event_data, metric_changes, created_at
+       ) VALUES (
+         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12::jsonb, $13::jsonb, $14
+       )`,
+      [
+        event.eventId,
+        event.sessionId,
+        event.sequence,
+        event.receiptId,
+        event.commandId,
+        event.actionId,
+        event.principalId,
+        event.actorId ?? null,
+        event.audience,
+        event.eventType,
+        JSON.stringify(event.summary ?? null),
+        JSON.stringify(event.data),
+        metricChanges === undefined ? null : JSON.stringify(metricChanges),
+        event.createdAt
+      ]
+    );
+  }
+}
+
+function isExactSystemCommandId(input: SessionSystemCommandTransactionInput): boolean {
+  try {
+    return input.commandId === createSystemCommandId(input.sessionId, input.scheduleId, input.occurrence);
+  } catch {
+    return false;
+  }
+}
+
+function systemSchedulerPrincipalId(sessionId: string): string {
+  return `system-scheduler:${sessionId}`;
+}
+
+/**
+ * Build the scheduler identity from protected repository data.
+ *
+ * No credential or command prefix is consulted: reaching
+ * `withSystemCommandTransaction` is the internal trust boundary, while the
+ * stable principal exists so receipts and events retain referential integrity.
+ */
+function systemSchedulerPrincipal(sessionId: string, createdAt: Date): SessionPrincipal {
+  return {
+    principalId: systemSchedulerPrincipalId(sessionId),
+    sessionId,
+    kind: "system",
+    role: "assistant",
+    actorScope: { kind: "all-session-actors" },
+    createdAt
+  };
+}
+
+function assertScheduleMutationInputs<TState>(
+  current: SessionRecord<TState>,
+  mutations: ReadonlyArray<SessionSystemScheduleMutation>
+): void {
+  for (const mutation of mutations) {
+    if (mutation.kind === "register") {
+      assertValidSchedule(mutation.schedule);
+      if (
+        mutation.schedule.sessionId !== current.sessionId ||
+        mutation.schedule.bundleHash !== current.bundleHash ||
+        mutation.schedule.status !== "pending" ||
+        mutation.schedule.nextOccurrence !== 1
+      ) {
+        throw new SessionStoreUnavailableError();
+      }
+    }
+  }
+}
+
+function assertValidSchedule(schedule: SessionSystemSchedule): void {
+  const validDate = (value: unknown): value is Date =>
+    value instanceof Date && !Number.isNaN(value.getTime());
+  const scalarParams = isRecord(schedule.params) &&
+    Object.keys(schedule.params).length <= 16 &&
+    Object.values(schedule.params).every((value) =>
+      typeof value === "string" || typeof value === "boolean" ||
+      typeof value === "number" && Number.isFinite(value)
+    );
+  if (
+    !/^[A-Za-z0-9_-]{22,128}$/u.test(schedule.scheduleId) ||
+    typeof schedule.sessionId !== "string" || schedule.sessionId.length === 0 ||
+    typeof schedule.bundleHash !== "string" || schedule.bundleHash.length === 0 ||
+    typeof schedule.actionId !== "string" || schedule.actionId.length === 0 ||
+    !scalarParams ||
+    !/^sha256:[a-f0-9]{64}$/u.test(schedule.definitionHash) ||
+    !isRecord(schedule.trigger) ||
+    !["defer", "skip"].includes(schedule.falsePolicy) ||
+    !Number.isSafeInteger(schedule.maxOccurrences) ||
+    schedule.maxOccurrences < 1 || schedule.maxOccurrences > 64 ||
+    !Number.isSafeInteger(schedule.nextOccurrence) ||
+    schedule.nextOccurrence < 1 || schedule.nextOccurrence > schedule.maxOccurrences + 1 ||
+    !["pending", "cancelled", "completed"].includes(schedule.status) ||
+    !validDate(schedule.createdAt) || !validDate(schedule.updatedAt)
+  ) {
+    throw new SessionStoreUnavailableError();
+  }
+}
+
+async function applyScheduleMutations<TState>(
+  client: SessionDatabaseClient,
+  current: SessionRecord<TState>,
+  mutations: ReadonlyArray<SessionSystemScheduleMutation>
+): Promise<void> {
+  for (const mutation of mutations) {
+    if (mutation.kind === "register") {
+      const schedule = mutation.schedule;
+      const principalWrite = await queryClient(
+        client,
+        current.sessionId,
+        `INSERT INTO session_principals (
+           principal_id, session_id, principal_kind, session_role,
+           actor_scope, credential_sha256, created_at
+         ) VALUES ($1, $2, 'system', 'assistant', $3::jsonb, NULL, $4)
+         ON CONFLICT (session_id, principal_id) DO UPDATE
+           SET principal_id = EXCLUDED.principal_id
+           WHERE session_principals.principal_kind = 'system'
+             AND session_principals.credential_sha256 IS NULL
+         RETURNING principal_id`,
+        [
+          systemSchedulerPrincipalId(current.sessionId),
+          current.sessionId,
+          JSON.stringify({ kind: "all-session-actors" }),
+          schedule.createdAt
+        ]
+      );
+      if (principalWrite.rowCount !== 1) {
+        throw new SessionStoreUnavailableError();
+      }
+
+      const scheduleWrite = await queryClient(
+        client,
+        current.sessionId,
+        `INSERT INTO system_schedules (
+           schedule_id, session_id, bundle_hash, action_id, params,
+           definition_hash, trigger, false_policy, max_occurrences,
+           next_occurrence, status, created_at, updated_at
+         ) VALUES (
+           $1, $2, $3, $4, $5::jsonb, $6, $7::jsonb, $8, $9, $10, $11, $12, $13
+         )`,
+        [
+          schedule.scheduleId,
+          schedule.sessionId,
+          schedule.bundleHash,
+          schedule.actionId,
+          JSON.stringify(schedule.params),
+          schedule.definitionHash,
+          JSON.stringify(schedule.trigger),
+          schedule.falsePolicy,
+          schedule.maxOccurrences,
+          schedule.nextOccurrence,
+          schedule.status,
+          schedule.createdAt,
+          schedule.updatedAt
+        ]
+      );
+      if (scheduleWrite.rowCount !== 1) {
+        throw new SessionStoreUnavailableError();
+      }
+      continue;
+    }
+
+    const cancelled = await queryClient(
+      client,
+      current.sessionId,
+      `UPDATE system_schedules
+       SET status = 'cancelled', updated_at = $3
+       WHERE session_id = $1 AND schedule_id = $2 AND status = 'pending'
+       RETURNING schedule_id`,
+      [current.sessionId, mutation.scheduleId, new Date()]
+    );
+    if (cancelled.rowCount !== 1) {
+      throw new SessionStoreUnavailableError();
+    }
+  }
+}
+
+function mapSystemScheduleRow(row: SystemScheduleRow): SessionSystemSchedule {
+  const schedule: SessionSystemSchedule = {
+    scheduleId: row.schedule_id,
+    sessionId: row.session_id,
+    bundleHash: row.bundle_hash,
+    actionId: row.action_id,
+    params: parseScheduleParams(row.params),
+    definitionHash: row.definition_hash,
+    trigger: requireRecord(row.trigger),
+    falsePolicy: row.false_policy,
+    maxOccurrences: parseSafeInteger(row.max_occurrences),
+    nextOccurrence: parseSafeInteger(row.next_occurrence),
+    status: row.status,
+    createdAt: new Date(row.created_at),
+    updatedAt: new Date(row.updated_at)
+  };
+  assertValidSchedule(schedule);
+  return schedule;
+}
+
+function parseScheduleParams(value: unknown): Record<string, string | number | boolean> {
+  const record = requireRecord(value);
+  if (
+    Object.keys(record).length > 16 ||
+    Object.values(record).some((entry) =>
+      typeof entry !== "string" && typeof entry !== "boolean" &&
+      (typeof entry !== "number" || !Number.isFinite(entry))
+    )
+  ) {
+    throw new SessionStoreUnavailableError();
+  }
+  return record as Record<string, string | number | boolean>;
+}
+
+function assertSystemDisposition(
+  existingReceipt: SessionCommandReceipt | undefined,
+  result: {
+    scheduleDisposition: "apply" | "skip" | "defer";
+    updatedSession?: unknown;
+    receipt?: SessionCommandReceipt;
+    events?: ReadonlyArray<SessionEventRecord>;
+    scheduleMutations?: ReadonlyArray<SessionSystemScheduleMutation>;
+  }
+): void {
+  if (existingReceipt !== undefined) {
+    if (result.updatedSession || result.receipt || result.events?.length || result.scheduleMutations?.length) {
+      throw new SessionStoreUnavailableError();
+    }
+    return;
+  }
+  if (result.scheduleMutations?.length) {
+    throw new SessionStoreUnavailableError();
+  }
+  if (result.scheduleDisposition === "defer") {
+    if (result.updatedSession || result.receipt || result.events?.length) {
+      throw new SessionStoreUnavailableError();
+    }
+  } else if (result.scheduleDisposition === "apply") {
+    if (result.receipt?.status !== "applied" || result.updatedSession === undefined) {
+      throw new SessionStoreUnavailableError();
+    }
+  } else if (result.scheduleDisposition === "skip") {
+    if (
+      result.receipt?.status !== "rejected" ||
+      result.updatedSession !== undefined ||
+      result.events?.length
+    ) {
+      throw new SessionStoreUnavailableError();
+    }
+  } else {
+    throw new SessionStoreUnavailableError();
+  }
+}
+
+function assertSystemReceiptPins(
+  input: SessionSystemCommandTransactionInput,
+  schedule: SessionSystemSchedule,
+  receipt: SessionCommandReceipt
+): void {
+  const expectedFingerprint = createSystemCommandFingerprint({
+    sessionId: input.sessionId,
+    scheduleId: input.scheduleId,
+    occurrence: input.occurrence,
+    actionId: schedule.actionId,
+    params: schedule.params,
+    bundleHash: schedule.bundleHash,
+    definitionHash: schedule.definitionHash
+  });
+  if (
+    receipt.principalId !== systemSchedulerPrincipalId(input.sessionId) ||
+    receipt.actionId !== schedule.actionId ||
+    receipt.bundleHash !== schedule.bundleHash ||
+    receipt.definitionHash !== schedule.definitionHash ||
+    receipt.fingerprint !== expectedFingerprint
+  ) {
+    throw new SessionStoreUnavailableError();
+  }
+}
+
+async function consumeScheduleOccurrence(
+  client: SessionDatabaseClient,
+  schedule: SessionSystemSchedule
+): Promise<void> {
+  const nextOccurrence = schedule.nextOccurrence + 1;
+  const status: SessionSystemSchedule["status"] =
+    nextOccurrence > schedule.maxOccurrences ? "completed" : "pending";
+  const consumed = await queryClient(
+    client,
+    schedule.sessionId,
+    `UPDATE system_schedules
+     SET next_occurrence = $3, status = $4, updated_at = $5
+     WHERE session_id = $1 AND schedule_id = $2
+       AND next_occurrence = $6 AND status = 'pending'
+       AND bundle_hash = $7 AND action_id = $8 AND definition_hash = $9
+     RETURNING schedule_id`,
+    [
+      schedule.sessionId,
+      schedule.scheduleId,
+      nextOccurrence,
+      status,
+      new Date(),
+      schedule.nextOccurrence,
+      schedule.bundleHash,
+      schedule.actionId,
+      schedule.definitionHash
+    ]
+  );
+  if (consumed.rowCount !== 1) {
+    throw new SessionStoreUnavailableError();
   }
 }
 
@@ -278,32 +2014,327 @@ function requireSingleRow<TRow extends QueryResultRow>(result: QueryResult<TRow>
   return row;
 }
 
+function failMissingPrimaryPrincipal(): never {
+  throw new SessionStoreUnavailableError();
+}
+
 function mapSessionRow<TState>(row: SessionRow): SessionRecord<TState> {
-  const stateVersion = parseSafeInteger(row.state_version, "state_version");
-  const lastEventSequence = parseSafeInteger(row.last_event_sequence, "last_event_sequence");
-  return {
+  const participants = structuredClone(row.participants);
+  const state = row.state as TState;
+  try {
+    assertSessionParticipantsMatchState(participants, state, { allowAgents: true });
+  } catch {
+    throw new SessionStoreUnavailableError();
+  }
+  const session: SessionRecord<TState> = {
     sessionId: row.session_id,
     gameId: row.game_id,
-    ...(row.player_id === null ? {} : { playerId: row.player_id }),
+    bundleHash: row.bundle_hash,
     ...(row.content_source_id === null ? {} : { contentSourceId: row.content_source_id }),
-    state: row.state as TState,
+    participants,
+    state,
     ...(row.session_role === null ? {} : { sessionRole: row.session_role }),
     version: {
       sessionId: row.session_id,
-      stateVersion,
-      lastEventSequence
+      stateVersion: parseSafeInteger(row.state_version),
+      lastEventSequence: parseSafeInteger(row.last_event_sequence)
     },
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at)
   };
+  return session;
 }
 
-function parseSafeInteger(value: string | number, column: string): number {
+/** Journal export only needs immutable session metadata, not JSONB state. */
+function mapPublicJournalSessionRow<TState>(
+  row: PublicJournalSessionRow
+): Pick<SessionRecord<TState>, "sessionId" | "gameId" | "version" | "createdAt"> {
+  return {
+    sessionId: row.session_id,
+    gameId: row.game_id,
+    version: {
+      sessionId: row.session_id,
+      stateVersion: parseSafeInteger(row.state_version),
+      lastEventSequence: parseSafeInteger(row.last_event_sequence)
+    },
+    createdAt: new Date(row.created_at)
+  };
+}
+
+function mapPrincipalRow(row: PrincipalRow): SessionPrincipal {
+  return {
+    principalId: row.principal_id,
+    sessionId: row.session_id,
+    kind: row.principal_kind,
+    role: row.session_role,
+    actorScope: parseActorScope(row.actor_scope),
+    createdAt: new Date(row.created_at)
+  };
+}
+
+function mapBundleRow(row: BundleRow): ImmutableGameBundle {
+  return {
+    bundleHash: row.bundle_hash,
+    gameId: row.game_id,
+    canonicalBytes: new Uint8Array(row.canonical_bytes),
+    canonicalBundle: row.canonical_bundle,
+    createdAt: new Date(row.created_at)
+  };
+}
+
+async function readCurrentFacilitatorDebriefAttempt(
+  queryable: SessionDatabaseQueryable,
+  sessionId: string
+): Promise<StoredFacilitatorDebriefAttempt | null> {
+  const result = await queryable.query<FacilitatorDebriefAttemptRow>(
+    `SELECT ${FACILITATOR_DEBRIEF_ATTEMPT_COLUMNS}
+     FROM facilitator_debrief_attempts
+     WHERE session_id = $1
+     ORDER BY CASE status WHEN 'ready' THEN 0 WHEN 'generating' THEN 1 ELSE 2 END,
+              requested_at DESC, run_id DESC
+     LIMIT 1`,
+    [sessionId]
+  );
+  return result.rows[0] === undefined ? null : mapFacilitatorDebriefAttemptRow(result.rows[0]);
+}
+
+function mapFacilitatorDebriefAttemptRow(
+  row: FacilitatorDebriefAttemptRow
+): StoredFacilitatorDebriefAttempt {
+  const parameters = requireRecord(row.provider_parameters);
+  const inputSnapshotWithoutJournal = requireRecord(row.input_snapshot_without_journal);
+  const expectedStateVersion = parseSafeInteger(row.expected_state_version);
+  const throughEventSequence = parseSafeInteger(row.through_event_sequence);
+  const requestBytes = parseSafeInteger(row.request_bytes);
+  if (row.provider !== "z.ai" ||
+      row.endpoint !== "https://api.z.ai/api/paas/v4/chat/completions" ||
+      row.model !== "glm-4.7" ||
+      row.prompt_version !== "facilitator-debrief-ru-v1" ||
+      row.system_prompt.length === 0 ||
+      !/^sha256:[a-f0-9]{64}$/u.test(row.system_prompt_sha256) ||
+      row.system_prompt_sha256 !== `sha256:${createHash("sha256").update(row.system_prompt, "utf8").digest("hex")}` ||
+      !/^sha256:[a-f0-9]{64}$/u.test(row.request_body_sha256) ||
+      !/^sha256:[a-f0-9]{64}$/u.test(row.journal_sha256) ||
+      requestBytes < 1 ||
+      parameters.maxTokens !== 4_096 || parameters.temperature !== 0 ||
+      parameters.thinking !== "disabled" || parameters.responseFormat !== "json_object" ||
+      inputSnapshotWithoutJournal.runId !== row.run_id ||
+      inputSnapshotWithoutJournal.sessionId !== row.session_id ||
+      typeof inputSnapshotWithoutJournal.gameId !== "string" ||
+      inputSnapshotWithoutJournal.gameId.length === 0 ||
+      typeof inputSnapshotWithoutJournal.bundleHash !== "string" ||
+      inputSnapshotWithoutJournal.bundleHash.length === 0 ||
+      inputSnapshotWithoutJournal.stateVersion !== expectedStateVersion ||
+      inputSnapshotWithoutJournal.throughEventSequence !== throughEventSequence ||
+      inputSnapshotWithoutJournal.journalSha256 !== row.journal_sha256) {
+    throw new SessionStoreUnavailableError();
+  }
+  const requestAudit: StoredFacilitatorDebriefAttempt["requestAudit"] = {
+    provider: "z.ai",
+    endpoint: "https://api.z.ai/api/paas/v4/chat/completions",
+    model: "glm-4.7",
+    promptVersion: "facilitator-debrief-ru-v1",
+    systemPrompt: row.system_prompt,
+    systemPromptSha256: row.system_prompt_sha256 as `sha256:${string}`,
+    parameters: parameters as unknown as StoredFacilitatorDebriefAttempt["requestAudit"]["parameters"],
+    requestBodySha256: row.request_body_sha256 as `sha256:${string}`,
+    requestBytes,
+    inputSnapshotWithoutJournal: inputSnapshotWithoutJournal as unknown as
+      StoredFacilitatorDebriefAttempt["requestAudit"]["inputSnapshotWithoutJournal"]
+  };
+  const requestedAt = new Date(row.requested_at);
+  const completedAt = row.completed_at === null ? undefined : new Date(row.completed_at);
+  if (!Number.isFinite(requestedAt.getTime()) ||
+      completedAt !== undefined && !Number.isFinite(completedAt.getTime()) ||
+      row.status === "generating" && completedAt !== undefined ||
+      row.status !== "generating" && completedAt === undefined ||
+      row.status === "ready" && row.draft === null ||
+      row.status !== "ready" && row.draft !== null ||
+      row.status === "failed" && row.error === null ||
+      row.status !== "failed" && row.error !== null) {
+    throw new SessionStoreUnavailableError();
+  }
+  return {
+    runId: row.run_id,
+    sessionId: row.session_id,
+    status: row.status,
+    expectedStateVersion,
+    throughEventSequence,
+    journalSha256: row.journal_sha256 as `sha256:${string}`,
+    requestAudit,
+    ...(row.provider_request_id === null ? {} : { providerRequestId: row.provider_request_id }),
+    ...(row.provider_status === null ? {} : { providerStatus: row.provider_status }),
+    ...(row.provider_usage === null ? {} : { providerUsage: structuredClone(row.provider_usage) }),
+    ...(row.response_bytes === null ? {} : { responseBytes: row.response_bytes }),
+    ...(row.duration_ms === null ? {} : { durationMs: row.duration_ms }),
+    ...(row.raw_response_utf8 === null ? {} : { rawResponseUtf8: row.raw_response_utf8 }),
+    ...(row.draft === null ? {} : {
+      draft: structuredClone(row.draft) as NonNullable<StoredFacilitatorDebriefAttempt["draft"]>
+    }),
+    ...(row.error === null ? {} : {
+      error: structuredClone(row.error) as NonNullable<StoredFacilitatorDebriefAttempt["error"]>
+    }),
+    requestedAt,
+    ...(completedAt === undefined ? {} : { completedAt })
+  };
+}
+
+function assertFacilitatorDebriefBeginInput(input: BeginFacilitatorDebriefAttemptInput): void {
+  const snapshot = input.requestAudit.inputSnapshotWithoutJournal;
+  if (!/^debrief_[A-Za-z0-9_-]{8,128}$/u.test(input.runId) ||
+      !/^[a-f0-9]{64}$/u.test(input.credentialSha256) ||
+      !Number.isSafeInteger(input.expectedStateVersion) || input.expectedStateVersion < 0 ||
+      !Number.isSafeInteger(input.throughEventSequence) || input.throughEventSequence < 0 ||
+      !/^sha256:[a-f0-9]{64}$/u.test(input.journalSha256) ||
+      !Number.isFinite(input.requestedAt.getTime()) ||
+      !Number.isFinite(input.staleGeneratingBefore.getTime()) ||
+      input.staleGeneratingBefore.getTime() > input.requestedAt.getTime() ||
+      snapshot.runId !== input.runId || snapshot.sessionId !== input.sessionId ||
+      snapshot.stateVersion !== input.expectedStateVersion ||
+      snapshot.throughEventSequence !== input.throughEventSequence ||
+      snapshot.journalSha256 !== input.journalSha256) {
+    throw new SessionStoreUnavailableError();
+  }
+}
+
+function assertFacilitatorDebriefAttemptSessionBinding<TState>(
+  attempt: StoredFacilitatorDebriefAttempt | null,
+  session: SessionRecord<TState>
+): void {
+  if (attempt === null) return;
+  const snapshot = attempt.requestAudit.inputSnapshotWithoutJournal;
+  if (attempt.sessionId !== session.sessionId || snapshot.gameId !== session.gameId ||
+      snapshot.bundleHash !== session.bundleHash) {
+    throw new SessionStoreUnavailableError();
+  }
+}
+
+function mapReceiptRow(row: ReceiptRow): SessionCommandReceipt {
+  const publicReceipt = requireRecord(row.public_receipt);
+  const audit = requireRecord(row.audit);
+  const eventRefs = requireStringArray(row.event_refs);
+  return {
+    receiptId: row.receipt_id,
+    sessionId: row.session_id,
+    principalId: row.principal_id,
+    commandId: row.command_id,
+    fingerprint: row.fingerprint,
+    actionId: row.action_id,
+    ...(row.actor_id === null ? {} : { actorId: row.actor_id }),
+    bundleHash: row.bundle_hash,
+    definitionHash: row.definition_hash,
+    ...(row.plan_hash === null ? {} : { planHash: row.plan_hash }),
+    stateVersionBefore: parseSafeInteger(row.state_version_before),
+    stateVersionAfter: parseSafeInteger(row.state_version_after),
+    status: row.status,
+    eventRefs,
+    publicReceipt: publicReceipt as unknown as SessionCommandReceipt["publicReceipt"],
+    ...(row.command_result === null ? {} : { result: row.command_result }),
+    audit: {
+      acceptedAt: new Date(String(audit.acceptedAt)),
+      ...(typeof audit.requestId === "string" ? { requestId: audit.requestId } : {}),
+      ...(audit.commandKind === "game-intent" || audit.commandKind === "agent-turn"
+        ? { commandKind: audit.commandKind }
+        : {}),
+      ...(typeof audit.triggerActionId === "string" ? { triggerActionId: audit.triggerActionId } : {}),
+      ...(typeof audit.selectedActionId === "string" ? { selectedActionId: audit.selectedActionId } : {}),
+      ...(audit.mechanics === undefined
+        ? {}
+        : { mechanics: mapProtectedMechanicsAudit(audit.mechanics) })
+    },
+    createdAt: new Date(row.created_at)
+  };
+}
+
+function mapProtectedMechanicsAudit(value: unknown): SessionCommandReceipt["audit"]["mechanics"] {
+  try {
+    return requireProtectedMechanicsAudit(value);
+  } catch {
+    throw new SessionStoreUnavailableError();
+  }
+}
+
+function mapEventRow(row: EventRow): SessionEventRecord {
+  return {
+    eventId: row.event_id,
+    sessionId: row.session_id,
+    sequence: parseSafeInteger(row.sequence),
+    receiptId: row.receipt_id,
+    commandId: row.command_id,
+    actionId: row.action_id,
+    principalId: row.principal_id,
+    ...(row.actor_id === null ? {} : { actorId: row.actor_id }),
+    audience: row.audience,
+    eventType: row.event_type,
+    summary: row.summary,
+    data: requireRecord(row.event_data),
+    ...(row.metric_changes === null || row.metric_changes === undefined
+      ? {}
+      : { metricChanges: parseMetricChanges(row.metric_changes) }),
+    createdAt: new Date(row.created_at)
+  };
+}
+
+function parseActorScope(value: unknown): SessionPrincipal["actorScope"] {
+  const record = requireRecord(value);
+  if (record.kind === "all-session-actors") {
+    return { kind: "all-session-actors" };
+  }
+  if (record.kind === "listed-actors") {
+    return { kind: "listed-actors", actorIds: requireStringArray(record.actorIds) };
+  }
+  throw new SessionStoreUnavailableError();
+}
+
+function requireRecord(value: unknown): Record<string, unknown> {
+  if (!isRecord(value)) {
+    throw new SessionStoreUnavailableError();
+  }
+  return value;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function requireStringArray(value: unknown): string[] {
+  if (!Array.isArray(value) || !value.every((entry) => typeof entry === "string")) {
+    throw new SessionStoreUnavailableError();
+  }
+  return [...value];
+}
+
+function parseMetricChanges(value: unknown): Array<{ metricId: string; before: number; after: number }> {
+  if (!Array.isArray(value) || value.length > 256) throw new SessionStoreUnavailableError();
+  return value.map((entry) => {
+    const record = requireRecord(entry);
+    if (
+      typeof record.metricId !== "string" || record.metricId.length === 0 || record.metricId.length > 128 ||
+      typeof record.before !== "number" || !Number.isFinite(record.before) ||
+      typeof record.after !== "number" || !Number.isFinite(record.after)
+    ) {
+      throw new SessionStoreUnavailableError();
+    }
+    return { metricId: record.metricId, before: record.before, after: record.after };
+  });
+}
+
+function parseSafeInteger(value: string | number): number {
   const parsed = typeof value === "number" ? value : Number(value);
   if (!Number.isSafeInteger(parsed) || parsed < 0) {
     throw new SessionStoreUnavailableError();
   }
   return parsed;
+}
+
+function assertCreateInput<TState>(input: CreateSessionInput<TState>): void {
+  if (
+    input.immutableBundle.gameId !== input.gameId ||
+    !isValidImmutableBundleInput(input.immutableBundle) ||
+    !/^[a-f0-9]{64}$/u.test(input.principal.credentialSha256)
+  ) {
+    throw new SessionStoreUnavailableError();
+  }
 }
 
 function isPostgresErrorCode(error: unknown, code: string): boolean {
@@ -326,8 +2357,24 @@ async function queryClient<TRow extends QueryResultRow = QueryResultRow>(
   }
 }
 
+async function rollbackAfterFailure(
+  client: SessionDatabaseClient,
+  originalError: unknown
+): Promise<Error | boolean | undefined> {
+  try {
+    await client.query("ROLLBACK");
+    return undefined;
+  } catch (rollbackError) {
+    return rollbackError instanceof Error ? rollbackError : originalError instanceof Error ? originalError : true;
+  }
+}
+
 function mapDatabaseOperationalError(error: unknown): Error {
   if (
+    error instanceof PublicJournalTooLargeError ||
+    error instanceof PrivateSeatRecoveryUnavailableError ||
+    error instanceof SessionAuthenticationError ||
+    error instanceof SessionAuthorizationError ||
     error instanceof SessionStoreUnavailableError ||
     error instanceof SessionVersionConflictError ||
     error instanceof SessionWriteLockedError
@@ -335,8 +2382,4 @@ function mapDatabaseOperationalError(error: unknown): Error {
     return error;
   }
   return new SessionStoreUnavailableError();
-}
-
-function asReleaseError(error: unknown): Error | boolean {
-  return error instanceof Error ? error : true;
 }

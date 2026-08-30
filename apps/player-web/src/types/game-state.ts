@@ -37,7 +37,6 @@ export type MetricsSnapshot = Record<string, unknown>;
 
 export type RuntimeUiState = {
   activePanel?: string;
-  activeScreen?: string;
   lastCapabilityFamily?: string;
   lastCapability?: string;
   serverRequested?: boolean;
@@ -58,11 +57,6 @@ export type MetricSpec = {
   aliases: Array<string>;
   sidebarImage: string;
   topbarImage: string;
-};
-
-export type RichTextProps = {
-  html: string;
-  className?: string;
 };
 
 export type { PlayerFacingMockup as GameMockup } from "@cubica/contracts-manifest";

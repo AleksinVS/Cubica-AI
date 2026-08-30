@@ -1,7 +1,7 @@
 # ADR-025: JSON Schema as Single Source of Truth for Manifest Validation
 
 - **Date**: 2026-05-03
-- **Status**: Accepted
+**Status:** Accepted
 - **Авторы**: AI Agent / Project Architect
 - **Компоненты**: `services/runtime-api`, `packages/contracts/manifest`, `docs/architecture/schemas`
 

@@ -11,7 +11,11 @@ import type { GameConfigData, ResolverFactory } from "@/presenter/game-config";
 import { ManifestAction } from "@cubica/contracts-manifest";
 import { registerGameConfigData, registerGameResolvers } from "@/presenter/game-config-registry";
 import {
+  registerAccessibleBoardActionsProvider,
+  registerFacilitatorDebriefAvailabilityProvider,
   registerPhaserSceneFactory,
+  type AccessibleBoardActionsProvider,
+  type FacilitatorDebriefAvailabilityProvider,
   type PhaserSceneFactory
 } from "@/plugins/phaser-scene-registry";
 
@@ -29,11 +33,23 @@ export type {
 } from "@/lib/game-content-resolvers";
 export type {
   AccessibleBoardAction,
+  AccessibleBoardActionField,
+  AccessibleBoardActionOption,
+  AccessibleBoardTransportRoadPreview,
+  AccessibleBoardActionsProvider,
+  FacilitatorDebriefAvailabilityProvider,
+  InteractiveBoardActionDraft,
+  InteractiveBoardActionDraftValue,
+  InteractiveBoardSpatialPreview,
   InteractiveBoardSceneHandle,
   InteractiveBoardSessionSnapshot,
   PhaserSceneContext,
   PhaserSceneFactory
 } from "@/plugins/phaser-scene-registry";
+export {
+  closestPositionTOnPolyline,
+  type PolylineSelectionPoint
+} from "@/plugins/polyline-selection";
 export type { GameAssetResolver } from "@/lib/game-asset-resolver";
 
 // Generic session-state accessors only. Game-specific readers (team flags,
@@ -75,6 +91,23 @@ export interface PlayerPluginApi {
     gameId: string,
     factory: PhaserSceneFactory
   ): () => void;
+  /**
+   * Registers accessible field actions independently from Phaser lifecycle.
+   * The provider projects only server-authorized player-facing state.
+   * Optional within API 2.0 so a new bundle can feature-detect an older host.
+   */
+  registerAccessibleBoardActionsProvider?(
+    gameId: string,
+    provider: AccessibleBoardActionsProvider
+  ): () => void;
+  /**
+   * Registers game-owned terminal eligibility for the facilitator debrief.
+   * Optional so API 2.0 bundles remain loadable in older hosts.
+   */
+  registerFacilitatorDebriefAvailabilityProvider?(
+    gameId: string,
+    provider: FacilitatorDebriefAvailabilityProvider
+  ): () => void;
 }
 
 /**
@@ -96,6 +129,16 @@ export function createScopedPlayerPluginApi(
     },
     registerPhaserSceneFactory(gameId, factory) {
       const dispose = registerPhaserSceneFactory(gameId, factory);
+      collectDisposer?.(dispose);
+      return dispose;
+    },
+    registerAccessibleBoardActionsProvider(gameId, provider) {
+      const dispose = registerAccessibleBoardActionsProvider(gameId, provider);
+      collectDisposer?.(dispose);
+      return dispose;
+    },
+    registerFacilitatorDebriefAvailabilityProvider(gameId, provider) {
+      const dispose = registerFacilitatorDebriefAvailabilityProvider(gameId, provider);
       collectDisposer?.(dispose);
       return dispose;
     }

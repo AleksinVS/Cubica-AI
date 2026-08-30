@@ -1,4 +1,5 @@
-import { readFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import { mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -7,7 +8,8 @@ import {
   loadPreviewSelectionSourceMaps,
   mapGeneratedPointerToAuthoring,
   planPrototypeExtractionForEditor,
-  validateAuthoringForEditor
+  validateAuthoringForEditor,
+  writeJsonFileForTests
 } from "./compiler-workflow";
 import { POST as prototypeExtractionRoutePost } from "../../app/api/editor/prototype-extraction/route";
 import { POST as validateRoutePost } from "../../app/api/editor/validate/route";
@@ -17,6 +19,31 @@ describe("editor compiler workflow", () => {
     await expect(compilerExportsForTests()).resolves.toEqual(
       expect.arrayContaining(["compileAuthoringFile", "compileAuthoringText", "compileJobs", "discoverJobs"])
     );
+  });
+
+  it("preserves the previous generated JSON when an editor write fails", async () => {
+    const directory = path.join(process.cwd(), "..", "..", ".tmp", `atomic-editor-write-${process.pid}-${randomUUID()}`);
+    const target = path.join(directory, "game.manifest.json");
+    const previous = { version: "previous" };
+    await mkdir(directory, { recursive: true });
+    await writeFile(target, `${JSON.stringify(previous)}\n`, "utf8");
+
+    try {
+      await expect(writeJsonFileForTests(target, { version: "next" }, {
+        mkdir,
+        writeFile: async (filePath, _data, options) => {
+          await writeFile(filePath, "{ partial", options);
+          throw new Error("simulated interrupted write");
+        },
+        rename,
+        rm
+      })).rejects.toThrow("simulated interrupted write");
+
+      await expect(readFile(target, "utf8").then(JSON.parse)).resolves.toEqual(previous);
+      await expect(readdir(directory)).resolves.toEqual(["game.manifest.json"]);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
   });
 
   it("maps generated runtime diagnostics through exact and ancestor source-map entries", () => {
@@ -35,9 +62,32 @@ describe("editor compiler workflow", () => {
       file: "games/example/authoring/game.authoring.json",
       pointer: "/root/actions/start/displayName"
     });
+    // "/actions" has no `verbatimSubtrees` marker here, so this is the
+    // identical-match (rule 1) case: the ancestor's own pointer is the exact
+    // answer, unchanged — appending "/missing" would fabricate a pointer that
+    // was never recorded.
     expect(mapGeneratedPointerToAuthoring(sourceMap, "/actions/start/missing")).toEqual({
       file: "games/example/authoring/game.authoring.json",
       pointer: "/root/actions"
+    });
+  });
+
+  it("reconstructs the exact authoring pointer under a verbatim subtree", () => {
+    // A large literal subtree (e.g. authored polygon vertices) is published as
+    // one recorded entry plus a `verbatimSubtrees` marker, instead of one
+    // entry per vertex — see authoring-compiler.cjs's `isPositionalMatch`.
+    const verbatimMap = {
+      generatedFile: "games/example/game.manifest.json",
+      sourceFile: "games/example/authoring/game.authoring.json",
+      mappings: {
+        "/networkModels": [{ file: "games/example/authoring/game.authoring.json", pointer: "/root/networkModels" }]
+      },
+      verbatimSubtrees: ["/networkModels"]
+    };
+
+    expect(mapGeneratedPointerToAuthoring(verbatimMap, "/networkModels/main/regions/0/polygon/1/x")).toEqual({
+      file: "games/example/authoring/game.authoring.json",
+      pointer: "/root/networkModels/main/regions/0/polygon/1/x"
     });
   });
 

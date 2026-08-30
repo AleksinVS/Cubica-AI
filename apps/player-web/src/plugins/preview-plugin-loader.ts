@@ -2,9 +2,9 @@
  * Browser loader for player-web plugin bundles.
  *
  * The loader resolves preview or published bundle URLs against runtime-api,
- * exposes the documented plugin API facade to the bundle, and calls activate()
- * after the browser imports the generated module. Runtime-api passes references
- * only; browser plugin code is never executed on the server.
+ * fetches their exact bytes, verifies every declared SHA-256 integrity digest,
+ * and only then imports those same verified bytes. Runtime-api passes
+ * references only; browser plugin code is never executed on the server.
  */
 import type { PlayerWebPluginBundleReference } from "@cubica/contracts-manifest";
 
@@ -74,7 +74,12 @@ export async function activatePlayerWebPluginBundles(input: {
       if (url.protocol !== "data:") {
         url.searchParams.set("v", bundle.contentHash);
       }
-      const loaded = await import(/* webpackIgnore: true */ url.toString()) as PreviewPluginModule;
+      const bundleBytes = await fetchVerifiedBundleBytes(bundle, url);
+      // A data module is constructed from the bytes already hashed above. An
+      // import of the original network URL would create a second fetch and a
+      // time-of-check/time-of-use gap in which different bytes could execute.
+      const verifiedModuleUrl = `data:text/javascript;base64,${bytesToBase64(bundleBytes)}`;
+      const loaded = await import(/* webpackIgnore: true */ verifiedModuleUrl) as PreviewPluginModule;
       if (typeof loaded.activate !== "function") {
         throw new Error(`Player plugin "${bundle.pluginId}" does not export activate(api).`);
       }
@@ -102,6 +107,52 @@ export async function activatePlayerWebPluginBundles(input: {
 }
 
 export const loadPreviewPlayerWebPlugins = loadPlayerWebPluginBundles;
+
+/** Fetch and verify a bundle before any of its JavaScript can execute. */
+async function fetchVerifiedBundleBytes(
+  bundle: PlayerWebPluginBundleReference,
+  url: URL
+): Promise<Uint8Array> {
+  const expectedIntegrity = bundle.integrity;
+  if (bundle.scope === "published" && expectedIntegrity === undefined) {
+    throw new Error(`Published player plugin "${bundle.pluginId}" is missing its required SHA-256 integrity digest.`);
+  }
+  if (expectedIntegrity !== undefined && !/^sha256-[A-Za-z0-9+/]{43}=$/u.test(expectedIntegrity)) {
+    throw new Error(`Player plugin "${bundle.pluginId}" has an invalid SHA-256 integrity digest.`);
+  }
+
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Player plugin "${bundle.pluginId}" bundle request failed with HTTP ${response.status}.`);
+  }
+  const bytes = new Uint8Array(await response.arrayBuffer());
+
+  // Preview bundles are short-lived editor artifacts. Their explicit exception
+  // is only that integrity may be absent; when the editor supplies a digest it
+  // is verified exactly like a published artifact.
+  if (expectedIntegrity !== undefined) {
+    if (globalThis.crypto?.subtle === undefined) {
+      throw new Error(`Player plugin "${bundle.pluginId}" cannot be verified because browser cryptography is unavailable.`);
+    }
+    const digest = new Uint8Array(await globalThis.crypto.subtle.digest("SHA-256", bytes));
+    const actualIntegrity = `sha256-${bytesToBase64(digest)}`;
+    if (actualIntegrity !== expectedIntegrity) {
+      throw new Error(`Player plugin "${bundle.pluginId}" failed SHA-256 integrity verification.`);
+    }
+  }
+
+  return bytes;
+}
+
+/** Encode bytes without depending on Node's Buffer in the browser bundle. */
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
+  }
+  return btoa(binary);
+}
 
 function disposeAll(disposers: Array<() => void>): void {
   for (const dispose of disposers.splice(0).reverse()) {

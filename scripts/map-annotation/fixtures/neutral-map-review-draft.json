@@ -1,0 +1,56 @@
+{
+  "$schema": "../../../docs/architecture/schemas/map-annotation.schema.json",
+  "schemaVersion": "1.0",
+  "status": "review-draft",
+  "warning": "UNCONFIRMED: network intake is awaiting manual reconciliation.",
+  "reviewIssues": [
+    {
+      "code": "verify-east-node",
+      "message": "Confirm whether the eastern mark is a terminal.",
+      "targetIds": ["neutral-node-east"]
+    }
+  ],
+  "sourceImage": {
+    "file": "neutral-map.svg",
+    "pixelWidth": 640,
+    "pixelHeight": 480,
+    "rightsConfirmed": true
+  },
+  "coordinateSystem": {
+    "origin": "top-left",
+    "units": "design-pixel",
+    "width": 640,
+    "height": 480
+  },
+  "nodes": [
+    {
+      "id": "neutral-node-west",
+      "label": "West",
+      "kind": "terminal",
+      "position": { "x": 140, "y": 240 },
+      "state": "open",
+      "confidence": 0.95,
+      "evidence": "Visible marker in the neutral fixture"
+    },
+    {
+      "id": "neutral-node-east",
+      "label": "East candidate",
+      "kind": "terminal",
+      "position": { "x": 500, "y": 240 },
+      "state": "unknown",
+      "confidence": 0.45,
+      "reviewNote": "Marker kind and state still require confirmation."
+    }
+  ],
+  "edges": [
+    {
+      "id": "neutral-edge-west-east",
+      "fromNodeId": "neutral-node-west",
+      "toNodeId": "neutral-node-east",
+      "state": "unknown",
+      "confidence": 0.6,
+      "reviewNote": "Confirm whether the visible line is one logical edge."
+    }
+  ],
+  "regions": []
+}

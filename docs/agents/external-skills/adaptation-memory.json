@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0",
-  "revision": 2,
+  "revision": 3,
   "entries": [
     {
       "id": "EXP-0001",
@@ -49,6 +49,21 @@
       "guidance": "Использовать скрипт только для сбора сигналов; решение принимает агент и при необходимости точечно читает проект, фиксируя повторно полезный вывод в памяти.",
       "ruleIds": ["precedence.project-rules"],
       "evidence": ["docs/architecture/adrs/069-managed-external-skill-adaptation.md"]
+    },
+    {
+      "id": "EXP-0005",
+      "recordedOn": "2026-07-13",
+      "status": "active",
+      "title": "Референсный снимок был принят за доступный навык",
+      "tags": ["activation", "adaptation", "project-context"],
+      "symptom": "Наличие внешнего SKILL.md рядом с проектом создаёт риск, что агент загрузит его как исполняемую инструкцию до адаптации.",
+      "cause": "Для внешних референсов не была проведена физическая и проверяемая граница между архивным исходником и активным каталогом навыков.",
+      "guidance": "Хранить точные внешние снимки только в skill-candidates, запрещать их применение ближайшим AGENTS.md и CI, а активировать только отдельную очищенную версию из skills.",
+      "ruleIds": ["activation.candidates-inert", "adaptation.materialize"],
+      "evidence": [
+        "docs/architecture/adrs/069-managed-external-skill-adaptation.md",
+        "docs/architecture/adrs/070-shared-project-skill-catalog.md"
+      ]
     }
   ]
 }

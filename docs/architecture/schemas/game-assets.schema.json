@@ -3,7 +3,7 @@
   "$id": "https://cubica.platform/schemas/game-assets.v1.json",
   "$ref": "#/definitions/RootGameAssets",
   "title": "Cubica Game Asset Registry",
-  "description": "Registry of game-owned static image assets delivered by stable ids.",
+  "description": "Registry of game-owned static assets delivered by stable ids: images (ADR-063) and stylesheets (ADR-091). File-size and asset-count budgets are guidance, not hard schema limits (ADR-063 amendment 2026-07-19).",
   "definitions": {
     "RootGameAssets": {
       "type": "object",
@@ -19,10 +19,18 @@
         },
         "assets": {
           "type": "array",
+          "description": "Image assets owned by the game (ADR-063).",
           "minItems": 1,
-          "maxItems": 64,
           "items": {
             "$ref": "#/definitions/GameAssetEntry"
+          }
+        },
+        "stylesheets": {
+          "type": "array",
+          "description": "Optional game-owned CSS assets (ADR-091). Kept in a dedicated section because their validation (asset-token image references instead of SVG sanitization) and delivery differ from images, while sharing one asset-id namespace resolved by asset:<id>.",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/StylesheetAssetEntry"
           }
         }
       }
@@ -47,6 +55,39 @@
         },
         "kind": {
           "const": "image"
+        },
+        "origin": {
+          "oneOf": [
+            {
+              "$ref": "#/definitions/AuthoredInRepoOrigin"
+            },
+            {
+              "$ref": "#/definitions/ThirdPartyOrigin"
+            }
+          ]
+        }
+      }
+    },
+    "StylesheetAssetEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "file",
+        "kind",
+        "origin"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+        },
+        "file": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9/_.-]{0,127}\\.css$"
+        },
+        "kind": {
+          "const": "css"
         },
         "origin": {
           "oneOf": [

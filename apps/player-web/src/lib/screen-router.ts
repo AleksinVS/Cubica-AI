@@ -1,4 +1,6 @@
 import type { ScreenRoutingEntry, GamePlayerUiContent } from "@cubica/contracts-manifest";
+import type { PlayerLayoutMode } from "@/lib/player-layout-mode";
+import { normalizePlayerLayoutMode } from "@/lib/player-layout-mode";
 
 /**
  * Manifest-driven screen router — resolves UI screen key from runtime state.
@@ -8,7 +10,14 @@ import type { ScreenRoutingEntry, GamePlayerUiContent } from "@cubica/contracts-
  *   2. Manifest screenRouting entries (data-driven, this module)
  *   3. activeInfoId disambiguation
  *   4. Direct screenId lookup in uiContent.screens
- *   5. runtimeUi.activeScreen override (maps "left-sidebar" → leftsidebar layout)
+ *   5. Design-time leftsidebar variant (uiContent.defaultLayoutMode)
+ *
+ * Layout is a design-time presentation choice (ADR-093): the game developer
+ * declares it once in the UI manifest as `defaultLayoutMode`. The router matches
+ * a routing entry's `conditions.layoutMode` against that declared value, NOT
+ * against any server-side UI state. This is why picking between layout variants
+ * of the same runtime screen (for example S1 topbar vs S1_LEFT leftsidebar) no
+ * longer depends on `state.public.ui.activeScreen`.
  *
  * When a game plugin provides resolveScreenKey, the GamePresenter calls it
  * directly. When the plugin omits resolveScreenKey, the GamePresenter calls
@@ -21,7 +30,17 @@ import type { ScreenRoutingEntry, GamePlayerUiContent } from "@cubica/contracts-
  */
 
 /**
- * Resolves the UI manifest screen key based on runtime state
+ * The design-time layout the game declares (ADR-093). Games that do not declare
+ * one are treated as `topbar`, preserving historical behavior.
+ */
+export function resolveDesignLayoutMode(
+  uiContent: GamePlayerUiContent | undefined
+): PlayerLayoutMode {
+  return normalizePlayerLayoutMode(uiContent?.defaultLayoutMode) ?? "topbar";
+}
+
+/**
+ * Resolves the UI manifest screen key based on runtime timeline state
  * and routing entries from the manifest.
  */
 export function resolveScreenKey(
@@ -29,13 +48,14 @@ export function resolveScreenKey(
   screenId: string | null,
   stepIndex: number | null,
   activeInfoId: string | null,
-  runtimeUi: { activeScreen?: string },
   uiContent: GamePlayerUiContent | undefined
 ): string | null {
+  const designLayoutMode = resolveDesignLayoutMode(uiContent);
+
   // 1. Try routing entries from manifest
   if (screenRouting && screenRouting.length > 0) {
     for (const entry of screenRouting) {
-      if (matchesConditions(entry, screenId, stepIndex, activeInfoId, runtimeUi)) {
+      if (matchesConditions(entry, screenId, stepIndex, activeInfoId, designLayoutMode)) {
         // Check that the target screen exists in the manifest
         if (uiContent?.screens[entry.screenKey]) {
           return entry.screenKey;
@@ -54,9 +74,8 @@ export function resolveScreenKey(
     return screenId;
   }
 
-  // 4. Layout override via runtimeUi
-  if (runtimeUi.activeScreen === "left-sidebar") {
-    // Check for a left-sidebar variant screen
+  // 4. Design-time leftsidebar variant
+  if (designLayoutMode === "leftsidebar") {
     const leftScreenKey = findLeftSidebarScreen(uiContent);
     if (leftScreenKey) {
       return leftScreenKey;
@@ -79,13 +98,18 @@ function findLeftSidebarScreen(uiContent: GamePlayerUiContent | undefined): stri
 
 /**
  * Checks whether routing entry conditions match the current state.
+ *
+ * `designLayoutMode` is the design-time layout declared by the UI manifest
+ * (ADR-093); the entry's `layoutMode` condition is matched against it so an
+ * alternate leftsidebar route cannot steal a normal topbar/info screen that has
+ * the same screenId and stepIndex.
  */
 function matchesConditions(
   entry: ScreenRoutingEntry,
   screenId: string | null,
   stepIndex: number | null,
   activeInfoId: string | null,
-  runtimeUi: { activeScreen?: string } = {}
+  designLayoutMode: PlayerLayoutMode
 ): boolean {
   const { conditions } = entry;
 
@@ -114,55 +138,37 @@ function matchesConditions(
     return false;
   }
 
-  // layoutMode is a runtime UI selector. Without this check, an alternate
-  // left-sidebar route can steal a normal topbar/info screen that has the same
-  // screenId and stepIndex.
-  if (conditions.layoutMode !== undefined && conditions.layoutMode !== normalizeActiveScreen(runtimeUi.activeScreen)) {
+  // layoutMode is a design-time selector (ADR-093).
+  if (conditions.layoutMode !== undefined && normalizePlayerLayoutMode(conditions.layoutMode) !== designLayoutMode) {
     return false;
   }
 
   return true;
 }
 
-function normalizeActiveScreen(activeScreen: string | undefined): "leftsidebar" | "topbar" | undefined {
-  if (activeScreen === "left-sidebar" || activeScreen === "leftsidebar") {
-    return "leftsidebar";
-  }
-  if (activeScreen === "topbar") {
-    return "topbar";
-  }
-  return undefined;
-}
-
 /**
- * Determines layout mode from routing entry (if found)
- * or runtimeUi.activeScreen.
+ * Determines layout mode from routing entry (if found) or the design-time
+ * default. This is a fallback used only when the selected screen does not
+ * declare its own `layoutMode`; the presenter otherwise prefers the screen's
+ * declared layout.
  */
 export function resolveLayoutModeFromRouting(
   screenRouting: ScreenRoutingEntry[] | undefined,
   screenId: string | null,
   stepIndex: number | null,
   activeInfoId: string | null,
-  runtimeUi: { activeScreen?: string },
-  fallback: "leftsidebar" | "topbar" = "topbar"
-): "leftsidebar" | "topbar" | null {
+  designLayoutMode: PlayerLayoutMode,
+  fallback: PlayerLayoutMode = "topbar"
+): PlayerLayoutMode | null {
   if (screenRouting) {
     for (const entry of screenRouting) {
-      if (matchesConditions(entry, screenId, stepIndex, activeInfoId, runtimeUi)) {
+      if (matchesConditions(entry, screenId, stepIndex, activeInfoId, designLayoutMode)) {
         if (entry.conditions.layoutMode) {
-          return entry.conditions.layoutMode;
+          return normalizePlayerLayoutMode(entry.conditions.layoutMode) ?? fallback;
         }
       }
     }
   }
 
-  // Fallback: runtimeUi.activeScreen
-  if (runtimeUi.activeScreen === "left-sidebar") {
-    return "leftsidebar";
-  }
-  if (runtimeUi.activeScreen === "topbar") {
-    return "topbar";
-  }
-
-  return fallback;
+  return designLayoutMode ?? fallback;
 }

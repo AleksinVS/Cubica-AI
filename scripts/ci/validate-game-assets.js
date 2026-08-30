@@ -1,10 +1,19 @@
 #!/usr/bin/env node
 /**
- * Validates game-owned image registries and SVG safety for ADR-063.
+ * Validates game-owned asset registries for ADR-063 (images) and ADR-091 (CSS).
  *
  * JSON Schema owns registry shape. This validator adds repository invariants
- * that JSON Schema cannot express: directory ownership, duplicate ids, file
- * existence/size, orphan detection, path containment and SVG sanitization.
+ * that JSON Schema cannot express: directory ownership, duplicate ids across
+ * images and stylesheets, file existence, orphan detection, path containment,
+ * SVG sanitization and the ADR-091 rule that game CSS references images only by
+ * `asset:<id>` tokens (never by baked-in paths).
+ *
+ * Size and count budgets are advisory only (ADR-063 amendment 2026-07-19): PM
+ * decided the previous hard limits (512 KB/file, 4 MB/game, 64 assets) are not
+ * an objective boundary, so they were downgraded to non-gating warnings. The
+ * normative recommendation ("prepare assets economically") lives in ADR-063 and
+ * cannot be checked numerically; the constants below are a tunable CI heuristic,
+ * not a contract limit, and never fail the build.
  */
 
 const fs = require("node:fs");
@@ -14,8 +23,12 @@ const addFormats = require("ajv-formats");
 
 const repoRoot = path.resolve(__dirname, "..", "..");
 const schemaPath = path.join(repoRoot, "docs", "architecture", "schemas", "game-assets.schema.json");
-const MAX_FILE_BYTES = 512 * 1024;
-const MAX_GAME_BYTES = 4 * 1024 * 1024;
+
+// Advisory (non-gating) heuristics. They only produce warnings; they are NOT a
+// normative contract limit (ADR-063 amendment 2026-07-19). Adjust or remove
+// freely — the build never fails because of them.
+const ADVISORY_FILE_BYTES = 512 * 1024;
+const ADVISORY_GAME_BYTES = 4 * 1024 * 1024;
 
 function buildValidator(schema = JSON.parse(fs.readFileSync(schemaPath, "utf8"))) {
   const ajv = new Ajv({ allErrors: true, strict: true });
@@ -73,14 +86,45 @@ function validateSvg(svgText, fileLabel) {
   return issues;
 }
 
+/**
+ * ADR-091: a game CSS source is the single source of truth and must reference
+ * images only by `asset:<id>` tokens. The publish/compile step rewrites those
+ * tokens into content-addressable channel URLs, so any `url(...)` that already
+ * carries a baked-in path (absolute, relative or remote) would bypass the
+ * channel and re-introduce the platform leak this ADR removes.
+ *
+ * Allowed inside url(): `asset:<id>` tokens, inline `data:` URIs, internal
+ * `#fragment` references and CSS `var(--...)` custom properties. Everything else
+ * is rejected.
+ */
+function validateCssSource(cssText, fileLabel) {
+  const issues = [];
+  const urlPattern = /url\(\s*(?:"([^"]*)"|'([^']*)'|([^)]*))\)/giu;
+  for (const match of cssText.matchAll(urlPattern)) {
+    const raw = (match[1] ?? match[2] ?? match[3] ?? "").trim();
+    if (raw === "") continue;
+    const isAssetToken = /^asset:[a-z0-9][a-z0-9-]{0,63}$/u.test(raw);
+    const isDataUri = /^data:/iu.test(raw);
+    const isFragment = raw.startsWith("#");
+    const isCssVar = /^var\(/iu.test(raw);
+    if (!isAssetToken && !isDataUri && !isFragment && !isCssVar) {
+      issues.push(
+        `${fileLabel}: CSS url("${raw}") must reference a game asset by token (asset:<id>), not a baked-in path (ADR-091)`
+      );
+    }
+  }
+  return issues;
+}
+
 function validateGameAssetDirectory(gameDir, validateSchema = buildValidator()) {
   const gameId = path.basename(gameDir);
   const assetsRoot = path.join(gameDir, "assets");
   const registryPath = path.join(assetsRoot, "assets.json");
   const issues = [];
+  const warnings = [];
 
   if (!fs.existsSync(registryPath)) {
-    return { enrolled: false, gameId, issues };
+    return { enrolled: false, gameId, issues, warnings };
   }
 
   let registry;
@@ -90,7 +134,8 @@ function validateGameAssetDirectory(gameDir, validateSchema = buildValidator()) 
     return {
       enrolled: true,
       gameId,
-      issues: [`${relative(registryPath)}: invalid JSON: ${error.message}`]
+      issues: [`${relative(registryPath)}: invalid JSON: ${error.message}`],
+      warnings
     };
   }
 
@@ -100,7 +145,7 @@ function validateGameAssetDirectory(gameDir, validateSchema = buildValidator()) 
         .map((error) => `${error.instancePath || "/"} ${error.message}`)
         .join("; ")}`
     );
-    return { enrolled: true, gameId, issues };
+    return { enrolled: true, gameId, issues, warnings };
   }
 
   if (registry.gameId !== gameId) {
@@ -110,7 +155,14 @@ function validateGameAssetDirectory(gameDir, validateSchema = buildValidator()) 
   const seenIds = new Set();
   const registeredFiles = new Set();
   let totalBytes = 0;
-  for (const asset of registry.assets) {
+
+  // Both sections share one asset-id namespace and one file tree, so they are
+  // validated with the same containment/existence/duplicate rules; only the
+  // per-kind content check differs (SVG sanitization vs CSS asset tokens).
+  const imageEntries = registry.assets.map((asset) => ({ asset, kind: "image" }));
+  const cssEntries = (registry.stylesheets || []).map((asset) => ({ asset, kind: "css" }));
+
+  for (const { asset, kind } of [...imageEntries, ...cssEntries]) {
     if (seenIds.has(asset.id)) {
       issues.push(`${relative(registryPath)}: duplicate asset id "${asset.id}"`);
     }
@@ -135,16 +187,24 @@ function validateGameAssetDirectory(gameDir, validateSchema = buildValidator()) 
 
     const size = fs.statSync(resolved).size;
     totalBytes += size;
-    if (size > MAX_FILE_BYTES) {
-      issues.push(`${relative(resolved)}: file size ${size} exceeds ${MAX_FILE_BYTES} bytes`);
+    if (size > ADVISORY_FILE_BYTES) {
+      warnings.push(
+        `${relative(resolved)}: file size ${size} bytes is large; consider compression/webp (advisory, ADR-063)`
+      );
     }
-    if (path.extname(resolved).toLowerCase() === ".svg") {
+
+    if (kind === "image" && path.extname(resolved).toLowerCase() === ".svg") {
       issues.push(...validateSvg(fs.readFileSync(resolved, "utf8"), relative(resolved)));
+    }
+    if (kind === "css") {
+      issues.push(...validateCssSource(fs.readFileSync(resolved, "utf8"), relative(resolved)));
     }
   }
 
-  if (totalBytes > MAX_GAME_BYTES) {
-    issues.push(`${relative(assetsRoot)}: total registered size ${totalBytes} exceeds ${MAX_GAME_BYTES} bytes`);
+  if (totalBytes > ADVISORY_GAME_BYTES) {
+    warnings.push(
+      `${relative(assetsRoot)}: total registered size ${totalBytes} bytes is large; prune duplicates/unused files (advisory, ADR-063)`
+    );
   }
 
   for (const filePath of collectAssetFiles(assetsRoot)) {
@@ -154,7 +214,7 @@ function validateGameAssetDirectory(gameDir, validateSchema = buildValidator()) 
     }
   }
 
-  return { enrolled: true, gameId, issues };
+  return { enrolled: true, gameId, issues, warnings };
 }
 
 function validateGamesRoot(gamesRoot = path.join(repoRoot, "games")) {
@@ -171,6 +231,10 @@ function validateGamesRoot(gamesRoot = path.join(repoRoot, "games")) {
 
 function main() {
   const results = validateGamesRoot();
+  const warnings = results.flatMap((result) => result.warnings || []);
+  if (warnings.length > 0) {
+    console.warn(`validate-game-assets: ${warnings.length} advisory warning(s)\n- ${warnings.join("\n- ")}`);
+  }
   const issues = results.flatMap((result) => result.issues);
   if (issues.length > 0) {
     console.error(`validate-game-assets: FAILED\n- ${issues.join("\n- ")}`);
@@ -187,10 +251,11 @@ if (require.main === module) {
 }
 
 module.exports = {
-  MAX_FILE_BYTES,
-  MAX_GAME_BYTES,
+  ADVISORY_FILE_BYTES,
+  ADVISORY_GAME_BYTES,
   buildValidator,
   collectAssetFiles,
+  validateCssSource,
   validateGameAssetDirectory,
   validateGamesRoot,
   validateSvg

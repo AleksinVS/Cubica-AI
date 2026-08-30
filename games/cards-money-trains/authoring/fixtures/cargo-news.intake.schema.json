@@ -1,0 +1,181 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cubica.example/schemas/cards-money-trains-cargo-news-intake.schema.json",
+  "title": "Cards, Money, Trains author cargo and news intake",
+  "description": "Schema for a deterministic, non-publishable extraction of the author's cargo and news workbook. It preserves source rows without claiming that each row is already a runtime card or that every news text has executable semantics.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "gameId",
+    "locale",
+    "status",
+    "publishable",
+    "source",
+    "summary",
+    "authorConfirmations",
+    "unresolved",
+    "cargoRecords",
+    "newsRecords"
+  ],
+  "properties": {
+    "apiVersion": { "const": "cubica.game/cards-money-trains-content-intake/v1" },
+    "gameId": { "const": "cards-money-trains" },
+    "locale": { "const": "ru-RU" },
+    "status": { "const": "content-intake" },
+    "publishable": { "const": false },
+    "source": { "$ref": "#/$defs/source" },
+    "summary": { "$ref": "#/$defs/summary" },
+    "authorConfirmations": { "$ref": "#/$defs/authorConfirmations" },
+    "unresolved": { "$ref": "#/$defs/unresolved" },
+    "cargoRecords": {
+      "type": "array",
+      "minItems": 174,
+      "maxItems": 174,
+      "items": { "$ref": "#/$defs/cargoRecord" }
+    },
+    "newsRecords": {
+      "type": "array",
+      "minItems": 34,
+      "maxItems": 34,
+      "items": { "$ref": "#/$defs/newsRecord" }
+    }
+  },
+  "$defs": {
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "sheets"],
+      "properties": {
+        "path": { "const": "draft/trains/Колоди + Новости.xlsx" },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "sheets": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "enum": ["Колоды по терминалам", "Новости (2 типов)"]
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cargoRecordCount",
+        "baseCargoRecordCount",
+        "newsAddedCargoRecordCount",
+        "newsRecordCount",
+        "cargoAdditionNewsCount",
+        "ruleNewsCount"
+      ],
+      "properties": {
+        "cargoRecordCount": { "const": 174 },
+        "baseCargoRecordCount": { "type": "integer", "minimum": 1, "maximum": 174 },
+        "newsAddedCargoRecordCount": { "type": "integer", "minimum": 1, "maximum": 174 },
+        "newsRecordCount": { "const": 34 },
+        "cargoAdditionNewsCount": { "const": 10 },
+        "ruleNewsCount": { "const": 24 }
+      }
+    },
+    "authorConfirmations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "oneSourceRowEqualsOneRuntimeCard",
+        "runtimeDeckLifecycleApproved"
+      ],
+      "properties": {
+        "oneSourceRowEqualsOneRuntimeCard": { "const": true },
+        "runtimeDeckLifecycleApproved": { "const": true }
+      }
+    },
+    "unresolved": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "executableNewsMappingComplete"
+      ],
+      "properties": {
+        "executableNewsMappingComplete": { "const": false }
+      }
+    },
+    "terminalId": {
+      "type": "string",
+      "pattern": "^terminal-(?:[1-9]|1[0-9]|2[0-3])$"
+    },
+    "cargoRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "sourceRow",
+        "originNodeId",
+        "destinationNodeId",
+        "bankPayout",
+        "sourceDeckLabel",
+        "deck"
+      ],
+      "properties": {
+        "id": { "type": "string", "pattern": "^cargo-source-row-[0-9]{3}$" },
+        "sourceRow": { "type": "integer", "minimum": 2, "maximum": 175 },
+        "originNodeId": { "$ref": "#/$defs/terminalId" },
+        "destinationNodeId": { "$ref": "#/$defs/terminalId" },
+        "bankPayout": { "type": "integer", "minimum": 0, "maximum": 1000 },
+        "sourceDeckLabel": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "deck": {
+          "oneOf": [
+            { "$ref": "#/$defs/baseTerminalDeck" },
+            { "$ref": "#/$defs/newsAdditionDeck" }
+          ]
+        }
+      }
+    },
+    "baseTerminalDeck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "terminalId"],
+      "properties": {
+        "kind": { "const": "base-terminal" },
+        "terminalId": { "$ref": "#/$defs/terminalId" }
+      }
+    },
+    "newsAdditionDeck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "newsId"],
+      "properties": {
+        "kind": { "const": "news-addition" },
+        "newsId": { "type": "string", "pattern": "^news-(?:0[1-9]|10)$" }
+      }
+    },
+    "newsRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "sourceRow",
+        "number",
+        "category",
+        "sourceCategoryLabel",
+        "text",
+        "linkedCargoRecordIds"
+      ],
+      "properties": {
+        "id": { "type": "string", "pattern": "^news-(?:0[1-9]|[12][0-9]|3[0-4])$" },
+        "sourceRow": { "type": "integer", "minimum": 2, "maximum": 35 },
+        "number": { "type": "integer", "minimum": 1, "maximum": 34 },
+        "category": { "enum": ["cargo-addition", "rule-modifier"] },
+        "sourceCategoryLabel": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "text": { "type": "string", "minLength": 1, "maxLength": 4000 },
+        "linkedCargoRecordIds": {
+          "type": "array",
+          "maxItems": 174,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^cargo-source-row-[0-9]{3}$" }
+        }
+      }
+    }
+  }
+}

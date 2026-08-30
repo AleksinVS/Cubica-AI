@@ -1,3 +1,4 @@
 interface:
   display_name: "C_ui-compare"
   short_description: "Измеряемое сравнение UI с визуальным образцом"
+  default_prompt: "Use $ui-compare to measure this interface against the supplied visual reference and report verified differences."

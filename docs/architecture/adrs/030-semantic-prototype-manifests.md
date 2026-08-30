@@ -1,9 +1,8 @@
 # ADR-030: Семантические прототипы манифестов с компиляцией
 
-- **Статус**: Draft
+**Status:** Draft
 - **Дата**: 2026-05-17
 - **Последнее уточнение**: 2026-05-21
-- **Первый реализованный pilot**: `games/simple-choice`
 - **Компоненты**: `games/*`, `docs/architecture/schemas`, `packages/contracts/manifest`, `services/runtime-api`, `apps/player-web`, authoring tooling
 - **Связанные решения**: ADR-018, ADR-025, ADR-028, ADR-029, ADR-031
 
@@ -67,8 +66,6 @@ ADR-030 дополняет ADR-028. ADR-028 описывает action templates 
    - runtime `ui.manifest.json` для каждого канала;
    - сопутствующие source map файлы для диагностики.
 5. CI должен блокировать рассинхрон между authoring-входами и generated runtime-выходами.
-
-Текущие плоские манифесты, которые появились до реализации компилятора, являются переходным состоянием. Их миграция должна быть оформлена рабочими задачами и не должна использоваться как основание для новых ручных правок generated runtime-слоя.
 
 ## 5. Архитектурные инварианты
 
@@ -182,9 +179,11 @@ Runtime-манифест не должен получать `_source_trace`, п�
 
 - **ADR-018**: сохраняется. На выходе authoring pipeline source of truth для runtime остается JSON-манифест, валидируемый схемой. Authoring files являются исходниками этой сборки.
 - **ADR-025**: сохраняется. Runtime и authoring структуры описываются JSON Schema; TypeScript-only проверки не становятся источником истины.
-- **ADR-028**: дополняется. ADR-030 может генерировать runtime actions с `templateId` и `params`, если это часть runtime schema. Authoring prototypes не являются заменой runtime action templates.
-- **ADR-029**: сохраняется. Authoring layer не отменяет lowest-tier правило: сначала templates, затем declarative logic, затем scripts.
-- **ADR-031**: сохраняется. Детальная реализация compiler-а, CI и миграции должна жить в `docs/tasks/active/`, а не в ADR.
+- **ADR-028 и ADR-029**: сохраняются как историческая линия. Authoring-макросы
+  раскрываются до публикации, а runtime получает типизированный Mechanics IR по
+  ADR-084, а не выбирает между runtime templates, JsonLogic и scripts.
+- **ADR-031**: сохраняется. Исполнительские детали compiler-а и CI остаются в
+  документации задач, а не в ADR.
 
 ## 11. Отклоненные альтернативы
 
@@ -209,12 +208,8 @@ Trade-offs:
 
 - Появляется обязательный build step для манифестов.
 - Требуются две пары схем: authoring и runtime для game/UI manifests.
-- Нужно мигрировать существующие плоские манифесты в authoring-источники.
 - Агентам нужно строго соблюдать правило: править authoring-входы, а не generated output.
 
 ## 13. Открытые вопросы
 
-- Закрыто 2026-05-21: authoring manifests хранятся в `games/<id>/authoring/`, UI authoring manifests - в `games/<id>/authoring/ui/<channel>.authoring.json`.
-- Закрыто 2026-05-21: generated runtime manifests коммитятся в репозиторий и проверяются через `npm run verify:manifest-authoring`.
-- Закрыто 2026-05-21: первым pilot выбран `games/simple-choice`.
 - Какой формат source map считать стабильным публичным контрактом tooling-а.

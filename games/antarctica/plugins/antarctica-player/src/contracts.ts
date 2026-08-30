@@ -50,6 +50,12 @@ export interface GamePlayerBoardCard {
   selectLabel?: string;
   advanceActionId?: string;
   advanceLabel?: string;
+  /**
+   * Presentation state projected from the card's state facets (ADR-094). The UI
+   * template binds it, and the renderer flips a `resolved` card to its back.
+   * `resolved | selected | locked | default`.
+   */
+  visualState?: string;
 }
 
 export interface GamePlayerBoard {
@@ -72,11 +78,28 @@ export interface GamePlayerContent {
   cards: Array<GamePlayerBoardCard>;
 }
 
+/**
+ * One metric badge under a journal entry (ADR-092): caption, the value after the
+ * turn, and the signed delta. `hasDelta` is false when the metric did not change
+ * this turn, so the template can hide the delta superscript (matching the
+ * reference journal, which shows a delta only for changed metrics).
+ */
+export interface GamePlayerJournalMetricRow {
+  caption: string;
+  value: number;
+  previousValue: number;
+  delta: string;
+  hasDelta: boolean;
+}
+
 export interface GamePlayerJournalEntry {
   frontText: string;
   backText: string;
   metricSummary: string;
   hasMetricSummary: boolean;
+  /** Per-metric badges rendered under the entry (value + delta on each metric). */
+  metricRows: Array<GamePlayerJournalMetricRow>;
+  hasMetricRows: boolean;
   at: string;
 }
 
@@ -98,6 +121,20 @@ export interface AntarcticaGameState {
   selectedMemberIds: Array<string>;
   pickCount: number;
   canAdvance: boolean;
+  /**
+   * Published action id the forward navigation arrow dispatches on card/board
+   * screens. Empty string when the game cannot advance yet (no resolved card
+   * with an advance plan). The manifest binds the arrow's payload.actionId to
+   * this value; an empty id keeps the arrow disabled via forwardNavDisabled.
+   */
+  forwardAdvanceActionId: string;
+  /**
+   * Whether the forward navigation arrow is disabled on card/board screens.
+   * True until the current board step can advance (mirrors the "continue"
+   * button that opens after the required board cards are played). The expression
+   * language has no negation, so the plugin projects this ready-to-bind boolean.
+   */
+  forwardNavDisabled: boolean;
   journalEntries: Array<GamePlayerJournalEntry>;
   hasJournalEntries: boolean;
   journalIsEmpty: boolean;

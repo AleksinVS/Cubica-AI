@@ -10,18 +10,39 @@
 - [Связанные материалы](#связанные-материалы)
 
 ## Структура каталога
-- `adrs/` — архитектурные решения (Architecture Decision Records). Каждое решение фиксируется отдельным файлом `NNN-kebab-case.md` с порядковым номером.
-- `agent-ui-foundation.md` — проектная архитектура UI ИИ-агентов на CopilotKit/AG-UI по ADR-043.
-- `agent-ui-portability-and-risk-controls.md` — проектные правила переносимости Agent UI, контроля рисков и предотвращения узких мест по ADR-044.
-- `ai-agent-safety-remediation.md` — проектные правила исправления review findings по Cubica Surface and AI-driven runtime: approval envelope, Agent Turn acceptance, capability gates, channel action policy and production backend auth по ADR-047.
-- `element-prompt-contract.md` — проектный контракт элементного промта по ADR-048: `_prompt` для authoring-экземпляров, `_promptTemplate` для прототипов, жизненный цикл нормализации и границы с `generation.prompt`.
-- `generative-ui-surface-protocol.md` — проектная архитектура Cubica-owned Generative UI Surface Protocol по ADR-045 и ADR-046: CopilotKit как MVP-адаптер, собственный compatible Agent UI target, Cubica Surface, A2UI/AG-UI adapter boundaries and AI-driven gameplay surfaces.
-- `testing-strategy.md` — политика тестирования и целевая архитектура проверок для runtime, player, editor, portal, game content и будущего LLM-слоя.
-- `diagrams/` — визуальные схемы (C4, последовательности, схемы развёртывания). Создаётся по мере появления диаграмм.
-- `openapi/` — спецификации API и совместимые артефакты (JSON/YAML).
-- `models/` — схемы данных, ER-диаграммы, DSL-модели.
 
-*Каталоги `diagrams/`, `openapi/`, `models/` создаются по мере появления материалов; сохраняйте единый стиль на уровне командных договорённостей.*
+Каноническая карта структуры порождается в `PROJECT_STRUCTURE.yaml`; ниже перечислены все непосредственные элементы этого каталога, чтобы ручная навигация не зависела от знания истории проекта.
+
+Каталоги:
+
+- `adrs/` — архитектурные решения и порождаемый сводный индекс их статусов;
+- `backend/`, `engine/`, `metadata/` — подробные материалы соответствующих серверных областей;
+- `gameplay-slices/` — записи ограниченных сценариев поставки конкретных игр;
+- `processes/` — процессы сопровождения архитектуры;
+- `protocols/` — межкомпонентные протоколы;
+- `schemas/` — JSON Schema, являющиеся источниками истины публичных структур;
+- `search/` — поиск, индексация и проектные знания;
+- `sql/` — схемы и запросы моделей хранения.
+
+Общие документы:
+
+- `PROJECT_ARCHITECTURE.md` — достаточный канонический обзор активной архитектуры;
+- `GAME_AUTHORING_GUIDE.md` — руководство автора игры;
+- `README.md` — этот навигационный документ;
+- `testing-strategy.md`, `universality-analysis.md` — стратегия проверок и анализ универсальности;
+- `runtime-mechanics-language.md` — нормативный язык Game Intent → Mechanics IR;
+- `agent-ui-foundation.md`, `agent-ui-portability-and-risk-controls.md`, `ai-agent-safety-remediation.md`, `generative-ui-surface-protocol.md` — архитектура и безопасность интерфейсов ИИ-агентов;
+- `element-prompt-contract.md` — контракт авторских промтов; `product-context-system.md` — принятый контур продуктовых знаний с единой личностью, ролевой проекцией, явной игровой применимостью и трёхэтапным безопасным внедрением; `project-knowledge-system.md` — инженерная вики и поиск;
+- `board-game-platform-design.md`, `cards-money-trains-platform-design.md`, `flow-simulation-platform-design.md`, `rail-tycoon-mini-design.md` — проекты игровых классов и доказательных игр;
+- `editor-preview-first-ux.md`, `editor-telemetry.md`, `game-ui-mockup-flow.md` — редакторский контур;
+- `game-asset-channel-design.md` — происхождение, публикация и доставка ассетов.
+
+API и эксплуатационные контракты:
+
+- `runtime-api-openapi.yaml` — действующий публичный контракт модульного runtime;
+- `engine-api.yaml`, `repository-openapi.yaml`, `router-openapi.yaml` — исторические или целевые границы будущего выделения сервисов;
+- `router-sequence.md`, `router-ws-protocol.md` — последовательности и будущая доставка событий;
+- `redis-keys.md` — отложенный справочник будущего кэша чтения.
 
 ## Процесс ведения ADR
 1. Перед началом изменений сформулируйте проблему, альтернативы и критерии принятия решения.

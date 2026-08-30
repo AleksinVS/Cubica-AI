@@ -33,31 +33,8 @@
         "building"
       ],
       "builtEdgeState": "building",
-      "sequencePath": "/public/transportNetworks/main/sequence",
-      "roadCostPerRegionSegment": 2,
-      "waypointCost": 5,
+      "sequenceEndpoint": "public.transportNetworks.main.sequence",
       "regions": [
-        {
-          "id": "mock-region-west",
-          "polygon": [
-            {
-              "x": 50,
-              "y": 50
-            },
-            {
-              "x": 480,
-              "y": 50
-            },
-            {
-              "x": 480,
-              "y": 900
-            },
-            {
-              "x": 50,
-              "y": 900
-            }
-          ]
-        },
         {
           "id": "mock-region-central",
           "polygon": [
@@ -99,8 +76,38 @@
               "y": 900
             }
           ]
+        },
+        {
+          "id": "mock-region-west",
+          "polygon": [
+            {
+              "x": 50,
+              "y": 50
+            },
+            {
+              "x": 480,
+              "y": 50
+            },
+            {
+              "x": 480,
+              "y": 900
+            },
+            {
+              "x": 50,
+              "y": 900
+            }
+          ]
         }
-      ]
+      ],
+      "roadPlanning": {
+        "mode": "region-segment-minimum",
+        "algorithmVersion": "region-segment-minimum-v3",
+        "geometryVersion": "mock-regions-v1",
+        "geometryHash": "sha256:92f584565dfb937f5f9b93799238223ff4785c83a0b07b752442441227a5ebb8",
+        "tieBreak": "shortest-then-codepoint",
+        "boundaryPolicy": "lowest-region-id",
+        "excludedRegionIdsEndpoint": "public.transportNetworks.main.excludedRegionIds"
+      }
     }
   },
   "state": {

@@ -1,0 +1,314 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cubica.platform/schemas/game-intent.v1.json",
+  "$ref": "#/$defs/GameIntentCatalog",
+  "title": "Cubica Game Intent Catalog v1",
+  "description": "Closed catalog of externally invoked and scheduler-only game intents with bounded scalar parameter schemas.",
+  "$defs": {
+    "GameIntentCatalog": {
+      "type": "object",
+      "maxProperties": 2048,
+      "propertyNames": {
+        "$ref": "#/$defs/GameIntentSafeIdentifier"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/GameManifestActionDefinition"
+      }
+    },
+    "GameManifestActionDefinition": {
+      "type": "object",
+      "properties": {
+        "capability": {
+          "type": "string"
+        },
+        "capabilityFamily": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "function": {
+          "type": "string"
+        },
+        "invocation": {
+          "description": "Trusted admission path: external intents are user/model selectable; system intents are scheduler-only.",
+          "enum": ["external", "system"]
+        },
+        "allowedSessionRoles": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/GameManifestSessionRole"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "paramsSchema": {
+          "$ref": "#/$defs/GameManifestActionParamsSchema"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "definitionHash": {
+          "$ref": "#/$defs/GameIntentSha256"
+        },
+        "binding": {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "mechanics-plan"
+            },
+            "planRef": {
+              "$ref": "#/$defs/GameIntentSafeIdentifier"
+            }
+          },
+          "required": [
+            "kind",
+            "planRef"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "definitionHash",
+        "binding",
+        "invocation"
+      ],
+      "additionalProperties": false
+    },
+    "GameManifestSessionRole": {
+      "type": "string",
+      "enum": [
+        "player",
+        "facilitator",
+        "assistant",
+        "observer"
+      ]
+    },
+    "GameManifestCubicaReference": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "object",
+            "action-resource"
+          ]
+        },
+        "collection": {
+          "type": "string",
+          "minLength": 1
+        },
+        "network": {
+          "type": "string",
+          "minLength": 1
+        },
+        "allowedTypes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "visibility": {
+          "$ref": "#/$defs/GameIntentReferenceVisibility"
+        }
+      },
+      "required": [
+        "kind",
+        "collection",
+        "visibility"
+      ],
+      "additionalProperties": false
+    },
+    "GameManifestStringActionParamSchema": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "string"
+        },
+        "minLength": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maxLength": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 256
+        },
+        "enum": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "const": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "x-cubica-ref": {
+          "$ref": "#/$defs/GameManifestCubicaReference"
+        }
+      },
+      "required": [
+        "type",
+        "maxLength"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "x-cubica-ref": true
+            },
+            "required": [
+              "x-cubica-ref"
+            ]
+          },
+          "then": {
+            "properties": {
+              "maxLength": {
+                "type": "integer",
+                "maximum": 128
+              }
+            }
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "GameManifestNumericActionParamSchema": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "enum": [
+            "integer",
+            "number"
+          ]
+        },
+        "minimum": {
+          "type": "number"
+        },
+        "maximum": {
+          "type": "number"
+        },
+        "exclusiveMinimum": {
+          "type": "number"
+        },
+        "exclusiveMaximum": {
+          "type": "number"
+        },
+        "enum": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "GameManifestBooleanActionParamSchema": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "boolean"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "GameManifestActionParamPropertySchema": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/GameManifestStringActionParamSchema"
+        },
+        {
+          "$ref": "#/$defs/GameManifestNumericActionParamSchema"
+        },
+        {
+          "$ref": "#/$defs/GameManifestBooleanActionParamSchema"
+        }
+      ]
+    },
+    "GameManifestActionParamsSchema": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "object"
+        },
+        "additionalProperties": {
+          "const": false
+        },
+        "properties": {
+          "type": "object",
+          "maxProperties": 16,
+          "propertyNames": {
+            "$ref": "#/$defs/GameIntentJsonPropertyName"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/GameManifestActionParamPropertySchema"
+          }
+        },
+        "required": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/GameIntentJsonPropertyName"
+          },
+          "maxItems": 16,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "type",
+        "additionalProperties",
+        "properties"
+      ],
+      "additionalProperties": false
+    },
+    "GameIntentSafeIdentifier": {
+      "type": "string",
+      "description": "Bounded identifier safe for use as an own object key or JSON Pointer segment.",
+      "pattern": "^(?!(?:__proto__|constructor|prototype)$)[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+    },
+    "GameIntentJsonPropertyName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "not": {
+        "enum": [
+          "__proto__",
+          "constructor",
+          "prototype"
+        ]
+      }
+    },
+    "GameIntentReferenceVisibility": {
+      "type": "string",
+      "enum": [
+        "public",
+        "secret"
+      ]
+    },
+    "GameIntentSha256": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    }
+  }
+}

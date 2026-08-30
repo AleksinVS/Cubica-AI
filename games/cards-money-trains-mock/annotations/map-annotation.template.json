@@ -1,5 +1,5 @@
 {
-  "$schema": "./map-annotation.schema.json",
+  "$schema": "../../../docs/architecture/schemas/map-annotation.schema.json",
   "schemaVersion": "1.0",
   "status": "template",
   "warning": "ШАБЛОН: заменить все примерные значения после ручной сверки с автором игры.",

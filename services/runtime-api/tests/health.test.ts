@@ -9,8 +9,10 @@
  */
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import type { GameManifestAgentSeatConfig } from "@cubica/contracts-manifest";
 
 import {
+  assertAgentSeatLaunchReady,
   buildReadinessResponse,
   checkContentSubsystem,
   checkSessionStore,
@@ -87,10 +89,46 @@ test("deriveSessionStoreMode reflects an alternate store class name", () => {
     async getSession() {
       return null;
     }
+    async authenticateSession() {
+      return null;
+    }
+    async claimPrivateInvite() {
+      return null;
+    }
+    async issuePrivateSeatRecoveryInvite() {
+      return null;
+    }
+    async archiveSession() {
+      return null;
+    }
+    async readArchivedSession() {
+      return null;
+    }
+    async readPublicJournalSource() {
+      return null;
+    }
+    async getImmutableBundle() {
+      return null;
+    }
+    async getSessionEvents() {
+      return [];
+    }
+    async listPendingSystemSchedules() {
+      return [];
+    }
     async updateSession(session: unknown) {
       return session as never;
     }
     async withLockedSession() {
+      return undefined as never;
+    }
+    async withCommandTransaction() {
+      return undefined as never;
+    }
+    async getCommandReceipt() {
+      return null;
+    }
+    async withSystemCommandTransaction() {
       return undefined as never;
     }
     async checkReadiness() {}
@@ -98,4 +136,45 @@ test("deriveSessionStoreMode reflects an alternate store class name", () => {
   }
 
   assert.equal(deriveSessionStoreMode(new RedisSessionStore()), "redis");
+});
+
+test("agent-seat launch policy enforces declaration, bounds and existing runtime readiness", () => {
+  const agentSeats = {
+    max: 1,
+    invalidAttemptLimit: 2,
+    deterministicFallbackCandidates: [{ actionId: "turn.pass", params: {} }]
+  } satisfies GameManifestAgentSeatConfig;
+  assert.doesNotThrow(() => assertAgentSeatLaunchReady({
+    gameId: "neutral-fixture",
+    participantCount: 2
+  }));
+  assert.doesNotThrow(() => assertAgentSeatLaunchReady({
+    gameId: "neutral-fixture",
+    participantCount: 2,
+    agentSeatCount: 0
+  }));
+  assert.doesNotThrow(() => assertAgentSeatLaunchReady({
+    gameId: "neutral-fixture",
+    participantCount: 2,
+    agentSeatCount: 0,
+    agentSeats
+  }));
+  assert.throws(() => assertAgentSeatLaunchReady({
+    gameId: "neutral-fixture",
+    participantCount: 2,
+    agentSeatCount: 2,
+    agentSeats
+  }), /declared maximum or participant count/u);
+  assert.throws(() => assertAgentSeatLaunchReady({
+    gameId: "neutral-fixture",
+    participantCount: 1,
+    agentSeatCount: 2,
+    agentSeats: { ...agentSeats, max: 2 }
+  }), /declared maximum or participant count/u);
+  assert.throws(() => assertAgentSeatLaunchReady({
+    gameId: "neutral-fixture",
+    participantCount: 2,
+    agentSeatCount: 1,
+    agentSeats
+  }), /Agent Runtime is not configured/u);
 });

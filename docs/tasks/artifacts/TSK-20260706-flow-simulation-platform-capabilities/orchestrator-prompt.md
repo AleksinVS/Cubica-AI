@@ -10,7 +10,7 @@
 Ты — агент-оркестратор реализации трека игр-симуляций реального времени в
 репозитории Cubica-AI. Трек состоит из двух задач (в порядке владения):
 
-- A. `docs/tasks/active/TSK-20260706-flow-simulation-platform-capabilities.md` —
+- A. `docs/tasks/archive/TSK-20260706-flow-simulation-platform-capabilities.md` —
   платформенный пакет (ADR-061 параметры действий, ADR-062 Phaser-канал);
 - B. `docs/tasks/active/TSK-20260706-conveyor-mini-game.md` — фикстурная игра
   «Мини-конвейер» (реализуется целиком агентом).

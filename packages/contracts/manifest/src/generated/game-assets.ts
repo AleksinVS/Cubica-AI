@@ -21,10 +21,17 @@ export interface GameAssetsSchemaDefs {
 export interface RootGameAssets {
   gameId: string;
   /**
+   * Image assets owned by the game (ADR-063).
+   *
    * @minItems 1
-   * @maxItems 64
    */
   assets: [GameAssetEntry, ...GameAssetEntry[]];
+  /**
+   * Optional game-owned CSS assets (ADR-091). Kept in a dedicated section because their validation (asset-token image references instead of SVG sanitization) and delivery differ from images, while sharing one asset-id namespace resolved by asset:<id>.
+   *
+   * @minItems 1
+   */
+  stylesheets?: [StylesheetAssetEntry, ...StylesheetAssetEntry[]];
 }
 /**
  * This interface was referenced by `GameAssetsSchemaDefs`'s JSON-Schema
@@ -51,4 +58,14 @@ export interface ThirdPartyOrigin {
   type: "third-party";
   license: string;
   source: string;
+}
+/**
+ * This interface was referenced by `GameAssetsSchemaDefs`'s JSON-Schema
+ * via the `definition` "StylesheetAssetEntry".
+ */
+export interface StylesheetAssetEntry {
+  id: string;
+  file: string;
+  kind: "css";
+  origin: AuthoredInRepoOrigin | ThirdPartyOrigin;
 }

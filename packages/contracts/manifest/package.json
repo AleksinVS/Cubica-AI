@@ -6,6 +6,14 @@
   "type": "module",
   "main": "src/index.ts",
   "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./rich-text-sanitizer": {
+      "types": "./src/rich-text-sanitizer.d.cts",
+      "require": "./src/rich-text-sanitizer.cjs",
+      "default": "./src/rich-text-sanitizer.cjs"
+    }
+  },
   "scripts": {
     "build": "echo \"[contracts-manifest] source-only TS package; no build step\"",
     "typecheck": "tsc --noEmit -p tsconfig.json",
@@ -15,6 +23,9 @@
   "devDependencies": {
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1"
+  },
+  "dependencies": {
+    "sanitize-html": "2.17.5"
   },
   "engines": {
     "node": ">=22.7.0"

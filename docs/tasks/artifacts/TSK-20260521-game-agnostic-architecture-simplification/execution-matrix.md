@@ -81,7 +81,7 @@ This document turns the 2026-05-21 architecture analysis into executable work. I
 
 | Risk | Impact | Mitigation |
 | --- | --- | --- |
-| Over-generalizing runtime into a large workflow engine too early. | More complexity without proof from multiple games. | Prefer Tier 1 templates, Tier 2 JsonLogic and small neutral primitives. Escalate DSL changes to ADR. |
+| Under-generalizing the public mechanics language into subject-specific effects. | Published games accumulate narrow contracts and require an expensive later migration. | Per ADR-083, design neutral composable primitives from the first proven game scenario; control complexity with schemas, execution limits, neutral fixtures and versioning. |
 | Breaking Antarctica while removing game-specific leaks. | Regression in current canonical game. | Keep Antarctica e2e and runtime tests as required checks. |
 | Creating a fake second game that does not exercise real boundaries. | False confidence in game-agnostic architecture. | Example game must create session, render UI manifest and dispatch a runtime action. |
 | Leaving semantic fields in runtime undocumented. | Hidden drift returns. | Register every deferred field in legacy debt or schema/contracts. |

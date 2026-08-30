@@ -13,6 +13,13 @@ export interface IGameRepository {
   getMockupFiles(gameId: string): Promise<Array<{ filename: string; raw: string }>>;
   getPublishedPlayerWebPluginBundlesRaw(gameId: string): Promise<string | undefined>;
   getPublishedPlayerWebPluginBundleRaw(gameId: string, gameRootRelativeFilePath: string): Promise<string>;
+  /**
+   * Returns the optional ADR-091 published stylesheet metadata index. Absence
+   * means this game has no game-owned stylesheets published.
+   */
+  getPublishedGameStylesheetsRaw(gameId: string): Promise<string | undefined>;
+  /** Reads one published (content-addressable) CSS artifact by game-root-relative path. */
+  getPublishedGameStylesheetRaw(gameId: string, gameRootRelativeFilePath: string): Promise<string>;
   /** Returns the optional ADR-063 registry. Absence means this game has no channel assets. */
   getGameAssetsRegistryRaw(gameId: string): Promise<string | undefined>;
   /** Reads metadata after enforcing containment inside games/<id>/assets/. */

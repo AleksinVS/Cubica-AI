@@ -27,7 +27,8 @@ After the step-15 team-selection slice and its explicit follow-up path, Antarcti
 
 - conditional metric gates from the later step-21 slice;
 - line switching and branching semantics;
-- a generic workflow engine or selector abstraction.
+- additional workflow or selector features not required by this completed
+  slice; ADR-083 governs their universal platform design when needed.
 
 ## Related Artifacts
 

@@ -192,6 +192,98 @@ describe("ManifestRenderer", () => {
     expect(screen.getByText("Test Card Text")).toBeDefined();
   });
 
+  it("renders neutral map-first workspace slots without game-specific structural classes", () => {
+    const mapAction = vi.fn();
+    const mapFirstScreen: GamePlayerS1UiContent["screen"] = {
+      type: "screen",
+      title: "Spatial workspace fixture",
+      layoutMode: "map-first",
+      root: {
+        type: "screenComponent",
+        props: {},
+        children: [
+          {
+            type: "areaComponent",
+            props: { workspaceSlot: "board" },
+            children: [{ type: "richTextComponent", props: { html: "<p>Neutral board</p>" } }]
+          },
+          {
+            type: "areaComponent",
+            props: { workspaceSlot: "status" },
+            children: [{ type: "richTextComponent", props: { html: "<p>Neutral status</p>" } }]
+          },
+          {
+            type: "areaComponent",
+            props: { workspaceSlot: "primary-panel", cssClass: "legacy-primary-layout" },
+            children: [{ type: "richTextComponent", props: { html: "<p>Neutral overview</p>" } }]
+          },
+          {
+            type: "areaComponent",
+            props: { workspaceSlot: "context-panel", cssClass: "legacy-context-layout" },
+            children: [{ type: "richTextComponent", props: { html: "<p>Neutral context</p>" } }]
+          },
+          {
+            type: "areaComponent",
+            props: { workspaceSlot: "action-tray" },
+            children: [{
+              type: "buttonComponent",
+              props: { caption: "Продолжить" },
+              actions: { onClick: { command: "advance", payload: { step: 2 } } }
+            }]
+          }
+        ]
+      }
+    };
+
+    render(
+      <ManifestRenderer
+        screenDefinition={mapFirstScreen}
+        metrics={{}}
+        onAction={mapAction}
+      />
+    );
+
+    expect(document.querySelector(".game-renderer--map-first")).toBeDefined();
+    expect(document.querySelector(".map-first-screen")).toBeDefined();
+    expect(document.querySelector('[data-workspace-slot="board"]')).toBeDefined();
+    expect(document.querySelector('[data-workspace-slot="status"]')).toBeDefined();
+    expect(screen.getByText("Neutral board")).toBeDefined();
+
+    const primaryPanel = document.querySelector<HTMLElement>('[data-workspace-slot="primary-panel"]')!;
+    const contextPanel = document.querySelector<HTMLElement>('[data-workspace-slot="context-panel"]')!;
+    const primaryToggle = screen.getByRole("button", { name: "Открыть панель «Обзор»" });
+    const contextToggle = screen.getByRole("button", { name: "Открыть панель «Контекст»" });
+
+    // Authored classes remain available for content decoration but cannot own
+    // the platform drawer's coordinates or dimensions.
+    expect(primaryPanel.classList.contains("legacy-primary-layout")).toBe(false);
+    expect(primaryPanel.querySelector(".legacy-primary-layout")).not.toBeNull();
+    expect(contextPanel.classList.contains("legacy-context-layout")).toBe(false);
+    expect(contextPanel.querySelector(".legacy-context-layout")).not.toBeNull();
+
+    expect(primaryPanel.hidden).toBe(true);
+    expect(contextPanel.hidden).toBe(true);
+    expect(primaryToggle.getAttribute("aria-expanded")).toBe("false");
+
+    fireEvent.click(primaryToggle);
+    expect(primaryPanel.hidden).toBe(false);
+    expect(contextPanel.hidden).toBe(true);
+    expect(document.activeElement).toBe(primaryPanel);
+
+    fireEvent.click(contextToggle);
+    expect(primaryPanel.hidden).toBe(true);
+    expect(contextPanel.hidden).toBe(false);
+    expect(document.activeElement).toBe(contextPanel);
+
+    // Critical declarative actions stay usable while a drawer overlays the map.
+    fireEvent.click(screen.getByRole("button", { name: "Продолжить" }));
+    expect(mapAction).toHaveBeenCalledWith("advance", { step: 2 });
+
+    fireEvent.keyDown(contextPanel, { key: "Escape" });
+    expect(contextPanel.hidden).toBe(true);
+    expect(document.activeElement).toBe(contextToggle);
+  });
+
   it("dispatches action when card button is clicked", () => {
     render(
       <ManifestRenderer

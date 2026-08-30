@@ -1,0 +1,212 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cubica.platform/schemas/mechanics-authoring.v1alpha1.json",
+  "title": "Cubica Mechanics Authoring v1alpha1",
+  "description": "Closed authoring contract for Mechanics IR. Build-time macros are expanded and exact module locks and hashes are added before publication.",
+  "type": "object",
+  "required": ["apiVersion", "budgetProfile", "stateModel", "plans"],
+  "properties": {
+    "apiVersion": {
+      "const": "cubica.dev/mechanics/v1alpha1"
+    },
+    "budgetProfile": {
+      "enum": ["turn-based-standard-v1", "turn-based-large-v1"]
+    },
+    "stateModel": {
+      "$ref": "https://cubica.platform/schemas/mechanics-plan.v1alpha1.json#/$defs/stateModel"
+    },
+    "macros": {
+      "$ref": "#/$defs/macroDefinitions"
+    },
+    "plans": {
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 2048,
+      "propertyNames": {
+        "$ref": "https://cubica.platform/schemas/mechanics-plan.v1alpha1.json#/$defs/identifier"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/authoringPlan"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "macroDefinitions": {
+      "type": "object",
+      "maxProperties": 256,
+      "propertyNames": {
+        "$ref": "https://cubica.platform/schemas/mechanics-plan.v1alpha1.json#/$defs/identifier"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/macroDefinition"
+      }
+    },
+    "macroDefinition": {
+      "type": "object",
+      "required": ["inputs", "steps"],
+      "properties": {
+        "inputs": {
+          "type": "object",
+          "maxProperties": 64,
+          "propertyNames": {
+            "$ref": "https://cubica.platform/schemas/mechanics-plan.v1alpha1.json#/$defs/identifier"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/macroInputDeclaration"
+          }
+        },
+        "steps": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 512,
+          "items": {
+            "oneOf": [
+              { "$ref": "#/$defs/templateRuntimeStep" },
+              { "$ref": "#/$defs/templateMacroInvocation" }
+            ]
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "macroInputDeclaration": {
+      "type": "object",
+      "required": ["kind"],
+      "properties": {
+        "kind": {
+          "enum": ["identifier", "value-expression", "state-ref", "json"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "authoringPlan": {
+      "type": "object",
+      "required": ["transaction"],
+      "properties": {
+        "transaction": {
+          "type": "object",
+          "required": ["steps"],
+          "properties": {
+            "steps": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 512,
+              "items": {
+                "oneOf": [
+                  { "$ref": "https://cubica.platform/schemas/mechanics-plan.v1alpha1.json#/$defs/step" },
+                  { "$ref": "#/$defs/macroInvocation" }
+                ]
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "macroInvocation": {
+      "type": "object",
+      "required": ["id", "kind", "macro", "args"],
+      "properties": {
+        "id": {
+          "$ref": "https://cubica.platform/schemas/mechanics-plan.v1alpha1.json#/$defs/stepId"
+        },
+        "kind": {
+          "const": "macro"
+        },
+        "macro": {
+          "$ref": "https://cubica.platform/schemas/mechanics-plan.v1alpha1.json#/$defs/identifier"
+        },
+        "args": {
+          "type": "object",
+          "maxProperties": 64,
+          "propertyNames": {
+            "$ref": "https://cubica.platform/schemas/mechanics-plan.v1alpha1.json#/$defs/identifier"
+          },
+          "additionalProperties": {
+            "$ref": "https://cubica.platform/schemas/mechanics-plan.v1alpha1.json#/$defs/jsonValue"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "templateMacroInvocation": {
+      "type": "object",
+      "required": ["id", "kind", "macro", "args"],
+      "properties": {
+        "id": {
+          "$ref": "https://cubica.platform/schemas/mechanics-plan.v1alpha1.json#/$defs/stepId"
+        },
+        "kind": {
+          "const": "macro"
+        },
+        "macro": {
+          "$ref": "https://cubica.platform/schemas/mechanics-plan.v1alpha1.json#/$defs/identifier"
+        },
+        "args": {
+          "type": "object",
+          "maxProperties": 64,
+          "propertyNames": {
+            "$ref": "https://cubica.platform/schemas/mechanics-plan.v1alpha1.json#/$defs/identifier"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/templateValue"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "templateRuntimeStep": {
+      "type": "object",
+      "required": ["id", "kind", "op"],
+      "properties": {
+        "id": {
+          "$ref": "https://cubica.platform/schemas/mechanics-plan.v1alpha1.json#/$defs/stepId"
+        },
+        "kind": {
+          "enum": ["assert", "query", "command", "algorithm"]
+        },
+        "op": {
+          "$ref": "https://cubica.platform/schemas/mechanics-plan.v1alpha1.json#/$defs/identifier"
+        }
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/templateValue"
+      }
+    },
+    "macroPlaceholder": {
+      "type": "object",
+      "required": ["$macroInput"],
+      "properties": {
+        "$macroInput": {
+          "$ref": "https://cubica.platform/schemas/mechanics-plan.v1alpha1.json#/$defs/identifier"
+        }
+      },
+      "additionalProperties": false
+    },
+    "templateValue": {
+      "oneOf": [
+        { "$ref": "#/$defs/macroPlaceholder" },
+        { "type": "null" },
+        { "type": "boolean" },
+        { "type": "number", "minimum": -9007199254740991, "maximum": 9007199254740991 },
+        { "type": "string", "maxLength": 65536 },
+        {
+          "type": "array",
+          "maxItems": 4096,
+          "items": { "$ref": "#/$defs/templateValue" }
+        },
+        {
+          "type": "object",
+          "maxProperties": 4096,
+          "not": { "required": ["$macroInput"] },
+          "propertyNames": {
+            "$ref": "https://cubica.platform/schemas/mechanics-plan.v1alpha1.json#/$defs/jsonPropertyName"
+          },
+          "additionalProperties": { "$ref": "#/$defs/templateValue" }
+        }
+      ]
+    }
+  }
+}

@@ -1,7 +1,7 @@
 # ADR-045: Cubica-Owned Generative UI And MVP CopilotKit Adapter
 
 - **Дата**: 2026-06-10
-- **Статус**: Accepted
+**Status:** Accepted
 - **Авторы**: Codex
 - **Компоненты**: Editor Web, Player Web, Portal, Runtime API, Agent UI, AI Contracts, UI Manifests
 - **Связанные решения**: ADR-003, ADR-025, ADR-030, ADR-034, ADR-036, ADR-040, ADR-043, ADR-044, ADR-046

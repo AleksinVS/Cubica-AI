@@ -1,0 +1,877 @@
+{
+  "generatedFrom": {
+    "annotation": "annotations/initial-network-with-regions.review.json",
+    "sha256": "b5ffd79417a9bafcb180cf852236e393498cceceb48f940370bcf8a48d705e1b",
+    "algorithmVersion": "initial-road-straight-line-region-crossing-v1",
+    "epsilon": 1e-9
+  },
+  "summary": {
+    "roadCount": 10,
+    "minPassages": 3,
+    "medianPassages": 7,
+    "maxPassages": 13,
+    "totalPassages": 70
+  },
+  "roads": [
+    {
+      "id": "road-1-2",
+      "fromNodeId": "terminal-1",
+      "toNodeId": "terminal-2",
+      "length": 338.586769,
+      "polyline": [
+        {
+          "x": 3757,
+          "y": 1546
+        },
+        {
+          "x": 3666.549388,
+          "y": 1567.99407
+        },
+        {
+          "x": 3447.080004,
+          "y": 1621.360485
+        },
+        {
+          "x": 3428,
+          "y": 1626
+        }
+      ],
+      "passages": [
+        {
+          "regionId": "map-region-0270",
+          "fromPointIndex": 0,
+          "toPointIndex": 1
+        },
+        {
+          "regionId": "map-region-0268",
+          "fromPointIndex": 1,
+          "toPointIndex": 2
+        },
+        {
+          "regionId": "map-region-0308",
+          "fromPointIndex": 2,
+          "toPointIndex": 3
+        }
+      ],
+      "regionSequence": [
+        "map-region-0270",
+        "map-region-0268",
+        "map-region-0308"
+      ]
+    },
+    {
+      "id": "road-1-9",
+      "fromNodeId": "terminal-1",
+      "toNodeId": "terminal-9",
+      "length": 870.359121,
+      "polyline": [
+        {
+          "x": 3757,
+          "y": 1546
+        },
+        {
+          "x": 3755.928757,
+          "y": 1535.336827
+        },
+        {
+          "x": 3750.154487,
+          "y": 1477.859606
+        },
+        {
+          "x": 3741.505522,
+          "y": 1391.767613
+        },
+        {
+          "x": 3732.551158,
+          "y": 1302.635664
+        },
+        {
+          "x": 3728.410215,
+          "y": 1261.416625
+        },
+        {
+          "x": 3712.529307,
+          "y": 1103.337699
+        },
+        {
+          "x": 3706.9715,
+          "y": 1048.015158
+        },
+        {
+          "x": 3695.002703,
+          "y": 928.877484
+        },
+        {
+          "x": 3688.255279,
+          "y": 861.713464
+        },
+        {
+          "x": 3670,
+          "y": 680
+        }
+      ],
+      "passages": [
+        {
+          "regionId": "map-region-0270",
+          "fromPointIndex": 0,
+          "toPointIndex": 1
+        },
+        {
+          "regionId": "map-region-0242",
+          "fromPointIndex": 1,
+          "toPointIndex": 2
+        },
+        {
+          "regionId": "map-region-0216",
+          "fromPointIndex": 2,
+          "toPointIndex": 3
+        },
+        {
+          "regionId": "map-region-0168",
+          "fromPointIndex": 3,
+          "toPointIndex": 4
+        },
+        {
+          "regionId": "map-region-0175",
+          "fromPointIndex": 4,
+          "toPointIndex": 5
+        },
+        {
+          "regionId": "map-region-0130",
+          "fromPointIndex": 5,
+          "toPointIndex": 6
+        },
+        {
+          "regionId": "map-region-0119",
+          "fromPointIndex": 6,
+          "toPointIndex": 7
+        },
+        {
+          "regionId": "map-region-0088",
+          "fromPointIndex": 7,
+          "toPointIndex": 8
+        },
+        {
+          "regionId": "map-region-0068",
+          "fromPointIndex": 8,
+          "toPointIndex": 9
+        },
+        {
+          "regionId": "map-region-0041",
+          "fromPointIndex": 9,
+          "toPointIndex": 10
+        }
+      ],
+      "regionSequence": [
+        "map-region-0270",
+        "map-region-0242",
+        "map-region-0216",
+        "map-region-0168",
+        "map-region-0175",
+        "map-region-0130",
+        "map-region-0119",
+        "map-region-0088",
+        "map-region-0068",
+        "map-region-0041"
+      ]
+    },
+    {
+      "id": "road-2-3-14",
+      "fromNodeId": "terminal-2",
+      "toNodeId": "terminal-3-14",
+      "length": 294.350132,
+      "polyline": [
+        {
+          "x": 3428,
+          "y": 1626
+        },
+        {
+          "x": 3400.485989,
+          "y": 1586.764044
+        },
+        {
+          "x": 3366.925589,
+          "y": 1538.905722
+        },
+        {
+          "x": 3326.625066,
+          "y": 1481.435744
+        },
+        {
+          "x": 3316.935568,
+          "y": 1467.618177
+        },
+        {
+          "x": 3283.269575,
+          "y": 1419.609276
+        },
+        {
+          "x": 3270.326593,
+          "y": 1401.152124
+        },
+        {
+          "x": 3259,
+          "y": 1385
+        }
+      ],
+      "passages": [
+        {
+          "regionId": "map-region-0308",
+          "fromPointIndex": 0,
+          "toPointIndex": 1
+        },
+        {
+          "regionId": "map-region-0256",
+          "fromPointIndex": 1,
+          "toPointIndex": 2
+        },
+        {
+          "regionId": "map-region-0250",
+          "fromPointIndex": 2,
+          "toPointIndex": 3
+        },
+        {
+          "regionId": "map-region-0223",
+          "fromPointIndex": 3,
+          "toPointIndex": 4
+        },
+        {
+          "regionId": "map-region-0224",
+          "fromPointIndex": 4,
+          "toPointIndex": 5
+        },
+        {
+          "regionId": "map-region-0219",
+          "fromPointIndex": 5,
+          "toPointIndex": 6
+        },
+        {
+          "regionId": "map-region-0186",
+          "fromPointIndex": 6,
+          "toPointIndex": 7
+        }
+      ],
+      "regionSequence": [
+        "map-region-0308",
+        "map-region-0256",
+        "map-region-0250",
+        "map-region-0223",
+        "map-region-0224",
+        "map-region-0219",
+        "map-region-0186"
+      ]
+    },
+    {
+      "id": "road-3-3-14",
+      "fromNodeId": "terminal-3",
+      "toNodeId": "terminal-3-14",
+      "length": 469.153493,
+      "polyline": [
+        {
+          "x": 2891,
+          "y": 1676
+        },
+        {
+          "x": 2891.876265,
+          "y": 1675.307084
+        },
+        {
+          "x": 2919.975761,
+          "y": 1653.087102
+        },
+        {
+          "x": 2965.913808,
+          "y": 1616.761092
+        },
+        {
+          "x": 2988.485337,
+          "y": 1598.91241
+        },
+        {
+          "x": 2999.616438,
+          "y": 1590.110371
+        },
+        {
+          "x": 3101.847445,
+          "y": 1509.270091
+        },
+        {
+          "x": 3108.310817,
+          "y": 1504.159109
+        },
+        {
+          "x": 3183.780491,
+          "y": 1444.480644
+        },
+        {
+          "x": 3195.523738,
+          "y": 1435.194544
+        },
+        {
+          "x": 3209.578369,
+          "y": 1424.080692
+        },
+        {
+          "x": 3212.393376,
+          "y": 1421.854694
+        },
+        {
+          "x": 3250.028821,
+          "y": 1392.094057
+        },
+        {
+          "x": 3259,
+          "y": 1385
+        }
+      ],
+      "passages": [
+        {
+          "regionId": "map-region-0364",
+          "fromPointIndex": 0,
+          "toPointIndex": 1
+        },
+        {
+          "regionId": "map-region-0292",
+          "fromPointIndex": 1,
+          "toPointIndex": 2
+        },
+        {
+          "regionId": "map-region-0333",
+          "fromPointIndex": 2,
+          "toPointIndex": 3
+        },
+        {
+          "regionId": "map-region-0302",
+          "fromPointIndex": 3,
+          "toPointIndex": 4
+        },
+        {
+          "regionId": "map-region-0318",
+          "fromPointIndex": 4,
+          "toPointIndex": 5
+        },
+        {
+          "regionId": "map-region-0247",
+          "fromPointIndex": 5,
+          "toPointIndex": 6
+        },
+        {
+          "regionId": "map-region-0258",
+          "fromPointIndex": 6,
+          "toPointIndex": 7
+        },
+        {
+          "regionId": "map-region-0210",
+          "fromPointIndex": 7,
+          "toPointIndex": 8
+        },
+        {
+          "regionId": "map-region-0224",
+          "fromPointIndex": 8,
+          "toPointIndex": 9
+        },
+        {
+          "regionId": "map-region-0211",
+          "fromPointIndex": 9,
+          "toPointIndex": 10
+        },
+        {
+          "regionId": "map-region-0219",
+          "fromPointIndex": 10,
+          "toPointIndex": 11
+        },
+        {
+          "regionId": "map-region-0211",
+          "fromPointIndex": 11,
+          "toPointIndex": 12
+        },
+        {
+          "regionId": "map-region-0186",
+          "fromPointIndex": 12,
+          "toPointIndex": 13
+        }
+      ],
+      "regionSequence": [
+        "map-region-0364",
+        "map-region-0292",
+        "map-region-0333",
+        "map-region-0302",
+        "map-region-0318",
+        "map-region-0247",
+        "map-region-0258",
+        "map-region-0210",
+        "map-region-0224",
+        "map-region-0211",
+        "map-region-0219",
+        "map-region-0211",
+        "map-region-0186"
+      ]
+    },
+    {
+      "id": "road-4-7",
+      "fromNodeId": "terminal-4",
+      "toNodeId": "terminal-7",
+      "length": 461.71528,
+      "polyline": [
+        {
+          "x": 3047,
+          "y": 1151
+        },
+        {
+          "x": 3039.083238,
+          "y": 1151.862392
+        },
+        {
+          "x": 2882.3785,
+          "y": 1168.932625
+        },
+        {
+          "x": 2857.885713,
+          "y": 1171.600685
+        },
+        {
+          "x": 2717.057274,
+          "y": 1186.941473
+        },
+        {
+          "x": 2705.05089,
+          "y": 1188.249358
+        },
+        {
+          "x": 2686.559467,
+          "y": 1190.263675
+        },
+        {
+          "x": 2588,
+          "y": 1201
+        }
+      ],
+      "passages": [
+        {
+          "regionId": "map-region-0134",
+          "fromPointIndex": 0,
+          "toPointIndex": 1
+        },
+        {
+          "regionId": "map-region-0135",
+          "fromPointIndex": 1,
+          "toPointIndex": 2
+        },
+        {
+          "regionId": "map-region-0107",
+          "fromPointIndex": 2,
+          "toPointIndex": 3
+        },
+        {
+          "regionId": "map-region-0145",
+          "fromPointIndex": 3,
+          "toPointIndex": 4
+        },
+        {
+          "regionId": "map-region-0114",
+          "fromPointIndex": 4,
+          "toPointIndex": 5
+        },
+        {
+          "regionId": "map-region-0155",
+          "fromPointIndex": 5,
+          "toPointIndex": 6
+        },
+        {
+          "regionId": "map-region-0132",
+          "fromPointIndex": 6,
+          "toPointIndex": 7
+        }
+      ],
+      "regionSequence": [
+        "map-region-0134",
+        "map-region-0135",
+        "map-region-0107",
+        "map-region-0145",
+        "map-region-0114",
+        "map-region-0155",
+        "map-region-0132"
+      ]
+    },
+    {
+      "id": "road-5-6",
+      "fromNodeId": "terminal-5",
+      "toNodeId": "terminal-6",
+      "length": 350.237063,
+      "polyline": [
+        {
+          "x": 2143,
+          "y": 1043
+        },
+        {
+          "x": 2181.461693,
+          "y": 1009.763292
+        },
+        {
+          "x": 2273.423257,
+          "y": 930.29462
+        },
+        {
+          "x": 2350.873183,
+          "y": 863.366193
+        },
+        {
+          "x": 2408,
+          "y": 814
+        }
+      ],
+      "passages": [
+        {
+          "regionId": "map-region-0108",
+          "fromPointIndex": 0,
+          "toPointIndex": 1
+        },
+        {
+          "regionId": "map-region-0090",
+          "fromPointIndex": 1,
+          "toPointIndex": 2
+        },
+        {
+          "regionId": "map-region-0071",
+          "fromPointIndex": 2,
+          "toPointIndex": 3
+        },
+        {
+          "regionId": "map-region-0051",
+          "fromPointIndex": 3,
+          "toPointIndex": 4
+        }
+      ],
+      "regionSequence": [
+        "map-region-0108",
+        "map-region-0090",
+        "map-region-0071",
+        "map-region-0051"
+      ]
+    },
+    {
+      "id": "road-6-7",
+      "fromNodeId": "terminal-6",
+      "toNodeId": "terminal-7",
+      "length": 426.812605,
+      "polyline": [
+        {
+          "x": 2408,
+          "y": 814
+        },
+        {
+          "x": 2449.816319,
+          "y": 903.905085
+        },
+        {
+          "x": 2507.687544,
+          "y": 1028.328219
+        },
+        {
+          "x": 2521.881352,
+          "y": 1058.844908
+        },
+        {
+          "x": 2561.681769,
+          "y": 1144.415803
+        },
+        {
+          "x": 2588,
+          "y": 1201
+        }
+      ],
+      "passages": [
+        {
+          "regionId": "map-region-0051",
+          "fromPointIndex": 0,
+          "toPointIndex": 1
+        },
+        {
+          "regionId": "map-region-0078",
+          "fromPointIndex": 1,
+          "toPointIndex": 2
+        },
+        {
+          "regionId": "map-region-0106",
+          "fromPointIndex": 2,
+          "toPointIndex": 3
+        },
+        {
+          "regionId": "map-region-0113",
+          "fromPointIndex": 3,
+          "toPointIndex": 4
+        },
+        {
+          "regionId": "map-region-0132",
+          "fromPointIndex": 4,
+          "toPointIndex": 5
+        }
+      ],
+      "regionSequence": [
+        "map-region-0051",
+        "map-region-0078",
+        "map-region-0106",
+        "map-region-0113",
+        "map-region-0132"
+      ]
+    },
+    {
+      "id": "road-6-waypoint-9-3-4",
+      "fromNodeId": "terminal-6",
+      "toNodeId": "waypoint-9-3-4",
+      "length": 551,
+      "polyline": [
+        {
+          "x": 2408,
+          "y": 814
+        },
+        {
+          "x": 2568.103882,
+          "y": 814
+        },
+        {
+          "x": 2688.820184,
+          "y": 814
+        },
+        {
+          "x": 2749.708176,
+          "y": 814
+        },
+        {
+          "x": 2864.157747,
+          "y": 814
+        },
+        {
+          "x": 2959,
+          "y": 814
+        }
+      ],
+      "passages": [
+        {
+          "regionId": "map-region-0051",
+          "fromPointIndex": 0,
+          "toPointIndex": 1
+        },
+        {
+          "regionId": "map-region-0057",
+          "fromPointIndex": 1,
+          "toPointIndex": 2
+        },
+        {
+          "regionId": "map-region-0052",
+          "fromPointIndex": 2,
+          "toPointIndex": 3
+        },
+        {
+          "regionId": "map-region-0919",
+          "fromPointIndex": 3,
+          "toPointIndex": 4
+        },
+        {
+          "regionId": "map-region-0056",
+          "fromPointIndex": 4,
+          "toPointIndex": 5
+        }
+      ],
+      "regionSequence": [
+        "map-region-0051",
+        "map-region-0057",
+        "map-region-0052",
+        "map-region-0919",
+        "map-region-0056"
+      ]
+    },
+    {
+      "id": "road-8-waypoint-9-3-4",
+      "fromNodeId": "terminal-8",
+      "toNodeId": "waypoint-9-3-4",
+      "length": 531.274882,
+      "polyline": [
+        {
+          "x": 2761,
+          "y": 321
+        },
+        {
+          "x": 2761.728989,
+          "y": 322.815109
+        },
+        {
+          "x": 2810.665644,
+          "y": 444.662437
+        },
+        {
+          "x": 2857.61531,
+          "y": 561.562363
+        },
+        {
+          "x": 2868.523284,
+          "y": 588.722117
+        },
+        {
+          "x": 2889.312088,
+          "y": 640.484139
+        },
+        {
+          "x": 2945.902929,
+          "y": 781.389617
+        },
+        {
+          "x": 2959,
+          "y": 814
+        }
+      ],
+      "passages": [
+        {
+          "regionId": "map-region-0004",
+          "fromPointIndex": 0,
+          "toPointIndex": 1
+        },
+        {
+          "regionId": "map-region-0003",
+          "fromPointIndex": 1,
+          "toPointIndex": 2
+        },
+        {
+          "regionId": "map-region-0013",
+          "fromPointIndex": 2,
+          "toPointIndex": 3
+        },
+        {
+          "regionId": "map-region-0030",
+          "fromPointIndex": 3,
+          "toPointIndex": 4
+        },
+        {
+          "regionId": "map-region-0034",
+          "fromPointIndex": 4,
+          "toPointIndex": 5
+        },
+        {
+          "regionId": "map-region-0038",
+          "fromPointIndex": 5,
+          "toPointIndex": 6
+        },
+        {
+          "regionId": "map-region-0056",
+          "fromPointIndex": 6,
+          "toPointIndex": 7
+        }
+      ],
+      "regionSequence": [
+        "map-region-0004",
+        "map-region-0003",
+        "map-region-0013",
+        "map-region-0030",
+        "map-region-0034",
+        "map-region-0038",
+        "map-region-0056"
+      ]
+    },
+    {
+      "id": "road-9-waypoint-9-3-4",
+      "fromNodeId": "terminal-9",
+      "toNodeId": "waypoint-9-3-4",
+      "length": 723.517104,
+      "polyline": [
+        {
+          "x": 3670,
+          "y": 680
+        },
+        {
+          "x": 3600.215668,
+          "y": 693.15204
+        },
+        {
+          "x": 3514.43856,
+          "y": 709.31819
+        },
+        {
+          "x": 3495.872145,
+          "y": 712.817345
+        },
+        {
+          "x": 3299.395312,
+          "y": 749.846734
+        },
+        {
+          "x": 3269.561004,
+          "y": 755.469515
+        },
+        {
+          "x": 3192.698141,
+          "y": 769.955625
+        },
+        {
+          "x": 3108.909568,
+          "y": 785.747001
+        },
+        {
+          "x": 3006.774112,
+          "y": 804.996159
+        },
+        {
+          "x": 2959,
+          "y": 814
+        }
+      ],
+      "passages": [
+        {
+          "regionId": "map-region-0041",
+          "fromPointIndex": 0,
+          "toPointIndex": 1
+        },
+        {
+          "regionId": "map-region-0029",
+          "fromPointIndex": 1,
+          "toPointIndex": 2
+        },
+        {
+          "regionId": "map-region-0041",
+          "fromPointIndex": 2,
+          "toPointIndex": 3
+        },
+        {
+          "regionId": "map-region-0042",
+          "fromPointIndex": 3,
+          "toPointIndex": 4
+        },
+        {
+          "regionId": "map-region-0053",
+          "fromPointIndex": 4,
+          "toPointIndex": 5
+        },
+        {
+          "regionId": "map-region-0050",
+          "fromPointIndex": 5,
+          "toPointIndex": 6
+        },
+        {
+          "regionId": "map-region-0045",
+          "fromPointIndex": 6,
+          "toPointIndex": 7
+        },
+        {
+          "regionId": "map-region-0049",
+          "fromPointIndex": 7,
+          "toPointIndex": 8
+        },
+        {
+          "regionId": "map-region-0056",
+          "fromPointIndex": 8,
+          "toPointIndex": 9
+        }
+      ],
+      "regionSequence": [
+        "map-region-0041",
+        "map-region-0029",
+        "map-region-0041",
+        "map-region-0042",
+        "map-region-0053",
+        "map-region-0050",
+        "map-region-0045",
+        "map-region-0049",
+        "map-region-0056"
+      ]
+    }
+  ]
+}

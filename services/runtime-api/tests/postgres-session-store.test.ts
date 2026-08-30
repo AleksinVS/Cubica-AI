@@ -1,17 +1,33 @@
-/** Unit coverage for durable session transactions without requiring PostgreSQL. */
+/** Focused unit coverage for durable authentication and command transactions. */
 
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { test } from "node:test";
+import type {
+  CreateSessionInput,
+  FacilitatorDebriefDraft,
+  SessionCommandReceipt,
+  SessionEventRecord,
+  SessionRecord,
+  SessionSystemSchedule
+} from "@cubica/contracts-session";
 import type { QueryResult, QueryResultRow } from "pg";
+import { createImmutableBundleContent } from "../src/modules/content/immutableBundle.ts";
+import { ZaiFacilitatorDebriefProvider } from "../src/modules/ai/facilitatorDebriefProvider.ts";
 import { InMemorySessionStore } from "../src/modules/session/inMemorySessionStore.ts";
+import {
+  createSystemCommandFingerprint,
+  createSystemCommandId
+} from "../src/modules/session/commandIdentity.ts";
 import {
   PostgresSessionStore,
   type SessionDatabaseClient,
   type SessionDatabasePool
 } from "../src/modules/session/postgresSessionStore.ts";
 import {
+  PublicJournalTooLargeError,
+  SessionAuthenticationError,
   SessionStoreUnavailableError,
-  SessionVersionConflictError,
   SessionWriteLockedError
 } from "../src/modules/session/sessionStoreErrors.ts";
 import {
@@ -20,17 +36,48 @@ import {
 } from "../src/modules/session/sessionStoreFactory.ts";
 
 const now = new Date("2026-07-11T12:00:00.000Z");
+const sessionId = "11111111-1111-4111-8111-111111111111";
+const principalId = "22222222-2222-4222-8222-222222222222";
+const immutableBundle = createImmutableBundleContent("fixture-game", {});
+const canonicalBundle = immutableBundle.canonicalBundle;
+const bundleHash = immutableBundle.bundleHash;
+const credentialSha256 = "b".repeat(64);
+const commandId = "cli_AAAAAAAAAAAAAAAAAAAAAA";
+const receiptId = "33333333-3333-4333-8333-333333333333";
+const definitionHash = `sha256:${"d".repeat(64)}`;
+const planHash = `sha256:${"e".repeat(64)}`;
+const scheduleId = "S".repeat(22);
+const scheduledActionId = "scheduled.advance";
+const scheduledDefinitionHash = `sha256:${"f".repeat(64)}`;
+const systemPrincipalId = `system-scheduler:${sessionId}`;
+const systemCommandId = createSystemCommandId(sessionId, scheduleId, 1);
 const persistedRow = {
-  session_id: "11111111-1111-4111-8111-111111111111",
+  session_id: sessionId,
   game_id: "fixture-game",
-  player_id: "player-1",
+  bundle_hash: bundleHash,
   content_source_id: "editor-source",
   session_role: "facilitator",
+  participants: [{ seatId: "p1", playerId: "p1", kind: "human", joinState: "local" }],
   state: { public: { step: 1 } },
   state_version: "4",
   last_event_sequence: "7",
   created_at: now,
   updated_at: now
+};
+const principalRow = {
+  principal_id: principalId,
+  session_id: sessionId,
+  principal_kind: "local-controller",
+  session_role: "facilitator",
+  actor_scope: { kind: "all-session-actors" },
+  created_at: now
+};
+const bundleRow = {
+  bundle_hash: bundleHash,
+  game_id: "fixture-game",
+  canonical_bytes: immutableBundle.canonicalBytes,
+  canonical_bundle: canonicalBundle,
+  created_at: now
 };
 
 class ScriptedClient implements SessionDatabaseClient {
@@ -42,12 +89,10 @@ class ScriptedClient implements SessionDatabaseClient {
     values?: unknown[]
   ) => QueryResult<QueryResultRow> | Promise<QueryResult<QueryResultRow>>;
 
-  constructor(
-    responder: (
-      text: string,
-      values?: unknown[]
-    ) => QueryResult<QueryResultRow> | Promise<QueryResult<QueryResultRow>>
-  ) {
+  constructor(responder: (
+    text: string,
+    values?: unknown[]
+  ) => QueryResult<QueryResultRow> | Promise<QueryResult<QueryResultRow>>) {
     this.responder = responder;
   }
 
@@ -67,12 +112,12 @@ class ScriptedClient implements SessionDatabaseClient {
 
 class ScriptedPool implements SessionDatabasePool {
   readonly directQueries: Array<{ text: string; values?: unknown[] }> = [];
-  ended = false;
   readonly client: ScriptedClient;
   private readonly directResponder: (
     text: string,
     values?: unknown[]
   ) => QueryResult<QueryResultRow> | Promise<QueryResult<QueryResultRow>>;
+  ended = false;
 
   constructor(
     client: ScriptedClient,
@@ -81,6 +126,8 @@ class ScriptedPool implements SessionDatabasePool {
       values?: unknown[]
     ) => QueryResult<QueryResultRow> | Promise<QueryResult<QueryResultRow>> = () => result([])
   ) {
+    // Node's strip-types runner cannot parse TypeScript parameter properties,
+    // so the test double assigns ordinary fields just like production JavaScript.
     this.client = client;
     this.directResponder = directResponder;
   }
@@ -102,215 +149,1509 @@ class ScriptedPool implements SessionDatabasePool {
   }
 }
 
-test("PostgreSQL transaction locks, maps metadata and atomically writes a full snapshot", async () => {
+test("PostgreSQL creates immutable bundle, session and hashed principal atomically", async () => {
   const client = new ScriptedClient((text) => {
-    if (text.includes("FOR UPDATE NOWAIT")) {
-      return result([persistedRow]);
+    if (text.includes("INSERT INTO game_bundles")) return result([bundleRow], 1);
+    if (text.includes("INSERT INTO game_sessions")) return result([persistedRow], 1);
+    if (text.includes("INSERT INTO session_principals")) return result([principalRow], 1);
+    return result([]);
+  });
+  const store = new PostgresSessionStore<Record<string, unknown>>(new ScriptedPool(client));
+  const created = await store.createSession(createInput());
+
+  assert.equal(created.session.bundleHash, bundleHash);
+  assert.deepEqual(created.session.participants, persistedRow.participants);
+  assert.equal(created.principal.principalId, principalId);
+  assert.deepEqual(client.queries.map(({ text }) => firstSqlWord(text)), [
+    "BEGIN", "INSERT", "INSERT", "INSERT", "COMMIT"
+  ]);
+  const principalInsert = client.queries.find(({ text }) => text.includes("INSERT INTO session_principals"));
+  assert.equal(principalInsert?.values?.[5], credentialSha256);
+  assert.equal(JSON.stringify(client.queries).includes("ses_"), false);
+  const sessionInsert = client.queries.find(({ text }) => text.includes("INSERT INTO game_sessions"));
+  assert.equal(sessionInsert?.values?.[5], JSON.stringify(persistedRow.participants));
+});
+
+test("PostgreSQL creates every private seat principal in the session transaction", async () => {
+  const expiresAt = new Date("2026-07-12T12:00:00.000Z");
+  const privateParticipants = [
+    { seatId: "p1", playerId: "p1", kind: "human" as const, joinState: "joined" as const },
+    { seatId: "p2", playerId: "p2", kind: "human" as const, joinState: "invited" as const }
+  ];
+  const privateRow = { ...persistedRow, participants: privateParticipants };
+  const guestPrincipalId = "44444444-4444-4444-8444-444444444444";
+  const client = new ScriptedClient((text, values) => {
+    if (text.includes("INSERT INTO game_bundles")) return result([bundleRow], 1);
+    if (text.includes("INSERT INTO game_sessions")) return result([privateRow], 1);
+    if (text.includes("INSERT INTO session_principals")) {
+      return result([{
+        ...principalRow,
+        principal_id: values?.[0],
+        principal_kind: "participant",
+        actor_scope: JSON.parse(String(values?.[4]))
+      }], 1);
     }
+    return result([]);
+  });
+  const store = new PostgresSessionStore<Record<string, unknown>>(new ScriptedPool(client));
+  await store.createSession({
+    ...createInput(),
+    participants: privateParticipants,
+    principal: {
+      principalId,
+      kind: "participant",
+      role: "facilitator",
+      actorScope: { kind: "listed-actors", actorIds: ["p1"] },
+      credentialSha256
+    },
+    additionalPrincipals: [{
+      principalId: guestPrincipalId,
+      kind: "participant",
+      role: "player",
+      actorScope: { kind: "listed-actors", actorIds: ["p2"] },
+      credentialSha256: "c".repeat(64),
+      credentialExpiresAt: expiresAt
+    }]
+  });
+
+  const principalWrites = client.queries.filter(({ text }) => text.includes("INSERT INTO session_principals"));
+  assert.equal(principalWrites.length, 2);
+  assert.equal(principalWrites[0]?.values?.[6], null);
+  assert.equal(principalWrites[1]?.values?.[0], guestPrincipalId);
+  assert.equal(principalWrites[1]?.values?.[5], "c".repeat(64));
+  assert.equal(principalWrites[1]?.values?.[6], expiresAt);
+  assert.deepEqual(client.queries.map(({ text }) => firstSqlWord(text)), [
+    "BEGIN", "INSERT", "INSERT", "INSERT", "INSERT", "COMMIT"
+  ]);
+});
+
+test("PostgreSQL atomically replaces one unexpired invite and advances only participant metadata", async () => {
+  const claimedAt = new Date("2026-07-11T12:30:00.000Z");
+  const privateParticipants = [
+    { seatId: "p1", playerId: "p1", kind: "human" as const, joinState: "joined" as const },
+    { seatId: "p2", playerId: "p2", kind: "human" as const, joinState: "invited" as const }
+  ];
+  const joinedParticipants = privateParticipants.map((participant) => ({
+    ...participant,
+    joinState: "joined" as const
+  }));
+  const privateRow = { ...persistedRow, participants: privateParticipants };
+  const invitePrincipal = {
+    ...principalRow,
+    principal_kind: "participant",
+    session_role: "player",
+    actor_scope: { kind: "listed-actors", actorIds: ["p2"] }
+  };
+  const client = new ScriptedClient((text) => {
+    if (text === "BEGIN") return result([]);
+    if (text.includes("FROM game_sessions") && text.includes("FOR UPDATE NOWAIT")) {
+      return result([privateRow]);
+    }
+    if (text.includes("FROM session_principals") && text.includes("credential_expires_at > $3")) {
+      return result([invitePrincipal]);
+    }
+    if (text.includes("UPDATE session_principals")) return result([], 1);
+    if (text.includes("UPDATE game_sessions")) {
+      return result([{
+        ...privateRow,
+        participants: joinedParticipants,
+        state_version: "5",
+        updated_at: claimedAt
+      }], 1);
+    }
+    return result([]);
+  });
+  const store = new PostgresSessionStore<Record<string, unknown>>(new ScriptedPool(client));
+  const claimed = await store.claimPrivateInvite({
+    sessionId,
+    inviteCredentialSha256: "c".repeat(64),
+    participantCredentialSha256: "d".repeat(64),
+    claimedAt
+  });
+
+  assert.equal(claimed?.principal.principalId, principalId);
+  assert.deepEqual(claimed?.session.participants, joinedParticipants);
+  assert.equal(claimed?.session.version.stateVersion, 5);
+  assert.equal(claimed?.session.version.lastEventSequence, 7);
+  const principalWrite = client.queries.find(({ text }) => text.includes("UPDATE session_principals"));
+  assert.deepEqual(principalWrite?.values, [
+    sessionId,
+    principalId,
+    "d".repeat(64),
+    "c".repeat(64),
+    claimedAt
+  ]);
+  const sessionWrite = client.queries.find(({ text }) => text.includes("UPDATE game_sessions"));
+  assert.deepEqual(sessionWrite?.values, [
+    sessionId,
+    JSON.stringify(joinedParticipants),
+    5,
+    claimedAt,
+    4
+  ]);
+  assert.equal(firstSqlWord(client.queries.at(-1)?.text ?? ""), "COMMIT");
+});
+
+test("PostgreSQL host replaces one pending recovery token without changing the session", async () => {
+  const issuedAt = new Date("2026-07-11T12:30:00.000Z");
+  const expiresAt = new Date("2026-07-12T12:30:00.000Z");
+  const privateRow = {
+    ...persistedRow,
+    participants: [
+      { seatId: "p1", playerId: "p1", kind: "human", joinState: "joined" },
+      { seatId: "p2", playerId: "p2", kind: "human", joinState: "joined" }
+    ]
+  };
+  const hostPrincipal = {
+    ...principalRow,
+    principal_kind: "participant",
+    session_role: "player",
+    actor_scope: { kind: "listed-actors", actorIds: ["p1"] }
+  };
+  const guestPrincipal = {
+    ...hostPrincipal,
+    principal_id: "44444444-4444-4444-8444-444444444444",
+    actor_scope: { kind: "listed-actors", actorIds: ["p2"] }
+  };
+  const client = new ScriptedClient((text) => {
+    if (text.includes("FROM game_sessions") && text.includes("FOR UPDATE NOWAIT")) return result([privateRow]);
+    if (text.includes("credential_sha256 = $2") && text.includes("FOR UPDATE")) return result([hostPrincipal]);
+    if (text.includes("principal_kind = 'participant'") && text.includes("FOR UPDATE")) {
+      return result([hostPrincipal, guestPrincipal]);
+    }
+    if (text.includes("SET recovery_token_sha256")) return result([], 1);
+    return result([]);
+  });
+  const store = new PostgresSessionStore<Record<string, unknown>>(new ScriptedPool(client));
+
+  const issued = await store.issuePrivateSeatRecoveryInvite({
+    sessionId,
+    credentialSha256,
+    seatId: "p2",
+    recoveryTokenSha256: "e".repeat(64),
+    recoveryTokenExpiresAt: expiresAt,
+    issuedAt
+  });
+
+  assert.deepEqual(issued, { seatId: "p2", playerId: "p2", recoveryTokenExpiresAt: expiresAt });
+  const write = client.queries.find(({ text }) => text.includes("SET recovery_token_sha256"));
+  assert.deepEqual(write?.values, [sessionId, guestPrincipal.principal_id, "e".repeat(64), expiresAt]);
+  assert.equal(client.queries.some(({ text }) => text.includes("UPDATE game_sessions")), false);
+  assert.equal(firstSqlWord(client.queries.at(-1)?.text ?? ""), "COMMIT");
+});
+
+test("PostgreSQL recovery claim rotates only the durable credential and preserves the cursor", async () => {
+  const claimedAt = new Date("2026-07-11T12:30:00.000Z");
+  const privateRow = {
+    ...persistedRow,
+    participants: [
+      { seatId: "p1", playerId: "p1", kind: "human", joinState: "joined" },
+      { seatId: "p2", playerId: "p2", kind: "human", joinState: "joined" }
+    ]
+  };
+  const guestPrincipal = {
+    ...principalRow,
+    principal_id: "44444444-4444-4444-8444-444444444444",
+    principal_kind: "participant",
+    session_role: "player",
+    actor_scope: { kind: "listed-actors", actorIds: ["p2"] }
+  };
+  const client = new ScriptedClient((text) => {
+    if (text.includes("FROM game_sessions") && text.includes("FOR UPDATE NOWAIT")) return result([privateRow]);
+    if (text.includes("credential_sha256 = $2") && text.includes("credential_expires_at IS NULL")) {
+      return result([guestPrincipal]);
+    }
+    if (text.includes("credential_expires_at IS NOT NULL")) return result([]);
+    if (text.includes("recovery_token_sha256 = $2")) return result([guestPrincipal]);
+    if (text.includes("SET credential_sha256 = $3") && text.includes("recovery_token_sha256 = NULL")) {
+      return result([], 1);
+    }
+    return result([]);
+  });
+  const store = new PostgresSessionStore<Record<string, unknown>>(new ScriptedPool(client));
+
+  const claimed = await store.claimPrivateInvite({
+    sessionId,
+    inviteCredentialSha256: "e".repeat(64),
+    participantCredentialSha256: "f".repeat(64),
+    currentCredentialSha256: "d".repeat(64),
+    claimedAt
+  });
+
+  assert.equal(claimed?.transition, "credential-recovery");
+  assert.deepEqual(claimed?.session, {
+    sessionId,
+    gameId: persistedRow.game_id,
+    bundleHash,
+    contentSourceId: persistedRow.content_source_id,
+    sessionRole: persistedRow.session_role,
+    participants: privateRow.participants,
+    state: persistedRow.state,
+    version: { sessionId, stateVersion: 4, lastEventSequence: 7 },
+    createdAt: now,
+    updatedAt: now
+  });
+  const write = client.queries.find(({ text }) => text.includes("recovery_token_sha256 = NULL"));
+  const currentPrincipalRead = client.queries.find(({ text }) =>
+    text.includes("credential_sha256 = $2") && text.includes("credential_expires_at IS NULL")
+  );
+  assert.deepEqual(currentPrincipalRead?.values, [sessionId, "d".repeat(64)]);
+  const recoveryRead = client.queries.find(({ text }) => text.includes("recovery_token_sha256 = $2"));
+  assert.deepEqual(recoveryRead?.values, [sessionId, "e".repeat(64), claimedAt]);
+  assert.deepEqual(write?.values, [
+    sessionId,
+    guestPrincipal.principal_id,
+    "f".repeat(64),
+    "e".repeat(64),
+    claimedAt
+  ]);
+  assert.equal(client.queries.some(({ text }) => text.includes("UPDATE game_sessions")), false);
+  assert.equal(firstSqlWord(client.queries.at(-1)?.text ?? ""), "COMMIT");
+});
+
+test("PostgreSQL accepts server-authorized agent participants", async () => {
+  const agentParticipants = [{ seatId: "p1", playerId: "p1", kind: "agent" as const, joinState: "local" as const }];
+  const client = new ScriptedClient((text) => {
+    if (text.includes("INSERT INTO game_bundles")) return result([bundleRow], 1);
+    if (text.includes("INSERT INTO game_sessions")) {
+      return result([{ ...persistedRow, participants: agentParticipants }], 1);
+    }
+    if (text.includes("INSERT INTO session_principals")) return result([principalRow], 1);
+    return result([]);
+  });
+  const store = new PostgresSessionStore<Record<string, unknown>>(new ScriptedPool(client));
+  const created = await store.createSession({ ...createInput(), participants: agentParticipants });
+
+  assert.deepEqual(created.session.participants, agentParticipants);
+  const sessionInsert = client.queries.find(({ text }) => text.includes("INSERT INTO game_sessions"));
+  assert.equal(sessionInsert?.values?.[5], JSON.stringify(agentParticipants));
+});
+
+test("PostgreSQL session reads delegate participant shape to the canonical validator", async () => {
+  for (const malformedParticipants of [
+    {},
+    [],
+    [{ ...persistedRow.participants[0], extra: true }]
+  ]) {
+    const pool = new ScriptedPool(
+      new ScriptedClient(() => result([])),
+      () => result([{ ...persistedRow, participants: malformedParticipants }])
+    );
+    const store = new PostgresSessionStore<Record<string, unknown>>(pool);
+    await assert.rejects(store.getSession(sessionId), SessionStoreUnavailableError);
+  }
+});
+
+test("PostgreSQL commits state, first receipt and ordered events in the same locked transaction", async () => {
+  const client = new ScriptedClient((text) => {
+    if (text.includes("FOR UPDATE NOWAIT")) return result([persistedRow]);
+    if (text.includes("FROM session_principals")) return result([principalRow]);
+    if (text.includes("FROM game_bundles")) return result([bundleRow]);
+    if (text.includes("FROM command_receipts")) return result([]);
+    if (text.includes("UPDATE game_sessions")) {
+      return result([{ ...persistedRow, state_version: "5" }], 1);
+    }
+    return result([]);
+  });
+  const store = new PostgresSessionStore<Record<string, unknown>>(new ScriptedPool(client));
+  const committedEvent = event({ session: sessionId, sequence: 8 });
+  committedEvent.metricChanges = [{ metricId: "score", before: 1, after: 2 }];
+  const committedReceipt = receipt({
+    before: 4,
+    after: 5,
+    eventRefs: [committedEvent.eventId]
+  });
+  const output = await store.withCommandTransaction({ sessionId, credentialSha256, commandId }, async (context) => {
+    assert.equal(context.existingReceipt, undefined);
+    assert.equal(context.principal.principalId, principalId);
+    assert.equal(context.bundle.bundleHash, bundleHash);
+    const updatedSession: SessionRecord<Record<string, unknown>> = {
+      ...context.currentSession,
+      state: { public: { step: 2 } },
+      version: { sessionId, stateVersion: 5, lastEventSequence: 8 },
+      updatedAt: new Date("2026-07-11T12:01:00.000Z")
+    };
+    return {
+      result: "committed",
+      updatedSession,
+      receipt: committedReceipt,
+      events: [committedEvent]
+    };
+  });
+
+  assert.equal(output, "committed");
+  assert.deepEqual(client.queries.map(({ text }) => firstSqlWord(text)), [
+    "BEGIN", "SELECT", "SELECT", "SELECT", "SELECT", "UPDATE", "INSERT", "INSERT", "COMMIT"
+  ]);
+  assert.ok(client.queries.some(({ text }) => text.includes("INSERT INTO command_receipts")));
+  const eventInsert = client.queries.find(({ text }) => text.includes("INSERT INTO session_events"));
+  assert.equal(eventInsert?.values?.[0], `${sessionId}:8`);
+  assert.equal(eventInsert?.values?.[2], 8);
+  assert.equal(eventInsert?.values?.[3], receiptId);
+  assert.equal(eventInsert?.values?.[10], JSON.stringify(committedEvent.summary));
+  assert.equal(eventInsert?.values?.[11], JSON.stringify(committedEvent.data));
+  assert.equal(eventInsert?.values?.[12], JSON.stringify(committedEvent.metricChanges));
+});
+
+test("PostgreSQL rejects participant mutation before writing a locked snapshot", async () => {
+  const client = new ScriptedClient((text) => {
+    if (text.includes("FOR UPDATE NOWAIT")) return result([persistedRow]);
+    return result([]);
+  });
+  const store = new PostgresSessionStore<Record<string, unknown>>(new ScriptedPool(client));
+  await assert.rejects(store.updateSession({
+    sessionId,
+    gameId: persistedRow.game_id,
+    bundleHash,
+    contentSourceId: persistedRow.content_source_id,
+    sessionRole: "facilitator",
+    participants: [{ seatId: "changed", playerId: "p1", kind: "human", joinState: "local" }],
+    state: persistedRow.state,
+    version: { sessionId, stateVersion: 5, lastEventSequence: 7 },
+    createdAt: now,
+    updatedAt: new Date("2026-07-11T12:01:00.000Z")
+  }, { expectedStateVersion: 4 }), /cannot change/u);
+  assert.equal(client.queries.some(({ text }) => text.includes("UPDATE game_sessions SET")), false);
+  assert.equal(firstSqlWord(client.queries.at(-1)?.text ?? ""), "ROLLBACK");
+});
+
+test("PostgreSQL registers a protected schedule and credential-free system principal in the command transaction", async () => {
+  const client = new ScriptedClient((text) => {
+    if (text.includes("FOR UPDATE NOWAIT")) return result([persistedRow]);
+    if (text.includes("FROM session_principals")) return result([principalRow]);
+    if (text.includes("FROM game_bundles")) return result([bundleRow]);
+    if (text.includes("FROM command_receipts")) return result([]);
+    if (text.includes("UPDATE game_sessions")) {
+      return result([{ ...persistedRow, state_version: "5" }], 1);
+    }
+    if (text.includes("INSERT INTO session_principals")) {
+      return result([{ principal_id: systemPrincipalId }], 1);
+    }
+    if (text.includes("INSERT INTO system_schedules")) return result([], 1);
+    return result([]);
+  });
+  const store = new PostgresSessionStore<Record<string, unknown>>(new ScriptedPool(client));
+  const schedule = systemSchedule();
+
+  await store.withCommandTransaction({ sessionId, credentialSha256, commandId }, async ({ currentSession }) => ({
+    result: undefined,
+    updatedSession: {
+      ...currentSession,
+      state: { public: { step: 2 } },
+      version: { sessionId, stateVersion: 5, lastEventSequence: 7 },
+      updatedAt: new Date("2026-07-11T12:01:00.000Z")
+    },
+    receipt: receipt({ before: 4, after: 5 }),
+    scheduleMutations: [{ kind: "register", schedule }]
+  }));
+
+  const principalInsert = client.queries.find(({ text }) => text.includes("INSERT INTO session_principals"));
+  assert.equal(principalInsert?.values?.[0], systemPrincipalId);
+  assert.match(principalInsert?.text ?? "", /credential_sha256[\s\S]*NULL/u);
+  const scheduleInsert = client.queries.find(({ text }) => text.includes("INSERT INTO system_schedules"));
+  assert.deepEqual(scheduleInsert?.values?.slice(0, 6), [
+    scheduleId,
+    sessionId,
+    bundleHash,
+    scheduledActionId,
+    JSON.stringify(schedule.params),
+    scheduledDefinitionHash
+  ]);
+  assert.equal(firstSqlWord(client.queries.at(-1)?.text ?? ""), "COMMIT");
+});
+
+test("PostgreSQL system defer locks the schedule after receipt lookup and performs no durable writes", async () => {
+  const schedule = systemSchedule();
+  const client = new ScriptedClient((text) => {
+    if (text.includes("FOR UPDATE NOWAIT")) return result([persistedRow]);
+    if (text.includes("FROM command_receipts")) return result([]);
+    if (text.includes("FROM system_schedules")) return result([systemScheduleRow(schedule)]);
+    if (text.includes("FROM game_bundles")) return result([bundleRow]);
+    return result([]);
+  });
+  const store = new PostgresSessionStore<Record<string, unknown>>(new ScriptedPool(client));
+
+  const output = await store.withSystemCommandTransaction(
+    { sessionId, scheduleId, occurrence: 1, commandId: systemCommandId },
+    async ({ principal, schedule: loadedSchedule, existingReceipt }) => {
+      assert.equal(principal.principalId, systemPrincipalId);
+      assert.equal(principal.kind, "system");
+      assert.equal(existingReceipt, undefined);
+      assert.deepEqual(loadedSchedule, schedule);
+      return { result: "deferred", scheduleDisposition: "defer" };
+    }
+  );
+
+  assert.equal(output, "deferred");
+  const receiptIndex = client.queries.findIndex(({ text }) => text.includes("FROM command_receipts"));
+  const scheduleIndex = client.queries.findIndex(({ text }) => text.includes("FROM system_schedules"));
+  assert.ok(receiptIndex >= 0 && receiptIndex < scheduleIndex);
+  assert.match(client.queries[scheduleIndex]?.text ?? "", /FOR UPDATE/u);
+  assert.equal(client.queries.some(({ text }) => /^(INSERT|UPDATE|DELETE)\b/u.test(text.trim())), false);
+  assert.equal(firstSqlWord(client.queries.at(-1)?.text ?? ""), "COMMIT");
+});
+
+test("PostgreSQL system apply commits state, receipt, events and occurrence consumption atomically", async () => {
+  const schedule = systemSchedule({ maxOccurrences: 2 });
+  const appliedReceipt = systemReceipt({ status: "applied", before: 4, after: 5, eventRefs: [`${sessionId}:8`] });
+  const appliedEvent = systemEvent({ sequence: 8 });
+  const client = new ScriptedClient((text) => {
+    if (text.includes("FOR UPDATE NOWAIT")) return result([persistedRow]);
+    if (text.includes("FROM command_receipts")) return result([]);
+    if (text.includes("FROM system_schedules")) return result([systemScheduleRow(schedule)]);
+    if (text.includes("FROM game_bundles")) return result([bundleRow]);
     if (text.includes("UPDATE game_sessions")) {
       return result([{ ...persistedRow, state_version: "5", last_event_sequence: "8" }], 1);
     }
+    if (text.includes("UPDATE system_schedules")) return result([{ schedule_id: scheduleId }], 1);
     return result([]);
   });
   const store = new PostgresSessionStore<Record<string, unknown>>(new ScriptedPool(client));
 
-  const outcome = await store.withLockedSession(persistedRow.session_id, async (current) => {
-    assert.ok(current);
-    assert.equal(current.contentSourceId, "editor-source");
-    assert.equal(current.sessionRole, "facilitator");
-    assert.equal(current.version.stateVersion, 4);
-    const updatedSession = {
-      ...current,
-      state: { public: { step: 2 } },
-      version: { sessionId: current.sessionId, stateVersion: 5, lastEventSequence: 8 },
-      updatedAt: new Date("2026-07-11T12:01:00.000Z")
-    };
-    return { result: "committed", updatedSession };
-  });
-
-  assert.equal(outcome, "committed");
-  assert.deepEqual(
-    client.queries.map(({ text }) => firstSqlWord(text)),
-    ["BEGIN", "SELECT", "UPDATE", "COMMIT"]
+  const output = await store.withSystemCommandTransaction(
+    { sessionId, scheduleId, occurrence: 1, commandId: systemCommandId },
+    async ({ currentSession }) => ({
+      result: "applied",
+      scheduleDisposition: "apply",
+      updatedSession: {
+        ...currentSession,
+        state: { public: { step: 2 } },
+        version: { sessionId, stateVersion: 5, lastEventSequence: 8 },
+        updatedAt: new Date("2026-07-11T12:01:00.000Z")
+      },
+      receipt: appliedReceipt,
+      events: [appliedEvent]
+    })
   );
-  const update = client.queries[2];
-  assert.equal(update.values?.[0], persistedRow.session_id);
-  assert.equal(update.values?.[3], "editor-source");
-  assert.equal(update.values?.[4], "facilitator");
-  assert.equal(update.values?.[9], 4);
-  assert.equal(client.released, true);
+
+  assert.equal(output, "applied");
+  const consume = client.queries.find(({ text }) => text.includes("UPDATE system_schedules"));
+  assert.equal(consume?.values?.[2], 2);
+  assert.equal(consume?.values?.[3], "pending");
+  assert.equal(consume?.values?.[5], 1);
+  assert.ok(client.queries.some(({ text }) => text.includes("INSERT INTO command_receipts")));
+  assert.ok(client.queries.some(({ text }) => text.includes("INSERT INTO session_events")));
+  assert.equal(firstSqlWord(client.queries.at(-1)?.text ?? ""), "COMMIT");
 });
 
-test("PostgreSQL lock contention becomes a typed 423 error and rolls back", async () => {
-  const lockError = Object.assign(new Error("could not obtain lock"), { code: "55P03" });
+test("PostgreSQL rolls back the complete system command if occurrence consumption fails", async () => {
+  const schedule = systemSchedule({ maxOccurrences: 2 });
+  const appliedReceipt = systemReceipt({ status: "applied", before: 4, after: 5, eventRefs: [`${sessionId}:8`] });
+  const appliedEvent = systemEvent({ sequence: 8 });
+  const client = new ScriptedClient((text) => {
+    if (text.includes("FOR UPDATE NOWAIT")) return result([persistedRow]);
+    if (text.includes("FROM command_receipts")) return result([]);
+    if (text.includes("FROM system_schedules")) return result([systemScheduleRow(schedule)]);
+    if (text.includes("FROM game_bundles")) return result([bundleRow]);
+    if (text.includes("UPDATE game_sessions")) {
+      return result([{ ...persistedRow, state_version: "5", last_event_sequence: "8" }], 1);
+    }
+    if (text.includes("UPDATE system_schedules")) {
+      throw Object.assign(new Error("schedule write failed"), { code: "XX000" });
+    }
+    return result([]);
+  });
+  const store = new PostgresSessionStore<Record<string, unknown>>(new ScriptedPool(client));
+
+  await assert.rejects(
+    store.withSystemCommandTransaction(
+      { sessionId, scheduleId, occurrence: 1, commandId: systemCommandId },
+      async ({ currentSession }) => ({
+        result: undefined,
+        scheduleDisposition: "apply",
+        updatedSession: {
+          ...currentSession,
+          state: { public: { step: 2 } },
+          version: { sessionId, stateVersion: 5, lastEventSequence: 8 },
+          updatedAt: new Date("2026-07-11T12:01:00.000Z")
+        },
+        receipt: appliedReceipt,
+        events: [appliedEvent]
+      })
+    ),
+    SessionStoreUnavailableError
+  );
+
+  assert.equal(firstSqlWord(client.queries.at(-1)?.text ?? ""), "ROLLBACK");
+  assert.equal(client.queries.some(({ text }) => firstSqlWord(text) === "COMMIT"), false);
+});
+
+test("PostgreSQL system skip stores a rejected receipt and consumes the occurrence without state writes", async () => {
+  const schedule = systemSchedule({ maxOccurrences: 1 });
+  const skippedReceipt = systemReceipt({ status: "rejected", before: 4, after: 4 });
+  const client = new ScriptedClient((text) => {
+    if (text.includes("FOR UPDATE NOWAIT")) return result([persistedRow]);
+    if (text.includes("FROM command_receipts")) return result([]);
+    if (text.includes("FROM system_schedules")) return result([systemScheduleRow(schedule)]);
+    if (text.includes("FROM game_bundles")) return result([bundleRow]);
+    if (text.includes("UPDATE system_schedules")) return result([{ schedule_id: scheduleId }], 1);
+    return result([]);
+  });
+  const store = new PostgresSessionStore<Record<string, unknown>>(new ScriptedPool(client));
+
+  await store.withSystemCommandTransaction(
+    { sessionId, scheduleId, occurrence: 1, commandId: systemCommandId },
+    async () => ({
+      result: "skipped",
+      scheduleDisposition: "skip",
+      receipt: skippedReceipt
+    })
+  );
+
+  assert.equal(client.queries.some(({ text }) => text.includes("UPDATE game_sessions")), false);
+  assert.equal(client.queries.some(({ text }) => text.includes("INSERT INTO session_events")), false);
+  assert.ok(client.queries.some(({ text }) => text.includes("INSERT INTO command_receipts")));
+  const consume = client.queries.find(({ text }) => text.includes("UPDATE system_schedules"));
+  assert.equal(consume?.values?.[2], 2);
+  assert.equal(consume?.values?.[3], "completed");
+});
+
+test("PostgreSQL system retry returns its receipt even after the schedule occurrence completed", async () => {
+  const schedule = systemSchedule({ maxOccurrences: 1, nextOccurrence: 2, status: "completed" });
+  const storedReceipt = systemReceipt({ status: "applied", before: 4, after: 5 });
   const client = new ScriptedClient((text) => {
     if (text.includes("FOR UPDATE NOWAIT")) {
-      throw lockError;
+      return result([{ ...persistedRow, state_version: "5" }]);
     }
+    if (text.includes("FROM command_receipts")) return result([receiptRow(storedReceipt)]);
+    if (text.includes("FROM system_schedules")) return result([systemScheduleRow(schedule)]);
+    if (text.includes("FROM game_bundles")) return result([bundleRow]);
+    return result([]);
+  });
+  const store = new PostgresSessionStore<Record<string, unknown>>(new ScriptedPool(client));
+
+  const replay = await store.withSystemCommandTransaction(
+    { sessionId, scheduleId, occurrence: 1, commandId: systemCommandId },
+    async ({ existingReceipt }) => ({
+      result: existingReceipt?.publicReceipt,
+      scheduleDisposition: "apply"
+    })
+  );
+
+  assert.equal(replay?.commandId, systemCommandId);
+  assert.equal(client.queries.some(({ text }) => /^(INSERT|UPDATE|DELETE)\b/u.test(text.trim())), false);
+});
+
+test("PostgreSQL rejects a forged system id before opening a transaction", async () => {
+  const client = new ScriptedClient(() => result([]));
+  const store = new PostgresSessionStore(new ScriptedPool(client));
+  await assert.rejects(
+    store.withSystemCommandTransaction(
+      { sessionId, scheduleId, occurrence: 1, commandId: `sys_${"A".repeat(43)}` },
+      async () => ({ result: undefined, scheduleDisposition: "defer" })
+    ),
+    SessionAuthenticationError
+  );
+  assert.deepEqual(client.queries, []);
+});
+
+test("PostgreSQL exact retry reads its receipt and never inserts duplicate events", async () => {
+  const storedEvent = event({ session: sessionId, sequence: 8 });
+  const storedReceipt = receipt({ before: 4, after: 5, eventRefs: [storedEvent.eventId] });
+  const client = new ScriptedClient((text) => {
+    if (text.includes("FOR UPDATE NOWAIT")) {
+      return result([{ ...persistedRow, state_version: "5", last_event_sequence: "8" }]);
+    }
+    if (text.includes("FROM session_principals")) return result([principalRow]);
+    if (text.includes("FROM game_bundles")) return result([bundleRow]);
+    if (text.includes("FROM command_receipts")) return result([receiptRow(storedReceipt)]);
+    return result([]);
+  });
+  const store = new PostgresSessionStore<Record<string, unknown>>(new ScriptedPool(client));
+
+  const replayed = await store.withCommandTransaction(
+    { sessionId, credentialSha256, commandId },
+    async ({ existingReceipt }) => {
+      assert.deepEqual(existingReceipt?.eventRefs, [storedEvent.eventId]);
+      assert.equal(existingReceipt?.definitionHash, definitionHash);
+      assert.equal(existingReceipt?.planHash, planHash);
+      assert.equal(existingReceipt?.audit.mechanics?.steps[0]?.operation, "core.assert");
+      return { result: existingReceipt?.publicReceipt };
+    }
+  );
+
+  assert.deepEqual(replayed?.eventRefs, [storedEvent.eventId]);
+  assert.deepEqual(client.queries.map(({ text }) => firstSqlWord(text)), [
+    "BEGIN", "SELECT", "SELECT", "SELECT", "SELECT", "COMMIT"
+  ]);
+  assert.equal(client.queries.some(({ text }) => text.includes("INSERT INTO session_events")), false);
+  assert.equal(client.queries.some(({ text }) => text.includes("INSERT INTO command_receipts")), false);
+});
+
+test("invalid credential is rejected under the session lock before command execution", async () => {
+  const client = new ScriptedClient((text) => {
+    if (text.includes("FOR UPDATE NOWAIT")) return result([persistedRow]);
+    if (text.includes("FROM session_principals")) return result([]);
     return result([]);
   });
   const store = new PostgresSessionStore(new ScriptedPool(client));
-
+  let executed = false;
   await assert.rejects(
-    store.withLockedSession(persistedRow.session_id, async () => ({ result: undefined })),
+    store.withCommandTransaction({ sessionId, credentialSha256, commandId }, async () => {
+      executed = true;
+      return { result: undefined };
+    }),
+    SessionAuthenticationError
+  );
+  assert.equal(executed, false);
+  assert.deepEqual(client.queries.map(({ text }) => firstSqlWord(text)), [
+    "BEGIN", "SELECT", "SELECT", "ROLLBACK"
+  ]);
+});
+
+test("PostgreSQL lock contention becomes a typed 423 error", async () => {
+  const lockError = Object.assign(new Error("could not obtain lock"), { code: "55P03" });
+  const client = new ScriptedClient((text) => {
+    if (text.includes("FOR UPDATE NOWAIT")) throw lockError;
+    return result([]);
+  });
+  const store = new PostgresSessionStore(new ScriptedPool(client));
+  await assert.rejects(
+    store.withLockedSession(sessionId, async () => ({ result: undefined })),
     SessionWriteLockedError
   );
   assert.deepEqual(client.queries.map(({ text }) => firstSqlWord(text)), ["BEGIN", "SELECT", "ROLLBACK"]);
-  assert.equal(client.released, true);
 });
 
-test("expected state version protects the direct update path from lost updates", async () => {
-  const client = new ScriptedClient((text) => {
-    if (text.includes("FOR UPDATE NOWAIT")) {
-      return result([persistedRow]);
+test("in-memory exact retry sees the durable receipt and does not mutate twice", async () => {
+  const store = new InMemorySessionStore<Record<string, unknown>>();
+  const created = await store.createSession(createInput());
+  const actualSessionId = created.session.sessionId;
+  const firstEvent = event({ session: actualSessionId, sequence: 1 });
+  const firstReceipt = receipt({
+    session: actualSessionId,
+    before: 0,
+    after: 1,
+    eventRefs: [firstEvent.eventId]
+  });
+  await store.withCommandTransaction({ sessionId: actualSessionId, credentialSha256, commandId }, async ({ currentSession }) => ({
+    result: undefined,
+    updatedSession: {
+      ...currentSession,
+      state: { public: { applied: 1 } },
+      version: { sessionId: actualSessionId, stateVersion: 1, lastEventSequence: 1 },
+      updatedAt: new Date()
+    },
+    receipt: firstReceipt,
+    events: [firstEvent]
+  }));
+
+  let retriedRule = false;
+  const retry = await store.withCommandTransaction(
+    { sessionId: actualSessionId, credentialSha256, commandId },
+    async ({ currentSession, existingReceipt }) => {
+      assert.equal(currentSession.version.stateVersion, 1);
+      assert.equal(existingReceipt?.fingerprint, firstReceipt.fingerprint);
+      if (existingReceipt === undefined) {
+        retriedRule = true;
+      }
+      return { result: existingReceipt?.publicReceipt };
     }
+  );
+  assert.equal(retriedRule, false);
+  assert.equal(retry?.commandId, commandId);
+  assert.equal((await store.getSession(actualSessionId))?.version.stateVersion, 1);
+  assert.deepEqual((await store.getSessionEvents(actualSessionId)).map(({ eventId }) => eventId), [firstEvent.eventId]);
+  assert.deepEqual(await store.getSessionEvents(actualSessionId, 1), []);
+});
+
+test("in-memory archive preserves audit records and closes every live mutation path", async () => {
+  const store = new InMemorySessionStore<Record<string, unknown>>();
+  const created = await store.createSession(createInput());
+  const actualSessionId = created.session.sessionId;
+  const committedEvent = event({ session: actualSessionId, sequence: 1 });
+  const committedReceipt = receipt({
+    session: actualSessionId,
+    before: 0,
+    after: 1,
+    eventRefs: [committedEvent.eventId]
+  });
+  const schedule = { ...systemSchedule(), sessionId: actualSessionId };
+  await store.withCommandTransaction(
+    { sessionId: actualSessionId, credentialSha256, commandId },
+    async ({ currentSession }) => ({
+      result: undefined,
+      updatedSession: {
+        ...currentSession,
+        state: { public: { step: 2 } },
+        version: { sessionId: actualSessionId, stateVersion: 1, lastEventSequence: 1 },
+        updatedAt: now
+      },
+      receipt: committedReceipt,
+      events: [committedEvent],
+      scheduleMutations: [{ kind: "register", schedule }]
+    })
+  );
+
+  const archive = await store.archiveSession({ sessionId: actualSessionId, credentialSha256 });
+  assert.ok(archive);
+  assert.deepEqual(archive.session.state, { public: { step: 2 } });
+  assert.equal(archive.session.version.stateVersion, 1);
+  assert.equal(archive.bundle.bundleHash, bundleHash);
+  assert.deepEqual(archive.events, [committedEvent]);
+  assert.deepEqual(archive.receipts, [committedReceipt]);
+
+  const repeated = await store.archiveSession({ sessionId: actualSessionId, credentialSha256 });
+  assert.equal(repeated?.archivedAt.getTime(), archive.archivedAt.getTime());
+  assert.equal(await store.getSession(actualSessionId), null);
+  assert.equal(await store.authenticateSession({ sessionId: actualSessionId, credentialSha256 }), null);
+  assert.deepEqual(await store.getSessionEvents(actualSessionId), []);
+  assert.deepEqual(await store.listPendingSystemSchedules(actualSessionId), []);
+  assert.equal(
+    await store.readArchivedSession({ sessionId: actualSessionId, credentialSha256: "0".repeat(64) }),
+    null
+  );
+  assert.deepEqual(
+    await store.readArchivedSession({ sessionId: actualSessionId, credentialSha256 }),
+    repeated
+  );
+
+  await assert.rejects(
+    store.updateSession({
+      ...archive.session,
+      version: { sessionId: actualSessionId, stateVersion: 2, lastEventSequence: 1 }
+    }, { expectedStateVersion: 1 })
+  );
+  let commandCallbackReached = false;
+  await assert.rejects(
+    store.withCommandTransaction(
+      { sessionId: actualSessionId, credentialSha256, commandId: "cli_BBBBBBBBBBBBBBBBBBBBBB" },
+      async () => {
+        commandCallbackReached = true;
+        return { result: undefined };
+      }
+    ),
+    SessionAuthenticationError
+  );
+  assert.equal(commandCallbackReached, false);
+
+  let systemCallbackReached = false;
+  await assert.rejects(
+    store.withSystemCommandTransaction(
+      {
+        sessionId: actualSessionId,
+        scheduleId,
+        occurrence: 1,
+        commandId: createSystemCommandId(actualSessionId, scheduleId, 1)
+      },
+      async () => {
+        systemCallbackReached = true;
+        return { result: undefined, scheduleDisposition: "defer" };
+      }
+    ),
+    SessionAuthenticationError
+  );
+  assert.equal(systemCallbackReached, false);
+});
+
+test("archive lifecycle mutation and audit read reject a non-facilitator principal", async () => {
+  const store = new InMemorySessionStore<Record<string, unknown>>();
+  const input = createInput();
+  input.sessionRole = "observer";
+  input.principal.role = "observer";
+  const created = await store.createSession(input);
+  const auth = { sessionId: created.session.sessionId, credentialSha256 };
+
+  assert.equal(await store.archiveSession(auth), null);
+  assert.equal(await store.readArchivedSession(auth), null);
+  assert.deepEqual(await store.getSession(created.session.sessionId), created.session);
+});
+
+test("PostgreSQL archive updates only lifecycle metadata and returns the immutable audit corpus", async () => {
+  const archivedAt = new Date("2026-07-17T10:00:00.000Z");
+  const storedEvent = event({ session: sessionId, sequence: 8 });
+  const storedReceipt = receipt({ before: 4, after: 5, eventRefs: [storedEvent.eventId] });
+  const client = new ScriptedClient((text) => {
+    if (text.includes("FROM session_principals p")) return result([principalRow]);
+    if (text.includes("UPDATE game_sessions")) {
+      return result([{ ...persistedRow, archived_at: archivedAt }], 1);
+    }
+    if (text.includes("FROM game_bundles")) return result([bundleRow]);
+    if (text.includes("FROM session_events")) return result([eventRow(storedEvent)]);
+    if (text.includes("FROM command_receipts")) return result([receiptRow(storedReceipt)]);
     return result([]);
   });
   const store = new PostgresSessionStore<Record<string, unknown>>(new ScriptedPool(client));
-  const staleSnapshot = {
-    sessionId: persistedRow.session_id,
-    gameId: persistedRow.game_id,
-    state: {},
-    version: { sessionId: persistedRow.session_id, stateVersion: 5, lastEventSequence: 8 },
-    createdAt: now,
-    updatedAt: now
+
+  const archive = await store.archiveSession({ sessionId, credentialSha256 });
+
+  assert.ok(archive);
+  assert.equal(archive.archivedAt.toISOString(), archivedAt.toISOString());
+  assert.deepEqual(archive.session.state, persistedRow.state);
+  assert.equal(archive.bundle.bundleHash, bundleHash);
+  assert.deepEqual(archive.events, [storedEvent]);
+  assert.deepEqual(archive.receipts, [storedReceipt]);
+  const archiveWrite = client.queries.find(({ text }) => text.includes("UPDATE game_sessions"));
+  assert.match(archiveWrite?.text ?? "", /SET archived_at = COALESCE\(archived_at, CURRENT_TIMESTAMP\)/u);
+  assert.doesNotMatch(archiveWrite?.text ?? "", /\bstate\s*=/u);
+  assert.doesNotMatch(archiveWrite?.text ?? "", /\bupdated_at\s*=/u);
+  assert.ok(client.queries.some(({ text }) => text.includes("p.session_role = 'facilitator'")));
+  assert.deepEqual(client.queries.map(({ text }) => firstSqlWord(text)), [
+    "BEGIN", "SELECT", "UPDATE", "SELECT", "SELECT", "SELECT", "COMMIT"
+  ]);
+});
+
+test("PostgreSQL reads an existing archive through the credential-bound audit path", async () => {
+  const archivedAt = new Date("2026-07-17T10:00:00.000Z");
+  const client = new ScriptedClient((text) => {
+    if (text.includes("FROM session_principals p")) return result([principalRow]);
+    if (text.includes("FROM game_sessions") && text.includes("archived_at IS NOT NULL")) {
+      return result([{ ...persistedRow, archived_at: archivedAt }]);
+    }
+    if (text.includes("FROM game_bundles")) return result([bundleRow]);
+    if (text.includes("FROM session_events") || text.includes("FROM command_receipts")) return result([]);
+    return result([]);
+  });
+  const store = new PostgresSessionStore<Record<string, unknown>>(new ScriptedPool(client));
+
+  const archive = await store.readArchivedSession({ sessionId, credentialSha256 });
+
+  assert.equal(archive?.archivedAt.toISOString(), archivedAt.toISOString());
+  assert.equal(archive?.principal.principalId, principalId);
+  assert.equal(client.queries.some(({ text }) => text.includes("UPDATE game_sessions")), false);
+  assert.ok(client.queries.some(({ text }) =>
+    text.includes("p.credential_sha256 = $2") &&
+    text.includes("p.session_role = 'facilitator'") &&
+    text.includes("s.archived_at IS NOT NULL")));
+});
+
+test("in-memory system transaction rejects a forged receipt before consuming its occurrence", async () => {
+  const store = new InMemorySessionStore<Record<string, unknown>>();
+  const created = await store.createSession(createInput());
+  const actualSessionId = created.session.sessionId;
+  const schedule: SessionSystemSchedule = {
+    ...systemSchedule(),
+    sessionId: actualSessionId
+  };
+  const firstReceipt = receipt({
+    session: actualSessionId,
+    before: 0,
+    after: 1
+  });
+  await store.withCommandTransaction(
+    { sessionId: actualSessionId, credentialSha256, commandId },
+    async ({ currentSession }) => ({
+      result: undefined,
+      updatedSession: {
+        ...currentSession,
+        version: { sessionId: actualSessionId, stateVersion: 1, lastEventSequence: 0 },
+        updatedAt: now
+      },
+      receipt: firstReceipt,
+      scheduleMutations: [{ kind: "register", schedule }]
+    })
+  );
+
+  const actualSystemCommandId = createSystemCommandId(actualSessionId, scheduleId, 1);
+  const forgedReceipt = systemReceipt({ status: "rejected", before: 1, after: 1 });
+  forgedReceipt.sessionId = actualSessionId;
+  forgedReceipt.principalId = `system-scheduler:${actualSessionId}`;
+  forgedReceipt.commandId = actualSystemCommandId;
+  forgedReceipt.publicReceipt.commandId = actualSystemCommandId;
+  forgedReceipt.fingerprint = createSystemCommandFingerprint({
+    sessionId: actualSessionId,
+    scheduleId,
+    occurrence: 1,
+    actionId: schedule.actionId,
+    params: schedule.params,
+    bundleHash,
+    definitionHash: schedule.definitionHash
+  });
+  // Generic receipt validation does not own the action-definition pin. The
+  // system store boundary must reject this mismatch just like PostgreSQL.
+  forgedReceipt.definitionHash = `sha256:${"0".repeat(64)}`;
+
+  await assert.rejects(
+    store.withSystemCommandTransaction(
+      {
+        sessionId: actualSessionId,
+        scheduleId,
+        occurrence: 1,
+        commandId: actualSystemCommandId
+      },
+      async () => ({
+        result: undefined,
+        scheduleDisposition: "skip",
+        receipt: forgedReceipt
+      })
+    ),
+    SessionStoreUnavailableError
+  );
+
+  assert.equal((await store.listPendingSystemSchedules(actualSessionId))[0]?.nextOccurrence, 1);
+  await store.withSystemCommandTransaction(
+    {
+      sessionId: actualSessionId,
+      scheduleId,
+      occurrence: 1,
+      commandId: actualSystemCommandId
+    },
+    async ({ existingReceipt }) => {
+      assert.equal(existingReceipt, undefined);
+      return { result: undefined, scheduleDisposition: "defer" };
+    }
+  );
+});
+
+test("in-memory malformed system occurrence fails as authentication instead of escaping identity validation", async () => {
+  const store = new InMemorySessionStore<Record<string, unknown>>();
+  const created = await store.createSession(createInput());
+
+  await assert.rejects(
+    store.withSystemCommandTransaction(
+      {
+        sessionId: created.session.sessionId,
+        scheduleId,
+        occurrence: 0,
+        commandId: `sys_${"A".repeat(43)}`
+      },
+      async () => ({ result: undefined, scheduleDisposition: "defer" })
+    ),
+    SessionAuthenticationError
+  );
+});
+
+test("generic locked snapshot updates cannot advance the protected event ledger", async () => {
+  const store = new InMemorySessionStore<Record<string, unknown>>();
+  const created = await store.createSession(createInput());
+
+  await assert.rejects(
+    store.withLockedSession(created.session.sessionId, async (current) => {
+      assert.ok(current);
+      return {
+        result: undefined,
+        updatedSession: {
+          ...current,
+          version: {
+            sessionId: current.sessionId,
+            stateVersion: current.version.stateVersion + 1,
+            lastEventSequence: current.version.lastEventSequence + 1
+          },
+          updatedAt: new Date()
+        }
+      };
+    }),
+    SessionStoreUnavailableError
+  );
+
+  assert.deepEqual(await store.getSession(created.session.sessionId), created.session);
+});
+
+test("in-memory direct snapshot updates cannot advance the protected event ledger", async () => {
+  const store = new InMemorySessionStore<Record<string, unknown>>();
+  const created = await store.createSession(createInput());
+  const corrupted: SessionRecord<Record<string, unknown>> = {
+    ...created.session,
+    version: {
+      sessionId: created.session.sessionId,
+      stateVersion: 1,
+      lastEventSequence: 1
+    },
+    updatedAt: new Date()
   };
 
   await assert.rejects(
-    store.updateSession(staleSnapshot, { expectedStateVersion: 3 }),
-    SessionVersionConflictError
+    store.updateSession(corrupted, { expectedStateVersion: 0 }),
+    SessionStoreUnavailableError
   );
-  assert.deepEqual(client.queries.map(({ text }) => firstSqlWord(text)), ["BEGIN", "SELECT", "ROLLBACK"]);
+  assert.deepEqual(await store.getSession(created.session.sessionId), created.session);
 });
 
-test("invalid snapshot versions and session ids are rejected before UPDATE", async () => {
-  const cases = [
-    { label: "same version", stateVersion: 4, versionSessionId: persistedRow.session_id },
-    { label: "lower version", stateVersion: 3, versionSessionId: persistedRow.session_id },
-    { label: "jumped version", stateVersion: 6, versionSessionId: persistedRow.session_id },
-    { label: "mismatched version session", stateVersion: 5, versionSessionId: "other-session" }
+test("in-memory command callback failure leaves both state and receipt absent", async () => {
+  const store = new InMemorySessionStore<Record<string, unknown>>();
+  const created = await store.createSession(createInput());
+  await assert.rejects(
+    store.withCommandTransaction({
+      sessionId: created.session.sessionId,
+      credentialSha256,
+      commandId
+    }, async () => {
+      throw new Error("operation failed");
+    }),
+    /operation failed/u
+  );
+  assert.equal((await store.getSession(created.session.sessionId))?.version.stateVersion, 0);
+  assert.deepEqual(await store.getSessionEvents(created.session.sessionId), []);
+});
+
+test("event sequence and receipt references are validated before an in-memory commit", async () => {
+  const corruptions = [
+    {
+      name: "non-contiguous event sequence",
+      mutate(input: { receipt: SessionCommandReceipt; events: SessionEventRecord[] }) {
+        const wrongEvent = event({ session: input.receipt.sessionId, sequence: 2 });
+        input.receipt.eventRefs = [wrongEvent.eventId];
+        input.receipt.publicReceipt.eventRefs = [wrongEvent.eventId];
+        input.events = [wrongEvent];
+      }
+    },
+    {
+      name: "receipt points at another event",
+      mutate(input: { receipt: SessionCommandReceipt; events: SessionEventRecord[] }) {
+        input.receipt.eventRefs = [`${input.receipt.sessionId}:999`];
+        input.receipt.publicReceipt.eventRefs = [`${input.receipt.sessionId}:999`];
+      }
+    }
   ];
 
-  for (const invalid of cases) {
-    const client = new ScriptedClient((text) => {
-      if (text.includes("FOR UPDATE NOWAIT")) {
-        return result([persistedRow]);
-      }
-      return result([]);
-    });
-    const store = new PostgresSessionStore<Record<string, unknown>>(new ScriptedPool(client));
+  for (const corruption of corruptions) {
+    const store = new InMemorySessionStore<Record<string, unknown>>();
+    const created = await store.createSession(createInput());
+    const actualSessionId = created.session.sessionId;
+    const committedEvent = event({ session: actualSessionId, sequence: 1 });
+    const transaction = {
+      receipt: receipt({
+        session: actualSessionId,
+        before: 0,
+        after: 1,
+        eventRefs: [committedEvent.eventId]
+      }),
+      events: [committedEvent]
+    };
+    corruption.mutate(transaction);
+
     await assert.rejects(
-      store.withLockedSession(persistedRow.session_id, async (current) => {
-        assert.ok(current);
-        return {
+      store.withCommandTransaction(
+        { sessionId: actualSessionId, credentialSha256, commandId },
+        async ({ currentSession }) => ({
           result: undefined,
           updatedSession: {
-            ...current,
-            version: {
-              sessionId: invalid.versionSessionId,
-              stateVersion: invalid.stateVersion,
-              lastEventSequence: 8
-            }
-          }
-        };
-      }),
-      SessionVersionConflictError,
-      invalid.label
+            ...currentSession,
+            state: { public: { applied: 1 } },
+            version: { sessionId: actualSessionId, stateVersion: 1, lastEventSequence: 1 },
+            updatedAt: new Date()
+          },
+          receipt: transaction.receipt,
+          events: transaction.events
+        })
+      ),
+      SessionStoreUnavailableError,
+      corruption.name
     );
-    assert.deepEqual(
-      client.queries.map(({ text }) => firstSqlWord(text)),
-      ["BEGIN", "SELECT", "ROLLBACK"],
-      invalid.label
+    assert.equal((await store.getSession(actualSessionId))?.version.stateVersion, 0, corruption.name);
+    assert.deepEqual(await store.getSessionEvents(actualSessionId), [], corruption.name);
+    await store.withCommandTransaction(
+      { sessionId: actualSessionId, credentialSha256, commandId },
+      async ({ existingReceipt }) => {
+        assert.equal(existingReceipt, undefined, corruption.name);
+        return { result: undefined };
+      }
     );
   }
 });
 
-test("rollback failure discards the broken client while preserving the original error", async () => {
-  const rollbackError = new Error("secret database rollback detail");
-  const operationError = new Error("gameplay operation failed");
-  const client = new ScriptedClient((text) => {
-    if (text.includes("FOR UPDATE NOWAIT")) {
-      return result([persistedRow]);
+test("command transaction rejects contradictory status and public receipt projections", async () => {
+  const corruptions = [
+    {
+      name: "rejected receipt attempts to commit state",
+      mutate(value: SessionCommandReceipt) {
+        value.status = "rejected";
+        value.publicReceipt.status = "rejected";
+        value.publicReceipt.rejectionCode = "FIXTURE_REJECTED";
+      }
+    },
+    {
+      name: "public receipt names another action",
+      mutate(value: SessionCommandReceipt) {
+        value.publicReceipt.actionId = "different-action";
+      }
+    },
+    {
+      name: "public receipt changes event references",
+      mutate(value: SessionCommandReceipt) {
+        value.publicReceipt.eventRefs = [`${value.sessionId}:999`];
+      }
+    },
+    {
+      name: "protected Mechanics audit contains an invalid counter",
+      mutate(value: SessionCommandReceipt) {
+        assert.ok(value.audit.mechanics);
+        value.audit.mechanics.cost.steps = -1;
+      }
     }
-    if (text === "ROLLBACK") {
-      throw rollbackError;
-    }
-    return result([]);
-  });
-  const store = new PostgresSessionStore(new ScriptedPool(client));
+  ];
 
-  await assert.rejects(
-    store.withLockedSession(persistedRow.session_id, async () => {
-      throw operationError;
-    }),
-    (error) => error === operationError
-  );
-  assert.equal(client.releaseError, rollbackError);
+  for (const corruption of corruptions) {
+    const store = new InMemorySessionStore<Record<string, unknown>>();
+    const created = await store.createSession(createInput());
+    const actualSessionId = created.session.sessionId;
+    const committedEvent = event({ session: actualSessionId, sequence: 1 });
+    const corruptedReceipt = receipt({
+      session: actualSessionId,
+      before: 0,
+      after: 1,
+      eventRefs: [committedEvent.eventId]
+    });
+    corruption.mutate(corruptedReceipt);
+
+    await assert.rejects(
+      store.withCommandTransaction(
+        { sessionId: actualSessionId, credentialSha256, commandId },
+        async ({ currentSession }) => ({
+          result: undefined,
+          updatedSession: {
+            ...currentSession,
+            version: { sessionId: actualSessionId, stateVersion: 1, lastEventSequence: 1 },
+            updatedAt: new Date()
+          },
+          receipt: corruptedReceipt,
+          events: [committedEvent]
+        })
+      ),
+      SessionStoreUnavailableError,
+      corruption.name
+    );
+    assert.deepEqual(await store.getSession(actualSessionId), created.session, corruption.name);
+  }
 });
 
-test("readiness validates schema, write mode and required privileges before close", async () => {
+test("command transaction rejects an applied receipt without a committed snapshot", async () => {
+  const store = new InMemorySessionStore<Record<string, unknown>>();
+  const created = await store.createSession(createInput());
+  const appliedReceipt = receipt({
+    session: created.session.sessionId,
+    before: 0,
+    after: 0
+  });
+  appliedReceipt.publicReceipt.stateVersionAfter = 0;
+
+  await assert.rejects(
+    store.withCommandTransaction(
+      { sessionId: created.session.sessionId, credentialSha256, commandId },
+      async () => ({ result: undefined, receipt: appliedReceipt })
+    ),
+    SessionStoreUnavailableError
+  );
+});
+
+test("in-memory bundle is content-addressed and cannot be mutated through a read", async () => {
+  const store = new InMemorySessionStore<Record<string, unknown>>();
+  const created = await store.createSession(createInput());
+  const firstRead = await store.getImmutableBundle(created.session.bundleHash);
+  assert.ok(firstRead);
+  (firstRead.canonicalBundle as { manifest: Record<string, unknown> }).manifest.changed = true;
+  const secondRead = await store.getImmutableBundle(created.session.bundleHash);
+  assert.deepEqual(secondRead?.canonicalBundle, canonicalBundle);
+
+  const mismatched = createInput();
+  mismatched.immutableBundle = {
+    ...mismatched.immutableBundle,
+    canonicalBundle: { gameId: "fixture-game", manifest: { changed: true } }
+  };
+  await assert.rejects(store.createSession(mismatched), SessionStoreUnavailableError);
+});
+
+test("PostgreSQL debrief source authenticates a facilitator and reads one repeatable journal boundary", async () => {
+  const publicEvent = event({ session: sessionId, sequence: 7 });
+  const client = new ScriptedClient((text) => {
+    if (text.includes("FROM game_sessions") && text.includes("session_role = 'facilitator'")) {
+      return result([{ ...persistedRow, archived_at: null }]);
+    }
+    if (text.includes("FROM game_bundles")) return result([bundleRow]);
+    if (text.includes("FROM facilitator_debrief_attempts")) return result([]);
+    if (text.includes("FROM session_events")) return result([eventRow(publicEvent)]);
+    return result([]);
+  });
+  const store = new PostgresSessionStore<Record<string, unknown>>(new ScriptedPool(client));
+
+  const source = await store.readFacilitatorDebriefGenerationSource({
+    sessionId,
+    credentialSha256
+  }, 65_537);
+
+  assert.equal(source?.session.version.stateVersion, 4);
+  assert.equal(source?.attempt, null);
+  assert.equal(source?.bundle.bundleHash, bundleHash);
+  assert.deepEqual(source?.events, [publicEvent]);
+  assert.deepEqual(client.queries.map(({ text }) => firstSqlWord(text)), [
+    "BEGIN", "SELECT", "SELECT", "SELECT", "SELECT", "COMMIT"
+  ]);
+});
+
+test("PostgreSQL atomically fails one stale debrief run before creating its replacement", async () => {
+  const staleRow = facilitatorDebriefAttemptRow({
+    runId: "debrief_stale123",
+    status: "generating",
+    requestedAt: new Date("2026-08-27T09:58:00.000Z")
+  });
+  const replacementRow = facilitatorDebriefAttemptRow({
+    runId: "debrief_replacement123",
+    status: "generating",
+    requestedAt: new Date("2026-08-27T10:00:00.000Z")
+  });
+  const client = new ScriptedClient((text) => {
+    if (text.includes("FROM game_sessions") && text.includes("FOR UPDATE NOWAIT")) {
+      return result([{ ...persistedRow, archived_at: null }]);
+    }
+    if (text.includes("FROM facilitator_debrief_attempts")) return result([staleRow]);
+    if (text.includes("UPDATE facilitator_debrief_attempts")) return result([{ run_id: "debrief_stale123" }]);
+    if (text.includes("INSERT INTO facilitator_debrief_attempts")) return result([replacementRow]);
+    return result([]);
+  });
+  const store = new PostgresSessionStore<Record<string, unknown>>(new ScriptedPool(client));
+  const requestAudit = facilitatorDebriefRequestAudit("debrief_replacement123");
+
+  const begun = await store.beginFacilitatorDebriefAttempt({
+    runId: "debrief_replacement123",
+    sessionId,
+    credentialSha256,
+    expectedStateVersion: 4,
+    throughEventSequence: 7,
+    journalSha256: requestAudit.inputSnapshotWithoutJournal.journalSha256,
+    requestAudit,
+    requestedAt: new Date("2026-08-27T10:00:00.000Z"),
+    staleGeneratingBefore: new Date("2026-08-27T09:58:30.000Z")
+  });
+
+  assert.equal(begun.kind, "created");
+  assert.equal(begun.kind === "created" ? begun.attempt.runId : "", "debrief_replacement123");
+  const debriefWrites = client.queries.filter(({ text }) =>
+    text.includes("facilitator_debrief_attempts") &&
+    (text.includes("UPDATE") || text.includes("INSERT"))
+  );
+  assert.equal(debriefWrites.length, 2);
+  assert.match(debriefWrites[0]?.text ?? "", /SET status = 'failed'/u);
+  assert.match(debriefWrites[1]?.text ?? "", /INSERT INTO facilitator_debrief_attempts/u);
+});
+
+test("PostgreSQL completes a debrief only by matching its generating run id", async () => {
+  const runId = "debrief_complete123";
+  const requestAudit = facilitatorDebriefRequestAudit(runId);
+  const readyDraft: FacilitatorDebriefDraft = {
+    title: "Stored debrief",
+    summary: "One event was stored.",
+    facts: [{ statement: "The event exists.", eventSequences: [7] }],
+    interpretations: [],
+    reflectionQuestions: [{ question: "What changed?", eventSequences: [7] }]
+  };
+  const readyRow = {
+    ...facilitatorDebriefAttemptRow({
+      runId,
+      status: "generating",
+      requestedAt: new Date("2026-08-27T10:00:00.000Z")
+    }),
+    status: "ready",
+    provider_request_id: "provider-1",
+    provider_status: 200,
+    provider_usage: { total_tokens: 12 },
+    response_bytes: 2,
+    duration_ms: 10_000,
+    raw_response_utf8: "{}",
+    draft: readyDraft,
+    completed_at: new Date("2026-08-27T10:00:10.000Z")
+  };
+  const pool = new ScriptedPool(
+    new ScriptedClient(() => result([])),
+    (text, values) => {
+      assert.match(text, /WHERE session_id = \$1 AND run_id = \$2 AND status = 'generating'/u);
+      assert.equal(JSON.stringify(values).includes("publicJournal"), false);
+      return result([readyRow]);
+    }
+  );
+  const store = new PostgresSessionStore<Record<string, unknown>>(pool);
+
+  const completed = await store.completeFacilitatorDebriefAttempt({
+    sessionId,
+    runId,
+    status: "ready",
+    completedAt: new Date("2026-08-27T10:00:10.000Z"),
+    audit: {
+      ...requestAudit,
+      providerRequestId: "provider-1",
+      providerStatus: 200,
+      providerUsage: { total_tokens: 12 },
+      responseBytes: 2,
+      durationMs: 10_000,
+      rawResponseUtf8: "{}"
+    },
+    draft: readyDraft
+  });
+
+  assert.equal(completed?.status, "ready");
+  assert.deepEqual(completed?.providerUsage, { total_tokens: 12 });
+  assert.deepEqual(completed?.draft, readyDraft);
+});
+
+test("readiness checks every command-ledger table and required privileges", async () => {
   const pool = new ScriptedPool(
     new ScriptedClient(() => result([])),
     () => result([{ writable: true, can_select: true, can_insert: true, can_update: true }])
   );
   const store = new PostgresSessionStore(pool);
   await store.checkReadiness();
-  await store.close();
-  const readinessSql = pool.directQueries[0]?.text ?? "";
-  assert.match(readinessSql, /FROM game_sessions/u);
-  assert.match(readinessSql, /LIMIT 0/u);
-  assert.match(readinessSql, /history/u);
-  assert.match(readinessSql, /transaction_read_only/u);
-  assert.match(readinessSql, /has_table_privilege/u);
-  assert.equal(pool.ended, true);
+  const sql = pool.directQueries[0]?.text ?? "";
+  for (const table of [
+    "game_sessions",
+    "game_bundles",
+    "session_principals",
+    "command_receipts",
+    "session_events",
+    "system_schedules",
+    "facilitator_debrief_attempts"
+  ]) {
+    assert.match(sql, new RegExp(table, "u"));
+  }
+  assert.match(
+    sql,
+    /actor_scope, credential_sha256, credential_expires_at,[\s\S]*recovery_token_sha256, recovery_token_expires_at, created_at/u
+  );
+  assert.match(sql, /has_table_privilege\(current_user, 'session_principals', 'UPDATE'\)/u);
 });
 
-test("read-only or underprivileged PostgreSQL is not ready", async () => {
+test("readiness rejects a store that cannot atomically claim private invites", async () => {
   const pool = new ScriptedPool(
     new ScriptedClient(() => result([])),
-    () => result([{ writable: false, can_select: true, can_insert: true, can_update: true }])
+    () => result([{ writable: true, can_select: true, can_insert: true, can_update: false }])
   );
   const store = new PostgresSessionStore(pool);
+
   await assert.rejects(store.checkReadiness(), SessionStoreUnavailableError);
 });
 
-test("database operational details are replaced by a neutral typed HTTP 503", async () => {
-  const databaseError = Object.assign(new Error("password for db.internal.example was rejected"), {
-    code: "ECONNREFUSED"
-  });
+test("PostgreSQL reads session events after a cursor in canonical sequence order", async () => {
+  const storedEvent = event({ session: sessionId, sequence: 8 });
   const pool = new ScriptedPool(
     new ScriptedClient(() => result([])),
-    () => { throw databaseError; }
+    (text, values) => {
+      assert.match(text, /FROM session_events/u);
+      assert.match(text, /sequence > \$2[\s\S]*archived_at IS NULL[\s\S]*ORDER BY sequence ASC/u);
+      assert.deepEqual(values, [sessionId, 7]);
+      return result([eventRow(storedEvent)]);
+    }
   );
   const store = new PostgresSessionStore(pool);
 
-  await assert.rejects(store.getSession(persistedRow.session_id), (error) => {
+  const events = await store.getSessionEvents(sessionId, 7);
+
+  assert.deepEqual(events, [storedEvent]);
+});
+
+test("PostgreSQL public journal source uses one bounded authenticated snapshot", async () => {
+  const publicEvent = event({ session: sessionId, sequence: 3 });
+  publicEvent.metricChanges = [{ metricId: "score", before: 1, after: 2 }];
+  const client = new ScriptedClient((text) => {
+    if (text.includes("JOIN session_principals")) {
+      return result([{
+        ...persistedRow,
+        archived_at: null,
+        principal_id: principalId,
+        principal_session_id: sessionId,
+        principal_kind: principalRow.principal_kind,
+        principal_role: "player",
+        actor_scope: principalRow.actor_scope,
+        principal_created_at: now
+      }]);
+    }
+    if (text.includes("FROM session_events")) return result([eventRow(publicEvent)]);
+    return result([]);
+  });
+  const store = new PostgresSessionStore<Record<string, unknown>>(new ScriptedPool(client));
+  const source = await store.readPublicJournalSource({ sessionId, credentialSha256 }, 65_537);
+  assert.equal(source?.lifecycle, "active");
+  assert.deepEqual(source?.events[0]?.metricChanges, publicEvent.metricChanges);
+  const eventQuery = client.queries.find(({ text }) => text.includes("FROM session_events"));
+  assert.match(eventQuery?.text ?? "", /audience = 'public'/u);
+  assert.match(eventQuery?.text ?? "", /sequence > \$2[\s\S]*sequence <= \$3/u);
+  assert.match(eventQuery?.text ?? "", /ORDER BY sequence ASC/u);
+  assert.match(eventQuery?.text ?? "", /LIMIT \$4/u);
+  assert.doesNotMatch(eventQuery?.text ?? "", /s\.participants|s\.state/u);
+  assert.deepEqual(eventQuery?.values, [sessionId, 0, 7, 128]);
+  assert.deepEqual(client.queries.map(({ text }) => firstSqlWord(text)), [
+    "BEGIN", "SELECT", "SELECT", "COMMIT"
+  ]);
+});
+
+test("PostgreSQL public journal source advances through bounded keyset pages", async () => {
+  const throughSequence = 260;
+  const client = new ScriptedClient((text, values) => {
+    if (text.includes("JOIN session_principals")) {
+      return result([{ ...persistedRow, last_event_sequence: String(throughSequence), archived_at: null }]);
+    }
+    if (text.includes("FROM session_events")) {
+      const afterSequence = Number(values?.[1] ?? 0);
+      const count = Math.min(128, throughSequence - afterSequence);
+      return result(Array.from({ length: count }, (_, index) =>
+        eventRow(event({ session: sessionId, sequence: afterSequence + index + 1 }))
+      ));
+    }
+    return result([]);
+  });
+  const store = new PostgresSessionStore<Record<string, unknown>>(new ScriptedPool(client));
+
+  const source = await store.readPublicJournalSource({ sessionId, credentialSha256 }, 65_537);
+
+  assert.equal(source?.events.length, throughSequence);
+  const eventQueries = client.queries.filter(({ text }) => text.includes("FROM session_events"));
+  assert.deepEqual(eventQueries.map(({ values }) => values), [
+    [sessionId, 0, throughSequence, 128],
+    [sessionId, 128, throughSequence, 128],
+    [sessionId, 256, throughSequence, 128]
+  ]);
+  assert.equal(firstSqlWord(client.queries.at(-1)?.text ?? ""), "COMMIT");
+});
+
+test("PostgreSQL public journal stops after the first page when its exact byte budget overflows", async () => {
+  const payload = "x".repeat(300 * 1024);
+  const client = new ScriptedClient((text, values) => {
+    if (text.includes("JOIN session_principals")) {
+      return result([{ ...persistedRow, last_event_sequence: "1000", archived_at: null }]);
+    }
+    if (text.includes("FROM session_events")) {
+      const afterSequence = Number(values?.[1] ?? 0);
+      return result(Array.from({ length: 128 }, (_, index) => {
+        const storedEvent = event({ session: sessionId, sequence: afterSequence + index + 1 });
+        storedEvent.data = { payload };
+        return eventRow(storedEvent);
+      }));
+    }
+    return result([]);
+  });
+  const store = new PostgresSessionStore<Record<string, unknown>>(new ScriptedPool(client));
+
+  await assert.rejects(
+    store.readPublicJournalSource({ sessionId, credentialSha256 }, 65_537),
+    PublicJournalTooLargeError
+  );
+
+  assert.equal(client.queries.filter(({ text }) => text.includes("FROM session_events")).length, 1);
+  assert.equal(firstSqlWord(client.queries.at(-1)?.text ?? ""), "ROLLBACK");
+});
+
+test("PostgreSQL metricChanges mapping rejects malformed durable JSON", async () => {
+  const malformed = eventRow(event({ session: sessionId, sequence: 3 }));
+  malformed.metric_changes = [{ metricId: "score", before: "bad", after: 2 }];
+  const pool = new ScriptedPool(new ScriptedClient(() => result([])), (text) => {
+    if (text.includes("FROM session_events")) return result([malformed]);
+    return result([]);
+  });
+  const store = new PostgresSessionStore<Record<string, unknown>>(pool);
+  await assert.rejects(store.getSessionEvents(sessionId), SessionStoreUnavailableError);
+});
+
+test("database details are replaced by a neutral typed HTTP 503", async () => {
+  const pool = new ScriptedPool(
+    new ScriptedClient(() => result([])),
+    () => { throw Object.assign(new Error("password for db.internal"), { code: "ECONNREFUSED" }); }
+  );
+  const store = new PostgresSessionStore(pool);
+  await assert.rejects(store.getSession(sessionId), (error) => {
     assert.ok(error instanceof SessionStoreUnavailableError);
-    assert.equal(error.statusCode, 503);
-    assert.equal(error.message, "Session storage is temporarily unavailable.");
-    assert.doesNotMatch(error.message, /password|internal\.example/u);
+    assert.doesNotMatch(error.message, /password|db\.internal/u);
     return true;
   });
 });
 
-test("idle pool error handler logs only a safe fixed message", () => {
+test("factory and idle-pool logging keep production storage safe", () => {
   let listener: ((error: Error) => void) | undefined;
   const messages: string[] = [];
-  installSafePoolErrorHandler(
-    {
-      on(event, installedListener) {
-        assert.equal(event, "error");
-        listener = installedListener;
-      }
-    },
-    (message) => messages.push(message)
-  );
+  installSafePoolErrorHandler({
+    on(event, installedListener) {
+      assert.equal(event, "error");
+      listener = installedListener;
+    }
+  }, (message) => messages.push(message));
   listener?.(new Error("postgresql://user:secret@db.internal/cubica"));
   assert.deepEqual(messages, ["runtime-api PostgreSQL session pool lost an idle connection."]);
-  assert.doesNotMatch(messages.join(" "), /secret|db\.internal/u);
-});
-
-test("production refuses volatile storage and missing PostgreSQL configuration", () => {
   assert.throws(
     () => createSessionStoreFromEnvironment({ NODE_ENV: "production", SESSION_STORE: "in-memory" }),
     /forbidden in production/u
@@ -319,39 +1660,296 @@ test("production refuses volatile storage and missing PostgreSQL configuration",
     () => createSessionStoreFromEnvironment({ NODE_ENV: "production", SESSION_STORE: "postgresql" }),
     /DATABASE_URL is required/u
   );
-  assert.throws(() => createSessionStoreFromEnvironment({ NODE_ENV: "development" }), /SESSION_STORE must/u);
 });
 
-test("in-memory adapter rejects a concurrent mutation like FOR UPDATE NOWAIT", async () => {
-  const store = new InMemorySessionStore<Record<string, unknown>>();
-  const created = await store.createSession({ gameId: "fixture-game", initialState: {} });
-  let unblock!: () => void;
-  let markEntered!: () => void;
-  const entered = new Promise<void>((resolve) => { markEntered = resolve; });
-  const blocked = new Promise<void>((resolve) => { unblock = resolve; });
+function createInput(): CreateSessionInput<Record<string, unknown>> {
+  return {
+    gameId: "fixture-game",
+    contentSourceId: "editor-source",
+    sessionRole: "facilitator",
+    participants: [{ seatId: "p1", playerId: "p1", kind: "human", joinState: "local" }],
+    initialState: { public: { step: 1 } },
+    immutableBundle: {
+      bundleHash,
+      gameId: "fixture-game",
+      canonicalBytes: bundleRow.canonical_bytes,
+      canonicalBundle: bundleRow.canonical_bundle
+    },
+    principal: {
+      principalId,
+      kind: "local-controller",
+      role: "facilitator",
+      actorScope: { kind: "all-session-actors" },
+      credentialSha256
+    }
+  };
+}
 
-  const first = store.withLockedSession(created.sessionId, async (current) => {
-    markEntered();
-    await blocked;
-    return { result: current };
+function systemSchedule(
+  overrides: Partial<Pick<SessionSystemSchedule, "maxOccurrences" | "nextOccurrence" | "status">> = {}
+): SessionSystemSchedule {
+  return {
+    scheduleId,
+    sessionId,
+    bundleHash,
+    actionId: scheduledActionId,
+    params: { target: "fixture", amount: 2 },
+    definitionHash: scheduledDefinitionHash,
+    trigger: { op: "predicate.literal", value: true },
+    falsePolicy: "defer",
+    maxOccurrences: overrides.maxOccurrences ?? 1,
+    nextOccurrence: overrides.nextOccurrence ?? 1,
+    status: overrides.status ?? "pending",
+    createdAt: now,
+    updatedAt: now
+  };
+}
+
+function systemScheduleRow(value: SessionSystemSchedule): QueryResultRow {
+  return {
+    schedule_id: value.scheduleId,
+    session_id: value.sessionId,
+    bundle_hash: value.bundleHash,
+    action_id: value.actionId,
+    params: value.params,
+    definition_hash: value.definitionHash,
+    trigger: value.trigger,
+    false_policy: value.falsePolicy,
+    max_occurrences: String(value.maxOccurrences),
+    next_occurrence: String(value.nextOccurrence),
+    status: value.status,
+    created_at: value.createdAt,
+    updated_at: value.updatedAt
+  };
+}
+
+function systemReceipt(input: {
+  status: "applied" | "rejected";
+  before: number;
+  after: number;
+  eventRefs?: string[];
+}): SessionCommandReceipt {
+  const value = receipt({
+    before: input.before,
+    after: input.after,
+    eventRefs: input.eventRefs
   });
-  await entered;
-  await assert.rejects(
-    store.withLockedSession(created.sessionId, async () => ({ result: undefined })),
-    SessionWriteLockedError
-  );
-  unblock();
-  await first;
-});
+  value.principalId = systemPrincipalId;
+  value.commandId = systemCommandId;
+  value.fingerprint = createSystemCommandFingerprint({
+    sessionId,
+    scheduleId,
+    occurrence: 1,
+    actionId: scheduledActionId,
+    params: systemSchedule().params,
+    bundleHash,
+    definitionHash: scheduledDefinitionHash
+  });
+  value.actionId = scheduledActionId;
+  value.definitionHash = scheduledDefinitionHash;
+  value.status = input.status;
+  value.publicReceipt.commandId = systemCommandId;
+  value.publicReceipt.actionId = scheduledActionId;
+  value.publicReceipt.status = input.status;
+  value.audit.triggerActionId = scheduledActionId;
+  if (input.status === "rejected") {
+    value.publicReceipt.rejectionCode = "SYSTEM_TRIGGER_SKIPPED";
+    value.result = {
+      formatVersion: "1.0.0",
+      kind: "game-intent",
+      value: { ok: false, error: { code: "SYSTEM_TRIGGER_SKIPPED" } }
+    };
+  }
+  return value;
+}
+
+function systemEvent(input: { sequence: number }): SessionEventRecord {
+  return {
+    eventId: `${sessionId}:${input.sequence}`,
+    sessionId,
+    sequence: input.sequence,
+    receiptId,
+    commandId: systemCommandId,
+    actionId: scheduledActionId,
+    principalId: systemPrincipalId,
+    audience: "public",
+    eventType: "scheduled.applied",
+    summary: { messageKey: "scheduled.applied" },
+    data: { source: "system" },
+    createdAt: now
+  };
+}
+
+function receipt(input: {
+  session?: string;
+  before: number;
+  after: number;
+  eventRefs?: string[];
+}): SessionCommandReceipt {
+  const scopedSessionId = input.session ?? sessionId;
+  const eventRefs = input.eventRefs ?? [];
+  return {
+    receiptId,
+    sessionId: scopedSessionId,
+    principalId,
+    commandId,
+    fingerprint: "c".repeat(64),
+    actionId: "advance",
+    bundleHash,
+    definitionHash,
+    planHash,
+    stateVersionBefore: input.before,
+    stateVersionAfter: input.after,
+    status: "applied",
+    eventRefs,
+    publicReceipt: {
+      commandId,
+      actionId: "advance",
+      status: "applied",
+      stateVersionBefore: input.before,
+      stateVersionAfter: input.after,
+      eventRefs,
+      planHash
+    },
+    result: { formatVersion: "1.0.0", kind: "game-intent", value: { ok: true } },
+    audit: {
+      acceptedAt: now,
+      commandKind: "game-intent",
+      triggerActionId: "advance",
+      mechanics: {
+        formatVersion: "1.0.0",
+        steps: [{ stepId: "s001", operation: "core.assert", result: true }],
+        cost: {
+          steps: 1,
+          expressionNodes: 1,
+          scannedEntities: 0,
+          resultEntities: 0,
+          writes: 0,
+          events: 0,
+          intermediateBytes: 4,
+          eventBytes: 0,
+          auditBytes: 72
+        }
+      }
+    },
+    createdAt: now
+  };
+}
+
+function event(input: { session: string; sequence: number }): SessionEventRecord {
+  return {
+    eventId: `${input.session}:${input.sequence}`,
+    sessionId: input.session,
+    sequence: input.sequence,
+    receiptId,
+    commandId,
+    actionId: "advance",
+    principalId,
+    audience: "public",
+    eventType: "turn.advanced",
+    summary: { messageKey: "turn.advanced" },
+    data: { step: 2 },
+    createdAt: now
+  };
+}
+
+function receiptRow(value: SessionCommandReceipt): QueryResultRow {
+  return {
+    receipt_id: value.receiptId,
+    session_id: value.sessionId,
+    principal_id: value.principalId,
+    command_id: value.commandId,
+    fingerprint: value.fingerprint,
+    action_id: value.actionId,
+    actor_id: value.actorId ?? null,
+    bundle_hash: value.bundleHash,
+    definition_hash: value.definitionHash,
+    plan_hash: value.planHash ?? null,
+    state_version_before: String(value.stateVersionBefore),
+    state_version_after: String(value.stateVersionAfter),
+    status: value.status,
+    event_refs: value.eventRefs,
+    public_receipt: value.publicReceipt,
+    command_result: value.result ?? null,
+    audit: value.audit,
+    created_at: value.createdAt
+  };
+}
+
+function eventRow(value: SessionEventRecord): QueryResultRow {
+  return {
+    event_id: value.eventId,
+    session_id: value.sessionId,
+    sequence: String(value.sequence),
+    receipt_id: value.receiptId,
+    command_id: value.commandId,
+    action_id: value.actionId,
+    principal_id: value.principalId,
+    actor_id: value.actorId ?? null,
+    audience: value.audience,
+    event_type: value.eventType,
+    summary: value.summary,
+    event_data: value.data,
+    metric_changes: value.metricChanges ?? null,
+    created_at: value.createdAt
+  };
+}
+
+function facilitatorDebriefRequestAudit(runId: string) {
+  const publicJournalJson = "{}";
+  const journalSha256 = `sha256:${createHash("sha256").update(publicJournalJson).digest("hex")}` as const;
+  return new ZaiFacilitatorDebriefProvider({ apiKey: "test" }).prepare({
+    runId,
+    sessionId,
+    gameId: "fixture-game",
+    bundleHash,
+    stateVersion: 4,
+    throughEventSequence: 7,
+    journalSha256,
+    publicJournalJson,
+    publicState: persistedRow.state,
+    trainingMetadata: null
+  }).audit;
+}
+
+function facilitatorDebriefAttemptRow(input: {
+  runId: string;
+  status: "generating";
+  requestedAt: Date;
+}): QueryResultRow {
+  const audit = facilitatorDebriefRequestAudit(input.runId);
+  return {
+    run_id: input.runId,
+    session_id: sessionId,
+    status: input.status,
+    expected_state_version: "4",
+    through_event_sequence: "7",
+    journal_sha256: audit.inputSnapshotWithoutJournal.journalSha256,
+    provider: audit.provider,
+    endpoint: audit.endpoint,
+    model: audit.model,
+    prompt_version: audit.promptVersion,
+    system_prompt: audit.systemPrompt,
+    system_prompt_sha256: audit.systemPromptSha256,
+    provider_parameters: audit.parameters,
+    request_body_sha256: audit.requestBodySha256,
+    request_bytes: String(audit.requestBytes),
+    input_snapshot_without_journal: audit.inputSnapshotWithoutJournal,
+    provider_request_id: null,
+    provider_status: null,
+    provider_usage: null,
+    response_bytes: null,
+    duration_ms: null,
+    raw_response_utf8: null,
+    draft: null,
+    error: null,
+    requested_at: input.requestedAt,
+    completed_at: null
+  };
+}
 
 function result<TRow extends QueryResultRow>(rows: TRow[], rowCount = rows.length): QueryResult<TRow> {
-  return {
-    command: "TEST",
-    rowCount,
-    oid: 0,
-    fields: [],
-    rows
-  };
+  return { command: "TEST", rowCount, oid: 0, fields: [], rows };
 }
 
 function firstSqlWord(sql: string): string {

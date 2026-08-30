@@ -1,10 +1,12 @@
 # ADR-047: AI Agent Safety Remediation Gates
 
 - **Дата**: 2026-06-11
-- **Статус**: Accepted
+**Status:** Accepted
 - **Авторы**: Codex
 - **Компоненты**: Editor Web, Runtime API, Player Web, AI Contracts, Cubica Surface, Agent Runtime
-- **Связанные решения**: ADR-025, ADR-040, ADR-043, ADR-044, ADR-045, ADR-046
+- **Связанные решения**: ADR-025, ADR-040, ADR-043, ADR-044, ADR-045, ADR-046, ADR-084
+- **Контракт мутаций уточнён ADR-084:** долговременные изменения разрешаются
+  только через опубликованные `actionId` и связанные Mechanics IR-планы
 
 ## Оглавление
 
@@ -21,7 +23,7 @@
 
 Решение понято так: миграция Cubica Surface и AI-driven runtime завершила MVP-контур, но review выявил safety gaps, которые нельзя оставлять перед подключением real provider backend или расширением gameplay catalog.
 
-Нужно зафиксировать архитектурные ворота исправления: подтверждение человека не может быть обычным аргументом агента, failed Agent Turn не может применять effects, manifest `allowedCapabilities` должен стать runtime allowlist, а channel renderer не должен получать действия, которые он не умеет безопасно исполнять.
+Нужно зафиксировать архитектурные ворота исправления: подтверждение человека не может быть обычным аргументом агента, отклонённый Agent Turn не может выбрать и выполнить игровое намерение, manifest `allowedCapabilities` должен стать runtime allowlist, а channel renderer не должен получать действия, которые он не умеет безопасно исполнять.
 
 Этот ADR не отменяет ADR-043..ADR-046. Он уточняет обязательные safety gates поверх них.
 
@@ -39,16 +41,23 @@
 Review нашёл четыре класса риска:
 
 - mutating editor tools доверяют `approved=true` из tool arguments;
-- `CubicaAgentTurnResult.ok=false` не запрещает persistence of returned effects;
-- `allowedCapabilities` передаётся агенту, но не ограничивает accepted effects/actions;
+- `CubicaAgentTurnResult.ok=false` не запрещал сохранение предложенной мутации;
+- `allowedCapabilities` передавался агенту, но не ограничивал принятые действия;
 - default Surface catalog может признать валидными actions, которые конкретный channel renderer не поддерживает.
 
 ## 3. Термины
 
 - **Approval envelope** - собственная запись Cubica о подтверждении действия человеком: кто подтвердил, что именно подтвердил, на какой run/tool/action это распространяется и когда истекает.
-- **Capability gate** - runtime-проверка, которая сопоставляет manifest-declared capability с разрешёнными effect kinds, target paths, tool names and surface action kinds.
-- **Accepted Agent Turn** - Agent Turn, у которого `ok: true`, schema validation passed, semantic validation passed, capability gate passed and effects persisted.
-- **Rejected Agent Turn** - Agent Turn, который не прошёл один из gates; он может быть залогирован, но не может менять session state.
+- **Capability gate** - runtime-проверка, которая сопоставляет
+  manifest-declared capability с разрешёнными Game Intents, tool names и
+  surface action kinds.
+- **Accepted Agent Turn** - Agent Turn, у которого `ok: true` и пройдены schema,
+  semantic и capability checks. Если ход меняет долговременное состояние,
+  модель выбирает ровно один опубликованный Game Intent, который принимается
+  общей Mechanics IR-транзакцией и общей квитанцией команды.
+- **Rejected Agent Turn** - Agent Turn, который не прошёл один из gates; он
+  может быть записан в аудит, но не может отправлять изменяющую команду или
+  менять session state.
 - **Channel action policy** - allowlist action kinds and targets для конкретного renderer/channel, например Web player, editor sidebar, Telegram or Phaser.
 
 ## 4. Решение
@@ -61,16 +70,20 @@ Cubica вводит mandatory remediation gates before production Agent Runtime 
    - CopilotKit `useHumanInTheLoop` may be used as the MVP adapter UI, but the durable contract is Cubica approval envelope.
    - The future custom Cubica Agent UI must produce the same approval envelope.
 
-2. **Failed Agent Turn cannot persist effects.**
+2. **Failed Agent Turn cannot execute a Game Intent.**
    - `ok: false` is a rejected turn.
    - Rejected turns may return narration, diagnostics and audit metadata.
-   - Runtime must not apply `effects`, `availableActions` or primary gameplay `surface` from rejected turns unless a later ADR defines a read-only diagnostic surface policy.
-   - Rejected event log entries must have `effectCount: 0`.
+   - Runtime must not dispatch Game Intent, publish
+     `availableActions` or primary gameplay `surface` from rejected turns
+     unless a later ADR defines a read-only diagnostic surface policy.
+   - Аудит явно фиксирует отсутствие выбранного `actionId` и принятой команды.
 
 3. **Manifest capabilities become runtime enforcement.**
-   - `agentRuntime.allowedCapabilities` must map to concrete allowed effect kinds, target prefixes, tool names and action kinds.
+   - `agentRuntime.allowedCapabilities` must map to concrete allowed
+     `actionId`, tool names and surface action kinds.
    - Runtime rejects any Agent Turn result outside the declared capability set.
-   - Provider adapters are not accepted until capability gate tests cover accepted and rejected effects.
+   - Provider adapters are not accepted until capability gate tests cover
+     accepted and rejected structured outcomes and Game Intent dispatch.
 
 4. **Surface actions are validated against channel policy.**
    - A Surface component being in catalog is not enough.
@@ -100,6 +113,8 @@ Cubica вводит mandatory remediation gates before production Agent Runtime 
 8. Telegram and Phaser projections never expose interactive controls from invalid Surface payloads.
 9. Production Agent Runtime cannot be enabled without auth, audit, replay/eval and operation policy.
 10. Mock Agent Runtime remains test/dev only and cannot satisfy production provider readiness.
+11. Agent output never contains state patches, Mechanics IR or another direct mutation form; it may select only a currently published and available Game Intent with schema-valid parameters.
+12. The Agent Turn entry intent is excluded from the selectable catalog, so model output cannot recursively start another Agent Turn.
 
 ## 6. Альтернативы
 
@@ -109,7 +124,7 @@ Rejected. It lets the agent approve its own mutating tool call and breaks human-
 
 ### B. Treat `ok=false` As Advisory Only
 
-Rejected. A failed turn with persisted effects would make audit and replay misleading.
+Rejected. A failed turn with an executed intent would make audit and replay misleading.
 
 ### C. Leave `allowedCapabilities` Descriptive Until Real Provider Work
 

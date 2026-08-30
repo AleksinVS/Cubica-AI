@@ -26,6 +26,7 @@ const taskStatusSections = new Map([
 ]);
 const activeTaskStatuses = new Set(taskStatusSections.keys());
 const taskQueueSections = new Set(taskStatusSections.values());
+const stubRegisterColumnCount = 8;
 
 const requiredDebtColumns = [
   "id",
@@ -164,6 +165,50 @@ function readDebtRows() {
   });
 }
 
+/**
+ * Parse one Markdown table row without treating escaped pipes or pipes inside
+ * inline-code spans as cell separators. Governance text is free-form, so a
+ * plain `split("|")` silently shifts the status column when a note mentions a
+ * command or a union-like expression.
+ */
+function parseMarkdownTableRow(line) {
+  const cells = [];
+  let cell = "";
+  let escaped = false;
+  let inCode = false;
+
+  for (const char of line) {
+    if (escaped) {
+      cell += char;
+      escaped = false;
+      continue;
+    }
+    if (char === "\\") {
+      cell += char;
+      escaped = true;
+      continue;
+    }
+    if (char === "`") {
+      inCode = !inCode;
+      cell += char;
+      continue;
+    }
+    if (char === "|" && !inCode) {
+      cells.push(cell.trim());
+      cell = "";
+      continue;
+    }
+    cell += char;
+  }
+  cells.push(cell.trim());
+
+  // Markdown table rows begin and end with a delimiter, producing empty edge
+  // cells that are not part of the declared table shape.
+  if (cells[0] === "") cells.shift();
+  if (cells.at(-1) === "") cells.pop();
+  return cells;
+}
+
 function parseStubRegister() {
   const lines = readText(stubsRegisterPath).split(/\r?\n/);
   const entries = [];
@@ -182,7 +227,13 @@ function parseStubRegister() {
       continue;
     }
 
-    const cells = line.split("|").slice(1, -1).map((cell) => cell.trim());
+    const cells = parseMarkdownTableRow(line);
+    if (cells.length !== stubRegisterColumnCount) {
+      fail(
+        `docs/legacy/stubs-register.md row '${cells[0] || "<unknown>"}' has ${cells.length} cells, ` +
+        `expected ${stubRegisterColumnCount}; escape free-form pipe characters as \\|`
+      );
+    }
     entries.push({ id: cells[0], status: cells[6], section, line });
   }
 
@@ -279,6 +330,30 @@ function validateDescJson() {
     } catch (error) {
       fail(`invalid JSON in ${relative(descPath)}: ${error.message}`);
     }
+  }
+}
+
+/**
+ * Require semantic descriptions at repository navigation boundaries.
+ *
+ * The four roots are already named by PROJECT_STRUCTURE; their immediate
+ * children are the second repository level a newcomer must choose between.
+ * Deeper implementation folders such as `src/` are intentionally excluded.
+ */
+function validateNavigationDirectoryDescriptions() {
+  const failures = [];
+  for (const rootName of ["apps", "docs", "packages", "services"]) {
+    const root = path.join(repoRoot, rootName);
+    for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
+      if (!entry.isDirectory() || entry.name.startsWith(".")) continue;
+      const descPath = path.join(root, entry.name, ".desc.json");
+      if (!fs.existsSync(descPath)) {
+        failures.push(`${relative(descPath)} is required for the repository navigation boundary`);
+      }
+    }
+  }
+  if (failures.length > 0) {
+    fail(`directory description coverage errors:\n- ${failures.join("\n- ")}`);
   }
 }
 
@@ -581,15 +656,41 @@ function validateTaskGovernance() {
   }
 }
 
-function validateDebtAndRegister(debtRows, stubEntries) {
+/** Keep compatibility rules generated from the canonical AGENTS.md source. */
+function validateGeneratedAgentRules() {
+  try {
+    execFileSync(process.execPath, [path.join(repoRoot, "scripts", "dev", "generate-claude-rules.cjs"), "--check"], {
+      cwd: repoRoot,
+      stdio: "pipe"
+    });
+  } catch (error) {
+    fail(`generated CLAUDE.md drift detected: ${String(error.stderr || error.message).trim()}`);
+  }
+}
+
+/** Keep the ADR catalogue and canonical status markup derived from the records. */
+function validateGeneratedAdrIndex() {
+  try {
+    execFileSync(process.execPath, [path.join(repoRoot, "scripts", "dev", "generate-adr-index.js"), "--check"], {
+      cwd: repoRoot,
+      stdio: "pipe"
+    });
+  } catch (error) {
+    fail(`generated ADR index drift detected: ${String(error.stderr || error.message).trim()}`);
+  }
+}
+
+/** Collect debt/register mismatches so the same rules can be negative-tested. */
+function collectDebtAndRegisterFailures(debtRows, stubEntries) {
+  const failures = [];
   const idCounts = new Map();
   const debtById = new Map();
   for (const row of debtRows) {
     if (!/^LEGACY-\d{4}$/.test(row.id)) {
-      fail(`invalid legacy id '${row.id}' in debt-log.csv`);
+      failures.push(`invalid legacy id '${row.id}' in debt-log.csv`);
     }
     if (!["active", "in-progress", "removed"].includes(row.status)) {
-      fail(`invalid status '${row.status}' for ${row.id}`);
+      failures.push(`invalid status '${row.status}' for ${row.id}`);
     }
     idCounts.set(row.id, (idCounts.get(row.id) || 0) + 1);
     debtById.set(row.id, row);
@@ -597,42 +698,113 @@ function validateDebtAndRegister(debtRows, stubEntries) {
 
   const duplicateIds = [...idCounts.entries()].filter(([, count]) => count > 1).map(([id]) => id);
   if (duplicateIds.length > 0) {
-    fail(`duplicate ids in debt-log.csv: ${duplicateIds.join(", ")}`);
+    failures.push(`duplicate ids in debt-log.csv: ${duplicateIds.join(", ")}`);
   }
 
   const currentStubIds = new Set();
-  const allStubIds = new Set();
+  const archiveStubIds = new Set();
+  const stubIdCounts = new Map();
   for (const entry of stubEntries) {
-    allStubIds.add(entry.id);
+    stubIdCounts.set(entry.id, (stubIdCounts.get(entry.id) || 0) + 1);
     if (!debtById.has(entry.id)) {
-      fail(`stubs-register.md references '${entry.id}', but debt-log.csv does not contain it`);
+      failures.push(`stubs-register.md references '${entry.id}', but debt-log.csv does not contain it`);
+      continue;
     }
+    const debtStatus = debtById.get(entry.id).status;
     if (entry.section === "current") {
       currentStubIds.add(entry.id);
-      if (entry.status === "removed") {
-        fail(`${entry.id} is in current stubs table but has removed status`);
+      if (entry.status === "removed" || debtStatus === "removed") {
+        failures.push(`${entry.id} is in current stubs table but debt/register status is removed`);
+      }
+      if (entry.status !== debtStatus) {
+        failures.push(`${entry.id} status differs: debt-log.csv='${debtStatus}', current stubs table='${entry.status}'`);
       }
     }
-    if (entry.section === "archive" && entry.status !== "removed") {
-      fail(`${entry.id} is in archive stubs table but status is '${entry.status}'`);
+    if (entry.section === "archive") {
+      archiveStubIds.add(entry.id);
+      if (entry.status !== "removed" || debtStatus !== "removed") {
+        failures.push(
+          `${entry.id} must be removed in both debt-log.csv and the archive stubs table; ` +
+          `received debt='${debtStatus}', register='${entry.status}'`
+        );
+      }
     }
   }
 
+  const duplicateStubIds = [...stubIdCounts.entries()].filter(([, count]) => count > 1).map(([id]) => id);
+  if (duplicateStubIds.length > 0) {
+    failures.push(`duplicate ids in stubs-register.md: ${duplicateStubIds.join(", ")}`);
+  }
+
   for (const row of debtRows) {
-    if (row.status === "active" && !currentStubIds.has(row.id)) {
-      fail(`active debt row '${row.id}' is missing from current stubs table`);
+    if (["active", "in-progress"].includes(row.status) && !currentStubIds.has(row.id)) {
+      failures.push(`${row.status} debt row '${row.id}' is missing from current stubs table`);
     }
-    if (row.status === "removed" && !allStubIds.has(row.id)) {
-      fail(`removed debt row '${row.id}' is missing from stubs archive`);
+    if (row.status === "removed" && !archiveStubIds.has(row.id)) {
+      failures.push(`removed debt row '${row.id}' is missing from stubs archive`);
     }
     if (row.status === "active") {
       if (!row.stub_reference) {
-        fail(`${row.id} has empty stub_reference`);
+        failures.push(`${row.id} has empty stub_reference`);
       }
       if (!pathExistsFromReference(row.stub_reference)) {
-        fail(`${row.id} stub_reference '${row.stub_reference}' does not exist`);
+        failures.push(`${row.id} stub_reference '${row.stub_reference}' does not exist`);
       }
     }
+  }
+
+  return failures;
+}
+
+/** Prove that status, section and uniqueness drift are rejected. */
+function runDebtAndRegisterSelfTests() {
+  const activeDebt = {
+    id: "LEGACY-9001", status: "active", stub_reference: "AGENTS.md"
+  };
+  const removedDebt = {
+    id: "LEGACY-9002", status: "removed", stub_reference: "removed/path"
+  };
+  const baselineEntries = [
+    { id: activeDebt.id, status: "active", section: "current" },
+    { id: removedDebt.id, status: "removed", section: "archive" }
+  ];
+  if (collectDebtAndRegisterFailures([activeDebt, removedDebt], baselineEntries).length > 0) {
+    fail("debt/register self-test baseline is invalid");
+  }
+
+  const negativeCases = [
+    {
+      name: "removed row left in current section",
+      expected: "current stubs table but debt/register status is removed",
+      entries: [baselineEntries[0], { id: removedDebt.id, status: "active", section: "current" }]
+    },
+    {
+      name: "active row moved to archive",
+      expected: "must be removed in both debt-log.csv and the archive stubs table",
+      entries: [{ id: activeDebt.id, status: "removed", section: "archive" }, baselineEntries[1]]
+    },
+    {
+      name: "duplicate register id",
+      expected: "duplicate ids in stubs-register.md",
+      entries: [...baselineEntries, baselineEntries[0]]
+    }
+  ];
+
+  for (const testCase of negativeCases) {
+    const failures = collectDebtAndRegisterFailures([activeDebt, removedDebt], testCase.entries);
+    if (!failures.some((message) => message.includes(testCase.expected))) {
+      fail(
+        `debt/register self-test '${testCase.name}' did not produce '${testCase.expected}'; ` +
+        `received: ${failures.join(" | ") || "<no failures>"}`
+      );
+    }
+  }
+}
+
+function validateDebtAndRegister(debtRows, stubEntries) {
+  const failures = collectDebtAndRegisterFailures(debtRows, stubEntries);
+  if (failures.length > 0) {
+    fail(`debt/register governance errors:\n- ${failures.join("\n- ")}`);
   }
 }
 
@@ -679,6 +851,7 @@ function validateStubMarkers(debtRows, allowlist) {
 
 function main() {
   runTaskGovernanceSelfTests();
+  runDebtAndRegisterSelfTests();
   if (taskGovernanceSelfTestOnly) {
     console.log("validate-legacy: task governance self-tests OK");
     return;
@@ -689,6 +862,9 @@ function main() {
   const allowlist = loadAllowlist();
 
   validateDescJson();
+  validateNavigationDirectoryDescriptions();
+  validateGeneratedAgentRules();
+  validateGeneratedAdrIndex();
   validateTaskGovernance();
   validateDebtAndRegister(debtRows, stubEntries);
   validateStubMarkers(debtRows, allowlist);
