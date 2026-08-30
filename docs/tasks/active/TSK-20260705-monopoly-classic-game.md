@@ -54,9 +54,12 @@ actor-private карты выхода работают через серверн
 активный участник становится server-owned победителем, terminal outcome
 закрывает действия, а UI показывает подтверждённый результат. GSR-046 завершил
 S7: оригинальные public local UI/content, map-first поле и необязательная
-read-only методика приняты для локальной партии. Следующие срезы — S8 общая
-модель участников, S9 локальные AI-места и S10 private invite network с
-каталогом; их общие контракты ADR-059/060 не подменяются игровыми полями. P-01
+read-only методика приняты для локальной партии. S8 — общая модель участников,
+S9 — локальные AI-места, S10 — private invite network; их общие контракты
+ADR-059/060 не подменяются игровыми полями. Текущий S11 — локальная
+проверка финала человека и автосоперника по GSR-052. Каталог,
+content/economy/product publication и production readiness остаются отдельными
+воротами. P-01
 принят PM
 2026-08-12: Estate Race — самостоятельная оригинальная игра; общеизвестные
 механики допустимы, чужие названия, тексты, числовые таблицы, изображения,
@@ -83,6 +86,11 @@ recoverable handoff для уже joined human guest seat реализован �
 closed-alpha S10 trust boundary: одна новая 24-часовая recovery-ссылка
 поворачивает credential на том же principal без изменения game state; потеря
 ответа больше не требует пересоздания сессии.
+
+Текущий срез S11 по GSR-052 принят в ограниченной локальной проверке финала
+человека и автосоперника с заранее подготовленным позднеигровым состоянием.
+S0–S11 приняты в своих границах закрытой альфы. Каталог, публикация
+содержимого/продукта, окончательный баланс и production readiness не объявлены.
 
 ## Parent
 
@@ -213,11 +221,16 @@ not_required
    `agentSeats`, `agentSeatCount`, персональная проекция, доступные действия,
    ограниченные невалидные попытки и fallback до 73; S9 принят локально.
 10. **S10:** private invite network v1 (без public rooms, matchmaking и
-    spectators), затем каталог, продуктовая приёмка и закрытие программы.
+    spectators).
+11. **S11:** ограниченная локальная проверка финала человека и автосоперника
+    на существующих AgentSeatDriver, намерении игры, квитанции и проекции в
+    пределах участника; сначала законное позднеигровое состояние, затем
+    победитель от сервера, отсутствие действий и стабильный повтор. Каталог,
+    публикация продукта и production readiness остаются отдельными воротами.
 
 ## Acceptance
 
-- Текущая приёмка определяется GSR-034: два локальных игрока проходят бросок,
+- Историческая базовая приёмка GSR-034: два локальных игрока проходят бросок,
   первую покупку и первую ренту от UI до серверного состояния.
 - Нейтральная фикстура доказывает каждую новую общую возможность без терминов
   игры; replay использует сохранённые результаты и квитанции, а точный повтор
@@ -225,6 +238,12 @@ not_required
 - Недостаток денег и ход неактивного участника отклоняются атомарно.
 - Game-specific id и правила отсутствуют в общих runtime/player слоях.
 - Полная хотсит-партия, сеть и агенты не считаются готовыми по приёмке GSR-034.
+- Текущая приёмка S11 выполнена по GSR-052: команда человека ведёт
+  автоматическое место к одному событию финала, winner/phase/no actions
+  согласованы, изменение после финала отклоняется без изменения state/version,
+  точный повтор стабилен без повторного запуска, долговечная квитанция агента
+  не содержит собственного `surface` при пустом catalog, а projection остаётся
+  ограниченной участником.
 
 ## Validation
 
@@ -263,6 +282,8 @@ npx playwright test apps/player-web/e2e/estate-race.spec.ts --project=chromium
 | S7: public local UI/content | done | GSR-046 принят: game/UI authoring `0.7.0`, map-first UI, game-owned design reference, responsive camera, production browser S0–S7 `8/8`, style-parity `PASS`, локальная accessibility matrix `PASS` на 1400x1000/768x1024/320x800; package `49/49`, plugin `37/37` + typecheck, balance `3/3` (`PASS-for-closed-alpha`). Публикация и финальный экономический баланс не объявлены. |
 | GSR-047 / S8: session-owned participants | done | Session-owned `human`/`local` participants, actor-scoped projection and participant propagation приняты. Canonical contracts/OpenAPI, contracts `7/7`, runtime session/PostgreSQL `42/42`, player-web `50/50`, disposable PostgreSQL restart roundtrip `1/1`, game-agnostic `10/10` и player-core seam — `PASS`; полный CMT suite не заявляется. |
 | GSR-049 / S9: local agent seat | done | Локальная граница: schema-first `agentSeats`, local `agentSeatCount`, system-owned Agent Turn через ordinary projection/availability/Intent, bounded fallback 73, exact receipts, `agentControl`, Estate Race 53/53 + balance 3/3 + compiler, 7 eval fixtures и bounded transcript приняты. Реальный provider и terminal full match остаются residual; network lifecycle был внешней границей S9 и принят отдельно в S10. |
+| GSR-050 / S10: private invite network | done | Закрыто-альфовый invite/credential/SSE/HTTP-resync и узкий recovery уже joined human guest seat приняты; catalog, content/economy/product publication и production readiness вне среза. |
+| GSR-052 / S11: проверка локального финала человека и автосоперника | done | Тест S11 `1/1`, полный Estate Race `57/57` после изоляции зависимостей; подтверждены законное состояние до сессии, `0→1` при банкротстве человека, пропуск аукциона агентом `1→2`, один финал с победителем `p2`, отсутствие действий, неизменность state/version после отказа и стабильный точный повтор с той же квитанцией. Реальный provider и качество стратегии остаются вне среза. |
 
 ## Artifacts
 
@@ -279,6 +300,7 @@ npx playwright test apps/player-web/e2e/estate-race.spec.ts --project=chromium
 - `docs/architecture/gameplay-slices/047-estate-race-session-participants.md` — завершённая граница S8: session-owned participants и actor-scoped local delivery.
 - `docs/architecture/gameplay-slices/049-estate-race-local-agent-seat.md` — завершённая локальная граница S9: agent seat, bounded fallback, receipts и fail-closed Player Web.
 - `docs/architecture/gameplay-slices/050-estate-race-private-invite-network.md` — S10 принят для закрытой альфы: private invite claim, durable credential, authenticated SSE/full HTTP resync, reconnect и узкий recovery уже joined human guest seat; каталог/production остаются вне приёмки.
+- `docs/architecture/gameplay-slices/052-estate-race-agent-terminal-proof.md` — принятый ограниченный S11: локальная проверка финала человека и автосоперника; не полная партия и не проверка стратегии.
 - `docs/tasks/artifacts/TSK-20260705-monopoly-classic-game/product-specification.md` — продуктовый сценарий и интерфейс.
 - `docs/tasks/artifacts/TSK-20260705-monopoly-classic-game/rules-and-rights-provenance.md` — источники и границы прав.
 - `docs/tasks/artifacts/TSK-20260705-monopoly-classic-game/traceability-matrix.md` — связь требований с реализацией и тестами.
@@ -506,5 +528,16 @@ npx playwright test apps/player-web/e2e/estate-race.spec.ts --project=chromium
   одноразовую локальную базу, полный CMT suite не заявляется.
 - 2026-08-13: GSR-049/S9 принят локально: нейтральное доказательство 73
   кандидатов, Estate Race 53/53, balance 3/3, compiler, семь eval fixtures и
-  bounded human+agent transcript. Реальный provider, full terminal match и
-  S10 private invite network остаются вне этой приёмки.
+  bounded human+agent transcript. Реальный provider и качество стратегии
+  остаются вне этой приёмки; S10 private invite network принят отдельно.
+- 2026-08-31: GSR-052/S11 принят в ограниченной локальной проверке. Именованный
+  тест прошёл `1/1`, полный Estate Race после изоляции зависимостей — `57/57`.
+  Законная позднеигровая фикстура задана до создания целевой сессии, а состояния
+  обязанности и аукциона выведены обычными намерениями игры; подтверждены
+  банкротство человека `0→1`, пропуск аукциона
+  заглушкой `mock` без попыток `1→2`, один финал с победителем `p2`, отсутствие
+  действий, отказ изменения после финала без изменения state/version и
+  стабильный точный повтор с той же квитанцией без нового финала. Проверены
+  проекция без чужих секретов/колод, отсутствие `surface` в квитанции и связи
+  версий, участника, триггера, действия, квитанции и события. Это не браузерный
+  E2E и не доказательство полной партии или стратегии агента.

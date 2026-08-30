@@ -74,6 +74,7 @@ docs: # Архитектура, задачи, планирование
       047-estate-race-session-participants.md: file # Estate Race S8: общая session-owned модель локальных участников без сетевого lifecycle и игровых веток в платформе.
       048-cards-money-trains-portable-public-journal.md: file # CMT: общий переносимый журнал подтверждённых публичных событий с безопасной выгрузкой без ИИ-интерпретации.
       049-estate-race-local-agent-seat.md: file # Estate Race S9: одно локальное агентское место, actor-scoped Game Intent, bounded fallback и fail-closed Player Web.
+      052-estate-race-agent-terminal-proof.md: file # Estate Race S11: локальная проверка серверного финала человека и автосоперника, стабильного повтора и персональной проекции с квитанцией.
     metadata: directory... # Архитектура метаданных, аналитики и связанных событий.
     processes: directory... # Процессы сопровождения архитектуры и принятия технических решений.
     protocols: directory... # Межкомпонентные протоколы и форматы обмена платформы.

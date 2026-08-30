@@ -40,7 +40,10 @@ import { BoundedInMemoryCommandAdmissionController } from "../../../services/run
 import { RuntimeService } from "../../../services/runtime-api/src/modules/runtime/runtime.service.ts";
 import { InMemorySessionStore } from "../../../services/runtime-api/src/modules/session/inMemorySessionStore.ts";
 import { createLocalSessionAccess } from "../../../services/runtime-api/src/modules/session/sessionAuthentication.ts";
-import { createAgentSeatCommandId } from "../../../services/runtime-api/src/modules/session/commandIdentity.ts";
+import {
+  createAgentSeatCommandId,
+  requireDurableCommandResult
+} from "../../../services/runtime-api/src/modules/session/commandIdentity.ts";
 import { buildPlayerSessionProjection } from "../../../services/runtime-api/src/modules/session/playerSessionProjection.ts";
 import {
   materializeLocalSessionParticipants,
@@ -3287,6 +3290,190 @@ test("S9 bounded human-vs-agent transcript uses ordinary intents, isolated proje
   assert.equal(fallbackReceipt.status, "applied");
   assert.equal(fallbackReceipt.audit.commandKind, "agent-turn");
   assert.equal(fallbackReceipt.audit.selectedActionId, "property.auction.pass");
+});
+
+test("S11 default mock agent seat finishes a legal late-game fixture exactly once", async () => {
+  const previousMockSetting = process.env.CUBICA_ENABLE_MOCK_AGENT_RUNTIME;
+  let preparation;
+  let store;
+  try {
+    process.env.CUBICA_ENABLE_MOCK_AGENT_RUNTIME = "true";
+    const manifest = await loadManifest();
+    // Establish the legal late-game fixture before target creation, then use
+    // ordinary intents to derive the exact obligation and auction snapshots.
+    preparation = await createPhaseReplay((state) => {
+      state.players.p1.metrics.position = 4;
+      state.players.p1.metrics.cash = 0;
+      state.public.board.lastRoll = { values: [3, 4], total: 7, isDouble: false };
+      state.public.objects.boardCells["cell-01"].attributes.ownerPlayerId = "p1";
+      state.public.objects.boardCells["cell-01"].attributes.mortgaged = true;
+      installDecks(state, { eventOrder: eventCardIds, fundOrder: fundCardIds });
+    }, { phase: "tax" });
+    await act(preparation, "tax.pay");
+    const prepared = await preparation.store.getSession(preparation.session.sessionId);
+    assert.equal(prepared.state.public.turn.phase, "obligation");
+    assert.equal(prepared.state.public.obligation.reason, "tax");
+    assert.equal(prepared.state.players.p1.metrics.cash, 0);
+    const state = structuredClone(prepared.state);
+
+    // Derive the exact agent-facing auction snapshot via the same ordinary
+    // bankruptcy intent before creating the target human+agent session.
+    await act(preparation, "bankruptcy.declare", { heldCardId: "", heldCardId2: "" });
+    const preparedAuction = await preparation.store.getSession(preparation.session.sessionId);
+    assert.equal(preparedAuction.state.public.turn.phase, "auction");
+    assert.equal(preparedAuction.state.public.turn.activePlayerId, "p2");
+
+    const immutableBundle = createImmutableBundleContent(manifest.meta.id, manifest);
+    const bundle = { gameId: manifest.meta.id, bundleHash: immutableBundle.bundleHash, manifest };
+    store = new InMemorySessionStore();
+    const access = createLocalSessionAccess("player");
+    const created = await store.createSession({
+      gameId: manifest.meta.id,
+      sessionRole: "player",
+      initialState: state,
+      participants: [
+        { seatId: "p1", playerId: "p1", kind: "human", joinState: "local" },
+        { seatId: "p2", playerId: "p2", kind: "agent", joinState: "local" }
+      ],
+      immutableBundle,
+      principal: access.principal
+    });
+    const admission = new BoundedInMemoryCommandAdmissionController();
+    const runtime = new RuntimeService(admission, undefined);
+    const command = {
+      sessionId: created.session.sessionId,
+      expectedStateVersion: 0,
+      actionId: "bankruptcy.declare",
+      commandId: createTestCommandId(),
+      params: { heldCardId: "", heldCardId2: "" }
+    };
+
+    const before = await store.getSession(created.session.sessionId);
+    assert.equal(before.version.stateVersion, 0);
+    const agentProjection = buildAgentSeatTurnInput({
+      current: preparedAuction,
+      manifest,
+      bundle,
+      agentRuntime: manifest.agentRuntime,
+      actorId: "p2"
+    });
+    assert.equal(agentProjection.stateScope.secret, undefined);
+    assert.equal(JSON.stringify(agentProjection).includes("decks"), false);
+    assert.equal(agentProjection.stateScope.public.players.p1.objects.heldExitCardId, undefined);
+    assert.equal(agentProjection.stateScope.public.players.p1.objects.heldExitCardId2, undefined);
+    assert.equal(agentProjection.stateScope.actor.objects.heldExitCardId, null);
+    assert.equal(agentProjection.stateScope.actor.objects.heldExitCardId2, null);
+
+    const first = await runtime.dispatch({
+      sessionStore: store,
+      accessToken: access.accessToken,
+      input: command
+    });
+    assert.equal(first.response.state.public.outcome.status, "terminal");
+    assert.equal(first.response.state.public.outcome.winnerPlayerId, "p2");
+    assert.equal(first.response.state.public.outcome.reason, "last-active-player");
+    assert.equal(first.response.state.public.turn.phase, "terminal");
+    assert.deepEqual(first.response.state.public.board.availableActions, []);
+    assert.equal(first.response.version.stateVersion, 2);
+
+    const terminalEvents = (await store.getSessionEvents(created.session.sessionId))
+      .filter(({ eventType }) => eventType === "estate-race.terminal");
+    assert.equal(terminalEvents.length, 1);
+    assert.deepEqual(terminalEvents[0].data, {
+      kind: "terminal",
+      winnerPlayerId: "p2",
+      reason: "last-active-player"
+    });
+
+    const terminalSnapshot = await store.getSession(created.session.sessionId);
+
+    const terminalAvailability = projectSessionActionAvailability(terminalSnapshot, bundle, {
+      actorPlayerId: "p2",
+      sessionRole: "player"
+    });
+    const terminalPass = terminalAvailability.find(({ actionId }) => actionId === "property.auction.pass");
+    assert.equal(terminalPass?.status, "unavailable");
+    assert.equal(terminalPass?.basisStateVersion, terminalSnapshot.version.stateVersion);
+    const terminalCandidate = await executePublishedGameIntentCandidate({
+      bundle,
+      state: terminalSnapshot.state,
+      sessionId: terminalSnapshot.sessionId,
+      actionId: "property.auction.pass",
+      params: {},
+      actorPlayerId: "p2",
+      sessionRole: "player",
+      now: new Date("2026-08-13T12:00:00.000Z")
+    });
+    assert.equal(terminalCandidate.result.ok, false);
+    assert.equal(terminalCandidate.candidateState, undefined);
+    assert.deepEqual((await store.getSession(created.session.sessionId)).state, terminalSnapshot.state);
+
+    const seatReceipt = await store.getCommandReceipt({
+      sessionId: created.session.sessionId,
+      credentialSha256: access.principal.credentialSha256,
+      commandId: createAgentSeatCommandId(created.session.sessionId, "p2", 1)
+    });
+    assert.ok(seatReceipt);
+    assert.equal(seatReceipt.status, "applied");
+    assert.equal(seatReceipt.stateVersionBefore, 1);
+    assert.equal(seatReceipt.stateVersionAfter, 2);
+    assert.equal(seatReceipt.actorId, "p2");
+    assert.equal(seatReceipt.actionId, "system.agent-seat-turn");
+    assert.equal(seatReceipt.audit.commandKind, "agent-turn");
+    assert.equal(seatReceipt.audit.triggerActionId, "system.agent-seat-turn");
+    assert.equal(seatReceipt.audit.selectedActionId, "property.auction.pass");
+    const durable = requireDurableCommandResult(seatReceipt.result, "agent-turn").value;
+    assert.equal(Object.hasOwn(durable.agentTurn, "surface"), false);
+    assert.equal(durable.agentTurn.audit.source, "local");
+    assert.equal(durable.agentTurn.selectedIntent.actionId, "property.auction.pass");
+    assert.equal(durable.attempts.length, 2);
+    assert.ok(durable.attempts.every(({ code }) => code === "selectedIntentRejected"));
+    assert.deepEqual(JSON.parse(JSON.stringify(durable.agentTurn)), durable.agentTurn);
+    assert.equal(terminalEvents[0].receiptId, seatReceipt.receiptId);
+    assert.ok(seatReceipt.eventRefs.includes(terminalEvents[0].eventId));
+
+    const staleBefore = structuredClone(terminalSnapshot);
+    await assert.rejects(
+      runtime.dispatch({
+        sessionStore: store,
+        accessToken: access.accessToken,
+        input: { ...command, commandId: createTestCommandId() }
+      }),
+      /changed after version/iu
+    );
+    const staleAfter = await store.getSession(created.session.sessionId);
+    assert.deepEqual(staleAfter.state, staleBefore.state);
+    assert.deepEqual(staleAfter.version, staleBefore.version);
+    assert.equal(
+      (await store.getSessionEvents(created.session.sessionId))
+        .filter(({ eventType }) => eventType === "estate-race.terminal").length,
+      1
+    );
+
+    const receiptBeforeRetry = structuredClone(seatReceipt);
+    const retry = await runtime.dispatch({
+      sessionStore: store,
+      accessToken: access.accessToken,
+      input: command
+    });
+    assert.deepEqual(retry.response, first.response);
+    assert.deepEqual(await store.getCommandReceipt({
+      sessionId: created.session.sessionId,
+      credentialSha256: access.principal.credentialSha256,
+      commandId: seatReceipt.commandId
+    }), receiptBeforeRetry);
+    assert.deepEqual((await store.getSession(created.session.sessionId)).state, terminalSnapshot.state);
+    assert.equal(
+      (await store.getSessionEvents(created.session.sessionId))
+        .filter(({ eventType }) => eventType === "estate-race.terminal").length,
+      1
+    );
+  } finally {
+    if (store !== undefined) await store.close();
+    if (preparation !== undefined) await preparation.store.close();
+    if (previousMockSetting === undefined) delete process.env.CUBICA_ENABLE_MOCK_AGENT_RUNTIME;
+    else process.env.CUBICA_ENABLE_MOCK_AGENT_RUNTIME = previousMockSetting;
+  }
 });
 
 test("player-facing repository publishes the web screen and immutable field plugin", async () => {
