@@ -283,7 +283,7 @@ npx playwright test apps/player-web/e2e/estate-race.spec.ts --project=chromium
 | GSR-047 / S8: session-owned participants | done | Session-owned `human`/`local` participants, actor-scoped projection and participant propagation приняты. Canonical contracts/OpenAPI, contracts `7/7`, runtime session/PostgreSQL `42/42`, player-web `50/50`, disposable PostgreSQL restart roundtrip `1/1`, game-agnostic `10/10` и player-core seam — `PASS`; полный CMT suite не заявляется. |
 | GSR-049 / S9: local agent seat | done | Локальная граница: schema-first `agentSeats`, local `agentSeatCount`, system-owned Agent Turn через ordinary projection/availability/Intent, bounded fallback 73, exact receipts, `agentControl`, Estate Race 53/53 + balance 3/3 + compiler, 7 eval fixtures и bounded transcript приняты. Реальный provider и terminal full match остаются residual; network lifecycle был внешней границей S9 и принят отдельно в S10. |
 | GSR-050 / S10: private invite network | done | Закрыто-альфовый invite/credential/SSE/HTTP-resync и узкий recovery уже joined human guest seat приняты; catalog, content/economy/product publication и production readiness вне среза. |
-| GSR-052 / S11: проверка локального финала человека и автосоперника | done | Тест S11 `1/1`, полный Estate Race `57/57` после изоляции зависимостей; подтверждены законное состояние до сессии, `0→1` при банкротстве человека, пропуск аукциона агентом `1→2`, один финал с победителем `p2`, отсутствие действий, неизменность state/version после отказа и стабильный точный повтор с той же квитанцией. Реальный provider и качество стратегии остаются вне среза. |
+| GSR-052 / S11: проверка локального финала человека и автосоперника | done | Тест S11 `1/1`, полный Estate Race `57/57` после изоляции зависимостей; подтверждены законная фикстура до сессии, банкротство человека `0→1`, принятие заложенного актива автосоперником `1→2`, получение карты `2→3`, один финал с победителем `p2`, отсутствие действий, неизменность state/version после отказа и стабильный точный повтор с теми же квитанциями. Реальный provider и качество стратегии остаются вне среза. |
 
 ## Artifacts
 
@@ -533,11 +533,12 @@ npx playwright test apps/player-web/e2e/estate-race.spec.ts --project=chromium
 - 2026-08-31: GSR-052/S11 принят в ограниченной локальной проверке. Именованный
   тест прошёл `1/1`, полный Estate Race после изоляции зависимостей — `57/57`.
   Законная позднеигровая фикстура задана до создания целевой сессии, а состояния
-  обязанности и аукциона выведены обычными намерениями игры; подтверждены
-  банкротство человека `0→1`, пропуск аукциона
-  заглушкой `mock` без попыток `1→2`, один финал с победителем `p2`, отсутствие
+  обязанности, передачи заложенного актива и получения карты выведены обычными
+  намерениями игры; подтверждены банкротство человека `0→1`, принятие актива
+  заглушкой `mock` без неудачных попыток `1→2`, получение карты `2→3`, один
+  финал с победителем `p2`, отсутствие
   действий, отказ изменения после финала без изменения state/version и
-  стабильный точный повтор с той же квитанцией без нового финала. Проверены
+  стабильный точный повтор с теми же квитанциями без нового финала. Проверены
   проекция без чужих секретов/колод, отсутствие `surface` в квитанции и связи
   версий, участника, триггера, действия, квитанции и события. Это не браузерный
   E2E и не доказательство полной партии или стратегии агента.

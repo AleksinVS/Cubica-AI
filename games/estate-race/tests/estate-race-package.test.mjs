@@ -3300,28 +3300,45 @@ test("S11 default mock agent seat finishes a legal late-game fixture exactly onc
     process.env.CUBICA_ENABLE_MOCK_AGENT_RUNTIME = "true";
     const manifest = await loadManifest();
     // Establish the legal late-game fixture before target creation, then use
-    // ordinary intents to derive the exact obligation and auction snapshots.
+    // ordinary intents to derive the exact creditor and card-claim snapshots.
     preparation = await createPhaseReplay((state) => {
-      state.players.p1.metrics.position = 4;
+      state.players.p1.metrics.position = 1;
       state.players.p1.metrics.cash = 0;
+      state.players.p2.metrics.cash = 10;
       state.public.board.lastRoll = { values: [3, 4], total: 7, isDouble: false };
-      state.public.objects.boardCells["cell-01"].attributes.ownerPlayerId = "p1";
-      state.public.objects.boardCells["cell-01"].attributes.mortgaged = true;
-      installDecks(state, { eventOrder: eventCardIds, fundOrder: fundCardIds });
-    }, { phase: "tax" });
-    await act(preparation, "tax.pay");
+      state.public.objects.boardCells["cell-01"].attributes.ownerPlayerId = "p2";
+      state.public.objects.boardCells["cell-05"].attributes.ownerPlayerId = "p1";
+      state.public.objects.boardCells["cell-05"].attributes.mortgaged = true;
+      state.players.p1.objects.heldExitCardId = "event-exit";
+      installDecks(state, {
+        eventOrder: eventCardIds.filter((cardId) => cardId !== "event-exit"),
+        eventHeld: ["event-exit"],
+        fundOrder: fundCardIds
+      });
+    }, { phase: "rent" });
+    await act(preparation, "property.rent");
     const prepared = await preparation.store.getSession(preparation.session.sessionId);
     assert.equal(prepared.state.public.turn.phase, "obligation");
-    assert.equal(prepared.state.public.obligation.reason, "tax");
+    assert.equal(prepared.state.public.obligation.reason, "rent");
+    assert.equal(prepared.state.public.obligation.creditorPlayerId, "p2");
     assert.equal(prepared.state.players.p1.metrics.cash, 0);
     const state = structuredClone(prepared.state);
 
-    // Derive the exact agent-facing auction snapshot via the same ordinary
-    // bankruptcy intent before creating the target human+agent session.
-    await act(preparation, "bankruptcy.declare", { heldCardId: "", heldCardId2: "" });
-    const preparedAuction = await preparation.store.getSession(preparation.session.sessionId);
-    assert.equal(preparedAuction.state.public.turn.phase, "auction");
-    assert.equal(preparedAuction.state.public.turn.activePlayerId, "p2");
+    // The same ordinary intents derive both snapshots that the consecutive
+    // default-mock turns will actually receive in the target session.
+    await act(preparation, "bankruptcy.declare", {
+      heldCardId: "event-exit",
+      heldCardId2: ""
+    });
+    const preparedTransfer = await preparation.store.getSession(preparation.session.sessionId);
+    assert.equal(preparedTransfer.state.public.turn.phase, "liquidationMortgage");
+    assert.equal(preparedTransfer.state.public.turn.activePlayerId, "p2");
+    assert.equal(preparedTransfer.state.players.p2.status, "active");
+
+    await act(preparation, "mortgage.transfer.keep");
+    const preparedClaim = await preparation.store.getSession(preparation.session.sessionId);
+    assert.equal(preparedClaim.state.public.turn.phase, "liquidationClaim");
+    assert.equal(preparedClaim.state.public.turn.activePlayerId, "p2");
 
     const immutableBundle = createImmutableBundleContent(manifest.meta.id, manifest);
     const bundle = { gameId: manifest.meta.id, bundleHash: immutableBundle.bundleHash, manifest };
@@ -3345,24 +3362,24 @@ test("S11 default mock agent seat finishes a legal late-game fixture exactly onc
       expectedStateVersion: 0,
       actionId: "bankruptcy.declare",
       commandId: createTestCommandId(),
-      params: { heldCardId: "", heldCardId2: "" }
+      params: { heldCardId: "event-exit", heldCardId2: "" }
     };
 
     const before = await store.getSession(created.session.sessionId);
     assert.equal(before.version.stateVersion, 0);
-    const agentProjection = buildAgentSeatTurnInput({
-      current: preparedAuction,
-      manifest,
-      bundle,
-      agentRuntime: manifest.agentRuntime,
-      actorId: "p2"
-    });
-    assert.equal(agentProjection.stateScope.secret, undefined);
-    assert.equal(JSON.stringify(agentProjection).includes("decks"), false);
-    assert.equal(agentProjection.stateScope.public.players.p1.objects.heldExitCardId, undefined);
-    assert.equal(agentProjection.stateScope.public.players.p1.objects.heldExitCardId2, undefined);
-    assert.equal(agentProjection.stateScope.actor.objects.heldExitCardId, null);
-    assert.equal(agentProjection.stateScope.actor.objects.heldExitCardId2, null);
+    for (const current of [preparedTransfer, preparedClaim]) {
+      const agentProjection = buildAgentSeatTurnInput({
+        current,
+        manifest,
+        bundle,
+        agentRuntime: manifest.agentRuntime,
+        actorId: "p2"
+      });
+      assert.equal(agentProjection.stateScope.secret, undefined);
+      assert.equal(JSON.stringify(agentProjection).includes("decks"), false);
+      assert.equal(agentProjection.stateScope.public.players.p1.objects.heldExitCardId, undefined);
+      assert.equal(agentProjection.stateScope.public.players.p1.objects.heldExitCardId2, undefined);
+    }
 
     const first = await runtime.dispatch({
       sessionStore: store,
@@ -3374,7 +3391,7 @@ test("S11 default mock agent seat finishes a legal late-game fixture exactly onc
     assert.equal(first.response.state.public.outcome.reason, "last-active-player");
     assert.equal(first.response.state.public.turn.phase, "terminal");
     assert.deepEqual(first.response.state.public.board.availableActions, []);
-    assert.equal(first.response.version.stateVersion, 2);
+    assert.equal(first.response.version.stateVersion, 3);
 
     const terminalEvents = (await store.getSessionEvents(created.session.sessionId))
       .filter(({ eventType }) => eventType === "estate-race.terminal");
@@ -3391,14 +3408,14 @@ test("S11 default mock agent seat finishes a legal late-game fixture exactly onc
       actorPlayerId: "p2",
       sessionRole: "player"
     });
-    const terminalPass = terminalAvailability.find(({ actionId }) => actionId === "property.auction.pass");
-    assert.equal(terminalPass?.status, "unavailable");
-    assert.equal(terminalPass?.basisStateVersion, terminalSnapshot.version.stateVersion);
+    const terminalClaim = terminalAvailability.find(({ actionId }) => actionId === "liquidation.card.claim");
+    assert.equal(terminalClaim?.status, "unavailable");
+    assert.equal(terminalClaim?.basisStateVersion, terminalSnapshot.version.stateVersion);
     const terminalCandidate = await executePublishedGameIntentCandidate({
       bundle,
       state: terminalSnapshot.state,
       sessionId: terminalSnapshot.sessionId,
-      actionId: "property.auction.pass",
+      actionId: "liquidation.card.claim",
       params: {},
       actorPlayerId: "p2",
       sessionRole: "player",
@@ -3406,31 +3423,38 @@ test("S11 default mock agent seat finishes a legal late-game fixture exactly onc
     });
     assert.equal(terminalCandidate.result.ok, false);
     assert.equal(terminalCandidate.candidateState, undefined);
-    assert.deepEqual((await store.getSession(created.session.sessionId)).state, terminalSnapshot.state);
+    const afterTerminalCandidate = await store.getSession(created.session.sessionId);
+    assert.deepEqual(afterTerminalCandidate.state, terminalSnapshot.state);
+    assert.deepEqual(afterTerminalCandidate.version, terminalSnapshot.version);
 
-    const seatReceipt = await store.getCommandReceipt({
-      sessionId: created.session.sessionId,
-      credentialSha256: access.principal.credentialSha256,
-      commandId: createAgentSeatCommandId(created.session.sessionId, "p2", 1)
-    });
-    assert.ok(seatReceipt);
-    assert.equal(seatReceipt.status, "applied");
-    assert.equal(seatReceipt.stateVersionBefore, 1);
-    assert.equal(seatReceipt.stateVersionAfter, 2);
-    assert.equal(seatReceipt.actorId, "p2");
-    assert.equal(seatReceipt.actionId, "system.agent-seat-turn");
-    assert.equal(seatReceipt.audit.commandKind, "agent-turn");
-    assert.equal(seatReceipt.audit.triggerActionId, "system.agent-seat-turn");
-    assert.equal(seatReceipt.audit.selectedActionId, "property.auction.pass");
-    const durable = requireDurableCommandResult(seatReceipt.result, "agent-turn").value;
-    assert.equal(Object.hasOwn(durable.agentTurn, "surface"), false);
-    assert.equal(durable.agentTurn.audit.source, "local");
-    assert.equal(durable.agentTurn.selectedIntent.actionId, "property.auction.pass");
-    assert.equal(durable.attempts.length, 2);
-    assert.ok(durable.attempts.every(({ code }) => code === "selectedIntentRejected"));
-    assert.deepEqual(JSON.parse(JSON.stringify(durable.agentTurn)), durable.agentTurn);
-    assert.equal(terminalEvents[0].receiptId, seatReceipt.receiptId);
-    assert.ok(seatReceipt.eventRefs.includes(terminalEvents[0].eventId));
+    const expectedAgentActions = ["mortgage.transfer.keep", "liquidation.card.claim"];
+    const seatReceipts = [];
+    for (const [index, selectedActionId] of expectedAgentActions.entries()) {
+      const stateVersionBefore = index + 1;
+      const seatReceipt = await store.getCommandReceipt({
+        sessionId: created.session.sessionId,
+        credentialSha256: access.principal.credentialSha256,
+        commandId: createAgentSeatCommandId(created.session.sessionId, "p2", stateVersionBefore)
+      });
+      assert.ok(seatReceipt);
+      assert.equal(seatReceipt.status, "applied");
+      assert.equal(seatReceipt.stateVersionBefore, stateVersionBefore);
+      assert.equal(seatReceipt.stateVersionAfter, stateVersionBefore + 1);
+      assert.equal(seatReceipt.actorId, "p2");
+      assert.equal(seatReceipt.actionId, "system.agent-seat-turn");
+      assert.equal(seatReceipt.audit.commandKind, "agent-turn");
+      assert.equal(seatReceipt.audit.triggerActionId, "system.agent-seat-turn");
+      assert.equal(seatReceipt.audit.selectedActionId, selectedActionId);
+      const durable = requireDurableCommandResult(seatReceipt.result, "agent-turn").value;
+      assert.equal(Object.hasOwn(durable.agentTurn, "surface"), false);
+      assert.equal(durable.agentTurn.audit.source, "mock");
+      assert.equal(durable.agentTurn.selectedIntent.actionId, selectedActionId);
+      assert.deepEqual(durable.attempts, []);
+      assert.deepEqual(JSON.parse(JSON.stringify(durable.agentTurn)), durable.agentTurn);
+      seatReceipts.push(structuredClone(seatReceipt));
+    }
+    assert.equal(terminalEvents[0].receiptId, seatReceipts[1].receiptId);
+    assert.ok(seatReceipts[1].eventRefs.includes(terminalEvents[0].eventId));
 
     const staleBefore = structuredClone(terminalSnapshot);
     await assert.rejects(
@@ -3450,18 +3474,19 @@ test("S11 default mock agent seat finishes a legal late-game fixture exactly onc
       1
     );
 
-    const receiptBeforeRetry = structuredClone(seatReceipt);
     const retry = await runtime.dispatch({
       sessionStore: store,
       accessToken: access.accessToken,
       input: command
     });
     assert.deepEqual(retry.response, first.response);
-    assert.deepEqual(await store.getCommandReceipt({
-      sessionId: created.session.sessionId,
-      credentialSha256: access.principal.credentialSha256,
-      commandId: seatReceipt.commandId
-    }), receiptBeforeRetry);
+    for (const seatReceipt of seatReceipts) {
+      assert.deepEqual(await store.getCommandReceipt({
+        sessionId: created.session.sessionId,
+        credentialSha256: access.principal.credentialSha256,
+        commandId: seatReceipt.commandId
+      }), seatReceipt);
+    }
     assert.deepEqual((await store.getSession(created.session.sessionId)).state, terminalSnapshot.state);
     assert.equal(
       (await store.getSessionEvents(created.session.sessionId))
