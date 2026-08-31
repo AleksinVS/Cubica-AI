@@ -47,11 +47,13 @@ in_progress
   и повтор. Exact-zero cleanup, неизменный Git и уничтожение одноразового
   контура доказаны. Разрешение DR-19 израсходовано, полная матрица и
   положительные пути по-прежнему не доказаны; Stage 3 закрыт.
-- Для предлагаемого DR-21 2026-08-31 подготовлен новый одноразовый private
-  contour. Live preflight подтвердил Portal/Editor/worker bindings, exact-zero
-  PostgreSQL, evaluator `ready`, неизменный Git и `providerCalls=0`; enqueue и
-  Z.AI не запускались. Окно остаётся `pending` до отдельного решения PM и
-  свежего независимого Sol-high `ACCEPT`.
+- DR-21 выполнен 2026-08-31 после live preflight и независимого Sol-high
+  `ACCEPT` точной связки operator/config/manifest/source. Три отрицательных
+  сценария дали ожидаемый `no_change`, 0 операций и прошли ручную рубрику 4/4.
+  Первый положительный сценарий завершился fail-closed `schema_error` на
+  allowlisted этапе `provenance`; no-retry hard stop исключил correction.
+  Exact-zero cleanup, неизменный Git и уничтожение одноразового контура
+  доказаны. Разрешение израсходовано; Stage 3 остаётся закрыт.
 
 ## Parent
 
@@ -1141,6 +1143,44 @@ worker и не открывает второй путь к модели или �
   bytes. `providerCalls=0`; Z.AI не вызывался.
 - Simplification: не добавлены сервис, таблица, схема, второй enqueue,
   scheduler или новая retry-политика; Next/Strapi процессы не запускались.
-- Blocker: DR-21 остаётся `pending`. До явного разрешения PM на ровно одно
-  полное окно и свежего независимого Sol-high `ACCEPT` запрещены enqueue,
-  worker и внешний provider call. Stage 3 остаётся закрыт.
+- Gate: после этой остановки PM разрешил ровно одно полное окно; независимый
+  Sol-high reviewer принял точную связку после исправления привязки к чистому
+  reviewed HEAD и fail-closed destruction/recovery. Разрешение preflight само
+  по себе не переносилось на иной operator, manifest, config или source.
+  Reviewed source HEAD — `b621c7c2856e6034281a6f8d92589c53b3ef5dea`;
+  SHA-256 operator — `bd060eb10829e239e577df91c9d399ad8d65e03940a5cf50bb89802f34c176f9`,
+  config — `65f4ce3d0d1bc95d161c84b64cfdc65ffe51663dea6375a0781a4b9b151b9783`,
+  manifest — `6c79bda4f788e8fe4fac30488e4e761f3b5d0d34dbc65281f19a7036f9d76ce1`.
+
+### 2026-08-31 — основной AI agent, фактическое окно DR-21
+
+- Execution: на Z.AI Coding Plan `glm-4.7` выполнены четыре из пяти строго
+  упорядоченных сценариев с bounds `90000/5000/100000/300000` ms,
+  `maxAttempts=1` и без retry. `transient_conversation`, `existing_fact` и
+  `unconfirmed_agent_suggestion` вернули ожидаемый `no_change`, 0 операций и
+  прошли ручную рубрику 4/4; durations — 4012, 4507 и 8382 ms.
+- Hard stop: `confirmed_new_knowledge` завершился `schema_error`; локальная
+  бесконтентная диагностика назвала закрытый этап `provenance`. Кандидат не
+  применялся и не сохранялся, поэтому после обязательного уничтожения нельзя
+  честно определить, какое именно условие ссылки на источник не прошло.
+  `correction` и повтор не запускались; всего израсходовано четыре provider
+  attempts.
+- Cleanup: после retention удалены 4 run и 4 metric, tombstone получили 8
+  messages и 4 threads; active runs/metrics/messages/threads и text bytes
+  равны нулю. Git не изменился. При первом destruction контейнер уже был
+  удалён, но завершение оператора потеряло соединение advisory lock до удаления
+  private state. Временный оператор исправлен так, чтобы recovery продолжался
+  только при доказанном content-free exact-zero отчёте и подтверждённом
+  отсутствии контейнера; повторный destruction удалил private state.
+- Artifact: сохранён только валидируемый бесконтентный
+  [`dr21-content-free-report.json`](../artifacts/TSK-20260809-product-knowledge-shadow-stage-2/dr21-content-free-report.json).
+  Provider payload, тексты диалогов, кандидат, request identifiers и секреты в
+  Git не переносились.
+- Simplification: продуктовый код, схема, storage, prompt, retry и provider не
+  менялись. Следующий шаг — локальный разбор существующей provenance-проверки;
+  новый сервис, повторный внешний вызов и ослабление защиты не нужны для
+  диагностики.
+- Blocker: положительные create/update пути не доказаны. До отдельного решения
+  запрещены новое внешнее окно, Stage 3, активное чтение, применение кандидатов
+  и Git-запись. Изменение смысла provenance или публичного контракта требует
+  решения PM.

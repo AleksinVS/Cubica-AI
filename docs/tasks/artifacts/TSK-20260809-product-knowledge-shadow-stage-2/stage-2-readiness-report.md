@@ -8,7 +8,7 @@
 - [Проверки](#проверки)
 - [Текущее handoff-состояние — 2026-08-13](#текущее-handoff-состояние--2026-08-13)
 - [Остаточные условия активации](#остаточные-условия-активации)
-- [Подготовка предлагаемого окна DR-21](#подготовка-предлагаемого-окна-dr-21)
+- [Фактическое окно DR-21](#фактическое-окно-dr-21)
 
 ## Итог
 
@@ -468,33 +468,40 @@ Coding Plan key использовался только в явно разреш
 а lease любого будущего окна обязан покрывать модель, заключительную
 Portal-проверку и запас финальной записи.
 
-## Подготовка предлагаемого окна DR-21
+## Фактическое окно DR-21
 
-31 августа 2026 года подготовлен новый одноразовый private contour, но право
-внешнего вызова не выдавалось. Контур повторно использует maintained Editor
-job builder, Portal authorization и worker reauthorization, app/worker роли
-PostgreSQL 17, постоянный evaluator и read-only bare Git. Полноценные процессы
-Next и Strapi не запускаются: тонкий loopback adapter вызывает тот же чистый
-Portal utility и проверяет тот же HTTP-контракт, не создавая ещё один сервис.
+31 августа 2026 года PM разрешил ровно одно полное окно на прежнем Z.AI Coding
+Plan `glm-4.7`. Перед активацией live preflight доказал exact-zero PostgreSQL,
+Portal/Editor/worker bindings, evaluator `ready`, неизменный Git и
+`providerCalls=0`. Независимый Sol-high reviewer принял точную связку
+operator/config/manifest/source после усиления привязки к чистому reviewed HEAD
+и восстановления destruction. Применены bounds `90000/5000/100000/300000` ms,
+`maxAttempts=1`, без retry.
 
-Live preflight дал следующие бесконтентные доказательства:
+Фактические бесконтентные результаты:
 
-- manifest содержит ровно пять фиксированных категорий и связан с одним
-  developer/game/policy и точным Git HEAD;
-- PostgreSQL содержит 0 run, 0 metrics, 0 active messages, 0 active threads и
-  0 байт текста;
-- Portal initial authorization и отдельная подписанная worker
-  reauthorization возвращают один и тот же principal/policy binding;
-- штатный Editor shadow job успешно формируется, но enqueue намеренно не
-  вызывается;
-- worker config принимает только текущие `.env` provider/model и явные bounds
-  `90000/5000/100000/300000` ms при `maxAttempts=1`;
-- evaluator записал состояние `ready`, Git остался неизменным,
-  `providerCalls=0`.
+- `transient_conversation`, `existing_fact` и
+  `unconfirmed_agent_suggestion` дали ожидаемый `no_change`, 0 операций и
+  прошли ручную рубрику 4/4; durations — 4012, 4507 и 8382 ms;
+- `confirmed_new_knowledge` завершился fail-closed `schema_error`, а локальная
+  allowlisted диагностика указала этап `provenance`;
+- `correction` и повтор не запускались; израсходовано четыре provider attempts;
+- Git не изменился, никакой кандидат не применялся.
 
-Одноразовый контур остаётся только под локальным `.tmp/` и не является
-постоянной системой или новым продуктовым компонентом. Следующий шаг — не
-запуск, а отдельное решение PM о ровно одном полном окне и свежий независимый
-Sol-high review точных байтов operator/config/manifest. До этих двух ворот
-запрещены enqueue, worker и любой запрос к Z.AI; Stage 3, применение кандидатов
-и Git-запись также закрыты.
+После retention credential-free cleanup удалил 4 run и 4 metric, tombstone
+получили 8 messages и 4 threads. Итоговые active
+runs/metrics/messages/threads и text bytes равны нулю. При первом destruction
+контейнер был удалён до разрыва advisory-lock соединения, поэтому временный
+оператор консервативно оставил private state. Recovery исправлен локально:
+продолжение при уже отсутствующем контейнере разрешено только по валидному
+content-free exact-zero отчёту и неизменному Git. Повторный destruction удалил
+private state; отсутствие контейнера подтверждено.
+
+В Git сохранён только
+[`dr21-content-free-report.json`](dr21-content-free-report.json). Тексты,
+provider payload, кандидат, request identifiers и секреты уничтожены. Поэтому
+точное нарушенное подусловие provenance нельзя восстановить, и настройка prompt
+по догадке запрещена. Следующий шаг DR-22 — локально проверить существующий
+guard и синтетические create/update fixtures. Новый внешний вызов, Stage 3,
+применение кандидатов и Git-запись остаются закрыты; ослабление provenance или
+изменение публичного контракта требует решения PM.
