@@ -29,6 +29,12 @@ export type AgUiBackendReadiness =
       readonly authConfigured: boolean;
     };
 
+/** Single default-off gate shared by the public CopilotKit and local AG-UI routes. */
+export function isEditorAgentRuntimeEnabled(): boolean {
+  const value = process.env.CUBICA_EDITOR_AGENT_RUNTIME;
+  return value === "1" || value === "true";
+}
+
 export function getAgUiBackendReadiness(request?: NextRequest): AgUiBackendReadiness {
   const configuredUrl = process.env.CUBICA_EDITOR_AGENT_AG_UI_URL?.trim() || undefined;
   if (configuredUrl !== undefined) {

@@ -12,6 +12,7 @@ import { EventType, RunAgentInputSchema, type BaseEvent, type RunAgentInput } fr
 
 import { EDITOR_AUTHORING_ASSISTANT_ID } from "@/lib/agent-assistant-registry";
 import { createLocalEditorAgentEvents } from "@/lib/editor-agent-local-backend";
+import { isEditorAgentRuntimeEnabled } from "@/lib/editor-copilot-runtime-backend";
 import {
   buildProductContextShadowJob,
   runProductContextShadowPostResponse,
@@ -26,6 +27,10 @@ export const maxDuration = 15;
 const textEncoder = new TextEncoder();
 
 export function GET() {
+  if (!isEditorAgentRuntimeEnabled()) {
+    return Response.json({ error: "Editor agent runtime is disabled." }, { status: 404 });
+  }
+
   return Response.json({
     ok: true,
     agentId: EDITOR_AUTHORING_ASSISTANT_ID,
@@ -35,6 +40,10 @@ export function GET() {
 }
 
 export async function POST(request: Request) {
+  if (!isEditorAgentRuntimeEnabled()) {
+    return Response.json({ error: "Editor agent runtime is disabled." }, { status: 404 });
+  }
+
   if (request.headers.get("x-cubica-agent-id") !== EDITOR_AUTHORING_ASSISTANT_ID) {
     return Response.json({ error: "Unknown editor agent." }, { status: 403 });
   }

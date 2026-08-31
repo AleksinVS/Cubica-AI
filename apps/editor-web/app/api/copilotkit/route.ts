@@ -16,7 +16,11 @@ import {
 import { type NextRequest } from "next/server";
 
 import { EDITOR_AUTHORING_ASSISTANT_ID } from "@/lib/agent-assistant-registry";
-import { getAgUiBackendHeaders, getAgUiBackendReadiness } from "@/lib/editor-copilot-runtime-backend";
+import {
+  getAgUiBackendHeaders,
+  getAgUiBackendReadiness,
+  isEditorAgentRuntimeEnabled
+} from "@/lib/editor-copilot-runtime-backend";
 
 export const runtime = "nodejs";
 
@@ -83,9 +87,4 @@ function createEditorCopilotRuntime(
     },
     debug: process.env.CUBICA_EDITOR_AGENT_DEBUG === "1"
   });
-}
-
-function isEditorAgentRuntimeEnabled(): boolean {
-  const value = process.env.CUBICA_EDITOR_AGENT_RUNTIME;
-  return value === "1" || value === "true";
 }
