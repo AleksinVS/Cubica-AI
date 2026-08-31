@@ -41,6 +41,7 @@ import {
   EDITOR_ENTITY_PROJECTION_CACHE_FORMAT_VERSION,
   buildEditorEntityProjection,
   hashEditorText,
+  reviveEditorEntityProjection,
   serializeEditorEntityProjection,
   type SerializedEditorEntityProjectionEnvelope
 } from "@cubica/editor-engine";
@@ -220,11 +221,16 @@ export async function loadProjectionEnvelopeWithCache(input: {
   const cachedText = await readCacheTextEntry(cacheDir, key);
   if (cachedText !== null) {
     try {
-      const parsed = JSON.parse(cachedText) as SerializedEditorEntityProjectionEnvelope;
-      input.telemetry?.recordHit(performance.now() - readStart);
-      return parsed;
+      const parsed: unknown = JSON.parse(cachedText);
+      // Revive is the canonical structural guard. It validates the complete
+      // nested payload before this server returns the original envelope (and
+      // its optional documentHashes/engineVersion metadata) to the client.
+      if (reviveEditorEntityProjection(parsed) !== null) {
+        input.telemetry?.recordHit(performance.now() - readStart);
+        return parsed as SerializedEditorEntityProjectionEnvelope;
+      }
     } catch {
-      // Corrupt file → treat as a miss and rebuild (one-shot cache).
+      // Corrupt file or malformed JSON → treat as a miss and rebuild.
     }
   }
 

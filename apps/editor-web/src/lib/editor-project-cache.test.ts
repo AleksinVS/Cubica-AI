@@ -24,6 +24,7 @@ import {
   createEditorProjectionCacheTelemetry,
   loadProjectionEnvelopeWithCache
 } from "./editor-project-cache";
+import { resolveEditorCacheDir, writeCacheTextEntryAtomic } from "./editor-file-cache";
 
 const workspaceRoot = path.resolve(process.cwd(), "..", "..");
 const testRoot = path.join(workspaceRoot, ".tmp", "editor-project-cache-tests");
@@ -115,6 +116,42 @@ describe("editor project cache", () => {
     const snapshot = telemetry.snapshot();
     expect(snapshot.cacheMisses).toBe(1);
     expect(snapshot.cacheHits).toBe(1);
+  });
+
+  it("treats a structurally malformed nested envelope as a miss and rebuilds it", async () => {
+    const uniqueGameText = `${JSON.stringify(
+      { ...JSON.parse(gameText), _cacheMarker: `${Date.now()}-${Math.random()}` },
+      null,
+      2
+    )}\n`;
+    const documents = [
+      { filePath: "game.authoring.json", text: uniqueGameText },
+      uiDoc
+    ];
+    const valid = await loadProjectionEnvelopeWithCache({ documents, activeChannel: "web", cacheEnabled: false });
+    const malformed = {
+      ...valid,
+      payload: {
+        ...valid.payload,
+        entities: valid.payload.entities.map((entity, index) =>
+          index === 0 ? { ...entity, facets: { ...entity.facets, view: null } } : entity
+        )
+      }
+    };
+    const cacheDir = await resolveEditorCacheDir("projects");
+    const key = computeProjectionArtifactKey(documents, "web");
+    await writeCacheTextEntryAtomic(cacheDir, key, `${JSON.stringify(malformed)}\n`);
+
+    const telemetry = createEditorProjectionCacheTelemetry();
+    const rebuilt = await loadProjectionEnvelopeWithCache({ documents, activeChannel: "web", telemetry });
+    expect(rebuilt.payload.entities.length).toBeGreaterThan(0);
+    expect(telemetry.snapshot().cacheHits).toBe(0);
+    expect(telemetry.snapshot().cacheMisses).toBe(1);
+
+    // The miss schedules a valid replacement write, so the next load is a hit.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    await loadProjectionEnvelopeWithCache({ documents, activeChannel: "web", telemetry });
+    expect(telemetry.snapshot().cacheHits).toBe(1);
   });
 
   it("bypasses the cache when disabled", async () => {
