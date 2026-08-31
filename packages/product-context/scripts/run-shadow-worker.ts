@@ -7,6 +7,7 @@ import { Pool } from 'pg';
 import {
   PostgresShadowWorkerStore, ShadowAsyncWorker, ZAI_CODING_PLAN_ENDPOINT,
   ZAI_CODING_PLAN_MODEL, ZaiCodingPlanModelGateway, safeShadowDatabaseUrl,
+  BoundedResponseLimitError, readBoundedResponse,
   type ShadowAuthorizationReceipt, type ShadowWorkerTarget
 } from '../src/index.ts';
 
@@ -117,8 +118,10 @@ async function reauthorize(receipt:ShadowAuthorizationReceipt,config:ShadowWorke
   const controller=new AbortController(); const timer=setTimeout(()=>controller.abort(),config.authorizationTimeoutMs);timer.unref?.();
   try {
     const response=await fetch(config.portalUrl,{method:'POST',redirect:'error',headers:{'content-type':'application/json','x-cubica-shadow-worker-signature':signature},body:JSON.stringify(body),signal:controller.signal,cache:'no-store'});
-    if(!response.ok||Number(response.headers.get('content-length')??0)>64*1024)return null;
-    const bytes=new Uint8Array(await response.arrayBuffer()); if(bytes.byteLength>64*1024)return null;
+    if(!response.ok)return null;
+    let bytes: Uint8Array;
+    try { bytes = await readBoundedResponse(response, 64 * 1024, { abort: () => controller.abort() }); }
+    catch (error) { if (error instanceof BoundedResponseLimitError) return null; throw error; }
     try{return JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes));}catch{return null;}
   }
   finally {clearTimeout(timer);}

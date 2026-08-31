@@ -9,8 +9,10 @@
 import { createHash } from "node:crypto";
 import {
   enqueueShadowTurn,
+  BoundedResponseLimitError,
   PostgresConversationStore,
   hasSecretLikeText,
+  readBoundedResponse,
   safeShadowDatabaseUrl,
   validateProductKnowledgeContract,
   type ShadowAuthorizationReceipt,
@@ -106,10 +108,9 @@ async function authorizeThroughPortal(job: ProductContextShadowJob): Promise<unk
       signal: controller.signal
     });
     if (!response.ok) return null;
-    const declared = Number(response.headers.get("content-length") ?? "0");
-    if (declared > MAX_PORTAL_RESPONSE_BYTES) return null;
-    const bytes = new Uint8Array(await response.arrayBuffer());
-    if (bytes.byteLength > MAX_PORTAL_RESPONSE_BYTES) return null;
+    let bytes: Uint8Array;
+    try { bytes = await readBoundedResponse(response, MAX_PORTAL_RESPONSE_BYTES, { abort: () => controller.abort() }); }
+    catch (error) { if (error instanceof BoundedResponseLimitError) return null; throw error; }
     try { return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)) as unknown; }
     catch { return null; }
   } finally {

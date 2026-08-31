@@ -9,6 +9,7 @@
 import { validateProductKnowledgeContract, verifyExactPatchProposalHash } from './contracts.ts';
 import type { ModelGatewayRequest, ModelGatewayResult } from './generated/product-knowledge.ts';
 import { attachModelGatewayValidationStage, type ModelGatewayValidationStage } from './model-gateway-diagnostics.ts';
+import { BoundedResponseLimitError, readBoundedResponse } from './bounded-response.ts';
 
 export type ModelGatewayErrorCode = 'policy_denied' | 'invalid_request' | 'timeout' | 'oversize_output' | 'malformed_output' | 'transport_error' | 'outcome_unknown';
 
@@ -90,7 +91,9 @@ export class HttpModelGateway implements ModelGateway {
         signal: controller.signal
       });
       if (!response.ok) throw new ModelGatewayError('malformed_output');
-      const output = await readBounded(response, this.maxResponseBytes);
+      let output: Uint8Array;
+      try { output = await readBoundedResponse(response, this.maxResponseBytes, { abort: () => controller.abort() }); }
+      catch (error) { if (error instanceof BoundedResponseLimitError) throw new ModelGatewayError('oversize_output'); throw error; }
       let candidate: unknown;
       try { candidate = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(output)); }
       catch { throw new ModelGatewayError('malformed_output'); }
@@ -138,35 +141,6 @@ function proposalSourcesMatchRequest(proposal: NonNullable<ModelGatewayResult['p
       return actor === 'user' || (actor === 'agent' && (source.use === 'wording' || source.use === 'context'));
     }) &&
     allSources.some((source) => messageActors.get(source.ref) === 'user' && (source.use === 'evidence' || source.use === 'confirmation'));
-}
-
-async function readBounded(response: Response, limit: number): Promise<Uint8Array> {
-  const declared = response.headers.get('content-length');
-  if (declared !== null && Number(declared) > limit) throw new ModelGatewayError('oversize_output');
-  if (!response.body) {
-    const bytes = new Uint8Array(await response.arrayBuffer());
-    if (bytes.byteLength > limit) throw new ModelGatewayError('oversize_output');
-    return bytes;
-  }
-  const reader = response.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let total = 0;
-  try {
-    while (true) {
-      const next = await reader.read();
-      if (next.done) break;
-      total += next.value.byteLength;
-      if (total > limit) {
-        await reader.cancel();
-        throw new ModelGatewayError('oversize_output');
-      }
-      chunks.push(next.value);
-    }
-  } finally { reader.releaseLock(); }
-  const bytes = new Uint8Array(total);
-  let offset = 0;
-  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
-  return bytes;
 }
 
 function positiveBound(value: number, label: string): number {
