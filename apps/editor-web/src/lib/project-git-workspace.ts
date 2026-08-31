@@ -6,13 +6,30 @@
  * main project checkout until Save creates a normal Git commit.
  */
 import { execFile } from "node:child_process";
-import { mkdir, mkdtemp, realpath, rm, stat } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import { constants as fsConstants } from "node:fs";
+import {
+  lstat,
+  mkdir,
+  mkdtemp,
+  open,
+  readFile,
+  readdir,
+  realpath,
+  rename,
+  rm,
+  rmdir,
+  stat,
+  writeFile,
+  type FileHandle
+} from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 
 import { type EditorChangeSet } from "@cubica/editor-engine";
 
 import { EditorRepositoryError } from "./editor-repository";
+import { withEditorSessionLease } from "./editor-session-lease";
 import {
   EDITOR_VERSION_CHANGE_FACTS_MAX,
   EDITOR_VERSION_CHANGE_SUMMARY_MAX_LENGTH,
@@ -47,6 +64,33 @@ export interface ProjectGitSession {
 export interface ProjectGitStatusSummary {
   readonly isDirty: boolean;
   readonly changedPaths: readonly string[];
+}
+
+export interface ProjectGitSessionGcResult extends ProjectGitStatusSummary {
+  readonly existed: boolean;
+  readonly wouldRemove: boolean;
+  readonly removed: boolean;
+}
+
+type ProjectGitSessionGcCrashPoint =
+  | "after-quarantine-rename"
+  | "after-deleting-journal"
+  | "after-content-empty"
+  | "after-dirty-restore-rename"
+  | "after-git-metadata-prune";
+
+interface ProjectGitSessionGcTestHooks {
+  readonly crashAt?: ProjectGitSessionGcCrashPoint;
+  readonly afterFinalIdentityCheck?: (input: { readonly quarantinePath: string }) => Promise<void>;
+  readonly beforeTargetOpen?: (input: { readonly targetPath: string }) => Promise<void>;
+  readonly afterQuarantineRenameBeforeStatus?: (input: { readonly quarantinePath: string }) => Promise<void>;
+}
+
+interface ProjectGitSessionGcOptions {
+  readonly dryRun: boolean;
+  readonly removeDirty: boolean;
+  /** Deterministic fault injection for focused filesystem-safety tests only. */
+  readonly testHooks?: ProjectGitSessionGcTestHooks;
 }
 
 export interface ProjectGitWorktreeSummary {
@@ -242,33 +286,172 @@ export async function doesProjectGitSessionMatchVersion(input: {
 export async function removeProjectGitSession(
   session: Pick<ProjectGitSession, "projectRoot" | "worktreePath"> & { readonly branchName?: string }
 ): Promise<void> {
-  const projectRoot = await resolveProjectGitRoot(session.projectRoot);
-  const discoveredBranch = session.branchName ?? (await git(session.worktreePath, ["symbolic-ref", "--quiet", "--short", "HEAD"])
-    .catch(() => ""))
-    .trim();
-  const disposableBranch = normalizeDisposableSessionBranch(discoveredBranch, session.worktreePath);
-  const worktreeExists = await assertSafeRegisteredEditorWorktree(projectRoot, session.worktreePath);
-  if (worktreeExists) {
-    await git(projectRoot, ["worktree", "remove", "--force", session.worktreePath]).catch(async () => {
-      // Revalidate after the failed Git operation so a changed metadata path or
-      // replaced directory cannot redirect the destructive fallback.
-      if (await assertSafeRegisteredEditorWorktree(projectRoot, session.worktreePath)) {
-        await rm(session.worktreePath, { recursive: true, force: true });
-      }
-    });
+  const result = await removeProjectGitSessionForGarbageCollection(session, {
+    dryRun: false,
+    removeDirty: true
+  });
+  if (result.existed && !result.removed) {
+    throw new EditorRepositoryError("Editor worktree failed the cleanup safety policy.", 500);
   }
-  await pruneProjectGitWorktrees(projectRoot);
-  if (disposableBranch !== undefined) {
-    // Worktree branches are drafts, not history. Deleting only the exact,
-    // validated `editor/session/<sessionId>` ref prevents unbounded ref growth
-    // while the separate durable author-version ref remains untouched.
-    await git(projectRoot, ["update-ref", "-d", `refs/heads/${disposableBranch}`]).catch(() => undefined);
+}
+
+/**
+ * Inspects and, when policy permits, removes one editor worktree as one cleanup
+ * transaction. Apply mode journals the original session identity, atomically
+ * moves the validated directory to a sibling quarantine entry, then removes
+ * content only through pinned directory descriptors. Git never receives the
+ * mutable filesystem target; after the empty directory is gone it only prunes
+ * its administrative record. The journal lets a later pass resume every phase.
+ */
+export async function removeProjectGitSessionForGarbageCollection(
+  session: Pick<ProjectGitSession, "projectRoot" | "worktreePath"> & { readonly branchName?: string },
+  options: ProjectGitSessionGcOptions
+): Promise<ProjectGitSessionGcResult> {
+  const projectRoot = await resolveProjectGitRoot(session.projectRoot);
+  return withEditorSessionLease({
+    repoRoot: projectRoot,
+    sessionId: "project-git-cleanup",
+    operation: "project-git-cleanup"
+  }, () => removeProjectGitSessionForGarbageCollectionUnderProjectLease(session, options, projectRoot));
+}
+
+async function removeProjectGitSessionForGarbageCollectionUnderProjectLease(
+  session: Pick<ProjectGitSession, "projectRoot" | "worktreePath"> & { readonly branchName?: string },
+  options: ProjectGitSessionGcOptions,
+  projectRoot: string
+): Promise<ProjectGitSessionGcResult> {
+  const originalPath = path.resolve(session.worktreePath);
+  const sessionId = path.basename(originalPath);
+  validateSessionId(sessionId);
+  const expectedBranch = normalizeDisposableSessionBranch(session.branchName ?? `editor/session/${sessionId}`, originalPath);
+  if (expectedBranch === undefined) {
+    throw new EditorRepositoryError("Editor worktree failed the cleanup safety policy.", 500);
+  }
+  const journal = await readEditorWorktreeGcJournal(projectRoot, sessionId);
+  if (journal !== undefined) {
+    assertEditorWorktreeGcJournal(journal);
+  }
+
+  const quarantinePath = `${originalPath}.gc`;
+  const originalExists = await pathEntryExists(originalPath);
+  const quarantineExists = await pathEntryExists(quarantinePath);
+  if (originalExists && quarantineExists) {
+    throw new EditorRepositoryError("Editor worktree failed the cleanup safety policy.", 500);
+  }
+
+  if (journal !== undefined && !originalExists && !quarantineExists) {
+    if (journal.phase !== "deleting" || journal.status === undefined) {
+      throw new EditorRepositoryError("Editor worktree cleanup journal is incomplete.", 500);
+    }
+    const status = journal.status;
+    if (options.dryRun) {
+      return { existed: true, ...status, wouldRemove: true, removed: false };
+    }
+    await finalizeRemovedEditorWorktree(projectRoot, expectedBranch);
+    await maybeInjectGcCrash(options, "after-git-metadata-prune");
+    await removeEditorWorktreeGcJournal(projectRoot, sessionId);
+    return { existed: true, ...status, wouldRemove: true, removed: true };
+  }
+
+  if (!originalExists && !quarantineExists) {
+    if (!options.dryRun) {
+      await finalizeRemovedEditorWorktree(projectRoot, expectedBranch);
+    }
+    return { existed: false, isDirty: false, changedPaths: [], wouldRemove: true, removed: false };
+  }
+
+  if (journal?.phase === "deleting" && !quarantineExists) {
+    throw new EditorRepositoryError("Editor worktree cleanup journal does not match its quarantine.", 500);
+  }
+  const opened = await openAndValidateEditorWorktree({
+    projectRoot,
+    originalPath,
+    activePath: quarantineExists ? quarantinePath : originalPath,
+    expectedBranch,
+    journal,
+    testHooks: options.testHooks
+  });
+  try {
+    if (opened.binding === "deleted-empty") {
+      const status = journal?.status;
+      if (status === undefined) {
+        throw new EditorRepositoryError("Editor worktree cleanup journal is incomplete.", 500);
+      }
+      if (options.dryRun) {
+        return { existed: true, ...status, wouldRemove: true, removed: false };
+      }
+      await removeOpenedDirectoryEntry(opened);
+      await finalizeRemovedEditorWorktree(projectRoot, expectedBranch);
+      await maybeInjectGcCrash(options, "after-git-metadata-prune");
+      await removeEditorWorktreeGcJournal(projectRoot, sessionId);
+      return { existed: true, ...status, wouldRemove: true, removed: true };
+    }
+    if (options.dryRun) {
+      const status = await getProjectGitStatusSummaryByHandle(opened.targetHandle);
+      return {
+        existed: true,
+        ...status,
+        wouldRemove: options.removeDirty || !status.isDirty,
+        removed: false
+      };
+    }
+
+    if (journal === undefined) {
+      await writeEditorWorktreeGcJournal(projectRoot, {
+        schemaVersion: 1,
+        phase: "prepared",
+        ...opened.identity
+      }, sessionId);
+    }
+    if (!quarantineExists) {
+      await quarantineOpenedEditorWorktree(opened, quarantinePath);
+      await writeEditorWorktreeGcJournal(projectRoot, {
+        schemaVersion: 1,
+        phase: "quarantined",
+        ...opened.identity
+      }, sessionId);
+      await maybeInjectGcCrash(options, "after-quarantine-rename");
+      await options.testHooks?.afterQuarantineRenameBeforeStatus?.({ quarantinePath });
+    }
+
+    const status = await getProjectGitStatusSummaryByHandle(opened.targetHandle);
+    if (status.isDirty && !options.removeDirty) {
+      await restoreOpenedEditorWorktree(opened);
+      await maybeInjectGcCrash(options, "after-dirty-restore-rename");
+      await removeEditorWorktreeGcJournal(projectRoot, sessionId);
+      return { existed: true, ...status, wouldRemove: false, removed: false };
+    }
+
+    await writeEditorWorktreeGcJournal(projectRoot, {
+      schemaVersion: 1,
+      phase: "deleting",
+      ...opened.identity,
+      status
+    }, sessionId);
+    await maybeInjectGcCrash(options, "after-deleting-journal");
+    await assertOpenedWorktreeBinding(opened, projectRoot, expectedBranch);
+    await options.testHooks?.afterFinalIdentityCheck?.({ quarantinePath: opened.activePath });
+    await removeDirectoryContentsByHandle(opened.targetHandle);
+    await maybeInjectGcCrash(options, "after-content-empty");
+    await assertOpenedEditorWorktreeIdentity(opened);
+    await removeOpenedDirectoryEntry(opened);
+    await finalizeRemovedEditorWorktree(projectRoot, expectedBranch);
+    await maybeInjectGcCrash(options, "after-git-metadata-prune");
+    await removeEditorWorktreeGcJournal(projectRoot, sessionId);
+    return { existed: true, ...status, wouldRemove: true, removed: true };
+  } finally {
+    await opened.targetHandle.close().catch(() => undefined);
+    await opened.rootHandle.close().catch(() => undefined);
   }
 }
 
 export async function pruneProjectGitWorktrees(projectRoot: string): Promise<void> {
   const resolvedProjectRoot = await resolveProjectGitRoot(projectRoot);
-  await git(resolvedProjectRoot, ["worktree", "prune"]).catch(() => undefined);
+  await withEditorSessionLease({
+    repoRoot: resolvedProjectRoot,
+    sessionId: "project-git-cleanup",
+    operation: "project-git-prune"
+  }, () => git(resolvedProjectRoot, ["worktree", "prune"]).then(() => undefined).catch(() => undefined));
 }
 
 /**
@@ -1062,54 +1245,344 @@ function chunk<T>(items: readonly T[], size: number): readonly (readonly T[])[] 
   return result;
 }
 
-/**
- * Confirms that a destructive target is one registered editor worktree.
- *
- * Session metadata is persisted under `.tmp` and is therefore treated as
- * recoverable input, not authority for `rm -r`. Both lexical and real paths
- * must be a direct child of the project editor-worktree root, and Git must
- * still list the same working copy before recursive deletion is permitted.
- */
-async function assertSafeRegisteredEditorWorktree(projectRoot: string, worktreePath: string): Promise<boolean> {
-  const allowedRoot = path.join(projectRoot, ".tmp", "editor-worktrees");
-  const absoluteTarget = path.resolve(worktreePath);
-  const lexicalRelative = path.relative(allowedRoot, absoluteTarget);
+interface OpenedEditorWorktree {
+  readonly originalPath: string;
+  activePath: string;
+  readonly rootHandle: FileHandle;
+  readonly targetHandle: FileHandle;
+  readonly identity: EditorWorktreeIdentity;
+  readonly binding: "valid" | "deleted-empty";
+}
+
+interface EditorWorktreeIdentity {
+  readonly targetDev: string;
+  readonly targetIno: string;
+}
+
+type EditorWorktreeGcPhase =
+  | "prepared"
+  | "quarantined"
+  | "deleting";
+
+interface EditorWorktreeGcJournal {
+  readonly schemaVersion: 1;
+  readonly phase: EditorWorktreeGcPhase;
+  readonly targetDev: string;
+  readonly targetIno: string;
+  readonly status?: ProjectGitStatusSummary;
+}
+
+async function openAndValidateEditorWorktree(input: {
+  readonly projectRoot: string;
+  readonly originalPath: string;
+  readonly activePath: string;
+  readonly expectedBranch: string;
+  readonly journal?: EditorWorktreeGcJournal;
+  readonly testHooks?: ProjectGitSessionGcTestHooks;
+}): Promise<OpenedEditorWorktree> {
+  const allowedRoot = path.join(input.projectRoot, ".tmp", "editor-worktrees");
   if (
-    lexicalRelative === "" ||
-    lexicalRelative.startsWith("..") ||
-    path.isAbsolute(lexicalRelative) ||
-    lexicalRelative.includes(path.sep)
+    path.dirname(input.originalPath) !== allowedRoot ||
+    path.dirname(input.activePath) !== allowedRoot ||
+    (input.activePath !== input.originalPath && input.activePath !== `${input.originalPath}.gc`)
   ) {
     throw new EditorRepositoryError("Editor worktree failed the cleanup safety policy.", 500);
   }
-  if (!(await pathExists(absoluteTarget))) {
-    return false;
+  const flags = fsConstants.O_RDONLY | fsConstants.O_DIRECTORY | fsConstants.O_NOFOLLOW;
+  const rootHandle = await open(allowedRoot, flags).catch(() => {
+    throw new EditorRepositoryError("Editor worktree failed the cleanup safety policy.", 500);
+  });
+  let targetHandle: FileHandle | undefined;
+  try {
+    const canonicalRoot = await realpath(allowedRoot);
+    if (canonicalRoot !== path.resolve(allowedRoot)) {
+      throw new EditorRepositoryError("Editor worktree failed the cleanup safety policy.", 500);
+    }
+    const [rootIdentity, canonicalRootIdentity] = await Promise.all([
+      rootHandle.stat(),
+      lstat(canonicalRoot)
+    ]);
+    if (!sameFileIdentity(rootIdentity, canonicalRootIdentity) || canonicalRootIdentity.isSymbolicLink()) {
+      throw new EditorRepositoryError("Editor worktree failed the cleanup safety policy.", 500);
+    }
+    await input.testHooks?.beforeTargetOpen?.({ targetPath: input.activePath });
+    const rootPath = await descriptorDirectoryPath(rootHandle);
+    targetHandle = await open(path.join(rootPath, path.basename(input.activePath)), flags);
+    const targetIdentity = await targetHandle.stat();
+    const identity = fileIdentity(targetIdentity);
+    if (
+      !targetIdentity.isDirectory() ||
+      (input.journal !== undefined && !sameStoredFileIdentity(input.journal, identity))
+    ) {
+      throw new EditorRepositoryError("Editor worktree cleanup identity does not match its journal.", 500);
+    }
+    const opened: OpenedEditorWorktree = {
+      originalPath: input.originalPath,
+      activePath: input.activePath,
+      rootHandle,
+      targetHandle,
+      identity,
+      binding: "valid"
+    };
+    await assertOpenedEditorWorktreeIdentity(opened);
+    try {
+      await assertOpenedWorktreeBinding(opened, input.projectRoot, input.expectedBranch);
+    } catch (error) {
+      const emptyAfterAuthorizedDeletion =
+        input.journal?.phase === "deleting" &&
+        (await readdir(await descriptorDirectoryPath(targetHandle))).length === 0;
+      if (!emptyAfterAuthorizedDeletion) {
+        throw error;
+      }
+      await assertRegisteredWorktreeBranch(input.projectRoot, input.originalPath, input.expectedBranch);
+      return { ...opened, binding: "deleted-empty" };
+    }
+    return opened;
+  } catch (error) {
+    await targetHandle?.close().catch(() => undefined);
+    await rootHandle.close().catch(() => undefined);
+    throw error;
   }
+}
 
-  const [realAllowedRoot, realTarget, registered] = await Promise.all([
-    realpath(allowedRoot),
-    realpath(absoluteTarget),
-    listProjectGitWorktrees(projectRoot)
+async function quarantineOpenedEditorWorktree(opened: OpenedEditorWorktree, quarantinePath: string): Promise<void> {
+  await assertOpenedEditorWorktreeIdentity(opened);
+  const rootPath = await descriptorDirectoryPath(opened.rootHandle);
+  await rename(
+    path.join(rootPath, path.basename(opened.originalPath)),
+    path.join(rootPath, path.basename(quarantinePath))
+  );
+  opened.activePath = quarantinePath;
+  await assertOpenedEditorWorktreeIdentity(opened);
+}
+
+async function restoreOpenedEditorWorktree(opened: OpenedEditorWorktree): Promise<void> {
+  await assertOpenedEditorWorktreeIdentity(opened);
+  if (await pathEntryExists(opened.originalPath)) {
+    throw new EditorRepositoryError("Editor worktree failed the cleanup safety policy.", 500);
+  }
+  const rootPath = await descriptorDirectoryPath(opened.rootHandle);
+  await rename(
+    path.join(rootPath, path.basename(opened.activePath)),
+    path.join(rootPath, path.basename(opened.originalPath))
+  );
+  opened.activePath = opened.originalPath;
+  await assertOpenedEditorWorktreeIdentity(opened);
+}
+
+async function removeDirectoryContentsByHandle(directoryHandle: FileHandle): Promise<void> {
+  const directoryPath = await descriptorDirectoryPath(directoryHandle, true);
+  // GNU rm follows only this command-line directory (the pinned descriptor).
+  // Descendant symlinks are unlinked, never traversed. It reports EPERM when it
+  // reaches the descriptor entry itself, so the authoritative success check is
+  // that the still-open directory is empty afterwards.
+  await execFileAsync("rm", ["-rf", "--one-file-system", "--", `${directoryPath}/`], {
+    env: process.env,
+    maxBuffer: 1024 * 1024
+  }).catch(() => undefined);
+  const remainingEntries = await readdir(await descriptorDirectoryPath(directoryHandle));
+  if (remainingEntries.length !== 0) {
+    throw new EditorRepositoryError("Descriptor-bound editor cleanup is unavailable on this host.", 500);
+  }
+}
+
+async function descriptorDirectoryPath(handle: FileHandle, forChildProcess = false): Promise<string> {
+  const identity = await handle.stat();
+  const candidates = forChildProcess
+    ? [`/proc/${process.pid}/fd/${handle.fd}`]
+    : [`/proc/self/fd/${handle.fd}`, `/dev/fd/${handle.fd}`];
+  for (const candidate of candidates) {
+    const candidateIdentity = await stat(candidate).catch(() => undefined);
+    if (candidateIdentity !== undefined && sameFileIdentity(identity, candidateIdentity)) {
+      return candidate;
+    }
+  }
+  throw new EditorRepositoryError("Descriptor-bound editor cleanup is unavailable on this host.", 500);
+}
+
+async function removeOpenedDirectoryEntry(opened: OpenedEditorWorktree): Promise<void> {
+  const rootPath = await descriptorDirectoryPath(opened.rootHandle);
+  const anchoredTarget = path.join(rootPath, path.basename(opened.activePath));
+  const currentIdentity = await lstat(anchoredTarget);
+  const targetIdentity = await opened.targetHandle.stat();
+  if (!sameFileIdentity(targetIdentity, currentIdentity) || currentIdentity.isSymbolicLink()) {
+    throw new EditorRepositoryError("Editor worktree failed the cleanup safety policy.", 500);
+  }
+  // Only the now-empty top directory is removed by name. Recursive deletion
+  // above stayed bound to directory descriptors and never followed this path.
+  await rmdir(anchoredTarget);
+}
+
+async function assertOpenedEditorWorktreeIdentity(opened: OpenedEditorWorktree): Promise<void> {
+  const rootPath = await descriptorDirectoryPath(opened.rootHandle);
+  const [targetIdentity, currentTargetIdentity] = await Promise.all([
+    opened.targetHandle.stat(),
+    lstat(path.join(rootPath, path.basename(opened.activePath)))
   ]).catch(() => {
     throw new EditorRepositoryError("Editor worktree failed the cleanup safety policy.", 500);
   });
-  const realRelative = path.relative(realAllowedRoot, realTarget);
   if (
-    realRelative === "" ||
-    realRelative.startsWith("..") ||
-    path.isAbsolute(realRelative) ||
-    realRelative.includes(path.sep)
+    !sameFileIdentity(targetIdentity, currentTargetIdentity) ||
+    !currentTargetIdentity.isDirectory() ||
+    currentTargetIdentity.isSymbolicLink()
   ) {
     throw new EditorRepositoryError("Editor worktree failed the cleanup safety policy.", 500);
   }
+}
 
-  const registeredPaths = await Promise.all(registered.map(async (item) =>
-    realpath(item.worktreePath).catch(() => path.resolve(item.worktreePath))
-  ));
-  if (!registeredPaths.includes(realTarget)) {
+async function assertOpenedWorktreeBinding(
+  opened: OpenedEditorWorktree,
+  projectRoot: string,
+  expectedBranch: string
+): Promise<void> {
+  if (!sameStoredFileIdentity(opened.identity, fileIdentity(await opened.targetHandle.stat()))) {
+    throw new EditorRepositoryError("Editor worktree cleanup identity changed.", 500);
+  }
+  const descriptorPath = await descriptorDirectoryPath(opened.targetHandle, true);
+  const actualBranch = (await git(descriptorPath, ["symbolic-ref", "--quiet", "--short", "HEAD"])).trim();
+  await assertRegisteredWorktreeBranch(projectRoot, opened.originalPath, expectedBranch);
+  if (actualBranch !== expectedBranch) {
     throw new EditorRepositoryError("Editor worktree failed the cleanup safety policy.", 500);
   }
-  return true;
+}
+
+async function assertRegisteredWorktreeBranch(
+  projectRoot: string,
+  originalPath: string,
+  expectedBranch: string
+): Promise<void> {
+  const registered = await listProjectGitWorktrees(projectRoot);
+  const registeredBranch = registered
+    .find((item) => path.resolve(item.worktreePath) === originalPath)
+    ?.branch?.replace(/^refs\/heads\//u, "");
+  if (registeredBranch !== expectedBranch) {
+    throw new EditorRepositoryError("Editor worktree failed the cleanup safety policy.", 500);
+  }
+}
+
+async function getProjectGitStatusSummaryByHandle(targetHandle: FileHandle): Promise<ProjectGitStatusSummary> {
+  const descriptorPath = await descriptorDirectoryPath(targetHandle, true);
+  const output = await git(descriptorPath, ["status", "--porcelain=v1", "-z"]);
+  const changedPaths = parsePorcelainStatusPaths(output);
+  return {
+    isDirty: changedPaths.length > 0,
+    changedPaths
+  };
+}
+
+async function readEditorWorktreeGcJournal(
+  projectRoot: string,
+  sessionId: string
+): Promise<EditorWorktreeGcJournal | undefined> {
+  const journalPath = editorWorktreeGcJournalPath(projectRoot, sessionId);
+  const text = await readFile(journalPath, "utf8").catch((error: unknown) => {
+    if (isMissingPathError(error)) return undefined;
+    throw error;
+  });
+  if (text === undefined) {
+    return undefined;
+  }
+  try {
+    return JSON.parse(text) as EditorWorktreeGcJournal;
+  } catch {
+    throw new EditorRepositoryError("Editor worktree cleanup journal is invalid.", 500);
+  }
+}
+
+async function writeEditorWorktreeGcJournal(
+  projectRoot: string,
+  journal: EditorWorktreeGcJournal,
+  sessionId: string
+): Promise<void> {
+  const directory = path.join(projectRoot, ".tmp", "editor-worktree-gc");
+  await mkdir(directory, { recursive: true });
+  const journalPath = editorWorktreeGcJournalPath(projectRoot, sessionId);
+  const temporaryPath = `${journalPath}.${randomUUID()}.tmp`;
+  await writeFile(temporaryPath, `${JSON.stringify(journal, null, 2)}\n`, { encoding: "utf8", mode: 0o600 });
+  await rename(temporaryPath, journalPath);
+}
+
+async function removeEditorWorktreeGcJournal(projectRoot: string, sessionId: string): Promise<void> {
+  await rm(editorWorktreeGcJournalPath(projectRoot, sessionId), { force: true });
+}
+
+function editorWorktreeGcJournalPath(projectRoot: string, sessionId: string): string {
+  validateSessionId(sessionId);
+  return path.join(projectRoot, ".tmp", "editor-worktree-gc", `${sessionId}.json`);
+}
+
+function assertEditorWorktreeGcJournal(journal: EditorWorktreeGcJournal): void {
+  const validPhase =
+    journal.phase === "prepared" ||
+    journal.phase === "quarantined" ||
+    journal.phase === "deleting";
+  const validStatus = journal.status === undefined || (
+    typeof journal.status.isDirty === "boolean" &&
+    Array.isArray(journal.status.changedPaths) &&
+    journal.status.changedPaths.every((item) => typeof item === "string")
+  );
+  if (
+    journal.schemaVersion !== 1 ||
+    !validPhase ||
+    typeof journal.targetDev !== "string" ||
+    journal.targetDev === "" ||
+    typeof journal.targetIno !== "string" ||
+    journal.targetIno === "" ||
+    !validStatus ||
+    (journal.phase === "deleting" && journal.status === undefined)
+  ) {
+    throw new EditorRepositoryError("Editor worktree cleanup journal is invalid.", 500);
+  }
+}
+
+function sameFileIdentity(
+  left: { readonly dev: number | bigint; readonly ino: number | bigint },
+  right: { readonly dev: number | bigint; readonly ino: number | bigint }
+): boolean {
+  return left.dev === right.dev && left.ino === right.ino;
+}
+
+function fileIdentity(value: { readonly dev: number | bigint; readonly ino: number | bigint }): EditorWorktreeIdentity {
+  return { targetDev: String(value.dev), targetIno: String(value.ino) };
+}
+
+function sameStoredFileIdentity(left: EditorWorktreeIdentity, right: EditorWorktreeIdentity): boolean {
+  return left.targetDev === right.targetDev && left.targetIno === right.targetIno;
+}
+
+async function pathEntryExists(filePath: string): Promise<boolean> {
+  return lstat(filePath).then(
+    () => true,
+    (error: unknown) => isMissingPathError(error) ? false : Promise.reject(error)
+  );
+}
+
+async function deleteDisposableSessionBranch(projectRoot: string, branchName: string): Promise<void> {
+  // Worktree branches are drafts, not history. Deleting only the exact,
+  // validated `editor/session/<sessionId>` ref preserves durable author history.
+  const registered = await listProjectGitWorktrees(projectRoot);
+  if (registered.some((item) => item.branch === `refs/heads/${branchName}`)) {
+    throw new EditorRepositoryError("Editor worktree Git metadata is still registered.", 500);
+  }
+  await git(projectRoot, ["update-ref", "-d", `refs/heads/${branchName}`]);
+}
+
+async function finalizeRemovedEditorWorktree(projectRoot: string, branchName: string): Promise<void> {
+  await pruneProjectGitWorktrees(projectRoot);
+  await deleteDisposableSessionBranch(projectRoot, branchName);
+}
+
+async function maybeInjectGcCrash(
+  options: ProjectGitSessionGcOptions,
+  point: ProjectGitSessionGcCrashPoint
+): Promise<void> {
+  if (options.testHooks?.crashAt === point) {
+    throw new EditorRepositoryError(`Injected editor worktree GC crash at ${point}.`, 500);
+  }
+}
+
+function isMissingPathError(error: unknown): boolean {
+  return typeof error === "object" && error !== null && (error as { readonly code?: unknown }).code === "ENOENT";
 }
 
 async function git(cwd: string, args: readonly string[], env: Record<string, string | undefined> = {}): Promise<string> {

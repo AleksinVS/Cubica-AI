@@ -18,6 +18,7 @@ import {
   listProjectGitWorktrees,
   pruneProjectGitWorktrees,
   removeProjectGitSession,
+  removeProjectGitSessionForGarbageCollection,
   readProjectVersionHead,
   resolveProjectGitRoot,
   type ProjectGitSession
@@ -536,14 +537,6 @@ export async function garbageCollectEditorSessions(input: {
         }
 
         const worktreeExists = await directoryExists(session.worktreePath);
-        const freshDirtySummary = worktreeExists
-          ? await getProjectGitStatusSummary(session.worktreePath).then((status) => ({
-              isDirty: status.isDirty,
-              changedPaths: status.changedPaths,
-              checkedAt: new Date().toISOString()
-            }))
-          : session.dirtySummary;
-
         const removable =
           session.status === "closed" ||
           session.status === "expired" ||
@@ -554,13 +547,20 @@ export async function garbageCollectEditorSessions(input: {
           return;
         }
 
-        // The destructive decision is made only after the lease and a fresh
-        // Git status. Persisting a newly-discovered dirty state also extends its
-        // lifetime so the next GC cannot repeat the same stale decision.
-        if (worktreeExists && freshDirtySummary.isDirty && !removeDirty) {
+        const cleanup = await removeProjectGitSessionForGarbageCollection(session, { dryRun, removeDirty });
+        const checkedAt = new Date().toISOString();
+        const freshDirtySummary: EditorSessionDirtySummary = {
+          isDirty: cleanup.isDirty,
+          changedPaths: cleanup.changedPaths,
+          checkedAt
+        };
+
+        // The helper checks status after atomically quarantining the validated
+        // inode, immediately before Git removal. Persisting a newly-discovered
+        // dirty state also extends its lifetime against stale metadata.
+        if (cleanup.existed && cleanup.isDirty && !removeDirty) {
           skippedDirtySessions.push(session.sessionId);
           if (!dryRun) {
-            const checkedAt = freshDirtySummary.checkedAt;
             await writeSessionDocument({
               ...session,
               status: "dirty",
@@ -573,9 +573,7 @@ export async function garbageCollectEditorSessions(input: {
         }
 
         if (!dryRun) {
-          try {
-            await removeProjectGitSession(session);
-          } catch {
+          if (cleanup.existed && !cleanup.removed) {
             diagnostics.push(`Editor session cleanup failed safely for ${session.sessionId}.`);
             return;
           }
@@ -584,7 +582,7 @@ export async function garbageCollectEditorSessions(input: {
         }
         removedSessions.push(session.sessionId);
         removedMetadata.push(session.sessionId);
-        if (worktreeExists) {
+        if (cleanup.existed) {
           // Public GC results identify the logical resource, never its absolute
           // host path.
           removedWorktrees.push(session.sessionId);
@@ -626,12 +624,18 @@ export async function garbageCollectEditorSessions(input: {
             documentIds.add(sessionId);
             return;
           }
-          if (!dryRun) {
-            await removeProjectGitSession({
-              projectRoot: contentProjectRoot,
-              worktreePath: worktree.worktreePath,
-              branchName: worktree.branch?.replace(/^refs\/heads\//u, "")
-            });
+          const cleanup = await removeProjectGitSessionForGarbageCollection({
+            projectRoot: contentProjectRoot,
+            worktreePath: worktree.worktreePath,
+            branchName: worktree.branch?.replace(/^refs\/heads\//u, "")
+          }, { dryRun, removeDirty });
+          if (cleanup.existed && cleanup.isDirty && !removeDirty) {
+            skippedDirtySessions.push(sessionId);
+            return;
+          }
+          if (!dryRun && cleanup.existed && !cleanup.removed) {
+            diagnostics.push(`Orphan editor worktree ${sessionId} failed safe cleanup.`);
+            return;
           }
           removedWorktrees.push(sessionId);
         });
