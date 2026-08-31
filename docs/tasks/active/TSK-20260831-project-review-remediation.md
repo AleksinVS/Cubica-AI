@@ -90,6 +90,8 @@ stand не скрывает красные сценарии, а архитект
 6. trusted preview origin bootstrap (AD-06);
 7. фактическая гарантия ИИ-разбора CMT (AD-07).
 8. доверенная регистрация и чтение preview-контента (AD-08).
+9. серверная форма и последняя точка проверки Editor mutations (AD-09).
+10. точный подготовленный effect digest для Editor approval (AD-10).
 
 Этот список не отменяет условный stop: F-010, F-020, F-029, F-037, F-046 и
 любой другой блок возвращаются на архитектурную классификацию, если
@@ -117,9 +119,11 @@ Gate: узкие тесты воспроизводят прежний отказ
 
 ### Волна 1. Потеря данных и межсессионная изоляция
 
-- [ ] W1 Editor: F-001, F-004..F-007, F-010.
+- [x] W1 Editor без смены контракта: F-001, F-005..F-007.
+- [ ] W1 Editor после решений: F-004 после AD-09; F-010 после совместного
+  AD-09/AD-10.
 - [ ] W2 Preview: F-018, fail-closed часть F-028 и F-029; F-003 после AD-08.
-- [ ] W6 Product Context: F-037, F-038.
+- [x] W6 Product Context: F-037, F-038.
 
 Gate: concurrency, stale-owner, dirty-worktree, symlink, cross-session,
 hash-substitution, credential-rotation и oversized chunked-response scenarios
@@ -152,7 +156,8 @@ inventory и error redaction. Реальный Robokassa rollout остаётс�
 
 ### Волна 4. Единые источники истины и контрольные шлюзы
 
-- [ ] F-008, F-009, F-011, F-012.
+- [x] F-009, F-011, F-012.
+- [ ] F-008.
 - [ ] F-026 и F-027 после AD-04/AD-05.
 - [ ] F-039..F-043.
 - [ ] F-045, F-046.
@@ -190,12 +195,12 @@ Gate: обещания ADR соответствуют реально доказ�
 | Поток | Статус | Зависимость | Владелец/ветка |
 | --- | --- | --- | --- |
 | W0 baseline | completed | нет | F-002/F-044 accepted; F-003 corpus передан в AD-08 |
-| W1 Editor lease/mutations/GC | in_progress | нет | F-001/F-007 fixed; exclusive: `apps/editor-web` session/lease/mutating routes |
+| W1 Editor lease/mutations/GC | partially_blocked | AD-09/AD-10 для F-004/F-010 | F-001/F-005/F-006/F-007 fixed; F-010 rejected by Sol-high review; exclusive: `apps/editor-web` session/lease/mutating routes |
 | W2 Preview trust/messages | partially_blocked | AD-08 для F-003; AD-06 только для hosted origin | exclusive integration owner: Runtime preview routes, preview message schema и их OpenAPI; W4 только потребитель до handoff SHA |
 | W3 Portal | partially_blocked | F-002 fixed; AD-01..AD-03 | exclusive integration owner: Portal/Runtime launch contract и его OpenAPI; W4 только потребитель до handoff SHA |
 | W4 Runtime/Mechanics/contracts | pending | AD-04/AD-05 только для соответствующих схем | exclusive: остальные Runtime/Mechanics/shared contracts, исключая границы W2/W3 |
 | W5 Player/game packages | pending | handoff SHA W2/W3/W4 для contract changes, AD-07 для semantics | exclusive: Player/game files; shared schema не меняет |
-| W6 Product Context/operations/CI | pending | нет | разделять concurrency и mechanical CI blocks |
+| W6 Product Context/operations/CI | in_progress | нет | F-037/F-038 fixed; разделять concurrency и mechanical CI blocks |
 | W7 architecture/docs | partially_blocked | решения PM только при неоднозначном status | primary agent |
 
 Точный исполнитель и branch не фиксируются заранее: оркестратор сверяет
@@ -295,7 +300,61 @@ rollout-планом.
 - F-003 остановлен до решения AD-08; остальные независимые находки продолжают
   исполняться.
 
+### 2026-08-31 — AD-09 для серверной границы Editor mutations
+
+- Во время реализации F-004 подтверждено, что `/api/editor/apply` получает
+  только готовые sibling-тексты: сервер не имеет `EditorChangeSet` и before-hash,
+  поэтому не может повторить принятый schema/semantic dry-run или обнаружить
+  устаревшую запись.
+- `/api/editor/layout` также допускает запись без обязательной session worktree
+  и точного текущего hash. Исправление меняет форму и семантику HTTP-запросов,
+  то есть public/trust boundary.
+- F-004 остановлен до решения AD-09. Рекомендуемый вариант переиспользует
+  существующие lease, editor-engine и клиентский undo journal, не создавая новый
+  сервис, журнал или постоянное хранилище.
+
+### 2026-08-31 — AD-10 для точного Editor approval
+
+- Третья коррекция F-010 прошла focused tests, но итоговое Sol-high ревью
+  доказало, что client-only scope остаётся подменяемым: apply не хэширует полный
+  `EditorChangeSet`, undo/save используют не криптографический 32-битный
+  `hashEditorText`, а Save не охватывает остальные dirty-файлы worktree.
+- Серверный полный эффект Save неизвестен браузеру до подготовки. Точный scope
+  требует нового prepare/execute HTTP-контракта и повторного SHA-256 recheck под
+  session lease, то есть изменения trust/public boundary.
+- F-010 остановлен до совместного решения AD-09/AD-10. Предлагается одна общая
+  серверная prepared-effect граница без нового сервиса, второго журнала или
+  постоянного approval ledger.
+- То же ревью нашло локальную гонку identity при Save/navigation и недостаточно
+  интеграционные helper-тесты. Они входят в обязательные критерии реализации
+  после решения, но сами по себе не заменяют exact effect contract.
+
 ## Handoff Log
+
+### 2026-08-31 — primary agent, независимые блоки Editor/Product Context
+
+- Commits: `e5aa289` — fail-safe journaled GC; `11bee52` — единый default-off
+  runtime gate F-011; `2a7f1e5` — точный общий UTF-8 budget F-012. Ранее в этой
+  ветке: F-009 и F-037/F-038.
+- GC: удаление привязано к открытым inode/procfd, project-wide lease и
+  восстанавливаемым фазам; Sol-high `ACCEPT`, focused tests 25/25. На хосте без
+  Linux procfd/GNU `rm` операция fail closed и оставляет журналированный
+  quarantine; это безопасное ограничение переносимости, не скрытое удаление.
+- F-011: CopilotKit и прямые AG-UI GET/POST используют один default-off gate;
+  primary focused tests 18/18, итоговый Sol-high review подтвердил исправление.
+- F-012: Luna-high implementation -> Luna-xhigh `NEEDS_CORRECTION` из-за
+  browser `Buffer` и нечестных limits -> Luna correction -> Luna-xhigh
+  `ACCEPT`; primary focused tests 34/34. Итог использует `TextEncoder`, общий
+  1 MiB cap, сохраняет snapshot metadata при удалении payload и fail closed для
+  непомещающегося обязательного envelope.
+- F-037/F-038: generation fence принят Sol-high; streaming responses имеют
+  общий точный 64 KiB hard cap. Реальный PostgreSQL transition test условно
+  пропущен без `TEST_PRODUCT_CONTEXT_DATABASE_URL` и остаётся обязательным
+  интеграционным gate перед stage acceptance.
+- F-010: не принят и не коммитится как завершённый. Итоговый Sol-high verdict
+  `NEEDS_CORRECTION`; архитектурная часть вынесена в AD-10.
+- Full suite/build/E2E отложены до сведения крупной волны; выполнены только
+  доказательные focused checks и `git diff --check` для принятых блоков.
 
 ### 2026-08-31 — primary agent, документация исполнения
 
