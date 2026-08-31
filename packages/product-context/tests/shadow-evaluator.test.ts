@@ -387,18 +387,19 @@ describe('persistent shadow evaluator', () => {
       expect(review).toHaveBeenCalledWith(0, 'no_change', expect.any(Object));
     } finally { await rm(f.dir, { recursive: true, force: true }); }
   });
-  it('preserves a schema error instead of collapsing it to mismatch', async () => {
-    const f = await fixture(); try {
-      f.db.value = snapshot([{ ...f.db.value.runs[0]!, status: 'failed', outcome: 'gateway_malformed', metricCount: 1, lastErrorCode: 'gateway_malformed:final_page_policy' }]);
-      await preflightShadowEvaluation(f.deps);
-      const report = await runNextShadowEvaluation(f.deps);
-      expect(report.status).toBe('hard_stopped');
-      expect(report.scenarios[0]!.actual_outcome).toBe('schema_error');
-      expect(report.scenarios[1]!.actual_outcome).toBe('pending');
-      expect(shadowEvaluatorValidationStage(f.db.value, manifest(), report)).toBe('final_page_policy');
-      expect(f.db.workerCalls).toBe(0);
-    } finally { await rm(f.dir, { recursive: true, force: true }); }
-  });
+  it.each(['provenance', 'proposal_provenance', 'page_provenance', 'final_page_policy'] as const)(
+    'preserves the allowlisted %s schema error instead of collapsing it to mismatch', async (stage) => {
+      const f = await fixture(); try {
+        f.db.value = snapshot([{ ...f.db.value.runs[0]!, status: 'failed', outcome: 'gateway_malformed', metricCount: 1, lastErrorCode: `gateway_malformed:${stage}` }]);
+        await preflightShadowEvaluation(f.deps);
+        const report = await runNextShadowEvaluation(f.deps);
+        expect(report.status).toBe('hard_stopped');
+        expect(report.scenarios[0]!.actual_outcome).toBe('schema_error');
+        expect(report.scenarios[1]!.actual_outcome).toBe('pending');
+        expect(shadowEvaluatorValidationStage(f.db.value, manifest(), report)).toBe(stage);
+        expect(f.db.workerCalls).toBe(0);
+      } finally { await rm(f.dir, { recursive: true, force: true }); }
+    });
   it('never exposes arbitrary last_error_code text as an operator validation stage', () => {
     const base = snapshot([{ ...new MemoryDb().value.runs[0]!, status: 'failed', outcome: 'gateway_malformed', metricCount: 1, lastErrorCode: 'provider payload text' }]);
     expect(shadowEvaluatorValidationStage(base, manifest(), emptyShadowEvaluationReport(manifestDigest))).toBeNull();

@@ -124,7 +124,7 @@ export function validateModelGatewayResult(request: ModelGatewayRequest, candida
     throw malformed('exact_patch');
   }
   if (validated.value.proposal !== null && !proposalSourcesMatchRequest(validated.value.proposal, request)) {
-    throw malformed('provenance');
+    throw malformed('proposal_provenance');
   }
   return validated.value;
 }

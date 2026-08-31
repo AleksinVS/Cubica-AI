@@ -118,7 +118,8 @@ raw material вручную через `/dev/tty`, но сохраняет то�
 При `gateway_malformed` команда `run-next` дополнительно выводит в `stderr`
 только один проверенный этап: `provider_http`, `provider_envelope`,
 `candidate_json`, `proposal_structure`, `exact_patch`, `result_schema`,
-`result_binding`, `timestamp_binding`, `provenance` или `final_page_policy`.
+`result_binding`, `timestamp_binding`, legacy `provenance`,
+`proposal_provenance`, `page_provenance` или `final_page_policy`.
 Код берётся из существующего `last_error_code`, не попадает в metric/report и
 удаляется штатным cleanup вместе с run. Неизвестное значение не выводится;
 текст provider, candidate, путь, ссылка, AJV error и причина исключения
@@ -602,7 +603,9 @@ advisory-lock соединения до удаления private state. Врем
 [`dr21-content-free-report.json`](../tasks/artifacts/TSK-20260809-product-knowledge-shadow-stage-2/dr21-content-free-report.json).
 
 Разрешение DR-21 израсходовано. Так как точный кандидат уничтожен, нельзя
-ретроспективно назвать нарушенное подусловие provenance. Следующий шаг —
-локальный разбор guard и синтетических create/update fixtures без provider call.
-Изменение provenance-семантики или публичного контракта требует отдельного
+ретроспективно назвать нарушенное подусловие provenance. DR-22 разделил только
+будущую внутреннюю диагностику: `proposal_provenance` относится к источникам
+proposal/operations, `page_provenance` — к источникам итоговой страницы и
+сохранению истории. Старый код читается для совместимости; проверки доверия,
+prompt, JSON Schema, storage и report не менялись. DR-23 требует отдельного
 решения PM; новый внешний вызов и Stage 3 запрещены.
