@@ -110,6 +110,7 @@ export interface EditorAgentContextProjection extends CubicaAgentContext<EditorA
     readonly maxDiagnostics: number;
     readonly maxExcerptLength: number;
     readonly maxSnapshotBytes: number;
+    readonly maxProjectionBytes: number;
     readonly truncated: boolean;
   };
 }
@@ -136,6 +137,7 @@ export interface BuildEditorAgentContextProjectionInput {
   readonly maxDiagnostics?: number;
   readonly maxExcerptLength?: number;
   readonly maxSnapshotBytes?: number;
+  readonly maxProjectionBytes?: number;
 }
 
 const secretPathPattern = /(^|\/|\.)(secret|secrets|password|token|api[-_]?key|private|credential|authorization)(\/|\.|$)/iu;
@@ -146,14 +148,20 @@ const defaultMaxExcerptLength = 900;
 // potentially sensitive and heavy, so the ADR-044 gate caps the payload: over
 // budget, the image is dropped (metadata is kept) and `limits.truncated` is set.
 const defaultMaxSnapshotBytes = 512 * 1024;
+// The total serialized envelope is capped at 1 MiB: this leaves room for the
+// base64 representation and metadata around the existing 512 KiB decoded
+// snapshot allowance while putting a real ceiling on every projected field.
+const defaultMaxProjectionBytes = 1024 * 1024;
+const projectionEncoder = new TextEncoder();
 
 export function buildEditorAgentContextProjection(
   input: BuildEditorAgentContextProjectionInput
 ): EditorAgentContextProjection {
-  const maxSelectedPointers = input.maxSelectedPointers ?? defaultMaxSelectedPointers;
-  const maxDiagnostics = input.maxDiagnostics ?? defaultMaxDiagnostics;
-  const maxExcerptLength = input.maxExcerptLength ?? defaultMaxExcerptLength;
-  const maxSnapshotBytes = input.maxSnapshotBytes ?? defaultMaxSnapshotBytes;
+  const maxSelectedPointers = resolveLimit(input.maxSelectedPointers, defaultMaxSelectedPointers, "maxSelectedPointers");
+  const maxDiagnostics = resolveLimit(input.maxDiagnostics, defaultMaxDiagnostics, "maxDiagnostics");
+  const maxExcerptLength = resolveLimit(input.maxExcerptLength, defaultMaxExcerptLength, "maxExcerptLength");
+  const maxSnapshotBytes = resolveLimit(input.maxSnapshotBytes, defaultMaxSnapshotBytes, "maxSnapshotBytes");
+  const maxProjectionBytes = resolveLimit(input.maxProjectionBytes, defaultMaxProjectionBytes, "maxProjectionBytes");
   // Route the region snapshot through the SAME projection point as the rest of
   // the agent context (ADR-044): the byte-size budget is enforced here so the
   // image can never bypass the gate on its way to an external provider.
@@ -169,30 +177,60 @@ export function buildEditorAgentContextProjection(
   // cap below) so the top-level `truncated` signal reflects real data loss, not just the
   // presence of arrays/objects.
   let anyPointerValueTruncated = false;
-  const selectedPointers = dedupedSelectedPointers
+  let selectedPointers = dedupedSelectedPointers
     .slice(0, maxSelectedPointers)
     .map((pointer) => {
       const built = buildPointerContext(pointer, input.document, maxExcerptLength);
       anyPointerValueTruncated = anyPointerValueTruncated || built.truncated;
       return built.context;
     });
-  const diagnostics = (input.diagnostics ?? []).slice(0, maxDiagnostics).map((diagnostic) => ({
-    severity: diagnostic.severity,
-    source: diagnostic.source,
-    pointer: diagnostic.pointer,
-    message: truncateText(diagnostic.message, 260)
-  }));
-  const selectedPreviewEntities = (input.selectedPreviewEntities ?? []).slice(0, maxSelectedPointers).map((entity) => ({
-    entityId: entity.entityId,
-    label: truncateText(entity.label, 120),
-    semanticRole: entity.semanticRole,
-    authoringPointer: entity.authoringPointer
-  }));
-  const selectedEditorEntities = (input.selectedEditorEntities ?? [])
+  let diagnosticsTruncated = false;
+  let diagnostics = (input.diagnostics ?? []).slice(0, maxDiagnostics).map((diagnostic) => {
+    const message = truncateTextWithSignal(diagnostic.message, 260);
+    diagnosticsTruncated = diagnosticsTruncated || message.truncated;
+    return {
+      severity: diagnostic.severity,
+      source: diagnostic.source,
+      pointer: diagnostic.pointer,
+      message: message.value
+    };
+  });
+  let selectedPreviewEntitiesTruncated = false;
+  let selectedPreviewEntities = (input.selectedPreviewEntities ?? []).slice(0, maxSelectedPointers).map((entity) => {
+    const label = truncateTextWithSignal(entity.label, 120);
+    selectedPreviewEntitiesTruncated = selectedPreviewEntitiesTruncated || label.truncated;
+    return {
+      entityId: entity.entityId,
+      label: label.value,
+      semanticRole: entity.semanticRole,
+      authoringPointer: entity.authoringPointer
+    };
+  });
+  let selectedEditorEntitiesTruncated = false;
+  let selectedEditorEntities = (input.selectedEditorEntities ?? [])
     .slice(0, maxSelectedPointers)
-    .map(toAgentSelectedEntityContext);
+    .map((entity) => {
+      const projected = toAgentSelectedEntityContext(entity);
+      selectedEditorEntitiesTruncated = selectedEditorEntitiesTruncated || projected.truncated;
+      return projected.context;
+    });
 
-  return {
+  const fieldLevelTruncated =
+    dedupedSelectedPointers.length > maxSelectedPointers ||
+    (input.selectedEditorEntities?.length ?? 0) > maxSelectedPointers ||
+    (input.diagnostics?.length ?? 0) > maxDiagnostics ||
+    (input.selectedPreviewEntities?.length ?? 0) > maxSelectedPointers ||
+    anyPointerValueTruncated ||
+    diagnosticsTruncated ||
+    selectedPreviewEntitiesTruncated ||
+    selectedEditorEntitiesTruncated ||
+    (projectedRegionSnapshot?.dataOmitted ?? false);
+
+  let totalBudgetTruncated = false;
+  let regionSnapshot = projectedRegionSnapshot;
+  let previewTraceSummary = input.previewTraceSummary;
+
+  const makeProjection = (): EditorAgentContextProjection => ({
     contextVersion: 1,
     agentId: EDITOR_AUTHORING_ASSISTANT_ID,
     source: {
@@ -205,26 +243,85 @@ export function buildEditorAgentContextProjection(
     selectedPointers,
     selectedPreviewEntities,
     selectedEditorEntities,
-    regionSnapshot: projectedRegionSnapshot,
+    regionSnapshot,
     diagnostics,
-    previewTraceSummary: input.previewTraceSummary,
+    previewTraceSummary,
     limits: {
       maxSelectedPointers,
       maxDiagnostics,
       maxExcerptLength,
       maxSnapshotBytes,
+      maxProjectionBytes,
       // WHY: compare the DEDUPED pointer count against the limit — comparing the raw,
       // pre-dedup input length here was the root cause of Finding 6: sending duplicate
       // pointers that fit under the limit once collapsed would still report `truncated: true`
-      // even though nothing was actually dropped by a limit.
-      truncated:
-        dedupedSelectedPointers.length > maxSelectedPointers ||
-        (input.selectedEditorEntities?.length ?? 0) > maxSelectedPointers ||
-        (input.diagnostics?.length ?? 0) > maxDiagnostics ||
-        anyPointerValueTruncated ||
-        (projectedRegionSnapshot?.dataOmitted ?? false)
+      // even though nothing was actually dropped by a limit. The total budget flag is
+      // intentionally ORed in so dropping any optional content remains auditable.
+      truncated: fieldLevelTruncated || totalBudgetTruncated
     }
-  };
+  });
+
+  let projection = makeProjection();
+  if (serializedProjectionByteLength(projection) > maxProjectionBytes) {
+    totalBudgetTruncated = true;
+
+    // Drop optional content as complete JSON values in a stable order. This preserves
+    // valid UTF-8 and never exposes data outside the already-redacted projection.
+    // Keep snapshot metadata as an audit signal when only its payload is too large.
+    if (regionSnapshot?.dataUrl !== undefined) {
+      regionSnapshot = { ...regionSnapshot, dataUrl: undefined, dataOmitted: true };
+    }
+    projection = makeProjection();
+
+    if (serializedProjectionByteLength(projection) > maxProjectionBytes) {
+      previewTraceSummary = undefined;
+      projection = makeProjection();
+    }
+
+    while (serializedProjectionByteLength(projection) > maxProjectionBytes && diagnostics.length > 0) {
+      diagnostics = diagnostics.slice(0, -1);
+      projection = makeProjection();
+    }
+    while (serializedProjectionByteLength(projection) > maxProjectionBytes && selectedPreviewEntities.length > 0) {
+      selectedPreviewEntities = selectedPreviewEntities.slice(0, -1);
+      projection = makeProjection();
+    }
+    while (serializedProjectionByteLength(projection) > maxProjectionBytes && selectedEditorEntities.length > 0) {
+      selectedEditorEntities = selectedEditorEntities.slice(0, -1);
+      projection = makeProjection();
+    }
+    while (serializedProjectionByteLength(projection) > maxProjectionBytes && selectedPointers.length > 0) {
+      selectedPointers = selectedPointers.slice(0, -1);
+      projection = makeProjection();
+    }
+
+    // Only remove the snapshot metadata after all other optional content has been
+    // degraded; metadata is itself the audit signal for an omitted payload.
+    if (serializedProjectionByteLength(projection) > maxProjectionBytes && regionSnapshot !== undefined) {
+      regionSnapshot = undefined;
+      projection = makeProjection();
+    }
+
+    if (serializedProjectionByteLength(projection) > maxProjectionBytes) {
+      throw new Error(
+        `Editor agent context projection mandatory envelope exceeds maxProjectionBytes (${maxProjectionBytes})`
+      );
+    }
+  }
+
+  return projection;
+}
+
+function serializedProjectionByteLength(projection: EditorAgentContextProjection): number {
+  return projectionEncoder.encode(JSON.stringify(projection)).byteLength;
+}
+
+function resolveLimit(value: number | undefined, fallback: number, name: string): number {
+  const resolved = value === undefined ? fallback : value;
+  if (!Number.isSafeInteger(resolved) || resolved < 0) {
+    throw new Error(`Editor agent context projection ${name} must be a non-negative safe integer`);
+  }
+  return resolved;
 }
 
 /**
@@ -259,29 +356,47 @@ function approxDataUrlByteLength(dataUrl: string): number {
   return Math.max(0, Math.floor((base64.length * 3) / 4) - padding);
 }
 
-function toAgentSelectedEntityContext(entity: EditorEntity): EditorAgentSelectedEntityContext {
+function toAgentSelectedEntityContext(
+  entity: EditorEntity
+): { readonly context: EditorAgentSelectedEntityContext; readonly truncated: boolean } {
+  const label = truncateTextWithSignal(entity.label, 120);
+  const primarySource = toAgentEntitySourcePointerContext(entity.primarySource);
+  let truncated = label.truncated || primarySource.truncated;
   const facets: Partial<Record<EditorEntityFacetKind, readonly EditorAgentEntitySourcePointerContext[]>> = {};
   for (const [facetKind, sources] of Object.entries(entity.facets) as readonly [EditorEntityFacetKind, readonly EditorEntitySourcePointer[]][]) {
-    facets[facetKind] = sources.map(toAgentEntitySourcePointerContext);
+    facets[facetKind] = sources.map((source) => {
+      const projected = toAgentEntitySourcePointerContext(source);
+      truncated = truncated || projected.truncated;
+      return projected.context;
+    });
   }
 
   return {
-    entityId: entity.entityId,
-    kind: entity.kind,
-    label: truncateText(entity.label, 120),
-    primarySource: toAgentEntitySourcePointerContext(entity.primarySource),
-    facets
+    context: {
+      entityId: entity.entityId,
+      kind: entity.kind,
+      label: label.value,
+      primarySource: primarySource.context,
+      facets
+    },
+    truncated
   };
 }
 
-function toAgentEntitySourcePointerContext(source: EditorEntitySourcePointer): EditorAgentEntitySourcePointerContext {
+function toAgentEntitySourcePointerContext(
+  source: EditorEntitySourcePointer
+): { readonly context: EditorAgentEntitySourcePointerContext; readonly truncated: boolean } {
+  const label = source.label === undefined ? undefined : truncateTextWithSignal(source.label, 120);
   return {
-    filePath: source.filePath,
-    pointer: source.pointer,
-    documentKind: source.documentKind,
-    channel: source.channel,
-    role: source.role,
-    label: source.label === undefined ? undefined : truncateText(source.label, 120)
+    context: {
+      filePath: source.filePath,
+      pointer: source.pointer,
+      documentKind: source.documentKind,
+      channel: source.channel,
+      role: source.role,
+      label: label?.value
+    },
+    truncated: label?.truncated ?? false
   };
 }
 
@@ -370,8 +485,12 @@ function truncateJsonValue(value: JsonValue | string, maxLength: number): { read
   return { value: `${json.slice(0, Math.max(0, maxLength - 3))}...`, truncated: true };
 }
 
-function truncateText(value: string, maxLength: number): string {
-  return value.length <= maxLength ? value : `${value.slice(0, Math.max(0, maxLength - 3))}...`;
+function truncateTextWithSignal(value: string, maxLength: number): { readonly value: string; readonly truncated: boolean } {
+  if (value.length <= maxLength) {
+    return { value, truncated: false };
+  }
+
+  return { value: `${value.slice(0, Math.max(0, maxLength - 3))}...`, truncated: true };
 }
 
 function getJsonValueType(value: JsonValue | undefined): string {
