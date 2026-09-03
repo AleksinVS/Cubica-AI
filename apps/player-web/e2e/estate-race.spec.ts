@@ -172,6 +172,8 @@ test.describe("Estate Race S0–S7", { tag: "@player" }, () => {
 
     const createSession = waitForSessionCreation(page);
     await page.goto(`/?gameId=${GAME_ID}`);
+    await expect(page.getByRole("heading", { name: "Кто участвует в игре?" })).toBeVisible();
+    await page.getByRole("button", { name: "Начать игру" }).click();
     const creationResponse = await createSession;
     expect(creationResponse.status()).toBe(201);
     const browserSession = await creationResponse.json() as RuntimeSnapshot;
