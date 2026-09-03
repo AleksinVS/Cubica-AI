@@ -478,6 +478,7 @@ export function InteractiveBoardSurface({
         className={styles.canvasHost}
         aria-hidden="true"
         data-testid="interactive-board-canvas-host"
+        data-state-version={session.version.stateVersion}
       />
 
       {layoutMode === "map-first" ? (

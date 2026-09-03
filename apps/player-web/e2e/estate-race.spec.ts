@@ -1121,7 +1121,6 @@ const waitForSessionCreation = (page: Page) => page.waitForResponse((response) =
 );
 
 async function clickBoardAction(page: Page, label: string): Promise<BrowserActionResult> {
-  const previousRoundTrip = await boardRoundTripMarker(page);
   const actionRequest = page.waitForRequest((request) =>
     request.url().endsWith("/api/runtime/actions") && request.method() === "POST"
   );
@@ -1132,9 +1131,8 @@ async function clickBoardAction(page: Page, label: string): Promise<BrowserActio
   await board(page).getByRole("button", { name: label }).click();
   const [runtimeRequest, runtimeResponse] = await Promise.all([actionRequest, actionResponse]);
   expect(runtimeResponse.status()).toBe(200);
-  await expectBoardRoundTrip(page, previousRoundTrip);
-
   const snapshot = await runtimeResponse.json() as RuntimeSnapshot;
+  await expectBoardStateVersion(page, snapshot.version.stateVersion);
   expect(
     snapshot.receipt?.status,
     `${label} was rejected: ${snapshot.receipt?.rejectionCode ?? "unknown reason"}`
@@ -1167,7 +1165,6 @@ async function submitBoardFormFields(
   values: Record<string, string>,
   fieldLabels: Readonly<Record<string, string>> = {}
 ): Promise<BrowserActionResult> {
-  const previousRoundTrip = await boardRoundTripMarker(page);
   const actionRequest = page.waitForRequest((request) =>
     request.url().endsWith("/api/runtime/actions") && request.method() === "POST"
   );
@@ -1191,9 +1188,8 @@ async function submitBoardFormFields(
   await form.getByRole("button", { name: actionLabel }).click();
   const [runtimeRequest, runtimeResponse] = await Promise.all([actionRequest, actionResponse]);
   expect(runtimeResponse.status()).toBe(200);
-  await expectBoardRoundTrip(page, previousRoundTrip);
-
   const snapshot = await runtimeResponse.json() as RuntimeSnapshot;
+  await expectBoardStateVersion(page, snapshot.version.stateVersion);
   expect(
     snapshot.receipt?.status,
     `${actionLabel} was rejected: ${snapshot.receipt?.rejectionCode ?? "unknown reason"}`
@@ -1214,7 +1210,6 @@ async function resolveFormFieldName(page: Page, actionLabel: string, fieldLabel:
 }
 
 async function submitAuctionBid(page: Page, amount: number): Promise<BrowserActionResult> {
-  const previousRoundTrip = await boardRoundTripMarker(page);
   const actionRequest = page.waitForRequest((request) =>
     request.url().endsWith("/api/runtime/actions") && request.method() === "POST"
   );
@@ -1227,8 +1222,8 @@ async function submitAuctionBid(page: Page, amount: number): Promise<BrowserActi
   await form.getByRole("button", { name: "Сделать ставку" }).click();
   const [runtimeRequest, runtimeResponse] = await Promise.all([actionRequest, actionResponse]);
   expect(runtimeResponse.status()).toBe(200);
-  await expectBoardRoundTrip(page, previousRoundTrip);
   const snapshot = await runtimeResponse.json() as RuntimeSnapshot;
+  await expectBoardStateVersion(page, snapshot.version.stateVersion);
   expect(
     snapshot.receipt?.status,
     `Сделать ставку отклонено: ${snapshot.receipt?.rejectionCode ?? "unknown reason"}`
@@ -1242,16 +1237,11 @@ async function submitAuctionBid(page: Page, amount: number): Promise<BrowserActi
   };
 }
 
-const boardRoundTripMarker = (page: Page) => board(page)
-  .getByTestId("interactive-board-canvas-host")
-  .getAttribute("data-last-action-round-trip-ms", { timeout: 1_000 })
-  .catch(() => null);
-
-async function expectBoardRoundTrip(page: Page, previousMarker: string | null): Promise<void> {
-  await expect.poll(() => boardRoundTripMarker(page), {
-    message: "board DOM did not apply the authoritative action snapshot",
-    timeout: 30_000
-  }).not.toBe(previousMarker);
+async function expectBoardStateVersion(page: Page, stateVersion: number): Promise<void> {
+  await expect(
+    board(page).getByTestId("interactive-board-canvas-host"),
+    "board DOM did not apply the authoritative action snapshot"
+  ).toHaveAttribute("data-state-version", String(stateVersion), { timeout: 30_000 });
 }
 
 /** The player HTTP boundary must never reveal deterministic random/deck internals. */
