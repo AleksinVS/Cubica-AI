@@ -10,7 +10,7 @@
     "seed:example": "node ./scripts/seed.js",
     "start": "strapi start",
     "strapi": "strapi",
-    "test:portal-rules": "node --test test/*.test.js"
+    "test:portal-rules": "node --experimental-strip-types --test test/*.test.js"
   },
   "dependencies": {
     "@strapi/plugin-cloud": "5.10.2",

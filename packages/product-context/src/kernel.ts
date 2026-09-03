@@ -288,26 +288,26 @@ export class ProductContextKernel {
     const proposal = row.patch_payload;
     const envelope = row.decision_envelope;
     if (!proposal || !envelope || !verifyExactPatchProposalHash(proposal) || row.patch_hash !== proposal.patch_hash) {
-      await this.sql.markFailed(context.principalRef, row.operation_id, worker, 'invalid_payload');
+      await this.sql.markFailed(context.principalRef, row.operation_id, worker, row.attempt_count, 'invalid_payload');
       return 'failed';
     }
 
     const decision = this.enterGate('before_git_commit', context);
     const authorityDrift = compareEnvelopeAuthority(context, envelope, proposal, decision);
-    if (authorityDrift) return this.finishConflict(context, row.operation_id, worker, authorityDrift);
-    if (this.git.head() !== proposal.base_commit) return this.finishConflict(context, row.operation_id, worker, 'base_revision_changed');
+    if (authorityDrift) return this.finishConflict(context, row.operation_id, worker, row.attempt_count, authorityDrift);
+    if (this.git.head() !== proposal.base_commit) return this.finishConflict(context, row.operation_id, worker, row.attempt_count, 'base_revision_changed');
 
     let preview: GitPatchPreview;
     try { preview = this.git.preview(proposal); }
-    catch { return this.finishConflict(context, row.operation_id, worker, 'base_revision_changed'); }
-    if (targetRef(preview) !== envelope.target_ref) return this.finishConflict(context, row.operation_id, worker, 'read_set_changed');
+    catch { return this.finishConflict(context, row.operation_id, worker, row.attempt_count, 'base_revision_changed'); }
+    if (targetRef(preview) !== envelope.target_ref) return this.finishConflict(context, row.operation_id, worker, row.attempt_count, 'read_set_changed');
     const resolved = this.resolveProposalSources(proposal);
-    if (!resolved || !this.readSetMatches(envelope.read_set)) return this.finishConflict(context, row.operation_id, worker, 'read_set_changed');
+    if (!resolved || !this.readSetMatches(envelope.read_set)) return this.finishConflict(context, row.operation_id, worker, row.attempt_count, 'read_set_changed');
     if (!evaluateProposalPolicy(proposal, decision.policy, resolved.policySources).allowed || !previewAllowed(preview, proposal, decision.policy, resolved.byKey)) {
-      return this.finishConflict(context, row.operation_id, worker, 'authorization_changed');
+      return this.finishConflict(context, row.operation_id, worker, row.attempt_count, 'authorization_changed');
     }
     const impact = effectiveImpact(decision.impact, preview.impactReasons);
-    if (impact.hash !== envelope.impact_hash) return this.finishConflict(context, row.operation_id, worker, 'impact_changed');
+    if (impact.hash !== envelope.impact_hash) return this.finishConflict(context, row.operation_id, worker, row.attempt_count, 'impact_changed');
     if (impact.reviewRequired) {
       const review = this.authority.reviewImpact({
         context,
@@ -323,14 +323,14 @@ export class ProductContextKernel {
           review.patch_hash !== proposal.patch_hash ||
           review.impact_hash !== envelope.impact_hash ||
           review.outcome !== 'no_issue') {
-        return this.finishConflict(context, row.operation_id, worker, 'requires_extended_review');
+        return this.finishConflict(context, row.operation_id, worker, row.attempt_count, 'requires_extended_review');
       }
     }
 
     const result = this.git.apply(row.operation_id, proposal);
-    if (result.status === 'conflict' || !result.commit) return this.finishConflict(context, row.operation_id, worker, 'base_revision_changed');
+    if (result.status === 'conflict' || !result.commit) return this.finishConflict(context, row.operation_id, worker, row.attempt_count, 'base_revision_changed');
     options.afterGitRefBeforeSql?.();
-    await this.sql.markApplied(context.principalRef, row.operation_id, worker, result.commit);
+    await this.sql.markApplied(context.principalRef, row.operation_id, worker, row.attempt_count, result.commit);
     options.afterSqlAppliedBeforePurge?.();
     if (options.purgePayload !== false) await this.sql.purgeAppliedPayload(context.principalRef, row.operation_id);
     return 'applied';
@@ -415,9 +415,10 @@ export class ProductContextKernel {
     context: KernelContext,
     operationId: string,
     worker: string,
+    attemptCount: number,
     reason: 'authorization_changed' | 'policy_changed' | 'read_set_changed' | 'impact_changed' | 'base_revision_changed' | 'requires_extended_review'
   ): Promise<'conflict'> {
-    await this.sql.markConflict(context.principalRef, operationId, worker, reason);
+    await this.sql.markConflict(context.principalRef, operationId, worker, attemptCount, reason);
     return 'conflict';
   }
 }

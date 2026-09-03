@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 
 import { hashExactPatchProposal, verifyExactPatchProposalHash } from '../src/contracts.ts';
 import { assertIsolatedHarnessConfig, InMemoryConversationStore, MutableDecisionAuthority, syntheticContext } from '../src/harness.ts';
+import { ProductContextKernel } from '../src/kernel.ts';
+import { OperationUnavailableError } from '../src/postgres.ts';
 import type { ExactPatchProposal } from '../src/generated/product-knowledge.ts';
 
 describe('kernel trust inputs', () => {
@@ -40,6 +42,63 @@ describe('kernel trust inputs', () => {
       databaseUrl: 'postgresql://user:password@localhost/product_context_stage1?host=remote.example&port=6543',
       gitRoot: '/tmp/cubica-stage1-query-override.git', syntheticOnly: true, denyExternalProcessing: true
     })).rejects.toThrow('exact local Stage 1 database');
+  });
+
+  it('cannot finish stale attempt N after the same owner reclaims attempt N+1', async () => {
+    const owner = 'stable-worker-name';
+    const operationId = 'op_attempt_fence';
+    const state: {
+      status: 'ready' | 'applying' | 'failed';
+      leaseOwner: string | null;
+      attemptCount: number;
+    } = { status: 'ready', leaseOwner: null, attemptCount: 0 };
+    let staleTerminalAttempt: number | undefined;
+
+    const sql = {
+      claimReady: async (_principalRef: string, leaseOwner: string) => {
+        state.status = 'applying';
+        state.leaseOwner = leaseOwner;
+        state.attemptCount += 1;
+        const staleClaim = {
+          operation_id: operationId,
+          patch_hash: null,
+          patch_payload: null,
+          decision_envelope: null,
+          attempt_count: state.attemptCount
+        };
+
+        // Deterministically interleave expiry and a new claim before attempt N
+        // performs its terminal write. The owner string is intentionally reused.
+        state.status = 'ready';
+        state.leaseOwner = null;
+        state.status = 'applying';
+        state.leaseOwner = leaseOwner;
+        state.attemptCount += 1;
+        return staleClaim;
+      },
+      markFailed: async (
+        _principalRef: string,
+        candidateOperationId: string,
+        leaseOwner: string,
+        attemptCount: number
+      ) => {
+        staleTerminalAttempt = attemptCount;
+        if (
+          candidateOperationId !== operationId ||
+          state.status !== 'applying' ||
+          state.leaseOwner !== leaseOwner ||
+          state.attemptCount !== attemptCount
+        ) throw new OperationUnavailableError();
+        state.status = 'failed';
+        return {};
+      }
+    };
+    const kernel = new ProductContextKernel(sql as never, {} as never, {} as never, {} as never);
+
+    await expect(kernel.applyOne(syntheticContext('developer'), { worker: owner }))
+      .rejects.toBeInstanceOf(OperationUnavailableError);
+    expect(staleTerminalAttempt).toBe(1);
+    expect(state).toEqual({ status: 'applying', leaseOwner: owner, attemptCount: 2 });
   });
 });
 

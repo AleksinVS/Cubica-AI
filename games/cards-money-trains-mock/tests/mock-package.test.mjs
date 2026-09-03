@@ -36,6 +36,58 @@ const testAdmissionController = {
 };
 let nextCommandSequence = 1;
 
+/**
+ * Keep the published mock transcript independent of production entropy. The
+ * runtime still executes the real deck shuffle operation; this provider only
+ * supplies the deterministic test seam needed for a fixed replay fixture.
+ */
+const createMockRandomProvider = () => {
+  const newsSource = [
+    "mock-news-block-c-d", "mock-news-cheap-wagons", "mock-news-construction-window",
+    "mock-news-costly-service", "mock-news-open-c-d", "mock-news-stable-day"
+  ];
+  const cargoSource = [
+    "mock-cargo-a-d", "mock-cargo-a-e", "mock-cargo-b-a", "mock-cargo-b-c",
+    "mock-cargo-b-f", "mock-cargo-c-e", "mock-cargo-c-f", "mock-cargo-d-b",
+    "mock-cargo-e-c", "mock-cargo-e-d", "mock-cargo-f-a", "mock-cargo-f-d"
+  ];
+  const newsTarget = [
+    "mock-news-block-c-d", "mock-news-cheap-wagons", "mock-news-construction-window",
+    "mock-news-open-c-d", "mock-news-costly-service", "mock-news-stable-day"
+  ];
+  const cargoTarget = [
+    "mock-cargo-b-c", "mock-cargo-b-f", "mock-cargo-c-f", "mock-cargo-a-d",
+    "mock-cargo-e-c", "mock-cargo-a-e", "mock-cargo-d-b", "mock-cargo-f-a",
+    "mock-cargo-c-e", "mock-cargo-e-d", "mock-cargo-b-a", "mock-cargo-f-d"
+  ];
+  const swapIndexes = (source, target) => {
+    const values = [...source];
+    const indexes = [];
+    for (let index = values.length - 1; index > 0; index -= 1) {
+      const swapIndex = values.indexOf(target[index]);
+      indexes.push(swapIndex);
+      [values[index], values[swapIndex]] = [values[swapIndex], values[index]];
+    }
+    return indexes;
+  };
+  // The callback is intentionally the narrow SessionRandomProviderInput seam;
+  // values are consumed in setup order (news shuffle, cargo shuffle), with a
+  // final zero-safe fallback for any unrelated ordering tie.
+  const choices = [
+    ...swapIndexes(newsSource, newsTarget),
+    ...swapIndexes(cargoSource, cargoTarget)
+  ];
+  let choiceIndex = 0;
+  return {
+    sampleRange(range) {
+      const candidate = choices[choiceIndex++] ?? 0;
+      return candidate < range ? candidate : 0;
+    }
+  };
+};
+
+const mockRandomByStore = new WeakMap();
+
 const createTestCommandId = () => {
   const bytes = Buffer.alloc(16);
   bytes.writeUInt32BE(nextCommandSequence, 12);
@@ -47,6 +99,7 @@ const createTestCommandId = () => {
 const createFacilitatorSession = async (manifest, initialState = structuredClone(manifest.state)) => {
   const immutableBundle = createImmutableBundleContent(manifest.meta.id, manifest);
   const store = new InMemorySessionStore();
+  mockRandomByStore.set(store, createMockRandomProvider());
   const created = await store.createSession({
     gameId: manifest.meta.id,
     sessionRole: "facilitator",
@@ -71,6 +124,7 @@ const dispatchTestAction = async ({ store, sessionId, actionId, params = {} }) =
     sessionStore: store,
     credentialSha256: testCredentialSha256,
     admissionController: testAdmissionController,
+    random: mockRandomByStore.get(store),
     input: {
       sessionId,
       actionId,
@@ -781,7 +835,7 @@ test("full mock data declares hidden decks and an immutable, fully typed Mechani
   ]);
   assert.equal(textContent.newsCards.length >= 6, true);
   assert.equal(textContent.cargoCards.length >= 12, true);
-  assert.deepEqual(Object.keys(manifest.state.secret).sort(), ["decks", "random"]);
+  assert.deepEqual(Object.keys(manifest.state.secret).sort(), ["decks"]);
   assert.equal(Object.keys(manifest.state.public.objects.newsCards).length, textContent.newsCards.length);
   assert.equal(Object.keys(manifest.state.public.objects.cargoCards).length, textContent.cargoCards.length);
   assert.deepEqual(manifest.content.data.mockGameplay.roles, textContent.roles);

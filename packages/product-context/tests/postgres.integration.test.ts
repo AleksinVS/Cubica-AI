@@ -56,7 +56,7 @@ integration('isolated PostgreSQL knowledge lifecycle', () => {
     const applying = await store.claimReady(principalA, 'worker-a', 30_000);
     expect(applying).toMatchObject({ operation_id: pending.operation_id, status: 'applying', attempt_count: 1 });
 
-    const applied = await store.markApplied(principalA, pending.operation_id, 'worker-a', commitSha);
+    const applied = await store.markApplied(principalA, pending.operation_id, 'worker-a', applying!.attempt_count, commitSha);
     expect(applied).toMatchObject({ status: 'applied', commit_sha: commitSha, status_reason: 'applied' });
     await expect(store.rejectOperation(principalA, pending.operation_id)).rejects.toBeInstanceOf(OperationUnavailableError);
     await expect(asPrincipal(adminPool, principalA, (client) => client.query(`
@@ -124,7 +124,13 @@ integration('isolated PostgreSQL knowledge lifecycle', () => {
     expect([left, right].filter(Boolean)).toHaveLength(1);
     expect(winner?.status).toBe('applying');
 
-    const released = await store.releaseTemporary(principalA, pending.operation_id, winner!.lease_owner!, new Date(0));
+    const released = await store.releaseTemporary(
+      principalA,
+      pending.operation_id,
+      winner!.lease_owner!,
+      winner!.attempt_count,
+      new Date(0)
+    );
     expect(released).toMatchObject({
       status: 'ready',
       status_reason: 'temporary_storage_failure',
@@ -132,6 +138,83 @@ integration('isolated PostgreSQL knowledge lifecycle', () => {
     });
     const later = await store.claimReady(principalA, 'worker-later', 30_000);
     expect(later).toMatchObject({ operation_id: pending.operation_id, status: 'applying', attempt_count: 2 });
+  });
+
+  it('rejects every stale same-owner transition after the row is claimed again', async () => {
+    await createSpace(store, principalA);
+    const owner = 'same-owner-worker';
+    const staleTransitions: Array<{
+      name: string;
+      run: (operationId: string, staleAttempt: number) => Promise<unknown>;
+    }> = [
+      {
+        name: 'markApplied',
+        run: (operationId, staleAttempt) => store.markApplied(
+          principalA, operationId, owner, staleAttempt, commitSha
+        )
+      },
+      {
+        name: 'markConflict',
+        run: (operationId, staleAttempt) => store.markConflict(
+          principalA, operationId, owner, staleAttempt, 'authorization_changed'
+        )
+      },
+      {
+        name: 'markFailed',
+        run: (operationId, staleAttempt) => store.markFailed(
+          principalA, operationId, owner, staleAttempt, 'invalid_payload'
+        )
+      },
+      {
+        name: 'releaseTemporary',
+        run: (operationId, staleAttempt) => store.releaseTemporary(
+          principalA, operationId, owner, staleAttempt, new Date(0)
+        )
+      },
+      {
+        name: 'expireOperation',
+        run: (operationId, staleAttempt) => store.expireOperation(
+          principalA, operationId, new Date(), owner, staleAttempt
+        )
+      }
+    ];
+    let latestOperationId = '';
+    let latestAttempt = 0;
+
+    for (const [index, transition] of staleTransitions.entries()) {
+      const operationId = `op_attempt_fence_${index}`;
+      const pending = await createPending(store, principalA, operationId, `idem_attempt_fence_${index}`);
+      await store.confirmOperation(principalA, pending.operation_id, patchHash, 'user_confirmation');
+      const attemptN = await store.claimReady(principalA, owner, 30_000);
+      expect(attemptN, transition.name).toMatchObject({
+        operation_id: operationId,
+        status: 'applying',
+        lease_owner: owner,
+        attempt_count: 1
+      });
+
+      await store.releaseTemporary(principalA, operationId, owner, attemptN!.attempt_count, new Date(0));
+      const attemptN1 = await store.claimReady(principalA, owner, 30_000);
+      expect(attemptN1, transition.name).toMatchObject({
+        operation_id: operationId,
+        status: 'applying',
+        lease_owner: owner,
+        attempt_count: 2
+      });
+
+      await expect(transition.run(operationId, attemptN!.attempt_count), transition.name)
+        .rejects.toBeInstanceOf(OperationUnavailableError);
+      await expect(store.getOperation(principalA, operationId), transition.name).resolves.toMatchObject({
+        status: 'applying',
+        lease_owner: owner,
+        attempt_count: attemptN1!.attempt_count
+      });
+      latestOperationId = operationId;
+      latestAttempt = attemptN1!.attempt_count;
+    }
+
+    await expect(store.markApplied(principalA, latestOperationId, owner, latestAttempt, commitSha))
+      .resolves.toMatchObject({ status: 'applied', commit_sha: commitSha, attempt_count: 2 });
   });
 
   it('checks a reachable receipt outside SQL before recovering an expired lease', async () => {
@@ -173,10 +256,22 @@ integration('isolated PostgreSQL knowledge lifecycle', () => {
     expect((await store.expireOperation(principalA, expired.operation_id)).status).toBe('expired');
 
     const conflict = await readyAndClaim(store, principalA, 'op_conflict', 'idem_conflict_0001', 'worker-conflict');
-    expect((await store.markConflict(principalA, conflict.operation_id, 'worker-conflict', 'authorization_changed')).status).toBe('conflict');
+    expect((await store.markConflict(
+      principalA,
+      conflict.operation_id,
+      'worker-conflict',
+      conflict.attempt_count,
+      'authorization_changed'
+    )).status).toBe('conflict');
 
     const failed = await readyAndClaim(store, principalA, 'op_failed', 'idem_failed_000001', 'worker-failed');
-    expect((await store.markFailed(principalA, failed.operation_id, 'worker-failed', 'invalid_payload')).status).toBe('failed');
+    expect((await store.markFailed(
+      principalA,
+      failed.operation_id,
+      'worker-failed',
+      failed.attempt_count,
+      'invalid_payload'
+    )).status).toBe('failed');
     await expect(store.confirmOperation(principalA, failed.operation_id, patchHash, 'user_confirmation'))
       .rejects.toBeInstanceOf(OperationUnavailableError);
 

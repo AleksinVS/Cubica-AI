@@ -11,10 +11,13 @@ vi.mock("@/lib/product-context-shadow", async (importOriginal) => {
   return { ...actual, runProductContextShadowPostResponse: mocks.runShadow };
 });
 
-import { POST } from "./route";
+import { GET, POST } from "./route";
 
 describe("local AG-UI durable shadow enqueue", () => {
-  beforeEach(() => { mocks.runShadow.mockReset(); });
+  beforeEach(() => {
+    mocks.runShadow.mockReset();
+    vi.stubEnv("CUBICA_EDITOR_AGENT_RUNTIME", "1");
+  });
   afterEach(() => { vi.unstubAllEnvs(); vi.restoreAllMocks(); });
 
   it.each([
@@ -73,6 +76,24 @@ describe("local AG-UI durable shadow enqueue", () => {
     const source = await readFile("app/api/editor/agent/ag-ui/route.ts", "utf8");
     expect(source).not.toContain('from "next/server"');
     expect(source).not.toMatch(/\bafter\s*\(/u);
+  });
+
+  it("fails closed on both direct endpoints when the shared runtime gate is disabled", async () => {
+    vi.stubEnv("CUBICA_EDITOR_AGENT_RUNTIME", "0");
+
+    expect(GET().status).toBe(404);
+    const response = await POST(request(false));
+    expect(response.status).toBe(404);
+    expect(mocks.runShadow).not.toHaveBeenCalled();
+  });
+
+  it("fails closed by default when the shared runtime gate is unset", async () => {
+    vi.stubEnv("CUBICA_EDITOR_AGENT_RUNTIME", undefined);
+
+    expect(GET().status).toBe(404);
+    const response = await POST(request(false));
+    expect(response.status).toBe(404);
+    expect(mocks.runShadow).not.toHaveBeenCalled();
   });
 });
 
