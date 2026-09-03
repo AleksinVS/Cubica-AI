@@ -23,7 +23,9 @@ import { InMemorySessionStore } from "../src/modules/session/inMemorySessionStor
 import { createLocalSessionAccess } from "../src/modules/session/sessionAuthentication.ts";
 import { SessionService } from "../src/modules/session/session.service.ts";
 import {
+  createAgentSeatCommandId,
   createDurableCommandResult,
+  requireDurableCommandResult,
   readAgentSeatControl
 } from "../src/modules/session/commandIdentity.ts";
 
@@ -34,6 +36,53 @@ const { recommendedModuleLock } = require("../../../scripts/manifest-tools/mecha
 const { mechanicsSha256 } = require("../../../scripts/manifest-tools/mechanics-canonicalize.cjs") as {
   mechanicsSha256: (value: unknown) => string;
 };
+
+test("default mock agent-seat runtime omits surface when the catalog is empty", async () => {
+  const previousMockSetting = process.env.CUBICA_ENABLE_MOCK_AGENT_RUNTIME;
+  process.env.CUBICA_ENABLE_MOCK_AGENT_RUNTIME = "true";
+  try {
+    const fixture = await createFixture(undefined, { mockReturnAlias: true });
+    try {
+      const command = humanCommand(fixture.sessionId);
+      const first = await fixture.runtime.dispatch({
+        sessionStore: fixture.store,
+        accessToken: fixture.access.accessToken,
+        input: command
+      });
+      assert.equal(first.response.version.stateVersion, 2);
+      assert.equal(activePlayer(first.response.state), "p1");
+
+      const seatReceipt = await fixture.store.getCommandReceipt({
+        sessionId: fixture.sessionId,
+        credentialSha256: fixture.access.principal.credentialSha256,
+        commandId: createAgentSeatCommandId(fixture.sessionId, "p2", 1)
+      });
+      assert.ok(seatReceipt);
+    assert.equal(seatReceipt.status, "applied");
+    const durable = requireDurableCommandResult(seatReceipt.result, "agent-turn").value as {
+      agentTurn: CubicaAgentTurnResult;
+      attempts: unknown[];
+    };
+    assert.equal(Object.hasOwn(durable.agentTurn, "surface"), false);
+    assert.equal(durable.agentTurn.audit.source, "mock");
+    assert.equal(durable.agentTurn.selectedIntent?.actionId, "fixture.return-human");
+    assert.deepEqual(durable.attempts, []);
+
+      const retry = await fixture.runtime.dispatch({
+        sessionStore: fixture.store,
+        accessToken: fixture.access.accessToken,
+        input: command
+      });
+      assert.deepEqual(retry.response, first.response);
+      assert.equal(retry.response.version.stateVersion, 2);
+    } finally {
+      await fixture.store.close();
+    }
+  } finally {
+    if (previousMockSetting === undefined) delete process.env.CUBICA_ENABLE_MOCK_AGENT_RUNTIME;
+    else process.env.CUBICA_ENABLE_MOCK_AGENT_RUNTIME = previousMockSetting;
+  }
+});
 
 test("ordinary human action automatically drives the next immutable agent participant fairly", async () => {
   let calls = 0;
@@ -357,13 +406,14 @@ test("durable control parsing delegates the complete public shape to the generat
 });
 
 async function createFixture(
-  runner: AgentRuntimeRunner,
+  runner: AgentRuntimeRunner | undefined,
   options: {
     invalidAttemptLimit?: number;
     fallbacks?: Array<{ actionId: string; params: Record<string, unknown> }>;
     failurePolicy?: "pause" | "retry" | "deterministicFallback" | "facilitatorTakeover";
     activePlayerId?: "p1" | "p2";
     agentPlayerIds?: ReadonlyArray<"p1" | "p2">;
+    mockReturnAlias?: boolean;
   } = {}
 ) {
   const manifest = neutralManifest(options);
@@ -407,6 +457,7 @@ function neutralManifest(options: {
   invalidAttemptLimit?: number;
   fallbacks?: Array<{ actionId: string; params: Record<string, unknown> }>;
   failurePolicy?: "pause" | "retry" | "deterministicFallback" | "facilitatorTakeover";
+  mockReturnAlias?: boolean;
 }): GameManifest {
   const manifest = JSON.parse(readFileSync(
     new URL("../../../games/simple-choice/game.manifest.json", import.meta.url),
@@ -453,18 +504,27 @@ function neutralManifest(options: {
     }
   } as unknown as GameManifest["state"];
   manifest.objectModels = {};
-  manifest.actions = Object.fromEntries([
+  const turnActions = [
     action("turn.to-agent", "turn.to-agent"),
-    action("turn.to-human", "turn.to-human"),
-    action("turn.only-human", "turn.only-human"),
-    action("turn.stay-agent", "turn.stay-agent"),
-    action("turn.with-param", "turn.to-human", {
-      type: "object",
-      additionalProperties: false,
-      properties: { choice: { type: "string", maxLength: 64 } },
-      required: ["choice"]
-    })
-  ]);
+    action("turn.to-human", "turn.to-human")
+  ];
+  manifest.actions = Object.fromEntries(options.mockReturnAlias
+    ? [
+        action("fixture.return-human", "turn.to-human"),
+        action("turn.to-agent", "turn.to-agent"),
+        action("turn.to-human", "turn.to-human")
+      ]
+    : [
+        ...turnActions,
+        action("turn.only-human", "turn.only-human"),
+        action("turn.stay-agent", "turn.stay-agent"),
+        action("turn.with-param", "turn.to-human", {
+          type: "object",
+          additionalProperties: false,
+          properties: { choice: { type: "string", maxLength: 64 } },
+          required: ["choice"]
+        })
+      ]);
   manifest.mechanics = {
     apiVersion: "cubica.dev/mechanics/v1alpha1",
     budgetProfile: "turn-based-standard-v1",

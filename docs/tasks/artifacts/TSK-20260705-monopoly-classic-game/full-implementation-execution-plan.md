@@ -79,7 +79,9 @@ PM принял P-01 **2026-08-12**: Estate Race — самостоятельн�
 обучающим режимом. Обычная партия не зависит от обучения.
 
 После принятого S7 порядок дальнейшей поставки: S8 общая модель `participants`
-→ S9 локальные AI-места → S10 private invite network и каталог. S8 и S9
+→ S9 локальные AI-места → S10 private invite network → S11 terminal proof →
+S12 economy/duration observation readiness. Каталог и финальное product closure
+следуют отдельным gate после реальных наблюдений и решения PM. S8 и S9
 приняты локально; публичные
 комнаты, автоматический подбор и режим наблюдателя в v1 не входят.
 
@@ -119,13 +121,13 @@ Agent Runtime недоступен, локальная партия ставит
 
 | Область | Состояние | Что уже доказано | Что остаётся |
 |---|---|---|---|
-| Поле и содержимое | `done` | 40 клеток, оригинальные названия и карточки; S7 зафиксировал provenance/hash и `PASS-for-closed-alpha` | Economy telemetry, целевая длительность, финальный баланс и каталожная приёмка S10 |
+| Поле и содержимое | `done` | 40 клеток, оригинальные названия и карточки; S7 зафиксировал provenance/hash и `PASS-for-closed-alpha` | Реальные economy observations, целевая длительность, финальный баланс и post-S12 каталожная приёмка |
 | Ход и движение | `done` | 2d6, дубли, циклическое движение, диспетчер приземления, тюрьма и S7-объяснение фаз | — |
 | Собственность | `done` | покупка, отказ, аукцион, все типы ренты, залог/выкуп и S7-контекст рискованных решений | — |
 | Застройка | `done` | дома, отели, лимиты 32/12, равномерность, продажа, аукцион дефицита и S7-методические подсказки | — |
 | Завершение | `done` | обязательства, банкротство, передача активов, server-owned победа и S7-объяснение итога | — |
-| Интерфейс | `done` | map-first Web UI, Phaser-поле, DOM-действия, responsive camera, style-parity и локальная accessibility matrix S7 | Каталожная и продуктовая приёмка S10; публикация не объявлена |
-| Методика | `done` | read-only материалы участника/ведущего, компетенции, рефлексия и product review S7 | Каталожная приёмка S10; публикация не объявлена |
+| Интерфейс | `done` | map-first Web UI, Phaser-поле, DOM-действия, responsive camera, style-parity и локальная accessibility matrix S7 | Post-S12 каталожная и продуктовая приёмка; публикация не объявлена |
+| Методика | `done` | read-only материалы участника/ведущего, компетенции, рефлексия и product review S7 | Post-S12 каталожная приёмка; публикация не объявлена |
 | Сеть | `accepted-for-closed-alpha` | PostgreSQL, row-level `SELECT FOR UPDATE NOWAIT`, версии и долговечные квитанции; S10 private invite claim, authenticated SSE cursor + full authenticated HTTP GET, reconnect, PostgreSQL restart и Estate Race two-browser flow; узкий recovery уже joined human guest seat; historical S10 evidence от 2026-08-25: runtime `403 pass / 3 skip`, Player Web `328/328` + typecheck/build, package `53/53`, plugin `37/37` + typecheck, disposable PostgreSQL `2/2`; recovery evidence: contracts generator `--check`, schema parity, `verify:api-contracts`, contracts-session `16/16` + typecheck; до финальной защиты гонки SSE runtime focused `53/53` + typecheck и full runtime `411 pass / 3 skip / 0 fail`; после неё session event hub `8/8` и private invite/recovery `6/6`; Player focused `81/81` + typecheck, full Player `342/342` + typecheck, production build PASS, Playwright `1/1` PASS с loopback insecure-cookie flag, package `53/53`, plugin `37/37` + typecheck, disposable PostgreSQL 17 `2/2`; recovery E2E/build/visual acceptance принята | catalog/content/economy/product publication и production readiness |
 | ИИ-места | `done` | Локальная граница GSR-049: schema-first `agentSeats`, local `agentSeatCount`, ordinary projection/availability/Intent, fallback до 73, exact receipts, `agentControl`, семь eval fixtures и bounded transcript | real provider, full terminal match и network lifecycle |
 
@@ -165,7 +167,7 @@ Agent Runtime недоступен, локальная партия ставит
 
 ## 5. Спецификация пакетов результата
 
-Идентификаторы S0–S10 совпадают с канонической очередью корневого TSK только
+Идентификаторы S0–S12 совпадают с канонической очередью корневого TSK только
 для однозначной трассировки. Порядок активации и текущий статус этот раздел не
 определяет.
 
@@ -420,19 +422,13 @@ fixtures для покупки, аукциона, выхода из тюрьмы
 Выход: adversarial mock не меняет состояние напрямую, не видит секреты и не
 зависает; replay хода ИИ использует сохранённую квитанцию; milestone A принят.
 
-### S10. Private invite network, каталог и закрытие программы
+### S10. Private invite network
 
 Включает private invite network v1 без публичных комнат, matchmaking и
-наблюдателей, затем финальное название, описание, проверенные ресурсы,
-методику, фикстуры предпросмотра, поддерживаемые режимы, ограничения
-длительности и правила архивирования старых пакетов. Для public network до
-запуска нужны exact-version durability и quotas; закрытая alpha может
-архивировать несовместимые сессии. `LEGACY-0072` и `LEGACY-0068` закрыты до
-каталожной публикации.
-
-Выход: milestone H/N/A и продуктовая приёмка отмечены в корневом TSK,
-трассировка не содержит незакрытых обязательных правил, документация не
-противоречит коду, временные артефакты удалены, `NEXT_STEPS.md` обновлён.
+наблюдателей. Для public network exact-version durability и quotas остаются
+отдельными будущими требованиями. S10 принят для закрытой альфы; каталог,
+финальное название, product closure и production readiness не входят в его
+границу.
 
 S10 принят для закрытой альфы. Узкий recovery уже joined human guest seat
 реализован как завершение этой trust boundary: потеря ответа не требует
@@ -440,6 +436,43 @@ S10 принят для закрытой альфы. Узкий recovery уже 
 существующий claim endpoint как recovery claim. Обновлённые recovery
 E2E/build/visual проверки приняты. Каталог, content/economy/product publication и
 production readiness не объявлены завершёнными.
+
+### S11. Ограниченная проверка финала человека и автосоперника
+
+S11 принят по GSR-052 в локальной позднеигровой фикстуре. Он доказывает один
+серверный terminal, стабильный точный повтор, отсутствие действий после
+финала и ограниченную персональную проекцию; это не полная партия и не оценка
+стратегии или реального provider.
+
+### S12. Готовность наблюдения экономики и длительности
+
+S12 принят по GSR-053 как bounded readiness, а не как баланс или реальные
+наблюдения. Один game-local отчёт использует существующий ADR-103 публичный
+журнал, trusted hashed compiled manifest и существующее авторинг-описание
+баланса. Минимальные game-owned события фиксируют бросок, истинное завершение
+хода (без ложной границы после дубля), владение, постройку, обогащённую ренту,
+банкротство и terminal; статические group/kind/listed-price не дублируются в
+транзакционных событиях.
+
+Версия game manifest — `0.9.0`: bump обозначает несовместимый game-owned
+public event contract; pre-S12 journals остаются неподдерживаемыми. Журнал сам
+по себе не несёт эту версию или hash.
+
+Фокус: event package `8/8 PASS`, analyzer `8/8 PASS`, compiler check `PASS`,
+balance `3/3 PASS`, полный Estate glob `65/65 PASS`, `git diff --check PASS`.
+Старые pre-S12 журналы не поддерживаются. Не вводятся новая схема, API,
+хранилище, telemetry service или отдельная постоянная status-доска.
+
+Следующий gate — фактические завершённые closed-alpha журналы под тем же
+commit/balance hash; затем PM выбирает целевую длительность, текущие числа и
+направление публикации. Реальный provider, каталог и production durability —
+отдельные будущие треки.
+
+Документационный исполнитель S12 владеет только этой bounded-синхронизацией
+GSR/TSK/матрицы/provenance и описателей; автор реализации владеет кодом и
+focused evidence. Основной исполнитель повторно сверяет diff и свежие
+результаты перед приёмкой; постоянное распределение по моделям здесь не
+фиксируется.
 
 ## 6. Распределение между агентами
 

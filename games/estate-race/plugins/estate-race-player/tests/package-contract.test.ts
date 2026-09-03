@@ -31,7 +31,7 @@ test("manifest owns a classified forty-cell original board for two to six hotsea
   const state = manifest.state as Record<string, any>;
   const cells = state.public.objects.boardCells as Record<string, any>;
 
-  assert.equal((manifest.meta as Record<string, unknown>).version, "0.8.0");
+  assert.equal((manifest.meta as Record<string, unknown>).version, "0.9.0");
   assert.equal(config.players.min, 2);
   assert.equal(config.players.max, 6);
   assert.equal(config.players.agentSeats.max, 1);
@@ -374,7 +374,7 @@ test("authoring publishes the standalone Estate Race name and read-only optional
   });
 
   assert.equal(meta.name, "Estate Race");
-  assert.equal(meta.version, "0.8.0");
+  assert.equal(meta.version, "0.9.0");
   assert.equal(meta.tags.includes("prototype"), false);
   assert.doesNotMatch(serializedPlayerCopy, /прототип|· S\d|UI S\d/u);
   assert.equal(ui.root.screens[0].title, "Estate Race");

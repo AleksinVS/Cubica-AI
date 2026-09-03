@@ -771,43 +771,45 @@ function runMockAgentRuntime(input: CubicaAgentTurnInput): CubicaAgentTurnResult
       actionId: selectedIntent.actionId,
       params: {}
     },
-    surface: canRenderChoiceList && initialActionId !== undefined
+    ...(canRenderChoiceList && initialActionId !== undefined
       ? {
-          schemaVersion: "1.0.0",
-          surfaceId: `surface-${input.turnId}`,
-          catalogVersion: "2026-06-11",
-          mode: "primary-gameplay",
-          title: "Agent turn",
-          dataModel: {
-            narration
-          },
-          root: {
-            id: "root",
-            kind: "cubica.choiceList",
-            props: {
-              label: narration,
-              choices: [
+          surface: {
+            schemaVersion: "1.0.0",
+            surfaceId: `surface-${input.turnId}`,
+            catalogVersion: "2026-06-11",
+            mode: "primary-gameplay",
+            title: "Agent turn",
+            dataModel: {
+              narration
+            },
+            root: {
+              id: "root",
+              kind: "cubica.choiceList",
+              props: {
+                label: narration,
+                choices: [
+                  {
+                    id: "continue",
+                    label: "Continue"
+                  }
+                ]
+              },
+              actions: [
                 {
-                  id: "continue",
-                  label: "Continue"
+                  id: "agent.request-next-choice",
+                  kind: "agentTurn",
+                  label: "Continue",
+                  target: initialActionId,
+                  payload: {
+                    choiceId: "continue"
+                  },
+                  sideEffectPolicy: "system-approved"
                 }
               ]
-            },
-            actions: [
-              {
-                id: "agent.request-next-choice",
-                kind: "agentTurn",
-                label: "Continue",
-                target: initialActionId,
-                payload: {
-                  choiceId: "continue"
-                },
-                sideEffectPolicy: "system-approved"
-              }
-            ]
+            }
           }
         }
-      : undefined,
+      : {}),
     audit: {
       source: "mock",
       createdAt: new Date().toISOString(),
