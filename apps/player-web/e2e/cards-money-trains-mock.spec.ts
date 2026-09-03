@@ -263,14 +263,14 @@ function resolveProductionActionId(current: RuntimeSnapshot, step: TranscriptSte
 
 async function reloadStoredSession(page: Page, sessionId: string): Promise<void> {
   const sessionPath = `/api/runtime/sessions/${sessionId}`;
-  const restored = page.waitForResponse((response) =>
+  const restoredResponse = page.waitForResponse((response) =>
     new URL(response.url()).pathname === sessionPath && response.request().method() === "GET"
-  ).then(async (response) => {
-    expect(response.status()).toBe(200);
-    return response.json() as Promise<RuntimeSnapshot>;
-  });
+  );
   await page.reload();
-  expectNoFutureDecks(await restored);
+  expect((await restoredResponse).status()).toBe(200);
+  const restored = await page.request.get(sessionPath);
+  expect(restored.status()).toBe(200);
+  expectNoFutureDecks(await restored.json() as RuntimeSnapshot);
   await expect(page.locator(".loading-state")).toHaveCount(0);
 }
 

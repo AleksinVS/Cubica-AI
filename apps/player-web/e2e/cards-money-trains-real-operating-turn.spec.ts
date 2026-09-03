@@ -613,12 +613,15 @@ test.describe("Cards Money Trains real operating-turn preview", { tag: "@player"
       attributes: { settledRouteLength: 1 }
     });
 
-    const restoredSnapshot = page.waitForResponse((response) =>
+    const restoredResponse = page.waitForResponse((response) =>
       new URL(response.url()).pathname === `/api/runtime/sessions/${snapshot.sessionId}` &&
       response.request().method() === "GET"
-    ).then((response) => responseJson<RuntimeSnapshot>(response));
+    );
     await page.reload();
-    const restored = await restoredSnapshot;
+    expect((await restoredResponse).status()).toBe(200);
+    const restored = await responseJson<RuntimeSnapshot>(
+      await page.request.get(`/api/runtime/sessions/${snapshot.sessionId}`)
+    );
     expect(restored.version.stateVersion).toBe(snapshot.version.stateVersion);
     expect(
       restored.state.public.objects.locomotives["technical-locomotive-purple-1"]
