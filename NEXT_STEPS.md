@@ -67,7 +67,9 @@ Task | Coordinator | Owner | Working/integration branch`, затем повто�
 
 ## Now
 
-- [TSK-20260809-product-knowledge-shadow-stage-2](docs/tasks/active/TSK-20260809-product-knowledge-shadow-stage-2.md) — `in_progress`: DR-19 использовал принятые bounds `90000/5000/100000/300000` ms после Sol-high `ACCEPT`. Два первых отрицательных сценария дали ожидаемый `no_change`, 0 операций и review 4/4; третий остановился на общем `gateway_error`, поэтому оба положительных сценария не запускались. Exact-zero cleanup, неизменный Git и уничтожение одноразового контура доказаны. DR-20 локально добавил вывод только закрытого бесконтентного кода сбоя до cleanup, не меняя отчёт, storage, retry или provider. Разрешение DR-19 израсходовано; полная матрица и положительные пути не доказаны. Следующий крупный блокер — отдельное решение PM о новом полном окне; Stage 3 запрещён.
+- [TSK-20260717-code-architecture-conformance-review](docs/tasks/active/TSK-20260717-code-architecture-conformance-review.md) — `review`: ранее отложенное блочное ревью выполнено 2026-08-31 на `origin/main` `1f916d5`; консолидированные находки, ограничения и предложение исправлений сохранены в артефактах, реализация передана в `TSK-20260831-project-review-remediation`.
+- [TSK-20260831-project-review-remediation](docs/tasks/active/TSK-20260831-project-review-remediation.md) — `in_progress`: исправлены baseline contracts, CMT gate, Editor lease/GC/cache/runtime gate/context budget и Product Context fencing/stream bounds. F-003, F-004 и F-010 остановлены на решениях AD-08..AD-10; независимые Runtime/Player/CI/документационные потоки продолжаются. Перед этапной приёмкой обязателен PostgreSQL-enabled test F-037 и один полный canonical gate.
+- [TSK-20260809-product-knowledge-shadow-stage-2](docs/tasks/active/TSK-20260809-product-knowledge-shadow-stage-2.md) — `in_progress`: DR-21 выполнен 2026-08-31 на принятых bounds `90000/5000/100000/300000` ms после независимого Sol-high `ACCEPT`. Три отрицательных сценария дали ожидаемый `no_change`, 0 операций и review 4/4. Первый положительный сценарий завершился fail-closed `schema_error` на закрытом этапе `provenance`; no-retry hard stop исключил correction. Exact-zero cleanup, неизменный Git и уничтожение одноразового контура доказаны. DR-22 локально разделил будущую диагностику на проверку источников предложения и итоговой страницы без ослабления правил. Следующий крупный блокер — решение PM о новом полном окне; внешний вызов и Stage 3 пока запрещены.
 - [TSK-20260812-portable-public-journal](docs/tasks/active/TSK-20260812-portable-public-journal.md) — `review`: общий переносимый журнал подтверждённых публичных событий реализован по ADR-103. Schema-first контракт, ограниченный Runtime API, PostgreSQL `metricChanges`, credential-holding BFF и доступное скачивание проверены нейтральными тестами и настоящим CMT browser flow. `LEGACY-0053` закрыт; последующий ИИ-разбор реализован отдельно по ADR-104/GSR-051.
 - [TSK-20260801-cmt-test-suite-cost](docs/tasks/active/TSK-20260801-cmt-test-suite-cost.md) — `review`: 31 проверка жизненных циклов ускорена с 293,1 до 143–144 с без сокращения тестов, составов команд, матриц отказов или утверждений. Профиль опроверг повторную компиляцию как основную причину: полная компиляция и проверка уже выполнялись один раз на файл, а цена возникала при многократном копировании и сверке 10-МБ пакета с неиспользуемой в сценариях геометрией. Полный авторский манифест по-прежнему проходит проверку, настоящая геометрия остаётся в наборе строительства, а сценарии рынка и движения используют заново скомпилированную малую сетевую фикстуру. Два последовательных прогона дали одинаковое пустое множество падений; тестов, закрепляющих случайный порядок, не найдено.
 - [TSK-20260730-test-execution-optimization](docs/tasks/active/TSK-20260730-test-execution-optimization.md) — `review`: ступенчатая проверка, устранение повторов, fail-closed affected-селектор, E2E-профили и failure-only диагностика реализованы и сфокусированно проверены без включения защиты `main` и без отдельного nightly-прогона; дорогие production E2E/build/full canonical оставлены штатному CI.
@@ -83,7 +85,7 @@ Task | Coordinator | Owner | Working/integration branch`, затем повто�
 - [TSK-20260711-cards-money-trains-game](docs/tasks/active/TSK-20260711-cards-money-trains-game.md) — `review`: нормативный пакет имеет `runtimeReady: true`, 99 защищённых действий и 99 планов. Авторская аннотация 25 узлов, 10 дорог и 982 областей подтверждена; 174 груза, 34 новости, рынок, обязательный дефицит, методические паузы и финальный расчёт исполняются. Полный production E2E проводит 50 обычных действий ведущего через DOM от настройки пяти команд до двух рейтингов финала; GSR-048 доказывает переносимый журнал, а GSR-051 — facilitator-only ИИ-разбор после финала с тем же provenance после reload. Спорные автономные решения записаны отдельным артефактом; historical frozen snapshots остаются зарегистрированным неблокирующим долгом.
 - [TSK-20260518-session-persistence-hardening](docs/tasks/active/TSK-20260518-session-persistence-hardening.md) — `review`: PostgreSQL-хранилище, блокировка одновременных ходов, проверка готовности и восстановление после рестарта реализованы и проверены на PostgreSQL 17.
 - [TSK-20260705-multiplayer-runtime-realization](docs/tasks/active/TSK-20260705-multiplayer-runtime-realization.md) — `review`: S10 принят для закрытой альфы. PM принял одноразовое 24-часовое private invite, атомарную выдачу durable participant credential в `HttpOnly` cookie и минимальное SSE-уведомление с полным защищённым HTTP resync; узкий recovery уже joined human guest seat реализован без изменения principal или game state. Historical S10 evidence сохранено. До финальной защиты гонки SSE recovery increment подтверждался contracts-session `16/16` + typecheck, OpenAPI/schema/generator gates, runtime focused `53/53` + typecheck и full runtime `411 pass / 3 skip / 0 fail`; после защиты гонки свежие runtime-наборы session event hub `8/8` и private invite/recovery `6/6` прошли. Player Web focused `81/81` + typecheck, full Player `342/342`, production build/E2E, Estate Race `53/53`, plugin `37/37` + typecheck и disposable PostgreSQL 17 `2/2` относятся к принятой базовой сборке recovery. Каталог, content/economy/product publication и production readiness остаются отдельными воротами. WebSocket, presence, дельты и Redis в срез не входят.
-- [TSK-20260705-monopoly-classic-game](docs/tasks/active/TSK-20260705-monopoly-classic-game.md) — `in_progress`: S0–S9 реализованы в локальной границе; S10 принят как отдельный сетевой срез для закрытой альфы по GSR-050, а узкий recovery уже joined human guest seat завершает его trust boundary. Каталог, content/economy/product publication и production readiness не объявлены готовыми.
+- [TSK-20260705-monopoly-classic-game](docs/tasks/active/TSK-20260705-monopoly-classic-game.md) — `in_progress`: S0–S12 приняты в bounded closed-alpha/readiness scope; GSR-053 evidence: event package `8/8 PASS`, analyzer `8/8 PASS`, compiler `PASS`, balance `3/3 PASS`, Estate glob `65/65 PASS`. Следующий gate — реальные завершённые closed-alpha журналы под тем же commit/balance hash; затем PM выбирает длительность, текущие числа и направление публикации. Финальный баланс, каталог, production readiness, реальный provider и качество стратегии агента не проверены.
 - [TSK-20260706-game-asset-channel](docs/tasks/active/TSK-20260706-game-asset-channel.md) — `review`: реестр, проверки, контент-адресуемая раздача и player/Phaser resolver реализованы первым игровым срезом; миграция LEGACY-0023 остается отдельной.
 - [TSK-20260518-portal-test-vps-and-antarctica-launch](docs/tasks/active/TSK-20260518-portal-test-vps-and-antarctica-launch.md) — `in_progress`: отдельный трек portal launch surface и тестового VPS; не является автоматическим следующим шагом перед первой игрой.
 - [TSK-20260803-portal-access-control](docs/tasks/active/TSK-20260803-portal-access-control.md) — `review`: публичная смена статуса удалена, платёжная ссылка ограничена владельцем, core CRUD закрыт в коде, а тестовые браузерные учётные данные удалены. Backend `35/35`, реальный route inventory Strapi и production Next.js build проходят; Sol high security review — `PASS`. Перед открытием тестового VPS остаётся smoke-проверка его роли и переменных окружения.
@@ -91,18 +93,21 @@ Task | Coordinator | Owner | Working/integration branch`, затем повто�
 
 ## Next
 
-- DR-19 выполнен 2026-08-30 и разрешение израсходовано. Два первых
-  отрицательных сценария дали ожидаемый `no_change` и прошли ручную рубрику
-  4/4; третий завершился общим `gateway_error`. Hard stop исключил оба
-  положительных сценария и любой повтор. Exact-zero cleanup и неизменный Git
-  доказаны, одноразовый контур уничтожен. Новый внешний вызов запрещён до
-  отдельного решения PM.
-- Минимальная диагностика DR-20 реализована локально: после точно связанного
-  `gateway_error` hard stop evaluator выводит оператору до cleanup только
-  закрытый бесконтентный `last_error_code`. Неизвестные значения подавляются;
-  постоянный report, JSON Schema, PostgreSQL, retry, provider и модель не
-  меняются. Следующий внешний вызов всё равно требует отдельного решения PM и
-  свежей независимой проверки конкретного одноразового контура.
+- DR-21 израсходовал разрешение ровно на одно окно. Три отрицательных сценария
+  дали ожидаемый `no_change` и прошли ручную рубрику 4/4; первый положительный
+  сценарий остановился на allowlisted этапе `provenance`, а correction и любой
+  повтор не запускались. Exact-zero cleanup и неизменный Git доказаны,
+  одноразовый контур и содержательные данные уничтожены.
+- DR-22 локально установил, что прежний код `provenance` объединял два разных
+  рубежа. Будущие ошибки различают `proposal_provenance` (ссылки предложения и
+  операций на текущий диалог) и `page_provenance` (источники итоговой страницы
+  и сохранение истории). Старый код продолжает читаться для совместимости.
+  Правила, prompt, JSON Schema, storage и retry не менялись.
+- Следующий внешний вызов требует отдельного решения PM. Рекомендуемый DR-23 —
+  одно полное пятисценарное окно с прежними bounds и no-retry после нового
+  exact preflight и Sol-high review. Узкий положительный повтор не даст полной
+  регрессионной матрицы; сохранение raw candidate нарушит принятую минимизацию
+  данных. Stage 3 остаётся закрыт.
 - Worker сохраняет явный model timeout до 90000 ms и lease не меньше 100000 ms
   при Portal timeout 5000 ms. Эти bounds не разрешают provider call, не
   добавляют retry и не открывают Stage 3, активное чтение, применение кандидата
@@ -145,8 +150,6 @@ Task | Coordinator | Owner | Working/integration branch`, затем повто�
   граф значений без такого измеримого сценария.
 
 ## Blocked
-
-- [TSK-20260717-code-architecture-conformance-review](docs/tasks/active/TSK-20260717-code-architecture-conformance-review.md) — `blocked`: готовый план блочного ревью кода (16 блоков, оркестратор Opus 4.8 + субагенты) на незарегистрированные противоречия с архитектурой, ошибки и неоптимальные решения; отложена решением PM 2026-07-17 и ожидает отдельного указания на запуск, перед стартом зафиксировать commit базовой линии.
 - [TSK-20260706-conveyor-mini-game](docs/tasks/active/TSK-20260706-conveyor-mini-game.md) — `blocked`: универсальный язык операций уже доступен; требуется заново выбрать ограниченный вертикальный срез фаз и проверить его продуктовые правила.
 - [TSK-20260706-rail-tycoon-mini-game](docs/tasks/active/TSK-20260706-rail-tycoon-mini-game.md) — `blocked`: PRNG и общие операции уже доступны; остаётся возобновить игровой срез, согласовать его содержимое и завершить проверку интерфейса/ассетов.
 

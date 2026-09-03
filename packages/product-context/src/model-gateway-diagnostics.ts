@@ -10,7 +10,11 @@ export const MODEL_GATEWAY_VALIDATION_STAGES = [
   'result_schema',
   'result_binding',
   'timestamp_binding',
+  // Retained so an evaluator can read diagnostic rows written before the
+  // proposal/page provenance boundary was split.
   'provenance',
+  'proposal_provenance',
+  'page_provenance',
   'final_page_policy'
 ] as const;
 export type ModelGatewayValidationStage = typeof MODEL_GATEWAY_VALIDATION_STAGES[number];

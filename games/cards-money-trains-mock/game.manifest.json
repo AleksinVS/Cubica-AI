@@ -148,7 +148,7 @@
       ],
       "constructionActionIntent": {
         "status": "executable-author-confirmed-region-network",
-        "publishable": false,
+        "publishable": true,
         "road": {
           "actionId": "construction.road.build",
           "trustedInput": [
@@ -217,8 +217,8 @@
         "unresolved": []
       },
       "cardLifecycle": {
-        "status": "partially-confirmed-executable-draft",
-        "publishable": false,
+        "status": "confirmed-executable",
+        "publishable": true,
         "sourceFixture": "authoring/fixtures/cargo-news.intake.json",
         "physicalCargoCardCount": 174,
         "baseCargoCardCount": 112,
@@ -324,10 +324,10 @@
         }
       },
       "sessionSetup": {
-        "status": "executable-technical-draft",
-        "publishable": false,
-        "sourceNetwork": "annotations/initial-network.review.json",
-        "networkUse": "technical placement only until author overlay confirmation",
+        "status": "executable-author-confirmed-network",
+        "publishable": true,
+        "sourceNetwork": "annotations/initial-network-with-regions.review.json",
+        "networkUse": "author-confirmed initial placement network",
         "supportedTeamCounts": [
           4,
           5,
@@ -353,18 +353,15 @@
         "placement": {
           "order": "server-random",
           "controller": "facilitator",
-          "targets": "open terminals in the main technical network",
+          "targets": "open terminals in the author-confirmed main network",
           "maximumLocomotivesPerTerminal": 2,
           "advancesOnlyAfterAllCurrentTeamAssetsArePlaced": true
         },
-        "unresolved": [
-          "dynamic-team-construction-contributions",
-          "author-confirmation-of-initial-network-overlay"
-        ]
+        "unresolved": []
       },
       "operatingTurn": {
         "status": "executable-repeatable-market-cycle-with-construction",
-        "publishable": false,
+        "publishable": true,
         "supportedSetup": "confirmed team counts 4–12; even split equally, odd split with one extra logistics company",
         "firstTurnNews": "explicit skip without deck or random consumption",
         "maintenance": {
@@ -412,14 +409,11 @@
           "scope": "market-with-construction"
         },
         "boundary": "next-turn-news",
-        "unresolvedAfterBoundary": [
-          "author-confirmation-of-initial-network-overlay",
-          "reporting-and-reflection-content"
-        ]
+        "unresolvedAfterBoundary": []
       },
       "movementTurn": {
         "status": "executable-order-traversal-formation-through-settlement-boundary",
-        "publishable": false,
+        "publishable": true,
         "supportedSetup": "confirmed team counts 4–12; even split equally, odd split with one extra logistics company",
         "order": [
           "network-node-position-x-descending",
@@ -430,15 +424,12 @@
         "randomPurposeId": "locomotive-order",
         "savedForWholePhase": true,
         "actionPointsReset": 5,
-        "graphTraversal": "main-technical-review-network",
+        "graphTraversal": "main-author-confirmed-network",
         "graphTraversalActionPointCost": 1,
         "movementKeepsCurrentLocomotive": true,
         "explicitSkip": true,
         "boundary": "settlement",
-        "unresolvedAfterBoundary": [
-          "publishable-author-confirmed-network-overlay",
-          "remaining-reporting-workflows"
-        ]
+        "unresolvedAfterBoundary": []
       },
       "trainFormation": {
         "status": "executable-refresh-safe-group-attach",
@@ -469,7 +460,7 @@
       },
       "cargoSettlement": {
         "status": "executable-prioritized-selection-loading-and-atomic-delivery",
-        "publishable": false,
+        "publishable": true,
         "loadPhase": "cargo",
         "movementEntryPhase": "movement-order",
         "settlementPhase": "settlement",
@@ -516,7 +507,7 @@
       },
       "constructionCycle": {
         "status": "executable-on-author-confirmed-regions",
-        "publishable": false,
+        "publishable": true,
         "regionData": {
           "provenance": "author-confirmed partition of the real map (annotations/initial-network-with-regions.review.json), compiled by convert-map-annotation.mjs; see ADR-100",
           "geometryVersion": "guinea-regions-v1",
@@ -597,10 +588,10 @@
         }
       },
       "countries": {
-        "status": "author-confirmed-terminal-linking",
+        "status": "author-confirmed-terminal-and-region-linking",
         "publishable": true,
         "terminalLinking": "complete-numbered-terminals-1-through-23",
-        "polygonLinking": "pending-human-vector-review",
+        "polygonLinking": "author-confirmed-in-initial-network-with-regions-review",
         "countries": [
           {
             "id": "cmt-country-proud",
@@ -2173,7 +2164,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:7f2c1f531c37c8d76f4dd0055d2d8aabb6de155303d81edebd60256c1c03cc62"
+      "definitionHash": "sha256:27f9879e03a2af2cab8c2645645e7f9e426c342f0a5317d7e25b32200351d285"
     },
     "mock.news.apply.block-road": {
       "capabilityFamily": "runtime.server",
@@ -9812,7 +9803,7 @@
         }
       },
       "mock.ranking.compute": {
-        "planHash": "sha256:77c54d22679590b26f89743d1316beb779cc17c1ef9d172edc423522e947567a",
+        "planHash": "sha256:e599ae5937ac5fb0873f167f06ef670b116960085f4018a8a04541826bf22be6",
         "transaction": {
           "steps": [
             {
@@ -9947,6 +9938,23 @@
                   "value": "ranking"
                 }
               }
+            },
+            {
+              "id": "s004-enable-finish",
+              "kind": "command",
+              "op": "core.state.patch",
+              "patches": [
+                {
+                  "operation": "set",
+                  "target": {
+                    "endpoint": "public.session.canRequestFinish"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": true
+                  }
+                }
+              ]
             }
           ]
         }

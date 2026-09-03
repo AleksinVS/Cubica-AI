@@ -138,11 +138,11 @@ async function readRuntimeJson(response) {
   return payload;
 }
 
-async function createRuntimeSession({ gameId, playerId }) {
+async function createRuntimeSession({ gameId }) {
   const response = await fetch(`${runtimeBaseUrl()}/sessions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ gameId, playerId }),
+    body: JSON.stringify({ gameId }),
   });
 
   return readRuntimeJson(response);
@@ -508,17 +508,14 @@ module.exports = createCoreService(LAUNCH_SESSION_UID, ({ strapi }) => ({
     }
   },
 
-  async createRuntimeBinding({ session, bindingType, deviceTokenHash, playerId }) {
+  async createRuntimeBinding({ session, bindingType, deviceTokenHash }) {
     const gameId = runtimeGameId(session);
 
     if (!gameId) {
       return { ok: false, httpStatus: 409, status: 'rejected', reason: 'Launch session is not connected to a game' };
     }
 
-    const runtimeSession = await createRuntimeSession({
-      gameId,
-      playerId: playerId || `portal-${session.id}`,
-    });
+    const runtimeSession = await createRuntimeSession({ gameId });
     const urls = runtimeUrls(session);
     const binding = await strapi.db.query(RUNTIME_SESSION_BINDING_UID).create({
       data: {
@@ -592,7 +589,7 @@ module.exports = createCoreService(LAUNCH_SESSION_UID, ({ strapi }) => ({
     return updated;
   },
 
-  async bindRuntime({ token, counter, deviceToken, playerId }) {
+  async bindRuntime({ token, counter, deviceToken }) {
     const session = await this.findSessionByTokenCounter({ token, counter });
 
     if (!session) {
@@ -668,10 +665,7 @@ module.exports = createCoreService(LAUNCH_SESSION_UID, ({ strapi }) => ({
         return { ok: false, httpStatus: 409, status: 'rejected', reason: 'Launch session is not connected to a game' };
       }
 
-      const runtimeSession = await createRuntimeSession({
-        gameId,
-        playerId: playerId || `portal-${session.id}`,
-      });
+      const runtimeSession = await createRuntimeSession({ gameId });
       binding = await this.updateBindingRuntime({ binding, runtimeSession, session });
 
       await this.recordEvent({
@@ -702,7 +696,6 @@ module.exports = createCoreService(LAUNCH_SESSION_UID, ({ strapi }) => ({
         session,
         bindingType,
         deviceTokenHash,
-        playerId,
       });
     } catch (error) {
       if (!isUniqueConstraintError(error)) {

@@ -13,6 +13,7 @@ import type { ExactPatchOperation, ExactPatchProposal, KnowledgePage, ModelGatew
 import { applyExactOperation, parseKnowledgePage, sha256Bytes } from './markdown.ts';
 import { DEFAULT_MODEL_GATEWAY_MAX_REQUEST_BYTES, ModelGatewayError, validateModelGatewayResult, type ModelGateway, type ModelGatewayCall } from './model-gateway.ts';
 import { attachModelGatewayValidationStage, type ModelGatewayValidationStage } from './model-gateway-diagnostics.ts';
+import { BoundedResponseLimitError, readBoundedResponse } from './bounded-response.ts';
 import { evaluateKnowledgePageRead, hasSecretLikeText } from './policy.ts';
 import { ShadowGroundingError, ShadowKnowledgeGrounding, type ShadowKnowledgeGroundingConfig, type ShadowKnowledgeSnapshot } from './shadow-grounding.ts';
 
@@ -167,7 +168,7 @@ export class ZaiCodingPlanModelGateway implements ModelGateway {
         signal: controller.signal
       });
       if (!response.ok) {
-        const output = await readBounded(response, this.maxResponseBytes);
+        const output = await readBounded(response, this.maxResponseBytes, () => controller.abort());
         const providerCode = providerErrorCode(output);
         if (providerCode !== null) throw attachModelGatewayValidationStage(new ModelGatewayError('malformed_output', providerCode, response.status), 'provider_http');
         // An unclassified 5xx may have accepted work before the connection
@@ -175,7 +176,7 @@ export class ZaiCodingPlanModelGateway implements ModelGateway {
         if (response.status >= 500) throw new ModelGatewayError('outcome_unknown', null, response.status);
         throw attachModelGatewayValidationStage(new ModelGatewayError('malformed_output', null, response.status), 'provider_http');
       }
-      const output = await readBounded(response, this.maxResponseBytes);
+      const output = await readBounded(response, this.maxResponseBytes, () => controller.abort());
       let envelope: unknown;
       try { envelope = JSON.parse(decoder.decode(output)); }
       catch { throw malformed('provider_envelope'); }
@@ -440,7 +441,7 @@ function validateFinalProposal(
       allUserGamesConfirmed: false,
       globalConfirmed: false
     }).allowed) throw malformed('final_page_policy');
-    if (!pageProvenanceIsSafe(originalPage, page, proposal.operations, request)) throw malformed('provenance');
+    if (!pageProvenanceIsSafe(originalPage, page, proposal.operations, request)) throw malformed('page_provenance');
   } catch (error) {
     if (error instanceof ModelGatewayError) throw error;
     throw malformed('final_page_policy');
@@ -484,33 +485,9 @@ function proposalId(requestId: string): string {
   return `prop_${createHash('sha256').update(requestId, 'utf8').digest('hex').slice(0, 32)}`;
 }
 
-async function readBounded(response: Response, limit: number): Promise<Uint8Array> {
-  const declared = response.headers.get('content-length');
-  if (declared !== null && Number(declared) > limit) throw new ModelGatewayError('oversize_output');
-  if (!response.body) {
-    const bytes = new Uint8Array(await response.arrayBuffer());
-    if (bytes.byteLength > limit) throw new ModelGatewayError('oversize_output');
-    return bytes;
-  }
-  const reader = response.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let total = 0;
-  try {
-    while (true) {
-      const next = await reader.read();
-      if (next.done) break;
-      total += next.value.byteLength;
-      if (total > limit) {
-        await reader.cancel();
-        throw new ModelGatewayError('oversize_output');
-      }
-      chunks.push(next.value);
-    }
-  } finally { reader.releaseLock(); }
-  const bytes = new Uint8Array(total);
-  let offset = 0;
-  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
-  return bytes;
+async function readBounded(response: Response, limit: number, abort: () => void): Promise<Uint8Array> {
+  try { return await readBoundedResponse(response, limit, { abort }); }
+  catch (error) { if (error instanceof BoundedResponseLimitError) throw new ModelGatewayError('oversize_output'); throw error; }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

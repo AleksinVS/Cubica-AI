@@ -2431,6 +2431,12 @@
         "pointer": "/root/mechanics/plans/mock.ranking.compute/transaction/steps/2"
       }
     ],
+    "/mechanics/plans/mock.ranking.compute/transaction/steps/5": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/mock.ranking.compute/transaction/steps/3"
+      }
+    ],
     "/mechanics/plans/mock.ranking.compute/planHash": [
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",

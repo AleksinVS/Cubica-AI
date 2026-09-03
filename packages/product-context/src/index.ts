@@ -10,4 +10,5 @@ export * from './shadow-database-url.ts';
 export * from './shadow-grounding.ts';
 export * from './shadow-evaluator.ts';
 export * from './zai-coding-plan-model-gateway.ts';
+export * from './bounded-response.ts';
 export type * from './generated/product-knowledge.ts';

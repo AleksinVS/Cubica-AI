@@ -1,47 +1,46 @@
 {
+  "$schema": "../../docs/architecture/schemas/asset-provenance.schema.json",
+  "schemaVersion": "1.0",
   "gameId": "cards-money-trains-mock",
-  "assetId": "board-guinea-optimized",
-  "deliveryFile": "assets/images/guinea-map.webp",
-  "delivery": {
-    "mimeType": "image/webp",
-    "width": 2560,
-    "height": 1828,
-    "byteSize": 306808,
-    "sha256": "c6c52f27b348e4f2d56fb936227518921da98542ce3bf69794abf6fdf58480be"
-  },
-  "source": {
-    "kind": "registered-copy-of-normative-game-asset",
-    "gameId": "cards-money-trains",
-    "assetId": "board-guinea-optimized",
-    "deliveryFile": "../cards-money-trains/assets/images/guinea-map.webp",
-    "provenanceFile": "../cards-money-trains/asset-provenance.json",
-    "originalSourcePath": "draft/trains/Игровая Карта.png",
-    "copyIsByteIdentical": true
-  },
-  "rights": {
-    "status": "confirmed",
-    "license": "direct-permission-from-author-and-rightsholder",
-    "owner": "game author/rightsholder; legal name is not recorded in repository metadata",
-    "publicationAllowed": true,
-    "modificationAllowed": true,
-    "confirmedBy": "PM",
-    "confirmedAt": "2026-07-11",
-    "note": "The map itself may be used, optimized and published in Cubica. This mock package is blocked from publication because its network and gameplay data are synthetic, not because of the map rights."
-  },
-  "mockPackagePolicy": {
-    "testOnly": true,
-    "publicationAllowed": false,
-    "replaceBeforePublication": true,
-    "reason": "The transport network, regions, cargo, news and control transcript are synthetic development data."
-  },
-  "geometryFixture": {
-    "assetId": "mock-board-geometry-fixture",
-    "file": "assets/images/mock-board.svg",
-    "kind": "generated-test-diagram",
-    "usedAsRuntimeBoard": false,
-    "usedBy": [
-      "annotations/map-annotation.mock.json",
-      "generated/annotation-review-overlay.svg"
-    ]
-  }
+  "locationNotice": "MOCK-пакет использует копию поставочного изображения нормативной игры только для разработки и тестов; синтетические сеть и содержание не предназначены для публикации.",
+  "entries": [
+    {
+      "id": "board-guinea-optimized",
+      "path": "assets/images/guinea-map.webp",
+      "root": "game",
+      "kind": "derived-asset",
+      "contentType": "image/webp",
+      "width": 2560,
+      "height": 1828,
+      "byteSize": 306808,
+      "sha256": "c6c52f27b348e4f2d56fb936227518921da98542ce3bf69794abf6fdf58480be",
+      "derivedFrom": {
+        "source": {
+          "path": "games/cards-money-trains/assets/images/guinea-map.webp",
+          "root": "repo",
+          "contentType": "image/webp",
+          "width": 2560,
+          "height": 1828,
+          "byteSize": 306808,
+          "sha256": "c6c52f27b348e4f2d56fb936227518921da98542ce3bf69794abf6fdf58480be"
+        },
+        "transform": {
+          "tool": "copy-normative-delivery-asset",
+          "toolVersion": "1.0",
+          "copyIsByteIdentical": true
+        }
+      },
+      "rights": {
+        "status": "confirmed",
+        "license": "direct-permission-from-author-and-rightsholder",
+        "owner": "game author/rightsholder; legal name is not recorded in repository metadata",
+        "publicationAllowed": false,
+        "modificationAllowed": true,
+        "distributionChannels": ["development and test environments"],
+        "confirmedBy": "PM",
+        "confirmedAt": "2026-07-11",
+        "note": "Права на карту подтверждены для исходного и нормативного поставочного изображения. Эта запись относится к тестовой копии: публикация mock-пакета запрещена из-за синтетических игровых данных."
+      }
+    }
+  ]
 }

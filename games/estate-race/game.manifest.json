@@ -1,7 +1,7 @@
 {
   "meta": {
     "id": "estate-race",
-    "version": "0.8.0",
+    "version": "0.9.0",
     "name": "Estate Race",
     "description": "Доступная экономическая стратегия о выборе момента для покупки, развития и переговоров.",
     "author": "Cubica",
@@ -2366,7 +2366,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:b94447649b0cc977819cf514f7cd10d9f76927f0b3047427a598d1759d455436"
+      "definitionHash": "sha256:c2302e97af28472d10e4940091ee8a9a991a5ef83c7774f2f1b8a2989a340e04"
     },
     "turn.roll": {
       "capabilityFamily": "runtime.server",
@@ -2386,7 +2386,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:71eb007922963518fd2d79d693cee5eefb8319f52600042296c3bb30eb656ff6"
+      "definitionHash": "sha256:ed69d95ad487b22bccdcaecb05c1c5101836ba96f3a64122924b07ca2a284681"
     },
     "property.buy": {
       "capabilityFamily": "runtime.server",
@@ -2406,7 +2406,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:a7951d624acb4187479688a48cbf93da2ee8cf61ef84c593ea8ea6c176ed645d"
+      "definitionHash": "sha256:9b1f5df5a633f492f16774a5d0511a5f403be50946e2a95a7886180c4f588c36"
     },
     "property.decline": {
       "capabilityFamily": "runtime.server",
@@ -2426,7 +2426,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:bda8d5bb8beb7cbc4980019ba94816bd98569c53634c4db953216155d10c6ca8"
+      "definitionHash": "sha256:a280c1bb49b6f0cd1ed206b20040221891a8c9fe944c879fcc0477869189b5f9"
     },
     "property.rent": {
       "capabilityFamily": "runtime.server",
@@ -2446,7 +2446,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:00b84a7fb2058c40ac845a9e35d247637e33f597b248592cdfdbbcd8b6bcb1e1"
+      "definitionHash": "sha256:f9bf66a8f2609c28d6636ca228babdf5b55a7d69742c33b2db242125263605e1"
     },
     "property.auction.bid": {
       "capabilityFamily": "runtime.server",
@@ -2474,7 +2474,7 @@
         "planRef": "property.auction.bid"
       },
       "invocation": "external",
-      "definitionHash": "sha256:dca2245a5bafa361d7790f19823830fa5b2c42e69bb9084b16d52310789fec90"
+      "definitionHash": "sha256:f36ef441585c612ab086884503d2e96307296f3ce99ff56289e1764e67d9e676"
     },
     "property.auction.pass": {
       "capabilityFamily": "runtime.server",
@@ -2494,7 +2494,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:6a11b99b0450a023291f372958b9d7f7249d9a85d449a0886145f1e50dfaab83"
+      "definitionHash": "sha256:c72b593e8acf69d496ebaf2e9c522aa1843ea22919997fde0c53bdc2d4558884"
     },
     "property.build": {
       "capabilityFamily": "runtime.server",
@@ -2522,7 +2522,7 @@
         "planRef": "property.build"
       },
       "invocation": "external",
-      "definitionHash": "sha256:198cb64bbc510b09204d24b48b32ca020d51489b0e3a312ee3bc25ce418b8081"
+      "definitionHash": "sha256:df59684f9faccd2c9e8eb5b3089d86b7661c46fa56bf6eee4842768071662056"
     },
     "property.build.request": {
       "capabilityFamily": "runtime.server",
@@ -2550,7 +2550,7 @@
         "planRef": "property.build.request"
       },
       "invocation": "external",
-      "definitionHash": "sha256:96f87f4a54818248a94fc32a777bf9da395da43a1bf95d3d894988b67119d1dd"
+      "definitionHash": "sha256:d35c1108cb5a3a99c1cb260bf694f4a3b108882e0a4dd50c225dad5d47fc133b"
     },
     "property.build.pass": {
       "capabilityFamily": "runtime.server",
@@ -2570,7 +2570,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:d6c30aa8e6e08c61175ebf73270232ad2c8871138f00429aef88e7512e8bd0ed"
+      "definitionHash": "sha256:74c2158ef3f3b39d6059ef79cca8bd6837a3f96ae4aa52a9b613e72d47df6b18"
     },
     "property.build.auction.bid": {
       "capabilityFamily": "runtime.server",
@@ -2598,7 +2598,7 @@
         "planRef": "property.build.auction.bid"
       },
       "invocation": "external",
-      "definitionHash": "sha256:d6e3bd2f160499b79d72872d70e639da60ce94938e0355d52f5b42e2422f02b5"
+      "definitionHash": "sha256:5771526a5f51f7eabfbead4f97c21b6a0b7c40468bf13825cfa5da192f52a10e"
     },
     "property.build.auction.pass": {
       "capabilityFamily": "runtime.server",
@@ -2618,7 +2618,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:2dca125b9c3e23137dcdfce7527bafce8785231ab1194f709ea1fb0e1b6e7e24"
+      "definitionHash": "sha256:7c102f813fa5cd6b43861d4d890daf33217838fa74081ef687ab756fb8922ab0"
     },
     "property.sell": {
       "capabilityFamily": "runtime.server",
@@ -2646,7 +2646,7 @@
         "planRef": "property.sell"
       },
       "invocation": "external",
-      "definitionHash": "sha256:1fd269ae5eadfebbfff3f9158fe6b62c68573f2e78bb5782cace8834447d9c9c"
+      "definitionHash": "sha256:2c84b2fd2217372c797673072cab1c5b014e686460a1d33757a549df5eeeec6c"
     },
     "property.mortgage": {
       "capabilityFamily": "runtime.server",
@@ -2674,7 +2674,7 @@
         "planRef": "property.mortgage"
       },
       "invocation": "external",
-      "definitionHash": "sha256:7899495340de4333307fef4429ec2ee8b78b8ea31423ff457f3ea9a0b58d07e2"
+      "definitionHash": "sha256:ccfd8e74f7fd3b3ec50955d4d8a7f91fe3f56aab8c08294921cdfbd278d8ef67"
     },
     "property.redeem": {
       "capabilityFamily": "runtime.server",
@@ -2702,7 +2702,7 @@
         "planRef": "property.redeem"
       },
       "invocation": "external",
-      "definitionHash": "sha256:f734d5ea9b03b8429d6949189c5cc07957a99654568b2c5d439581ed306269fb"
+      "definitionHash": "sha256:e70cd90d5511263c69be2f6830182df381647c4093f4af58b75870ff04658dc8"
     },
     "tax.pay": {
       "capabilityFamily": "runtime.server",
@@ -2722,7 +2722,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:f9c295489778a1a2fb8e85e9cb5e1cb9713cb430703b4aeff98b78b23a7541ee"
+      "definitionHash": "sha256:584117655458af94c9b9b278d6fd8d0073c72f90343a40ecfba9eae9462b2158"
     },
     "jail.pay": {
       "capabilityFamily": "runtime.server",
@@ -2742,7 +2742,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:820f5527abf04045feccf2aee02a3777007e9870833eca26629030532ee85ff4"
+      "definitionHash": "sha256:1258765b51ecc8ee585810ee7fc782ea16ee5ec10f5518fdd710b06e3e28e3a1"
     },
     "jail.card.use.event": {
       "capabilityFamily": "runtime.server",
@@ -2762,7 +2762,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:7d7ca58027eaceabba916aadc79b9ceee1e17fa77da2249f53d2096b78a6d72b"
+      "definitionHash": "sha256:3256dcbd0d051833bd5f6a048976749842efb6c03229475c16ae8367f07d88b6"
     },
     "jail.roll": {
       "capabilityFamily": "runtime.server",
@@ -2782,7 +2782,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:df6a5e585d1512bdf1c712df917ba97d0fe8c440aeb6ce8fccda67973d35aaad"
+      "definitionHash": "sha256:7ca0c4fcdce785db22eda82efce249423bd2f37b0c0e31184bb53e1e643d5807"
     },
     "jail.third.move": {
       "capabilityFamily": "runtime.server",
@@ -2802,7 +2802,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:9709ed6da21ad698065f9958e03b26b79786a12fdb3876044fdb2a9560961264"
+      "definitionHash": "sha256:77cb8503c2c00ad390dc77aea2344aba7a76f757fd32616fcaf2d211e819b3dd"
     },
     "turn.finish": {
       "capabilityFamily": "runtime.server",
@@ -2822,7 +2822,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:98d069bf9e4890b704eeb8f47107764391cf46d8f06d1492cc9a94e6c42a1403"
+      "definitionHash": "sha256:a490b4935d780f70aa8f740756e380e153d9bb74317f40dbffc9474c9e07ddf6"
     },
     "trade.open": {
       "capabilityFamily": "runtime.server",
@@ -2850,7 +2850,7 @@
         "planRef": "trade.open"
       },
       "invocation": "external",
-      "definitionHash": "sha256:b49fbf3b0ce9e8c1bae41f8a5b9deef71019e1c3de846abf866c85abb768872b"
+      "definitionHash": "sha256:d6fdbf20be921a335d1cf2c6ec72473f3e030f730c8153471d3724e75c085556"
     },
     "trade.cash.set": {
       "capabilityFamily": "runtime.server",
@@ -2884,7 +2884,7 @@
         "planRef": "trade.cash.set"
       },
       "invocation": "external",
-      "definitionHash": "sha256:c0b700e1bef340f44a4e66dc653a440a34b94e4539aeec6df1b6797da65f821d"
+      "definitionHash": "sha256:ccc46930f5d6877d0488115c6d9cd2f47b868669227e30376ac345a9a27d6590"
     },
     "trade.asset.set": {
       "capabilityFamily": "runtime.server",
@@ -2918,7 +2918,7 @@
         "planRef": "trade.asset.set"
       },
       "invocation": "external",
-      "definitionHash": "sha256:dc003470b57af5dd452de7c26e622d6ecd9602982288202d86bc23f464799de7"
+      "definitionHash": "sha256:bb790affa4625c78ccf50cb71ee34e668d84125cde12c20de025437b8998693b"
     },
     "trade.asset.remove": {
       "capabilityFamily": "runtime.server",
@@ -2946,7 +2946,7 @@
         "planRef": "trade.asset.remove"
       },
       "invocation": "external",
-      "definitionHash": "sha256:313c51a3448c12d0f7a408c85b8bd4da108d0852d2acaf6f9eeca1e73bd8198a"
+      "definitionHash": "sha256:f74aacaa8093f14fc35d7bf8400d3328d623dcea24a0845d67f54e4ebe74ae5e"
     },
     "trade.card.offer": {
       "capabilityFamily": "runtime.server",
@@ -2974,7 +2974,7 @@
         "planRef": "trade.card.offer"
       },
       "invocation": "external",
-      "definitionHash": "sha256:6f178add6ecbfc5fd30781f9c0931fc4243d7c447dd5667305ff04dd7357bc1e"
+      "definitionHash": "sha256:3f3382db7b89f55fb1bf857723257ba256d2c3a5e77e2d834a12a957b1472573"
     },
     "trade.card.offer.remove": {
       "capabilityFamily": "runtime.server",
@@ -2994,7 +2994,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:f4a0dc0cd8b20fd1ef87f44120411b377bb95f709068a5e61226fe3fc753a319"
+      "definitionHash": "sha256:39194f02a568dec3c8cbaa774430c0b5b4203b171ff86a18ab979250cf14fced"
     },
     "trade.card.request": {
       "capabilityFamily": "runtime.server",
@@ -3022,7 +3022,7 @@
         "planRef": "trade.card.request"
       },
       "invocation": "external",
-      "definitionHash": "sha256:086676cb5d1e50d44d7c0ee787b93d13f98d20d2700b539596c573bc07ab274e"
+      "definitionHash": "sha256:f3d560fca9b681206ab49fe0e9314dcf6112e5ef3bf137e20614183067c7d55b"
     },
     "trade.card.request.remove": {
       "capabilityFamily": "runtime.server",
@@ -3042,7 +3042,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:0c49ea87257148918b12aff6d9c44145e29f7f0739913a9b0925401297e3e01e"
+      "definitionHash": "sha256:bb293498820c5e68524f05f2c100b5118b94c06261bd72ebba84fd7128eb6805"
     },
     "trade.propose": {
       "capabilityFamily": "runtime.server",
@@ -3062,7 +3062,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:7a94cb1d084c9eec45155086253b1714481104017a52212b728f80a363b1be7a"
+      "definitionHash": "sha256:ce79b4b15ffd9e47544e240f15c268528d2b21e52f69cc88f55b430418b1d442"
     },
     "trade.accept": {
       "capabilityFamily": "runtime.server",
@@ -3082,7 +3082,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:b0d38e630782c69eb7ae104db24cbe5aa225157b62d554c7e93aabd59a406684"
+      "definitionHash": "sha256:294d00ea377d101382af0280629aaa22f16628a4cfaa1682547c90a855b60055"
     },
     "trade.decline": {
       "capabilityFamily": "runtime.server",
@@ -3102,7 +3102,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:92bd1b770ae05c91333dda824ae75faee5f76d8d5afd294572db73b49182f478"
+      "definitionHash": "sha256:9075ee8abac4b4de2ad214348c148d8615249c5cd0d7305b507c56f8a6ed2ef8"
     },
     "trade.cancel": {
       "capabilityFamily": "runtime.server",
@@ -3122,7 +3122,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:14fb75e3374dedf5d6d03be2c5e724d380c8ec708dc0d491658204f106ed95fe"
+      "definitionHash": "sha256:cc7be3038f9d71c54db7162816a1d4f7b741770f2b3d6f77d4713e4caa49a5b3"
     },
     "trade.card.claim": {
       "capabilityFamily": "runtime.server",
@@ -3142,7 +3142,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:78bbe6a480e27dfdb32e5a4412b8a3b266d3abf5bee95ce3475a1243b38fb04c"
+      "definitionHash": "sha256:8758d32940fb5461258a6996eaa5ab34afe156b848ca411e641065fd8b677b27"
     },
     "obligation.resolve": {
       "capabilityFamily": "runtime.server",
@@ -3162,7 +3162,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:70ffd0eef35dc67ee67c4b89ebf93c6b1ad20c964b192a904a9004183d15431a"
+      "definitionHash": "sha256:e008d23d849189db5de653c2df462ab82d0a5507afe5cb809cf8b35ca604c27e"
     },
     "bankruptcy.declare": {
       "capabilityFamily": "runtime.server",
@@ -3194,7 +3194,7 @@
         ]
       },
       "invocation": "external",
-      "definitionHash": "sha256:d726065c61efaefe748616c090936b91182a5731f4426772b546a02b20c7a56d"
+      "definitionHash": "sha256:8fe5f1a002f05d574b0ee5c2684d27ee2ac4fac0d3c2cef55e6a34ff36f0b4a7"
     },
     "jail.card.use.fund": {
       "capabilityFamily": "runtime.server",
@@ -3214,7 +3214,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:c6b24861c29e6a848530f9e2a1ee9eff29365b5841d040b9e4bd7af88c0477fc"
+      "definitionHash": "sha256:f2eb94c4405e03553a5618ebe5d94cbef7581b4c51cb4808699c4d97d3c35a0e"
     },
     "mortgage.transfer.redeem": {
       "capabilityFamily": "runtime.server",
@@ -3234,7 +3234,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:ba46d1ee883358a728cbcf347aedd899bb4b498bcf2d7613b5d8a6c49062eadf"
+      "definitionHash": "sha256:d5463248a9b569062d2868bb3d58ce081943eedcbc49eeb9af4e32f42b70843b"
     },
     "mortgage.transfer.keep": {
       "capabilityFamily": "runtime.server",
@@ -3254,7 +3254,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:0b9b165bb8bad95509e0bad8c06f677cae06d337c067de832adebf78c549f045"
+      "definitionHash": "sha256:33703068557de3028673be46e3dc8b6bcd4581247c20b39c1f1d139c2a467231"
     },
     "liquidation.card.claim": {
       "capabilityFamily": "runtime.server",
@@ -3274,7 +3274,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:7f50e5918115c7870d2caf8c0f40f035bd0e3a6e979d3a895697b2c2809fbc9b"
+      "definitionHash": "sha256:0dcdad638215ff6f99800ab9571316b8b748212594ecfb7a032af72a24d53bc5"
     }
   },
   "mechanics": {
@@ -3408,10 +3408,94 @@
           "itemType": "core.event-journal-entry",
           "maxItems": 16384
         },
-        "game.property-event": {
+        "game.property-owner-kind": {
+          "kind": "enum",
+          "values": [
+            "player",
+            "bank"
+          ]
+        },
+        "game.property-acquisition-method": {
+          "kind": "enum",
+          "values": [
+            "direct-purchase",
+            "auction",
+            "trade",
+            "creditor-transfer",
+            "bank-reversion"
+          ]
+        },
+        "game.property-ownership-event": {
           "kind": "record",
           "fields": {
-            "kind": {
+            "cellId": {
+              "typeRef": "core.string",
+              "optional": false
+            },
+            "ownerKind": {
+              "typeRef": "game.property-owner-kind",
+              "optional": false
+            },
+            "ownerPlayerId": {
+              "typeRef": "core.string",
+              "optional": true
+            },
+            "acquisitionMethod": {
+              "typeRef": "game.property-acquisition-method",
+              "optional": false
+            },
+            "amount": {
+              "typeRef": "core.integer",
+              "optional": true
+            }
+          }
+        },
+        "game.rent-event": {
+          "kind": "record",
+          "fields": {
+            "cellId": {
+              "typeRef": "core.string",
+              "optional": false
+            },
+            "payerPlayerId": {
+              "typeRef": "core.string",
+              "optional": false
+            },
+            "ownerPlayerId": {
+              "typeRef": "core.optional-string",
+              "optional": false
+            },
+            "amount": {
+              "typeRef": "core.integer",
+              "optional": false
+            },
+            "improvementTier": {
+              "typeRef": "core.integer",
+              "optional": true
+            }
+          }
+        },
+        "game.building-placement-event": {
+          "kind": "record",
+          "fields": {
+            "cellId": {
+              "typeRef": "core.string",
+              "optional": false
+            },
+            "ownerPlayerId": {
+              "typeRef": "core.string",
+              "optional": false
+            },
+            "improvementTier": {
+              "typeRef": "core.integer",
+              "optional": false
+            }
+          }
+        },
+        "game.bankruptcy-event": {
+          "kind": "record",
+          "fields": {
+            "debtorPlayerId": {
               "typeRef": "core.string",
               "optional": false
             }
@@ -3434,7 +3518,7 @@
             }
           }
         },
-        "game.turn.roll.event.23-event-record.1": {
+        "game.turn-rolled-event": {
           "kind": "record",
           "fields": {
             "kind": {
@@ -3443,7 +3527,7 @@
             }
           }
         },
-        "game.turn.finish.event.4-event-record.10": {
+        "game.turn-completed-event": {
           "kind": "record",
           "fields": {
             "kind": {
@@ -5263,16 +5347,30 @@
         }
       },
       "events": {
-        "property.purchase": {
+        "estate-race.property.ownership": {
           "audienceRef": "public",
-          "payloadType": "game.property-event",
+          "payloadType": "game.property-ownership-event",
           "journalEndpoint": {
             "endpoint": "public.log"
           }
         },
         "property.rent": {
           "audienceRef": "public",
-          "payloadType": "game.property-event",
+          "payloadType": "game.rent-event",
+          "journalEndpoint": {
+            "endpoint": "public.log"
+          }
+        },
+        "estate-race.building.placed": {
+          "audienceRef": "public",
+          "payloadType": "game.building-placement-event",
+          "journalEndpoint": {
+            "endpoint": "public.log"
+          }
+        },
+        "estate-race.bankruptcy": {
+          "audienceRef": "public",
+          "payloadType": "game.bankruptcy-event",
           "journalEndpoint": {
             "endpoint": "public.log"
           }
@@ -5284,16 +5382,16 @@
             "endpoint": "public.log"
           }
         },
-        "turn.roll.event.23": {
+        "estate-race.turn.rolled": {
           "audienceRef": "public",
-          "payloadType": "game.turn.roll.event.23-event-record.1",
+          "payloadType": "game.turn-rolled-event",
           "journalEndpoint": {
             "endpoint": "public.log"
           }
         },
-        "turn.finish.event.4": {
+        "estate-race.turn.completed": {
           "audienceRef": "public",
-          "payloadType": "game.turn.finish.event.4-event-record.10",
+          "payloadType": "game.turn-completed-event",
           "journalEndpoint": {
             "endpoint": "public.log"
           }
@@ -5302,7 +5400,7 @@
     },
     "plans": {
       "session.setup.finalize": {
-        "planHash": "sha256:0bf244f0473d8239d6df2bb2f8c74285788357a27bc68ce06e8fd1d99aa70692",
+        "planHash": "sha256:6aa69f64f235520ba08eebfc8860997cf9649a09fd622c7db9b242ddfe5707f5",
         "transaction": {
           "steps": [
             {
@@ -5468,7 +5566,7 @@
         }
       },
       "turn.roll": {
-        "planHash": "sha256:3ccd9dd5454c7c57cf14f3f0f3ba0e106ae13458cbb36fb45f6094f750bed744",
+        "planHash": "sha256:5f1ad46f1708fcf3e810c250851160a92785d9e8dec25d49993e3ee289ed7711",
         "transaction": {
           "steps": [
             {
@@ -15618,7 +15716,7 @@
               "id": "s023",
               "kind": "command",
               "op": "core.event.emit",
-              "eventType": "turn.roll.event.23",
+              "eventType": "estate-race.turn.rolled",
               "summary": {
                 "op": "value.literal",
                 "value": "Активный участник бросил кости и переместил фишку."
@@ -15635,7 +15733,7 @@
         }
       },
       "property.buy": {
-        "planHash": "sha256:44762930e99c3b7748d2027b924a68235ff4fa2cd82fd41dec3a4584c2b12457",
+        "planHash": "sha256:5efdb256d6a27cd019653dc170105e4f810b185a068744f8cd52590862cc87ee",
         "transaction": {
           "steps": [
             {
@@ -15894,16 +15992,46 @@
               "id": "purchase-event",
               "kind": "command",
               "op": "core.event.emit",
-              "eventType": "property.purchase",
+              "eventType": "estate-race.property.ownership",
               "summary": {
                 "op": "value.literal",
                 "value": "Участник приобрёл объект."
               },
               "audience": "public",
               "data": {
-                "kind": {
+                "cellId": {
+                  "op": "value.result",
+                  "stepId": "landing-cell",
+                  "path": [
+                    "ids",
+                    "0"
+                  ]
+                },
+                "ownerKind": {
                   "op": "value.literal",
-                  "value": "purchase"
+                  "value": "player"
+                },
+                "ownerPlayerId": {
+                  "op": "value.actor"
+                },
+                "acquisitionMethod": {
+                  "op": "value.literal",
+                  "value": "direct-purchase"
+                },
+                "amount": {
+                  "op": "value.entity",
+                  "entity": {
+                    "collection": "boardCells",
+                    "entityId": {
+                      "op": "value.result",
+                      "stepId": "landing-cell",
+                      "path": [
+                        "ids",
+                        "0"
+                      ]
+                    }
+                  },
+                  "field": "price"
                 }
               }
             }
@@ -15911,7 +16039,7 @@
         }
       },
       "property.decline": {
-        "planHash": "sha256:fb88dfcade200503133810a191eecb2a9e287414c800e11d5dda8568e9b006bb",
+        "planHash": "sha256:e9bb7c72837b529091085b0aa04f263784549dcdd3b4d3eee6e6b522f559350b",
         "transaction": {
           "steps": [
             {
@@ -16267,7 +16395,7 @@
         }
       },
       "property.rent": {
-        "planHash": "sha256:799554a009936657d13fca3788c2cb11a8a8053fc7b91423f63a6ef05da75143",
+        "planHash": "sha256:56d0aa1b6433a8dc2aabc01f138d9a96bb6e1b3e2f56c30e088694f1779cd6b5",
         "transaction": {
           "steps": [
             {
@@ -17972,33 +18100,150 @@
               }
             },
             {
-              "id": "rent-event",
+              "id": "estate-rent-event",
               "kind": "command",
               "op": "core.event.emit",
               "eventType": "property.rent",
               "summary": {
                 "op": "value.literal",
-                "value": "Участник оплатил ренту."
+                "value": "Участнику начислена рента за объект."
               },
               "audience": "public",
               "data": {
-                "kind": {
-                  "op": "value.literal",
-                  "value": "rent"
+                "cellId": {
+                  "op": "value.result",
+                  "stepId": "landing-cell",
+                  "path": [
+                    "ids",
+                    "0"
+                  ]
+                },
+                "payerPlayerId": {
+                  "op": "value.actor"
+                },
+                "ownerPlayerId": {
+                  "op": "value.entity",
+                  "entity": {
+                    "collection": "boardCells",
+                    "entityId": {
+                      "op": "value.result",
+                      "stepId": "landing-cell",
+                      "path": [
+                        "ids",
+                        "0"
+                      ]
+                    }
+                  },
+                  "field": "ownerPlayerId"
+                },
+                "amount": {
+                  "op": "value.state",
+                  "ref": {
+                    "endpoint": "public.obligation.amount"
+                  }
+                },
+                "improvementTier": {
+                  "op": "value.entity",
+                  "entity": {
+                    "collection": "boardCells",
+                    "entityId": {
+                      "op": "value.result",
+                      "stepId": "landing-cell",
+                      "path": [
+                        "ids",
+                        "0"
+                      ]
+                    }
+                  },
+                  "field": "improvementTier"
                 }
               },
               "when": {
-                "op": "predicate.compare",
-                "operator": "eq",
-                "left": {
-                  "op": "value.state",
-                  "ref": {
-                    "endpoint": "public.obligation.status"
+                "op": "predicate.entity.matches",
+                "entity": {
+                  "collection": "boardCells",
+                  "entityId": {
+                    "op": "value.result",
+                    "stepId": "landing-cell",
+                    "path": [
+                      "ids",
+                      "0"
+                    ]
                   }
                 },
-                "right": {
-                  "op": "value.literal",
-                  "value": "idle"
+                "attributes": {
+                  "kind": {
+                    "op": "value.literal",
+                    "value": "estate"
+                  }
+                }
+              }
+            },
+            {
+              "id": "non-estate-rent-event",
+              "kind": "command",
+              "op": "core.event.emit",
+              "eventType": "property.rent",
+              "summary": {
+                "op": "value.literal",
+                "value": "Участнику начислена рента за объект."
+              },
+              "audience": "public",
+              "data": {
+                "cellId": {
+                  "op": "value.result",
+                  "stepId": "landing-cell",
+                  "path": [
+                    "ids",
+                    "0"
+                  ]
+                },
+                "payerPlayerId": {
+                  "op": "value.actor"
+                },
+                "ownerPlayerId": {
+                  "op": "value.entity",
+                  "entity": {
+                    "collection": "boardCells",
+                    "entityId": {
+                      "op": "value.result",
+                      "stepId": "landing-cell",
+                      "path": [
+                        "ids",
+                        "0"
+                      ]
+                    }
+                  },
+                  "field": "ownerPlayerId"
+                },
+                "amount": {
+                  "op": "value.state",
+                  "ref": {
+                    "endpoint": "public.obligation.amount"
+                  }
+                }
+              },
+              "when": {
+                "op": "predicate.not",
+                "item": {
+                  "op": "predicate.entity.matches",
+                  "entity": {
+                    "collection": "boardCells",
+                    "entityId": {
+                      "op": "value.result",
+                      "stepId": "landing-cell",
+                      "path": [
+                        "ids",
+                        "0"
+                      ]
+                    }
+                  },
+                  "attributes": {
+                    "kind": {
+                      "op": "value.literal",
+                      "value": "estate"
+                    }
+                  }
                 }
               }
             }
@@ -18006,7 +18251,7 @@
         }
       },
       "property.auction.bid": {
-        "planHash": "sha256:f6771aae00b1b5d9d001227e9900b0ea08dd6d989791c9cd9701f3da79243c2f",
+        "planHash": "sha256:a488bbfcb551c400489c39797af92715990ef65962c2ea95647f0ac9bcaea972",
         "transaction": {
           "steps": [
             {
@@ -18446,6 +18691,59 @@
                   }
                 }
               ],
+              "when": {
+                "op": "predicate.compare",
+                "operator": "eq",
+                "left": {
+                  "op": "value.result",
+                  "stepId": "remaining-eligible",
+                  "path": [
+                    "ids"
+                  ]
+                },
+                "right": {
+                  "op": "value.literal",
+                  "value": []
+                }
+              }
+            },
+            {
+              "id": "auction-ownership-event",
+              "kind": "command",
+              "op": "core.event.emit",
+              "eventType": "estate-race.property.ownership",
+              "summary": {
+                "op": "value.literal",
+                "value": "Участник приобрёл объект на аукционе."
+              },
+              "audience": "public",
+              "data": {
+                "cellId": {
+                  "op": "value.result",
+                  "stepId": "auction-cell",
+                  "path": [
+                    "ids",
+                    "0"
+                  ]
+                },
+                "ownerKind": {
+                  "op": "value.literal",
+                  "value": "player"
+                },
+                "ownerPlayerId": {
+                  "op": "value.actor"
+                },
+                "acquisitionMethod": {
+                  "op": "value.literal",
+                  "value": "auction"
+                },
+                "amount": {
+                  "op": "value.state",
+                  "ref": {
+                    "endpoint": "public.auction.currentBid"
+                  }
+                }
+              },
               "when": {
                 "op": "predicate.compare",
                 "operator": "eq",
@@ -19471,7 +19769,7 @@
         }
       },
       "property.auction.pass": {
-        "planHash": "sha256:68541f72cba0f7d05d51a0fc6d4c08cc32859579470fc21237ec09b5b5b491bb",
+        "planHash": "sha256:c0144848e5176008931a5b96e6485e41c44ca9df9fa24af32b98600a02e86e57",
         "transaction": {
           "steps": [
             {
@@ -19898,6 +20196,81 @@
                   }
                 }
               ],
+              "when": {
+                "op": "predicate.all",
+                "items": [
+                  {
+                    "op": "predicate.compare",
+                    "operator": "eq",
+                    "left": {
+                      "op": "value.result",
+                      "stepId": "remaining-eligible",
+                      "path": [
+                        "ids"
+                      ]
+                    },
+                    "right": {
+                      "op": "value.literal",
+                      "value": []
+                    }
+                  },
+                  {
+                    "op": "predicate.compare",
+                    "operator": "ne",
+                    "left": {
+                      "op": "value.state",
+                      "ref": {
+                        "endpoint": "public.auction.leaderPlayerId"
+                      }
+                    },
+                    "right": {
+                      "op": "value.literal",
+                      "value": ""
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "id": "auction-ownership-event",
+              "kind": "command",
+              "op": "core.event.emit",
+              "eventType": "estate-race.property.ownership",
+              "summary": {
+                "op": "value.literal",
+                "value": "Участник приобрёл объект на аукционе."
+              },
+              "audience": "public",
+              "data": {
+                "cellId": {
+                  "op": "value.result",
+                  "stepId": "auction-cell",
+                  "path": [
+                    "ids",
+                    "0"
+                  ]
+                },
+                "ownerKind": {
+                  "op": "value.literal",
+                  "value": "player"
+                },
+                "ownerPlayerId": {
+                  "op": "value.state",
+                  "ref": {
+                    "endpoint": "public.auction.leaderPlayerId"
+                  }
+                },
+                "acquisitionMethod": {
+                  "op": "value.literal",
+                  "value": "auction"
+                },
+                "amount": {
+                  "op": "value.state",
+                  "ref": {
+                    "endpoint": "public.auction.currentBid"
+                  }
+                }
+              },
               "when": {
                 "op": "predicate.all",
                 "items": [
@@ -20942,7 +21315,7 @@
         }
       },
       "property.build": {
-        "planHash": "sha256:30cce64d755938e996502cc55068d3d631e26e6053ab0bcf01ab9eba4c4ea572",
+        "planHash": "sha256:be8e4be55167a8e068ab0e08a798dd1451f15c108d703985978b884989441fd6",
         "transaction": {
           "steps": [
             {
@@ -22632,6 +23005,57 @@
                   }
                 },
                 {
+                  "id": "building-placement-event",
+                  "kind": "command",
+                  "op": "core.event.emit",
+                  "eventType": "estate-race.building.placed",
+                  "summary": {
+                    "op": "value.literal",
+                    "value": "Участник разместил строение."
+                  },
+                  "audience": "public",
+                  "data": {
+                    "cellId": {
+                      "op": "value.state",
+                      "ref": {
+                        "endpoint": "participant.objects.buildingRequestCellId",
+                        "bindings": {
+                          "participantId": {
+                            "op": "value.item",
+                            "area": "identity",
+                            "field": "id"
+                          }
+                        }
+                      }
+                    },
+                    "ownerPlayerId": {
+                      "op": "value.item",
+                      "area": "identity",
+                      "field": "id"
+                    },
+                    "improvementTier": {
+                      "op": "value.entity",
+                      "entity": {
+                        "collection": "boardCells",
+                        "entityId": {
+                          "op": "value.state",
+                          "ref": {
+                            "endpoint": "participant.objects.buildingRequestCellId",
+                            "bindings": {
+                              "participantId": {
+                                "op": "value.item",
+                                "area": "identity",
+                                "field": "id"
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "field": "improvementTier"
+                    }
+                  }
+                },
+                {
                   "id": "house-stock",
                   "kind": "command",
                   "op": "core.state.patch",
@@ -23368,7 +23792,7 @@
         }
       },
       "property.build.request": {
-        "planHash": "sha256:147201a7f0bf497a3053326cb862252bd37fc2487ae831234222d1e519d1adca",
+        "planHash": "sha256:51dae7493e83ddb949e482138ab1cd9bf0e34a2773ad00594deab3411b190d34",
         "transaction": {
           "steps": [
             {
@@ -24833,6 +25257,57 @@
                   }
                 },
                 {
+                  "id": "building-placement-event",
+                  "kind": "command",
+                  "op": "core.event.emit",
+                  "eventType": "estate-race.building.placed",
+                  "summary": {
+                    "op": "value.literal",
+                    "value": "Участник разместил строение."
+                  },
+                  "audience": "public",
+                  "data": {
+                    "cellId": {
+                      "op": "value.state",
+                      "ref": {
+                        "endpoint": "participant.objects.buildingRequestCellId",
+                        "bindings": {
+                          "participantId": {
+                            "op": "value.item",
+                            "area": "identity",
+                            "field": "id"
+                          }
+                        }
+                      }
+                    },
+                    "ownerPlayerId": {
+                      "op": "value.item",
+                      "area": "identity",
+                      "field": "id"
+                    },
+                    "improvementTier": {
+                      "op": "value.entity",
+                      "entity": {
+                        "collection": "boardCells",
+                        "entityId": {
+                          "op": "value.state",
+                          "ref": {
+                            "endpoint": "participant.objects.buildingRequestCellId",
+                            "bindings": {
+                              "participantId": {
+                                "op": "value.item",
+                                "area": "identity",
+                                "field": "id"
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "field": "improvementTier"
+                    }
+                  }
+                },
+                {
                   "id": "house-stock",
                   "kind": "command",
                   "op": "core.state.patch",
@@ -25569,7 +26044,7 @@
         }
       },
       "property.build.pass": {
-        "planHash": "sha256:26ca635df55684a85f66a3af32c94908baeb7d83ef42131a262a92a7a29fc78b",
+        "planHash": "sha256:cbe8629b135915b6af666669e69568d0042c28e9f9d8dc26f0ab7e48ae0fde6d",
         "transaction": {
           "steps": [
             {
@@ -26670,6 +27145,57 @@
                   }
                 },
                 {
+                  "id": "building-placement-event",
+                  "kind": "command",
+                  "op": "core.event.emit",
+                  "eventType": "estate-race.building.placed",
+                  "summary": {
+                    "op": "value.literal",
+                    "value": "Участник разместил строение."
+                  },
+                  "audience": "public",
+                  "data": {
+                    "cellId": {
+                      "op": "value.state",
+                      "ref": {
+                        "endpoint": "participant.objects.buildingRequestCellId",
+                        "bindings": {
+                          "participantId": {
+                            "op": "value.item",
+                            "area": "identity",
+                            "field": "id"
+                          }
+                        }
+                      }
+                    },
+                    "ownerPlayerId": {
+                      "op": "value.item",
+                      "area": "identity",
+                      "field": "id"
+                    },
+                    "improvementTier": {
+                      "op": "value.entity",
+                      "entity": {
+                        "collection": "boardCells",
+                        "entityId": {
+                          "op": "value.state",
+                          "ref": {
+                            "endpoint": "participant.objects.buildingRequestCellId",
+                            "bindings": {
+                              "participantId": {
+                                "op": "value.item",
+                                "area": "identity",
+                                "field": "id"
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "field": "improvementTier"
+                    }
+                  }
+                },
+                {
                   "id": "house-stock",
                   "kind": "command",
                   "op": "core.state.patch",
@@ -27406,7 +27932,7 @@
         }
       },
       "property.build.auction.bid": {
-        "planHash": "sha256:6cb51bb4069080de0db6359a450baf7b3c221281f809f8c50699ffa9450363c9",
+        "planHash": "sha256:de8fe9dc2755c08a6e21168b43139cae28f3c2bcceed79e132d49fc5d7d90498",
         "transaction": {
           "steps": [
             {
@@ -28355,6 +28881,94 @@
                         "op": "value.literal",
                         "value": 5
                       }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "id": "resolve-lot.building-placement-event",
+              "kind": "command",
+              "op": "core.event.emit",
+              "eventType": "estate-race.building.placed",
+              "summary": {
+                "op": "value.literal",
+                "value": "Участник разместил строение после аукциона дефицита."
+              },
+              "audience": "public",
+              "data": {
+                "cellId": {
+                  "op": "value.state",
+                  "ref": {
+                    "endpoint": "participant.objects.buildingRequestCellId",
+                    "bindings": {
+                      "participantId": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "public.buildingAuction.leaderPlayerId"
+                        }
+                      }
+                    }
+                  }
+                },
+                "ownerPlayerId": {
+                  "op": "value.state",
+                  "ref": {
+                    "endpoint": "public.buildingAuction.leaderPlayerId"
+                  }
+                },
+                "improvementTier": {
+                  "op": "value.entity",
+                  "entity": {
+                    "collection": "boardCells",
+                    "entityId": {
+                      "op": "value.state",
+                      "ref": {
+                        "endpoint": "participant.objects.buildingRequestCellId",
+                        "bindings": {
+                          "participantId": {
+                            "op": "value.state",
+                            "ref": {
+                              "endpoint": "public.buildingAuction.leaderPlayerId"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "field": "improvementTier"
+                }
+              },
+              "when": {
+                "op": "predicate.all",
+                "items": [
+                  {
+                    "op": "predicate.compare",
+                    "operator": "eq",
+                    "left": {
+                      "op": "value.result",
+                      "stepId": "resolve-lot.eligible",
+                      "path": [
+                        "ids"
+                      ]
+                    },
+                    "right": {
+                      "op": "value.literal",
+                      "value": []
+                    }
+                  },
+                  {
+                    "op": "predicate.compare",
+                    "operator": "ne",
+                    "left": {
+                      "op": "value.state",
+                      "ref": {
+                        "endpoint": "public.buildingAuction.leaderPlayerId"
+                      }
+                    },
+                    "right": {
+                      "op": "value.literal",
+                      "value": ""
                     }
                   }
                 ]
@@ -29855,7 +30469,7 @@
         }
       },
       "property.build.auction.pass": {
-        "planHash": "sha256:e36311c46aa859af72267540c88c618de95f731cb7b9bb587bdcf1265b065129",
+        "planHash": "sha256:a628dedbb81b787c4bd115c23b84977c92e3c8b88bee7b18f32aa04e48e2dd54",
         "transaction": {
           "steps": [
             {
@@ -30702,6 +31316,94 @@
                         "op": "value.literal",
                         "value": 5
                       }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "id": "resolve-lot.building-placement-event",
+              "kind": "command",
+              "op": "core.event.emit",
+              "eventType": "estate-race.building.placed",
+              "summary": {
+                "op": "value.literal",
+                "value": "Участник разместил строение после аукциона дефицита."
+              },
+              "audience": "public",
+              "data": {
+                "cellId": {
+                  "op": "value.state",
+                  "ref": {
+                    "endpoint": "participant.objects.buildingRequestCellId",
+                    "bindings": {
+                      "participantId": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "public.buildingAuction.leaderPlayerId"
+                        }
+                      }
+                    }
+                  }
+                },
+                "ownerPlayerId": {
+                  "op": "value.state",
+                  "ref": {
+                    "endpoint": "public.buildingAuction.leaderPlayerId"
+                  }
+                },
+                "improvementTier": {
+                  "op": "value.entity",
+                  "entity": {
+                    "collection": "boardCells",
+                    "entityId": {
+                      "op": "value.state",
+                      "ref": {
+                        "endpoint": "participant.objects.buildingRequestCellId",
+                        "bindings": {
+                          "participantId": {
+                            "op": "value.state",
+                            "ref": {
+                              "endpoint": "public.buildingAuction.leaderPlayerId"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "field": "improvementTier"
+                }
+              },
+              "when": {
+                "op": "predicate.all",
+                "items": [
+                  {
+                    "op": "predicate.compare",
+                    "operator": "eq",
+                    "left": {
+                      "op": "value.result",
+                      "stepId": "resolve-lot.eligible",
+                      "path": [
+                        "ids"
+                      ]
+                    },
+                    "right": {
+                      "op": "value.literal",
+                      "value": []
+                    }
+                  },
+                  {
+                    "op": "predicate.compare",
+                    "operator": "ne",
+                    "left": {
+                      "op": "value.state",
+                      "ref": {
+                        "endpoint": "public.buildingAuction.leaderPlayerId"
+                      }
+                    },
+                    "right": {
+                      "op": "value.literal",
+                      "value": ""
                     }
                   }
                 ]
@@ -32202,7 +32904,7 @@
         }
       },
       "property.sell": {
-        "planHash": "sha256:851274628250e13f476310afac7b983304618332091a3ada8e28c962ac3e1511",
+        "planHash": "sha256:b0d49c3e25e96e8621952b9a7ad7bec1f97b634460bcc87fd7519f315dced344",
         "transaction": {
           "steps": [
             {
@@ -32811,7 +33513,7 @@
         }
       },
       "property.mortgage": {
-        "planHash": "sha256:dbe55dec57a0b6888f5fc688ab291370a31d42b087885f76856025579ce951ed",
+        "planHash": "sha256:5a6b987752d15c91a10ba2034ab6b9e63ba313066f6903fc45fcba3ad444ea70",
         "transaction": {
           "steps": [
             {
@@ -33093,7 +33795,7 @@
         }
       },
       "property.redeem": {
-        "planHash": "sha256:9e3471a5c90a2365f565e29e03be5adaa426bd596e5c350d5d0dedb110ad98e8",
+        "planHash": "sha256:420fec41e28b50c85f38ac0e7501bd0bf5b9eefac42aac46bc5a953de143e396",
         "transaction": {
           "steps": [
             {
@@ -33204,7 +33906,7 @@
         }
       },
       "tax.pay": {
-        "planHash": "sha256:7ae44d39e2f397baf947557598f097cef3ad954237b50c7505c2f3b12412f0df",
+        "planHash": "sha256:8d23b2fe4792b8cd304f7848253beaf2f342046bd8e9470ef58f79a26deb9619",
         "transaction": {
           "steps": [
             {
@@ -33585,7 +34287,7 @@
         }
       },
       "turn.finish": {
-        "planHash": "sha256:be9c0a52481bcda2a174554ecea035b602fa153d8bb487282844a3f2791ca94a",
+        "planHash": "sha256:2bc9dc0420bc1c78fdcb0e61ddab65adaf45034a3a7fbd6e90dc4eba19ea2197",
         "transaction": {
           "steps": [
             {
@@ -33634,6 +34336,37 @@
                     "value": "eliminated"
                   }
                 ]
+              }
+            },
+            {
+              "id": "s002-completed-event",
+              "kind": "command",
+              "op": "core.event.emit",
+              "eventType": "estate-race.turn.completed",
+              "summary": {
+                "op": "value.literal",
+                "value": "Участник готов к следующему броску."
+              },
+              "audience": "public",
+              "data": {
+                "kind": {
+                  "op": "value.literal",
+                  "value": "turn"
+                }
+              },
+              "when": {
+                "op": "predicate.compare",
+                "operator": "eq",
+                "left": {
+                  "op": "value.state",
+                  "ref": {
+                    "endpoint": "public.board.extraRollPending"
+                  }
+                },
+                "right": {
+                  "op": "value.literal",
+                  "value": false
+                }
               }
             },
             {
@@ -33933,29 +34666,12 @@
                   }
                 ]
               }
-            },
-            {
-              "id": "s005-event",
-              "kind": "command",
-              "op": "core.event.emit",
-              "eventType": "turn.finish.event.4",
-              "summary": {
-                "op": "value.literal",
-                "value": "Участник готов к следующему броску."
-              },
-              "audience": "public",
-              "data": {
-                "kind": {
-                  "op": "value.literal",
-                  "value": "turn"
-                }
-              }
             }
           ]
         }
       },
       "jail.pay": {
-        "planHash": "sha256:35bda2a23edef1de66897da1d89a83220e27fc258ff9a5d20042ffaf456b835c",
+        "planHash": "sha256:1971a37bad3d2efae674ec9842033c5ebfcc353c9678fbb7253e939a15d7fa9e",
         "transaction": {
           "steps": [
             {
@@ -34327,7 +35043,7 @@
         }
       },
       "jail.card.use.event": {
-        "planHash": "sha256:5180dfc548859ef77eb461f0c5a1dfe5cd92961e7ec3cc1dda6648963b5ae0ec",
+        "planHash": "sha256:911b5b2891b4d286d8eb4dbf77b71309863707aaf2eb0f380d74723e15bd09f8",
         "transaction": {
           "steps": [
             {
@@ -34562,7 +35278,7 @@
         }
       },
       "jail.roll": {
-        "planHash": "sha256:2b2db65bc7f37c6074ae528292f779d4095448cb67861f6c85d6d078429d5529",
+        "planHash": "sha256:6ba07dfe17025a96399e7675dd3c1e7762401413620f7860a1db918d176398d7",
         "transaction": {
           "steps": [
             {
@@ -34649,6 +35365,23 @@
               "stream": "estate-race.jail.roll",
               "target": {
                 "endpoint": "public.board.lastRoll"
+              }
+            },
+            {
+              "id": "roll-event",
+              "kind": "command",
+              "op": "core.event.emit",
+              "eventType": "estate-race.turn.rolled",
+              "summary": {
+                "op": "value.literal",
+                "value": "Участник бросил кости."
+              },
+              "audience": "public",
+              "data": {
+                "kind": {
+                  "op": "value.literal",
+                  "value": "movement"
+                }
               }
             },
             {
@@ -45283,7 +46016,7 @@
         }
       },
       "jail.third.move": {
-        "planHash": "sha256:ab55341496d49e90dfdb3dfd232c0e8bdab5dc3d7325edde749454211842f2ca",
+        "planHash": "sha256:e31736a3307cb4b248467ea3fce6f53cf5cdeb8c9a2249f67577a04f89095d86",
         "transaction": {
           "steps": [
             {
@@ -55318,7 +56051,7 @@
         }
       },
       "trade.open": {
-        "planHash": "sha256:c51b77344fc52c1fef4137cbfd1115135b3a19155640870be4aa67f7a5314322",
+        "planHash": "sha256:b45ef75641de6c1cb870ae586d3c71b1538b8de85f4d753442721ad8785a6e3a",
         "transaction": {
           "steps": [
             {
@@ -55501,7 +56234,7 @@
         }
       },
       "trade.cash.set": {
-        "planHash": "sha256:14b93e3516c2ea4291b01acf087afcddea094bfb1eef6116ae995fb0f98a8ac1",
+        "planHash": "sha256:848cdbfe34643d7da393e5296d950e7ee4a5526b97dd689e0d160f4fa23eef89",
         "transaction": {
           "steps": [
             {
@@ -55632,7 +56365,7 @@
         }
       },
       "trade.asset.set": {
-        "planHash": "sha256:d96138331258b3d09b2bbe549b67fbae413b971906f7ae4336b4546cfeb66d18",
+        "planHash": "sha256:e9a371c1854cd2985b7135c072e76660248cc57afe1de14818bde6b6f52268b3",
         "transaction": {
           "steps": [
             {
@@ -55946,7 +56679,7 @@
         }
       },
       "trade.asset.remove": {
-        "planHash": "sha256:7e4655893c3413cd26ac289a308d943344df28f4fe76c9f7f03f1cdf8516ac6d",
+        "planHash": "sha256:e782b47210d6a37acd4e1b7143d008885358829c18dce831fad51a9468643015",
         "transaction": {
           "steps": [
             {
@@ -56064,7 +56797,7 @@
         }
       },
       "trade.card.offer": {
-        "planHash": "sha256:a1e5e93c544bbd4a460a98a74c587e4b45453a310887e354b038c65a45a61624",
+        "planHash": "sha256:24c464aed0151c58c73e8a78b03820bafee0384f3df52decbf67929f857400a4",
         "transaction": {
           "steps": [
             {
@@ -56320,7 +57053,7 @@
         }
       },
       "trade.card.offer.remove": {
-        "planHash": "sha256:03c4bd5473fb8db4675c7171c2997cb26b19631a11060fdd6ba6757683d8adee",
+        "planHash": "sha256:341355f25b815c10c045d5db4cc261227ea229458e804231c26020dca9a9d648",
         "transaction": {
           "steps": [
             {
@@ -56550,7 +57283,7 @@
         }
       },
       "trade.card.request": {
-        "planHash": "sha256:c38b1f4077a45402b3aecebcd2c77a48cfb0aa1117a8e5462e34eedbbf528551",
+        "planHash": "sha256:47c00be501130e8c7d02ef7ade07db119b4a9ce382a7474d70f48cd90371c9c6",
         "transaction": {
           "steps": [
             {
@@ -56697,7 +57430,7 @@
         }
       },
       "trade.card.request.remove": {
-        "planHash": "sha256:d40f56d7255e6bbc7acfd215afc4cb56c4d2ed583d3c636d3973da3ef9cb6504",
+        "planHash": "sha256:d69650a2a4d4ad4aa0ddb9906ecb63324f60383d4b8d5180252f9bb5f80cd674",
         "transaction": {
           "steps": [
             {
@@ -56784,7 +57517,7 @@
         }
       },
       "trade.propose": {
-        "planHash": "sha256:01b343e22e75d75b7dd7fd949adbc690d7ee50d62d694c1696a441d3323f4768",
+        "planHash": "sha256:1827564d6a531982bbcee5a881630358a8a99bb597e592e80aaa47a9c362250a",
         "transaction": {
           "steps": [
             {
@@ -57157,7 +57890,7 @@
         }
       },
       "trade.accept": {
-        "planHash": "sha256:983e5346456f554e7234201ce1082906404c9012bddeb20a92dc90928699ddda",
+        "planHash": "sha256:f8b69c0549a6d843548f4e844dc40dd79e1da745026719e74f4aed1f5d28e94c",
         "transaction": {
           "steps": [
             {
@@ -57725,6 +58458,38 @@
                       }
                     }
                   ]
+                },
+                {
+                  "id": "offered-ownership-event",
+                  "kind": "command",
+                  "op": "core.event.emit",
+                  "eventType": "estate-race.property.ownership",
+                  "summary": {
+                    "op": "value.literal",
+                    "value": "Объект передан по принятой сделке."
+                  },
+                  "audience": "public",
+                  "data": {
+                    "cellId": {
+                      "op": "value.item",
+                      "area": "attribute",
+                      "field": "id"
+                    },
+                    "ownerKind": {
+                      "op": "value.literal",
+                      "value": "player"
+                    },
+                    "ownerPlayerId": {
+                      "op": "value.state",
+                      "ref": {
+                        "endpoint": "public.trade.targetPlayerId"
+                      }
+                    },
+                    "acquisitionMethod": {
+                      "op": "value.literal",
+                      "value": "trade"
+                    }
+                  }
                 }
               ]
             },
@@ -57773,6 +58538,38 @@
                       }
                     }
                   ]
+                },
+                {
+                  "id": "requested-ownership-event",
+                  "kind": "command",
+                  "op": "core.event.emit",
+                  "eventType": "estate-race.property.ownership",
+                  "summary": {
+                    "op": "value.literal",
+                    "value": "Объект передан по принятой сделке."
+                  },
+                  "audience": "public",
+                  "data": {
+                    "cellId": {
+                      "op": "value.item",
+                      "area": "attribute",
+                      "field": "id"
+                    },
+                    "ownerKind": {
+                      "op": "value.literal",
+                      "value": "player"
+                    },
+                    "ownerPlayerId": {
+                      "op": "value.state",
+                      "ref": {
+                        "endpoint": "public.trade.proposerPlayerId"
+                      }
+                    },
+                    "acquisitionMethod": {
+                      "op": "value.literal",
+                      "value": "trade"
+                    }
+                  }
                 }
               ]
             },
@@ -58263,7 +59060,7 @@
         }
       },
       "trade.decline": {
-        "planHash": "sha256:0549c7ad63527bfc6b5722a1c0411e47763dc7782227d469bd4a714d3896c07c",
+        "planHash": "sha256:bb3a2d4f9c8adccd4eb43d8a1bc74add3db8248b4c01136468f6b1ec8c6cbed5",
         "transaction": {
           "steps": [
             {
@@ -58655,7 +59452,7 @@
         }
       },
       "trade.cancel": {
-        "planHash": "sha256:dfc9f5c31360f9d617961e10c8f79cf1161d160a8ed37ab1a587a8013dd0481e",
+        "planHash": "sha256:72c5cbae81a20fa8f81739b544515f24b57455639335dd46a0824e58c27b3dfc",
         "transaction": {
           "steps": [
             {
@@ -59082,7 +59879,7 @@
         }
       },
       "trade.card.claim": {
-        "planHash": "sha256:0ba9254daa38445aded36b60030baa05bcf72e673789ba52278f4fc8fa452a2e",
+        "planHash": "sha256:9f3edfcf8466e0aaf175603055f76d82194c03eedb574a7556d11a2a2038e14d",
         "transaction": {
           "steps": [
             {
@@ -59439,7 +60236,7 @@
         }
       },
       "obligation.resolve": {
-        "planHash": "sha256:c6440d1107087d49fb559cc40e31628a28f4d6886cbf83fab5b32fb92d2e8425",
+        "planHash": "sha256:68aa9b85d473c8f91f09a3409778a45c0e41d13bc24d1d29462d5e6d89eccce1",
         "transaction": {
           "steps": [
             {
@@ -61472,7 +62269,7 @@
         }
       },
       "bankruptcy.declare": {
-        "planHash": "sha256:05b3a25c6d2a38d511512d4e96e9168930778aca594f65d29ae6fdcee253753c",
+        "planHash": "sha256:335e758073954bb18351782b7bc39be241d0875fd09668fb9636f07d0cb7a4b6",
         "transaction": {
           "steps": [
             {
@@ -62001,6 +62798,63 @@
               }
             },
             {
+              "id": "creditor-ownership-events",
+              "kind": "command",
+              "op": "core.entities.each",
+              "selection": {
+                "op": "value.result",
+                "stepId": "owned-assets"
+              },
+              "body": [
+                {
+                  "id": "creditor-ownership-event",
+                  "kind": "command",
+                  "op": "core.event.emit",
+                  "eventType": "estate-race.property.ownership",
+                  "summary": {
+                    "op": "value.literal",
+                    "value": "Объект банкрота передан кредитору."
+                  },
+                  "audience": "public",
+                  "data": {
+                    "cellId": {
+                      "op": "value.item",
+                      "area": "attribute",
+                      "field": "id"
+                    },
+                    "ownerKind": {
+                      "op": "value.literal",
+                      "value": "player"
+                    },
+                    "ownerPlayerId": {
+                      "op": "value.state",
+                      "ref": {
+                        "endpoint": "public.obligation.creditorPlayerId"
+                      }
+                    },
+                    "acquisitionMethod": {
+                      "op": "value.literal",
+                      "value": "creditor-transfer"
+                    }
+                  }
+                }
+              ],
+              "when": {
+                "op": "predicate.compare",
+                "operator": "eq",
+                "left": {
+                  "op": "value.state",
+                  "ref": {
+                    "endpoint": "public.obligation.creditorKind"
+                  }
+                },
+                "right": {
+                  "op": "value.literal",
+                  "value": "player"
+                }
+              }
+            },
+            {
               "id": "return-bank-assets",
               "kind": "command",
               "op": "core.entities.each",
@@ -62053,6 +62907,57 @@
                       }
                     }
                   ]
+                }
+              ],
+              "when": {
+                "op": "predicate.compare",
+                "operator": "eq",
+                "left": {
+                  "op": "value.state",
+                  "ref": {
+                    "endpoint": "public.obligation.creditorKind"
+                  }
+                },
+                "right": {
+                  "op": "value.literal",
+                  "value": "bank"
+                }
+              }
+            },
+            {
+              "id": "bank-reversion-events",
+              "kind": "command",
+              "op": "core.entities.each",
+              "selection": {
+                "op": "value.result",
+                "stepId": "owned-assets"
+              },
+              "body": [
+                {
+                  "id": "bank-reversion-event",
+                  "kind": "command",
+                  "op": "core.event.emit",
+                  "eventType": "estate-race.property.ownership",
+                  "summary": {
+                    "op": "value.literal",
+                    "value": "Объект банкрота возвращён банку."
+                  },
+                  "audience": "public",
+                  "data": {
+                    "cellId": {
+                      "op": "value.item",
+                      "area": "attribute",
+                      "field": "id"
+                    },
+                    "ownerKind": {
+                      "op": "value.literal",
+                      "value": "bank"
+                    },
+                    "acquisitionMethod": {
+                      "op": "value.literal",
+                      "value": "bank-reversion"
+                    }
+                  }
                 }
               ],
               "when": {
@@ -62546,6 +63451,22 @@
                   }
                 }
               ]
+            },
+            {
+              "id": "bankruptcy-event",
+              "kind": "command",
+              "op": "core.event.emit",
+              "eventType": "estate-race.bankruptcy",
+              "summary": {
+                "op": "value.literal",
+                "value": "Участник объявлен банкротом."
+              },
+              "audience": "public",
+              "data": {
+                "debtorPlayerId": {
+                  "op": "value.actor"
+                }
+              }
             },
             {
               "id": "next-active",
@@ -63603,7 +64524,7 @@
         }
       },
       "jail.card.use.fund": {
-        "planHash": "sha256:8084cdfd052cda567398d2c5c2883e859aff25f41a0e8707d30f51e9d28eea98",
+        "planHash": "sha256:fa0517136956dcb0cf4d2d704ea4664776951a3222ba0ff5803570155b5e95a8",
         "transaction": {
           "steps": [
             {
@@ -63838,7 +64759,7 @@
         }
       },
       "mortgage.transfer.redeem": {
-        "planHash": "sha256:759b7ca82d63f82fcec238e1e240f8d49cddba94156b1aa85ed8e05e276de157",
+        "planHash": "sha256:fa958d143b37fac481de7dd2d2fb8c62d9e8abcb0be55fc0e5a0f091c064aad0",
         "transaction": {
           "steps": [
             {
@@ -64809,7 +65730,7 @@
         }
       },
       "mortgage.transfer.keep": {
-        "planHash": "sha256:e70a61f76ed5087b428ca75b5cf3c7ae2eed37791cf4ded0227d4560f3526e17",
+        "planHash": "sha256:ba827b4418e3123438872e4019ec693cc887bcfe2aa428276a27362e20b05a78",
         "transaction": {
           "steps": [
             {
@@ -65840,7 +66761,7 @@
         }
       },
       "liquidation.card.claim": {
-        "planHash": "sha256:b25a2e4a1ce7022e64c1f53c8b8bb9c68b86ad450f026ef13b4cf88943daf823",
+        "planHash": "sha256:0c56b6c1732d4114342fad7263f7ed1a765309676721c086b34e5e6a3a621397",
         "transaction": {
           "steps": [
             {

@@ -20,6 +20,10 @@ const SUITES = Object.freeze({
     label: "manifest authoring gate",
     command: ["npm", "run", "verify:manifest-authoring"]
   },
+  "games:cmt-mock": {
+    label: "Cards Money Trains mock + provenance gate",
+    command: ["npm", "run", "verify:cards-money-trains-mock"]
+  },
   canonical: {
     label: "canonical verification (CI-safe)",
     command: ["npm", "run", "verify:canonical:ci"]
@@ -97,6 +101,8 @@ export function selectAffected(paths) {
     } else if (changedPath.startsWith("services/portal-backend/")) {
       selected.add("portal");
       selected.add("e2e:portal");
+    } else if (changedPath.startsWith("games/cards-money-trains-mock/")) {
+      selected.add("games:cmt-mock");
     } else if (
       changedPath.startsWith("packages/editor-engine/") ||
       changedPath.startsWith("packages/view-protocol/")

@@ -27,9 +27,14 @@
  */
 import { PROJECTION_LENS_SET_VERSION, reindexEditorEntityProjection } from "./entity-projection.ts";
 import type {
+  EditorEntityDocumentKind,
+  EditorEntityFacetKind,
+  EditorEntityKind,
   EditorEntity,
   EditorEntityProjection,
-  EditorEntityProjectionDiagnostic
+  EditorEntityProjectionDiagnostic,
+  EditorEntityProjectionDiagnosticCode,
+  EditorEntitySourcePointer
 } from "./types.ts";
 
 /**
@@ -113,35 +118,199 @@ export function serializeEditorEntityProjection(
  * from `entities` via {@link reindexEditorEntityProjection}.
  */
 export function reviveEditorEntityProjection(value: unknown): EditorEntityProjection | null {
+  // Keep the cache boundary fail-closed even if this function is handed a
+  // foreign object rather than JSON.parse output. In particular, never call
+  // reindex until every nested source pointer and diagnostic is known-good.
+  try {
+    if (!isSerializedEditorEntityProjectionEnvelope(value)) {
+      return null;
+    }
+
+    return reindexEditorEntityProjection({
+      projectionVersion: 1,
+      gameId: getOwnOptional(value.payload, "gameId") as string | undefined,
+      sourceHashes: value.payload.sourceHashes,
+      entities: value.payload.entities,
+      diagnostics: value.payload.diagnostics
+    });
+  } catch {
+    // A cache entry is untrusted input. Any unexpected shape/accessor failure
+    // remains a silent miss instead of escaping into editor hydration.
+    return null;
+  }
+}
+
+const editorEntityDocumentKinds: readonly EditorEntityDocumentKind[] = ["game", "ui", "design", "plugin", "unknown"];
+const editorEntityKinds: readonly EditorEntityKind[] = [
+  "game-root",
+  "game-flow",
+  "game-step",
+  "game-action",
+  "content-block",
+  "state-model",
+  "metric",
+  "ui-root",
+  "ui-screen",
+  "ui-component",
+  "design-artifact",
+  "plugin-contribution",
+  "unknown"
+];
+const editorEntityFacetKinds: readonly EditorEntityFacetKind[] = ["logic", "content", "state", "view", "design", "plugin"];
+const editorEntityProjectionDiagnosticCodes: readonly EditorEntityProjectionDiagnosticCode[] = [
+  "stale-source-hash",
+  "unresolved-source-pointer",
+  "unresolved-action-link",
+  "unresolved-mechanics-plan",
+  "unresolved-view-link",
+  "ambiguous-view-link",
+  "hidden-technical-field",
+  "entity-view-orphan",
+  "entity-missing-view"
+];
+
+function isSerializedEditorEntityProjectionEnvelope(
+  value: unknown
+): value is SerializedEditorEntityProjectionEnvelope {
   if (
     !isRecord(value) ||
+    !hasExactKeys(value, ["formatVersion", "lensSetVersion", "payload"], ["engineVersion", "documentHashes"]) ||
     value.formatVersion !== EDITOR_ENTITY_PROJECTION_CACHE_FORMAT_VERSION ||
-    value.lensSetVersion !== PROJECTION_LENS_SET_VERSION
+    value.lensSetVersion !== PROJECTION_LENS_SET_VERSION ||
+    (getOwnOptional(value, "engineVersion") !== undefined && typeof getOwnOptional(value, "engineVersion") !== "string") ||
+    (getOwnOptional(value, "documentHashes") !== undefined && !isStringMap(getOwnOptional(value, "documentHashes")))
   ) {
-    return null;
+    return false;
   }
 
   const payload = value.payload;
   if (
     !isRecord(payload) ||
+    !hasExactKeys(payload, ["projectionVersion", "sourceHashes", "entities", "diagnostics"], ["gameId"]) ||
     payload.projectionVersion !== 1 ||
-    (payload.gameId !== undefined && typeof payload.gameId !== "string") ||
-    !isRecord(payload.sourceHashes) ||
+    (getOwnOptional(payload, "gameId") !== undefined && typeof getOwnOptional(payload, "gameId") !== "string") ||
+    !isStringMap(payload.sourceHashes) ||
     !Array.isArray(payload.entities) ||
-    !Array.isArray(payload.diagnostics)
+    !payload.entities.every(isEditorEntity)
   ) {
-    return null;
+    return false;
   }
 
-  return reindexEditorEntityProjection({
-    projectionVersion: 1,
-    gameId: payload.gameId as string | undefined,
-    sourceHashes: payload.sourceHashes as Readonly<Record<string, string>>,
-    entities: payload.entities as readonly EditorEntity[],
-    diagnostics: payload.diagnostics as readonly EditorEntityProjectionDiagnostic[]
-  });
+  if (new Set(payload.entities.map((entity) => entity.entityId)).size !== payload.entities.length) {
+    return false;
+  }
+
+  return Array.isArray(payload.diagnostics) && payload.diagnostics.every(isEditorEntityProjectionDiagnostic);
+}
+
+function isEditorEntity(value: unknown): value is EditorEntity {
+  if (
+    !isRecord(value) ||
+    !hasExactKeys(value, ["entityId", "kind", "label", "primarySource", "facets", "diagnostics"]) ||
+    typeof value.entityId !== "string" ||
+    !isEditorEntityKind(value.kind) ||
+    typeof value.label !== "string" ||
+    !isEditorEntitySourcePointer(value.primarySource) ||
+    !isEditorEntityFacets(value.facets) ||
+    !Array.isArray(value.diagnostics)
+  ) {
+    return false;
+  }
+
+  return value.diagnostics.every(isEditorEntityProjectionDiagnostic);
+}
+
+function isEditorEntityFacets(value: unknown): value is EditorEntity["facets"] {
+  if (!isRecord(value) || !hasExactKeys(value, [], editorEntityFacetKinds)) {
+    return false;
+  }
+
+  return Object.values(value).every((sources) => Array.isArray(sources) && sources.every(isEditorEntitySourcePointer));
+}
+
+function isEditorEntityProjectionDiagnostic(value: unknown): value is EditorEntityProjectionDiagnostic {
+  return (
+    isRecord(value) &&
+    hasExactKeys(value, ["severity", "code", "message", "source"], ["target"]) &&
+    (value.severity === "error" || value.severity === "warning") &&
+    isEditorEntityProjectionDiagnosticCode(value.code) &&
+    typeof value.message === "string" &&
+    isEditorEntitySourcePointer(value.source) &&
+    (getOwnOptional(value, "target") === undefined || isEditorEntitySourcePointer(getOwnOptional(value, "target")))
+  );
+}
+
+function isEditorEntitySourcePointer(value: unknown): value is EditorEntitySourcePointer {
+  return (
+    isRecord(value) &&
+    hasExactKeys(value, ["filePath", "pointer", "documentKind"], ["channel", "label", "role"]) &&
+    typeof value.filePath === "string" &&
+    typeof value.pointer === "string" &&
+    isEditorEntityDocumentKind(value.documentKind) &&
+    (getOwnOptional(value, "channel") === undefined || typeof getOwnOptional(value, "channel") === "string") &&
+    (getOwnOptional(value, "label") === undefined || typeof getOwnOptional(value, "label") === "string") &&
+    (getOwnOptional(value, "role") === undefined || typeof getOwnOptional(value, "role") === "string")
+  );
+}
+
+function isStringMap(value: unknown): value is Readonly<Record<string, string>> {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  for (const key in value) {
+    if (!hasOwn(value, key)) {
+      return false;
+    }
+  }
+  return Object.values(value).every((candidate) => typeof candidate === "string");
+}
+
+function isEditorEntityDocumentKind(value: unknown): value is EditorEntityDocumentKind {
+  return typeof value === "string" && editorEntityDocumentKinds.includes(value as EditorEntityDocumentKind);
+}
+
+function isEditorEntityKind(value: unknown): value is EditorEntityKind {
+  return typeof value === "string" && editorEntityKinds.includes(value as EditorEntityKind);
+}
+
+function isEditorEntityProjectionDiagnosticCode(value: unknown): value is EditorEntityProjectionDiagnosticCode {
+  return (
+    typeof value === "string" &&
+    editorEntityProjectionDiagnosticCodes.includes(value as EditorEntityProjectionDiagnosticCode)
+  );
+}
+
+function hasExactKeys(
+  value: Record<string, unknown>,
+  required: readonly string[],
+  optional: readonly string[] = []
+): boolean {
+  const prototype = Object.getPrototypeOf(value);
+  if (prototype !== Object.prototype && prototype !== null) {
+    return false;
+  }
+  const allowed = new Set([...required, ...optional]);
+  return (
+    required.every((key) => hasOwn(value, key)) &&
+    optional.every((key) => !(key in value) || hasOwn(value, key)) &&
+    Object.keys(value).every((key) => allowed.has(key))
+  );
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return false;
+  }
+
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+
+function getOwnOptional(value: object, key: string): unknown {
+  return hasOwn(value, key) ? (value as Record<string, unknown>)[key] : undefined;
+}
+
+function hasOwn(value: object, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(value, key);
 }

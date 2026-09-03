@@ -118,4 +118,90 @@ describe("editor entity projection serialization", () => {
     // A foreign lens-set version must not be read (the builder emits different entities).
     expect(reviveEditorEntityProjection({ ...envelope, lensSetVersion: PROJECTION_LENS_SET_VERSION + 1 })).toBeNull();
   });
+
+  it("rejects malformed nested entities, facets, source pointers, diagnostics, and hashes", () => {
+    const envelope = JSON.parse(JSON.stringify(serializeEditorEntityProjection(buildProjection(gameText)))) as {
+      formatVersion: number;
+      lensSetVersion: number;
+      engineVersion?: string;
+      documentHashes?: Record<string, string>;
+      payload: {
+        projectionVersion: 1;
+        gameId?: string;
+        sourceHashes: Record<string, string>;
+        entities: Array<Record<string, unknown>>;
+        diagnostics: Array<Record<string, unknown>>;
+      };
+    };
+    const entity = envelope.payload.entities[0];
+    const source = entity.primarySource as Record<string, unknown>;
+    const facets = entity.facets as Record<string, unknown>;
+    const validDiagnostic = {
+      severity: "warning",
+      code: "unresolved-source-pointer",
+      message: "test",
+      source
+    };
+    const expectInvalid = (value: unknown): void => {
+      expect(reviveEditorEntityProjection(value)).toBeNull();
+    };
+
+    expectInvalid({
+      ...envelope,
+      payload: { ...envelope.payload, sourceHashes: { ...envelope.payload.sourceHashes, game: null } }
+    });
+    expectInvalid({ ...envelope, documentHashes: { game: null } });
+    expectInvalid({ ...envelope, engineVersion: null });
+    expectInvalid({
+      ...envelope,
+      payload: { ...envelope.payload, entities: [{ ...entity, kind: "not-a-supported-kind" }] }
+    });
+    expectInvalid({
+      ...envelope,
+      payload: { ...envelope.payload, entities: [{ ...entity, primarySource: { ...source, filePath: null } }] }
+    });
+    expectInvalid({
+      ...envelope,
+      payload: { ...envelope.payload, entities: [{ ...entity, facets: { ...facets, view: null } }] }
+    });
+    expectInvalid({
+      ...envelope,
+      payload: { ...envelope.payload, entities: [{ ...entity, facets: { ...facets, unsupported: [] } }] }
+    });
+    expectInvalid({
+      ...envelope,
+      payload: {
+        ...envelope.payload,
+        entities: [{ ...entity, facets: { ...facets, logic: [{ ...source, pointer: null }] } }]
+      }
+    });
+    expectInvalid({
+      ...envelope,
+      payload: { ...envelope.payload, entities: [{ ...entity, diagnostics: [{ ...validDiagnostic, source: null }] }] }
+    });
+    expectInvalid({
+      ...envelope,
+      payload: { ...envelope.payload, entities: [{ ...entity, diagnostics: [{ ...validDiagnostic, code: "unknown" }] }] }
+    });
+    expectInvalid({
+      ...envelope,
+      payload: { ...envelope.payload, diagnostics: [{ ...validDiagnostic, target: null }] }
+    });
+    expectInvalid({ ...envelope, payload: { ...envelope.payload, diagnostics: [null] } });
+
+    const inheritedFacets = Object.create({ view: [source] }) as Record<string, unknown>;
+    expectInvalid({
+      ...envelope,
+      payload: { ...envelope.payload, entities: [{ ...entity, facets: inheritedFacets }] }
+    });
+    expectInvalid({
+      ...envelope,
+      payload: { ...envelope.payload, sourceHashes: Object.create({ game: "hash" }) }
+    });
+    expectInvalid(Object.assign(Object.create({ engineVersion: "inherited" }), envelope));
+    expectInvalid({
+      ...envelope,
+      payload: { ...envelope.payload, entities: [entity, { ...entity }] }
+    });
+  });
 });

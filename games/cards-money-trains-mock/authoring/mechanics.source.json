@@ -7179,6 +7179,23 @@
                   "value": "ranking"
                 }
               }
+            },
+            {
+              "id": "s004-enable-finish",
+              "kind": "command",
+              "op": "core.state.patch",
+              "patches": [
+                {
+                  "operation": "set",
+                  "target": {
+                    "endpoint": "public.session.canRequestFinish"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": true
+                  }
+                }
+              ]
             }
           ]
         }

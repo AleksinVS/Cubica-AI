@@ -34,6 +34,20 @@ test("uses the full fallback for unknown paths", () => {
   assert.deepEqual(selection.suiteIds, FULL_SUITE_IDS);
 });
 
+test("selects the narrow mock game and provenance gate", () => {
+  for (const changedPath of [
+    "games/cards-money-trains-mock/tests/mock-package.test.mjs",
+    "games/cards-money-trains-mock/asset-provenance.json"
+  ]) {
+    assert.deepEqual(selectAffected([changedPath]), {
+      paths: [changedPath],
+      suiteIds: ["games:cmt-mock"],
+      fullFallback: false,
+      fallbackPaths: []
+    });
+  }
+});
+
 for (const criticalPath of [
   "package-lock.json",
   "apps/player-web/package.json",

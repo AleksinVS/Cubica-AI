@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { HttpModelGateway, ModelGatewayError } from '../src/model-gateway.ts';
+import { modelGatewayValidationStage } from '../src/model-gateway-diagnostics.ts';
 import { hashExactPatchProposal } from '../src/contracts.ts';
 import type { ExactPatchProposal, ModelGatewayRequest } from '../src/generated/product-knowledge.ts';
 
@@ -71,7 +72,7 @@ describe('bounded HTTP shadow model gateway', () => {
     await expect(gateway.call(request)).resolves.toMatchObject({ result: { outcome: 'proposal' } });
   });
 
-  it.each(['wrong_scope', 'invented_source', 'agent_confirmation', 'agent_evidence'] as const)('rejects a validly hashed proposal with %s provenance', async (variant) => {
+  it.each(['wrong_scope', 'invented_source', 'agent_confirmation', 'agent_evidence'] as const)('rejects a validly hashed proposal with %s', async (variant) => {
     const proposal = validProposal();
     if (variant === 'wrong_scope') proposal.applies_to = ['cubica://game-project/other'] as unknown as ExactPatchProposal['applies_to'];
     else if (variant === 'invented_source') proposal.operations[0]!.source_refs = [{ ref: 'cubica://dialog/invented/message/user', use: 'evidence' }];
@@ -79,7 +80,9 @@ describe('bounded HTTP shadow model gateway', () => {
     proposal.patch_hash = hashExactPatchProposal(proposal);
     const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ schema_version: '1.0.0', request_id: request.request_id, outcome: 'proposal', proposal }), { status: 200 }));
     const gateway = new HttpModelGateway({ endpoint: 'https://model.invalid/shadow', bearerToken: 'secret', fetchImpl });
-    await expect(gateway.call(request)).rejects.toMatchObject({ code: 'malformed_output' });
+    const error = await gateway.call(request).catch((caught) => caught);
+    expect(error).toMatchObject({ code: 'malformed_output' });
+    expect(modelGatewayValidationStage(error)).toBe(variant === 'wrong_scope' ? 'result_binding' : 'proposal_provenance');
   });
 });
 

@@ -8,6 +8,7 @@
 - [Проверки](#проверки)
 - [Текущее handoff-состояние — 2026-08-13](#текущее-handoff-состояние--2026-08-13)
 - [Остаточные условия активации](#остаточные-условия-активации)
+- [Фактическое окно DR-21](#фактическое-окно-dr-21)
 
 ## Итог
 
@@ -466,3 +467,42 @@ Coding Plan key использовался только в явно разреш
 по-прежнему требует явные значения, ограничивает model timeout сверху 90000 ms,
 а lease любого будущего окна обязан покрывать модель, заключительную
 Portal-проверку и запас финальной записи.
+
+## Фактическое окно DR-21
+
+31 августа 2026 года PM разрешил ровно одно полное окно на прежнем Z.AI Coding
+Plan `glm-4.7`. Перед активацией live preflight доказал exact-zero PostgreSQL,
+Portal/Editor/worker bindings, evaluator `ready`, неизменный Git и
+`providerCalls=0`. Независимый Sol-high reviewer принял точную связку
+operator/config/manifest/source после усиления привязки к чистому reviewed HEAD
+и восстановления destruction. Применены bounds `90000/5000/100000/300000` ms,
+`maxAttempts=1`, без retry.
+
+Фактические бесконтентные результаты:
+
+- `transient_conversation`, `existing_fact` и
+  `unconfirmed_agent_suggestion` дали ожидаемый `no_change`, 0 операций и
+  прошли ручную рубрику 4/4; durations — 4012, 4507 и 8382 ms;
+- `confirmed_new_knowledge` завершился fail-closed `schema_error`, а локальная
+  allowlisted диагностика указала этап `provenance`;
+- `correction` и повтор не запускались; израсходовано четыре provider attempts;
+- Git не изменился, никакой кандидат не применялся.
+
+После retention credential-free cleanup удалил 4 run и 4 metric, tombstone
+получили 8 messages и 4 threads. Итоговые active
+runs/metrics/messages/threads и text bytes равны нулю. При первом destruction
+контейнер был удалён до разрыва advisory-lock соединения, поэтому временный
+оператор консервативно оставил private state. Recovery исправлен локально:
+продолжение при уже отсутствующем контейнере разрешено только по валидному
+content-free exact-zero отчёту и неизменному Git. Повторный destruction удалил
+private state; отсутствие контейнера подтверждено.
+
+В Git сохранён только
+[`dr21-content-free-report.json`](dr21-content-free-report.json). Тексты,
+provider payload, кандидат, request identifiers и секреты уничтожены. Поэтому
+точное нарушенное подусловие provenance нельзя восстановить, и настройка prompt
+по догадке запрещена. DR-22 локально разделил будущую бесконтентную диагностику
+на `proposal_provenance` и `page_provenance`, сохранив старый код для чтения
+прежних временных записей. Проверки доверия, prompt, JSON Schema, storage и
+report не менялись. Новый внешний вызов, Stage 3, применение кандидатов и
+Git-запись остаются закрыты; DR-23 требует отдельного решения PM.

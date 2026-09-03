@@ -613,15 +613,18 @@ test.describe("Cards Money Trains real operating-turn preview", { tag: "@player"
       attributes: { settledRouteLength: 1 }
     });
 
-    const restored = page.waitForResponse((response) =>
-      response.url().includes(`/api/runtime/sessions/${snapshot.sessionId}`) &&
+    const restoredResponse = page.waitForResponse((response) =>
+      new URL(response.url()).pathname === `/api/runtime/sessions/${snapshot.sessionId}` &&
       response.request().method() === "GET"
     );
     await page.reload();
-    const restoredSnapshot = await responseJson<RuntimeSnapshot>(await restored);
-    expect(restoredSnapshot.version.stateVersion).toBe(snapshot.version.stateVersion);
+    expect((await restoredResponse).status()).toBe(200);
+    const restored = await responseJson<RuntimeSnapshot>(
+      await page.request.get(`/api/runtime/sessions/${snapshot.sessionId}`)
+    );
+    expect(restored.version.stateVersion).toBe(snapshot.version.stateVersion);
     expect(
-      restoredSnapshot.state.public.objects.locomotives["technical-locomotive-purple-1"]
+      restored.state.public.objects.locomotives["technical-locomotive-purple-1"]
         ?.attributes.nodeId
     ).toBe("terminal-9");
     await expectMapFirstSurface(page.getByRole("region", { name: BOARD_LABEL }));

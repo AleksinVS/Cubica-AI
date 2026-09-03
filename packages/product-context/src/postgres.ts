@@ -306,8 +306,12 @@ export class ProductContextPostgresStore {
     principalRef: string,
     operationId: string,
     expiredAt = new Date(),
-    leaseOwner?: string
+    leaseOwner?: string,
+    attemptCount?: number
   ): Promise<KnowledgeWriteOperation> {
+    if (leaseOwner !== undefined || attemptCount !== undefined) {
+      assertWorkerClaim(leaseOwner, attemptCount);
+    }
     return this.updateOne(principalRef, `
       UPDATE ${TABLE}
       SET status = 'expired', status_reason = 'confirmation_expired',
@@ -316,11 +320,11 @@ export class ProductContextPostgresStore {
           lease_owner = NULL, lease_expires_at = NULL, next_retry_at = NULL,
           payload_purged_at = $2, updated_at = $2
       WHERE operation_id = $1 AND (
-        status = 'pending_confirmation' OR
-        (status = 'applying' AND lease_owner = $3)
+        (status = 'pending_confirmation' AND $3 IS NULL AND $4 IS NULL) OR
+        (status = 'applying' AND lease_owner = $3 AND attempt_count = $4)
       )
       RETURNING '1.0.0'::text AS schema_version, *
-    `, [operationId, expiredAt.toISOString(), leaseOwner ?? null]);
+    `, [operationId, expiredAt.toISOString(), leaseOwner ?? null, attemptCount ?? null]);
   }
 
   /** Atomically skips work locked by another worker and claims at most one ready row. */
@@ -362,18 +366,21 @@ export class ProductContextPostgresStore {
     principalRef: string,
     operationId: string,
     leaseOwner: string,
+    attemptCount: number,
     nextRetryAt: Date
   ): Promise<KnowledgeWriteOperation> {
+    assertWorkerClaim(leaseOwner, attemptCount);
     return this.updateOne(principalRef, `
       UPDATE ${TABLE}
       SET status = 'ready', status_reason = 'temporary_storage_failure',
           lease_owner = NULL, lease_expires_at = NULL,
-          next_retry_at = $3, last_error_at = clock_timestamp(),
+          next_retry_at = $4, last_error_at = clock_timestamp(),
           last_error_code = 'storage_unavailable',
           updated_at = clock_timestamp()
-      WHERE operation_id = $1 AND status = 'applying' AND lease_owner = $2
+      WHERE operation_id = $1 AND status = 'applying'
+        AND lease_owner = $2 AND attempt_count = $3
       RETURNING '1.0.0'::text AS schema_version, *
-    `, [operationId, leaseOwner, nextRetryAt.toISOString()]);
+    `, [operationId, leaseOwner, attemptCount, nextRetryAt.toISOString()]);
   }
 
   /**
@@ -414,18 +421,21 @@ export class ProductContextPostgresStore {
     principalRef: string,
     operationId: string,
     leaseOwner: string,
+    attemptCount: number,
     commitSha: string,
     appliedAt = new Date()
   ): Promise<KnowledgeWriteOperation> {
+    assertWorkerClaim(leaseOwner, attemptCount);
     assertCommitSha(commitSha);
     return this.updateOne(principalRef, `
       UPDATE ${TABLE}
-      SET status = 'applied', status_reason = 'applied', commit_sha = $3,
-          applied_at = $4, lease_owner = NULL, lease_expires_at = NULL,
-          updated_at = $4
-      WHERE operation_id = $1 AND status = 'applying' AND lease_owner = $2
+      SET status = 'applied', status_reason = 'applied', commit_sha = $4,
+          applied_at = $5, lease_owner = NULL, lease_expires_at = NULL,
+          updated_at = $5
+      WHERE operation_id = $1 AND status = 'applying'
+        AND lease_owner = $2 AND attempt_count = $3
       RETURNING '1.0.0'::text AS schema_version, *
-    `, [operationId, leaseOwner, commitSha, appliedAt.toISOString()]);
+    `, [operationId, leaseOwner, attemptCount, commitSha, appliedAt.toISOString()]);
   }
 
   /** Finishes only an applying row after the trusted Git ref proves the receipt. */
@@ -455,34 +465,40 @@ export class ProductContextPostgresStore {
     principalRef: string,
     operationId: string,
     leaseOwner: string,
+    attemptCount: number,
     reason: ConflictReason
   ): Promise<KnowledgeWriteOperation> {
+    assertWorkerClaim(leaseOwner, attemptCount);
     return this.updateOne(principalRef, `
       UPDATE ${TABLE}
-      SET status = 'conflict', status_reason = $3,
+      SET status = 'conflict', status_reason = $4,
           lease_owner = NULL, lease_expires_at = NULL,
           updated_at = clock_timestamp()
-      WHERE operation_id = $1 AND status = 'applying' AND lease_owner = $2
+      WHERE operation_id = $1 AND status = 'applying'
+        AND lease_owner = $2 AND attempt_count = $3
       RETURNING '1.0.0'::text AS schema_version, *
-    `, [operationId, leaseOwner, reason]);
+    `, [operationId, leaseOwner, attemptCount, reason]);
   }
 
   async markFailed(
     principalRef: string,
     operationId: string,
     leaseOwner: string,
+    attemptCount: number,
     reason: FailedReason,
     errorCode: Extract<OperationErrorCode, 'invalid_payload'> = 'invalid_payload'
   ): Promise<KnowledgeWriteOperation> {
+    assertWorkerClaim(leaseOwner, attemptCount);
     return this.updateOne(principalRef, `
       UPDATE ${TABLE}
-      SET status = 'failed', status_reason = $3,
+      SET status = 'failed', status_reason = $4,
           lease_owner = NULL, lease_expires_at = NULL,
-          next_retry_at = NULL, last_error_at = clock_timestamp(), last_error_code = $4,
+          next_retry_at = NULL, last_error_at = clock_timestamp(), last_error_code = $5,
           updated_at = clock_timestamp()
-      WHERE operation_id = $1 AND status = 'applying' AND lease_owner = $2
+      WHERE operation_id = $1 AND status = 'applying'
+        AND lease_owner = $2 AND attempt_count = $3
       RETURNING '1.0.0'::text AS schema_version, *
-    `, [operationId, leaseOwner, reason, errorCode]);
+    `, [operationId, leaseOwner, attemptCount, reason, errorCode]);
   }
 
   /** Removes every content-bearing field while retaining the short Git receipt. */
@@ -653,6 +669,12 @@ function sameStrings(left: readonly string[], right: readonly string[]): boolean
 
 function assertCommitSha(commitSha: string): void {
   if (!/^[a-f0-9]{40}$/.test(commitSha)) throw new TypeError('Commit SHA must be 40 lowercase hexadecimal characters.');
+}
+
+function assertWorkerClaim(leaseOwner: string | undefined, attemptCount: number | undefined): asserts leaseOwner is string {
+  if (!leaseOwner || !Number.isSafeInteger(attemptCount) || attemptCount === undefined || attemptCount < 1) {
+    throw new TypeError('A non-empty lease owner and positive integer attempt count are required.');
+  }
 }
 
 function iso(value: Date | string): string {

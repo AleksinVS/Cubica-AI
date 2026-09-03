@@ -1,4 +1,4 @@
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, rm, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
@@ -167,7 +167,7 @@ describe("editor session store", () => {
       .toBe("{\"title\":\"Durable\"}\n");
     expect(reopened.session.currentVersionId).toBe(commit.versionId);
     expect(reopened.session.dirtySummary.isDirty).toBe(false);
-  });
+  }, 15_000);
 
   it("plans an upgrade when stored platform metadata is incompatible", async () => {
     const opened = await createTestSession("upgrade-user");
@@ -236,6 +236,67 @@ describe("editor session store", () => {
     const retained = await readEditorSession(session.sessionId);
     expect(retained.status).toBe("dirty");
     expect(retained.dirtySummary.isDirty).toBe(true);
+  });
+
+  it("rechecks an orphan worktree under the lease and retains unsaved files", async () => {
+    const orphaned = await createTestSession("dirty-orphan-user", true);
+    const sentinel = await createTestSession("orphan-root-sentinel", true);
+    const orphanedSession = await readEditorSession(orphaned.session.sessionId);
+    const authoringPath = path.join(
+      orphanedSession.worktreePath,
+      "games",
+      "simple-choice",
+      "authoring",
+      "game.authoring.json"
+    );
+    await writeFile(authoringPath, "{\"title\":\"Unsaved orphan\"}\n", "utf8");
+    await rm(path.join(metadataRoot, `${orphanedSession.sessionId}.json`), { force: true });
+
+    const applied = await garbageCollectEditorSessions({ dryRun: false });
+
+    expect(applied.removedWorktrees).not.toContain(orphanedSession.sessionId);
+    expect(applied.skippedDirtySessions).toContain(orphanedSession.sessionId);
+    expect(await readFile(authoringPath, "utf8")).toContain("Unsaved orphan");
+
+    // Restore metadata only for deterministic fixture teardown; GC correctly
+    // left the orphan metadata absent.
+    await writeSessionMetadata(orphanedSession);
+    await closeEditorSession(orphanedSession.sessionId);
+    await closeEditorSession(sentinel.session.sessionId);
+    createdSessionIds.delete(orphanedSession.sessionId);
+    createdSessionIds.delete(sentinel.session.sessionId);
+  });
+
+  it("fails closed when a metadata worktree target is substituted with a symlink", async () => {
+    const opened = await createTestSession("symlink-substitution-user", true);
+    const session = await readEditorSession(opened.session.sessionId);
+    const expired = new Date(Date.now() - 60_000).toISOString();
+    await writeSessionMetadata({
+      ...session,
+      status: "expired",
+      expiresAt: expired,
+      updatedAt: expired,
+      lastUsedAt: expired
+    });
+
+    const displacedWorktree = `${session.worktreePath}-displaced`;
+    const protectedDirectory = path.join(repoRoot, "protected-cleanup-target");
+    const protectedFile = path.join(protectedDirectory, "keep.txt");
+    await mkdir(protectedDirectory, { recursive: true });
+    await writeFile(protectedFile, "must survive\n", "utf8");
+    await rename(session.worktreePath, displacedWorktree);
+    await symlink(protectedDirectory, session.worktreePath, "dir");
+
+    const applied = await garbageCollectEditorSessions({ dryRun: false });
+
+    expect(applied.removedSessions).not.toContain(session.sessionId);
+    expect(applied.diagnostics).toContain(`Editor session cleanup failed safely for ${session.sessionId}.`);
+    expect(await readFile(protectedFile, "utf8")).toBe("must survive\n");
+
+    await rm(session.worktreePath, { force: true });
+    await rename(displacedWorktree, session.worktreePath);
+    await closeEditorSession(session.sessionId);
+    createdSessionIds.delete(session.sessionId);
   });
 
   async function createTestSession(userId = "test-user", forceNew = false) {

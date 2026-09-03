@@ -295,4 +295,207 @@ describe("editor agent context projection", () => {
       expect(projection.limits.truncated).toBe(true);
     });
   });
+
+  describe("total UTF-8 projection budget (Finding F-012)", () => {
+    it("keeps the final serialized projection within budget and reports removed content", () => {
+      const projection = buildEditorAgentContextProjection({
+        gameId: "demo",
+        activeFilePath: "game.authoring.json",
+        document: { root: { title: "😀".repeat(80) } },
+        selectedPointers: ["/root/title"],
+        diagnostics: [
+          { severity: "error", source: "schema", pointer: "/root/title", message: "Ошибка диагностики ".repeat(80) }
+        ],
+        maxExcerptLength: 32,
+        maxProjectionBytes: 900
+      });
+
+      expect(Buffer.byteLength(JSON.stringify(projection), "utf8")).toBeLessThanOrEqual(900);
+      expect(projection.limits.maxProjectionBytes).toBe(900);
+      expect(projection.limits.truncated).toBe(true);
+      expect(JSON.stringify(projection)).toContain("😀");
+    });
+
+    it("honors exact multibyte byte boundaries, including truncated in the final accounting", () => {
+      const input = {
+        gameId: "demo",
+        activeFilePath: "game.authoring.json",
+        document: {
+          root: Object.fromEntries(
+            ["a", "b", "c", "d", "e", "f", "g", "h"].map((key) => [key, "😀".repeat(20)])
+          )
+        },
+        selectedPointers: ["/root/a", "/root/b", "/root/c", "/root/d", "/root/e", "/root/f", "/root/g", "/root/h"],
+        maxExcerptLength: 40
+      };
+      const reference = buildEditorAgentContextProjection({ ...input, maxProjectionBytes: 9_999 });
+      const boundary = Buffer.byteLength(JSON.stringify(reference), "utf8");
+
+      // `boundary` and `boundary - 1` have the same decimal width, so the audit
+      // limit itself contributes the same number of bytes in both projections.
+      const atBoundary = buildEditorAgentContextProjection({ ...input, maxProjectionBytes: boundary });
+      const belowBoundary = buildEditorAgentContextProjection({ ...input, maxProjectionBytes: boundary - 1 });
+
+      expect(Buffer.byteLength(JSON.stringify(atBoundary), "utf8")).toBe(boundary);
+      expect(atBoundary.limits.truncated).toBe(false);
+      expect(Buffer.byteLength(JSON.stringify(belowBoundary), "utf8")).toBeLessThanOrEqual(boundary - 1);
+      expect(belowBoundary.limits.truncated).toBe(true);
+    });
+
+    it("keeps snapshot metadata when total budget requires dropping only its payload", () => {
+      const projection = buildEditorAgentContextProjection({
+        gameId: "demo",
+        activeFilePath: "ui/web.authoring.json",
+        document: { root: {} },
+        selectedPointers: [],
+        diagnostics: [],
+        maxSnapshotBytes: 1024 * 1024,
+        maxProjectionBytes: 900,
+        regionSnapshot: {
+          mediaType: "image/png",
+          width: 64,
+          height: 64,
+          rect: { x: 2, y: 4, width: 64, height: 64 },
+          dataUrl: `data:image/png;base64,${"A".repeat(4096)}`,
+          capturedAt: "2026-07-07T00:00:00.000Z"
+        }
+      });
+
+      expect(Buffer.byteLength(JSON.stringify(projection), "utf8")).toBeLessThanOrEqual(900);
+      expect(projection.regionSnapshot).toMatchObject({
+        mediaType: "image/png",
+        width: 64,
+        height: 64,
+        dataOmitted: true
+      });
+      expect(projection.regionSnapshot?.dataUrl).toBeUndefined();
+      expect(projection.limits.truncated).toBe(true);
+    });
+
+    it("measures in a browser-like environment without global Buffer", () => {
+      const originalBufferDescriptor = Object.getOwnPropertyDescriptor(globalThis, "Buffer");
+      try {
+        expect(Reflect.deleteProperty(globalThis, "Buffer")).toBe(true);
+        expect(() =>
+          buildEditorAgentContextProjection({
+            gameId: "demo",
+            activeFilePath: "game.authoring.json",
+            document: { root: { title: "Привет 😀" } },
+            selectedPointers: ["/root/title"],
+            maxProjectionBytes: 16 * 1024
+          })
+        ).not.toThrow();
+      } finally {
+        if (originalBufferDescriptor !== undefined) {
+          Object.defineProperty(globalThis, "Buffer", originalBufferDescriptor);
+        }
+      }
+    });
+
+    it("does not alter an under-budget projection or report false truncation", () => {
+      const input = {
+        gameId: "demo",
+        activeFilePath: "game.authoring.json",
+        document: { root: { title: "Привет 😀" } },
+        selectedPointers: ["/root/title"],
+        diagnostics: [{ severity: "warning" as const, source: "schema", pointer: "/root/title", message: "ok" }]
+      };
+      const unbounded = buildEditorAgentContextProjection(input);
+      const bounded = buildEditorAgentContextProjection({ ...input, maxProjectionBytes: 16 * 1024 });
+
+      expect(bounded.selectedPointers).toEqual(unbounded.selectedPointers);
+      expect(bounded.diagnostics).toEqual(unbounded.diagnostics);
+      expect(bounded.limits.truncated).toBe(false);
+      expect(Buffer.byteLength(JSON.stringify(bounded), "utf8")).toBeLessThanOrEqual(16 * 1024);
+    });
+
+    it("reports truncation for every projected string field that is shortened", () => {
+      const longText = "x".repeat(400);
+      const projection = buildEditorAgentContextProjection({
+        gameId: "demo",
+        activeFilePath: "game.authoring.json",
+        document: { root: { title: "ok" } },
+        selectedPointers: [],
+        selectedPreviewEntities: [
+          { entityId: "preview-1", label: longText, semanticRole: "screen", authoringPointer: "/root" }
+        ],
+        selectedEditorEntities: [
+          {
+            entityId: "entity-1",
+            kind: "ui-screen",
+            label: longText,
+            primarySource: {
+              filePath: "ui.authoring.json",
+              pointer: "/root",
+              documentKind: "ui",
+              label: longText
+            },
+            facets: {
+              view: [
+                {
+                  filePath: "ui.authoring.json",
+                  pointer: "/root",
+                  documentKind: "ui",
+                  label: longText
+                }
+              ]
+            },
+            diagnostics: []
+          }
+        ],
+        diagnostics: [{ severity: "warning", source: "schema", pointer: "/root", message: longText }]
+      });
+
+      expect(projection.limits.truncated).toBe(true);
+      expect(projection.selectedPreviewEntities[0]?.label).toMatch(/\.\.\.$/);
+      expect(projection.selectedEditorEntities[0]?.label).toMatch(/\.\.\.$/);
+      expect(projection.selectedEditorEntities[0]?.primarySource.label).toMatch(/\.\.\.$/);
+      expect(projection.selectedEditorEntities[0]?.facets.view?.[0]?.label).toMatch(/\.\.\.$/);
+      expect(projection.diagnostics[0]?.message).toMatch(/\.\.\.$/);
+    });
+
+    it("fails closed when the mandatory envelope cannot fit the caller budget", () => {
+      expect(() =>
+        buildEditorAgentContextProjection({
+          gameId: "demo",
+          activeFilePath: "game.authoring.json",
+          document: { root: {} },
+          selectedPointers: [],
+          maxProjectionBytes: 1
+        })
+      ).toThrowError(/mandatory envelope exceeds maxProjectionBytes/);
+    });
+
+    const invalidLimitOverrides = [
+      ["maxSelectedPointers", -1],
+      ["maxSelectedPointers", Number.NaN],
+      ["maxSelectedPointers", Number.POSITIVE_INFINITY],
+      ["maxDiagnostics", -1],
+      ["maxDiagnostics", Number.NaN],
+      ["maxDiagnostics", Number.POSITIVE_INFINITY],
+      ["maxExcerptLength", -1],
+      ["maxExcerptLength", Number.NaN],
+      ["maxExcerptLength", Number.POSITIVE_INFINITY],
+      ["maxSnapshotBytes", -1],
+      ["maxSnapshotBytes", Number.NaN],
+      ["maxSnapshotBytes", Number.POSITIVE_INFINITY],
+      ["maxProjectionBytes", -1],
+      ["maxProjectionBytes", Number.NaN],
+      ["maxProjectionBytes", Number.POSITIVE_INFINITY]
+    ] as const;
+
+    for (const [name, value] of invalidLimitOverrides) {
+      it(`rejects invalid ${name} override (${String(value)})`, () => {
+        expect(() =>
+          buildEditorAgentContextProjection({
+            gameId: "demo",
+            activeFilePath: "game.authoring.json",
+            document: { root: {} },
+            selectedPointers: [],
+            [name]: value
+          })
+        ).toThrowError(new RegExp(name));
+      });
+    }
+  });
 });

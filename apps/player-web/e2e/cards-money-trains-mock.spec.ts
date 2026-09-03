@@ -102,6 +102,7 @@ test.describe("Cards Money Trains browser lifecycle", { tag: "@player" }, () => 
 
     // Keyboard activation proves the Phaser map has an equivalent ordinary
     // DOM action; no pointer coordinates or drag gesture are required.
+    await board.getByRole("button", { name: "Действия" }).click();
     const startButton = board.getByRole("button", { name: "MOCK: подтвердить команды и начать игру" });
     await expect(startButton).toBeVisible({ timeout: BOARD_READY_TIMEOUT_MS });
     await startButton.focus();
@@ -261,13 +262,15 @@ function resolveProductionActionId(current: RuntimeSnapshot, step: TranscriptSte
 }
 
 async function reloadStoredSession(page: Page, sessionId: string): Promise<void> {
-  const restored = page.waitForResponse((response) =>
-    response.url().includes(`/api/runtime/sessions/${sessionId}`) && response.request().method() === "GET"
+  const sessionPath = `/api/runtime/sessions/${sessionId}`;
+  const restoredResponse = page.waitForResponse((response) =>
+    new URL(response.url()).pathname === sessionPath && response.request().method() === "GET"
   );
   await page.reload();
-  const response = await restored;
-  expect(response.status()).toBe(200);
-  expectNoFutureDecks(await response.json() as RuntimeSnapshot);
+  expect((await restoredResponse).status()).toBe(200);
+  const restored = await page.request.get(sessionPath);
+  expect(restored.status()).toBe(200);
+  expectNoFutureDecks(await restored.json() as RuntimeSnapshot);
   await expect(page.locator(".loading-state")).toHaveCount(0);
 }
 
