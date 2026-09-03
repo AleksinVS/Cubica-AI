@@ -614,7 +614,7 @@ test.describe("Cards Money Trains real operating-turn preview", { tag: "@player"
     });
 
     const restored = page.waitForResponse((response) =>
-      response.url().includes(`/api/runtime/sessions/${snapshot.sessionId}`) &&
+      new URL(response.url()).pathname === `/api/runtime/sessions/${snapshot.sessionId}` &&
       response.request().method() === "GET"
     );
     await page.reload();
