@@ -119,6 +119,7 @@ describe("InteractiveBoardSurface", () => {
     );
 
     await screen.findByRole("button", { name: "Перейти к соседнему узлу · 0" });
+    expect(screen.getByTestId("interactive-board-canvas-host").getAttribute("data-state-version")).toBe("0");
     expect(phaserMock.configs).toHaveLength(1);
     expect(updateSession).toHaveBeenCalledWith(session(0));
 
@@ -134,6 +135,7 @@ describe("InteractiveBoardSurface", () => {
     );
     await waitFor(() => expect(updateSession).toHaveBeenCalledWith(session(1)));
     await screen.findByRole("button", { name: "Перейти к соседнему узлу · 1" });
+    expect(screen.getByTestId("interactive-board-canvas-host").getAttribute("data-state-version")).toBe("1");
     expect(phaserMock.configs).toHaveLength(1);
 
     view.unmount();
