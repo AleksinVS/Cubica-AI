@@ -262,8 +262,9 @@ function resolveProductionActionId(current: RuntimeSnapshot, step: TranscriptSte
 }
 
 async function reloadStoredSession(page: Page, sessionId: string): Promise<void> {
+  const sessionPath = `/api/runtime/sessions/${sessionId}`;
   const restored = page.waitForResponse((response) =>
-    response.url().includes(`/api/runtime/sessions/${sessionId}`) && response.request().method() === "GET"
+    new URL(response.url()).pathname === sessionPath && response.request().method() === "GET"
   );
   await page.reload();
   const response = await restored;
