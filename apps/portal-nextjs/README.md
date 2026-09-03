@@ -26,10 +26,15 @@ Copy `.env.example` to `.env.local` for local work and set:
 
 ```bash
 NEXT_PUBLIC_PORTAL_API_URL=http://localhost:1337
+PORTAL_API_URL=http://127.0.0.1:1337
+PORTAL_CATALOG_SOURCE=strapi
+PORTAL_CATALOG_FALLBACK_TO_STATIC=true
 NEXT_PUBLIC_PAYMENT_STUB_ENABLED=false
 ```
 
 `NEXT_PUBLIC_PORTAL_API_URL` is exposed to browser code by Next.js because launch-link copy and active-session listing are triggered from client components.
+
+`PORTAL_API_URL` is the server-side URL used by Next.js to fetch the catalog. Set `PORTAL_CATALOG_SOURCE=strapi` to render the catalog and game pages from Strapi, or set it to `static` to use `src/data/games.js`. When the Strapi source is selected, `PORTAL_CATALOG_FALLBACK_TO_STATIC=true` uses the static catalog only if the Strapi request fails; a successful empty Strapi response remains an empty catalog.
 
 `NEXT_PUBLIC_PAYMENT_STUB_ENABLED=true` exposes the test-purchase action only in a non-production Next.js run. The user must already be logged in with a pre-created account, and the backend must separately set `PAYMENT_STUB_ENABLED=true`. Production mode always hides and rejects this browser path regardless of the public setting.
 
