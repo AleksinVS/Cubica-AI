@@ -1022,7 +1022,8 @@ test("full mock data declares hidden decks and an immutable, fully typed Mechani
     "core.entities.score",
     "core.ranking.stable",
     "core.state.patch",
-    "core.event.emit"
+    "core.event.emit",
+    "core.state.patch"
   ]);
   assert.deepEqual(planOps("construction.road.build"), [
     "core.assert",
@@ -1226,6 +1227,13 @@ test("complete seven-turn gameplay is replay-stable and finishes only after faci
       assert.ok(current);
       assert.equal(current.state.public.session.phase, step.expected.phase, `phase after step ${step.order}`);
       assert.equal(current.state.public.session.turnNumber, step.expected.turnNumber, `turn after step ${step.order}`);
+      if (step.actionId === "mock.ranking.compute") {
+        assert.equal(
+          current.state.public.session.canRequestFinish,
+          true,
+          "computed rankings must expose the manual finish controls"
+        );
+      }
       if (step.order === 45) {
         assert.equal(
           current.state.public.objects.networkEdges["main:edge:1001"].facets.state,
