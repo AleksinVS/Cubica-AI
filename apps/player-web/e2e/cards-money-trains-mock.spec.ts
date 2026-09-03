@@ -102,6 +102,7 @@ test.describe("Cards Money Trains browser lifecycle", { tag: "@player" }, () => 
 
     // Keyboard activation proves the Phaser map has an equivalent ordinary
     // DOM action; no pointer coordinates or drag gesture are required.
+    await board.getByRole("button", { name: "Действия" }).click();
     const startButton = board.getByRole("button", { name: "MOCK: подтвердить команды и начать игру" });
     await expect(startButton).toBeVisible({ timeout: BOARD_READY_TIMEOUT_MS });
     await startButton.focus();
