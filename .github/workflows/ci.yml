@@ -105,6 +105,9 @@ jobs:
       - name: Install portal backend dependencies
         run: npm ci --prefix services/portal-backend
 
+      - name: Install session contract dependencies
+        run: npm ci --workspace @cubica/contracts-session --include-workspace-root=false
+
       - name: Test portal launch rules
         run: npm run test:profile -- --label "portal rule tests" -- npm run test:portal-rules --prefix services/portal-backend
 
