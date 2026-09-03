@@ -304,8 +304,8 @@ describe('Z.AI coding-plan shadow gateway', () => {
     ['wrong request', (value: any) => { value.request_id = 'modelreq_wrong'; }, 'result_binding'],
     ['wrong base', (value: any) => { value.proposal.base_commit = 'd'.repeat(40); }, 'result_binding'],
     ['wrong scope', (value: any) => { value.proposal.applies_to = ['cubica://game-project/other']; }, 'result_binding'],
-    ['invented source', (value: any) => { value.proposal.operations[0].source_refs = [{ ref: 'cubica://invented/message', use: 'evidence' }]; }, 'provenance'],
-    ['agent evidence', (value: any) => { value.proposal.operations[0].source_refs = [{ ref: agentRef, use: 'evidence' }]; value.proposal.source_refs = [{ ref: agentRef, use: 'evidence' }]; }, 'provenance'],
+    ['invented source', (value: any) => { value.proposal.operations[0].source_refs = [{ ref: 'cubica://invented/message', use: 'evidence' }]; }, 'proposal_provenance'],
+    ['agent evidence', (value: any) => { value.proposal.operations[0].source_refs = [{ ref: agentRef, use: 'evidence' }]; value.proposal.source_refs = [{ ref: agentRef, use: 'evidence' }]; }, 'proposal_provenance'],
     ['unknown page', (value: any) => { value.proposal.operations[0].path = 'notes/unknown.md'; }, 'exact_patch'],
     ['full-file replacement', (value: any) => { value.proposal.operations[0].old_text = existingPage; value.proposal.operations[0].new_text = page('Rewritten\n'); }, 'exact_patch'],
     ['secret', (value: any) => { value.proposal.operations[0].new_text = 'api_key=abcdefghijklmnop1234'; }, 'proposal_structure']
@@ -407,8 +407,9 @@ describe('Z.AI coding-plan shadow gateway', () => {
     const historicalRef = 'cubica://shadow-thread/older/message/user';
     mockGrounding({ snapshot: snapshotFor(page('Original body\n', [{ ref: historicalRef, use: 'evidence' }])) });
     const proposal = historicalUpdate(historicalRef, finalSources as Array<{ ref: string; use: 'evidence' }>);
-    await expect(gateway(async () => responseFor({ schema_version: '1.0.0', request_id: request.request_id, outcome: 'proposal', proposal })).call(request))
-      .rejects.toMatchObject({ code: 'malformed_output' });
+    const error = await gateway(async () => responseFor({ schema_version: '1.0.0', request_id: request.request_id, outcome: 'proposal', proposal })).call(request).catch((caught) => caught);
+    expect(error).toMatchObject({ code: 'malformed_output' });
+    expect(modelGatewayValidationStage(error)).toBe('page_provenance');
   });
 
   it('rejects cubica_id rename for an existing page and duplicate identity on create', async () => {

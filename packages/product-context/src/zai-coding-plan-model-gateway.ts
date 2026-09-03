@@ -441,7 +441,7 @@ function validateFinalProposal(
       allUserGamesConfirmed: false,
       globalConfirmed: false
     }).allowed) throw malformed('final_page_policy');
-    if (!pageProvenanceIsSafe(originalPage, page, proposal.operations, request)) throw malformed('provenance');
+    if (!pageProvenanceIsSafe(originalPage, page, proposal.operations, request)) throw malformed('page_provenance');
   } catch (error) {
     if (error instanceof ModelGatewayError) throw error;
     throw malformed('final_page_policy');
