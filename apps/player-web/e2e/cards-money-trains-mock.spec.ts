@@ -265,11 +265,12 @@ async function reloadStoredSession(page: Page, sessionId: string): Promise<void>
   const sessionPath = `/api/runtime/sessions/${sessionId}`;
   const restored = page.waitForResponse((response) =>
     new URL(response.url()).pathname === sessionPath && response.request().method() === "GET"
-  );
+  ).then(async (response) => {
+    expect(response.status()).toBe(200);
+    return response.json() as Promise<RuntimeSnapshot>;
+  });
   await page.reload();
-  const response = await restored;
-  expect(response.status()).toBe(200);
-  expectNoFutureDecks(await response.json() as RuntimeSnapshot);
+  expectNoFutureDecks(await restored);
   await expect(page.locator(".loading-state")).toHaveCount(0);
 }
 
