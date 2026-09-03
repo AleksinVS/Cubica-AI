@@ -373,10 +373,9 @@ describe("editor agent context projection", () => {
     });
 
     it("measures in a browser-like environment without global Buffer", () => {
-      const globalWithBuffer = globalThis as typeof globalThis & { Buffer?: unknown };
-      const originalBuffer = globalWithBuffer.Buffer;
+      const originalBufferDescriptor = Object.getOwnPropertyDescriptor(globalThis, "Buffer");
       try {
-        globalWithBuffer.Buffer = undefined;
+        expect(Reflect.deleteProperty(globalThis, "Buffer")).toBe(true);
         expect(() =>
           buildEditorAgentContextProjection({
             gameId: "demo",
@@ -387,7 +386,9 @@ describe("editor agent context projection", () => {
           })
         ).not.toThrow();
       } finally {
-        globalWithBuffer.Buffer = originalBuffer;
+        if (originalBufferDescriptor !== undefined) {
+          Object.defineProperty(globalThis, "Buffer", originalBufferDescriptor);
+        }
       }
     });
 
@@ -421,7 +422,7 @@ describe("editor agent context projection", () => {
         selectedEditorEntities: [
           {
             entityId: "entity-1",
-            kind: "screen",
+            kind: "ui-screen",
             label: longText,
             primarySource: {
               filePath: "ui.authoring.json",

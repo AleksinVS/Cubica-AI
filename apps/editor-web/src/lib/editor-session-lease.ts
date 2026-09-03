@@ -36,6 +36,11 @@ type LeaseInspection =
   | { readonly kind: "valid"; readonly owner: EditorSessionLeaseOwner; readonly fileStat: Stats }
   | { readonly kind: "invalid"; readonly fileStat: Stats };
 
+type ReclaimableLeaseInspection = Exclude<
+  LeaseInspection,
+  { readonly kind: "missing" | "error" }
+>;
+
 interface ReclaimCoordinatorOwner {
   readonly pid: number;
   readonly token: string;
@@ -295,7 +300,7 @@ function parseLeaseOwner(contents: string): EditorSessionLeaseOwner | undefined 
   }
 }
 
-function reclaimCoordinationPath(leasePath: string, inspected: LeaseInspection): string {
+function reclaimCoordinationPath(leasePath: string, inspected: ReclaimableLeaseInspection): string {
   const identity = inspected.kind === "valid"
     ? inspected.owner.token
     : [
@@ -311,7 +316,7 @@ function reclaimCoordinationPath(leasePath: string, inspected: LeaseInspection):
 
 async function acquireReclaimCoordination(
   leasePath: string,
-  inspected: LeaseInspection
+  inspected: ReclaimableLeaseInspection
 ): Promise<ReclaimCoordination | undefined> {
   const coordinationPath = reclaimCoordinationPath(leasePath, inspected);
   const owner: ReclaimCoordinatorOwner = { pid: process.pid, token: randomUUID() };
