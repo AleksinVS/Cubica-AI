@@ -64,6 +64,7 @@ Task | Coordinator | Owner | Working/integration branch`, затем повто�
 
 | Boundary | Task | Coordinator | Owner | Working/integration branch |
 | --- | --- | --- | --- | --- |
+| Editor preview-confirmed transactional mutation and approval trust boundary | `TSK-20260831-project-review-remediation` (F-004/F-010, accepted AD-09/AD-10 refinement) | primary Codex `/root` | primary Codex `/root` | `agent/20260904-editor-preview-confirm` |
 
 ## Now
 
