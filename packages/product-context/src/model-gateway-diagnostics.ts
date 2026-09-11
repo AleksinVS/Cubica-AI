@@ -3,6 +3,13 @@ import type { ModelGatewayError } from './model-gateway.ts';
 /** Internal, content-free stages; deliberately not exported by the package entry point. */
 export const MODEL_GATEWAY_VALIDATION_STAGES = [
   'provider_http',
+  'provider_json',
+  'provider_model',
+  'provider_choices',
+  'provider_finish_reason',
+  'provider_tool_use',
+  'provider_content_type',
+  // Retained for reading rows written by the pre-DR-24 adapter.
   'provider_envelope',
   'candidate_json',
   'proposal_structure',

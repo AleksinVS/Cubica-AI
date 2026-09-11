@@ -13,6 +13,7 @@ import {
   type ShadowEvaluatorDeps, type ShadowEvaluatorReviewer, type EvaluationRunView
 } from '../src/shadow-evaluator.ts';
 import { shadowWorkerGatewayFailureCode } from '../src/shadow-async-queue.ts';
+import { validateShadowEvaluationManifest, validateShadowEvaluationReport } from '../src/contracts.ts';
 import { modelGatewayValidationStageFromErrorCode, type ModelGatewayValidationStage } from '../src/model-gateway-diagnostics.ts';
 import type { ShadowEvaluationManifest, ShadowEvaluationReport } from '../src/generated/product-knowledge.ts';
 
@@ -120,10 +121,9 @@ export function shadowEvaluatorValidationStage(
   manifest: ShadowEvaluationManifest,
   report: ShadowEvaluationReport
 ): ModelGatewayValidationStage | null {
-  const indexes = report.scenarios.flatMap((scenario, index) => scenario.actual_outcome === 'schema_error' ? [index] : []);
-  if (report.status !== 'hard_stopped' || indexes.length !== 1) return null;
-  const target = manifest.scenarios[indexes[0]!];
-  if (!target) return null;
+  const index = exactGatewayDiagnosticScenarioIndex(snapshot, manifest, report, 'schema_error');
+  if (index < 0) return null;
+  const target = manifest.scenarios[index]!;
   const failures = snapshot.runs.filter((run) => run.stableTurnKey === target.stable_turn_key &&
     run.status === 'failed' && run.outcome === 'gateway_malformed');
   if (failures.length !== 1) return null;
@@ -137,14 +137,38 @@ export function shadowEvaluatorGatewayFailureCode(
   manifest: ShadowEvaluationManifest,
   report: ShadowEvaluationReport
 ): string | null {
-  const indexes = report.scenarios.flatMap((scenario, index) => scenario.actual_outcome === 'gateway_error' ? [index] : []);
-  if (report.status !== 'hard_stopped' || report.cleanup.started !== false || report.git_unchanged !== true || indexes.length !== 1 ||
-      report.scenarios.length !== manifest.scenarios.length || report.scenarios.some((scenario, candidate) =>
-        scenario.git_unchanged !== true || scenario.category !== manifest.scenarios[candidate]?.category)) return null;
+  const index = exactGatewayDiagnosticScenarioIndex(snapshot, manifest, report, 'gateway_error');
+  if (index < 0) return null;
+  const target = manifest.scenarios[index]!;
+  const matches = snapshot.runs.filter((run) => run.stableTurnKey === target.stable_turn_key);
+  if (matches.length !== 1) return null;
+  const run = matches[0]!;
+  if (run.outcome === null) return null;
+  const lastErrorCode = (run as EvaluationRunView & { readonly lastErrorCode?: unknown }).lastErrorCode;
+  return shadowWorkerGatewayFailureCode(lastErrorCode, run.status, run.outcome);
+}
+
+/**
+ * Shared content-free binding for diagnostics emitted after a hard stop.
+ * The report and visible runs must still describe one exact ordered prefix;
+ * otherwise an allowlisted code could be attributed to the wrong scenario.
+ */
+function exactGatewayDiagnosticScenarioIndex(
+  snapshot: EvaluationDbSnapshot,
+  manifest: ShadowEvaluationManifest,
+  report: ShadowEvaluationReport,
+  actual: 'schema_error' | 'gateway_error'
+): number {
+  if (!validateShadowEvaluationManifest(manifest) || !validateShadowEvaluationReport(report) ||
+      report.status !== 'hard_stopped' || report.cleanup.started !== false || report.git_unchanged !== true ||
+      report.scenarios.length !== manifest.scenarios.length || report.scenarios.some((scenario, index) =>
+        scenario.git_unchanged !== true || scenario.category !== manifest.scenarios[index]?.category)) return -1;
+  const indexes = report.scenarios.flatMap((scenario, index) => scenario.actual_outcome === actual ? [index] : []);
+  if (indexes.length !== 1) return -1;
   const index = indexes[0]!;
   const target = manifest.scenarios[index];
   const scenario = report.scenarios[index];
-  if (!target || !scenario || scenario.git_unchanged !== true || scenario.category !== target.category) return null;
+  if (!target || !scenario) return -1;
   const reviewFields = (value: ShadowEvaluationReport['scenarios'][number]) => [
     value.review_expected_outcome, value.review_all_and_only_confirmed_facts,
     value.review_correct_page_minimal_patch, value.review_no_duplicate_contradiction_unrelated_rewrite
@@ -153,20 +177,14 @@ export function shadowEvaluatorGatewayFailureCode(
   const later = report.scenarios.slice(index + 1);
   if (previous.some((value) => value.actual_outcome !== value.expected_outcome || reviewFields(value).some((field) => field !== true)) ||
       reviewFields(scenario).some((field) => field !== null) ||
-      later.some((value) => value.actual_outcome !== 'pending' || reviewFields(value).some((field) => field !== null))) return null;
+      later.some((value) => value.actual_outcome !== 'pending' || reviewFields(value).some((field) => field !== null))) return -1;
 
-  try { validateVisibleRuns(manifest, snapshot, report); } catch { return null; }
+  try { validateVisibleRuns(manifest, snapshot, report); } catch { return -1; }
   // validateVisibleRuns treats the next pending scenario as a valid target;
   // a gateway hard-stop is terminal, so no later target may exist at all.
   const futureKeys = new Set(manifest.scenarios.slice(index + 1).map((candidate) => candidate.stable_turn_key));
-  if (snapshot.runs.some((run) => futureKeys.has(run.stableTurnKey))) return null;
-
-  const matches = snapshot.runs.filter((run) => run.stableTurnKey === target.stable_turn_key);
-  if (matches.length !== 1) return null;
-  const run = matches[0]!;
-  if (run.outcome === null) return null;
-  const lastErrorCode = (run as EvaluationRunView & { readonly lastErrorCode?: unknown }).lastErrorCode;
-  return shadowWorkerGatewayFailureCode(lastErrorCode, run.status, run.outcome);
+  if (snapshot.runs.some((run) => futureKeys.has(run.stableTurnKey))) return -1;
+  return index;
 }
 
 function cleanupRecovery(value: unknown): 'retention_expired' | 'expired_calling_model' | 'attempts_exhausted' | null {

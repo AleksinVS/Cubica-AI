@@ -179,7 +179,7 @@ export class ZaiCodingPlanModelGateway implements ModelGateway {
       const output = await readBounded(response, this.maxResponseBytes, () => controller.abort());
       let envelope: unknown;
       try { envelope = JSON.parse(decoder.decode(output)); }
-      catch { throw malformed('provider_envelope'); }
+      catch { throw malformed('provider_json'); }
       return { candidate: providerContent(envelope), outputBytes: output.byteLength };
     } catch (error) {
       if (error instanceof ModelGatewayError) throw error;
@@ -324,14 +324,17 @@ function providerBody(
 }
 
 function providerContent(envelope: unknown): unknown {
-  if (!isRecord(envelope) || envelope.model !== ZAI_CODING_PLAN_MODEL ||
-      !Array.isArray(envelope.choices) || envelope.choices.length !== 1) {
-    throw malformed('provider_envelope');
-  }
+  if (!isRecord(envelope)) throw malformed('provider_content_type');
+  if (envelope.model !== ZAI_CODING_PLAN_MODEL) throw malformed('provider_model');
+  if (!Array.isArray(envelope.choices) || envelope.choices.length !== 1) throw malformed('provider_choices');
   const choice = envelope.choices[0];
-  if (!isRecord(choice) || choice.finish_reason !== 'stop' || Object.hasOwn(choice, 'tool_calls') || !isRecord(choice.message) ||
-      Object.hasOwn(choice.message, 'tool_calls') || typeof choice.message.content !== 'string') {
-    throw malformed('provider_envelope');
+  if (!isRecord(choice) || !isRecord(choice.message)) throw malformed('provider_content_type');
+  if (choice.finish_reason !== 'stop') throw malformed('provider_finish_reason');
+  if (Object.hasOwn(choice, 'tool_calls')) throw malformed('provider_tool_use');
+  if (typeof choice.message.content !== 'string') throw malformed('provider_content_type');
+  if (Object.hasOwn(choice.message, 'tool_calls') &&
+      (!Array.isArray(choice.message.tool_calls) || choice.message.tool_calls.length !== 0)) {
+    throw malformed('provider_tool_use');
   }
   try { return JSON.parse(choice.message.content); }
   catch { throw malformed('candidate_json'); }

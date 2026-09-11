@@ -9,6 +9,8 @@
 - [Текущее handoff-состояние — 2026-08-13](#текущее-handoff-состояние--2026-08-13)
 - [Остаточные условия активации](#остаточные-условия-активации)
 - [Фактическое окно DR-21](#фактическое-окно-dr-21)
+- [Фактическое окно DR-23](#фактическое-окно-dr-23)
+- [Локальная refinement DR-24 2026-09-11](#локальная-refinement-dr-24-2026-09-11)
 
 ## Итог
 
@@ -19,11 +21,13 @@
 изолированном PostgreSQL до будущего подтверждаемого контура.
 
 Первый реальный пользовательский прогон выполнен 2026-08-11 после отдельного
-решения PM: Cubica в этом контуре является pet-test, а не собственным
-приложением или SaaS; Coding Plan разрешён только для этого теста, и
-`abc → Antarctica` подтверждён как единственная связь разработчика и игры.
-Прогон получил канонический `no_change`, не изменил основной ответ или Git и
-был полностью очищен.
+решения PM использовать Coding Plan только в pet-test контуре; связь одного
+разработчика и одной игры была подтверждена для этого окна. Прогон получил
+канонический `no_change`, не изменил основной ответ или Git и был полностью
+очищен. Это решение описывает фактическую границу теста, но не заменяет условия
+поставщика: актуальные Subscription Terms, повторно проверенные после DR-23,
+не подтверждают прямой API-вызов из собственного evaluator без отдельного
+письменного соглашения.
 
 Первая последующая смысловая матрица выполнила три отрицательных вызова, но
 остановилась на первом ожидаемом кандидате с безопасным `failed`; пятый вызов
@@ -439,8 +443,9 @@ allowlisted код до cleanup. Публичный отчёт, retry-полит
    `product_context_shadow_worker`;
 2. использовать loopback либо PostgreSQL TLS с `sslmode=verify-full`;
 3. настроить test/staging Portal и Editor, доверенный origin и разные HMAC-ключи;
-4. заново подтвердить принятую договорную границу Coding Plan для pet-test
-   контура, фиксированные `glm-4.7`/endpoint и серверный read-only bare Git;
+4. получить письменное разрешение Z.AI на прямой Coding Plan API-вызов из
+   evaluator либо выбрать обычный оплачиваемый API/другой разрешённый
+   provider; затем подтвердить model/endpoint и серверный read-only bare Git;
 5. запускать `cleanup:shadow` чаще минимального срока хранения с явными
    `CUBICA_PRODUCT_CONTEXT_SHADOW_CLEANUP_ENABLED=true`, tier `test`/`staging`
    и ограничением пакета от 1 до 1000;
@@ -504,5 +509,62 @@ provider payload, кандидат, request identifiers и секреты уни
 по догадке запрещена. DR-22 локально разделил будущую бесконтентную диагностику
 на `proposal_provenance` и `page_provenance`, сохранив старый код для чтения
 прежних временных записей. Проверки доверия, prompt, JSON Schema, storage и
-report не менялись. Новый внешний вызов, Stage 3, применение кандидатов и
-Git-запись остаются закрыты; DR-23 требует отдельного решения PM.
+report не менялись. DR-23 позднее был отдельно разрешён и израсходован; его
+результат описан ниже. Новый внешний вызов, Stage 3, применение кандидатов и
+Git-запись остаются закрыты.
+
+## Фактическое окно DR-23
+
+11 сентября 2026 года PM разрешил ровно одно полное пятисценарное окно на
+прежнем endpoint и `glm-4.7` с bounds `90000/5000/100000/300000` ms,
+`maxAttempts=1` и без retry. До первого вызова live preflight доказал exact-zero
+PostgreSQL, точные Portal/Editor/worker bindings, неизменный Git и ноль provider
+attempts. Независимый Sol-high reviewer завершил проверку связки
+source/bundle/launcher/manifest/config с `ACCEPT`.
+
+Первый `transient_conversation` завершился fail-closed `schema_error`, а
+локальная allowlisted диагностика указала `provider_envelope`. Candidate JSON
+не был разобран, операции над знаниями не создавались. No-retry hard stop
+исключил сценарии 2–5 и повтор; всего израсходован один attempt. Точный guard
+не восстанавливается, потому что сырой ответ провайдера намеренно не
+сохранялся, а текущий код объединяет ошибку JSON и несколько структурных
+проверок одним этапом.
+
+После полного retention cleanup удалил 1 run и 1 metric, tombstone получили 2
+messages и 1 thread. Все active runs/metrics/messages/threads и text bytes
+равны нулю; manifest, одноразовый PostgreSQL container и private state
+уничтожены, Git не изменился. Постоянно сохранён только
+[`dr23-content-free-report.json`](dr23-content-free-report.json).
+
+Локальный разбор подтвердил две независимые проблемы. Adapter отклоняет
+пустой `message.tool_calls`, хотя официальный
+[response contract](https://docs.z.ai/api-reference/llm/chat-completion)
+допускает необязательный массив без минимального числа элементов. Это
+возможная, но не доказанная причина фактического отказа. Кроме того,
+[актуальные Subscription Terms Z.AI](https://docs.z.ai/legal-agreement/subscription-terms)
+ограничивают квоту Coding Plan официально поддерживаемыми инструментами и не
+разрешают прямой API-вызов из собственной системы без отдельного письменного
+соглашения. DR-24 затем был принят как локальная refinement: PM сохранил
+Z.AI Coding Plan `glm-4.7` как выбранные provider/model, но риск условий
+Coding Plan остаётся документированным, а новое live-окно требует отдельного
+одобрения PM и проверки допустимого provider-пути. Stage 3 остаётся закрыт.
+
+## Локальная refinement DR-24 2026-09-11
+
+Без внешнего вызова обновлены только adapter и внутренняя бесконтентная
+диагностика. `provider_envelope` разделён на
+`provider_json`, `provider_model`, `provider_choices`,
+`provider_finish_reason`, `provider_tool_use` и `provider_content_type`; старый
+код оставлен читаемым для legacy-записей. Response parser сохраняет точное
+model, ровно одну choice, `finish_reason=stop`, строковый content и запрет
+фактического tool use: отсутствующий либо пустой `message.tool_calls` принят,
+а `null`, неверный тип, непустой массив и любое top-level `choice.tool_calls`
+отклоняются. `reasoning_content`, `usage`, `id` и provider `request_id`
+допускаются как невалидируемые дополнительные поля. Raw значения и payload не
+сохраняются.
+
+Focused gateway/evaluator tests прошли 118/118, package typecheck прошёл.
+Новые allowlisted stages выводятся evaluator только при полном exact binding
+сценария, отчёта, метрик, статуса, Git и измерений. Это локальное доказательство
+совместимости; provider calls, Stage 3, активное чтение, применение кандидатов,
+Git-запись и retry остаются закрыты.

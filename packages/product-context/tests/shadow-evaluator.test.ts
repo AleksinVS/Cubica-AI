@@ -14,6 +14,10 @@ const manifestBytes = JSON.stringify(manifest());
 const manifestDigest = `sha256:${createHash('sha256').update(manifestBytes).digest('hex')}`;
 type DiagnosticEvaluationRunView = EvaluationDbSnapshot['runs'][number] & { readonly lastErrorCode?: string | null };
 function snapshot(runs: readonly DiagnosticEvaluationRunView[] = []): EvaluationDbSnapshot { return { runs, activeRuns: runs.length, activeMetrics: runs.reduce((sum, run) => sum + run.metricCount, 0), activeMessages: runs.length * 2, activeThreads: runs.length, activeTextBytes: runs.length * 10 }; }
+function schemaDiagnosticReport(): ShadowEvaluationReport {
+  const report = emptyShadowEvaluationReport(manifestDigest);
+  return { ...report, status: 'hard_stopped', scenarios: report.scenarios.map((scenario, index) => index === 0 ? { ...scenario, actual_outcome: 'schema_error' } : scenario) };
+}
 async function fixture(): Promise<{ dir: string; paths: ShadowEvaluatorDeps['paths']; deps: ShadowEvaluatorDeps; db: MemoryDb }> {
   const hostRoot = resolve(process.cwd(), '../..');
   const root = await mkdtemp(join(hostRoot, '.tmp/shadow-evaluator-worktree-'));
@@ -387,7 +391,11 @@ describe('persistent shadow evaluator', () => {
       expect(review).toHaveBeenCalledWith(0, 'no_change', expect.any(Object));
     } finally { await rm(f.dir, { recursive: true, force: true }); }
   });
-  it.each(['provenance', 'proposal_provenance', 'page_provenance', 'final_page_policy'] as const)(
+  it.each([
+    'provider_json', 'provider_model', 'provider_choices', 'provider_finish_reason',
+    'provider_tool_use', 'provider_content_type', 'provider_envelope',
+    'provenance', 'proposal_provenance', 'page_provenance', 'final_page_policy'
+  ] as const)(
     'preserves the allowlisted %s schema error instead of collapsing it to mismatch', async (stage) => {
       const f = await fixture(); try {
         f.db.value = snapshot([{ ...f.db.value.runs[0]!, status: 'failed', outcome: 'gateway_malformed', metricCount: 1, lastErrorCode: `gateway_malformed:${stage}` }]);
@@ -406,8 +414,48 @@ describe('persistent shadow evaluator', () => {
     const schemaReport = { ...emptyShadowEvaluationReport(manifestDigest), status: 'hard_stopped' as const, scenarios: emptyShadowEvaluationReport(manifestDigest).scenarios.map((scenario, index) => index === 0 ? { ...scenario, actual_outcome: 'schema_error' as const } : scenario) };
     expect(shadowEvaluatorValidationStage(snapshot([
       ...base.runs,
-      { ...base.runs[0]!, stableTurnKey: manifest().scenarios[1]!.stable_turn_key, lastErrorCode: 'gateway_malformed:provider_envelope' }
+      { ...base.runs[0]!, stableTurnKey: manifest().scenarios[1]!.stable_turn_key, lastErrorCode: 'gateway_malformed:provider_model' }
     ]), manifest(), schemaReport)).toBeNull();
+  });
+  it('surfaces a schema diagnostic only for the exact bound failed run and report prefix', () => {
+    const run = { ...new MemoryDb().value.runs[0]!, status: 'failed' as const, outcome: 'gateway_malformed', metricCount: 1, lastErrorCode: 'gateway_malformed:provider_model' };
+    const report = schemaDiagnosticReport();
+    expect(shadowEvaluatorValidationStage(snapshot([run]), manifest(), report)).toBe('provider_model');
+
+    const reportMutationCases: Array<[string, (value: ShadowEvaluationReport) => ShadowEvaluationReport]> = [
+      ['report status', (value) => ({ ...value, status: 'ready' }) as ShadowEvaluationReport],
+      ['global Git flag', (value) => ({ ...value, git_unchanged: false }) as ShadowEvaluationReport],
+      ['target Git flag', (value) => ({ ...value, scenarios: value.scenarios.map((scenario, index) => index === 0 ? { ...scenario, git_unchanged: false } : scenario) })],
+      ['cleanup state', (value) => ({ ...value, cleanup: { ...value.cleanup, started: true } })],
+      ['target review fields', (value) => ({ ...value, scenarios: value.scenarios.map((scenario, index) => index === 0 ? { ...scenario, review_expected_outcome: true } : scenario) })],
+      ['future scenario', (value) => ({ ...value, scenarios: value.scenarios.map((scenario, index) => index === 1 ? { ...scenario, actual_outcome: 'gateway_error' as const } : scenario) })]
+    ];
+    for (const [_label, mutate] of reportMutationCases) expect(shadowEvaluatorValidationStage(snapshot([run]), manifest(), mutate(report))).toBeNull();
+
+    const runMutationCases: Array<[string, Record<string, unknown>]> = [
+      ['owner binding', { ownerRef: 'other' }],
+      ['game binding', { gameRef: 'other' }],
+      ['receipt principal binding', { receiptPrincipal: 'other' }],
+      ['receipt game binding', { receiptGame: 'other' }],
+      ['message count', { messageCount: 1 }],
+      ['live message count', { liveMessageCount: 1 }],
+      ['metric count', { metricCount: 0 }],
+      ['operation measurement', { operationCount: 1 }],
+      ['duration measurement', { durationMs: 1 }],
+      ['input measurement', { inputBytes: 1 }],
+      ['output measurement', { outputBytes: 1 }],
+      ['target status', { status: 'succeeded' }],
+      ['target outcome', { outcome: 'gateway_error' }],
+      ['error code', { lastErrorCode: 'provider payload text' }]
+    ];
+    for (const [_label, mutation] of runMutationCases) {
+      expect(shadowEvaluatorValidationStage(snapshot([{ ...run, ...mutation }]), manifest(), report)).toBeNull();
+    }
+    expect(shadowEvaluatorValidationStage(snapshot([run, run]), manifest(), report)).toBeNull();
+    expect(shadowEvaluatorValidationStage(snapshot([run, { ...run, stableTurnKey: manifest().scenarios[1]!.stable_turn_key }]), manifest(), report)).toBeNull();
+    expect(shadowEvaluatorValidationStage(snapshot([run]), { ...manifest(), shadow_principal_ref: 'other' }, report)).toBeNull();
+    expect(shadowEvaluatorValidationStage(snapshot([run]), { ...manifest(), applies_to: ['cubica://game-project/other'] }, report)).toBeNull();
+    expect(shadowEvaluatorValidationStage(snapshot([run]), manifest(), { ...report, scenarios: [] } as unknown as ShadowEvaluationReport)).toBeNull();
   });
   it.each([
     ['gateway_outcome_unknown', 'failed', 'gateway_outcome_unknown'],

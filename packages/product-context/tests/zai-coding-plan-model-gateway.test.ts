@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { sha256Bytes } from '../src/markdown.ts';
-import { modelGatewayValidationStage } from '../src/model-gateway-diagnostics.ts';
+import { modelGatewayValidationStage, modelGatewayValidationStageFromErrorCode } from '../src/model-gateway-diagnostics.ts';
 import { ShadowKnowledgeGrounding, type ShadowKnowledgeSnapshot } from '../src/shadow-grounding.ts';
 import { ZAI_CODING_PLAN_ENDPOINT, ZAI_CODING_PLAN_MAX_TOKENS, ZAI_CODING_PLAN_MODEL, ZaiCodingPlanModelGateway, type ZaiCodingPlanModelGatewayOptions } from '../src/zai-coding-plan-model-gateway.ts';
 import type { ExactPatchProposal, ModelGatewayRequest } from '../src/generated/product-knowledge.ts';
@@ -273,12 +273,19 @@ describe('Z.AI coding-plan shadow gateway', () => {
 
   it.each([
     ['HTTP error', async () => new Response('provider secret', { status: 500 }), null],
-    ['missing model', async () => new Response(JSON.stringify({ choices: [] })), 'provider_envelope'],
-    ['wrong model', async () => new Response(JSON.stringify({ model: 'glm-other', choices: [] })), 'provider_envelope'],
-    ['no choices', async () => new Response(JSON.stringify({ model: ZAI_CODING_PLAN_MODEL, choices: [] })), 'provider_envelope'],
-    ['multiple choices', async () => new Response(JSON.stringify({ model: ZAI_CODING_PLAN_MODEL, choices: [{ finish_reason: 'stop', message: { content: '{}' } }, { finish_reason: 'stop', message: { content: '{}' } }] })), 'provider_envelope'],
-    ['unfinished choice', async () => new Response(JSON.stringify({ model: ZAI_CODING_PLAN_MODEL, choices: [{ finish_reason: 'length', message: { content: '{}' } }] })), 'provider_envelope'],
-    ['tool call', async () => new Response(JSON.stringify({ model: ZAI_CODING_PLAN_MODEL, choices: [{ finish_reason: 'stop', message: { content: '{}', tool_calls: [] } }] })), 'provider_envelope'],
+    ['invalid outer JSON', async () => new Response('{bad'), 'provider_json'],
+    ['missing model', async () => new Response(JSON.stringify({ choices: [] })), 'provider_model'],
+    ['wrong model', async () => new Response(JSON.stringify({ model: 'glm-other', choices: [] })), 'provider_model'],
+    ['no choices', async () => new Response(JSON.stringify({ model: ZAI_CODING_PLAN_MODEL, choices: [] })), 'provider_choices'],
+    ['multiple choices', async () => new Response(JSON.stringify({ model: ZAI_CODING_PLAN_MODEL, choices: [{ finish_reason: 'stop', message: { content: '{}' } }, { finish_reason: 'stop', message: { content: '{}' } }] })), 'provider_choices'],
+    ['bad choice shape', async () => new Response(JSON.stringify({ model: ZAI_CODING_PLAN_MODEL, choices: [null] })), 'provider_content_type'],
+    ['bad message shape', async () => new Response(JSON.stringify({ model: ZAI_CODING_PLAN_MODEL, choices: [{ finish_reason: 'stop', message: null }] })), 'provider_content_type'],
+    ['unfinished choice', async () => new Response(JSON.stringify({ model: ZAI_CODING_PLAN_MODEL, choices: [{ finish_reason: 'length', message: { content: '{}' } }] })), 'provider_finish_reason'],
+    ['top-level tool call', async () => new Response(JSON.stringify({ model: ZAI_CODING_PLAN_MODEL, choices: [{ finish_reason: 'stop', tool_calls: [], message: { content: '{}' } }] })), 'provider_tool_use'],
+    ['message null tool calls', async () => new Response(JSON.stringify({ model: ZAI_CODING_PLAN_MODEL, choices: [{ finish_reason: 'stop', message: { content: '{}', tool_calls: null } }] })), 'provider_tool_use'],
+    ['message wrong tool calls', async () => new Response(JSON.stringify({ model: ZAI_CODING_PLAN_MODEL, choices: [{ finish_reason: 'stop', message: { content: '{}', tool_calls: {} } }] })), 'provider_tool_use'],
+    ['message non-empty tool calls', async () => new Response(JSON.stringify({ model: ZAI_CODING_PLAN_MODEL, choices: [{ finish_reason: 'stop', message: { content: '{}', tool_calls: [{ type: 'function' }] } }] })), 'provider_tool_use'],
+    ['non-string content', async () => new Response(JSON.stringify({ model: ZAI_CODING_PLAN_MODEL, choices: [{ finish_reason: 'stop', message: { content: null } }] })), 'provider_content_type'],
     ['non-JSON content', async () => new Response(JSON.stringify({ model: ZAI_CODING_PLAN_MODEL, choices: [{ finish_reason: 'stop', message: { content: '{bad' } }] })), 'candidate_json']
   ] as const)('fails closed on provider envelope variant: %s', async (_label, fetchImpl, validationStage) => {
     mockGrounding();
@@ -286,6 +293,29 @@ describe('Z.AI coding-plan shadow gateway', () => {
     expect(error).toMatchObject({ code: _label === 'HTTP error' ? 'outcome_unknown' : 'malformed_output' });
     expect(modelGatewayValidationStage(error)).toBe(validationStage);
     expect(String(error)).not.toMatch(/provider secret|\{bad/u);
+  });
+
+  it.each([
+    ['absent', {}],
+    ['empty array', { tool_calls: [] }]
+  ] as const)('accepts message.tool_calls %s while keeping tool use disabled', async (_label, messageExtras) => {
+    mockGrounding();
+    const result = { schema_version: '1.0.0', request_id: request.request_id, outcome: 'no_change', proposal: null };
+    await expect(gateway(async () => responseFor(result, messageExtras)).call(request)).resolves.toMatchObject({ result });
+  });
+
+  it('tolerates provider metadata that is outside the validated response invariants', async () => {
+    mockGrounding();
+    const result = { schema_version: '1.0.0', request_id: request.request_id, outcome: 'no_change', proposal: null };
+    await expect(gateway(async () => responseFor(result,
+      { reasoning_content: 'ignored' },
+      {}, { id: 'provider-envelope-id', request_id: 'provider-envelope-request-id', usage: { total_tokens: 1 } })).call(request))
+      .resolves.toMatchObject({ result });
+  });
+
+  it('keeps the pre-DR-24 provider_envelope diagnostic readable', () => {
+    expect(modelGatewayValidationStageFromErrorCode('gateway_malformed:provider_envelope')).toBe('provider_envelope');
+    expect(modelGatewayValidationStageFromErrorCode('gateway_malformed:unknown')).toBeNull();
   });
 
   it('bounds both provider input and streamed output', async () => {
@@ -521,8 +551,17 @@ function mockGrounding(options: { readError?: Error; closeError?: Error; snapsho
   return { open, read, close };
 }
 
-function responseFor(value: unknown): Response {
-  return new Response(JSON.stringify({ model: ZAI_CODING_PLAN_MODEL, choices: [{ finish_reason: 'stop', message: { role: 'assistant', content: JSON.stringify(value) } }] }), { status: 200 });
+function responseFor(
+  value: unknown,
+  messageExtras: Record<string, unknown> = {},
+  choiceExtras: Record<string, unknown> = {},
+  envelopeExtras: Record<string, unknown> = {}
+): Response {
+  return new Response(JSON.stringify({
+    ...envelopeExtras,
+    model: ZAI_CODING_PLAN_MODEL,
+    choices: [{ finish_reason: 'stop', ...choiceExtras, message: { role: 'assistant', content: JSON.stringify(value), ...messageExtras } }]
+  }), { status: 200 });
 }
 
 function providerProposal(): ExactPatchProposal {
