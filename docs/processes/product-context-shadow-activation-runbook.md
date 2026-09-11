@@ -25,6 +25,7 @@ Runbook отделяет закрытую синтетическую CLI-реп�
 - [Фактическое окно DR-18 2026-08-25](#фактическое-окно-dr-18-2026-08-25)
 - [Фактическое окно DR-19 2026-08-30](#фактическое-окно-dr-19-2026-08-30)
 - [Фактическое окно DR-21 2026-08-31](#фактическое-окно-dr-21-2026-08-31)
+- [Фактическое окно DR-23 2026-09-11](#фактическое-окно-dr-23-2026-09-11)
 
 ## Цель и границы
 
@@ -52,12 +53,12 @@ bearer и повторно проверяет Portal и точные сообщ�
 evaluator/runner реализован как поддерживаемая непроизводственная команда и
 локально принят. Он не ставит задания и не создаёт второй queue/storage/service:
 наблюдает только ход, уже поставленный штатным Editor/Portal, и передаёт worker
-точный target owner/game/stable key. Последнее окно DR-21 израсходовано
-2026-08-31: три отрицательных сценария прошли, первый положительный fail-closed
-остановился на этапе `provenance`, а correction не запускался. Exact-zero
-cleanup и неизменный Git доказаны. Полная матрица и положительные пути не
-подтверждены. Stage 3, активное чтение, применение кандидатов и Git-запись
-остаются закрыты.
+точный target owner/game/stable key. Последнее окно DR-23 израсходовано
+2026-09-11: первый отрицательный сценарий fail-closed остановился на этапе
+`provider_envelope`, а остальные четыре сценария не запускались. Exact-zero
+cleanup, неизменный Git и уничтожение одноразового контура доказаны. Полная
+матрица и положительные пути не подтверждены. Stage 3, активное чтение,
+применение кандидатов и Git-запись остаются закрыты.
 
 DR-20 реализовал минимальную локальную диагностику будущего `gateway_error`:
 до cleanup evaluator может показать только стабильный код из закрытого списка
@@ -607,5 +608,39 @@ advisory-lock соединения до удаления private state. Врем
 будущую внутреннюю диагностику: `proposal_provenance` относится к источникам
 proposal/operations, `page_provenance` — к источникам итоговой страницы и
 сохранению истории. Старый код читается для совместимости; проверки доверия,
-prompt, JSON Schema, storage и report не менялись. DR-23 требует отдельного
-решения PM; новый внешний вызов и Stage 3 запрещены.
+prompt, JSON Schema, storage и report не менялись. DR-23 позднее был отдельно
+разрешён и израсходован; его результат описан ниже. Следующий внешний вызов и
+Stage 3 запрещены.
+
+## Фактическое окно DR-23 2026-09-11
+
+PM разрешил ровно одно полное окно на прежнем Z.AI Coding Plan `glm-4.7` с
+bounds `90000/5000/100000/300000` ms, `maxAttempts=1`, без retry, одним
+developer/game/policy и фиксированным порядком пяти категорий. До первого
+provider call live preflight доказал exact-zero БД, точные
+Portal/Editor/worker bindings, evaluator `ready`, неизменный Git и ноль
+attempts. Независимый Sol-high review связки source/bundle/launcher/manifest/
+config завершился `ACCEPT`.
+
+Первый `transient_conversation` завершился fail-closed `schema_error` с
+allowlisted этапом `provider_envelope`. Candidate JSON не был разобран,
+операции над знаниями не создавались. No-retry hard stop исключил сценарии
+2–5 и повтор; израсходован ровно один attempt. Один код объединяет ошибку JSON
+и несколько структурных guards, поэтому без уничтоженного raw response точную
+причину нельзя восстановить.
+
+После полного retention cleanup удалил 1 run и 1 metric, tombstone получили 2
+messages и 1 thread; все active counts и text bytes равны нулю, Git не
+изменился. Manifest, disposable PostgreSQL container и private state
+уничтожены. Сохранён только
+[`dr23-content-free-report.json`](../tasks/artifacts/TSK-20260809-product-knowledge-shadow-stage-2/dr23-content-free-report.json).
+
+До следующего окна нужны два решения. Во-первых, актуальные
+[Subscription Terms Z.AI](https://docs.z.ai/legal-agreement/subscription-terms)
+не подтверждают расходование Coding Plan quota прямым API-вызовом из
+собственного evaluator без письменного соглашения; требуется разрешение Z.AI
+либо обычный оплачиваемый API. Во-вторых, adapter строже официальной схемы и
+отвергает пустой `message.tool_calls`. Разнести `provider_envelope` на
+бесконтентные структурные причины можно локально, но ослаблять проверку
+response envelope без решения PM нельзя. Новый provider call и Stage 3
+запрещены.
