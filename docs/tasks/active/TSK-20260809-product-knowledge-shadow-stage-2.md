@@ -60,7 +60,8 @@ in_progress
   2–5. Ровно один provider attempt израсходован, операций над знаниями и
   Git-записей не было. После retention доказан exact zero, одноразовый
   контейнер и private state уничтожены. Полная матрица и положительные пути не
-  доказаны; следующий внешний вызов и Stage 3 закрыты.
+  доказаны; DR-24 локально принят и реализован, следующий внешний вызов и
+  Stage 3 закрыты.
 
 ## Parent
 
@@ -1256,3 +1257,27 @@ worker и не открывает второй путь к модели или �
   (письменное разрешение Z.AI на evaluator либо обычный оплачиваемый API), затем
   отдельно согласовать минимальную корректировку проверки response envelope.
   Stage 3, активное чтение, применение кандидатов, Git-запись и retry закрыты.
+
+### 2026-09-11 — основной AI agent, локальная refinement DR-24
+
+- Decision: PM сохранил Z.AI Coding Plan `glm-4.7` как выбранные
+  provider/model, но актуальный риск условий Coding Plan остаётся
+  документированным. Это решение не разрешает новый внешний вызов; любое
+  новое live-окно требует отдельного одобрения PM и проверки допустимого
+  provider-пути.
+- Implementation: локальный adapter разделяет общий `provider_envelope` на
+  бесконтентные стадии `provider_json`, `provider_model`, `provider_choices`,
+  `provider_finish_reason`, `provider_tool_use` и `provider_content_type`;
+  `provider_envelope` оставлен только для чтения legacy-записей. Принимаются
+  только отсутствующий либо пустой `message.tool_calls`; `null`, неверный тип,
+  непустой массив и любое `choice.tool_calls` отвергаются. Exact model, одна
+  choice, `finish_reason=stop`, строковый content и остальные fail-closed
+  проверки сохранены.
+- Safety: provider calls, Docker, Portal, raw payload и значения не
+  использовались и не сохранялись. Stage 3, активное чтение, применение
+  кандидатов, Git-запись и retry остаются закрыты.
+- Verification: focused gateway/evaluator tests — 118/118; package
+  typecheck прошёл. Тесты отдельно покрывают invalid outer JSON, model,
+  choices, choice/message shape, finish, top-level/message tool calls,
+  tolerated metadata, non-string content, legacy stage и exact evaluator
+  binding новых стадий.

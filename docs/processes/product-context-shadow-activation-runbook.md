@@ -26,6 +26,7 @@ Runbook отделяет закрытую синтетическую CLI-реп�
 - [Фактическое окно DR-19 2026-08-30](#фактическое-окно-dr-19-2026-08-30)
 - [Фактическое окно DR-21 2026-08-31](#фактическое-окно-dr-21-2026-08-31)
 - [Фактическое окно DR-23 2026-09-11](#фактическое-окно-dr-23-2026-09-11)
+- [Локальная refinement DR-24 2026-09-11](#локальная-refinement-dr-24-2026-09-11)
 
 ## Цель и границы
 
@@ -117,7 +118,9 @@ raw material вручную через `/dev/tty`, но сохраняет то�
 в выводе запрещены.
 
 При `gateway_malformed` команда `run-next` дополнительно выводит в `stderr`
-только один проверенный этап: `provider_http`, `provider_envelope`,
+только один проверенный этап: `provider_http`, `provider_json`,
+`provider_model`, `provider_choices`, `provider_finish_reason`,
+`provider_tool_use`, `provider_content_type`, legacy `provider_envelope`,
 `candidate_json`, `proposal_structure`, `exact_patch`, `result_schema`,
 `result_binding`, `timestamp_binding`, legacy `provenance`,
 `proposal_provenance`, `page_provenance` или `final_page_policy`.
@@ -635,12 +638,27 @@ messages и 1 thread; все active counts и text bytes равны нулю, Gi
 уничтожены. Сохранён только
 [`dr23-content-free-report.json`](../tasks/artifacts/TSK-20260809-product-knowledge-shadow-stage-2/dr23-content-free-report.json).
 
-До следующего окна нужны два решения. Во-первых, актуальные
+DR-24 принят как локальная refinement. PM сохранил Z.AI Coding Plan `glm-4.7`
+как выбранные provider/model, но актуальные
 [Subscription Terms Z.AI](https://docs.z.ai/legal-agreement/subscription-terms)
-не подтверждают расходование Coding Plan quota прямым API-вызовом из
-собственного evaluator без письменного соглашения; требуется разрешение Z.AI
-либо обычный оплачиваемый API. Во-вторых, adapter строже официальной схемы и
-отвергает пустой `message.tool_calls`. Разнести `provider_envelope` на
-бесконтентные структурные причины можно локально, но ослаблять проверку
-response envelope без решения PM нельзя. Новый provider call и Stage 3
-запрещены.
+по-прежнему документируют риск для прямого API-вызова из собственного
+evaluator без письменного соглашения; это не является разрешением нового
+внешнего окна. Adapter теперь разделяет `provider_envelope` на
+бесконтентные `provider_json`, `provider_model`, `provider_choices`,
+`provider_finish_reason`, `provider_tool_use` и `provider_content_type`, а
+legacy-код остаётся читаемым. Принимаются только отсутствие либо пустой массив
+`message.tool_calls`; фактическое использование инструментов и остальные
+fail-closed проверки запрещены. Любое новое live-окно требует отдельного
+одобрения PM и проверки допустимого provider-пути. Stage 3, активное чтение,
+применение кандидатов и Git-запись остаются закрыты.
+
+## Локальная refinement DR-24 2026-09-11
+
+Без вызова Z.AI, Docker, Portal или другого внешнего сервиса обновлены только
+локальный adapter, бесконтентный allowlist диагностики и focused tests.
+Проверены invalid outer JSON, точное model, одна choice, `finish_reason=stop`,
+тип content, top-level и message tool calls, допустимые provider metadata и
+строгая привязка evaluator к единственному сценарию. Значения и payload не
+сохраняются. Focused gateway/evaluator tests — 118/118, package typecheck
+прошёл. Это локальная проверка совместимости и не разрешение нового provider
+call или Stage 3.

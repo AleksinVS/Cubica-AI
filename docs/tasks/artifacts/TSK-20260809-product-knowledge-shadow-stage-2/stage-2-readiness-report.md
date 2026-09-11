@@ -10,6 +10,7 @@
 - [Остаточные условия активации](#остаточные-условия-активации)
 - [Фактическое окно DR-21](#фактическое-окно-dr-21)
 - [Фактическое окно DR-23](#фактическое-окно-dr-23)
+- [Локальная refinement DR-24 2026-09-11](#локальная-refinement-dr-24-2026-09-11)
 
 ## Итог
 
@@ -543,6 +544,27 @@ messages и 1 thread. Все active runs/metrics/messages/threads и text bytes
 [актуальные Subscription Terms Z.AI](https://docs.z.ai/legal-agreement/subscription-terms)
 ограничивают квоту Coding Plan официально поддерживаемыми инструментами и не
 разрешают прямой API-вызов из собственной системы без отдельного письменного
-соглашения. Поэтому до следующего внешнего окна нужно выбрать разрешённый
-provider-путь и отдельно согласовать минимальную корректировку trust boundary.
-Stage 3 остаётся закрыт.
+соглашения. DR-24 затем был принят как локальная refinement: PM сохранил
+Z.AI Coding Plan `glm-4.7` как выбранные provider/model, но риск условий
+Coding Plan остаётся документированным, а новое live-окно требует отдельного
+одобрения PM и проверки допустимого provider-пути. Stage 3 остаётся закрыт.
+
+## Локальная refinement DR-24 2026-09-11
+
+Без внешнего вызова обновлены только adapter и внутренняя бесконтентная
+диагностика. `provider_envelope` разделён на
+`provider_json`, `provider_model`, `provider_choices`,
+`provider_finish_reason`, `provider_tool_use` и `provider_content_type`; старый
+код оставлен читаемым для legacy-записей. Response parser сохраняет точное
+model, ровно одну choice, `finish_reason=stop`, строковый content и запрет
+фактического tool use: отсутствующий либо пустой `message.tool_calls` принят,
+а `null`, неверный тип, непустой массив и любое top-level `choice.tool_calls`
+отклоняются. `reasoning_content`, `usage`, `id` и provider `request_id`
+допускаются как невалидируемые дополнительные поля. Raw значения и payload не
+сохраняются.
+
+Focused gateway/evaluator tests прошли 118/118, package typecheck прошёл.
+Новые allowlisted stages выводятся evaluator только при полном exact binding
+сценария, отчёта, метрик, статуса, Git и измерений. Это локальное доказательство
+совместимости; provider calls, Stage 3, активное чтение, применение кандидатов,
+Git-запись и retry остаются закрыты.
