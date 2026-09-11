@@ -11,6 +11,7 @@
 - [Фактическое окно DR-21](#фактическое-окно-dr-21)
 - [Фактическое окно DR-23](#фактическое-окно-dr-23)
 - [Локальная refinement DR-24 2026-09-11](#локальная-refinement-dr-24-2026-09-11)
+- [DR-25: provider-policy gate](#dr-25-provider-policy-gate)
 
 ## Итог
 
@@ -568,3 +569,30 @@ Focused gateway/evaluator tests прошли 118/118, package typecheck прош
 сценария, отчёта, метрик, статуса, Git и измерений. Это локальное доказательство
 совместимости; provider calls, Stage 3, активное чтение, применение кандидатов,
 Git-запись и retry остаются закрыты.
+
+## DR-25: provider-policy gate
+
+PM разрешил одно непроизводственное пятисценарное окно на Coding Plan
+`glm-4.7` с bounds `90000/5000/100000/300000` ms, `maxAttempts=1`, без retry,
+одним developer/game/policy и фиксированным порядком категорий. Host resource
+preflight прошёл, но окно заблокировано до preactivation: независимый Sol-high
+review дал `BLOCK` для прямой связки `runShadowWorkerOnce` ->
+`ZaiCodingPlanModelGateway`. [Subscription Terms
+Z.AI](https://docs.z.ai/legal-agreement/subscription-terms), [Usage
+Policy](https://docs.z.ai/devpack/usage-policy), [API
+introduction](https://docs.z.ai/api-reference/introduction) и [supported
+tools/endpoints](https://docs.z.ai/devpack/tool/others) требуют допустимого
+инструмента/сценария для Coding Plan; pet/test статус исключения не создаёт.
+
+Разрешение не израсходовано (`providerCalls=0`): provider call, PostgreSQL,
+Portal adapter, manifest, messages, candidate и private operator не создавались;
+репозиторий продуктовой wiki не менялся. Provider-вызовы и Stage 3 остаются
+закрыты, а credentials, bearer, диалог, содержимое, идентификаторы и provider
+payload не выводятся и не сохраняются. Supported CLI не может быть proxy,
+поскольку не сохраняет принятую границу gateway/no-tools/no-retry/bounded-I/O.
+
+Варианты продолжения не выбраны: (A) письменное разрешение Z.AI при сохранении
+текущего gateway; (B) General API после нового PM-решения о модели, цене и
+контракте; (C) local/mock; (D) supported CLI только как новая transport boundary
+после отдельного PM-решения и доказательства, не workaround. Ни один вариант не
+является принятой архитектурой; до выбора provider call не повторяется.

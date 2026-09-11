@@ -109,6 +109,23 @@ Task | Coordinator | Owner | Working/integration branch`, затем повто�
   evaluator. Любое новое live-окно требует отдельного одобрения PM и проверки
   допустимого provider-пути; до этого внешний вызов, Stage 3, активное чтение,
   применение кандидата и Git-запись остаются закрыты.
+- DR-25 остановлен до preactivation и первого внешнего вызова: PM-разрешение
+  одного пятисценарного окна не заменяет provider-policy gate. Host resource
+  preflight прошёл, но прямой вызов `runShadowWorkerOnce` ->
+  `ZaiCodingPlanModelGateway` заблокирован независимым Sol-high review на
+  основании [Subscription Terms Z.AI](https://docs.z.ai/legal-agreement/subscription-terms),
+  [Usage Policy](https://docs.z.ai/devpack/usage-policy),
+  [API introduction](https://docs.z.ai/api-reference/introduction) и
+  [supported tools/endpoints](https://docs.z.ai/devpack/tool/others).
+  Разрешение не израсходовано (`providerCalls=0`): PostgreSQL, Portal adapter,
+  manifest, messages и private operator не создавались; candidate, запись в Git
+  продуктовой wiki и Stage 3 остаются закрыты.
+- Возобновление не выбрано. Допустимые варианты требуют отдельного решения:
+  письменное разрешение Z.AI при сохранении текущего gateway; General API при
+  принятии новой модели/цены/контракта; local/mock; либо supported CLI только
+  как новая transport boundary после PM-решения и доказательства соответствия,
+  не как workaround. До этого не повторять provider call и не выводить
+  credentials, bearer, dialog text, content, IDs или provider payload.
 - Worker сохраняет явный model timeout до 90000 ms и lease не меньше 100000 ms
   при Portal timeout 5000 ms. Эти bounds не разрешают provider call, не
   добавляют retry и не открывают Stage 3, активное чтение, применение кандидата

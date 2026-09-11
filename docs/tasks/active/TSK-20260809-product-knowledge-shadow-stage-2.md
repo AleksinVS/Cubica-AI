@@ -62,6 +62,15 @@ in_progress
   контейнер и private state уничтожены. Полная матрица и положительные пути не
   доказаны; DR-24 локально принят и реализован, следующий внешний вызов и
   Stage 3 закрыты.
+- DR-25 заблокирован 2026-09-11 до preactivation: PM разрешил одно
+  непроизводственное пятисценарное окно на `glm-4.7` с bounds
+  `90000/5000/100000/300000` ms, `maxAttempts=1`, без retry, но provider-policy
+  gate не пройден. Host resource preflight прошёл, однако независимый Sol-high
+  review заблокировал прямую связку `runShadowWorkerOnce` ->
+  `ZaiCodingPlanModelGateway`. Разрешение не израсходовано (`providerCalls=0`),
+  инфраструктура, Portal adapter, manifest, messages, candidate и private
+  operator не создавались; запись в Git продуктовой wiki и Stage 3 остаются
+  закрыты.
 
 ## Parent
 
@@ -327,6 +336,21 @@ approved
 но не могло заменить разрешение поставщика. После DR-23 актуальные условия
 перепроверены: прямой API-вызов из собственного evaluator требует отдельного
 письменного соглашения либо обычного API-тарифа. Новые внешние вызовы закрыты.
+
+DR-25 подтверждает этот gate: [Subscription Terms
+Z.AI](https://docs.z.ai/legal-agreement/subscription-terms), [Usage
+Policy](https://docs.z.ai/devpack/usage-policy), [API
+introduction](https://docs.z.ai/api-reference/introduction) и [supported
+tools/endpoints](https://docs.z.ai/devpack/tool/others) ограничивают Coding Plan
+поддержанными инструментами/сценариями. Pet/test статус исключения не создаёт.
+Supported CLI не сохраняет принятую границу gateway/no-tools/no-retry/bounded-I/O
+и не является допустимым proxy без нового решения PM и подтверждения провайдера.
+Варианты не выбраны: (A) письменное разрешение Z.AI при сохранении gateway;
+(B) General API после нового PM-решения о модели, цене и контракте; (C)
+local/mock; (D) supported CLI как новая transport boundary после PM-решения и
+доказательства. До этого provider call не повторяется, внешние вызовы и Stage 3
+закрыты, а в вывод не попадают credentials, bearer, диалог, содержимое,
+идентификаторы или provider payload.
 
 Первый прогон выполнен после одновременной подготовки следующих условий;
 повторный реальный прогон требует снова подтвердить их актуальность:
@@ -1281,3 +1305,22 @@ worker и не открывает второй путь к модели или �
   choices, choice/message shape, finish, top-level/message tool calls,
   tolerated metadata, non-string content, legacy stage и exact evaluator
   binding новых стадий.
+
+### 2026-09-11 — основной AI agent, блокировка окна DR-25
+
+- Gate: PM разрешил одно непроизводственное пятисценарное окно на `glm-4.7` с
+  bounds `90000/5000/100000/300000` ms, `maxAttempts=1`, без retry, но
+  provider-policy gate не пройден. Host resource preflight прошёл; независимый
+  Sol-high review заблокировал прямую связку `runShadowWorkerOnce` ->
+  `ZaiCodingPlanModelGateway` по официальным условиям Coding Plan.
+- Safety: разрешение не израсходовано (`providerCalls=0`). PostgreSQL, Portal
+  adapter, manifest, messages, candidate и private operator не создавались;
+  provider-вызовы, Stage 3, запись в Git продуктовой wiki и вывод
+  credentials/bearer/диалога, содержимого, идентификаторов или provider payload
+  закрыты.
+- Options: не выбраны — письменное разрешение Z.AI при сохранении gateway;
+  General API после нового PM-решения о модели/цене/контракте; local/mock;
+  supported CLI только как новая transport boundary после PM-решения и
+  доказательства, не как workaround.
+- Blocker: pet/test статус не создаёт исключения; следующая попытка возможна
+  только после выбора допустимого варианта и подтверждения provider policy.

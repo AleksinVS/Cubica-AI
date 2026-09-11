@@ -27,6 +27,7 @@ Runbook отделяет закрытую синтетическую CLI-реп�
 - [Фактическое окно DR-21 2026-08-31](#фактическое-окно-dr-21-2026-08-31)
 - [Фактическое окно DR-23 2026-09-11](#фактическое-окно-dr-23-2026-09-11)
 - [Локальная refinement DR-24 2026-09-11](#локальная-refinement-dr-24-2026-09-11)
+- [Блокировка окна DR-25 2026-09-11](#блокировка-окна-dr-25-2026-09-11)
 
 ## Цель и границы
 
@@ -662,3 +663,34 @@ fail-closed проверки запрещены. Любое новое live-ок
 сохраняются. Focused gateway/evaluator tests — 118/118, package typecheck
 прошёл. Это локальная проверка совместимости и не разрешение нового provider
 call или Stage 3.
+
+## Блокировка окна DR-25 2026-09-11
+
+PM разрешил одно непроизводственное пятисценарное окно на Coding Plan
+`glm-4.7` с bounds `90000/5000/100000/300000` ms, `maxAttempts=1`, без retry,
+одним developer/game/policy и фиксированным порядком категорий. Разрешение не
+израсходовано: host resource preflight прошёл, но provider-policy gate
+остановил окно до создания инфраструктуры, preactivation, enqueue и первого
+provider call (`providerCalls=0`). PostgreSQL, Portal adapter, manifest,
+messages, candidate и private operator не создавались; репозиторий продуктовой
+wiki не менялся, Stage 3 и provider-вызовы остаются закрыты.
+
+Независимый Sol-high review дал `BLOCK`: текущая связка
+`runShadowWorkerOnce` -> `ZaiCodingPlanModelGateway` является прямым вызовом из
+собственного evaluator и не покрыта Coding Plan. Основание — [Subscription
+Terms Z.AI](https://docs.z.ai/legal-agreement/subscription-terms), [Usage
+Policy](https://docs.z.ai/devpack/usage-policy), [API
+introduction](https://docs.z.ai/api-reference/introduction) и [supported
+tools/endpoints](https://docs.z.ai/devpack/tool/others). Статус pet/test не
+создаёт исключения. Поддержанный CLI не сохраняет принятую точную границу
+gateway/no-tools/no-retry/bounded-I/O и не может использоваться как proxy без
+нового решения PM и подтверждения провайдера.
+
+Возобновление не выбрано. Возможны только: (A) письменное разрешение Z.AI при
+сохранении текущего gateway; (B) General API после нового решения PM о
+модели/цене/контракте; (C) local/mock; (D) supported CLI как новая transport
+boundary после отдельного решения PM и доказательства, не как workaround. До
+выбора варианта оператор не повторяет вызов и не выводит credentials, bearer,
+диалог, содержимое, идентификаторы или provider payload. Поскольку продуктовая
+инфраструктура не создавалась, cleanup не требовался; в документации остаётся
+только бесконтентный факт остановки.
