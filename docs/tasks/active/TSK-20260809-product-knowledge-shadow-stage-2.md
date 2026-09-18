@@ -1381,3 +1381,28 @@ worker и не открывает второй путь к модели или �
 - Evidence: package tests — 258 passed / 70 DB-dependent skipped; package
   typecheck — PASS. Проверки включают отказ старого alias в worker config и
   response envelope. Это локальное доказательство, не генерация новой моделью.
+
+### 2026-09-18 — основной AI agent, техническая подготовка без активации
+
+- Review: независимый Sol-high — `ACCEPT_FOR_PREPARATION` для миграции и
+  приватного оператора, не preactivation `ACCEPT`. Approval marker не создавался.
+- Observed: одноразовый PostgreSQL с отдельными app/worker login, maintained
+  migrations и read-only seed создан. Preflight отказал до HTTP adapter:
+  существующий Portal `JWT_SECRET` короче 32 байт, необходимых приватному
+  оператору. Z.AI key/base/model проходят свои shape guards. Никакие секреты
+  не выводились и общий Portal не менялся. Вызовов HTTP authorization,
+  evaluator preflight, enqueue, worker и provider — 0.
+- Diagnosis: основной агент выполнил content-free проверку условия; Sol-high
+  автор оператора независимо подтвердил точку отказа по порядку кода.
+  Ослабление проверки и слепой повтор исключены.
+- Cleanup: maintained credential-free cleanup — PASS, initial/active runs,
+  metrics, messages, threads, text bytes — 0, Git unchanged. `unavailable` в
+  hard-stopped housekeeping report не является результатом модели. Destroy —
+  PASS, собственные container/private state/manifest/seed Git отсутствуют.
+- Next gate: PM должен выбрать тестовую подпись Portal без необоснованной
+  ротации общего секрета; отдельно обеспечить незаписываемый локальный терминал
+  для честной оценки каждого результата. Ни новый ключ/граница, ни автоматическая
+  смысловая оценка не внедрены. Permission DR-25 ещё не израсходовано.
+- Verification: миграция — 258 passed / 70 DB-dependent skipped, typecheck
+  PASS; private self-check/typecheck и review PASS. Реальная генерация новой
+  моделью, runtime authorization и положительные пути не доказаны.
