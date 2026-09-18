@@ -1,0 +1,53 @@
+{
+  "format": "cubica.public-gameplay-journal",
+  "schemaVersion": "1.0.0",
+  "sessionId": "cmt-eval-session",
+  "gameId": "cards-money-trains",
+  "lifecycle": "archived",
+  "sessionCreatedAt": "2026-09-04T10:00:00.000Z",
+  "archivedAt": "2026-09-04T10:30:00.000Z",
+  "throughEventSequence": 2,
+  "entries": [
+    {
+      "eventId": "cmt-eval-session:1",
+      "sequence": 1,
+      "eventType": "cargo.loaded",
+      "occurredAt": "2026-09-04T10:10:00.000Z",
+      "summary": "Груз загружен в вагон логистической компании",
+      "data": {
+        "kind": "cargo-load",
+        "cargoId": "cargo-source-row-005",
+        "wagonId": "technical-wagon-white-1",
+        "logisticsTeamId": "white-logistics",
+        "sourceNodeId": "terminal-1",
+        "pickupNodeId": "terminal-1",
+        "turnNumber": 2
+      }
+    },
+    {
+      "eventId": "cmt-eval-session:2",
+      "sequence": 2,
+      "eventType": "cargo.delivered",
+      "occurredAt": "2026-09-04T10:20:00.000Z",
+      "summary": "Груз доставлен, банковская выплата и тариф рассчитаны",
+      "data": {
+        "kind": "cargo-delivery",
+        "cargoId": "cargo-source-row-005",
+        "wagonId": "technical-wagon-white-1",
+        "locomotiveId": "technical-locomotive-purple-1",
+        "logisticsTeamId": "white-logistics",
+        "guildTeamId": "purple-guild",
+        "originNodeId": "terminal-1",
+        "activeLegFromNodeId": "terminal-1",
+        "destinationNodeId": "terminal-9",
+        "basePayout": 13,
+        "payoutBonus": 3,
+        "grossPayout": 16,
+        "routeLength": 1,
+        "tariffPerEdge": 2,
+        "tariffTotal": 2,
+        "turnNumber": 2
+      }
+    }
+  ]
+}

@@ -18,15 +18,25 @@
 
 ## Status
 
-in_progress
+review
 
 Status note: архитектура ADR-059 принята 2026-07-06; S8 и S9 приняты локально.
-Durable capability + SSE-реализация S10/GSR-050 исправлена и проверяется как
-кандидат, но несовместима с ранее принятым one-time claim + WebSocket-пакетом и
-не отменяет его. Следующий gate — решение PM о согласовании архитектурных
-границ. Production two-browser E2E и primary visual acceptance выполняются
-после этого решения; каталог и публичная публикация остаются отдельными
-продуктовыми воротами.
+S10/GSR-050 и joined-human guest recovery приняты для закрытой альфы.
+Итоговое доказательство recovery increment: contracts generator `--check`,
+schema parity и `verify:api-contracts` — PASS; contracts-session typecheck —
+PASS и `16/16`; runtime typecheck — PASS, focused recovery/PostgreSQL/SSE —
+`53/53`, полный runtime — `411 pass / 3 skip / 0 fail` (`414`); Player
+typecheck — PASS, focused Player — `81/81`, полный Player — `342/342`;
+production player build — PASS; production Playwright Estate private network —
+`1/1` PASS с явным loopback insecure-cookie flag; Estate package — `53/53`,
+plugin — `37/37` и typecheck — PASS; disposable PostgreSQL 17
+migrations/restart — `2/2`. Verify agent instructions, validate legacy и
+structure generated — PASS. Потеря успешного initial claim response не требует
+пересоздания сессии или повторного initial-invite claim: host выдаёт свежую
+recovery-ссылку, а участник предъявляет её через тот же claim endpoint. Cookie,
+не соответствующая живому principal, является только анонимным предъявлением
+capability; credential другого живого principal claim не допускает. Каталог,
+публичная публикация и production readiness остаются отдельными воротами.
 
 ## Understanding
 

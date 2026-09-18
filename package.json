@@ -64,6 +64,8 @@
     "verify:contracts-runtime": "npm test --workspace @cubica/contracts-runtime",
     "verify:contracts-session": "npm test --workspace @cubica/contracts-session",
     "verify:contracts-ai": "npm run typecheck --workspace @cubica/contracts-ai && npm test --workspace @cubica/contracts-ai",
+    "verify:session-ai-debrief-eval": "node --experimental-strip-types services/runtime-api/scripts/run-session-ai-debrief-eval.ts",
+    "proof:session-ai-debrief-zai": "node --experimental-strip-types services/runtime-api/scripts/run-session-ai-debrief-zai-proof.ts",
     "verify:contracts-knowledge": "npm run generate:types:check --workspace @cubica/product-context && npm run typecheck --workspace @cubica/product-context && npm run test --workspace @cubica/product-context -- --run contracts policy",
     "verify:product-context": "node -e \"if (!process.env.TEST_PRODUCT_CONTEXT_DATABASE_URL) { console.error('TEST_PRODUCT_CONTEXT_DATABASE_URL is required for the Stage 1 acceptance suite.'); process.exit(1) }\" && npm run generate:types:check --workspace @cubica/product-context && npm run typecheck --workspace @cubica/product-context && npm run test:acceptance --workspace @cubica/product-context",
     "verify:product-context-isolation": "node scripts/ci/validate-product-context-isolation.js",

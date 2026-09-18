@@ -232,6 +232,7 @@ export interface GameManifestTurnModel {
  * via the `definition` "GameManifestContent".
  */
 export interface GameManifestContent {
+  aiDebrief?: GameManifestAiDebriefProfile;
   data?: GameManifestContentData;
   design?: {
     mockups?: GameManifestDesignArtifactRef[];
@@ -244,6 +245,132 @@ export interface GameManifestContent {
   scenario?: GameManifestDocumentRef;
   scripts?: GameManifestDocumentRef[];
   [k: string]: unknown;
+}
+/**
+ * Pinned game-owned methodology for a read-only AI debrief of the public session journal.
+ *
+ * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
+ * via the `definition` "GameManifestAiDebriefProfile".
+ */
+export interface GameManifestAiDebriefProfile {
+  format: "cubica.session-ai-debrief-profile";
+  schemaVersion: "1.0.0";
+  methodologyVersion: string;
+  locale: string;
+  purpose: string;
+  /**
+   * @minItems 1
+   * @maxItems 16
+   */
+  analysisInstructions:
+    | [string]
+    | [string, string]
+    | [string, string, string]
+    | [string, string, string, string]
+    | [string, string, string, string, string]
+    | [string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string, string, string, string]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ];
+  /**
+   * @minItems 1
+   * @maxItems 16
+   */
+  facilitatorQuestionGuide:
+    | [string]
+    | [string, string]
+    | [string, string, string]
+    | [string, string, string, string]
+    | [string, string, string, string, string]
+    | [string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string, string, string, string]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ];
+  limits: {
+    maxFacts: number;
+    maxInterpretations: number;
+    maxQuestions: number;
+  };
 }
 /**
  * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema

@@ -91,6 +91,8 @@ export interface AgentTurnServiceInput {
 
 export interface AgentTurnServiceResponse {
   readonly sessionId: string;
+  /** Trusted role of the principal whose credential produced this projection. */
+  readonly viewerRole?: SessionPrincipal["role"];
   readonly participants: SessionRecord<RuntimeState>["participants"];
   readonly version: SessionRecord<RuntimeState>["version"];
   readonly state: RuntimeState;
@@ -186,6 +188,7 @@ export class AgentTurnService {
           committedState: false,
           response: {
             sessionId: current.sessionId,
+            viewerRole: principal.role,
             participants: current.participants,
             version: current.version,
             state: projectActorState(current.state, bundle, viewerActorId),
@@ -289,6 +292,7 @@ export class AgentTurnService {
           committedState: false,
           response: {
             sessionId: current.sessionId,
+            viewerRole: sessionRole,
             participants: current.participants,
             version: current.version,
             state: projectActorState(current.state, bundle, viewerActorId),
@@ -353,6 +357,7 @@ export class AgentTurnService {
           committedState: false,
           response: {
             sessionId: current.sessionId,
+            viewerRole: sessionRole,
             participants: current.participants,
             version: current.version,
             state: projectActorState(current.state, bundle, viewerActorId),
@@ -386,6 +391,7 @@ export class AgentTurnService {
           committedState: false,
           response: {
             sessionId: current.sessionId,
+            viewerRole: sessionRole,
             participants: current.participants,
             version: current.version,
             state: projectActorState(current.state, bundle, viewerActorId),
@@ -469,6 +475,7 @@ export class AgentTurnService {
         refreshContext: { bundle, principal },
         response: {
           sessionId: nextSnapshot.sessionId,
+          viewerRole: sessionRole,
           participants: nextSnapshot.participants,
           version: nextSnapshot.version,
           state: projectActorState(nextSnapshot.state, bundle, nextViewerActorId),

@@ -18,7 +18,7 @@ export interface FacilitatorTeamSummary {
 }
 
 export interface FinalReflectionGuide {
-  readonly workflowStatus: "pending-author-answers";
+  readonly workflowStatus: "confirmed-ready";
   readonly preparationMinutes: Readonly<{ min: number; max: number }>;
   readonly presentationMinutesMax: number;
   readonly conclusionCount: Readonly<{ min: number; max: number }>;
@@ -115,7 +115,7 @@ export function readFinalReflectionGuide(
 ): FinalReflectionGuide | null {
   if (!isRecord(facilitatedSessionContent)) return null;
   const raw = facilitatedSessionContent.finalReflectionGuide;
-  if (!isRecord(raw) || raw.workflowStatus !== "pending-author-answers") {
+  if (!isRecord(raw) || raw.workflowStatus !== "confirmed-ready") {
     return null;
   }
 
@@ -140,7 +140,7 @@ export function readFinalReflectionGuide(
   if (questions.some((question) => question === null)) return null;
 
   return Object.freeze({
-    workflowStatus: "pending-author-answers",
+    workflowStatus: "confirmed-ready",
     preparationMinutes: Object.freeze({ min: 5, max: 15 }),
     presentationMinutesMax: 2,
     conclusionCount: Object.freeze({ min: 2, max: 3 }),

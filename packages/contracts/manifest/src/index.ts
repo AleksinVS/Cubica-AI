@@ -37,6 +37,7 @@ export type * from "./generated/game-manifest.ts";
 import type {
   GameManifest,
   GameManifestAgentFailurePolicy,
+  GameManifestAiDebriefProfile,
   GameManifestExecutionMode,
   GameManifestId,
   GameManifestLocale,
@@ -652,6 +653,8 @@ export interface PlayerFacingContent {
    * present a pause/retry state when it is unavailable.
    */
   agentRuntime?: PlayerFacingAgentRuntimeConfig;
+  /** Published, non-secret methodology that enables the facilitator debrief UI. */
+  aiDebrief?: GameManifestAiDebriefProfile;
   actions: Array<PlayerFacingAction>;
   mockups: Array<PlayerFacingMockup>;
   /** Runtime object models used by generic Presenter projection. */

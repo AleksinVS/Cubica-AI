@@ -102,6 +102,31 @@ test("an in-flight load cannot repopulate a replaced content source cache", asyn
   assert.equal(newRepository.readCount("source-race"), 1);
 });
 
+test("player content projects the published AI debrief methodology without game-specific branches", async () => {
+  const template = JSON.parse(await readFile(
+    new URL("../../../games/simple-choice/game.manifest.json", import.meta.url),
+    "utf8"
+  )) as Record<string, unknown>;
+  const profile = {
+    format: "cubica.session-ai-debrief-profile",
+    schemaVersion: "1.0.0",
+    methodologyVersion: "neutral-method-v1",
+    locale: "en-US",
+    purpose: "Support a factual facilitator reflection.",
+    analysisInstructions: ["Keep facts separate from interpretations."],
+    facilitatorQuestionGuide: ["What informed the confirmed choice?"],
+    limits: { maxFacts: 4, maxInterpretations: 4, maxQuestions: 4 }
+  };
+  const content = template.content as Record<string, unknown>;
+  content.aiDebrief = profile;
+  const service = new ContentService(new CountingManifestRepository(template));
+
+  const projected = await service.getPlayerFacingContent({ gameId: "neutral-ai-debrief" });
+
+  assert.deepEqual(projected.content.aiDebrief, profile);
+  assert.notEqual(projected.content.aiDebrief, profile);
+});
+
 class CountingManifestRepository implements IGameRepository {
   private readonly reads = new Map<string, number>();
   private readonly template: Record<string, unknown>;

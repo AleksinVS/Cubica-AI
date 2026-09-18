@@ -93,6 +93,27 @@ const expectedOperations = [
   },
   {
     method: "post",
+    path: "/sessions/{sessionId}/ai-debriefs",
+    operationId: "generateSessionAiDebrief",
+    tag: "SessionAiDebrief",
+    marker: "generateAiDebriefMatch"
+  },
+  {
+    method: "get",
+    path: "/sessions/{sessionId}/ai-debriefs/latest",
+    operationId: "getLatestSessionAiDebrief",
+    tag: "SessionAiDebrief",
+    marker: "latestAiDebriefMatch"
+  },
+  {
+    method: "post",
+    path: "/sessions/{sessionId}/ai-debriefs/{artifactId}/confirm",
+    operationId: "confirmSessionAiDebrief",
+    tag: "SessionAiDebrief",
+    marker: "confirmAiDebriefMatch"
+  },
+  {
+    method: "post",
     path: "/sessions/{sessionId}/preview-restore",
     operationId: "restorePreviewSession",
     tag: "EditorPreview",
@@ -335,6 +356,9 @@ function validateSchemaCoverage(spec) {
     "HealthResponse",
     "PlayerFacingContent",
     "PortablePublicGameplayJournal",
+    "SessionAiDebriefArtifact",
+    "SessionAiDebriefGenerateRequest",
+    "SessionAiDebriefConfirmRequest",
     "PrivateSessionInvite",
     "PrivateSessionInvites",
     "PublicCommandReceipt",
@@ -345,6 +369,7 @@ function validateSchemaCoverage(spec) {
     "SessionParticipant",
     "SessionParticipants",
     "SessionCredential",
+    "SessionRole",
     "SessionStateVersion",
     "SessionVersionNotification",
     "TransportRoadPreviewRequest",
@@ -422,6 +447,10 @@ function validateActionConcurrencyContract(spec) {
 
 /** Locks small but security-relevant response and editor-preview shapes. */
 function validatePreciseRuntimeShapes(spec) {
+  if (JSON.stringify(spec.components.schemas.SessionRole?.enum) !==
+      JSON.stringify(["player", "facilitator", "assistant", "observer"])) {
+    fail("SessionRole must remain the exact authenticated principal role vocabulary");
+  }
   const planHash = spec.components.schemas.PublicCommandReceipt?.properties?.planHash;
   if (planHash?.pattern !== "^sha256:[a-f0-9]{64}$") {
     fail("PublicCommandReceipt.planHash must use the sha256:<64 lowercase hex> profile");
@@ -438,6 +467,7 @@ function validatePreciseRuntimeShapes(spec) {
     fail("SessionParticipant must remain the exact closed authoritative seat shape");
   }
   const participantRef = "#/components/schemas/SessionParticipants";
+  const viewerRoleRef = "#/components/schemas/SessionRole";
   for (const schemaName of [
     "ActionResponse",
     "AgentTurnResponse",
@@ -449,6 +479,9 @@ function validatePreciseRuntimeShapes(spec) {
     if (!responseSchema.required?.includes("participants") ||
         responseSchema.properties?.participants?.$ref !== participantRef) {
       fail(`${schemaName} must require authoritative session participants`);
+    }
+    if (responseSchema.properties?.viewerRole?.$ref !== viewerRoleRef) {
+      fail(`${schemaName} must expose the authenticated principal's trusted viewerRole`);
     }
   }
 
@@ -649,6 +682,38 @@ function validatePublicJournalContract(spec) {
   }
 }
 
+function validateSessionAiDebriefContract(spec) {
+  const canonicalRef = "./schemas/session-ai-debrief.schema.json";
+  const methodologyRef = "./schemas/game-manifest.schema.json#/definitions/GameManifestAiDebriefProfile";
+  if (spec.components.schemas.SessionAiDebriefArtifact?.$ref !== canonicalRef) {
+    fail("SessionAiDebriefArtifact must reference the canonical AI debrief schema");
+  }
+  if (spec.components.schemas.PlayerFacingContent?.properties?.aiDebrief?.$ref !== methodologyRef) {
+    fail("PlayerFacingContent.aiDebrief must reference the canonical published methodology profile");
+  }
+  const operations = [
+    spec.paths?.["/sessions/{sessionId}/ai-debriefs"]?.post,
+    spec.paths?.["/sessions/{sessionId}/ai-debriefs/latest"]?.get,
+    spec.paths?.["/sessions/{sessionId}/ai-debriefs/{artifactId}/confirm"]?.post
+  ];
+  for (const operation of operations) {
+    if (operation?.security?.[0]?.SessionBearer === undefined) {
+      fail("Every session AI debrief operation must require SessionBearer");
+    }
+    if (operation?.responses?.[operation.operationId === "generateSessionAiDebrief" ? "201" : "200"]
+        ?.content?.["application/json"]?.schema?.$ref !== canonicalRef) {
+      fail(`${operation?.operationId ?? "AI debrief operation"} must return the canonical artifact schema`);
+    }
+    if (operation?.responses?.["401"]?.$ref !== "#/components/responses/Unauthorized" ||
+        operation?.responses?.["403"]?.$ref !== "#/components/responses/Forbidden") {
+      fail(`${operation?.operationId ?? "AI debrief operation"} must document authentication and facilitator authorization`);
+    }
+  }
+  if (operations[0]?.responses?.["504"]?.$ref !== "#/components/responses/GatewayTimeout") {
+    fail("AI debrief generation must document the bounded provider timeout as 504");
+  }
+}
+
 try {
   const spec = parseOpenApi();
   validateSpecShape(spec);
@@ -661,6 +726,7 @@ try {
   validateSessionTrustContract(spec);
   validatePreciseRuntimeShapes(spec);
   validatePublicJournalContract(spec);
+  validateSessionAiDebriefContract(spec);
   console.log("validate-runtime-api-openapi: OK");
 } catch (error) {
   console.error("validate-runtime-api-openapi: failed");

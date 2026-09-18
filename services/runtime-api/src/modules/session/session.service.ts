@@ -207,6 +207,7 @@ export class SessionService {
     return {
       sessionId: snapshot.sessionId,
       gameId: snapshot.gameId,
+      viewerRole: created.principal.role,
       participants: snapshot.participants,
       version: snapshot.version,
       state: projectPlayerSessionState({
@@ -239,6 +240,7 @@ export class SessionService {
     return {
       sessionId: snapshot.sessionId,
       gameId: snapshot.gameId,
+      viewerRole: principal.role,
       participants: snapshot.participants,
       version: snapshot.version,
       state: projectPlayerSessionState({
@@ -363,6 +365,7 @@ export class SessionService {
         result: {
           sessionId: restored.sessionId,
           gameId: restored.gameId,
+          viewerRole: access.principal.role,
           participants: restored.participants,
           version: restored.version,
           state: projectPlayerSessionState({

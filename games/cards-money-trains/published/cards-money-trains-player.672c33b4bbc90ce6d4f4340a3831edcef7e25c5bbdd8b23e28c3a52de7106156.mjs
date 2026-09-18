@@ -4943,7 +4943,7 @@ function readFinalReflectionGuide(facilitatedSessionContent) {
     if (!isRecord(facilitatedSessionContent))
         return null;
     const raw = facilitatedSessionContent.finalReflectionGuide;
-    if (!isRecord(raw) || raw.workflowStatus !== "pending-author-answers") {
+    if (!isRecord(raw) || raw.workflowStatus !== "confirmed-ready") {
         return null;
     }
     const preparation = raw.preparationMinutes;
@@ -4964,7 +4964,7 @@ function readFinalReflectionGuide(facilitatedSessionContent) {
     if (questions.some((question) => question === null))
         return null;
     return Object.freeze({
-        workflowStatus: "pending-author-answers",
+        workflowStatus: "confirmed-ready",
         preparationMinutes: Object.freeze({ min: 5, max: 15 }),
         presentationMinutesMax: 2,
         conclusionCount: Object.freeze({ min: 2, max: 3 }),

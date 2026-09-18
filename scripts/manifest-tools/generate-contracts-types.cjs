@@ -177,6 +177,28 @@ const JOBS = [
     rootName: "PortablePublicGameplayJournal",
     compileRoot: true,
     validationOnlyRootAllOf: true
+  },
+  {
+    name: "public-gameplay-journal-schema-module",
+    schema: path.join(repoRoot, "docs", "architecture", "schemas", "public-gameplay-journal.schema.json"),
+    output: path.join(repoRoot, "packages", "contracts", "session", "src", "generated", "public-gameplay-journal.schema.ts"),
+    outputKind: "typescript-schema",
+    exportName: "publicGameplayJournalSchema"
+  },
+  {
+    name: "session-ai-debrief",
+    schema: path.join(repoRoot, "docs", "architecture", "schemas", "session-ai-debrief.schema.json"),
+    output: path.join(repoRoot, "packages", "contracts", "ai", "src", "generated", "session-ai-debrief.ts"),
+    rootName: "SessionAiDebriefArtifact",
+    compileRoot: true,
+    validationOnlyRootAllOf: true
+  },
+  {
+    name: "session-ai-debrief-schema-module",
+    schema: path.join(repoRoot, "docs", "architecture", "schemas", "session-ai-debrief.schema.json"),
+    output: path.join(repoRoot, "packages", "contracts", "ai", "src", "generated", "session-ai-debrief.schema.ts"),
+    outputKind: "typescript-schema",
+    exportName: "sessionAiDebriefSchema"
   }
 ];
 

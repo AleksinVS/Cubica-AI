@@ -1,0 +1,21 @@
+{
+  "format": "cubica.public-gameplay-journal",
+  "schemaVersion": "1.0.0",
+  "sessionId": "neutral-eval-session",
+  "gameId": "neutral-game",
+  "lifecycle": "active",
+  "sessionCreatedAt": "2026-09-04T10:00:00.000Z",
+  "throughEventSequence": 1,
+  "entries": [
+    {
+      "eventId": "neutral-eval-session:1",
+      "sequence": 1,
+      "eventType": "choice.confirmed",
+      "occurredAt": "2026-09-04T10:05:00.000Z",
+      "summary": "A choice was confirmed",
+      "data": {
+        "choiceId": "a"
+      }
+    }
+  ]
+}

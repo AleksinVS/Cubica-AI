@@ -5,7 +5,11 @@ import fs from "fs";
 import { createRequire } from "node:module";
 import path from "path";
 import { fileURLToPath } from "url";
-import type { GameManifest, GameManifestTransportNetworkModel } from "@cubica/contracts-manifest";
+import type {
+  GameManifest,
+  GameManifestAiDebriefProfile,
+  GameManifestTransportNetworkModel
+} from "@cubica/contracts-manifest";
 import { ManifestValidationError } from "../errors.ts";
 import { compileRegionRoadPlanning } from "../runtime/regionRoadPlanner.ts";
 
@@ -101,6 +105,11 @@ addFormats(ajv);
 ajvErrors(ajv);
 
 const validate = ajv.compile(gameManifestSchema);
+const validateAiDebriefProfileShape = ajv.compile({
+  $schema: gameManifestSchema.$schema,
+  definitions: gameManifestSchema.definitions,
+  $ref: "#/definitions/GameManifestAiDebriefProfile"
+});
 const CURRENT_MECHANICS_API_VERSION = "cubica.dev/mechanics/v1alpha1";
 const CURRENT_MECHANICS_VALIDATION_PROFILE = "mechanics-v1alpha1-current";
 
@@ -314,4 +323,11 @@ export function validateGameManifest(manifest: unknown): GameManifest {
   validateSemanticReferences(m);
 
   return manifest as GameManifest;
+}
+
+/** Validate only the pinned optional profile without re-admitting historic Mechanics. */
+export function validateGameManifestAiDebriefProfile(
+  value: unknown
+): value is GameManifestAiDebriefProfile {
+  return validateAiDebriefProfileShape(value) as boolean;
 }

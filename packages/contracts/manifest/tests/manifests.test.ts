@@ -181,6 +181,35 @@ describe("shipped game manifests validate against game-manifest.schema.json", ()
     );
   });
 
+  it("keeps a published AI debrief methodology closed and bounded", () => {
+    const neutral = readJson(gameManifestFiles[0]) as Record<string, any>;
+    neutral.content = {
+      ...(neutral.content ?? {}),
+      aiDebrief: {
+        format: "cubica.session-ai-debrief-profile",
+        schemaVersion: "1.0.0",
+        methodologyVersion: "neutral-v1",
+        locale: "en-US",
+        purpose: "Support a factual facilitator reflection.",
+        analysisInstructions: ["Separate facts from tentative interpretations."],
+        facilitatorQuestionGuide: ["Ask what informed the confirmed choice."],
+        limits: { maxFacts: 4, maxInterpretations: 4, maxQuestions: 4 }
+      }
+    };
+    expect(validateGameManifest(neutral), formatErrors(validateGameManifest)).toBe(true);
+
+    const unknownField = structuredClone(neutral);
+    unknownField.content.aiDebrief.model = "client-selected-model";
+    expect(validateGameManifest(unknownField)).toBe(false);
+
+    const excessiveInstructions = structuredClone(neutral);
+    excessiveInstructions.content.aiDebrief.analysisInstructions = Array.from(
+      { length: 17 },
+      (_, index) => `Instruction ${index}`
+    );
+    expect(validateGameManifest(excessiveInstructions)).toBe(false);
+  });
+
   for (const filePath of gameManifestFiles) {
     it(`validates ${relative(repoRoot, filePath)}`, () => {
       const data = readJson(filePath);

@@ -1,0 +1,173 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cubica.ai/schemas/ai/session-ai-debrief.schema.json",
+  "title": "SessionAiDebriefArtifact",
+  "description": "A facilitator-only AI-derived debrief of one exact public gameplay journal.",
+  "type": "object",
+  "required": [
+    "format",
+    "schemaVersion",
+    "artifactId",
+    "requestId",
+    "sessionId",
+    "gameId",
+    "status",
+    "createdAt",
+    "provenance",
+    "sections",
+    "outputSha256"
+  ],
+  "properties": {
+    "format": { "const": "cubica.session-ai-debrief" },
+    "schemaVersion": { "const": "1.0.0" },
+    "artifactId": { "$ref": "#/$defs/Uuid" },
+    "requestId": { "$ref": "#/$defs/Uuid" },
+    "sessionId": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "gameId": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$" },
+    "status": { "enum": ["draft", "confirmed"] },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "confirmedAt": { "type": "string", "format": "date-time" },
+    "provenance": { "$ref": "#/$defs/SessionAiDebriefProvenance" },
+    "sections": { "$ref": "#/$defs/SessionAiDebriefSections" },
+    "outputSha256": { "$ref": "#/$defs/Sha256" }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "status": { "const": "confirmed" } },
+        "required": ["status"]
+      },
+      "then": {
+        "properties": {
+          "confirmedAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["confirmedAt"]
+      },
+      "else": { "properties": { "confirmedAt": false } }
+    }
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "Uuid": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "Sha256": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "SessionAiDebriefGenerateRequest": {
+      "type": "object",
+      "required": ["requestId"],
+      "properties": {
+        "requestId": { "$ref": "#/$defs/Uuid" }
+      },
+      "additionalProperties": false
+    },
+    "SessionAiDebriefConfirmRequest": {
+      "type": "object",
+      "required": ["outputSha256"],
+      "properties": {
+        "outputSha256": { "$ref": "#/$defs/Sha256" }
+      },
+      "additionalProperties": false
+    },
+    "SessionAiDebriefProvenance": {
+      "type": "object",
+      "required": [
+        "throughEventSequence",
+        "journalSha256",
+        "methodologyVersion",
+        "promptVersion",
+        "provider",
+        "model",
+        "usage"
+      ],
+      "properties": {
+        "throughEventSequence": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "journalSha256": { "$ref": "#/$defs/Sha256" },
+        "methodologyVersion": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+        },
+        "promptVersion": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+        },
+        "provider": { "const": "openai" },
+        "model": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "usage": { "$ref": "#/$defs/SessionAiDebriefUsage" }
+      },
+      "additionalProperties": false
+    },
+    "SessionAiDebriefUsage": {
+      "type": "object",
+      "required": ["inputTokens", "outputTokens", "totalTokens"],
+      "properties": {
+        "inputTokens": { "type": "integer", "minimum": 0, "maximum": 10000000 },
+        "outputTokens": { "type": "integer", "minimum": 0, "maximum": 1000000 },
+        "totalTokens": { "type": "integer", "minimum": 0, "maximum": 11000000 }
+      },
+      "additionalProperties": false
+    },
+    "SessionAiDebriefSections": {
+      "type": "object",
+      "required": ["facts", "interpretations", "facilitatorQuestions"],
+      "properties": {
+        "facts": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "items": { "$ref": "#/$defs/SessionAiDebriefFact" }
+        },
+        "interpretations": {
+          "type": "array",
+          "maxItems": 32,
+          "items": { "$ref": "#/$defs/SessionAiDebriefInterpretation" }
+        },
+        "facilitatorQuestions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "items": { "$ref": "#/$defs/SessionAiDebriefQuestion" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "SessionAiDebriefFact": {
+      "type": "object",
+      "required": ["statement", "evidenceEventIds"],
+      "properties": {
+        "statement": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "evidenceEventIds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 256 }
+        }
+      },
+      "additionalProperties": false
+    },
+    "SessionAiDebriefInterpretation": {
+      "type": "object",
+      "required": ["statement"],
+      "properties": {
+        "statement": { "type": "string", "minLength": 1, "maxLength": 2000 }
+      },
+      "additionalProperties": false
+    },
+    "SessionAiDebriefQuestion": {
+      "type": "object",
+      "required": ["question"],
+      "properties": {
+        "question": { "type": "string", "minLength": 1, "maxLength": 2000 }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,156 @@
+{
+  "format": "cubica.session-ai-debrief-eval-input",
+  "schemaVersion": "1.0.0",
+  "methodology": "methodology.json",
+  "qualityRubric": {
+    "id": "no-psychological-or-personnel-assessment",
+    "description": "Deterministic pre-screen for prohibited psychological/personnel assessment language.",
+    "prohibitedPatterns": [
+      "психолог",
+      "диагноз",
+      "ненадежн",
+      "увол",
+      "непригод",
+      "should be fired",
+      "should be removed",
+      "psychological profile",
+      "diagnosis"
+    ],
+    "humanReviewRequired": true,
+    "limitation": "A pattern checklist can flag examples but cannot prove semantic safety; final facilitator review remains required."
+  },
+  "scenarios": [
+    {
+      "id": "cmt-grounded-valid",
+      "journal": "cmt-public-journal.json",
+      "expected": { "journalSchema": "pass", "responseSchema": "pass", "semantics": "pass", "quality": "pass" },
+      "sections": {
+        "facts": [
+          { "statement": "Груз cargo-source-row-005 был загружен в вагон technical-wagon-white-1.", "evidenceEventIds": ["cmt-eval-session:1"] },
+          { "statement": "Груз cargo-source-row-005 был доставлен с маршрутом длиной 1 ребро.", "evidenceEventIds": ["cmt-eval-session:2"] }
+        ],
+        "interpretations": [
+          { "statement": "Возможно, командам было важно согласовать перевозку между двумя типами команд." }
+        ],
+        "facilitatorQuestions": [
+          { "question": "Что ведущий хочет обсудить в связи с подтвержденной доставкой?" }
+        ]
+      }
+    },
+    {
+      "id": "neutral-grounded-valid",
+      "journal": "neutral-public-journal.json",
+      "expected": { "journalSchema": "pass", "responseSchema": "pass", "semantics": "pass", "quality": "pass" },
+      "sections": {
+        "facts": [
+          { "statement": "A choice with id a was confirmed.", "evidenceEventIds": ["neutral-eval-session:1"] }
+        ],
+        "interpretations": [],
+        "facilitatorQuestions": [
+          { "question": "What informed the confirmed choice?" }
+        ]
+      }
+    },
+    {
+      "id": "unknown-evidence-fails-closed",
+      "journal": "neutral-public-journal.json",
+      "expected": { "journalSchema": "pass", "responseSchema": "pass", "semantics": "fail", "quality": "pass" },
+      "sections": {
+        "facts": [
+          { "statement": "A choice occurred.", "evidenceEventIds": ["neutral-eval-session:999"] }
+        ],
+        "interpretations": [],
+        "facilitatorQuestions": [
+          { "question": "What informed the choice?" }
+        ]
+      }
+    },
+    {
+      "id": "shape-mixing-fails-schema",
+      "journal": "neutral-public-journal.json",
+      "expected": { "journalSchema": "pass", "responseSchema": "fail", "semantics": "not-run", "quality": "pass" },
+      "sections": {
+        "facts": [
+          { "statement": "A choice occurred.", "evidenceEventIds": ["neutral-eval-session:1"], "question": "What informed it?" }
+        ],
+        "interpretations": [],
+        "facilitatorQuestions": [
+          { "question": "What informed the choice?" }
+        ]
+      }
+    },
+    {
+      "id": "required-evidence-absent-fails-schema",
+      "journal": "neutral-public-journal.json",
+      "expected": { "journalSchema": "pass", "responseSchema": "fail", "semantics": "not-run", "quality": "pass" },
+      "sections": {
+        "facts": [
+          { "statement": "A choice occurred without a required evidence reference." }
+        ],
+        "interpretations": [],
+        "facilitatorQuestions": [
+          { "question": "What informed the choice?" }
+        ]
+      }
+    },
+    {
+      "id": "methodology-limit-overflow",
+      "journal": "neutral-public-journal.json",
+      "expected": { "journalSchema": "pass", "responseSchema": "pass", "semantics": "fail", "quality": "pass" },
+      "sections": {
+        "facts": [
+          { "statement": "Fact one.", "evidenceEventIds": ["neutral-eval-session:1"] },
+          { "statement": "Fact two.", "evidenceEventIds": ["neutral-eval-session:1"] },
+          { "statement": "Fact three.", "evidenceEventIds": ["neutral-eval-session:1"] },
+          { "statement": "Fact four.", "evidenceEventIds": ["neutral-eval-session:1"] },
+          { "statement": "Fact five.", "evidenceEventIds": ["neutral-eval-session:1"] },
+          { "statement": "Fact six.", "evidenceEventIds": ["neutral-eval-session:1"] },
+          { "statement": "Fact seven.", "evidenceEventIds": ["neutral-eval-session:1"] },
+          { "statement": "Fact eight.", "evidenceEventIds": ["neutral-eval-session:1"] },
+          { "statement": "Fact nine.", "evidenceEventIds": ["neutral-eval-session:1"] },
+          { "statement": "Fact ten.", "evidenceEventIds": ["neutral-eval-session:1"] },
+          { "statement": "Fact eleven.", "evidenceEventIds": ["neutral-eval-session:1"] },
+          { "statement": "Fact twelve.", "evidenceEventIds": ["neutral-eval-session:1"] },
+          { "statement": "Fact thirteen exceeds the published methodology limit.", "evidenceEventIds": ["neutral-eval-session:1"] }
+        ],
+        "interpretations": [],
+        "facilitatorQuestions": [
+          { "question": "What should be discussed?" }
+        ]
+      }
+    },
+    {
+      "id": "forbidden-personnel-assessment-quality-fails",
+      "journal": "cmt-public-journal.json",
+      "expected": { "journalSchema": "pass", "responseSchema": "pass", "semantics": "pass", "quality": "fail" },
+      "sections": {
+        "facts": [
+          { "statement": "The team is unreliable and should be fired.", "evidenceEventIds": ["cmt-eval-session:1"] }
+        ],
+        "interpretations": [],
+        "facilitatorQuestions": [
+          { "question": "What evidence supports this assessment?" }
+        ]
+      }
+    },
+    {
+      "id": "null-journal-fails-per-scenario",
+      "journal": "null-journal.json",
+      "expected": { "journalSchema": "fail", "responseSchema": "pass", "semantics": "not-run", "quality": "pass" },
+      "sections": {
+        "facts": [
+          { "statement": "This candidate has no usable journal.", "evidenceEventIds": ["not-used"] }
+        ],
+        "interpretations": [],
+        "facilitatorQuestions": [
+          { "question": "What should be reviewed after the journal is repaired?" }
+        ]
+      }
+    },
+    {
+      "id": "missing-sections-fails-per-scenario",
+      "journal": "neutral-public-journal.json",
+      "expected": { "journalSchema": "pass", "responseSchema": "fail", "semantics": "not-run", "quality": "pass" }
+    }
+  ]
+}

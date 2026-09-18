@@ -298,6 +298,9 @@ const projectManifestToPlayerContent = async (bundle: GameBundle, repository: IG
           deterministicFallbackActionId: manifest.agentRuntime.deterministicFallbackActionId,
           surfaceCatalog: [...manifest.agentRuntime.surfaceCatalog]
         },
+    aiDebrief: manifest.content?.aiDebrief === undefined
+      ? undefined
+      : structuredClone(manifest.content.aiDebrief),
     actions,
     mockups: [],
     objectModels: manifest.objectModels ? structuredClone(manifest.objectModels) : undefined,

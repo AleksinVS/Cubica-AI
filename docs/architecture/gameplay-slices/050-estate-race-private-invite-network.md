@@ -1,7 +1,7 @@
 # GSR-050: Estate Race — private invite network v1
 
-- **Дата:** 2026-08-23
-- **Статус:** Кандидат реализации существует; PM reconciliation, production two-browser E2E и primary visual acceptance ожидаются
+- **Дата:** 2026-08-27
+- **Статус:** Accepted for closed alpha; not catalog/production ready
 - **Предусловие:** GSR-047/S8 и GSR-049/S9 приняты локально; архитектурная граница ADR-059 принята
 - **Архитектура:** ADR-059
 
@@ -23,6 +23,13 @@ Estate Race получает optional `accessMode`: `local` (по умолчан
 credential-only fragment в HttpOnly SameSite cookie и затем очищает fragment;
 место и actor выбираются только runtime по аутентифицированному principal.
 
+Для уже joined human guest seat host может выдать одну новую 24-часовую
+одноразовую recovery-ссылку. Участник предъявляет свежий recovery token через
+тот же claim endpoint; повторный initial-invite claim или пересоздание сессии
+не нужны. Если cookie не соответствует живому principal, она является только
+анонимным предъявлением capability; credential другого живого principal claim
+не допускает.
+
 ## Общая граница
 
 Синхронизация выполняется через аутентифицированный SSE, передающий только
@@ -35,14 +42,18 @@ credential-only fragment в HttpOnly SameSite cookie и затем очищае�
 
 ## Приёмка
 
-Нейтральные runtime/contracts/player проверки зелёные; полный runtime result —
-395 pass / 2 skipped / 0 fail, contracts-session — 16/16, player-web —
-332/332, typechecks и API contract gate — green, disposable PostgreSQL restart
-proof — 1/1. До production two-browser E2E и primary visual acceptance PM
-должен согласовать этот durable+SSE-кандидат с принятым one-time+WebSocket
-пакетом; кандидат не объявлен принятой архитектурой network-части среза.
-Каталог и public release — отдельный product stream с собственными gates прав,
-баланса, продуктовой приёмки и технического долга.
+Итоговое доказательство recovery increment: contracts generator `--check`,
+schema parity и `verify:api-contracts` — PASS; contracts-session typecheck —
+PASS и `16/16`; runtime typecheck — PASS, focused recovery/PostgreSQL/SSE —
+`53/53`, полный runtime — `411 pass / 3 skip / 0 fail` (`414`); Player
+typecheck — PASS, focused Player — `81/81`, полный Player — `342/342`;
+Estate package — `53/53`, plugin — `37/37` и typecheck — PASS; disposable
+PostgreSQL 17 migrations/restart — `2/2`; production player build — PASS;
+production Playwright Estate private network — `1/1` PASS с явным loopback
+insecure-cookie flag. Исторические pre-recovery S10 результаты от 2026-08-25
+сохранены отдельно. Verify agent instructions, validate legacy и structure
+generated — PASS. Каталог и public release — отдельный product stream с
+собственными gates прав, баланса, продуктовой приёмки и технического долга.
 
 ## Упрощение и исключения
 

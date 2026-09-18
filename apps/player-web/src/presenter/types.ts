@@ -1,4 +1,5 @@
 import type { AgentSurfaceState } from "@/types/game-state";
+import type { SessionRole } from "@cubica/contracts-session";
 import type { GameManifestAgentFailurePolicy, GameMetricView } from "@cubica/contracts-manifest";
 import type { AgentControl, SessionParticipant } from "@cubica/contracts-session";
 import type { PrivateSessionInvite } from "@cubica/contracts-session";
@@ -74,6 +75,8 @@ export type PlayerState = Record<string, unknown> & {
   agentControl: NormalizedAgentControl;
   sessionSetup: PlayerSessionSetup | null;
   privateInvites: ReadonlyArray<PrivateSessionInvite>;
+  /** Trusted role of the authenticated session viewer, when projected by runtime. */
+  viewerRole?: SessionRole;
 
   /* Runtime log entries for journal renderer */
   log: Array<Record<string, unknown>>;

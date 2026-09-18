@@ -156,7 +156,7 @@ test("generator is idempotent and publishes exactly the six bounded pause intent
   assert.deepEqual(
     source.root.content.data.facilitatedSession.finalReflectionGuide,
     {
-      workflowStatus: "pending-author-answers",
+      workflowStatus: "confirmed-ready",
       preparationMinutes: { min: 5, max: 15 },
       presentationMinutesMax: 2,
       conclusionCount: { min: 2, max: 3 },
@@ -169,6 +169,24 @@ test("generator is idempotent and publishes exactly the six bounded pause intent
       ]
     }
   );
+  assert.deepEqual(source.root.content.aiDebrief, {
+    format: "cubica.session-ai-debrief-profile",
+    schemaVersion: "1.0.0",
+    methodologyVersion: "cmt-final-reflection-v1",
+    locale: "ru-RU",
+    purpose:
+      "Помочь ведущему провести итоговое обсуждение по наблюдаемым событиям публичного журнала игры.",
+    analysisInstructions: [
+      "Используй только события из подтвержденного публичного журнала и не добавляй неподтвержденные факты.",
+      "Отделяй наблюдаемые события, для которых указаны идентификаторы evidenceEventIds, от предварительных интерпретаций.",
+      "Формулируй интерпретации только как проверяемые гипотезы для обсуждения, не как выводы о людях или командах.",
+      "Не проводи личностную или психологическую оценку, диагностику, ранжирование участников или рекомендации по персоналу.",
+      "Сохраняй нейтральный язык и предлагай ведущему вернуться к журналу, если гипотезу нельзя проверить вопросом или событием."
+    ],
+    limits: { maxFacts: 12, maxInterpretations: 8, maxQuestions: 5 },
+    facilitatorQuestionGuide:
+      source.root.content.data.facilitatedSession.finalReflectionGuide.questions
+  });
 
   const manifest = await loadManifest();
   assert.deepEqual(

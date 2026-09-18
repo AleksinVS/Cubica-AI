@@ -44,6 +44,7 @@ import { restorePreviewSession } from "@/presenter/runtime-client";
 import { SessionSetupPanel } from "@/components/session-setup-panel";
 import { SessionParticipants } from "@/components/session-participants";
 import { AgentControlPanel } from "@/components/agent-control-panel";
+import { SessionAiDebriefPanel } from "@/components/session-ai-debrief-panel";
 import { buildPrivateInviteFragment } from "@/lib/private-invite-fragment";
 
 export type { PlayerFacingMockup as GameMockup };
@@ -529,6 +530,12 @@ export function GamePlayer({
         <AgentControlPanel control={agentControl.value} onRefresh={handleRefreshAgentControl} />
       ) : null}
       <PublicJournalDownload sessionId={state.sessionId} runtimeStatus={state.runtimeStatus} />
+      <SessionAiDebriefPanel
+        sessionId={state.sessionId}
+        runtimeStatus={state.runtimeStatus}
+        viewerRole={state.viewerRole}
+        profile={content.aiDebrief}
+      />
       {activeManifestPanel && !keepsMapBehindPanel ? (
         <ManifestRenderer
           screenDefinition={activeManifestPanel}

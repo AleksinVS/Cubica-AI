@@ -189,6 +189,7 @@ test("unavailable fallbacks pause durably and exact retry does not call provider
       accessToken: fixture.access.accessToken,
       input: command
     });
+    assert.equal(first.response.viewerRole, "player");
     assert.equal(first.response.version.stateVersion, 1);
     assert.deepEqual(first.response.agentControl, {
       playerId: "p2",
@@ -199,6 +200,7 @@ test("unavailable fallbacks pause durably and exact retry does not call provider
       fixture.sessionId,
       fixture.access.accessToken
     );
+    assert.equal(read.viewerRole, "player");
     assert.deepEqual(read.agentControl, first.response.agentControl);
     const retry = await fixture.runtime.dispatch({
       sessionStore: fixture.store,

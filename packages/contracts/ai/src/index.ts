@@ -2813,3 +2813,11 @@ function collectForbiddenKeyDiagnostics(
 function escapeJsonPointerSegment(segment: string): string {
   return segment.replace(/~/gu, "~0").replace(/\//gu, "~1");
 }
+export type * from "./generated/session-ai-debrief.ts";
+export { sessionAiDebriefSchema } from "./generated/session-ai-debrief.schema.ts";
+export {
+  getSessionAiDebriefValidationErrors,
+  validateSessionAiDebriefArtifact,
+  validateSessionAiDebriefConfirmRequest,
+  validateSessionAiDebriefGenerateRequest
+} from "./sessionAiDebriefValidation.ts";

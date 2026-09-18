@@ -8,6 +8,15 @@ import {
   getCreateSessionRequestValidationErrors,
   validateCreateSessionRequestShape
 } from "@cubica/contracts-session";
+import type {
+  SessionAiDebriefConfirmRequest,
+  SessionAiDebriefGenerateRequest
+} from "@cubica/contracts-ai";
+import {
+  getSessionAiDebriefValidationErrors,
+  validateSessionAiDebriefConfirmRequest,
+  validateSessionAiDebriefGenerateRequest
+} from "@cubica/contracts-ai";
 import type { AgentTurnRequest } from "../ai/agentRuntime.ts";
 import { RequestValidationError } from "../errors.ts";
 import Ajv2020Lib from "ajv/dist/2020.js";
@@ -175,6 +184,20 @@ export const parseAgentTurnRequest = (body: unknown): AgentTurnRequest => {
   return parseRuntimeCommand(body, "POST /agent-turns body");
 };
 
+export const parseSessionAiDebriefGenerateRequest = (
+  body: unknown
+): SessionAiDebriefGenerateRequest => {
+  if (validateSessionAiDebriefGenerateRequest(body)) return body;
+  throw new RequestValidationError(formatDebriefErrors("generate-request"));
+};
+
+export const parseSessionAiDebriefConfirmRequest = (
+  body: unknown
+): SessionAiDebriefConfirmRequest => {
+  if (validateSessionAiDebriefConfirmRequest(body)) return body;
+  throw new RequestValidationError(formatDebriefErrors("confirm-request"));
+};
+
 export const parseRestorePreviewSessionRequest = (
   body: unknown
 ): RestorePreviewSessionRequest<Record<string, unknown>> => {
@@ -210,3 +233,10 @@ export const parseRestorePreviewSessionRequest = (
     reason: typeof body.reason === "string" ? body.reason : undefined
   };
 };
+
+function formatDebriefErrors(kind: "generate-request" | "confirm-request"): string {
+  const details = (getSessionAiDebriefValidationErrors(kind) ?? [])
+    .map((error) => `${error.instancePath || "/"} ${error.message ?? "is invalid"}`)
+    .join("; ");
+  return `AI debrief request does not match its schema: ${details}`;
+}

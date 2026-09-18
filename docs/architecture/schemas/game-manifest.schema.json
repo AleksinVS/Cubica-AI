@@ -626,6 +626,9 @@
       "description": "Known platform content fields plus game-specific content keyed by gameId.",
       "additionalProperties": true,
       "properties": {
+        "aiDebrief": {
+          "$ref": "#/definitions/GameManifestAiDebriefProfile"
+        },
         "data": {
           "$ref": "#/definitions/GameManifestContentData"
         },
@@ -669,6 +672,74 @@
           "type": "array"
         }
       },
+      "type": "object"
+    },
+    "GameManifestAiDebriefProfile": {
+      "description": "Pinned game-owned methodology for a read-only AI debrief of the public session journal.",
+      "additionalProperties": false,
+      "properties": {
+        "format": {
+          "const": "cubica.session-ai-debrief-profile"
+        },
+        "schemaVersion": {
+          "const": "1.0.0"
+        },
+        "methodologyVersion": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+        },
+        "locale": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 35,
+          "pattern": "^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$"
+        },
+        "purpose": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "analysisInstructions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          }
+        },
+        "facilitatorQuestionGuide": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          }
+        },
+        "limits": {
+          "additionalProperties": false,
+          "properties": {
+            "maxFacts": { "type": "integer", "minimum": 1, "maximum": 32 },
+            "maxInterpretations": { "type": "integer", "minimum": 0, "maximum": 32 },
+            "maxQuestions": { "type": "integer", "minimum": 1, "maximum": 32 }
+          },
+          "required": ["maxFacts", "maxInterpretations", "maxQuestions"],
+          "type": "object"
+        }
+      },
+      "required": [
+        "format",
+        "schemaVersion",
+        "methodologyVersion",
+        "locale",
+        "purpose",
+        "analysisInstructions",
+        "facilitatorQuestionGuide",
+        "limits"
+      ],
       "type": "object"
     },
     "GameManifestContentData": {

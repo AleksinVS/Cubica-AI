@@ -8,6 +8,11 @@
 
 import { Pool, type PoolConfig } from "pg";
 import type { SessionStorePort } from "@cubica/contracts-session";
+import {
+  InMemorySessionAiDebriefStore,
+  PostgresSessionAiDebriefStore,
+  type SessionAiDebriefStorePort
+} from "../ai/sessionAiDebriefStore.ts";
 import { InMemorySessionStore } from "./inMemorySessionStore.ts";
 import { asSessionDatabasePool, PostgresSessionStore } from "./postgresSessionStore.ts";
 
@@ -26,15 +31,29 @@ export interface SessionStoreEnvironment {
   PG_IDLE_TIMEOUT_MS?: string;
 }
 
+export interface RuntimeStores {
+  sessionStore: SessionStorePort<RuntimeState>;
+  aiDebriefStore: SessionAiDebriefStorePort;
+}
+
 export function createSessionStoreFromEnvironment(
   environment: SessionStoreEnvironment = process.env
 ): SessionStorePort<RuntimeState> {
+  return createRuntimeStoresFromEnvironment(environment).sessionStore;
+}
+
+export function createRuntimeStoresFromEnvironment(
+  environment: SessionStoreEnvironment = process.env
+): RuntimeStores {
   const mode = environment.SESSION_STORE;
   if (mode === "in-memory") {
     if (environment.NODE_ENV === "production") {
       throw new Error("SESSION_STORE=in-memory is forbidden in production; configure PostgreSQL.");
     }
-    return new InMemorySessionStore<RuntimeState>();
+    return {
+      sessionStore: new InMemorySessionStore<RuntimeState>(),
+      aiDebriefStore: new InMemorySessionAiDebriefStore()
+    };
   }
 
   if (mode !== "postgresql") {
@@ -56,7 +75,11 @@ export function createSessionStoreFromEnvironment(
 
   const pool = new Pool(poolConfig);
   installSafePoolErrorHandler(pool);
-  return new PostgresSessionStore<RuntimeState>(asSessionDatabasePool(pool));
+  const databasePool = asSessionDatabasePool(pool);
+  return {
+    sessionStore: new PostgresSessionStore<RuntimeState>(databasePool),
+    aiDebriefStore: new PostgresSessionAiDebriefStore(databasePool)
+  };
 }
 
 /** Prevent an idle-client `error` event from crashing Node or leaking DB data. */

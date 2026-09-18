@@ -3,7 +3,7 @@
   "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
   "info": {
     "title": "Cubica Runtime API",
-    "version": "0.5.4",
+    "version": "0.6.0",
     "description": "Current API First contract for the `services/runtime-api` modular monolith. This file uses the JSON-compatible YAML profile so it remains a valid `.yaml` OpenAPI document while the repository can validate it with built-in Node.js JSON parsing and no extra parser dependency."
   },
   "x-cubica-contract-status": "current-implemented-contract",
@@ -45,6 +45,10 @@
     {
       "name": "AgentRuntime",
       "description": "AI-driven and hybrid Agent Turn execution."
+    },
+    {
+      "name": "SessionAiDebrief",
+      "description": "Facilitator-only read-only AI debriefs derived from a pinned public session journal."
     },
     {
       "name": "EditorPreview",
@@ -535,6 +539,89 @@
         }
       }
     },
+    "/sessions/{sessionId}/ai-debriefs": {
+      "post": {
+        "tags": ["SessionAiDebrief"],
+        "operationId": "generateSessionAiDebrief",
+        "summary": "Generate one facilitator-only AI debrief from the complete pinned public journal.",
+        "x-cubica-scope": "public",
+        "security": [{ "SessionBearer": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/SessionId" }],
+        "requestBody": { "$ref": "#/components/requestBodies/SessionAiDebriefGenerateRequest" },
+        "responses": {
+          "201": {
+            "description": "A schema-validated draft debrief was generated and stored.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "./schemas/session-ai-debrief.schema.json" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "409": { "$ref": "#/components/responses/Conflict" },
+          "413": { "$ref": "#/components/responses/PayloadTooLarge" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "502": { "$ref": "#/components/responses/BadGateway" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "504": { "$ref": "#/components/responses/GatewayTimeout" }
+        }
+      }
+    },
+    "/sessions/{sessionId}/ai-debriefs/latest": {
+      "get": {
+        "tags": ["SessionAiDebrief"],
+        "operationId": "getLatestSessionAiDebrief",
+        "summary": "Read the latest completed facilitator-only AI debrief.",
+        "x-cubica-scope": "public",
+        "security": [{ "SessionBearer": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/SessionId" }],
+        "responses": {
+          "200": {
+            "description": "Latest draft or confirmed debrief.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "./schemas/session-ai-debrief.schema.json" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "503": { "$ref": "#/components/responses/Unavailable" }
+        }
+      }
+    },
+    "/sessions/{sessionId}/ai-debriefs/{artifactId}/confirm": {
+      "post": {
+        "tags": ["SessionAiDebrief"],
+        "operationId": "confirmSessionAiDebrief",
+        "summary": "Confirm the exact output hash of one AI debrief draft.",
+        "x-cubica-scope": "public",
+        "security": [{ "SessionBearer": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/SessionId" },
+          { "$ref": "#/components/parameters/ArtifactId" }
+        ],
+        "requestBody": { "$ref": "#/components/requestBodies/SessionAiDebriefConfirmRequest" },
+        "responses": {
+          "200": {
+            "description": "The exact stored output was confirmed by the facilitator.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "./schemas/session-ai-debrief.schema.json" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "409": { "$ref": "#/components/responses/Conflict" },
+          "503": { "$ref": "#/components/responses/Unavailable" }
+        }
+      }
+    },
     "/sessions/{sessionId}/preview-restore": {
       "post": {
         "tags": ["Sessions", "EditorPreview"],
@@ -747,6 +834,12 @@
       }
     },
     "parameters": {
+      "ArtifactId": {
+        "name": "artifactId",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string", "format": "uuid" }
+      },
       "AssetExtension": {
         "name": "extension",
         "in": "path",
@@ -827,6 +920,26 @@
       }
     },
     "requestBodies": {
+      "SessionAiDebriefGenerateRequest": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "./schemas/session-ai-debrief.schema.json#/$defs/SessionAiDebriefGenerateRequest"
+            }
+          }
+        }
+      },
+      "SessionAiDebriefConfirmRequest": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "./schemas/session-ai-debrief.schema.json#/$defs/SessionAiDebriefConfirmRequest"
+            }
+          }
+        }
+      },
       "AgentTurnRequest": {
         "required": true,
         "content": {
@@ -911,6 +1024,16 @@
       },
       "Forbidden": {
         "description": "Operation is not allowed for this session or mode.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "GatewayTimeout": {
+        "description": "The configured upstream provider did not complete within the bounded timeout.",
         "content": {
           "application/json": {
             "schema": {
@@ -1018,6 +1141,7 @@
         "required": ["sessionId", "participants", "version", "state", "actionAvailability", "receipt"],
         "properties": {
           "sessionId": { "type": "string" },
+          "viewerRole": { "$ref": "#/components/schemas/SessionRole" },
           "participants": { "$ref": "#/components/schemas/SessionParticipants" },
           "version": { "$ref": "#/components/schemas/SessionStateVersion" },
           "state": { "$ref": "#/components/schemas/JsonObject" },
@@ -1073,6 +1197,7 @@
         "required": ["sessionId", "participants", "version", "state", "actionAvailability", "agentTurn", "receipt"],
         "properties": {
           "sessionId": { "type": "string" },
+          "viewerRole": { "$ref": "#/components/schemas/SessionRole" },
           "participants": { "$ref": "#/components/schemas/SessionParticipants" },
           "version": { "$ref": "#/components/schemas/SessionStateVersion" },
           "state": { "$ref": "#/components/schemas/JsonObject" },
@@ -1391,6 +1516,9 @@
         "properties": {
           "gameId": { "$ref": "#/components/schemas/GameId" },
           "manifestVersion": { "type": "string" },
+          "aiDebrief": {
+            "$ref": "./schemas/game-manifest.schema.json#/definitions/GameManifestAiDebriefProfile"
+          },
           "ui": { "$ref": "#/components/schemas/JsonObject" },
           "pluginBundles": {
             "type": "array",
@@ -1443,6 +1571,7 @@
         "properties": {
           "sessionId": { "type": "string" },
           "gameId": { "$ref": "#/components/schemas/GameId" },
+          "viewerRole": { "$ref": "#/components/schemas/SessionRole" },
           "participants": { "$ref": "#/components/schemas/SessionParticipants" },
           "version": { "$ref": "#/components/schemas/SessionStateVersion" },
           "state": { "$ref": "#/components/schemas/JsonObject" },
@@ -1457,6 +1586,7 @@
         "properties": {
           "sessionId": { "type": "string" },
           "gameId": { "$ref": "#/components/schemas/GameId" },
+          "viewerRole": { "$ref": "#/components/schemas/SessionRole" },
           "participants": { "$ref": "#/components/schemas/SessionParticipants" },
           "version": { "$ref": "#/components/schemas/SessionStateVersion" },
           "state": { "$ref": "#/components/schemas/JsonObject" },
@@ -1468,12 +1598,22 @@
       "PortablePublicGameplayJournal": {
         "$ref": "./schemas/public-gameplay-journal.schema.json"
       },
+      "SessionAiDebriefArtifact": {
+        "$ref": "./schemas/session-ai-debrief.schema.json"
+      },
+      "SessionAiDebriefGenerateRequest": {
+        "$ref": "./schemas/session-ai-debrief.schema.json#/$defs/SessionAiDebriefGenerateRequest"
+      },
+      "SessionAiDebriefConfirmRequest": {
+        "$ref": "./schemas/session-ai-debrief.schema.json#/$defs/SessionAiDebriefConfirmRequest"
+      },
       "CreatedSessionResponse": {
         "type": "object",
         "required": ["sessionId", "gameId", "participants", "version", "state", "actionAvailability", "credential"],
         "properties": {
           "sessionId": { "type": "string" },
           "gameId": { "$ref": "#/components/schemas/GameId" },
+          "viewerRole": { "$ref": "#/components/schemas/SessionRole" },
           "participants": { "$ref": "#/components/schemas/SessionParticipants" },
           "version": { "$ref": "#/components/schemas/SessionStateVersion" },
           "state": { "$ref": "#/components/schemas/JsonObject" },
@@ -1521,6 +1661,10 @@
           "lastEventSequence": { "type": "integer", "minimum": 0 }
         },
         "additionalProperties": false
+      },
+      "SessionRole": {
+        "type": "string",
+        "enum": ["player", "facilitator", "assistant", "observer"]
       },
       "SessionVersionNotification": {
         "description": "Minimal SSE notification that tells a client to reload its authenticated personal projection over REST.",

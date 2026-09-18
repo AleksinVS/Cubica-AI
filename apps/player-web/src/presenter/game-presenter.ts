@@ -214,6 +214,7 @@ export class GamePresenter {
       agentControl: normalizeAgentControl(this.session?.agentControl),
       sessionSetup: this.sessionSetup,
       privateInvites: this.privateInvites,
+      viewerRole: this.session?.viewerRole,
       error: this.error,
       errorStatus: this.errorStatus,
       booting: this.booting,

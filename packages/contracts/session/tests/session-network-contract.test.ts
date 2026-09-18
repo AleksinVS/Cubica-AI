@@ -38,6 +38,20 @@ describe("private session and version notification contract", () => {
     }
   });
 
+  it("declares the trusted viewer role on every authenticated snapshot shape", () => {
+    for (const responseName of [
+      "CreatedSessionResponse",
+      "SessionResponse",
+      "ActionResponse",
+      "AgentTurnResponse",
+      "RestorePreviewSessionResponse"
+    ]) {
+      expect(openApi.components.schemas[responseName].properties.viewerRole.$ref).toBe(
+        "#/components/schemas/SessionRole"
+      );
+    }
+  });
+
   it("keeps invite entries closed and seat-neutral", () => {
     const invite = {
       credential: `ses_${"a".repeat(43)}`

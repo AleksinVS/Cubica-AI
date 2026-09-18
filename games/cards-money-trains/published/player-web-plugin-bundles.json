@@ -8,10 +8,10 @@
       "apiVersion": "2.0",
       "target": "player-web",
       "scope": "published",
-      "contentHash": "80cc424a7df8648c6a930f99d4dc099e6df7d280c58132beaedc70786e1a9abb",
-      "integrity": "sha256-gMxCSn34ZIxqkw+Z1NwJnm330oDFgTK+rtxweG4amrs=",
-      "filePath": "published/cards-money-trains-player.80cc424a7df8648c6a930f99d4dc099e6df7d280c58132beaedc70786e1a9abb.mjs",
-      "url": "/published-plugin-bundles/cards-money-trains/cards-money-trains-player/80cc424a7df8648c6a930f99d4dc099e6df7d280c58132beaedc70786e1a9abb.mjs"
+      "contentHash": "672c33b4bbc90ce6d4f4340a3831edcef7e25c5bbdd8b23e28c3a52de7106156",
+      "integrity": "sha256-ZywztLvJDObU9DQKODHtzvfiXFu92LI+KMOlLecQYVY=",
+      "filePath": "published/cards-money-trains-player.672c33b4bbc90ce6d4f4340a3831edcef7e25c5bbdd8b23e28c3a52de7106156.mjs",
+      "url": "/published-plugin-bundles/cards-money-trains/cards-money-trains-player/672c33b4bbc90ce6d4f4340a3831edcef7e25c5bbdd8b23e28c3a52de7106156.mjs"
     }
   ]
 }

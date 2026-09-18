@@ -1317,6 +1317,234 @@ button.button-helper-arrow:focus-visible {
   color: var(--accent);
 }
 
+.session-ai-debrief-trigger {
+  position: absolute;
+  top: 20px;
+  right: 170px;
+  z-index: 3;
+  padding: 0.65rem 0.9rem;
+  border: 1px solid rgba(170, 227, 255, 0.28);
+  border-radius: 0.65rem;
+  background: rgba(11, 31, 51, 0.78);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  backdrop-filter: blur(12px);
+}
+
+.session-ai-debrief-trigger:hover,
+.session-ai-debrief-trigger:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.session-ai-debrief-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(2, 10, 18, 0.72);
+}
+
+.session-ai-debrief-dialog {
+  width: min(760px, 100%);
+  max-height: min(86vh, 900px);
+  overflow: auto;
+  display: grid;
+  gap: 1.1rem;
+  padding: clamp(1.1rem, 3vw, 2rem);
+  border: 1px solid rgba(170, 227, 255, 0.3);
+  border-radius: 0.9rem;
+  background: #0b1f33;
+  color: var(--text);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
+}
+
+.session-ai-debrief-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.session-ai-debrief-header h2,
+.session-ai-debrief-dialog h3 {
+  margin: 0;
+}
+
+.session-ai-debrief-header p {
+  max-width: 56ch;
+  margin: 0.5rem 0 0;
+  color: rgba(220, 239, 249, 0.78);
+}
+
+.session-ai-debrief-section-note {
+  margin: 0.45rem 0 0;
+  color: rgba(220, 239, 249, 0.7);
+  font-size: 0.9rem;
+}
+
+.session-ai-debrief-hypothesis-label {
+  color: #ffe29b;
+  font-weight: 700;
+}
+
+.session-ai-debrief-dialog section {
+  padding-top: 0.9rem;
+  border-top: 1px solid rgba(170, 227, 255, 0.16);
+}
+
+.session-ai-debrief-dialog ul,
+.session-ai-debrief-dialog ol {
+  display: grid;
+  gap: 0.65rem;
+  margin: 0.75rem 0 0;
+  padding-left: 1.35rem;
+}
+
+.session-ai-debrief-evidence {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.session-ai-debrief-evidence a {
+  color: var(--accent);
+}
+
+.session-ai-debrief-evidence button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+}
+
+.session-ai-debrief-evidence code,
+.session-ai-debrief-dialog details code {
+  padding: 0.15rem 0.3rem;
+  border-radius: 0.25rem;
+  background: rgba(0, 0, 0, 0.28);
+  font-size: 0.82em;
+}
+
+.session-ai-debrief-status-badge {
+  width: fit-content;
+  padding: 0.3rem 0.55rem;
+  border: 1px solid rgba(255, 211, 106, 0.55);
+  border-radius: 999px;
+  color: #ffe29b;
+  font-weight: 700;
+}
+
+.session-ai-debrief-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid rgba(255, 130, 130, 0.5);
+  border-radius: 0.55rem;
+  background: rgba(120, 20, 35, 0.25);
+}
+
+.session-ai-debrief-error p {
+  margin: 0;
+}
+
+.session-ai-debrief-dialog button {
+  padding: 0.55rem 0.8rem;
+  border: 1px solid rgba(170, 227, 255, 0.34);
+  border-radius: 0.5rem;
+  background: rgba(19, 52, 78, 0.9);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.session-ai-debrief-dialog button:hover,
+.session-ai-debrief-dialog button:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.session-ai-debrief-dialog button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.session-ai-debrief-dialog details {
+  border-top: 1px solid rgba(170, 227, 255, 0.16);
+  padding-top: 0.8rem;
+}
+
+.session-ai-debrief-dialog summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.session-ai-debrief-dialog dl {
+  display: grid;
+  grid-template-columns: minmax(9rem, auto) 1fr;
+  gap: 0.45rem 0.8rem;
+  margin: 0.75rem 0 0;
+  overflow-wrap: anywhere;
+}
+
+.session-ai-debrief-dialog dt {
+  color: rgba(220, 239, 249, 0.7);
+}
+
+.session-ai-debrief-dialog dd {
+  margin: 0;
+}
+
+.session-ai-debrief-journal-link {
+  width: fit-content;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.session-ai-debrief-event {
+  border: 1px solid rgba(170, 227, 255, 0.25);
+  border-radius: 0.55rem;
+  padding: 0.8rem;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.session-ai-debrief-event h4 {
+  margin: 0;
+}
+
+.session-ai-debrief-event p {
+  margin-bottom: 0;
+  overflow-wrap: anywhere;
+}
+
+.session-ai-debrief-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.65rem;
+}
+
+@media (max-width: 700px) {
+  .session-ai-debrief-trigger {
+    top: 4.25rem;
+    right: 0.75rem;
+  }
+
+  .session-ai-debrief-header,
+  .session-ai-debrief-error {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
 /* Keep the affordance out of the platform-owned top-right map controls while
    preserving z-index below the modal overlay layer. */
 .game-player-root:has(.game-renderer--map-first) > .public-journal-download {

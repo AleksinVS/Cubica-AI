@@ -38,12 +38,17 @@ test("PostgreSQL state, command receipt and event ledger survive a store restart
     path.resolve(testDirectory, "../migrations/005_session_event_metric_changes.up.sql"),
     "utf8"
   );
+  const migration006 = await readFile(
+    path.resolve(testDirectory, "../migrations/006_session_ai_debriefs.up.sql"),
+    "utf8"
+  );
   const setupPool = new Pool({ connectionString: databaseUrl });
   await setupPool.query(migration001);
   await setupPool.query(migration002);
   await setupPool.query(migration003);
   await setupPool.query(migration004);
   await setupPool.query(migration005);
+  await setupPool.query(migration006);
   await setupPool.end();
 
   const firstPool = new Pool({ connectionString: databaseUrl });

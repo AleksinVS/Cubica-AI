@@ -2,6 +2,7 @@ export type SessionId = string;
 export type PlayerId = string;
 export type EventId = string;
 export type * from "./generated/public-gameplay-journal.ts";
+export { validatePortablePublicGameplayJournal } from "./publicGameplayJournalValidation.ts";
 export type { CreateSessionRequest } from "./generated/create-session-request.ts";
 export {
   getCreateSessionRequestValidationErrors,
@@ -211,6 +212,8 @@ export type LockedSessionOperation<TState, TResult> = (
 export interface CreateSessionResponse<TState = unknown> {
   sessionId: SessionId;
   gameId: string;
+  /** Trusted role of the principal whose credential produced this projection. */
+  viewerRole?: SessionRole;
   participants: ReadonlyArray<SessionParticipant>;
   version: SessionStateVersion;
   state: TState;
@@ -459,6 +462,8 @@ export type SessionSystemCommandTransaction<TState, TResult> = (
 
 export interface DispatchActionResponse<TState = unknown> {
   sessionId: SessionId;
+  /** Trusted role of the principal whose credential produced this projection. */
+  viewerRole?: SessionRole;
   participants: ReadonlyArray<SessionParticipant>;
   version: SessionStateVersion;
   state: TState;
@@ -542,6 +547,8 @@ export interface RestorePreviewSessionRequest<TState = unknown> {
 export interface RestorePreviewSessionResponse<TState = unknown> {
   sessionId: SessionId;
   gameId: string;
+  /** Trusted role of the principal whose credential produced this projection. */
+  viewerRole?: SessionRole;
   participants: ReadonlyArray<SessionParticipant>;
   version: SessionStateVersion;
   state: TState;
@@ -642,6 +649,8 @@ export type DispatchActionCommand = DispatchActionInput;
 export interface SessionResponse<TState = unknown> {
   sessionId: SessionId;
   gameId: string;
+  /** Trusted role of the principal whose credential produced this projection. */
+  viewerRole?: SessionRole;
   participants: ReadonlyArray<SessionParticipant>;
   version: SessionStateVersion;
   state: TState;
@@ -655,6 +664,8 @@ export interface SessionResponse<TState = unknown> {
  */
 export interface ActionResponse<TState = unknown> {
   sessionId: SessionId;
+  /** Trusted role of the principal whose credential produced this projection. */
+  viewerRole?: SessionRole;
   participants: ReadonlyArray<SessionParticipant>;
   version: SessionStateVersion;
   state: TState;

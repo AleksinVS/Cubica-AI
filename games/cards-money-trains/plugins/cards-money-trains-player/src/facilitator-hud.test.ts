@@ -58,7 +58,7 @@ test("counts only equipment actually owned by public teams", () => {
 test("reads only the bounded confirmed final-reflection guide", () => {
   const content = {
     finalReflectionGuide: {
-      workflowStatus: "pending-author-answers",
+      workflowStatus: "confirmed-ready",
       preparationMinutes: { min: 5, max: 15 },
       presentationMinutesMax: 2,
       conclusionCount: { min: 2, max: 3 },
@@ -80,7 +80,7 @@ test("reads only the bounded confirmed final-reflection guide", () => {
   assert.equal(readFinalReflectionGuide({
     finalReflectionGuide: {
       ...content.finalReflectionGuide,
-      workflowStatus: "complete"
+      workflowStatus: "draft"
     }
   }), null);
   assert.equal(readFinalReflectionGuide({

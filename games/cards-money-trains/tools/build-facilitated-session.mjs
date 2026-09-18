@@ -47,12 +47,12 @@ const methodologyEvents = {
 /**
  * Confirmed questions from slide 47 of the author's presentation.
  *
- * The questions and time boxes are publishable immutable content. The overall
- * final-reflection workflow remains explicitly pending until the author answers
- * the unresolved facilitation questions recorded in project documentation.
+ * The questions and time boxes are publishable immutable content. The final
+ * reflection guide is confirmed and ready for facilitator use; future AI
+ * debriefing is a separate, non-blocking capability.
  */
 const finalReflectionGuide = {
-  workflowStatus: "pending-author-answers",
+  workflowStatus: "confirmed-ready",
   preparationMinutes: {
     min: 5,
     max: 15
@@ -69,6 +69,33 @@ const finalReflectionGuide = {
     "К чему адаптироваться не удалось? Почему?",
     "Как бы вы оценили результаты игры для вас и для других команд?"
   ]
+};
+
+/**
+ * The CMT-owned methodology boundary for a facilitator-only AI debrief.
+ *
+ * The question guide is intentionally filled by the builder from the
+ * confirmed final reflection guide below, so the two guides cannot drift.
+ */
+const aiDebriefProfile = {
+  format: "cubica.session-ai-debrief-profile",
+  schemaVersion: "1.0.0",
+  methodologyVersion: "cmt-final-reflection-v1",
+  locale: "ru-RU",
+  purpose:
+    "Помочь ведущему провести итоговое обсуждение по наблюдаемым событиям публичного журнала игры.",
+  analysisInstructions: [
+    "Используй только события из подтвержденного публичного журнала и не добавляй неподтвержденные факты.",
+    "Отделяй наблюдаемые события, для которых указаны идентификаторы evidenceEventIds, от предварительных интерпретаций.",
+    "Формулируй интерпретации только как проверяемые гипотезы для обсуждения, не как выводы о людях или командах.",
+    "Не проводи личностную или психологическую оценку, диагностику, ранжирование участников или рекомендации по персоналу.",
+    "Сохраняй нейтральный язык и предлагай ведущему вернуться к журналу, если гипотезу нельзя проверить вопросом или событием."
+  ],
+  limits: {
+    maxFacts: 12,
+    maxInterpretations: 8,
+    maxQuestions: 5
+  }
 };
 
 const pauses = [
@@ -669,6 +696,10 @@ const buildFacilitatedSessionAuthoring = (sourceAuthoring) => {
     }])),
     finalReflectionGuide: structuredClone(finalReflectionGuide)
   };
+  root.content.aiDebrief = {
+    ...structuredClone(aiDebriefProfile),
+    facilitatorQuestionGuide: [...finalReflectionGuide.questions]
+  };
 
   return authoring;
 };
@@ -724,5 +755,6 @@ export {
   buildFacilitatedSessionAuthoring,
   buildFromDisk,
   finalReflectionGuide,
+  aiDebriefProfile,
   pauses
 };

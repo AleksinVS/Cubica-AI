@@ -4,11 +4,20 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { SessionStorePort } from "@cubica/contracts-session";
-import { HttpError } from "../errors.ts";
+import { HttpError, RequestValidationError } from "../errors.ts";
 import { AgentTurnService } from "../ai/agentRuntime.ts";
 import { AgentSeatDriver } from "../ai/agentSeatDriver.ts";
+import { SessionAiDebriefService } from "../ai/sessionAiDebriefService.ts";
+import {
+  createOpenAiSessionAiDebriefProvider,
+  type SessionAiDebriefProvider
+} from "../ai/sessionAiDebriefProvider.ts";
+import {
+  InMemorySessionAiDebriefStore,
+  type SessionAiDebriefStorePort
+} from "../ai/sessionAiDebriefStore.ts";
 import { SessionService } from "../session/session.service.ts";
-import { createSessionStoreFromEnvironment } from "../session/sessionStoreFactory.ts";
+import { createRuntimeStoresFromEnvironment } from "../session/sessionStoreFactory.ts";
 import {
   hashSessionCredential,
   requireBearerCredential
@@ -46,6 +55,8 @@ import {
   parseCreateSessionRequest,
   parseDispatchActionRequest,
   parseRestorePreviewSessionRequest,
+  parseSessionAiDebriefConfirmRequest,
+  parseSessionAiDebriefGenerateRequest,
   parseTransportRoadPreviewRequest
 } from "./requestValidation.ts";
 
@@ -55,6 +66,10 @@ export interface RuntimeApiServerOptions {
   port?: number;
   /** Explicit dev/test seam; production resolves and validates environment config. */
   sessionStore?: SessionStorePort<RuntimeState>;
+  /** Explicit test seam; production shares the session PostgreSQL pool. */
+  aiDebriefStore?: SessionAiDebriefStorePort;
+  /** Explicit test seam; production resolves the fail-closed OpenAI adapter. */
+  aiDebriefProvider?: SessionAiDebriefProvider;
   /** Process-local deterministic-test seam; never populated from HTTP or environment. */
   random?: SessionRandomProviderInput;
   /** Test seam for an isolated filesystem repository; production uses the singleton. */
@@ -189,7 +204,12 @@ function readDeclaredContentLength(request: IncomingMessage): number | undefined
 export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
   const port = options.port ?? Number(process.env.PORT ?? 3001);
   const assetContentService = options.assetContentService ?? contentService;
-  const sessionStore = options.sessionStore ?? createSessionStoreFromEnvironment();
+  const environmentStores = options.sessionStore === undefined
+    ? createRuntimeStoresFromEnvironment()
+    : undefined;
+  const sessionStore = options.sessionStore ?? environmentStores!.sessionStore;
+  const aiDebriefStore = options.aiDebriefStore ?? environmentStores?.aiDebriefStore ??
+    new InMemorySessionAiDebriefStore();
   const commandAdmissionController = options.commandAdmissionController ??
     new BoundedInMemoryCommandAdmissionController();
   // Both mutation endpoints must share counters; constructing separate
@@ -197,6 +217,11 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
   const agentTurnService = new AgentTurnService(commandAdmissionController);
   const agentSeatDriver = new AgentSeatDriver(agentTurnService);
   const sessionService = new SessionService({ sessionStore, agentSeatDriver });
+  const aiDebriefService = new SessionAiDebriefService(
+    sessionStore,
+    aiDebriefStore,
+    options.aiDebriefProvider ?? createOpenAiSessionAiDebriefProvider()
+  );
   const sessionVersionEventHub = options.sessionVersionEventHub ?? new SessionVersionEventHub();
   const runtimeService = new RuntimeService(
     commandAdmissionController,
@@ -431,6 +456,49 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
         return;
       }
 
+      const generateAiDebriefMatch = request.method === "POST" &&
+        requestUrl.pathname.match(/^\/sessions\/([^/]+)\/ai-debriefs$/u);
+      if (generateAiDebriefMatch) {
+        const sessionId = decodePathSegment(generateAiDebriefMatch[1], "sessionId");
+        const body = await readJsonBody(request);
+        const artifact = await aiDebriefService.generate(
+          sessionId,
+          requireBearerCredential(request.headers),
+          parseSessionAiDebriefGenerateRequest(body)
+        );
+        sendJson(response, 201, artifact);
+        return;
+      }
+
+      const latestAiDebriefMatch = request.method === "GET" &&
+        requestUrl.pathname.match(/^\/sessions\/([^/]+)\/ai-debriefs\/latest$/u);
+      if (latestAiDebriefMatch) {
+        const sessionId = decodePathSegment(latestAiDebriefMatch[1], "sessionId");
+        const artifact = await aiDebriefService.readLatest(
+          sessionId,
+          requireBearerCredential(request.headers)
+        );
+        sendJson(response, 200, artifact);
+        return;
+      }
+
+      const confirmAiDebriefMatch = request.method === "POST" &&
+        requestUrl.pathname.match(/^\/sessions\/([^/]+)\/ai-debriefs\/([^/]+)\/confirm$/u);
+      if (confirmAiDebriefMatch) {
+        const sessionId = decodePathSegment(confirmAiDebriefMatch[1], "sessionId");
+        const artifactId = decodePathSegment(confirmAiDebriefMatch[2], "artifactId");
+        assertUuid(artifactId, "artifactId");
+        const body = await readJsonBody(request);
+        const artifact = await aiDebriefService.confirm(
+          sessionId,
+          artifactId,
+          requireBearerCredential(request.headers),
+          parseSessionAiDebriefConfirmRequest(body)
+        );
+        sendJson(response, 200, artifact);
+        return;
+      }
+
       if (request.method === "GET" && requestUrl.pathname.startsWith("/sessions/")) {
         const sessionId = requestUrl.pathname.slice("/sessions/".length);
         const snapshot = await sessionService.getSession(
@@ -554,6 +622,12 @@ function publishSessionVersionSafely(
       `[session-events] post-commit notification failed for ${version.sessionId}:`,
       error instanceof Error ? error.message : String(error)
     );
+  }
+}
+
+function assertUuid(value: string, label: string): void {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(value)) {
+    throw new RequestValidationError(`${label} must be a UUID.`);
   }
 }
 
