@@ -276,6 +276,7 @@ describe('Z.AI coding-plan shadow gateway', () => {
     ['invalid outer JSON', async () => new Response('{bad'), 'provider_json'],
     ['missing model', async () => new Response(JSON.stringify({ choices: [] })), 'provider_model'],
     ['wrong model', async () => new Response(JSON.stringify({ model: 'glm-other', choices: [] })), 'provider_model'],
+    ['legacy model alias', async () => new Response(JSON.stringify({ model: 'glm-4.7', choices: [] })), 'provider_model'],
     ['no choices', async () => new Response(JSON.stringify({ model: ZAI_CODING_PLAN_MODEL, choices: [] })), 'provider_choices'],
     ['multiple choices', async () => new Response(JSON.stringify({ model: ZAI_CODING_PLAN_MODEL, choices: [{ finish_reason: 'stop', message: { content: '{}' } }, { finish_reason: 'stop', message: { content: '{}' } }] })), 'provider_choices'],
     ['bad choice shape', async () => new Response(JSON.stringify({ model: ZAI_CODING_PLAN_MODEL, choices: [null] })), 'provider_content_type'],
