@@ -705,3 +705,11 @@ exact preflight и независимый Sol-high `ACCEPT`. Bounds
 `90000/5000/100000/300000` ms, `maxAttempts=1`, no-retry, остановка при первом
 отклонении и запрет Stage 3, активного чтения, применения кандидатов и записи
 в продуктовую wiki сохранены.
+
+Проверка 2026-09-18 выявила новый gate DR-26: [Coding Plan
+overview](https://docs.z.ai/devpack/overview) указывает автоматический routing
+`glm-4.7` -> `glm-5.3-flash`. Authenticated GET Coding `/models` текущим ключом
+вернул HTTP 200 и наличие `glm-5.3-flash`; inference calls — 0. Строгий adapter
+пока закрепляет `glm-4.7` в запросе и ответе. До решения PM о явной миграции и
+новых локальных проверок DR-25 не активируется; alias не считается доказательством
+качества прежней модели. Provider/model и `.env` не изменены.

@@ -604,3 +604,10 @@ PM 2026-09-18 подтвердил наличие разрешения Z.AI на
 границ. Fresh exact preflight и Sol-high `ACCEPT` ещё обязательны до активации.
 Окно ещё не израсходовано; bounds, no-retry и запрет Stage 3/записи в wiki
 не изменены.
+
+Новый blocker DR-26: [Coding Plan overview](https://docs.z.ai/devpack/overview)
+сообщает о routing `glm-4.7` -> `glm-5.3-flash`. Доступность последней подтверждена
+текущим ключом через GET Coding `/models` (HTTP 200, inference calls — 0), но
+генерация и качество синтеза ещё не проверены. Explicit model migration требует
+решения PM: adapter пока строго закрепляет `glm-4.7` в запросе и envelope.
+До решения и свежей локальной проверки DR-25 не активируется; `.env` не изменён.

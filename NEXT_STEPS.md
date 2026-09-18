@@ -132,6 +132,12 @@ Task | Coordinator | Owner | Working/integration branch`, затем повто�
   Разрешение окна ещё не израсходовано. Перед первым вызовом обязательны свежие
   exact preflight и Sol-high `ACCEPT`; bounds, no-retry и запрет Stage 3,
   активного чтения, применения кандидатов и записи в wiki сохранены.
+- Проверка 2026-09-18: [Coding Plan overview](https://docs.z.ai/devpack/overview)
+  сообщает о доступности `glm-5.3-flash` во всех планах и автоматическом
+  перенаправлении `glm-4.7` на неё. Authenticated GET Coding endpoint `/models`
+  вернул HTTP 200 и наличие `glm-5.3-flash`; inference calls — 0. Запуск DR-25
+  приостановлен до решения PM о явном переходе (DR-26): текущий adapter строго
+  закрепляет `glm-4.7` в запросе и response envelope. Настройки не изменены.
 - Worker сохраняет явный model timeout до 90000 ms и lease не меньше 100000 ms
   при Portal timeout 5000 ms. Эти bounds не разрешают provider call, не
   добавляют retry и не открывают Stage 3, активное чтение, применение кандидата
