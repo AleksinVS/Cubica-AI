@@ -591,8 +591,16 @@ Portal adapter, manifest, messages, candidate и private operator не созд�
 payload не выводятся и не сохраняются. Supported CLI не может быть proxy,
 поскольку не сохраняет принятую границу gateway/no-tools/no-retry/bounded-I/O.
 
-Варианты продолжения не выбраны: (A) письменное разрешение Z.AI при сохранении
+При остановке 2026-09-11 варианты продолжения не были выбраны:
+(A) письменное разрешение Z.AI при сохранении
 текущего gateway; (B) General API после нового PM-решения о модели, цене и
 контракте; (C) local/mock; (D) supported CLI только как новая transport boundary
 после отдельного PM-решения и доказательства, не workaround. Ни один вариант не
 является принятой архитектурой; до выбора provider call не повторяется.
+
+PM 2026-09-18 подтвердил наличие разрешения Z.AI на текущий Coding Plan gateway
+и поручил продолжить DR-25. Это входное условие от PM без независимой проверки
+письма; provider-policy blocker снят для прежних provider/model и test-only
+границ. Fresh exact preflight и Sol-high `ACCEPT` ещё обязательны до активации.
+Окно ещё не израсходовано; bounds, no-retry и запрет Stage 3/записи в wiki
+не изменены.

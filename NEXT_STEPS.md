@@ -120,12 +120,18 @@ Task | Coordinator | Owner | Working/integration branch`, затем повто�
   Разрешение не израсходовано (`providerCalls=0`): PostgreSQL, Portal adapter,
   manifest, messages и private operator не создавались; candidate, запись в Git
   продуктовой wiki и Stage 3 остаются закрыты.
-- Возобновление не выбрано. Допустимые варианты требуют отдельного решения:
+- При остановке 2026-09-11 возобновление не было выбрано. Рассматривались:
   письменное разрешение Z.AI при сохранении текущего gateway; General API при
   принятии новой модели/цены/контракта; local/mock; либо supported CLI только
   как новая transport boundary после PM-решения и доказательства соответствия,
   не как workaround. До этого не повторять provider call и не выводить
   credentials, bearer, dialog text, content, IDs или provider payload.
+- PM 2026-09-18 подтвердил наличие разрешения Z.AI и поручил продолжить DR-25
+  с текущим Coding Plan gateway. Это принято как входное условие от PM без
+  независимой проверки письма; provider-policy blocker снят в этих границах.
+  Разрешение окна ещё не израсходовано. Перед первым вызовом обязательны свежие
+  exact preflight и Sol-high `ACCEPT`; bounds, no-retry и запрет Stage 3,
+  активного чтения, применения кандидатов и записи в wiki сохранены.
 - Worker сохраняет явный model timeout до 90000 ms и lease не меньше 100000 ms
   при Portal timeout 5000 ms. Эти bounds не разрешают provider call, не
   добавляют retry и не открывают Stage 3, активное чтение, применение кандидата
