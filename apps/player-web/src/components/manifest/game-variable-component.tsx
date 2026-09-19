@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import type { RefCallback } from "react";
 import type {
   GameUiComponent,
   GameUiGameVariableComponentProps,
@@ -26,6 +27,7 @@ export function GameVariableComponent({
   layoutMode,
   metricBackgroundImages,
   previewAttributes,
+  geometryRef,
   assetResolver
 }: {
   component: GameUiComponent<GameUiGameVariableComponentProps>;
@@ -35,6 +37,7 @@ export function GameVariableComponent({
   layoutMode?: PlayerLayoutMode;
   metricBackgroundImages?: Record<string, string>;
   previewAttributes?: PreviewElementAttributes;
+  geometryRef?: RefCallback<HTMLElement>;
   /** Optional game asset index (ADR-063); `asset:<id>` values fail closed while absent. */
   assetResolver?: GameAssetResolver | null;
 }) {
@@ -86,6 +89,7 @@ export function GameVariableComponent({
     return (
       <div
         {...previewAttributes}
+        ref={geometryRef}
         className={`game-variable ${id ? `game-variable--${id}` : ""} game-variable--topbar${isProminent ? " game-variable--prominent" : ""}`}
         style={prominentStyle}
       >
@@ -124,6 +128,7 @@ export function GameVariableComponent({
     <div
       {...previewAttributes}
       className={`game-variable ${id ? `game-variable--${id}` : ""}${isProminent ? " game-variable--prominent" : ""}`}
+      ref={geometryRef}
     >
       {resolvedBackgroundImage && (
         <div className="game-variable-image" style={{ backgroundImage: `url(${resolvedBackgroundImage})` }} />

@@ -35,6 +35,10 @@ import {
   createPreviewElementAttributes
 } from "./preview-metadata";
 import type { PlayerLayoutMode } from "@/lib/player-layout-mode";
+import {
+  applyUiComponentGeometryStyle,
+  projectUiComponentGeometryStyle,
+} from "./ui-component-style";
 
 type PreviewRuntimePointerComponent = GameUiComponent & {
   /**
@@ -79,12 +83,14 @@ const MAP_FIRST_PANEL_LABELS: Readonly<Record<MapFirstPanelSlot, string>> = {
 function MapFirstScreenShell({
   className,
   style,
+  geometryRef,
   previewAttributes,
   availablePanels,
   children
 }: {
   readonly className: string;
   readonly style: React.CSSProperties | undefined;
+  readonly geometryRef: React.RefCallback<HTMLElement>;
   readonly previewAttributes: React.HTMLAttributes<HTMLElement>;
   readonly availablePanels: readonly MapFirstPanelSlot[];
   readonly children: (
@@ -127,6 +133,7 @@ function MapFirstScreenShell({
       {...previewAttributes}
       className={className}
       style={style}
+      ref={geometryRef}
       onKeyDown={(event) => {
         if (event.key === "Escape" && openPanel) {
           event.preventDefault();
@@ -288,6 +295,19 @@ export function UiComponentNode({
   /** Presentation state supplied only to a direct map-first drawer area. */
   mapFirstPanel?: MapFirstPanelPresentation;
 }) {
+  const componentStyle = (component as GameUiComponent & { style?: unknown }).style;
+  const geometryStyle = React.useMemo(
+    () => projectUiComponentGeometryStyle(componentStyle),
+    [componentStyle]
+  );
+  const geometryCleanup = React.useRef<(() => void) | null>(null);
+  const geometryRef = React.useCallback<React.RefCallback<HTMLElement>>((element) => {
+    geometryCleanup.current?.();
+    geometryCleanup.current = element
+      ? applyUiComponentGeometryStyle(element, geometryStyle)
+      : null;
+  }, [geometryStyle]);
+
   if (component.if) {
     const condition = resolveExpressions(component.if, gameState ?? {}, localContext);
     if (!isTruthyCondition(condition)) {
@@ -411,7 +431,7 @@ export function UiComponentNode({
         return (
           <div
             {...previewAttributes}
-            ref={mapFirstPanel?.ref}
+            ref={mergeRefs(mapFirstPanel?.ref, geometryRef)}
             id={mapFirstPanel?.id}
             className={`game-area ${cssClass}`}
             data-workspace-slot={areaAttributes.workspaceSlot}
@@ -436,6 +456,7 @@ export function UiComponentNode({
           {...previewAttributes}
           className={component.type === "areaComponent" ? `game-area ${cssClass}` : `game-screen ${cssClass}`}
           data-workspace-slot={component.type === "areaComponent" ? areaAttributes.workspaceSlot : undefined}
+          ref={geometryRef}
           style={areaBgImage ? { backgroundImage: `url(${areaBgImage})` } : undefined}
           onClick={handleBackdropClick}
         >
@@ -502,6 +523,7 @@ export function UiComponentNode({
           <MapFirstScreenShell
             className={`game-screen ${cssClass}`}
             style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
+            geometryRef={geometryRef}
             previewAttributes={previewAttributes}
             availablePanels={availablePanels}
           >
@@ -519,6 +541,7 @@ export function UiComponentNode({
         <div
           {...previewAttributes}
           className={`game-screen ${cssClass}`}
+          ref={geometryRef}
           style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
           onClick={handleBackdropClick}
         >
@@ -547,7 +570,7 @@ export function UiComponentNode({
         return (
           <div
             {...previewAttributes}
-            ref={mapFirstPanel?.ref}
+            ref={mergeRefs(mapFirstPanel?.ref, geometryRef)}
             id={mapFirstPanel?.id}
             className={`game-area ${areaAttributes.className}`}
             data-workspace-slot={areaAttributes.workspaceSlot}
@@ -594,6 +617,7 @@ export function UiComponentNode({
           {...previewAttributes}
           className={`game-area ${areaAttributes.className}`}
           data-workspace-slot={areaAttributes.workspaceSlot}
+          ref={geometryRef}
           style={areaBgImage ? { backgroundImage: `url(${areaBgImage})` } : undefined}
           onClick={handleBackdropClick}
         >
@@ -636,6 +660,7 @@ export function UiComponentNode({
           metricBackgroundImages={metricBackgroundImages}
           previewAttributes={previewAttributes}
           assetResolver={assetResolver}
+          geometryRef={geometryRef}
         />
       );
     }
@@ -648,6 +673,7 @@ export function UiComponentNode({
           localContext={localContext}
           gameState={gameState}
           previewAttributes={previewAttributes}
+          geometryRef={geometryRef}
         />
       );
     }
@@ -661,6 +687,7 @@ export function UiComponentNode({
           localContext={localContext}
           gameState={gameState}
           previewAttributes={previewAttributes}
+          geometryRef={geometryRef}
           session={session}
           isPending={isPending}
         />
@@ -674,6 +701,7 @@ export function UiComponentNode({
           localContext={localContext}
           gameState={gameState}
           previewAttributes={previewAttributes}
+          geometryRef={geometryRef}
         />
       );
     }
@@ -686,6 +714,7 @@ export function UiComponentNode({
           gameState={gameState}
           previewAttributes={previewAttributes}
           assetResolver={assetResolver}
+          geometryRef={geometryRef}
         />
       );
     }
@@ -714,6 +743,20 @@ export function UiComponentNode({
       // Неизвестный тип компонента — пропускаем, не бросаем ошибку
       return null;
   }
+}
+
+function mergeRefs<T>(
+  ...refs: Array<React.Ref<T> | undefined>
+): React.RefCallback<T> {
+  return (value) => {
+    for (const ref of refs) {
+      if (typeof ref === "function") {
+        ref(value);
+      } else if (ref) {
+        (ref as React.MutableRefObject<T | null>).current = value;
+      }
+    }
+  };
 }
 
 function isTruthyCondition(value: unknown): boolean {

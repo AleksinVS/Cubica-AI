@@ -2,6 +2,7 @@ import type {
   GameUiComponent,
   GameUiButtonComponentProps
 } from "@cubica/contracts-manifest";
+import type { RefCallback } from "react";
 import { resolveExpressions, resolvePayloadExpressions } from "@/lib/expression-resolver";
 import type { PreviewElementAttributes } from "./preview-metadata";
 import type { PlayerLayoutMode } from "@/lib/player-layout-mode";
@@ -26,6 +27,7 @@ export function ButtonComponent({
   localContext,
   gameState,
   previewAttributes,
+  geometryRef,
   session,
   isPending = false,
 }: {
@@ -35,6 +37,7 @@ export function ButtonComponent({
   localContext?: Record<string, unknown>;
   gameState?: Record<string, unknown>;
   previewAttributes?: PreviewElementAttributes;
+  geometryRef?: RefCallback<HTMLElement>;
   session?: GameSession;
   isPending?: boolean;
 }) {
@@ -72,6 +75,7 @@ export function ButtonComponent({
       {...previewAttributes}
       id={(component as GameUiComponent).id}
       className={className}
+      ref={geometryRef}
       type="button"
       onClick={() => command && onAction(command, resolvedPayload)}
       disabled={!command || resolvedDisabled || unavailable || isPending}

@@ -2,6 +2,7 @@ import type {
   GameUiComponent,
   GameUiRichTextComponentProps
 } from "@cubica/contracts-manifest";
+import type { RefCallback } from "react";
 import { sanitizeManifestRichText } from "@cubica/contracts-manifest/rich-text-sanitizer";
 import { resolveExpressions } from "@/lib/expression-resolver";
 import type { PreviewElementAttributes } from "./preview-metadata";
@@ -20,11 +21,13 @@ export function RichTextComponent({
   localContext,
   gameState,
   previewAttributes,
+  geometryRef,
 }: {
   component: GameUiComponent<GameUiRichTextComponentProps>;
   localContext?: Record<string, unknown>;
   gameState?: Record<string, unknown>;
   previewAttributes?: PreviewElementAttributes;
+  geometryRef?: RefCallback<HTMLElement>;
 }) {
   const props: Partial<GameUiRichTextComponentProps> = component.props ?? {};
   const { html, cssClass } = props;
@@ -40,8 +43,8 @@ export function RichTextComponent({
     if (!sanitized) {
       return null;
     }
-    return <div {...previewAttributes} className={cssClass} dangerouslySetInnerHTML={{ __html: sanitized }} />;
+    return <div {...previewAttributes} ref={geometryRef} className={cssClass} dangerouslySetInnerHTML={{ __html: sanitized }} />;
   }
 
-  return <p {...previewAttributes} className={cssClass}>{normalized}</p>;
+  return <p {...previewAttributes} ref={geometryRef} className={cssClass}>{normalized}</p>;
 }

@@ -2,6 +2,7 @@ import type {
   GameUiComponent,
   GameUiCardComponentProps
 } from "@cubica/contracts-manifest";
+import type { RefCallback } from "react";
 import { resolveExpression, resolveExpressions, resolvePayloadExpressions } from "@/lib/expression-resolver";
 import { useLocale } from "@/components/locale-context";
 import type { PreviewElementAttributes } from "./preview-metadata";
@@ -32,12 +33,14 @@ export function CardComponent({
   localContext,
   gameState,
   previewAttributes,
+  geometryRef,
 }: {
   component: GameUiComponent<GameUiCardComponentProps>;
   onAction: (command: string, payload: Record<string, unknown>) => void;
   localContext?: Record<string, unknown>;
   gameState?: Record<string, unknown>;
   previewAttributes?: PreviewElementAttributes;
+  geometryRef?: RefCallback<HTMLElement>;
 }) {
   const t = useLocale();
   const props: GameUiCardComponentProps = component.props ?? {};
@@ -136,6 +139,7 @@ export function CardComponent({
     return (
       <article
         {...previewAttributes}
+        ref={geometryRef}
         className="game-card"
         onClick={command ? handleCardClick : undefined}
         onKeyDown={command ? handleKeyDown : undefined}
@@ -182,6 +186,7 @@ export function CardComponent({
   return (
     <article
       {...previewAttributes}
+      ref={geometryRef}
       className={`game-card fallback-card${visualStateClass}`}
       onClick={command && !isDisabled ? handleCardClick : undefined}
       onKeyDown={command && !isDisabled ? handleKeyDown : undefined}

@@ -2,6 +2,7 @@ import type {
   GameUiComponent,
   GameUiImageComponentProps
 } from "@cubica/contracts-manifest";
+import type { RefCallback } from "react";
 import { resolveExpressions } from "@/lib/expression-resolver";
 import { resolveGameAssetReference, type GameAssetResolver } from "@/lib/game-asset-resolver";
 import type { PreviewElementAttributes } from "./preview-metadata";
@@ -28,12 +29,14 @@ export function ImageComponent({
   localContext,
   gameState,
   previewAttributes,
+  geometryRef,
   assetResolver
 }: {
   component: GameUiComponent<GameUiImageComponentProps>;
   localContext?: Record<string, unknown>;
   gameState?: Record<string, unknown>;
   previewAttributes?: PreviewElementAttributes;
+  geometryRef?: RefCallback<HTMLElement>;
   /** Optional game asset index (ADR-063); `asset:<id>` values fail closed while absent. */
   assetResolver?: GameAssetResolver | null;
 }) {
@@ -49,6 +52,7 @@ export function ImageComponent({
     return (
       <div
         {...previewAttributes}
+        ref={geometryRef}
         className={resolvedCssClass}
         // Fail closed: omit the style entirely when there is no resolved
         // image (missing asset id, or an asset reference the index does not
@@ -65,6 +69,7 @@ export function ImageComponent({
   return (
     <img
       {...previewAttributes}
+      ref={geometryRef}
       src={resolvedSrc}
       alt={resolvedAlt ?? ""}
       className={resolvedCssClass}

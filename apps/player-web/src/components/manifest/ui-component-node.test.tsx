@@ -79,6 +79,115 @@ function buildScreen(options: {
 }
 
 describe("UiComponentNode declarative action binding (ADR-055)", () => {
+  it("renders bounded component geometry on area and button roots while preserving screen background", () => {
+    const screen = {
+      type: "screen",
+      title: "Geometry fixture",
+      root: {
+        type: "screenComponent",
+        props: { backgroundImage: "/fixture-background.png" },
+        children: [{
+          type: "areaComponent",
+          style: { width: 320, transform: "translate(8px, -4px) rotate(2deg)" },
+          props: { cssClass: "geometry-area" },
+          children: [{
+            type: "buttonComponent",
+            id: "geometry-button",
+            style: { width: "50%", height: "2rem", transform: "translate(-3px, 6px) rotate(-1deg)" },
+            props: { caption: "Geometry" }
+          }]
+        }]
+      }
+    } as unknown as GamePlayerS1UiContent["screen"];
+
+    const { container, rerender } = render(
+      <ManifestRenderer screenDefinition={screen} metrics={{}} onAction={vi.fn()} />
+    );
+
+    const root = container.querySelector(".game-screen") as HTMLElement;
+    const area = container.querySelector(".geometry-area") as HTMLElement;
+    const button = container.querySelector("#geometry-button") as HTMLButtonElement;
+    expect(root.style.backgroundImage).toContain("/fixture-background.png");
+    expect(area.style.width).toBe("320px");
+    expect(area.style.getPropertyPriority("width")).toBe("important");
+    expect(area.style.minWidth).toBe("0px");
+    expect(area.style.getPropertyPriority("min-width")).toBe("important");
+    expect(area.style.transform).toBe("translate(8px, -4px) rotate(2deg)");
+    expect(area.style.getPropertyPriority("transform")).toBe("important");
+    expect(button.style.width).toBe("50%");
+    expect(button.style.getPropertyPriority("width")).toBe("important");
+    expect(button.style.height).toBe("2rem");
+    expect(button.style.transform).toBe("translate(-3px, 6px) rotate(-1deg)");
+
+    // Removing authored geometry must release the important declarations and
+    // let the existing game stylesheet take the element back.
+    (screen.root.children?.[0] as unknown as { style?: unknown }).style = undefined;
+    rerender(<ManifestRenderer screenDefinition={screen} metrics={{}} onAction={vi.fn()} />);
+    expect(area.style.width).toBe("");
+    expect(area.style.getPropertyPriority("width")).toBe("");
+    expect(area.style.minWidth).toBe("");
+    expect(area.style.getPropertyPriority("min-width")).toBe("");
+    expect(area.style.transform).toBe("");
+  });
+
+  it("leaves baseline and invalid component geometry unchanged", () => {
+    const screen = {
+      type: "screen",
+      title: "Geometry baseline fixture",
+      root: {
+        type: "screenComponent",
+        props: {},
+        children: [{
+          type: "areaComponent",
+          style: { width: 0, transform: "scale(2)" },
+          props: { cssClass: "baseline-area" },
+          children: [{ type: "buttonComponent", id: "baseline-button", props: { caption: "Baseline" } }]
+        }]
+      }
+    } as unknown as GamePlayerS1UiContent["screen"];
+
+    const { container } = render(
+      <ManifestRenderer screenDefinition={screen} metrics={{}} onAction={vi.fn()} />
+    );
+
+    expect((container.querySelector(".baseline-area") as HTMLElement).getAttribute("style")).toBeNull();
+    expect((container.querySelector("#baseline-button") as HTMLButtonElement).getAttribute("style")).toBeNull();
+  });
+
+  it("keeps geometry hooks stable while a state-bound component toggles visibility", () => {
+    const screen = {
+      type: "screen",
+      title: "Visibility geometry fixture",
+      root: {
+        type: "screenComponent",
+        props: {},
+        children: [{
+          type: "areaComponent",
+          if: "{{visible}}",
+          style: { width: 240 },
+          props: { cssClass: "stateful-area" }
+        }]
+      }
+    } as unknown as GamePlayerS1UiContent["screen"];
+
+    const { container, rerender } = render(
+      <ManifestRenderer screenDefinition={screen} metrics={{}} gameState={{ visible: false }} onAction={vi.fn()} />
+    );
+    expect(container.querySelector(".stateful-area")).toBeNull();
+
+    rerender(
+      <ManifestRenderer screenDefinition={screen} metrics={{}} gameState={{ visible: true }} onAction={vi.fn()} />
+    );
+    const visibleArea = container.querySelector(".stateful-area") as HTMLElement;
+    expect(visibleArea.style.width).toBe("240px");
+    expect(visibleArea.style.getPropertyPriority("width")).toBe("important");
+
+    rerender(
+      <ManifestRenderer screenDefinition={screen} metrics={{}} gameState={{ visible: false }} onAction={vi.fn()} />
+    );
+    expect(container.querySelector(".stateful-area")).toBeNull();
+  });
+
   it("dispatches the action declared directly on the forward-nav button when clicked", () => {
     const onAction = vi.fn();
     const { container } = render(
