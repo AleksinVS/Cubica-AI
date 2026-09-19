@@ -115,4 +115,5 @@ The following proposed decisions require explicit product-manager review before 
 | [ADR-102](102-ordered-bounded-iteration.md) | Упорядоченный обход и позиция в нём | Accepted |
 | [ADR-103](103-portable-public-gameplay-journal.md) | Переносимый журнал подтверждённых публичных событий | Accepted |
 | [ADR-104](104-verifiable-session-ai-debrief.md) | Проверяемый ИИ-разбор подтверждённой истории сессии | Accepted |
-| [ADR-106](106-editor-debug-session-control-and-checkpoints.md) | серверное управление отладочной сессией и полные снимки | Accepted |
+| [ADR-105](105-preview-confirmed-editor-mutations.md) | Предпросмотр и подтверждение точного изменения в редакторе | Accepted |
+| [ADR-106](106-editor-debug-session-control-and-checkpoints.md) | серверная пауза и сохранения, совместимые с текущей моделью игры | Accepted |
