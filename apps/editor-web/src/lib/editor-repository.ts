@@ -6,7 +6,7 @@
  * purpose, so browser saves cannot modify generated delivery files.
  */
 import { createHash } from "node:crypto";
-import { mkdir, opendir, readFile, realpath, stat, writeFile } from "node:fs/promises";
+import { mkdir, open, opendir, readFile, realpath, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 export interface AuthoringFileSummary {
@@ -172,27 +172,49 @@ export interface AppliedWorktreeFile {
 }
 
 /**
- * Writes several authoring files into a session worktree in ONE best-effort
- * ATOMIC batch (ADR-057 §4.10, §5; Phase 6.2a). Used to persist the SIBLING
- * facets of a cross-manifest entity operation (the active facet stays in the
- * in-memory editor and commits on Save like today); the whole batch commits
- * together on the next Save, exactly like any other authoring edit.
+ * Writes the active and sibling authoring files as one recoverable batch.
  *
  * All targets are resolved and their originals snapshotted FIRST; then every file
- * is written. If any write throws, the already-written files are restored from
- * their snapshots so a partial batch never lands on disk. The client has already
- * dry-run/validated every file, so this path never re-parses — it only persists.
+ * is written. A failed write may have truncated its target, so rollback includes
+ * that target as well as all earlier files.
  */
 export async function applyAuthoringFilesToWorktree(input: {
   readonly gameId: string;
   readonly repoRoot: string;
   readonly files: readonly WorktreeFileWrite[];
+  /** Expected hashes are checked after all targets are resolved and before the first write. */
+  readonly expectedBeforeHashes?: Readonly<Record<string, string>>;
 }): Promise<{ readonly files: readonly AppliedWorktreeFile[] }> {
+  return applyAuthoringFilesWithWriter(input, (filePath, text) => writeFile(filePath, text, "utf8"));
+}
+
+/** Test seam for a write failure followed by an independent rollback failure. */
+export async function applyAuthoringFilesToWorktreeForTests(
+  input: Parameters<typeof applyAuthoringFilesToWorktree>[0],
+  writeText: (filePath: string, text: string) => Promise<void>
+): ReturnType<typeof applyAuthoringFilesToWorktree> {
+  return applyAuthoringFilesWithWriter(input, writeText);
+}
+
+async function applyAuthoringFilesWithWriter(
+  input: Parameters<typeof applyAuthoringFilesToWorktree>[0],
+  writeText: (filePath: string, text: string) => Promise<void>
+): ReturnType<typeof applyAuthoringFilesToWorktree> {
   if (input.files.length === 0) {
     return { files: [] };
   }
 
   const repoRoot = await resolveRepositoryRoot(input.repoRoot);
+  validateGameId(input.gameId);
+  const journalDirectory = path.join(repoRoot, ".tmp", "editor-mutation-recovery");
+  const journalPath = path.join(journalDirectory, `${input.gameId}.json`);
+  if (await fileExists(journalPath)) {
+    throw new EditorRepositoryError("An incomplete editor mutation needs recovery before further writes.", 503);
+  }
+  const normalizedPaths = input.files.map((file) => normalizeAuthoringFilePath(file.filePath));
+  if (new Set(normalizedPaths).size !== normalizedPaths.length) {
+    throw new EditorRepositoryError("A mutation batch cannot write the same authoring file twice.", 400);
+  }
   const resolved = await Promise.all(
     input.files.map(async (file) => {
       const target = await resolveExistingAuthoringFile(repoRoot, input.gameId, file.filePath);
@@ -201,25 +223,87 @@ export async function applyAuthoringFilesToWorktree(input: {
     })
   );
 
+  for (const file of resolved) {
+    const expected = input.expectedBeforeHashes?.[file.filePath];
+    if (expected !== undefined && hashText(file.originalText) !== expected) {
+      throw new EditorRepositoryError(`The authoring file changed on disk: ${file.filePath}. Reload before applying.`, 409);
+    }
+  }
+
+  await mkdir(journalDirectory, { recursive: true });
+  const journal = await open(journalPath, "wx").catch((error: unknown) => {
+    if (isFileExistsError(error)) {
+      throw new EditorRepositoryError("An incomplete editor mutation needs recovery before further writes.", 503);
+    }
+    throw error;
+  });
+  try {
+    await journal.writeFile(JSON.stringify({
+      gameId: input.gameId,
+      files: resolved.map((file) => ({
+        filePath: file.filePath,
+        beforeHash: hashText(file.originalText),
+        afterHash: hashText(file.text),
+        originalText: file.originalText
+      }))
+    }), "utf8");
+    await journal.sync();
+  } finally {
+    await journal.close();
+  }
+  const journalDirectoryHandle = await open(journalDirectory, "r");
+  try { await journalDirectoryHandle.sync(); } finally { await journalDirectoryHandle.close(); }
+
   const written: typeof resolved = [];
   try {
     for (const file of resolved) {
-      await writeFile(file.realPath, file.text, "utf8");
       written.push(file);
+      await writeText(file.realPath, file.text);
     }
   } catch (error) {
-    // Roll back everything already written so the batch is all-or-nothing.
+    const rollbackErrors: unknown[] = [];
     for (const file of written) {
-      await writeFile(file.realPath, file.originalText, "utf8").catch(() => undefined);
+      try {
+        await writeText(file.realPath, file.originalText);
+      } catch {
+        // A rejected write can leave the original bytes intact. Hash
+        // verification below decides whether recovery is actually incomplete.
+      }
     }
+    for (const file of resolved) {
+      try {
+        if (hashText(await readFile(file.realPath, "utf8")) !== hashText(file.originalText)) {
+          rollbackErrors.push(new Error(`Rollback hash mismatch: ${file.filePath}`));
+        }
+      } catch (rollbackError) {
+        rollbackErrors.push(rollbackError);
+      }
+    }
+    if (rollbackErrors.length > 0) {
+      throw new EditorRepositoryError(`Editor mutation rollback is incomplete. Recovery journal: .tmp/editor-mutation-recovery/${input.gameId}.json`, 503);
+    }
+    await rm(journalPath);
     throw error instanceof EditorRepositoryError
       ? error
       : new EditorRepositoryError("Applying entity operation to the worktree failed.", 500);
   }
 
+  await rm(journalPath);
+
   return {
     files: resolved.map((file) => ({ filePath: file.filePath, versionHash: hashText(file.text) }))
   };
+}
+
+async function fileExists(filePath: string): Promise<boolean> {
+  try { await stat(filePath); return true; } catch (error) {
+    if (isMissingFileError(error)) return false;
+    throw error;
+  }
+}
+
+function isFileExistsError(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error && error.code === "EEXIST";
 }
 
 export async function openEditorLayout(input: {
@@ -297,13 +381,11 @@ export function normalizeAuthoringFilePath(filePath: string): string {
     throw new EditorRepositoryError("File path contains an invalid character.", 400);
   }
 
-  const normalized = filePath.replaceAll("\\", "/").replace(/^\/+/u, "");
+  const normalized = filePath.replaceAll("\\", "/");
   if (
     normalized === "" ||
     path.isAbsolute(filePath) ||
-    normalized.startsWith("../") ||
-    normalized.includes("/../") ||
-    normalized === ".." ||
+    normalized.split("/").some((segment) => segment === "" || segment === "." || segment === "..") ||
     !authoringFilePattern.test(normalized)
   ) {
     throw new EditorRepositoryError("Only relative *.authoring.json paths are editable.", 400);

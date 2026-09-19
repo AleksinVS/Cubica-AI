@@ -1,9 +1,11 @@
-import { mkdir, rm, symlink, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
   EditorRepositoryError,
+  applyAuthoringFilesToWorktree,
+  applyAuthoringFilesToWorktreeForTests,
   hashText,
   layoutPathForAuthoringFile,
   listAuthoringFiles,
@@ -160,5 +162,74 @@ describe("editor repository adapter", () => {
         repoRoot
       })
     ).rejects.toMatchObject({ statusCode: 400 });
+  });
+
+  it("checks every expected disk hash before writing any document", async () => {
+    const active = path.join(repoRoot, "games", "simple-choice", "authoring", "game.authoring.json");
+    const original = await readFile(active, "utf8");
+    await expect(applyAuthoringFilesToWorktree({
+      gameId: "simple-choice", repoRoot,
+      files: [
+        { filePath: "game.authoring.json", text: "{\"changed\":true}\n" },
+        { filePath: "ui/web.authoring.json", text: "{\"changed\":true}\n" }
+      ],
+      expectedBeforeHashes: {
+        "game.authoring.json": hashText(original),
+        "ui/web.authoring.json": "0".repeat(64)
+      }
+    })).rejects.toMatchObject({ statusCode: 409 });
+    expect(await readFile(active, "utf8")).toBe(original);
+  });
+
+  it("restores the earlier document when a later batch write fails", async () => {
+    const active = path.join(repoRoot, "games", "simple-choice", "authoring", "game.authoring.json");
+    const sibling = path.join(repoRoot, "games", "simple-choice", "authoring", "ui", "web.authoring.json");
+    const activeBefore = await readFile(active, "utf8");
+    const siblingBefore = await readFile(sibling, "utf8");
+    await chmod(sibling, 0o444);
+    try {
+      await expect(applyAuthoringFilesToWorktree({
+        gameId: "simple-choice", repoRoot,
+        files: [
+          { filePath: "game.authoring.json", text: "{\"changed\":true}\n" },
+          { filePath: "ui/web.authoring.json", text: "{\"changed\":true}\n" }
+        ]
+      })).rejects.toMatchObject({ statusCode: 500 });
+      expect(await readFile(active, "utf8")).toBe(activeBefore);
+      expect(await readFile(sibling, "utf8")).toBe(siblingBefore);
+    } finally {
+      await chmod(sibling, 0o644);
+    }
+  });
+
+  it("keeps a recovery journal and blocks further batches when rollback fails", async () => {
+    const active = path.join(repoRoot, "games", "simple-choice", "authoring", "game.authoring.json");
+    const sibling = path.join(repoRoot, "games", "simple-choice", "authoring", "ui", "web.authoring.json");
+    const activeBefore = await readFile(active, "utf8");
+    let activeWrites = 0;
+    const files = [
+      { filePath: "game.authoring.json", text: '{"changed":true}\n' },
+      { filePath: "ui/web.authoring.json", text: '{"changed":true}\n' }
+    ];
+    await expect(applyAuthoringFilesToWorktreeForTests({ gameId: "simple-choice", repoRoot, files }, async (filePath, text) => {
+      if (filePath === active && ++activeWrites === 2) throw new Error("rollback failed");
+      if (filePath === sibling) throw new Error("second write failed");
+      await writeFile(filePath, text, "utf8");
+    })).rejects.toMatchObject({ statusCode: 503 });
+    const journalPath = path.join(repoRoot, ".tmp", "editor-mutation-recovery", "simple-choice.json");
+    const journal = JSON.parse(await readFile(journalPath, "utf8")) as { files: { filePath: string; originalText: string }[] };
+    expect(journal.files[0]).toMatchObject({ filePath: "game.authoring.json", originalText: activeBefore });
+    expect(await readFile(active, "utf8")).toBe(files[0]?.text);
+    await expect(applyAuthoringFilesToWorktree({ gameId: "simple-choice", repoRoot, files }))
+      .rejects.toMatchObject({ statusCode: 503 });
+  });
+
+  it("rejects path aliases before resolving a batch", async () => {
+    for (const filePath of ["./game.authoring.json", "ui//web.authoring.json", "ui/./web.authoring.json"]) {
+      expect(() => normalizeAuthoringFilePath(filePath)).toThrow(EditorRepositoryError);
+      await expect(applyAuthoringFilesToWorktree({
+        gameId: "simple-choice", repoRoot, files: [{ filePath, text: "{}" }]
+      })).rejects.toMatchObject({ statusCode: 400 });
+    }
   });
 });

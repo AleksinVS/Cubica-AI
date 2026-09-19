@@ -25,6 +25,12 @@ const repoRoot = path.resolve(__dirname, "..", "..");
  * parity coverage without touching the drift-check wiring.
  */
 const JOBS = [
+  {
+    name: "editor-mutation",
+    schema: path.join(repoRoot, "docs", "architecture", "schemas", "editor-mutation.schema.json"),
+    output: path.join(repoRoot, "packages", "editor-engine", "src", "generated", "editor-mutation.ts"),
+    rootName: "EditorMutationContracts"
+  },
   ...[
     ["debug-session-control-request", "DebugSessionControlRequest"],
     ["debug-session-control-response", "DebugSessionControlResponse"],

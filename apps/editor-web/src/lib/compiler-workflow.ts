@@ -246,6 +246,10 @@ export async function compileGameForEditor(input: {
   readonly gameId: string;
   readonly checkOnly?: boolean;
   readonly repoRoot?: string;
+  /** In-memory authoring sources used for an exact non-authoring preview. */
+  readonly authoringTextOverrides?: ReadonlyMap<string, string>;
+  /** Redirects generated artifacts into an isolated candidate content root. */
+  readonly generatedArtifactRoot?: string;
 }): Promise<EditorCompileResult> {
   const checkOnly = input.checkOnly ?? false;
   const compiler = await getCompiler(input.repoRoot);
@@ -261,15 +265,22 @@ export async function compileGameForEditor(input: {
 
   for (const job of jobs) {
     try {
-      const text = await readFile(job.sourceFile, "utf8");
+      const outputFile = input.generatedArtifactRoot === undefined
+        ? job.outputFile
+        : path.join(input.generatedArtifactRoot, compiler.relativePath(job.outputFile));
+      const sourceMapFile = input.generatedArtifactRoot === undefined
+        ? job.sourceMapFile
+        : path.join(input.generatedArtifactRoot, compiler.relativePath(job.sourceMapFile));
+      const relativeSourcePath = authoringRelativePath(compiler, job);
+      const text = input.authoringTextOverrides?.get(relativeSourcePath) ?? await readFile(job.sourceFile, "utf8");
       const output = compiler.compileAuthoringTextCached(job, text, ajv, { telemetry });
       const runtime = compiler.validateRuntimeManifest(job, output.manifest, ajv);
       artifacts.push(toArtifact(compiler, job));
       diagnostics.push(...runtime.errors.map((error) => runtimeErrorToDiagnostic(compiler, job, output.sourceMap, error)));
 
       if (checkOnly) {
-        const manifestDiff = compiler.compareGenerated(job.outputFile, output.manifest);
-        const sourceMapDiff = compiler.compareGenerated(job.sourceMapFile, output.sourceMap);
+        const manifestDiff = compiler.compareGenerated(outputFile, output.manifest);
+        const sourceMapDiff = compiler.compareGenerated(sourceMapFile, output.sourceMap);
         for (const message of [manifestDiff, sourceMapDiff].filter(Boolean) as string[]) {
           diagnostics.push({
             severity: "error",
@@ -282,8 +293,8 @@ export async function compileGameForEditor(input: {
           });
         }
       } else if (runtime.valid) {
-        await writeJsonFile(job.outputFile, output.manifest);
-        await writeJsonFile(job.sourceMapFile, output.sourceMap);
+        await writeJsonFile(outputFile, output.manifest);
+        await writeJsonFile(sourceMapFile, output.sourceMap);
       }
     } catch (error) {
       diagnostics.push(compileErrorToDiagnostic(compiler, error, undefined, compiler.relativePath(job.sourceFile)));
@@ -450,18 +461,22 @@ export function mapGeneratedPointerToAuthoring(
 
 export async function loadPreviewSelectionSourceMaps(
   gameId: string,
-  repoRoot?: string
+  repoRoot?: string,
+  generatedArtifactRoot?: string
 ): Promise<readonly EditorPreviewSourceMap[]> {
   const compiler = await getCompiler(repoRoot);
   const jobs = compiler.discoverJobs({ gameId });
   const sourceMaps: EditorPreviewSourceMap[] = [];
 
   for (const job of jobs) {
-    if (!existsSync(job.sourceMapFile)) {
+    const sourceMapFile = generatedArtifactRoot === undefined
+      ? job.sourceMapFile
+      : path.join(generatedArtifactRoot, compiler.relativePath(job.sourceMapFile));
+    if (!existsSync(sourceMapFile)) {
       continue;
     }
 
-    const text = await readFile(job.sourceMapFile, "utf8");
+    const text = await readFile(sourceMapFile, "utf8");
     const parsed = JSON.parse(text) as Partial<EditorPreviewSourceMap>;
     if (
       typeof parsed.generatedFile === "string" &&

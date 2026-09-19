@@ -14,22 +14,17 @@ import {
   type EditorCompilerDiagnostic
 } from "@/lib/compiler-workflow";
 import { EditorRepositoryError } from "@/lib/editor-repository";
-import { evaluateEditorSessionCompatibility, repoRootForSession, touchEditorSession } from "@/lib/editor-session-store";
+import { evaluateEditorSessionCompatibility, repoRootForSession, withEditorSessionMutationLease } from "@/lib/editor-session-store";
 import { configuredEditorProjectRoot } from "@/lib/editor-project-root";
+import { validateAndBundleProjectPlugins } from "@/lib/project-plugin-validation";
+import { prepareRuntimeSession } from "@/lib/editor-preview-runtime";
 import {
-  validateAndBundleProjectPlugins,
-  type PlayerWebPluginBundleForRuntime
-} from "@/lib/project-plugin-validation";
-import { randomUUID } from "node:crypto";
+  copyCandidatePluginBundles,
+  createEditorCurrentPreview,
+  recoverPendingEditorCurrentPreview
+} from "@/lib/editor-mutation-candidate";
 
 export const runtime = "nodejs";
-
-const runtimeApiUrl = process.env.RUNTIME_API_URL ?? "http://127.0.0.1:3001";
-const playerWebUrl = process.env.PLAYER_WEB_URL ?? "http://127.0.0.1:3000";
-// Cold publication of a geometry-heavy game can legitimately take tens of
-// seconds. Keep the liveness probe short, but give bounded content/session
-// operations enough time to finish their measured first-load work.
-const previewRuntimeOperationTimeoutMs = 30_000;
 
 export async function POST(request: Request) {
   try {
@@ -56,12 +51,15 @@ export async function POST(request: Request) {
       }
     }
 
+    if (session !== undefined) {
+      return withEditorSessionMutationLease(session.sessionId, "preview-build", () =>
+        buildSessionPreview(body.gameId!, session.sessionId, session.worktreePath, requestOrigin(request))
+      );
+    }
+
     const workflowRepoRoot = repoRoot ?? configuredEditorProjectRoot();
     const compile = await compileGameForEditor({ gameId: body.gameId, checkOnly: false, repoRoot: workflowRepoRoot });
     if (!compile.ok) {
-      if (session !== undefined) {
-        await touchEditorSession(session.sessionId);
-      }
       return Response.json({
         ok: false,
         ready: false,
@@ -71,32 +69,7 @@ export async function POST(request: Request) {
       });
     }
 
-    const pluginValidation = session === undefined
-      ? { ok: true, diagnostics: [], playerWebBundles: [] }
-      : await validateAndBundleProjectPlugins({ gameId: body.gameId, repoRoot: session.worktreePath });
-    if (!pluginValidation.ok) {
-      if (session !== undefined) {
-        await touchEditorSession(session.sessionId);
-      }
-      return Response.json({
-        ok: false,
-        ready: false,
-        gameId: body.gameId,
-        diagnostics: pluginValidation.diagnostics,
-        artifacts: compile.artifacts
-      });
-    }
-
-    const readiness = await prepareRuntimeSession(body.gameId, requestOrigin(request), session === undefined
-      ? undefined
-      : {
-          contentSourceId: session.sessionId,
-          contentRoot: session.worktreePath,
-          pluginBundles: pluginValidation.playerWebBundles
-        });
-    if (session !== undefined) {
-      await touchEditorSession(session.sessionId);
-    }
+    const readiness = await prepareRuntimeSession(body.gameId, requestOrigin(request));
     const sourceMaps = readiness.ready ? await loadPreviewSelectionSourceMaps(body.gameId, workflowRepoRoot) : [];
     return Response.json({
       ok: readiness.ready,
@@ -113,70 +86,68 @@ export async function POST(request: Request) {
   }
 }
 
-async function prepareRuntimeSession(
+async function buildSessionPreview(
   gameId: string,
-  editorOrigin: string | undefined,
-  contentSource?: {
-    readonly contentSourceId: string;
-    readonly contentRoot: string;
-    readonly pluginBundles: readonly PlayerWebPluginBundleForRuntime[];
+  sessionId: string,
+  worktreeRoot: string,
+  origin: string | undefined
+): Promise<Response> {
+  // Finish any registration whose HTTP result was ambiguous before allocating
+  // another root. Until then both possible runtime roots must remain available.
+  const pending = await recoverPendingEditorCurrentPreview({ repoRoot: worktreeRoot, sessionId });
+  if (pending !== undefined) {
+    const recovery = await prepareRuntimeSession(gameId, origin, {
+      contentSourceId: sessionId,
+      contentRoot: pending.repoRoot,
+      pluginBundles: pending.pluginBundles
+    });
+    if (!recovery.ready) {
+      return Response.json({ ok: false, ready: false, gameId, diagnostics: recovery.diagnostics, artifacts: [] });
+    }
+    await pending.commit();
   }
-): Promise<{
-  readonly ready: boolean;
-  readonly playerUrl?: string;
-  readonly sessionId?: string;
-  readonly diagnostics: readonly EditorCompilerDiagnostic[];
-}> {
+
+  const current = await createEditorCurrentPreview({ repoRoot: worktreeRoot, sessionId, gameId });
   try {
-    const readyResponse = await fetch(new URL("/readiness", runtimeApiUrl), {
-      method: "GET",
-      signal: AbortSignal.timeout(2500)
+    const compile = await compileGameForEditor({
+      gameId, checkOnly: false, repoRoot: worktreeRoot, generatedArtifactRoot: current.repoRoot
     });
-    if (!readyResponse.ok) {
-      return readinessFailure(`runtime-api readiness returned HTTP ${readyResponse.status}.`);
+    if (!compile.ok) {
+      return Response.json({ ok: false, ready: false, gameId, diagnostics: compile.diagnostics, artifacts: compile.artifacts });
     }
-
-    const reloadResponse = await fetch(new URL("/content/reload", runtimeApiUrl), {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        gameId,
-        contentSourceId: contentSource?.contentSourceId,
-        contentRoot: contentSource?.contentRoot,
-        pluginBundles: contentSource?.pluginBundles
-      }),
-      signal: AbortSignal.timeout(previewRuntimeOperationTimeoutMs)
-    }).catch((error: unknown) => {
-      if (contentSource !== undefined) {
-        throw error;
-      }
-      return undefined;
+    const pluginValidation = await validateAndBundleProjectPlugins({ gameId, repoRoot: worktreeRoot });
+    if (!pluginValidation.ok) {
+      return Response.json({
+        ok: false, ready: false, gameId,
+        diagnostics: pluginValidation.diagnostics,
+        artifacts: compile.artifacts
+      });
+    }
+    await copyCandidatePluginBundles({
+      sourceRoot: worktreeRoot,
+      candidateRoot: current.repoRoot,
+      relativeFilePaths: pluginValidation.playerWebBundles.map((bundle) => bundle.filePath)
     });
-    if (contentSource !== undefined && reloadResponse !== undefined && !reloadResponse.ok) {
-      const body = (await reloadResponse.json().catch(() => ({}))) as { readonly error?: string };
-      return readinessFailure(body.error ?? `runtime-api content reload returned HTTP ${reloadResponse.status}.`);
-    }
-
-    const playerUrl = new URL(playerWebUrl);
-    playerUrl.searchParams.set("gameId", gameId);
-    playerUrl.searchParams.set("preview", "1");
-    // A fresh scope prevents localStorage from resuming an older preview
-    // session whose content source or runtime snapshot belongs to a prior run.
-    playerUrl.searchParams.set("previewInstanceId", randomUUID());
-    if (contentSource !== undefined) {
-      playerUrl.searchParams.set("contentSourceId", contentSource.contentSourceId);
-    }
-    if (editorOrigin !== undefined) {
-      playerUrl.searchParams.set("editorOrigin", editorOrigin);
-    }
-
-    return {
-      ready: true,
-      playerUrl: playerUrl.toString(),
-      diagnostics: []
-    };
-  } catch (error) {
-    return readinessFailure(error instanceof Error ? error.message : "runtime-api is unavailable.");
+    const sourceMaps = await loadPreviewSelectionSourceMaps(gameId, worktreeRoot, current.repoRoot);
+    await current.stage(pluginValidation.playerWebBundles);
+    const readiness = await prepareRuntimeSession(gameId, origin, {
+      contentSourceId: sessionId,
+      contentRoot: current.repoRoot,
+      pluginBundles: pluginValidation.playerWebBundles
+    });
+    if (readiness.ready) await current.commit();
+    return Response.json({
+      ok: readiness.ready,
+      ready: readiness.ready,
+      gameId,
+      playerUrl: readiness.playerUrl,
+      sessionId: readiness.sessionId,
+      sourceMaps: readiness.ready ? sourceMaps : [],
+      diagnostics: readiness.diagnostics,
+      artifacts: compile.artifacts
+    });
+  } finally {
+    await current.discard();
   }
 }
 
@@ -191,16 +162,6 @@ function requestOrigin(request: Request): string | undefined {
   } catch {
     return undefined;
   }
-}
-
-function readinessFailure(message: string): {
-  readonly ready: false;
-  readonly diagnostics: readonly EditorCompilerDiagnostic[];
-} {
-  return {
-    ready: false,
-    diagnostics: [previewReadinessDiagnostic(message)]
-  };
 }
 
 function previewReadinessDiagnostic(message: string): EditorCompilerDiagnostic {

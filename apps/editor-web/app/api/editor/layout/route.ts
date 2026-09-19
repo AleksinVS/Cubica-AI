@@ -6,8 +6,7 @@
  * and applies the same traversal and symlink guards used for authoring files.
  */
 import { EditorRepositoryError, openEditorLayout, saveEditorLayout, type EditorLayoutDocumentBody } from "@/lib/editor-repository";
-import { repoRootForSession, touchEditorSession } from "@/lib/editor-session-store";
-import { configuredEditorProjectRoot } from "@/lib/editor-project-root";
+import { repoRootForSession, touchEditorSession, withEditorSessionMutationLease } from "@/lib/editor-session-store";
 import { type NextRequest } from "next/server";
 
 export const runtime = "nodejs";
@@ -16,8 +15,12 @@ export async function GET(request: NextRequest) {
   try {
     const gameId = requireQueryParam(request, "gameId");
     const authoringFilePath = requireQueryParam(request, "filePath");
-    const session = await repoRootForSession(request.nextUrl.searchParams.get("sessionId") ?? undefined, gameId);
-    return Response.json(await openEditorLayout({ gameId, authoringFilePath, repoRoot: session.repoRoot ?? configuredEditorProjectRoot() }));
+    const sessionId = requireQueryParam(request, "sessionId");
+    const session = await repoRootForSession(sessionId, gameId);
+    if (session.session === undefined || session.repoRoot === undefined) {
+      throw new EditorRepositoryError("Layout requires an active editor session worktree.", 400);
+    }
+    return Response.json(await openEditorLayout({ gameId, authoringFilePath, repoRoot: session.repoRoot }));
   } catch (error) {
     return errorResponse(error);
   }
@@ -33,27 +36,34 @@ export async function PUT(request: NextRequest) {
       readonly sessionId: string;
     }>;
 
-    if (typeof body.gameId !== "string" || typeof body.filePath !== "string" || body.layout === undefined) {
-      throw new EditorRepositoryError("Layout save requests require gameId, filePath, and layout.", 400);
+    if (
+      typeof body.gameId !== "string" ||
+      typeof body.filePath !== "string" ||
+      body.layout === undefined ||
+      typeof body.sessionId !== "string" ||
+      body.sessionId === "" ||
+      typeof body.versionHash !== "string" ||
+      body.versionHash === ""
+    ) {
+      throw new EditorRepositoryError("Layout save requests require gameId, filePath, layout, versionHash, and sessionId.", 400);
     }
 
-    if (body.versionHash !== undefined && typeof body.versionHash !== "string") {
-      throw new EditorRepositoryError("Layout versionHash must be a string when provided.", 400);
-    }
-
-    const session = await repoRootForSession(body.sessionId, body.gameId);
-    const saved = await saveEditorLayout({
-      gameId: body.gameId,
-      authoringFilePath: body.filePath,
-      layout: body.layout,
-      versionHash: body.versionHash,
-      repoRoot: session.repoRoot ?? configuredEditorProjectRoot()
-    });
-    if (session.session !== undefined) {
+    const { sessionId, gameId, filePath, layout, versionHash } = body;
+    return await withEditorSessionMutationLease(sessionId, "layout-save", async () => {
+      const session = await repoRootForSession(sessionId, gameId);
+      if (session.session === undefined || session.repoRoot === undefined) {
+        throw new EditorRepositoryError("Layout save requires an active editor session worktree.", 400);
+      }
+      const saved = await saveEditorLayout({
+        gameId,
+        authoringFilePath: filePath,
+        layout,
+        versionHash,
+        repoRoot: session.repoRoot
+      });
       await touchEditorSession(session.session.sessionId);
-    }
-
-    return Response.json(saved);
+      return Response.json(saved);
+    });
   } catch (error) {
     return errorResponse(error);
   }

@@ -52,10 +52,31 @@ export {
 
 // Document store and text hashing.
 export { hashEditorText } from "./shared.ts";
+export type {
+  EditorMutationConfirmRequest,
+  EditorMutationConfirmedResponse,
+  EditorMutationDiagnostic,
+  EditorMutationDirectRequest,
+  EditorMutationDocument,
+  EditorMutationNoOpResponse,
+  EditorMutationPrepareRequest,
+  EditorMutationPreparedResponse,
+  EditorMutationPreview,
+  EditorMutationPreviewSource,
+  EditorMutationPreviewSourceMap,
+  EditorMutationRequest
+} from "./generated/editor-mutation.ts";
 export { createDocumentStore } from "./document-store.ts";
 
 // ChangeSet dry-run gate and journal steps.
 export { createPatchJournalStep, dryRunEditorChangeSet } from "./change-set.ts";
+export {
+  dryRunMultiDocumentChangeSet
+} from "./multi-document-change-set.ts";
+export type {
+  DryRunMultiDocumentChangeSetInput,
+  MultiDocumentDryRunResult
+} from "./multi-document-change-set.ts";
 
 // Operation risk policy for editor ChangeSets (ADR-057 §4.5).
 export { classifyChangeSet } from "./change-risk.ts";
