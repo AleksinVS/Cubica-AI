@@ -129,6 +129,9 @@ import {
 } from "@/lib/preview-message-adapter";
 import { buildEditorAgentContextProjection } from "@/lib/agent-context-projection";
 import { captureRegionSnapshotForAgent } from "@/lib/preview-region-snapshot";
+import { redactAgentContextValue } from "@/lib/agent-context-projection";
+import type { EditorMessageSender } from "@/components/workspace/mvp-agent-message";
+import { forwardMvpAgentRequest, isMvpAgentCandidateScopeCurrent, isMvpExactTextOrNamePrompt, parseMvpAgentCandidate, resolveMvpAgentCandidateScope, type MvpAgentCandidateScope } from "@/components/workspace/mvp-agent-candidate";
 import { isMvpMetadataOnlyChangeSet } from "@/components/workspace/mvp-element-operations";
 import {
   useEditorAgentConnection,
@@ -509,6 +512,7 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
   const previewSessionWaitersRef = useRef(new Set<(sessionId: string) => void>());
   const previewBuildSerialRef = useRef<Promise<unknown> | null>(null);
   const previewBuildRequestRef = useRef(0);
+  const repositoryLoadEpochRef = useRef(0);
 
   // Runtime event ids never rewind. This signed offset maps that durable
   // ledger onto the editor's logical T0..Tn timeline after a restore.
@@ -544,6 +548,13 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
   const pendingMvpMutationRef = useRef(pendingMvpMutation);
   const mvpMutationBusyRef = useRef(false);
   const mvpPrepareEpochRef = useRef(0);
+  const mvpPrepareErrorRef = useRef<string | null>(null);
+  const mvpAgentSenderRef = useRef<EditorMessageSender | null>(null);
+  const mvpAgentScopeRef = useRef<MvpAgentCandidateScope | null>(null);
+  const [mvpAgentForwardedCount, setMvpAgentForwardedCount] = useState(0);
+  const setMvpAgentSender = useCallback((sender: EditorMessageSender | null) => {
+    mvpAgentSenderRef.current = sender;
+  }, []);
   const mvpJournalHashesRef = useRef(new Map<string, readonly {
     readonly filePath: string;
     readonly beforeHash: string;
@@ -1173,12 +1184,18 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
     freshness: previewFreshness,
     workflowBusy: workflowState === "compiling" || workflowState === "previewing"
   });
+  const mvpDocumentReady = options.mvp !== true || (
+    loadState === "ready" && currentDocument.source === "repository" &&
+    editorSession?.gameId === currentDocument.gameId &&
+    (requestedGameId === null || requestedGameId === currentDocument.gameId)
+  );
   const workspaceStyle = {
     "--left-sidebar-width": `${leftSidebarOpen ? leftSidebarWidth : 0}px`,
     "--json-sidebar-width": `${rightSidebarOpen ? jsonSidebarWidth : 0}px`
   } as CSSProperties;
   const editorAgentTools: EditorAgentTools = {
     planChangeSet: (input) => runAgentPlanTool(input.prompt),
+    prepareCandidate: (input) => runMvpPrepareCandidateTool(input),
     proposePrototypeExtraction: (input) => runAgentPrototypeExtractionTool(input),
     preparePrototypeChangeSet: () => runAgentPreparePrototypeChangeSetTool(),
     dryRunChangeSet: (input) => runAgentDryRunTool(input.prompt),
@@ -1294,6 +1311,8 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
 
   useEffect(() => {
     let cancelled = false;
+    const loadEpoch = ++repositoryLoadEpochRef.current;
+    const isCurrentLoad = () => !cancelled && loadEpoch === repositoryLoadEpochRef.current;
 
     async function loadFromRepository() {
       setLoadState("loading");
@@ -1302,7 +1321,7 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
       try {
         const list = await openSessionFileList(requestedGameId);
         const session = list.session;
-        if (cancelled) {
+        if (!isCurrentLoad()) {
           return;
         }
 
@@ -1321,14 +1340,14 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
         }
 
         const document = await fetchAuthoringFile(list.gameId, filePath, session?.sessionId);
-        if (cancelled) {
+        if (!isCurrentLoad()) {
           return;
         }
 
         setAvailableGames(list.games);
         setAvailableFiles(list.files);
         const layout = await fetchEditorLayout(list.gameId, filePath, session?.sessionId).catch(() => undefined);
-        if (cancelled) {
+        if (!isCurrentLoad()) {
           return;
         }
 
@@ -1341,7 +1360,7 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
           replaceUrlState(list.gameId, filePath);
         }
       } catch (error) {
-        if (cancelled) {
+        if (!isCurrentLoad()) {
           return;
         }
 
@@ -1647,7 +1666,9 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
         setPreviewRuntimeSessionId(event.data.sessionId);
         setPreviewTrace((currentTrace) => {
           const nextTrace = upsertRuntimeSnapshotInTrace(currentTrace, logicalMessage);
-          void persistPreviewTraceSnapshot(nextTrace, logicalMessage, editorSessionRef.current?.sessionId).catch(() => {
+          // MVP uses runtime checkpoints; the legacy timeline has no visible
+          // consumer and must not write a second snapshot archive on every tick.
+          if (options.mvp !== true) void persistPreviewTraceSnapshot(nextTrace, logicalMessage, editorSessionRef.current?.sessionId).catch(() => {
             setStatusMessage("Preview trace persistence failed.");
           });
           return nextTrace;
@@ -1790,7 +1811,9 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
   }, [previewChannel, previewUrl, previewEntities, selectedPreviewEntityId]);
 
   useEffect(() => {
-    if (previewChannel !== "web" || previewUrl === null) {
+    // The MVP preview owns its selection. A stale legacy tree pointer would
+    // otherwise clear a freshly clicked layer before its frame/panel render.
+    if (options.mvp === true || previewChannel !== "web" || previewUrl === null) {
       return;
     }
     const pointer = selectedNode?.pointer;
@@ -1810,7 +1833,7 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
         setSelectedPreviewEntityId(undefined);
       }
     }
-  }, [previewChannel, previewUrl, previewEntities, selectedNode?.pointer, selectedPreviewEntityId]);
+  }, [options.mvp, previewChannel, previewUrl, previewEntities, selectedNode?.pointer, selectedPreviewEntityId]);
 
   const onNodesChange = useCallback((changes: NodeChange[]) => {
     // Legacy graph support is loaded only if that explicit interaction is used.
@@ -2126,7 +2149,7 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
   }
 
   async function handleSave() {
-    if (currentDocument.source !== "repository" || currentDocument.versionHash === undefined || hasBlockingDiagnostics) {
+    if (!mvpDocumentReady || currentDocument.source !== "repository" || currentDocument.versionHash === undefined || hasBlockingDiagnostics) {
       return;
     }
 
@@ -2261,9 +2284,11 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
    */
   async function preparePreviewSession(): Promise<{
     readonly ready: boolean;
+    readonly reason?: string;
     readonly sessionId?: string;
     readonly playerUrl?: string;
   }> {
+    if (!mvpDocumentReady) return { ready: false, reason: "Дождитесь загрузки игры и редакторской сессии." };
     const requestId = ++previewBuildRequestRef.current;
     const captured = previewBuildInputRef.current;
     const isCurrent = () => requestId === previewBuildRequestRef.current &&
@@ -2336,19 +2361,22 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
         clearPreparedPreview();
       }
       setWorkflowState("blocked");
-      setStatusMessage("Preview is not ready");
-      return { ready: false };
+      const reason = result.diagnostics?.[0]?.message ?? "Не удалось подготовить игру.";
+      setStatusMessage(reason);
+      return { ready: false, reason };
     } catch (error) {
       if (!isCurrent()) return { ready: false };
       setWorkflowState("error");
-      setStatusMessage(error instanceof Error ? error.message : "Preview failed.");
-      return { ready: false };
+      const reason = error instanceof Error ? error.message : "Не удалось подготовить игру.";
+      setStatusMessage(reason);
+      return { ready: false, reason };
     }
   }
 
   async function handlePreview() {
+    if (!mvpDocumentReady) return { ready: false, reason: "Дождитесь загрузки игры и редакторской сессии." };
     if (currentDocument.source !== "repository" || isDirty || hasLocalSchemaBlockingDiagnostics) {
-      return { ready: false };
+      return { ready: false, reason: isDirty ? "Сначала сохраните изменения игры." : viewModel.diagnostics.find(diagnostic => diagnostic.severity === "error")?.message ?? "Откройте игру из проекта." };
     }
 
     return preparePreviewSession();
@@ -2570,17 +2598,21 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
 
   /** Loads the game's pinned fixtures (with their stale verdict) into state. */
   async function loadStateFixtures() {
-    if (currentDocument.source !== "repository") {
+    const session = editorSessionRef.current;
+    const gameId = currentDocument.gameId;
+    if (currentDocument.source !== "repository" || (session !== null && session.gameId !== gameId) ||
+        (options.mvp === true && session === null)) {
       setStateFixtures([]);
       return;
     }
     try {
-      const result = await fetchStateFixtures(currentDocument.gameId, editorSessionRef.current?.sessionId);
+      const result = await fetchStateFixtures(gameId, session?.sessionId);
+      if (mvpLiveSourceRef.current.currentDocument.gameId !== gameId || editorSessionRef.current?.sessionId !== session?.sessionId) return;
       setStateFixtures(result.fixtures);
     } catch {
       // A missing fixtures directory or a listing failure just yields no fixtures;
       // the selector falls back to the auto-checkpoint / synthetic seed (§9.3).
-      setStateFixtures([]);
+      if (mvpLiveSourceRef.current.currentDocument.gameId === gameId) setStateFixtures([]);
     }
   }
 
@@ -2588,16 +2620,20 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
 
   /** Loads the game's assets (type, usage counter, orphan flag) into state. */
   async function loadGameAssets() {
-    if (currentDocument.source !== "repository") {
+    const session = editorSessionRef.current;
+    const gameId = currentDocument.gameId;
+    if (currentDocument.source !== "repository" || (session !== null && session.gameId !== gameId) ||
+        (options.mvp === true && session === null)) {
       setGameAssets([]);
       return;
     }
     try {
-      const result = await fetchGameAssets(currentDocument.gameId, editorSessionRef.current?.sessionId);
+      const result = await fetchGameAssets(gameId, session?.sessionId);
+      if (mvpLiveSourceRef.current.currentDocument.gameId !== gameId || editorSessionRef.current?.sessionId !== session?.sessionId) return;
       setGameAssets(result.assets);
     } catch {
       // A missing assets directory / listing failure just yields an empty library.
-      setGameAssets([]);
+      if (mvpLiveSourceRef.current.currentDocument.gameId === gameId) setGameAssets([]);
     }
   }
 
@@ -2789,6 +2825,13 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
   }
 
   function handleGameChange(gameId: string) {
+    repositoryLoadEpochRef.current += 1;
+    setLoadState("loading");
+    mvpAgentScopeRef.current = null;
+    mvpPrepareEpochRef.current += 1;
+    previewBuildRequestRef.current += 1;
+    pendingMvpMutationRef.current = null;
+    setPendingMvpMutation(null);
     const next = new URLSearchParams();
     next.set("gameId", gameId);
     router.replace(`?${next.toString()}`);
@@ -2879,10 +2922,98 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
     return snapshot;
   }
 
-  async function submitMvpElementPrompt(filePath: string, pointer: string, label: string, prompt: string): Promise<boolean> {
+  function captureMvpAgentScope(sources: readonly { readonly filePath: string; readonly pointer: string }[]): MvpAgentCandidateScope | null {
+    const sessionId = editorSession?.sessionId;
+    if (options.mvp !== true || !mvpDocumentReady || sessionId === undefined || sources.length === 0) return null;
+    const texts = liveAuthoringTextByFilePath();
+    const unique = new Map<string, MvpAgentCandidateScope["sources"][number]>();
+    for (const source of sources) {
+      const document = viewModel.entityProjectionDocuments.find((item) => item.filePath === source.filePath);
+      const text = texts.get(source.filePath);
+      if (source.pointer === "" || document?.json === undefined || text === undefined ||
+          readJsonPointer(document.json, source.pointer) === undefined) return null;
+      unique.set(`${source.filePath}#${source.pointer}`, {
+        filePath: source.filePath, pointer: source.pointer, revision: hashEditorText(text)
+      });
+    }
+    if (unique.size === 0 || unique.size > 8) return null;
+    return { token: crypto.randomUUID(), gameId: currentDocument.gameId, sessionId, sources: [...unique.values()] };
+  }
+
+  function mvpLiveCandidateContext() {
+    const live = mvpLiveSourceRef.current;
+    const revisions = new Map(live.projectionSiblingDocuments.map((document) => [document.filePath, hashEditorText(document.text)] as const));
+    revisions.set(live.currentDocument.filePath, hashEditorText(live.jsonText));
+    return { gameId: live.currentDocument.gameId, sessionId: live.sessionId, revisions };
+  }
+
+  async function sendMvpAgentIntent(prompt: string, scope: MvpAgentCandidateScope): Promise<{ readonly forwarded: boolean; readonly message: string }> {
+    if (!mvpDocumentReady || !isMvpAgentCandidateScopeCurrent(scope, mvpLiveCandidateContext())) {
+      return { forwarded: false, message: "Источник изменился до отправки агенту. Текст сохранён в панели; повторите запрос." };
+    }
+    const sender = mvpAgentSenderRef.current;
+    const context = scope.sources.map((source) => {
+      const document = viewModel.entityProjectionDocuments.find((item) => item.filePath === source.filePath);
+      const value = document?.json === undefined ? undefined : readJsonPointer(document.json, source.pointer);
+      const excerpt = redactAgentContextValue(value, source.pointer);
+      return { filePath: source.filePath, pointer: source.pointer,
+        excerpt: JSON.stringify(excerpt.value).slice(0, 900), redacted: excerpt.redacted, truncated: excerpt.truncated };
+    });
+    const previousScope = mvpAgentScopeRef.current;
+    mvpAgentScopeRef.current = scope;
+    const result = await forwardMvpAgentRequest(sender, prompt,
+      `Контекст выбранного источника (только для подготовки, без записи): ${JSON.stringify({
+        gameId: scope.gameId, sources: context, contextToken: scope.token
+      })}\nЕсли нужна правка, вызовите editor.prepareCandidate с JSON EditorChangeSet в changeSetJson и contextToken. Меняйте только указанные filePath и вложенные JSON-указатели. Применение подтверждает человек.`);
+    if (result.forwarded) {
+      if (mvpAgentScopeRef.current === scope) {
+        setMvpAgentForwardedCount((count) => count + 1);
+        setStatusMessage("Запрос принят агентом. Ответ открыт в чате; изменение потребует отдельного подтверждения.");
+      }
+    } else {
+      if (mvpAgentScopeRef.current === scope) {
+        mvpAgentScopeRef.current = previousScope;
+        setStatusMessage(result.message);
+      }
+    }
+    return result;
+  }
+
+  async function runMvpPrepareCandidateTool(input: { readonly changeSetJson: string; readonly contextToken?: string }): Promise<EditorAgentToolResult> {
+    if (options.mvp !== true) return { ok: false, summary: "Подготовка кандидата доступна только в новом редакторе." };
+    if (!mvpDocumentReady) return { ok: false, summary: "Дождитесь загрузки выбранной игры и редакторской сессии." };
+    const resolved = resolveMvpAgentCandidateScope(mvpAgentScopeRef.current, input.contextToken);
+    if (!resolved.ok) return { ok: false, summary: resolved.reason };
+    const scope = resolved.scope;
+    const parsed = parseMvpAgentCandidate(input.changeSetJson, scope, mvpLiveCandidateContext());
+    if (!parsed.ok) return {
+      ok: false, summary: parsed.reason,
+      diagnostics: [{ severity: "error", source: "agent-candidate", pointer: "", message: parsed.reason }]
+    };
+    const prepared = await prepareMvpMutation(parsed.changeSet);
+    if (!prepared) {
+      const message = mvpPrepareErrorRef.current ?? "Сервер не подготовил предпросмотр изменения.";
+      return { ok: false, summary: message,
+        diagnostics: [{ severity: "error", source: "agent-candidate", pointer: "", message }] };
+    }
+    mvpAgentScopeRef.current = null;
+    const candidate = pendingMvpMutationRef.current?.prepared;
+    return { ok: true, summary: "Вариант подготовлен для проверки человеком. Ожидайте подтверждения в редакторе.",
+      changeSetId: parsed.changeSet.id, diffSummary: candidate?.diffSummary.map((item) => item.description) };
+  }
+
+  async function submitMvpElementPrompt(filePath: string, pointer: string, label: string, prompt: string): Promise<{ readonly ready: boolean; readonly forwarded: boolean; readonly message: string }> {
     const document = viewModel.entityProjectionDocuments.find((candidate) => candidate.filePath === filePath);
     const value = document?.json === undefined ? undefined : readJsonPointer(document.json, pointer);
-    if (options.mvp !== true || value === undefined || prompt.trim() === "") return false;
+    if (options.mvp !== true || value === undefined || prompt.trim() === "") {
+      return { ready: false, forwarded: false, message: "Выбранный источник недоступен. Текст запроса сохранён." };
+    }
+    const scope = captureMvpAgentScope([{ filePath, pointer }]);
+    if (scope === null) return { ready: false, forwarded: false, message: "Выбранный источник изменился. Обновите панель." };
+    if (!isMvpExactTextOrNamePrompt(prompt)) {
+      const sent = await sendMvpAgentIntent(prompt.trim(), scope);
+      return { ready: false, forwarded: sent.forwarded, message: sent.message };
+    }
     const intent: EditorPatchIntent = {
       id: `mvp-element-intent:${crypto.randomUUID()}`,
       kind: "preview-prompt",
@@ -2897,20 +3028,25 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
     try {
       const response = await requestAiChangeSet(intent, [{ filePath, pointer, label, value }]);
       if (!response.ok || response.changeSet === undefined) {
-        setAiApplyState("blocked");
-        setStatusMessage(response.diagnostics?.[0]?.message ?? "Изменение не удалось подготовить.");
-        return false;
+        const sent = await sendMvpAgentIntent(prompt.trim(), scope);
+        return { ready: false, forwarded: sent.forwarded, message: sent.message };
       }
-      return prepareMvpMutation(response.changeSet, {
+      if (!isMvpAgentCandidateScopeCurrent(scope, mvpLiveCandidateContext())) {
+        return { ready: false, forwarded: false, message: "Источник изменился до подготовки. Текст сохранён в панели; повторите запрос." };
+      }
+      const ready = await prepareMvpMutation(response.changeSet, {
         intent,
         changeSet: response.changeSet,
         diagnostics: response.diagnostics ?? [],
         targetPointers: [pointer]
       });
+      return { ready, forwarded: false, message: ready
+        ? "Вариант подготовлен. Проверьте его в предпросмотре и подтвердите."
+        : mvpPrepareErrorRef.current ?? "Не удалось подготовить вариант." };
     } catch (error) {
       setAiApplyState("blocked");
       setStatusMessage(error instanceof Error ? error.message : "Изменение не удалось подготовить.");
-      return false;
+      return { ready: false, forwarded: false, message: error instanceof Error ? error.message : "Изменение не удалось подготовить." };
     }
   }
 
@@ -3712,7 +3848,7 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
   }
 
   function mvpMutationRequest(changeSet: EditorChangeSet): EditorMutationPrepareRequest {
-    if (currentDocument.source !== "repository" || currentDocument.versionHash === undefined || editorSession?.sessionId === undefined) {
+    if (!mvpDocumentReady || currentDocument.source !== "repository" || currentDocument.versionHash === undefined || editorSession?.sessionId === undefined) {
       throw new Error("Изменение требует активной сессии редактора.");
     }
     // A sibling-only effect cannot persist a dirty active buffer. Showing that
@@ -3744,7 +3880,11 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
   }
 
   async function prepareMvpMutation(changeSet: EditorChangeSet, plan = plannedFromEntityChangeSet(changeSet)): Promise<boolean> {
-    if (options.mvp !== true || mvpMutationBusyRef.current) return false;
+    if (options.mvp !== true || mvpMutationBusyRef.current) {
+      mvpPrepareErrorRef.current = "Другая правка ещё выполняется.";
+      return false;
+    }
+    mvpPrepareErrorRef.current = null;
     const epoch = ++mvpPrepareEpochRef.current;
     pendingMvpMutationRef.current = null;
     setPendingMvpMutation(null);
@@ -3765,7 +3905,8 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
       setAiDiffSummary(mvpDiffSummary(response.diffSummary));
       if (!response.preview.ready || response.preview.playerUrl === undefined) {
         setAiApplyState("blocked");
-        setStatusMessage(response.preview.diagnostics[0]?.message ?? "Временный предпросмотр недоступен.");
+        mvpPrepareErrorRef.current = response.preview.diagnostics[0]?.message ?? "Временный предпросмотр недоступен.";
+        setStatusMessage(mvpPrepareErrorRef.current);
         return false;
       }
       const pending = { plan, prepared: response, request, siblingSourceRevision };
@@ -3777,7 +3918,8 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
     } catch (error) {
       if (epoch === mvpPrepareEpochRef.current) {
         setAiApplyState("blocked");
-        setStatusMessage(error instanceof Error ? error.message : "Не удалось подготовить изменение.");
+        mvpPrepareErrorRef.current = error instanceof Error ? error.message : "Не удалось подготовить изменение.";
+        setStatusMessage(mvpPrepareErrorRef.current);
       }
       return false;
     } finally {
@@ -4569,8 +4711,16 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
         message: prepared ? "Изменение подготовлено. Проверьте вариант и подтвердите." : "Не удалось подготовить вариант. Проверьте сообщение редактора."
       };
     }
-    const forwarded = forwardReturnedIntentToAgent(input, entity);
-    return { path: "agent", stale: false, report: result.report, applied: false, forwarded };
+    const sources = entity === undefined ? [] : [entity.primarySource,
+      ...Object.values(entity.facets).flat().filter((source): source is EditorEntitySourcePointer => source !== undefined)];
+    const scope = captureMvpAgentScope(sources);
+    if (scope === null) {
+      return { path: "agent", stale: false, report: result.report, applied: false, forwarded: false,
+        message: "Источник недоступен для агента. Текст сохранён в панели; обновите элемент." };
+    }
+    const sent = await sendMvpAgentIntent(`Измени выбранную сущность по структурированному намерению:\n${input.returnedText}`, scope);
+    return { path: "agent", stale: false, report: result.report, applied: false,
+      forwarded: sent.forwarded, message: sent.message };
   }
 
   /** Wraps an interpreter ChangeSet as a `PlannedAiChangeSet` for the shared point. */
@@ -5435,6 +5585,9 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
 
   return {
     mvp: options.mvp === true,
+    mvpDocumentReady,
+    setMvpAgentSender,
+    mvpAgentForwardedCount,
     editorSession,
     agentConnection,
     editorAgentContext,

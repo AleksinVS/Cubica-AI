@@ -1,5 +1,5 @@
 "use client";
-import type { Message } from "@ag-ui/core";
+import type { EditorAgentProtocolMessage } from "@/lib/ag-ui-event-adapter";
 import { toEditorUserMessage, type EditorMessageSender } from "@/components/workspace/mvp-agent-message";
 
 /**
@@ -49,6 +49,7 @@ interface EditorAgentToolData {
 
 export interface EditorAgentTools {
   readonly planChangeSet: (input: { readonly prompt?: string }) => Promise<EditorAgentToolResult>;
+  readonly prepareCandidate: (input: { readonly changeSetJson: string; readonly contextToken?: string }) => Promise<EditorAgentToolResult>;
   readonly proposePrototypeExtraction: (input: {
     readonly prompt?: string;
     readonly sourcePointers?: readonly string[];
@@ -260,6 +261,11 @@ export function EditorCopilotChatPanel({
         <CopilotChat
           agentId={EDITOR_AUTHORING_ASSISTANT_ID}
           threadId={threadId}
+          input={{
+            textArea: { "aria-label": "Сообщение агенту" },
+            sendButton: { "aria-label": "Отправить сообщение" },
+            addMenuButton: { "aria-label": "Добавить вложение" }
+          }}
           messageView={{ userMessage: EditorUserMessage }}
           labels={{
             modalHeaderTitle: t.agentChat.modalHeaderTitle,
@@ -333,6 +339,19 @@ function handleEditorSurfaceAction(action: CubicaSurfaceAction, tools: EditorAge
     case "editor.planChangeSet":
       void tools.planChangeSet({ prompt });
       return;
+    case "editor.prepareCandidate": {
+      const input = action.payload;
+      if (input !== undefined && input !== null && typeof input === "object" && !Array.isArray(input)) {
+        const values = input as { readonly [key: string]: CubicaJsonValue };
+        if (typeof values.changeSetJson === "string") {
+          void tools.prepareCandidate({
+            changeSetJson: values.changeSetJson,
+            contextToken: typeof values.contextToken === "string" ? values.contextToken : undefined
+          });
+        }
+      }
+      return;
+    }
     case "editor.proposePrototypeExtraction":
       void tools.proposePrototypeExtraction({ prompt });
       return;
@@ -391,6 +410,20 @@ function EditorAgentRuntimeHooksInner({
       description: getEditorAgentToolDefinition("editor.planChangeSet").description,
       parameters: promptParameters,
       handler: async ({ prompt }) => toCubicaToolResult("editor.planChangeSet", await tools.planChangeSet({ prompt }))
+    },
+    [tools]
+  );
+
+  useFrontendTool(
+    {
+      name: getEditorAgentToolDefinition("editor.prepareCandidate").name,
+      description: getEditorAgentToolDefinition("editor.prepareCandidate").description,
+      parameters: z.object({
+        changeSetJson: z.string().min(2).max(64_000).describe("JSON string of an EditorChangeSet. Only selected source JSON patches are accepted."),
+        contextToken: z.string().optional().describe("Context token from an element or YAML request; required when that request supplied one.")
+      }),
+      handler: async ({ changeSetJson, contextToken }) =>
+        toCubicaToolResult("editor.prepareCandidate", await tools.prepareCandidate({ changeSetJson, contextToken }))
     },
     [tools]
   );
@@ -463,7 +496,7 @@ function EditorConversationBridge({ threadId, onSenderReady, onBusyChange, onSen
   const { agent } = useAgent({ agentId: EDITOR_AUTHORING_ASSISTANT_ID });
   const { copilotkit } = useCopilotKit();
   useEffect(() => { onBusyChange?.(agent.isRunning); }, [agent.isRunning, onBusyChange]);
-  const histories = useRef(new Map<string, Message[]>());
+  const histories = useRef(new Map<string, EditorAgentProtocolMessage[]>());
   const previous = useRef(threadId);
   useEffect(() => {
     if (previous.current !== threadId) {
@@ -490,8 +523,9 @@ function EditorConversationBridge({ threadId, onSenderReady, onBusyChange, onSen
 
 const EditorUserMessage = Object.assign(function EditorDrawingUserMessage(props: CopilotChatUserMessageProps) {
   const content = props.message.content;
-  const drawingContext = Array.isArray(content) && content.some(part => part.type === "text" && part.text.startsWith("Контекст рисунка:"));
-  if (!drawingContext || !Array.isArray(content)) return <CopilotChatUserMessage {...props} />;
+  const hiddenContext = (part: { readonly type: string; readonly text?: string }) => part.type === "text" &&
+    (part.text?.startsWith("Контекст рисунка:") || part.text?.startsWith("Контекст выбранного источника ("));
+  if (!Array.isArray(content) || !content.some(hiddenContext)) return <CopilotChatUserMessage {...props} />;
   return <CopilotChatUserMessage {...props} onEditMessage={undefined}
-    message={{ ...props.message, content: content.filter(part => part.type !== "text" || !part.text.startsWith("Контекст рисунка:")) }} />;
+    message={{ ...props.message, content: content.filter(part => !hiddenContext(part)) }} />;
 }, CopilotChatUserMessage);

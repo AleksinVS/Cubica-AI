@@ -11,6 +11,8 @@ import { debugCatalogKey } from "@/lib/editor-debug-catalog";
 import { MvpRulesPanel } from "@/components/workspace/mvp-rules-panel";
 import { MvpDrawing, type MvpDrawingSubmission, type MvpDrawingRegion } from "@/components/workspace/mvp-drawing";
 import { drawingAgentMessage, type EditorMessageSender } from "@/components/workspace/mvp-agent-message";
+import { isPlayerPreviewBridgeReadyMessage, isPlayerPreviewSessionSnapshotMessage } from "@/lib/preview-message-adapter";
+import { safeUrlOrigin } from "@/components/workspace/workspace-helpers";
 import styles from "@/components/workspace/mvp-workspace.module.css";
 
 /** The preview stays mounted while the author changes conversational surfaces. */
@@ -20,7 +22,8 @@ export function EditorWorkspace() {
   const [chatKind, setChatKind] = useState<"chat" | "rules">("chat");
   const [chatBusy, setChatBusy] = useState(false);
   const [selectedRule, setSelectedRule] = useState<string>();
-  const [candidateLoaded, setCandidateLoaded] = useState<string>();
+  const [candidateReady, setCandidateReady] = useState<object | null>(null);
+  const candidateFrameRef = useRef<HTMLIFrameElement>(null);
   const [confirming, setConfirming] = useState(false);
   const saveDialogRef = useRef<HTMLDialogElement>(null);
   const [playRequested, setPlayRequested] = useState(false);
@@ -34,7 +37,11 @@ export function EditorWorkspace() {
   const [workspaceError, setWorkspaceError] = useState<string | null>(null);
   const [attachments, setAttachments] = useState<Record<string, readonly { dataUrl: string; name: string }[]>>({});
   const senderRef = useRef<EditorMessageSender | null>(null);
-  const onSenderReady = useCallback((sender: EditorMessageSender | null) => { senderRef.current = sender; }, []);
+  const onSenderReady = useCallback((sender: EditorMessageSender | null) => {
+    senderRef.current = sender;
+    controller.setMvpAgentSender(sender);
+  }, [controller.setMvpAgentSender]);
+  const lastForwardedCount = useRef(controller.mvpAgentForwardedCount);
   const previousGame = useRef(controller.currentDocument.gameId);
   const debug = useMvpDebugSession({
     catalogKey: debugCatalogKey(controller.currentDocument.gameId, controller.editorSession?.sessionId ?? "unprepared"),
@@ -44,9 +51,43 @@ export function EditorWorkspace() {
   const threadId = `${controller.currentDocument.gameId}:${chatKind === "rules" ? "rules" : activeThread}`;
   const currentAttachments = attachments[threadId] ?? [];
   const chatVisible = mode === "chat" || mode === "rules";
+  const preparedCandidate = controller.pendingMvpMutation?.prepared;
+  const candidatePlayerUrl = preparedCandidate?.preview.playerUrl;
   const building = controller.workflowState === "previewing" || controller.workflowState === "compiling";
   const mutationBusy = controller.aiApplyState === "planning" || controller.aiApplyState === "applying";
   const playState = controller.previewUrl === null ? "idle" : debug.status?.paused === false ? "running" : "paused";
+
+  useEffect(() => {
+    if (controller.mvpAgentForwardedCount <= lastForwardedCount.current) return;
+    lastForwardedCount.current = controller.mvpAgentForwardedCount;
+    setMode(chatKind);
+  }, [controller.mvpAgentForwardedCount, chatKind]);
+
+  function requestCandidateSnapshot(playerUrl: string) {
+    const origin = safeUrlOrigin(playerUrl);
+    if (origin === undefined) return;
+    candidateFrameRef.current?.contentWindow?.postMessage(
+      { source: "cubica-editor-web", type: "requestPreviewSnapshot", version: 1 }, origin
+    );
+  }
+
+  useEffect(() => {
+    setCandidateReady(null);
+    if (preparedCandidate === undefined || candidatePlayerUrl === undefined) return;
+    const expectedOrigin = safeUrlOrigin(candidatePlayerUrl);
+    if (expectedOrigin === undefined) return;
+    const gameId = controller.currentDocument.gameId;
+    const onMessage = (event: MessageEvent) => {
+      if (event.source !== candidateFrameRef.current?.contentWindow || event.origin !== expectedOrigin) return;
+      if (isPlayerPreviewBridgeReadyMessage(event.data)) {
+        requestCandidateSnapshot(candidatePlayerUrl);
+      } else if (isPlayerPreviewSessionSnapshotMessage(event.data) && event.data.gameId === gameId) {
+        setCandidateReady(preparedCandidate);
+      }
+    };
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [preparedCandidate, candidatePlayerUrl, controller.currentDocument.gameId]);
 
   useEffect(() => {
     controller.setPreviewInspectMode(mode === "editor" && (controller.previewUrl === null || debug.status?.paused === true) && !debug.busy);
@@ -91,11 +132,15 @@ export function EditorWorkspace() {
       }
     }
     if (next === "play") {
+      if (!controller.mvpDocumentReady) {
+        setWorkspaceError("Дождитесь загрузки игры и редакторской сессии.");
+        return;
+      }
       setMode("play");
       if (controller.previewUrl === null) {
         setPlayRequested(true);
         const result = await controller.handlePreview();
-        if (!result.ready) { setPlayRequested(false); setMode("editor"); setWorkspaceError("Не удалось запустить игру. Исправьте ошибки и повторите запуск."); }
+        if (!result.ready) { setPlayRequested(false); setMode("editor"); setWorkspaceError(result.reason ?? "Игра изменилась во время подготовки. Повторите запуск."); }
       } else if (debug.status !== null) {
         await debug.setPaused(!debug.status.paused);
       } else { setPlayRequested(true); }
@@ -148,9 +193,9 @@ export function EditorWorkspace() {
         scenarioStages={controller.viewModel.editorEntityProjection.entities.filter(entity => entity.kind === "game-step").map(entity => ({ id: entity.entityId, label: entity.label }))}
         onSelectScenarioStage={id => { void selectMode("editor"); controller.handleChannelEntitySelect(id); }}
         onRefreshSavedStates={() => void debug.refresh()}
-        canSaveState={debug.status !== null && !debug.busy && !building && !controller.pendingMvpMutation}
+        canSaveState={controller.mvpDocumentReady && debug.status !== null && !debug.busy && !building && !controller.pendingMvpMutation}
         onSaveState={() => { setSaveLabel(`Состояние ${debug.savedStates.length + 1}`); setSaveOpen(true); }}
-        disabledModes={{ ...(chatBusy ? { chat: "Дождитесь ответа агента", rules: "Дождитесь ответа агента" } : {}), ...(mutationBusy ? { play: "Дождитесь применения изменения" } : controller.pendingMvpMutation ? { play: "Сначала примените или отмените предложенное изменение" } : debug.busy ? { play: "Дождитесь подтверждения отладки" } : building ? { play: "Подготавливаем текущую игру" } : {}) }}
+        disabledModes={{ ...(chatBusy ? { chat: "Дождитесь ответа агента", rules: "Дождитесь ответа агента" } : {}), ...(!controller.mvpDocumentReady ? { play: "Дождитесь загрузки игры" } : mutationBusy ? { play: "Дождитесь применения изменения" } : controller.pendingMvpMutation ? { play: "Сначала примените или отмените предложенное изменение" } : debug.busy ? { play: "Дождитесь подтверждения отладки" } : building ? { play: "Подготавливаем текущую игру" } : {}) }}
       />
       <div className={styles.workArea}>
         <div className={styles.preview} hidden={chatVisible}>
@@ -198,18 +243,18 @@ export function EditorWorkspace() {
             </aside>
           </section>
         {controller.pendingMvpMutation ? <section className={`${styles.candidate} ${chatVisible ? styles.candidateInChat : ""}`} aria-label="Предложенное изменение">
-          <iframe key={controller.pendingMvpMutation.prepared.effectDigest} title="Предпросмотр предложенного изменения" src={controller.pendingMvpMutation.prepared.preview.playerUrl}
-            sandbox="allow-scripts allow-same-origin" onLoad={() => setCandidateLoaded(controller.pendingMvpMutation?.prepared.effectDigest)} />
+          <iframe ref={candidateFrameRef} key={controller.pendingMvpMutation.prepared.effectDigest} title="Предпросмотр предложенного изменения" src={controller.pendingMvpMutation.prepared.preview.playerUrl}
+            sandbox="allow-scripts allow-same-origin" onLoad={() => { if (candidatePlayerUrl !== undefined) requestCandidateSnapshot(candidatePlayerUrl); }} />
           <div className={styles.candidateActions}>
             <p>{controller.pendingMvpMutation.prepared.summary}</p>
             <button type="button" disabled={confirming} onClick={controller.cancelMvpMutation}>Отмена</button>
-            <button type="button" disabled={confirming || candidateLoaded !== controller.pendingMvpMutation.prepared.effectDigest} onClick={() => { setConfirming(true); void controller.confirmMvpMutation().finally(() => setConfirming(false)); }}>Применить изменение</button>
+            <button type="button" disabled={confirming || candidateReady !== controller.pendingMvpMutation.prepared} onClick={() => { setConfirming(true); void controller.confirmMvpMutation().finally(() => setConfirming(false)); }}>Применить изменение</button>
           </div>
         </section> : null}
         <div className={styles.notices} aria-live="polite">
           <SessionRecoveryBanner changedPaths={controller.sessionRecoveryPaths} onDismiss={controller.dismissSessionRecovery} />
           {building ? <p role="status">Обновляем игру… Можно продолжать редактирование.</p> : mutationBusy ? <p role="status">Проверяем изменение…</p> : null}
-          {workspaceError ? <p role="alert">{workspaceError}</p> : controller.workflowState === "error" || controller.aiApplyState === "blocked" ? <p role="alert">{controller.statusMessage}</p> : null}
+          {workspaceError ? <p role="alert">{workspaceError}</p> : controller.workflowState === "error" || controller.workflowState === "blocked" || controller.aiApplyState === "blocked" ? <p role="alert">{controller.statusMessage}</p> : null}
           {debug.error ? <p role="alert">{debug.error} <button type="button" aria-label="Закрыть сообщение" onClick={debug.dismissError}>×</button></p> : null}
         </div>
       </div>
@@ -219,9 +264,9 @@ export function EditorWorkspace() {
         </select>
         <span className={styles.stateLabel}>{controller.previewUrl === null ? "Структурный макет" : debug.status?.paused ? "Пауза" : "Предпросмотр"}</span>
         <div className={styles.versionActions}>
-          <button type="button" title="Отменить изменение" aria-label="Отменить изменение" disabled={controller.aiPatchJournal.length === 0} onClick={controller.handleUndoAiChange}>↶</button>
-          <button type="button" title="Повторить изменение" aria-label="Повторить изменение" disabled={controller.aiRedoJournal.length === 0} onClick={controller.handleRedoAiChange}>↷</button>
-          <button type="button" onClick={() => void controller.handleSave()} disabled={controller.saveState === "saving"}>Сохранить версию</button>
+          <button type="button" title="Отменить изменение" aria-label="Отменить изменение" disabled={!controller.mvpDocumentReady || controller.aiPatchJournal.length === 0} onClick={controller.handleUndoAiChange}>↶</button>
+          <button type="button" title="Повторить изменение" aria-label="Повторить изменение" disabled={!controller.mvpDocumentReady || controller.aiRedoJournal.length === 0} onClick={controller.handleRedoAiChange}>↷</button>
+          <button type="button" onClick={() => void controller.handleSave()} disabled={!controller.mvpDocumentReady || controller.saveState === "saving"}>Сохранить версию</button>
         </div>
       </footer>
       <dialog ref={saveDialogRef} className={styles.saveDialog} aria-labelledby="save-state-title" onClose={() => setSaveOpen(false)} onCancel={() => setSaveOpen(false)}>

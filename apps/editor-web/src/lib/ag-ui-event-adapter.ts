@@ -6,10 +6,16 @@
  * sessions, licenses or project files. Mutations must be represented as Cubica
  * commands such as EditorChangeSet and pass Cubica validation gates.
  */
-import { EventType, type BaseEvent } from "@ag-ui/core";
+import { EventType, UserMessageSchema, type BaseEvent, type Message, type UserMessage } from "@ag-ui/core";
 import type { CubicaAgentEvent } from "@cubica/contracts-ai";
 
 export type NormalizedAgUiEvent = CubicaAgentEvent;
+export type EditorAgentProtocolMessage = Message;
+export type EditorAgentProtocolUserMessage = UserMessage;
+
+export function isEditorAgentProtocolUserMessage(value: unknown): value is EditorAgentProtocolUserMessage {
+  return UserMessageSchema.safeParse(value).success;
+}
 
 const canonicalStatePathPattern = /^\/?(manifest|authoring|runtime|session|license|licenses|projectFiles|project|worktree|gameState|state\/secret)(\/|$)/u;
 

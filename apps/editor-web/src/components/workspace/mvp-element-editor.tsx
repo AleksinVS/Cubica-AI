@@ -23,7 +23,11 @@ export interface MvpElementEditorProps {
   readonly onSelectLayer?: (layer: PreviewEntityDescriptor, point: PreviewPoint, layers: readonly PreviewEntityDescriptor[]) => void;
   readonly onClose: () => void;
   readonly onDirect: (changeSet: NonNullable<ReturnType<typeof buildMvpElementNameChangeSet>>) => Promise<boolean>;
-  readonly onPrompt: (filePath: string, pointer: string, label: string, prompt: string) => Promise<boolean>;
+  readonly onPrompt: (filePath: string, pointer: string, label: string, prompt: string) => Promise<{
+    readonly ready: boolean;
+    readonly forwarded: boolean;
+    readonly message: string;
+  }>;
   readonly onCapture: (entity: EditorEntity) => EntitySourceCapture | undefined;
   readonly onApplyYaml: (input: EntitySourceCapture & { returnedText: string }) => Promise<ReturnedIntentApplyOutcome>;
 }
@@ -95,9 +99,9 @@ export function MvpElementEditor({ source, entity, label, selectedLayerId, bound
     if (stale) { setNotice("Источник изменился. Обновите поля перед запросом."); return; }
     setBusy(true);
     try {
-      const ready = await onPrompt(source.filePath, source.pointer, label, oneOff);
-      setNotice(ready ? "Вариант подготовлен. Проверьте его в предпросмотре и подтвердите." : "Не удалось подготовить вариант. Проверьте сообщение редактора.");
-      if (ready) setOneOff("");
+      const outcome = await onPrompt(source.filePath, source.pointer, label, oneOff);
+      setNotice(outcome.message);
+      if (outcome.ready || outcome.forwarded) setOneOff("");
     } finally { setBusy(false); }
   }
 
@@ -137,7 +141,7 @@ export function MvpElementEditor({ source, entity, label, selectedLayerId, bound
         <>
           <section className={styles.block}>
             <h3>Разовая правка</h3>
-            <p>Укажите точный новый текст или название в кавычках. Вариант появится для проверки.</p>
+            <p>Опишите правку. Точный новый текст или название можно указать в кавычках. Вариант появится для проверки.</p>
             <textarea aria-label="Разовая правка элемента" value={oneOff} onChange={(event) => setOneOff(event.target.value)} placeholder="Например: текст на «Выберите вариант»" />
             <button type="button" onClick={() => void submitPrompt()} disabled={busy || oneOff.trim() === ""}>Подготовить вариант</button>
           </section>

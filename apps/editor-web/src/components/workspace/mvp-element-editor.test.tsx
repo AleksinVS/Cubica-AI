@@ -20,9 +20,28 @@ const source: MvpElementSource = { filePath: entity.primarySource.filePath, poin
   value: { _type: "ui.Component", _label: "Ответ", type: "button", _prompt: { status: "draft", raw: "Понятный выбор", source: "user", language: "ru", updatedAt: "2026-09-19T00:00:00.000Z" } } };
 
 describe("MvpElementEditor", () => {
+  it("preserves a free-form draft when the agent cannot accept it", async () => {
+    const container = document.createElement("div"); document.body.appendChild(container);
+    const onPrompt = vi.fn(async () => ({ ready: false, forwarded: false, message: "Агент не подключён." }));
+    let root: Root | undefined;
+    await act(async () => { root = createRoot(container); root.render(<MvpElementEditor source={source} entity={entity} label="Ответ"
+      onClose={vi.fn()} onDirect={vi.fn()} onPrompt={onPrompt} onCapture={vi.fn()} onApplyYaml={vi.fn()} />); });
+    const input = container.querySelector<HTMLTextAreaElement>("[aria-label='Разовая правка элемента']");
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")?.set?.call(input, "Сделай кнопку синей");
+      input?.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await act(async () => { [...container.querySelectorAll<HTMLButtonElement>("button")]
+      .find(button => button.textContent === "Подготовить вариант")?.click(); });
+    expect(onPrompt).toHaveBeenCalledWith(source.filePath, source.pointer, "Ответ", "Сделай кнопку синей");
+    expect(input?.value).toBe("Сделай кнопку синей");
+    expect(container.textContent).toContain("Агент не подключён.");
+    await act(async () => root?.unmount()); container.remove();
+  });
+
   it("keeps three independent drafts and refuses to save after the source changes", async () => {
     const onDirect = vi.fn(async () => true);
-    const onPrompt = vi.fn(async () => true);
+    const onPrompt = vi.fn(async () => ({ ready: true, forwarded: false, message: "Вариант подготовлен." }));
     const container = document.createElement("div");
     document.body.appendChild(container);
     let root: Root | undefined;

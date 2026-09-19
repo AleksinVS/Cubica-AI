@@ -10,6 +10,7 @@ import type { CubicaAgentAuditLevel, CubicaAgentSideEffectPolicy, CubicaAgentToo
 
 export type EditorAssistantToolName =
   | "editor.planChangeSet"
+  | "editor.prepareCandidate"
   | "editor.proposePrototypeExtraction"
   | "editor.preparePrototypeChangeSet"
   | "editor.dryRunChangeSet"
@@ -27,6 +28,13 @@ export const editorAgentToolCatalog = {
     name: "editor.planChangeSet",
     description: "Plan a bounded EditorChangeSet for the selected authoring pointers without applying it.",
     sideEffectPolicy: "read-only",
+    auditLevel: "read",
+    requiresApproval: false
+  },
+  "editor.prepareCandidate": {
+    name: "editor.prepareCandidate",
+    description: "Validate a bounded JSON EditorChangeSet for the selected authoring source and prepare a temporary preview for human confirmation; never writes or confirms it.",
+    sideEffectPolicy: "system-approved",
     auditLevel: "read",
     requiresApproval: false
   },
