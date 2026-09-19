@@ -4,6 +4,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  compileGameForEditor,
   compilerExportsForTests,
   loadPreviewSelectionSourceMaps,
   mapGeneratedPointerToAuthoring,
@@ -104,6 +105,51 @@ describe("editor compiler workflow", () => {
     expect(result.ok).toBe(true);
     expect(result.artifacts.map((artifact) => artifact.generatedFile)).toContain(`games/${gameId}/game.manifest.json`);
     expect(result.diagnostics).toEqual([]);
+  });
+
+  it("compiles the selected game's session sources into the requested preview root", async () => {
+    const gameId = "simple-choice";
+    const projectRoot = path.join(process.cwd(), "..", "..");
+    const fixtureRoot = path.join(projectRoot, ".tmp", `editor-compile-source-${process.pid}-${randomUUID()}`);
+    const authoringRoot = path.join(fixtureRoot, "games", gameId, "authoring");
+    const candidateRoot = path.join(fixtureRoot, "candidate");
+    const uiSourcePath = path.join(authoringRoot, "ui", "web.authoring.json");
+    await mkdir(path.dirname(uiSourcePath), { recursive: true });
+
+    try {
+      const gameText = await readFile(path.join(projectRoot, "games", gameId, "authoring", "game.authoring.json"), "utf8");
+      const uiText = await readFile(path.join(projectRoot, "games", gameId, "authoring", "ui", "web.authoring.json"), "utf8");
+      const ui = JSON.parse(uiText) as {
+        root: { screens: Array<{ root: { children: Array<{ children: Array<{ style?: { width: number; height: number } }> }> } }> };
+      };
+      expect(ui.root.screens[0]!.root.children[0]!.children[0]!.style).not.toEqual({ width: 220, height: 200 });
+      ui.root.screens[0]!.root.children[0]!.children[0]!.style = { width: 220, height: 200 };
+      await writeFile(path.join(authoringRoot, "game.authoring.json"), gameText);
+      await writeFile(uiSourcePath, `${JSON.stringify(ui)}\n`);
+
+      const result = await compileGameForEditor({ gameId, repoRoot: fixtureRoot, generatedArtifactRoot: candidateRoot });
+      expect(result.ok, JSON.stringify(result.diagnostics)).toBe(true);
+      const candidateUiPath = path.join(candidateRoot, "games", gameId, "ui", "web", "ui.manifest.json");
+      const candidateUi = JSON.parse(await readFile(candidateUiPath, "utf8")) as {
+        screens: { intro: { root: { children: Array<{ children: Array<{ style?: unknown }> }> } } };
+      };
+      expect(candidateUi.screens.intro.root.children[0]!.children[0]!.style).toEqual({ width: 220, height: 200 });
+      const sourceMap = JSON.parse(await readFile(candidateUiPath.replace("ui.manifest.json", "ui.manifest.source-map.json"), "utf8")) as {
+        sourceFile: string;
+      };
+      expect(sourceMap.sourceFile).toBe(`games/${gameId}/authoring/ui/web.authoring.json`);
+      expect((await loadPreviewSelectionSourceMaps(gameId, fixtureRoot, candidateRoot))
+        .some((map) => map.sourceFile === sourceMap.sourceFile)).toBe(true);
+
+      const currentResult = await compileGameForEditor({ gameId, repoRoot: fixtureRoot });
+      expect(currentResult.ok, JSON.stringify(currentResult.diagnostics)).toBe(true);
+      const currentUi = JSON.parse(await readFile(path.join(fixtureRoot, "games", gameId, "ui", "web", "ui.manifest.json"), "utf8")) as {
+        screens: { intro: { root: { children: Array<{ children: Array<{ style?: unknown }> }> } } };
+      };
+      expect(currentUi.screens.intro.root.children[0]!.children[0]!.style).toEqual({ width: 220, height: 200 });
+    } finally {
+      await rm(fixtureRoot, { recursive: true, force: true });
+    }
   });
 
   it("plans prototype extraction with dry-run, runtime diff, and source-map gates", async () => {

@@ -9,7 +9,7 @@
 import { existsSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
-import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 
 import {
@@ -45,10 +45,8 @@ interface CompilerCacheEntry {
   load?: Promise<AuthoringCompilerModule>;
 }
 
-// The reusable compiler resolves schemas and manifests from its own file path.
-// Caching by repository root lets an editor session compile inside its Git
-// worktree (an isolated checkout for one editing session) without leaking
-// generated files into the main checkout.
+// The reusable compiler resolves schemas from its own file path. Keep its code
+// cache separate from the editor session's authoritative authoring sources.
 const compilerCacheByRoot = new Map<string, CompilerCacheEntry>();
 
 export interface EditorCompilerDiagnostic {
@@ -217,7 +215,7 @@ export async function validateAuthoringForEditor(input: {
   const telemetry = compiler.createCompileTelemetry();
 
   if (!hasBlockingSource(diagnostics, new Set(["syntax", "schema"]))) {
-    const job = findJob(compiler, input.gameId, filePath);
+    const job = await findJob(compiler, input.gameId, filePath, input.repoRoot);
     const ajv = compiler.getSharedAjv();
 
     try {
@@ -252,8 +250,10 @@ export async function compileGameForEditor(input: {
   readonly generatedArtifactRoot?: string;
 }): Promise<EditorCompileResult> {
   const checkOnly = input.checkOnly ?? false;
-  const compiler = await getCompiler(input.repoRoot);
-  const jobs = compiler.discoverJobs({ gameId: input.gameId });
+  const compilerRoot = resolveRepositoryRoot(input.repoRoot);
+  const sourceRoot = input.repoRoot === undefined ? compilerRoot : path.resolve(input.repoRoot);
+  const compiler = await getCompiler(compilerRoot);
+  const jobs = await discoverEditorCompileJobs(compiler, compilerRoot, sourceRoot, input.gameId);
   if (jobs.length === 0) {
     throw new EditorRepositoryError(`No authoring compiler jobs were found for game: ${input.gameId}`, 404);
   }
@@ -265,14 +265,12 @@ export async function compileGameForEditor(input: {
 
   for (const job of jobs) {
     try {
-      const outputFile = input.generatedArtifactRoot === undefined
-        ? job.outputFile
-        : path.join(input.generatedArtifactRoot, compiler.relativePath(job.outputFile));
-      const sourceMapFile = input.generatedArtifactRoot === undefined
-        ? job.sourceMapFile
-        : path.join(input.generatedArtifactRoot, compiler.relativePath(job.sourceMapFile));
+      const artifactRoot = input.generatedArtifactRoot ?? sourceRoot;
+      const outputFile = path.join(artifactRoot, compiler.relativePath(job.outputFile));
+      const sourceMapFile = path.join(artifactRoot, compiler.relativePath(job.sourceMapFile));
       const relativeSourcePath = authoringRelativePath(compiler, job);
-      const text = input.authoringTextOverrides?.get(relativeSourcePath) ?? await readFile(job.sourceFile, "utf8");
+      const sourceFile = path.join(sourceRoot, compiler.relativePath(job.sourceFile));
+      const text = input.authoringTextOverrides?.get(relativeSourcePath) ?? await readFile(sourceFile, "utf8");
       const output = compiler.compileAuthoringTextCached(job, text, ajv, { telemetry });
       const runtime = compiler.validateRuntimeManifest(job, output.manifest, ajv);
       artifacts.push(toArtifact(compiler, job));
@@ -372,7 +370,7 @@ export async function planPrototypeExtractionForEditor(input: {
   }
 
   const compiler = await getCompiler(input.repoRoot);
-  const job = findJob(compiler, input.gameId, filePath);
+  const job = await findJob(compiler, input.gameId, filePath, input.repoRoot);
   artifacts.push(toArtifact(compiler, job));
   const ajv = compiler.getSharedAjv();
 
@@ -464,14 +462,14 @@ export async function loadPreviewSelectionSourceMaps(
   repoRoot?: string,
   generatedArtifactRoot?: string
 ): Promise<readonly EditorPreviewSourceMap[]> {
-  const compiler = await getCompiler(repoRoot);
-  const jobs = compiler.discoverJobs({ gameId });
+  const compilerRoot = resolveRepositoryRoot(repoRoot);
+  const sourceRoot = repoRoot === undefined ? compilerRoot : path.resolve(repoRoot);
+  const compiler = await getCompiler(compilerRoot);
+  const jobs = await discoverEditorCompileJobs(compiler, compilerRoot, sourceRoot, gameId);
   const sourceMaps: EditorPreviewSourceMap[] = [];
 
   for (const job of jobs) {
-    const sourceMapFile = generatedArtifactRoot === undefined
-      ? job.sourceMapFile
-      : path.join(generatedArtifactRoot, compiler.relativePath(job.sourceMapFile));
+    const sourceMapFile = path.join(generatedArtifactRoot ?? sourceRoot, compiler.relativePath(job.sourceMapFile));
     if (!existsSync(sourceMapFile)) {
       continue;
     }
@@ -776,8 +774,60 @@ function compileErrorToDiagnostic(
   };
 }
 
-function findJob(compiler: AuthoringCompilerModule, gameId: string, filePath: string): CompilerJob {
-  const job = compiler.discoverJobs({ gameId }).find((candidate) => authoringRelativePath(compiler, candidate) === filePath);
+async function discoverEditorCompileJobs(
+  compiler: AuthoringCompilerModule,
+  compilerRoot: string,
+  sourceRoot: string,
+  gameId: string
+): Promise<readonly CompilerJob[]> {
+  if (!/^[a-z0-9][a-z0-9-]*$/u.test(gameId)) {
+    throw new EditorRepositoryError("Game id must be a safe repository segment.", 400);
+  }
+  if (sourceRoot === compilerRoot) {
+    return compiler.discoverJobs({ gameId });
+  }
+
+  // The compiler module lives in the full checkout, while an editor session
+  // may contain only one game's files. Virtual job paths keep published source
+  // maps repository-relative; source bytes are read from sourceRoot instead.
+  const sourceGameRoot = path.join(sourceRoot, "games", gameId);
+  const compilerGameRoot = path.join(compilerRoot, "games", gameId);
+  const jobs: CompilerJob[] = [];
+  if (existsSync(path.join(sourceGameRoot, "authoring", "game.authoring.json"))) {
+    jobs.push({
+      kind: "game", gameId,
+      sourceFile: path.join(compilerGameRoot, "authoring", "game.authoring.json"),
+      outputFile: path.join(compilerGameRoot, "game.manifest.json"),
+      sourceMapFile: path.join(compilerGameRoot, "game.manifest.source-map.json")
+    });
+  }
+
+  const uiSourceRoot = path.join(sourceGameRoot, "authoring", "ui");
+  if (existsSync(uiSourceRoot)) {
+    for (const entry of (await readdir(uiSourceRoot, { withFileTypes: true })).sort((a, b) => a.name.localeCompare(b.name))) {
+      if (!entry.isFile() || !entry.name.endsWith(".authoring.json")) continue;
+      const channel = entry.name.slice(0, -".authoring.json".length);
+      jobs.push({
+        kind: "ui", gameId, channel,
+        sourceFile: path.join(compilerGameRoot, "authoring", "ui", entry.name),
+        outputFile: path.join(compilerGameRoot, "ui", channel, "ui.manifest.json"),
+        sourceMapFile: path.join(compilerGameRoot, "ui", channel, "ui.manifest.source-map.json")
+      });
+    }
+  }
+  return jobs;
+}
+
+async function findJob(
+  compiler: AuthoringCompilerModule,
+  gameId: string,
+  filePath: string,
+  repoRoot?: string
+): Promise<CompilerJob> {
+  const compilerRoot = resolveRepositoryRoot(repoRoot);
+  const sourceRoot = repoRoot === undefined ? compilerRoot : path.resolve(repoRoot);
+  const jobs = await discoverEditorCompileJobs(compiler, compilerRoot, sourceRoot, gameId);
+  const job = jobs.find((candidate) => authoringRelativePath(compiler, candidate) === filePath);
   if (job === undefined) {
     throw new EditorRepositoryError(`Authoring compiler job was not found for ${gameId}/${filePath}`, 404);
   }
