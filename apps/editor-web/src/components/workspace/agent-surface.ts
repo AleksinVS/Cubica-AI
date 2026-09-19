@@ -245,49 +245,6 @@ export function buildEditorAgentSurface(input: {
         }
       ]
     });
-    children.push({
-      id: "editor-agent-apply",
-      kind: "cubica.button",
-      props: {
-        label: "Apply approved ChangeSet"
-      },
-      actions: [
-        {
-          id: "editor-agent-apply-action",
-          kind: "editorTool",
-          label: "Apply approved ChangeSet",
-          target: "editor.applyChangeSet",
-          sideEffectPolicy: "human-approved",
-          requiresApproval: true,
-          metadata: {
-            approvalScopeHash: input.applyApprovalScopeHash
-          }
-        }
-      ]
-    });
-  }
-
-  if (input.hasUndoPatch) {
-    children.push({
-      id: "editor-agent-undo",
-      kind: "cubica.button",
-      props: {
-        label: "Undo last AI patch"
-      },
-      actions: [
-        {
-          id: "editor-agent-undo-action",
-          kind: "editorTool",
-          label: "Undo last AI patch",
-          target: "editor.undoLastPatch",
-          sideEffectPolicy: "human-approved",
-          requiresApproval: true,
-          metadata: {
-            approvalScopeHash: input.undoApprovalScopeHash
-          }
-        }
-      ]
-    });
   }
 
   return {

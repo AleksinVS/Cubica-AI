@@ -1,23 +1,23 @@
 "use client";
+import type { Message } from "@ag-ui/core";
+import { toEditorUserMessage, type EditorMessageSender } from "@/components/workspace/mvp-agent-message";
 
 /**
  * CopilotKit integration for the editor assistant.
  *
  * This component is intentionally thin: it registers assistant context and
  * frontend tools, but it does not own authoring state. The workspace passes
- * existing Cubica functions for planning, dry-run, apply, undo, preview and
- * save so the assistant cannot bypass editor-engine validation.
+ * existing Cubica functions for planning, dry-run and preview. Only the human
+ * workspace controls can confirm a prepared mutation, undo or save.
  */
 import {
-  buildCubicaAgentApprovalEnvelope,
-  type CubicaAgentApprovalEnvelope,
   type CubicaAgentToolResult,
   type CubicaJsonValue,
   type CubicaSurface,
   type CubicaSurfaceAction
 } from "@cubica/contracts-ai";
-import { CopilotChat, CopilotKit, useAgentContext, useFrontendTool, useHumanInTheLoop, type JsonSerializable } from "@copilotkit/react-core/v2";
-import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { CopilotChat, CopilotChatUserMessage, type CopilotChatUserMessageProps, CopilotKit, useAgent, useCopilotKit, useAgentContext, useFrontendTool, type JsonSerializable } from "@copilotkit/react-core/v2";
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { z } from "zod";
 
 import { editorRu as t } from "@/lib/locale";
@@ -57,10 +57,7 @@ export interface EditorAgentTools {
   }) => Promise<EditorAgentToolResult>;
   readonly preparePrototypeChangeSet: () => Promise<EditorAgentToolResult>;
   readonly dryRunChangeSet: (input: { readonly prompt?: string }) => Promise<EditorAgentToolResult>;
-  readonly applyChangeSet: (input: { readonly prompt?: string; readonly approval?: CubicaAgentApprovalEnvelope }) => Promise<EditorAgentToolResult>;
-  readonly undoLastPatch: (input?: { readonly approval?: CubicaAgentApprovalEnvelope }) => Promise<EditorAgentToolResult>;
   readonly preparePreview: () => Promise<EditorAgentToolResult>;
-  readonly saveSession: (input: { readonly approval?: CubicaAgentApprovalEnvelope }) => Promise<EditorAgentToolResult>;
 }
 
 type EditorAgentConnectionStatus = "disabled" | "checking" | "ready" | "runtime-disabled" | "backend-missing" | "error";
@@ -93,8 +90,6 @@ const checkingConnectionState: EditorAgentConnectionState = {
 };
 
 const EditorAgentConnectionContext = createContext<EditorAgentConnectionState>(disabledConnectionState);
-const EDITOR_APPROVAL_TTL_MS = 5 * 60 * 1000;
-const mutatingEditorToolNames = ["editor.applyChangeSet", "editor.undoLastPatch", "editor.saveSession"] as const;
 
 export function isEditorAgentUiEnabled(): boolean {
   const value = process.env.NEXT_PUBLIC_CUBICA_EDITOR_AGENT_UI;
@@ -180,10 +175,6 @@ function EditorAgentEnabledProvider({ children }: { readonly children: ReactNode
     <EditorAgentConnectionContext.Provider value={contextValue}>{children}</EditorAgentConnectionContext.Provider>
   );
 
-  if (!connectionState.copilotReady) {
-    return childrenWithContext;
-  }
-
   return (
     <CopilotKit
       runtimeUrl="/api/copilotkit"
@@ -222,6 +213,11 @@ export function EditorAgentRuntimeHooks({
 
 export function EditorCopilotChatPanel({
   enabled,
+  threadId,
+  title,
+  onSenderReady,
+  onBusyChange,
+  onSendError,
   onCollapse,
   connection,
   fallback,
@@ -229,6 +225,11 @@ export function EditorCopilotChatPanel({
   tools
 }: {
   readonly enabled: boolean;
+  readonly threadId?: string;
+  readonly title?: string;
+  readonly onSenderReady?: (sender: EditorMessageSender | null) => void;
+  readonly onBusyChange?: (busy: boolean) => void;
+  readonly onSendError?: (message: string) => void;
   readonly onCollapse: () => void;
   readonly connection: EditorAgentConnectionState;
   readonly fallback: ReactNode;
@@ -246,7 +247,7 @@ export function EditorCopilotChatPanel({
   return (
     <>
       <div className="panel-heading">
-        <strong>{t.agentChat.title}</strong>
+        <strong>{title ?? t.agentChat.title}</strong>
         <button type="button" onClick={onCollapse}>
           {t.common.collapse}
         </button>
@@ -255,8 +256,11 @@ export function EditorCopilotChatPanel({
         {surface !== undefined && surface !== null ? (
           <EditorCubicaSurfaceRenderer surface={surface} onAction={(action) => handleEditorSurfaceAction(action, tools)} />
         ) : null}
+        <EditorConversationBridge threadId={threadId} onSenderReady={onSenderReady} onBusyChange={onBusyChange} onSendError={onSendError} />
         <CopilotChat
           agentId={EDITOR_AUTHORING_ASSISTANT_ID}
+          threadId={threadId}
+          messageView={{ userMessage: EditorUserMessage }}
           labels={{
             modalHeaderTitle: t.agentChat.modalHeaderTitle,
             welcomeMessageText: t.agentChat.welcome,
@@ -325,11 +329,6 @@ function handleEditorSurfaceAction(action: CubicaSurfaceAction, tools: EditorAge
   }
 
   const prompt = payloadPrompt(action.payload);
-  const approval =
-    action.sideEffectPolicy === "human-approved" && action.requiresApproval === true
-      ? buildSurfaceApprovalEnvelope(action)
-      : undefined;
-
   switch (action.target) {
     case "editor.planChangeSet":
       void tools.planChangeSet({ prompt });
@@ -343,17 +342,8 @@ function handleEditorSurfaceAction(action: CubicaSurfaceAction, tools: EditorAge
     case "editor.dryRunChangeSet":
       void tools.dryRunChangeSet({ prompt });
       return;
-    case "editor.applyChangeSet":
-      void tools.applyChangeSet({ prompt, approval });
-      return;
-    case "editor.undoLastPatch":
-      void tools.undoLastPatch({ approval });
-      return;
     case "editor.preparePreview":
       void tools.preparePreview();
-      return;
-    case "editor.saveSession":
-      void tools.saveSession({ approval });
       return;
   }
 }
@@ -383,17 +373,6 @@ const prototypeExtractionParameters = z.object({
   definitionSemantics: z.string().trim().min(3).max(1000).optional().describe("Optional _semantics text for the local prototype.")
 });
 
-const mutatingToolParameters = z.object({
-  prompt: z.string().trim().min(1).max(800).optional().describe("Optional editor request. If omitted, the latest planned ChangeSet is used."),
-  approvalId: z.string().trim().min(1).max(160).optional().describe("Approval id returned by editor.requestHumanApproval.")
-});
-
-const approvalRequestParameters = z.object({
-  toolName: z.enum(mutatingEditorToolNames).describe("Mutating editor tool that needs approval."),
-  scopeHash: z.string().trim().min(1).max(240).describe("Exact Cubica operation scope to approve."),
-  summary: z.string().trim().min(1).max(1000).optional().describe("Short human-readable operation summary.")
-});
-
 function EditorAgentRuntimeHooksInner({
   context,
   tools
@@ -401,8 +380,6 @@ function EditorAgentRuntimeHooksInner({
   readonly context: EditorAgentContextProjection;
   readonly tools: EditorAgentTools;
 }) {
-  const approvalsRef = useRef(new Map<string, CubicaAgentApprovalEnvelope>());
-
   useAgentContext({
     description: "Scoped Cubica editor context: active file identifiers, selected authoring pointers, diagnostics and preview trace summary.",
     value: toJsonSerializable(context)
@@ -451,30 +428,6 @@ function EditorAgentRuntimeHooksInner({
 
   useFrontendTool(
     {
-      name: getEditorAgentToolDefinition("editor.applyChangeSet").name,
-      description: getEditorAgentToolDefinition("editor.applyChangeSet").description,
-      parameters: mutatingToolParameters,
-      handler: async ({ prompt, approvalId }) =>
-        toCubicaToolResult("editor.applyChangeSet", await tools.applyChangeSet({ prompt, approval: lookupApproval(approvalsRef.current, approvalId) }))
-    },
-    [tools]
-  );
-
-  useFrontendTool(
-    {
-      name: getEditorAgentToolDefinition("editor.undoLastPatch").name,
-      description: getEditorAgentToolDefinition("editor.undoLastPatch").description,
-      parameters: z.object({
-        approvalId: z.string().trim().min(1).max(160).optional().describe("Approval id returned by editor.requestHumanApproval.")
-      }),
-      handler: async ({ approvalId }) =>
-        toCubicaToolResult("editor.undoLastPatch", await tools.undoLastPatch({ approval: lookupApproval(approvalsRef.current, approvalId) }))
-    },
-    [tools]
-  );
-
-  useFrontendTool(
-    {
       name: getEditorAgentToolDefinition("editor.preparePreview").name,
       description: getEditorAgentToolDefinition("editor.preparePreview").description,
       parameters: z.object({}),
@@ -483,119 +436,7 @@ function EditorAgentRuntimeHooksInner({
     [tools]
   );
 
-  useFrontendTool(
-    {
-      name: getEditorAgentToolDefinition("editor.saveSession").name,
-      description: getEditorAgentToolDefinition("editor.saveSession").description,
-      parameters: z.object({
-        approvalId: z.string().trim().min(1).max(160).optional().describe("Approval id returned by editor.requestHumanApproval.")
-      }),
-      handler: async ({ approvalId }) =>
-        toCubicaToolResult("editor.saveSession", await tools.saveSession({ approval: lookupApproval(approvalsRef.current, approvalId) }))
-    },
-    [tools]
-  );
-
-  useHumanInTheLoop(
-    {
-      name: getEditorAgentToolDefinition("editor.requestHumanApproval").name,
-      description: getEditorAgentToolDefinition("editor.requestHumanApproval").description,
-      parameters: approvalRequestParameters,
-      render: ({ args, respond, status }) => {
-        if (status !== "executing" || respond === undefined) {
-          return null;
-        }
-
-        const summary = args.summary ?? args.toolName;
-        const approve = async () => {
-          const envelope = buildApprovalEnvelope({
-            toolName: args.toolName,
-            scopeHash: args.scopeHash,
-            actionId: "copilot-human-approval"
-          });
-          approvalsRef.current.set(envelope.approvalId, envelope);
-          await respond({
-            ok: true,
-            approvalId: envelope.approvalId,
-            toolName: envelope.toolName,
-            scopeHash: envelope.scopeHash,
-            expiresAt: envelope.expiresAt
-          });
-        };
-        const reject = async () => {
-          await respond({
-            ok: false,
-            toolName: args.toolName,
-            scopeHash: args.scopeHash,
-            reason: t.agentChat.rejectedReason
-          });
-        };
-
-        return (
-          <section className="editor-surface-approval">
-            <span>{t.agentChat.approvalRequired}</span>
-            <strong>{args.toolName}</strong>
-            <p>{summary}</p>
-            <div className="editor-surface-actions">
-              <button type="button" onClick={() => void approve()}>
-                {t.agentChat.approve}
-              </button>
-              <button type="button" onClick={() => void reject()}>
-                {t.agentChat.reject}
-              </button>
-            </div>
-          </section>
-        );
-      }
-    },
-    [tools]
-  );
-
   return null;
-}
-
-function lookupApproval(
-  approvals: ReadonlyMap<string, CubicaAgentApprovalEnvelope>,
-  approvalId: string | undefined
-): CubicaAgentApprovalEnvelope | undefined {
-  return approvalId === undefined ? undefined : approvals.get(approvalId);
-}
-
-function buildSurfaceApprovalEnvelope(action: CubicaSurfaceAction): CubicaAgentApprovalEnvelope | undefined {
-  if (!isEditorAssistantToolName(action.target)) {
-    return undefined;
-  }
-
-  return buildApprovalEnvelope({
-    toolName: action.target,
-    actionId: action.id,
-    scopeHash: surfaceActionApprovalScope(action)
-  });
-}
-
-function buildApprovalEnvelope(input: {
-  readonly toolName: EditorAssistantToolName;
-  readonly actionId: string;
-  readonly scopeHash: string;
-}): CubicaAgentApprovalEnvelope {
-  const approvedAt = new Date();
-  const expiresAt = new Date(approvedAt.getTime() + EDITOR_APPROVAL_TTL_MS);
-  return buildCubicaAgentApprovalEnvelope({
-    approvalId: `approval-${approvedAt.getTime()}-${Math.random().toString(36).slice(2, 8)}`,
-    agentId: EDITOR_AUTHORING_ASSISTANT_ID,
-    toolName: input.toolName,
-    approvedBy: "local-editor-user",
-    approvedAt: approvedAt.toISOString(),
-    expiresAt: expiresAt.toISOString(),
-    scopeHash: input.scopeHash,
-    status: "approved",
-    actionId: input.actionId
-  });
-}
-
-function surfaceActionApprovalScope(action: CubicaSurfaceAction): string {
-  const metadataScope = action.metadata?.approvalScopeHash;
-  return typeof metadataScope === "string" ? metadataScope : `${action.target ?? action.kind}:${action.id}`;
 }
 
 function toJsonSerializable(value: EditorAgentContextProjection): JsonSerializable {
@@ -614,3 +455,43 @@ function toCubicaToolResult(toolName: EditorAssistantToolName, result: EditorAge
     data: result.data ?? fallbackData
   };
 }
+
+
+function EditorConversationBridge({ threadId, onSenderReady, onBusyChange, onSendError }: {
+  threadId?: string; onSenderReady?: (sender: EditorMessageSender | null) => void; onBusyChange?: (busy: boolean) => void; onSendError?: (message: string) => void;
+}) {
+  const { agent } = useAgent({ agentId: EDITOR_AUTHORING_ASSISTANT_ID });
+  const { copilotkit } = useCopilotKit();
+  useEffect(() => { onBusyChange?.(agent.isRunning); }, [agent.isRunning, onBusyChange]);
+  const histories = useRef(new Map<string, Message[]>());
+  const previous = useRef(threadId);
+  useEffect(() => {
+    if (previous.current !== threadId) {
+      if (previous.current) histories.current.set(previous.current, [...agent.messages]);
+      agent.setMessages(threadId ? histories.current.get(threadId) ?? [] : []);
+      previous.current = threadId;
+    }
+  }, [agent, threadId]);
+  useEffect(() => {
+    onSenderReady?.(async input => {
+      if (agent.isRunning) throw new Error("Дождитесь ответа агента перед отправкой нового рисунка.");
+      if (threadId && agent.threadId !== threadId) throw new Error("Диалог ещё подключается. Повторите отправку.");
+      agent.addMessage(toEditorUserMessage(input));
+      // The message is now in the chat; show its streamed answer without holding the drawing UI.
+      void copilotkit.runAgent({ agent }).catch(error => {
+        onSendError?.(error instanceof Error ? error.message : "Не удалось получить ответ агента. Сообщение осталось в диалоге.");
+      });
+    });
+    return () => onSenderReady?.(null);
+  }, [agent, copilotkit, onSenderReady, onSendError, threadId]);
+  return null;
+}
+
+
+const EditorUserMessage = Object.assign(function EditorDrawingUserMessage(props: CopilotChatUserMessageProps) {
+  const content = props.message.content;
+  const drawingContext = Array.isArray(content) && content.some(part => part.type === "text" && part.text.startsWith("Контекст рисунка:"));
+  if (!drawingContext || !Array.isArray(content)) return <CopilotChatUserMessage {...props} />;
+  return <CopilotChatUserMessage {...props} onEditMessage={undefined}
+    message={{ ...props.message, content: content.filter(part => part.type !== "text" || !part.text.startsWith("Контекст рисунка:")) }} />;
+}, CopilotChatUserMessage);

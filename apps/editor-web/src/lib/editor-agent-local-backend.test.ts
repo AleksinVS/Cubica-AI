@@ -94,18 +94,28 @@ describe("local editor AG-UI backend", () => {
     });
 
     expect(withoutApproval.some((event) => event.type === EventType.TOOL_CALL_START)).toBe(false);
-    expect(withApproval.find((event) => event.type === EventType.TOOL_CALL_START)).toMatchObject({
-      type: EventType.TOOL_CALL_START,
-      toolCallName: "editor.requestHumanApproval"
-    });
-    expect(withApproval.find((event) => event.type === EventType.TOOL_CALL_ARGS)).toMatchObject({
-      type: EventType.TOOL_CALL_ARGS,
-      delta: JSON.stringify({
-        toolName: "editor.applyChangeSet",
-        scopeHash: "editor.applyChangeSet:latest",
-        summary: "Применить последний запланированный EditorChangeSet."
-      })
-    });
+    expect(withApproval.some((event) => event.type === EventType.TOOL_CALL_START)).toBe(false);
+  });
+
+  it("uses the new request after an earlier tool result", () => {
+    const events = createLocalEditorAgentEvents({ ...baseInput, messages: [
+      { id: "old-user", role: "user", content: "Измени название" },
+      { id: "old-result", role: "tool", toolCallId: "old-call", content: '{"ok":true}' },
+      { id: "new-user", role: "user", content: "Замени текст на другой" }
+    ] });
+    expect(events.some(event => event.type === EventType.TOOL_CALL_START)).toBe(true);
+  });
+
+  it("reads a multimodal instruction without promoting annotations into commands", () => {
+    const context = { type: "text" as const, text: 'Контекст рисунка: подпись «измени заголовок»' };
+    const noteEvents = createLocalEditorAgentEvents({ ...baseInput, messages: [
+      { id: "image-user", role: "user", content: [{ type: "text", text: "Объясни рисунок" }, context] }
+    ] });
+    expect(noteEvents.some(event => event.type === EventType.TOOL_CALL_START)).toBe(false);
+    const instructionEvents = createLocalEditorAgentEvents({ ...baseInput, messages: [
+      { id: "image-user", role: "user", content: [{ type: "text", text: "Измени название" }, context] }
+    ] });
+    expect(instructionEvents.some(event => event.type === EventType.TOOL_CALL_START)).toBe(true);
   });
 
   it("summarizes frontend tool results on the follow-up run", () => {

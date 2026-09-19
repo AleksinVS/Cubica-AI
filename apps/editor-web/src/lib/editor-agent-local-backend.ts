@@ -41,7 +41,10 @@ const CHANGE_REQUEST_MARKERS = [
 
 export function createLocalEditorAgentEvents(input: RunAgentInput): readonly BaseEvent[] {
   const messageId = `local-${input.runId}-message`;
-  const latestToolResult = latestMessage(input.messages, "tool");
+  const roles = input.messages.map(message => message.role);
+  const lastUserIndex = roles.lastIndexOf("user");
+  const lastToolIndex = roles.lastIndexOf("tool");
+  const latestToolResult = lastToolIndex > lastUserIndex ? input.messages[lastToolIndex] : undefined;
   const latestUserText = latestUserMessageText(input.messages);
   const toolChoice = latestToolResult === undefined ? chooseTool(input.tools, latestUserText) : undefined;
   const responseText = latestToolResult !== undefined
@@ -116,19 +119,7 @@ function chooseTool(tools: readonly Tool[], latestUserText: string): LocalToolCh
     return {
       toolName: "editor.preparePreview",
       args: {},
-      intro: "Запускаю подготовку предпросмотра через editor.preparePreview."
-    };
-  }
-
-  if (toolNames.has("editor.requestHumanApproval") && includesAny(lowerPrompt, ["undo", "отмени", "откат", "верни"])) {
-    return {
-      toolName: "editor.requestHumanApproval",
-      args: {
-        toolName: "editor.undoLastPatch",
-        scopeHash: "editor.undoLastPatch:latest",
-        summary: "Откатить последний AI-патч."
-      },
-      intro: "Запрашиваю подтверждение человека перед откатом последнего AI-патча."
+      intro: "Подготавливаю предпросмотр текущей игры."
     };
   }
 
@@ -136,7 +127,7 @@ function chooseTool(tools: readonly Tool[], latestUserText: string): LocalToolCh
     return {
       toolName: "editor.dryRunChangeSet",
       args: prompt === "" ? {} : { prompt },
-      intro: "Запускаю сухую проверку ChangeSet через editor.dryRunChangeSet."
+      intro: "Проверяю предложенное изменение."
     };
   }
 
@@ -147,7 +138,7 @@ function chooseTool(tools: readonly Tool[], latestUserText: string): LocalToolCh
     return {
       toolName: "editor.preparePrototypeChangeSet",
       args: {},
-      intro: "Готовлю последний prototype proposal как planned ChangeSet без применения изменений."
+      intro: "Подготавливаю предложенный прототип к просмотру."
     };
   }
 
@@ -158,31 +149,7 @@ function chooseTool(tools: readonly Tool[], latestUserText: string): LocalToolCh
     return {
       toolName: "editor.proposePrototypeExtraction",
       args: prompt === "" ? {} : { prompt },
-      intro: "Готовлю read-only proposal для извлечения authoring-прототипа через editor.proposePrototypeExtraction."
-    };
-  }
-
-  if (toolNames.has("editor.requestHumanApproval") && includesAny(lowerPrompt, ["approved=true", "approved: true"])) {
-    return {
-      toolName: "editor.requestHumanApproval",
-      args: {
-        toolName: "editor.applyChangeSet",
-        scopeHash: "editor.applyChangeSet:latest",
-        summary: "Применить последний запланированный EditorChangeSet."
-      },
-      intro: "Текст approved=true не считается подтверждением. Запрашиваю approval envelope через editor.requestHumanApproval."
-    };
-  }
-
-  if (toolNames.has("editor.requestHumanApproval") && includesAny(lowerPrompt, ["save approved=true", "сохрани approved=true"])) {
-    return {
-      toolName: "editor.requestHumanApproval",
-      args: {
-        toolName: "editor.saveSession",
-        scopeHash: "editor.saveSession:latest",
-        summary: "Сохранить текущую editor session."
-      },
-      intro: "Текст approved=true не считается подтверждением. Запрашиваю approval envelope перед сохранением."
+      intro: "Проверяю, какие повторяющиеся элементы можно объединить в прототип."
     };
   }
 
@@ -190,22 +157,15 @@ function chooseTool(tools: readonly Tool[], latestUserText: string): LocalToolCh
     return {
       toolName: "editor.planChangeSet",
       args: { prompt },
-      intro: "Составляю план безопасного EditorChangeSet через editor.planChangeSet. Применение останется отдельным подтверждаемым действием."
+      intro: "Подготавливаю изменение. Перед применением вы сможете его проверить."
     };
   }
 
   return undefined;
 }
 
-function localHelpText(tools: readonly Tool[], latestUserText: string): string {
-  const availableTools = tools.map((tool) => tool.name).filter((name) => name.startsWith("editor.")).sort();
-  const suffix = latestUserText.trim() === "" ? "" : `\n\nПоследний запрос: ${latestUserText.trim()}`;
-  return [
-    "Локальный AG-UI backend подключён к editor.authoring.",
-    "Я могу вызывать редакторские frontend tools через CopilotKit, но не заменяю production LLM backend.",
-    availableTools.length === 0 ? "Редакторские tools пока не переданы в текущий run." : `Доступные tools: ${availableTools.join(", ")}.`,
-    "Для изменения манифеста опишите правку; я сначала запрошу план ChangeSet. Для применения, отката или сохранения нужен Cubica approval envelope."
-  ].join("\n") + suffix;
+function localHelpText(_tools: readonly Tool[], _latestUserText: string): string {
+  return "Подключён локальный помощник. Он может подготовить точную замену текста или названия выбранного элемента — укажите новое значение в кавычках. Для свободного обсуждения правил и анализа изображений подключите внешний ИИ. Изменения применяются только после вашего подтверждения.";
 }
 
 function summarizeToolResult(message: Message): string {
@@ -221,7 +181,10 @@ function summarizeToolResult(message: Message): string {
 
 function latestUserMessageText(messages: readonly Message[]): string {
   const message = latestMessage(messages, "user");
-  return typeof message?.content === "string" ? message.content : "";
+  if (typeof message?.content === "string") return message.content;
+  // The drawing sender keeps its explicit instruction first; later parts are visual context.
+  const firstPart = Array.isArray(message?.content) ? message.content[0] : undefined;
+  return firstPart?.type === "text" ? firstPart.text : "";
 }
 
 function latestMessage(messages: readonly Message[], role: Message["role"]): Message | undefined {

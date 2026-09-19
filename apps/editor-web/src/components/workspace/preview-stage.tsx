@@ -6,7 +6,8 @@
  * otherwise it shows the empty state with a "Prepare preview" button.
  * Presentational: all state and handlers come from the {@link EditorWorkspaceController}.
  */
-import { useCallback, useMemo, useState } from "react";
+import { readJsonPointer, type JsonObject, type PreviewRect } from "@cubica/editor-engine";
+import React, { useCallback, useMemo, useState } from "react";
 
 import { editorRu as t } from "@/lib/locale";
 import { PreviewSelectionOverlay } from "@/components/preview-selection-overlay";
@@ -15,15 +16,21 @@ import { collectKnownViewCreationChannels } from "@/components/workspace/checks-
 import { DeleteEntityDialog, RenameEntityIdDialog } from "@/components/workspace/entity-refactor-dialog";
 import { PreviewModeBanner } from "@/components/workspace/preview-mode-banner";
 import { TelegramStructuralViewer, type TelegramStructuralSelection } from "@/components/workspace/telegram-structural-viewer";
-import { formatPreviewUnbuiltMessage } from "@/components/workspace/workspace-helpers";
+import { formatPreviewUnbuiltMessage, toRepositoryAuthoringFilePath } from "@/components/workspace/workspace-helpers";
 import { projectTelegramAuthoringManifest } from "@/lib/telegram-structural-projection";
 import { projectEditorWireframe, type EditorWireframeNode } from "@/lib/editor-wireframe-projection";
 import { EditorWireframe, type EditorWireframeSelection } from "./editor-wireframe";
+import { MvpElementEditor } from "./mvp-element-editor";
+import { buildMvpGeometryChangeSet, geometrySupport, type MvpElementSource } from "./mvp-element-operations";
 
 import type { EditorWorkspaceController } from "./use-editor-workspace.ts";
 
-export function PreviewStage({ controller }: { controller: EditorWorkspaceController }) {
+export function PreviewStage({ controller, onStartDrawing }: {
+  readonly controller: EditorWorkspaceController;
+  readonly onStartDrawing?: (rect: PreviewRect) => void;
+}) {
   const {
+    mvp,
     editorMode,
     currentPreviewTraceEvent,
     canApplyEditsToPreview,
@@ -64,6 +71,9 @@ export function PreviewStage({ controller }: { controller: EditorWorkspaceContro
     handleInspectorClose,
     captureEntitySource,
     applyEntityReturnedIntent,
+    applyMvpEntityReturnedIntent,
+    directMvpMutation,
+    submitMvpElementPrompt,
     entityRefactorDialog,
     closeEntityRefactorDialog,
     handleRequestDeleteEntity,
@@ -165,6 +175,43 @@ export function PreviewStage({ controller }: { controller: EditorWorkspaceContro
     return findSelected(wireframeProjection.screens.flatMap(screen => screen.nodes));
   }, [selectedPreviewEntityId, wireframeProjection, resolveSourceEntityId, wireframeSelection, webDocument?.filePath]);
 
+  const mvpPreviewEntities = useMemo(() => !mvp ? previewEntities : previewEntities.map((candidate) => {
+    const sourceFile = candidate.metadata?.sourceFile;
+    const filePath = typeof sourceFile === "string" ? toRepositoryAuthoringFilePath(sourceFile, currentDocument.gameId) : undefined;
+    const document = viewModel.entityProjectionDocuments.find((item) => item.filePath === filePath);
+    const value = document?.json === undefined ? undefined : readJsonPointer(document.json, candidate.authoringPointer);
+    const sourceObject = typeof value === "object" && value !== null && !Array.isArray(value)
+      ? value as JsonObject : undefined;
+    const label = typeof sourceObject?._label === "string" ? sourceObject._label : candidate.label;
+    return label === candidate.label ? candidate : { ...candidate, label };
+  }), [mvp, previewEntities, currentDocument.gameId, viewModel.entityProjectionDocuments]);
+  const selectedPreviewDescriptor = mvpPreviewEntities.find((candidate) => candidate.entityId === selectedPreviewEntityId);
+  const selectedProjectionEntity = selectedPreviewEntityId === undefined ? undefined
+    : viewModel.editorEntityProjection.entityById.get(selectedPreviewEntityId);
+  const matchingWireframeSelection = wireframeSelection !== null &&
+    (selectedPreviewEntityId === undefined || resolveSourceEntityId(wireframeSelection.sourceFilePath, wireframeSelection.sourcePointer) === selectedPreviewEntityId)
+    ? wireframeSelection : null;
+  const selectedSourceFile = selectedPreviewDescriptor?.metadata?.sourceFile;
+  const selectedFilePath = previewUrl !== null
+    ? (typeof selectedSourceFile === "string" ? toRepositoryAuthoringFilePath(selectedSourceFile, currentDocument.gameId) : undefined)
+      ?? selectedProjectionEntity?.primarySource.filePath
+    : matchingWireframeSelection?.sourceFilePath ?? selectedProjectionEntity?.primarySource.filePath;
+  const selectedSourcePointer = previewUrl !== null
+    ? selectedPreviewDescriptor?.authoringPointer ?? selectedProjectionEntity?.primarySource.pointer
+    : matchingWireframeSelection?.sourcePointer ?? selectedProjectionEntity?.primarySource.pointer;
+  const selectedDocument = viewModel.entityProjectionDocuments.find((document) => document.filePath === selectedFilePath);
+  const selectedSourceValue = selectedDocument?.json === undefined || selectedSourcePointer === undefined
+    ? undefined : readJsonPointer(selectedDocument.json, selectedSourcePointer);
+  const mvpSource: MvpElementSource | undefined = typeof selectedSourceValue === "object" && selectedSourceValue !== null && !Array.isArray(selectedSourceValue)
+    && selectedFilePath !== undefined && selectedSourcePointer !== undefined
+    ? { filePath: selectedFilePath, pointer: selectedSourcePointer, value: selectedSourceValue as JsonObject }
+    : undefined;
+  const selectedSourceEntityId = selectedFilePath !== undefined && selectedSourcePointer !== undefined
+    ? resolveSourceEntityId(selectedFilePath, selectedSourcePointer) : undefined;
+  const mvpEntity = selectedSourceEntityId === undefined ? undefined : viewModel.editorEntityProjection.entityById.get(selectedSourceEntityId);
+  const mvpPanelLabel = typeof mvpSource?.value._label === "string" ? mvpSource.value._label :
+    selectedPreviewDescriptor?.label ?? selectedProjectionEntity?.label ?? matchingWireframeSelection?.sourcePointer.split("/").at(-1) ?? "Элемент";
+
   function handleTelegramSelection(selection: TelegramStructuralSelection) {
     if (telegramDocument === undefined) return;
     // Buttons are often facets of their containing component rather than a
@@ -194,7 +241,7 @@ export function PreviewStage({ controller }: { controller: EditorWorkspaceContro
         ) : previewUrl !== null ? (
           <div className="preview-viewport-canvas">
             {/* Mode plate + apply state (design-spec §3.3, mockup zone 3). */}
-            <PreviewModeBanner
+            {!mvp ? <PreviewModeBanner
               editorMode={editorMode}
               stepLabel={currentPreviewTraceEvent !== undefined ? `T${currentPreviewTraceEvent.sequence}` : undefined}
               playthroughRunning={(currentPreviewTraceEvent?.sequence ?? 0) > 0}
@@ -213,7 +260,7 @@ export function PreviewStage({ controller }: { controller: EditorWorkspaceContro
                     }
                   : undefined
               }
-            />
+            /> : null}
             <iframe
               key={previewUrl}
               ref={previewIframeRef}
@@ -226,8 +273,19 @@ export function PreviewStage({ controller }: { controller: EditorWorkspaceContro
               sandbox="allow-scripts allow-same-origin"
             />
             <PreviewSelectionOverlay
-              disabled={!effectivePreviewInspectMode}
-              entities={previewEntities}
+              mvp={mvp}
+              geometryUnsupportedReason={geometrySupport(mvpSource)}
+              onGeometryCommit={(entity, gesture) => {
+                if (mvpSource === undefined || entity.entityId !== selectedPreviewEntityId) return;
+                const changeSet = buildMvpGeometryChangeSet(mvpSource, entity.bounds, gesture);
+                if (changeSet !== undefined) void directMvpMutation(changeSet);
+              }}
+              onRegionRectChange={(rect) => {
+                if (previewPromptContext?.kind === "region") void handlePreviewRegionSelect(previewPromptContext.entities, rect, previewPromptContext.point);
+              }}
+              onStartDrawing={onStartDrawing}
+              disabled={!effectivePreviewInspectMode || (mvp && (controller.aiApplyState === "applying" || controller.aiApplyState === "planning"))}
+              entities={mvpPreviewEntities}
               selectedEntityId={selectedPreviewEntityId}
               pointSelectionEnabled={previewPointSelectionMode}
               promptContext={previewPromptContext}
@@ -306,7 +364,26 @@ export function PreviewStage({ controller }: { controller: EditorWorkspaceContro
             </button>
           </div>
         )}
-        <EntityInspector
+        {mvp && effectivePreviewInspectMode && (selectedPreviewDescriptor !== undefined || matchingWireframeSelection !== null && previewUrl === null || selectedProjectionEntity !== undefined) ? (
+          <MvpElementEditor
+            key={`${selectedFilePath ?? "unmapped"}#${selectedSourcePointer ?? selectedPreviewEntityId ?? "unknown"}`}
+            source={previewUrl === null && mvpEntity === undefined ? undefined : mvpSource}
+            entity={mvpEntity}
+            label={mvpPanelLabel}
+            selectedLayerId={selectedPreviewDescriptor?.entityId}
+            bounds={inspectorBounds}
+            geometryUnsupportedReason={selectedPreviewDescriptor === undefined ? undefined : geometrySupport(mvpSource)}
+            layers={previewPromptContext?.kind === "entity" ? previewPromptContext.entities.map((item) => mvpPreviewEntities.find((candidate) => candidate.entityId === item.entityId) ?? item) : undefined}
+            layerPoint={previewPromptContext?.kind === "entity" ? previewPromptContext.point : undefined}
+            onSelectLayer={handlePreviewEntitySelect}
+            onClose={() => { handleInspectorClose(); setSelectedPreviewEntityId(undefined); setWireframeSelection(null); }}
+            onDirect={directMvpMutation}
+            onPrompt={submitMvpElementPrompt}
+            onCapture={captureEntitySource}
+            onApplyYaml={applyMvpEntityReturnedIntent}
+          />
+        ) : null}
+        {!mvp ? <EntityInspector
           entity={inspectorEntity}
           documents={viewModel.entityProjectionDocuments}
           activeChannel={activeChannel}
@@ -332,8 +409,8 @@ export function PreviewStage({ controller }: { controller: EditorWorkspaceContro
           onRequestDelete={canRefactorEntity ? handleRequestDeleteEntity : undefined}
           onBeginAssetPick={canRefactorEntity ? beginAssetPick : undefined}
           onUploadAsset={canRefactorEntity ? handleUploadAsset : undefined}
-        />
-        {entityRefactorDialog?.kind === "delete" ? (
+        /> : null}
+        {!mvp && entityRefactorDialog?.kind === "delete" ? (
           <DeleteEntityDialog
             entityLabel={entityRefactorDialog.entityLabel}
             facets={entityRefactorDialog.facets}

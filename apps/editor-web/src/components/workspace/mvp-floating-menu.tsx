@@ -9,6 +9,7 @@ export type MvpPlayState = "idle" | "running" | "paused";
 export interface MvpMenuEntry {
   readonly id: string;
   readonly label: string;
+  readonly disabledReason?: string;
 }
 
 export type MvpDisabledModes = Partial<Record<MvpMenuMode | "scenario", string>>;
@@ -48,6 +49,8 @@ export interface MvpFloatingMenuProps {
   readonly onSelectSavedState?: (id: string) => void;
   readonly onSelectScenarioStage?: (id: string) => void;
   readonly onSaveState?: () => void;
+  readonly onDeleteSavedState?: (id: string) => void;
+  readonly onRefreshSavedStates?: () => void;
   readonly canSaveState?: boolean;
   readonly disabledModes?: MvpDisabledModes;
   /** Starts open to match the expanded desktop editor surface. */
@@ -63,6 +66,8 @@ export function MvpFloatingMenu({
   onSelectSavedState,
   onSelectScenarioStage,
   onSaveState,
+  onDeleteSavedState,
+  onRefreshSavedStates,
   canSaveState = false,
   disabledModes = {},
   defaultExpanded = true
@@ -476,22 +481,21 @@ export function MvpFloatingMenu({
             </h2>
             {savedStates.length > 0 ? (
               savedStates.map((entry) => (
-                <button
-                  key={entry.id}
-                  type="button"
-                  className={styles.row}
-                  role="menuitem"
-                  onClick={() => {
-                    onSelectSavedState?.(entry.id);
-                    closeScenarioAndRestoreFocus();
-                  }}
-                >
-                  {entry.label}
-                </button>
+                <div key={entry.id} className={styles.savedRow}>
+                  <button type="button" className={styles.row} role="menuitem"
+                    disabled={entry.disabledReason !== undefined} title={entry.disabledReason}
+                    onClick={() => { onSelectSavedState?.(entry.id); closeScenarioAndRestoreFocus(); }}>
+                    <span>{entry.label}{entry.disabledReason ? <small>{entry.disabledReason}</small> : null}</span>
+                  </button>
+                  {onDeleteSavedState ? <button type="button" className={styles.deleteButton}
+                    role="menuitem" aria-label={`Удалить сохранение «${entry.label}»`}
+                    onClick={() => onDeleteSavedState(entry.id)}>×</button> : null}
+                </div>
               ))
             ) : (
               <p className={styles.empty}>Нет сохранённых состояний</p>
             )}
+            {onRefreshSavedStates ? <button type="button" className={styles.row} onClick={onRefreshSavedStates}>Проверить совместимость</button> : null}
             {onSaveState ? (
               <button
                 type="button"

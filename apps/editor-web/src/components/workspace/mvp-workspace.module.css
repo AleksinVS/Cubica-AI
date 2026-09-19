@@ -1,0 +1,59 @@
+.shell { height: 100dvh; min-width: 0; display: grid; grid-template-rows: minmax(0, 1fr) 52px; overflow: hidden; background: #f7f7f5; color: #24272b; }
+.workArea { position: relative; min-width: 0; min-height: 0; }
+.preview { position: absolute; inset: 0; }
+.preview[hidden] { display: none; }
+.preview :global(.preview-stage) { height: 100%; background: #f7f7f5; }
+.preview :global(.preview-frame-shell) { height: 100%; }
+.preview :global(.preview-wireframe-host) { padding-top: 86px; }
+.projectBar { display: flex; align-items: center; gap: 12px; border-top: 1px solid #e3e3df; background: #fff; padding: 0 14px; min-width: 0; font-size: 13px; }
+.projectBar select { min-width: 0; max-width: 240px; border: 0; background: transparent; color: inherit; min-height: 44px; }
+.stateLabel { color: #777970; white-space: nowrap; }
+.versionActions { margin-left: auto; display: flex; gap: 4px; }
+.shell button { cursor: pointer; }
+.versionActions button, .conversations button, .saveDialog button { min-height: 44px; min-width: 44px; border: 1px solid transparent; border-radius: 6px; background: transparent; padding: 8px 12px; color: inherit; }
+.versionActions button:hover, .conversations button:hover { background: #f2f2ed; }
+.shell button:disabled { cursor: default; opacity: .45; }
+.shell button:focus-visible, .shell select:focus-visible, .shell input:focus-visible { outline: 2px solid #465fc4; outline-offset: 2px; }
+.notices { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); max-width: min(640px, calc(100% - 24px)); z-index: 24; font-size: 13px; }
+.notices p { padding: 10px 14px; background: #fff; border: 1px solid #dddcd4; border-radius: 8px; box-shadow: 0 4px 20px #24272b10; }
+.notices button { border: 0; background: transparent; min-width: 36px; min-height: 36px; }
+.chat { height: 100%; display: grid; grid-template-columns: 220px minmax(0, 1fr) 300px; padding-top: 76px; box-sizing: border-box; }
+.conversations, .documents { min-width: 0; overflow: auto; padding: 20px 16px; }
+.conversations { border-right: 1px solid #e3e3df; }
+.documents { border-left: 1px solid #e3e3df; background: #fff; }
+.chat h2 { margin: 0 0 20px; font-size: 14px; font-weight: 600; }
+.chat p { font-size: 14px; color: #70726d; line-height: 1.65; }
+.conversations button { display: block; text-align: left; width: 100%; margin-bottom: 4px; font-size: 14px; }
+.conversations button[aria-current] { background: #e9eae3; }
+.messages { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: #fff; }
+.messages :global(.agent-copilot-panel) { flex: 1; min-height: 0; }
+.emptyChat { align-self: center; margin: auto; padding: 28px; max-width: 520px; }
+.emptyChat h1 { font-size: 24px; font-weight: 500; letter-spacing: -.4px; }
+.dialogBackdrop { position: fixed; inset: 0; background: #1c231b38; z-index: 100; display: grid; place-items: center; padding: 16px; }
+.saveDialog { width: min(440px, 100%); box-sizing: border-box; padding: 24px; border: 1px solid #dddcd4; border-radius: 12px; background: #fff; box-shadow: 0 12px 48px #1c231b28; }
+.saveDialog h2 { margin: 0 0 20px; font-size: 20px; }
+.saveDialog label { display: grid; gap: 8px; }
+.saveDialog input { min-width: 0; padding: 10px; border: 1px solid #c9ccc2; border-radius: 6px; }
+.saveDialog p { font-size: 13px; line-height: 1.5; color: #6c7067; }
+.saveDialog form > div { display: flex; justify-content: flex-end; gap: 8px; }
+.saveDialog button[type=submit] { background: #27352c; color: #fff; }
+@media (max-width: 1000px) { .chat { grid-template-columns: 170px minmax(0, 1fr) 240px; } }
+@media (max-width: 700px) { .chat { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(200px, 1fr) minmax(100px, 30%); overflow: auto; padding-top: 86px; } .conversations { padding: 8px 12px; display: flex; gap: 8px; overflow-x: auto; border: 0; } .conversations h2 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); } .conversations button { width: auto; white-space: nowrap; margin: 0; } .documents { padding: 16px; border: 0; border-top: 1px solid #e3e3df; } .stateLabel { display: none; } .projectBar { gap: 4px; padding: 0 6px; } .projectBar select { max-width: 130px; } .versionActions button { padding: 8px; } .versionActions button:last-child { font-size: 12px; } }
+
+.chat[hidden] { display: none; }
+.drawing { position: absolute; inset: 0; z-index: 20; }
+.documents figure { margin: 0 0 18px; }
+.documents img { display: block; max-width: 100%; max-height: 280px; object-fit: contain; background: #f1f1ed; }
+.documents figcaption { font-size: 12px; color: #72766e; margin-top: 6px; }
+.candidate { position: absolute; inset: 76px 0 0; z-index: 25; background: #fff; display: grid; grid-template-rows: minmax(0, 1fr) auto; }
+.candidate iframe { width: 100%; height: 100%; border: 0; min-height: 0; }
+.candidateActions { display: flex; align-items: center; justify-content: flex-end; gap: 12px; background: #fff; border-top: 1px solid #dfe1da; padding: 12px 20px; }
+.candidateActions p { flex: 1; font-size: 14px; }
+.candidateActions button { min-height: 44px; border: 1px solid #c9ccc2; border-radius: 8px; padding: 8px 16px; background: #fff; }
+.candidateActions button:last-child { background: #27352c; color: #fff; }
+@media(max-width:700px) { .candidateActions { flex-wrap: wrap; gap: 8px; padding: 10px; } .candidateActions p { flex-basis: 100%; margin: 0; } }
+
+.saveDialog::backdrop { background: #1c231b38; }
+.candidateInChat { left: 220px; right: 300px; }
+@media(max-width:1000px) { .candidateInChat { left: 170px; right: 240px; } }
+@media(max-width:700px) { .candidateInChat { left: 0; right: 0; bottom: 30%; } }

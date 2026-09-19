@@ -19,6 +19,7 @@ import {
 import React, { useEffect, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent, type PointerEvent } from "react";
 
 import { editorRu as t } from "@/lib/locale";
+import mvpStyles from "@/components/workspace/mvp-element-editor.module.css";
 
 export interface PreviewAiIntent {
   readonly id: string;
@@ -37,6 +38,11 @@ export interface PreviewPromptContext {
 }
 
 export interface PreviewSelectionOverlayProps {
+  readonly mvp?: boolean;
+  readonly geometryUnsupportedReason?: string;
+  readonly onGeometryCommit?: (entity: PreviewEntityDescriptor, gesture: MvpOverlayGesture) => void;
+  readonly onRegionRectChange?: (rect: PreviewRect) => void;
+  readonly onStartDrawing?: (rect: PreviewRect) => void;
   readonly disabled?: boolean;
   readonly entities: readonly PreviewEntityDescriptor[];
   readonly selectedEntityId: string | undefined;
@@ -61,10 +67,20 @@ export interface PreviewSelectionOverlayProps {
   readonly onTemporaryPlayChange?: (active: boolean) => void;
 }
 
+export type MvpOverlayGesture =
+  | { readonly kind: "move"; readonly dx: number; readonly dy: number }
+  | { readonly kind: "resize"; readonly dx: number; readonly dy: number }
+  | { readonly kind: "rotate"; readonly degrees: number };
+
 const dragThresholdPx = 5;
 const promptOffsetPx = 12;
 
 export function PreviewSelectionOverlay({
+  mvp = false,
+  geometryUnsupportedReason,
+  onGeometryCommit,
+  onRegionRectChange,
+  onStartDrawing,
   disabled = false,
   entities,
   selectedEntityId,
@@ -88,6 +104,10 @@ export function PreviewSelectionOverlay({
     readonly point: PreviewPoint;
     readonly entities: readonly PreviewEntityDescriptor[];
   } | null>(null);
+  const lastClickRef = useRef<{ readonly point: PreviewPoint; readonly ids: readonly string[]; readonly index: number } | null>(null);
+  const layerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const layerHeldRef = useRef(false);
+  const [layerList, setLayerList] = useState<{ readonly point: PreviewPoint; readonly entities: readonly PreviewEntityDescriptor[] } | null>(null);
   const selectedEntity = entities.find((entity) => entity.entityId === selectedEntityId);
   const promptRegionRect = promptContext?.kind === "region" ? promptContext.rect : undefined;
 
@@ -96,6 +116,7 @@ export function PreviewSelectionOverlay({
       if (dragFrameRef.current !== undefined) {
         window.cancelAnimationFrame(dragFrameRef.current);
       }
+      if (layerTimerRef.current !== null) clearTimeout(layerTimerRef.current);
     };
   }, []);
 
@@ -191,7 +212,12 @@ export function PreviewSelectionOverlay({
     }
 
     const result = hitTestPreviewPoint(entities, point);
-    const topEntity = result.entities[0];
+    const previous = lastClickRef.current;
+    const sameClick = previous !== null && Math.abs(previous.point.x - point.x) <= dragThresholdPx &&
+      Math.abs(previous.point.y - point.y) <= dragThresholdPx &&
+      previous.ids.join("\u0000") === result.entities.map((item) => item.entityId).join("\u0000");
+    const selectedIndex = mvp && sameClick ? ((previous?.index ?? 0) + 1) % Math.max(1, result.entities.length) : 0;
+    const topEntity = result.entities[selectedIndex];
     const isPointSelection = startedAsPointSelection || pointSelectionEnabled || hasSingleSelectModifier(event);
     if (!isPointSelection && topEntity === undefined) {
       onClearContext();
@@ -199,11 +225,26 @@ export function PreviewSelectionOverlay({
     }
 
     if (topEntity === undefined) {
+      lastClickRef.current = null;
+      setLayerList(null);
       onClearContext();
       return;
     }
 
+    if (mvp) {
+      lastClickRef.current = { point, ids: result.entities.map((item) => item.entityId), index: selectedIndex };
+      showLayerList(point, result.entities);
+    }
     onSelectEntity(topEntity, point, result.entities);
+  }
+
+  function showLayerList(point: PreviewPoint, layered: readonly PreviewEntityDescriptor[]) {
+    if (layerTimerRef.current !== null) clearTimeout(layerTimerRef.current);
+    setLayerList(layered.length > 1 ? { point, entities: layered } : null);
+    layerTimerRef.current = setTimeout(() => {
+      if (!layerHeldRef.current) setLayerList(null);
+      layerTimerRef.current = null;
+    }, 3000);
   }
 
   function handleContextMenu(event: ReactMouseEvent<HTMLDivElement>) {
@@ -273,13 +314,49 @@ export function PreviewSelectionOverlay({
         onPointerUp={handlePointerUp}
         onContextMenu={handleContextMenu}
       />
-      {selectedEntity !== undefined ? <PreviewHighlightFrame entity={selectedEntity} /> : null}
+      {selectedEntity !== undefined ? mvp ? (
+        <MvpGestureFrame
+          entity={selectedEntity}
+          unsupportedReason={geometryUnsupportedReason}
+          onStartDrawing={onStartDrawing}
+          onCommit={(gesture) => onGeometryCommit?.(selectedEntity, gesture)}
+        />
+      ) : <PreviewHighlightFrame entity={selectedEntity} /> : null}
       {dragRect !== null ? <PreviewRegionRect rect={dragRect} /> : null}
-      {dragRect === null && promptRegionRect !== undefined ? <PreviewRegionRect rect={promptRegionRect} /> : null}
+      {dragRect === null && promptRegionRect !== undefined ? mvp ? (
+        <MvpGestureFrame
+          regionRect={promptRegionRect}
+          onStartDrawing={onStartDrawing}
+          onCommit={(gesture) => {
+            if (gesture.kind === "rotate") return;
+            const next = gesture.kind === "move"
+              ? { ...promptRegionRect, x: promptRegionRect.x + gesture.dx, y: promptRegionRect.y + gesture.dy }
+              : { ...promptRegionRect, width: Math.max(12, promptRegionRect.width + gesture.dx), height: Math.max(12, promptRegionRect.height + gesture.dy) };
+            onRegionRectChange?.(next);
+          }}
+        />
+      ) : <PreviewRegionRect rect={promptRegionRect} /> : null}
       {unresolvedCount > 0 ? (
         <span className="preview-overlay-warning">{unresolvedCount} unmapped preview objects</span>
       ) : null}
-      {contextMenu !== null ? (
+      {mvp && layerList !== null ? (
+        <div
+          className={mvpStyles.layerList}
+          role="listbox"
+          aria-label="Слои под указателем"
+          style={{ left: Math.max(8, layerList.point.x - 184), top: Math.max(8, layerList.point.y - 10) }}
+          onPointerEnter={() => { layerHeldRef.current = true; }}
+          onPointerLeave={() => { layerHeldRef.current = false; setLayerList(null); }}
+          onFocus={() => { layerHeldRef.current = true; }}
+          onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) { layerHeldRef.current = false; setLayerList(null); } }}
+        >
+          {layerList.entities.map((item) => (
+            <button key={item.entityId} type="button" role="option" aria-selected={item.entityId === selectedEntityId}
+              onClick={() => onSelectEntity(item, layerList.point, layerList.entities)}>{item.label}</button>
+          ))}
+        </div>
+      ) : null}
+      {!mvp && contextMenu !== null ? (
         <PreviewObjectContextMenu
           point={contextMenu.point}
           entities={contextMenu.entities}
@@ -290,7 +367,7 @@ export function PreviewSelectionOverlay({
           onClose={() => setContextMenu(null)}
         />
       ) : null}
-      {promptContext !== null ? (
+      {promptContext !== null && (!mvp || promptContext.kind === "region") ? (
         <PreviewPromptBox
           context={promptContext}
           proposedIntent={proposedIntent}
@@ -312,6 +389,98 @@ function PreviewHighlightFrame({ entity }: { readonly entity: PreviewEntityDescr
       aria-label={t.selectionOverlay.selectedObjectAria(entity.label)}
     >
       <span>{entity.label}</span>
+    </div>
+  );
+}
+
+function MvpGestureFrame({
+  entity,
+  regionRect,
+  unsupportedReason,
+  onStartDrawing,
+  onCommit
+}: {
+  readonly entity?: PreviewEntityDescriptor;
+  readonly regionRect?: PreviewRect;
+  readonly unsupportedReason?: string;
+  readonly onStartDrawing?: (rect: PreviewRect) => void;
+  readonly onCommit: (gesture: MvpOverlayGesture) => void;
+}) {
+  const bounds = entity?.bounds ?? regionRect;
+  const gestureRef = useRef<{ kind: MvpOverlayGesture["kind"]; pointerId: number; x: number; y: number; startAngle: number } | null>(null);
+  const [preview, setPreview] = useState<MvpOverlayGesture | null>(null);
+  if (bounds === undefined) return null;
+
+  const shown = preview === null ? bounds : preview.kind === "move"
+    ? { ...bounds, x: bounds.x + preview.dx, y: bounds.y + preview.dy }
+    : preview.kind === "resize"
+      ? { ...bounds, width: Math.max(12, bounds.width + preview.dx), height: Math.max(12, bounds.height + preview.dy) }
+      : bounds;
+  const disabled = entity !== undefined && unsupportedReason !== undefined;
+
+  function start(kind: MvpOverlayGesture["kind"], event: PointerEvent<HTMLButtonElement>) {
+    if (disabled || bounds === undefined) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const host = event.currentTarget.parentElement?.parentElement;
+    const hostRect = host?.getBoundingClientRect();
+    const cx = (hostRect?.left ?? 0) + bounds.x + bounds.width / 2;
+    const cy = (hostRect?.top ?? 0) + bounds.y + bounds.height / 2;
+    gestureRef.current = { kind, pointerId: event.pointerId, x: event.clientX, y: event.clientY,
+      startAngle: Math.atan2(event.clientY - cy, event.clientX - cx) };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function currentGesture(event: PointerEvent<HTMLButtonElement>): MvpOverlayGesture | null {
+    const start = gestureRef.current;
+    if (start === null || start.pointerId !== event.pointerId || bounds === undefined) return null;
+    if (start.kind !== "rotate") return { kind: start.kind, dx: event.clientX - start.x, dy: event.clientY - start.y };
+    const host = event.currentTarget.parentElement?.parentElement;
+    const hostRect = host?.getBoundingClientRect();
+    const cx = (hostRect?.left ?? 0) + bounds.x + bounds.width / 2;
+    const cy = (hostRect?.top ?? 0) + bounds.y + bounds.height / 2;
+    return { kind: "rotate", degrees: (Math.atan2(event.clientY - cy, event.clientX - cx) - start.startAngle) * 180 / Math.PI };
+  }
+
+  function finish(event: PointerEvent<HTMLButtonElement>, commit: boolean) {
+    const gesture = currentGesture(event);
+    gestureRef.current = null;
+    setPreview(null);
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+    if (commit && gesture !== null && (gesture.kind === "rotate"
+      ? Math.abs(gesture.degrees) >= 1
+      : Math.abs(gesture.dx) >= 1 || Math.abs(gesture.dy) >= 1)) onCommit(gesture);
+  }
+
+  const handle = (kind: MvpOverlayGesture["kind"], label: string) => (
+    <button type="button" className={`${mvpStyles.gestureHandle} ${mvpStyles[kind]}`} aria-label={label}
+      disabled={disabled} title={unsupportedReason}
+      onPointerDown={(event) => start(kind, event)}
+      onPointerMove={(event) => { const gesture = currentGesture(event); if (gesture !== null) setPreview(gesture); }}
+      onPointerUp={(event) => finish(event, true)}
+      onPointerCancel={(event) => finish(event, false)}
+    >{kind === "move" ? "↕" : kind === "resize" ? "↘" : "⟳"}</button>
+  );
+
+  return (
+    <div className={`${mvpStyles.gestureFrame} ${regionRect !== undefined ? mvpStyles.regionFrame : ""}`}
+      style={{ ...rectStyle(shown), transform: preview?.kind === "rotate" ? `rotate(${preview.degrees}deg)` : undefined }}
+      aria-label={entity === undefined ? "Выделенная область" : `Выбран элемент: ${entity.label}`}>
+      <span className={mvpStyles.frameLabel}>{entity?.label ?? "Область"}</span>
+      {onStartDrawing !== undefined ? (
+        <button
+          type="button"
+          className={mvpStyles.gestureHandle}
+          style={{ left: -12, top: -12, cursor: "pointer" }}
+          aria-label="Рисовать в выделенной области"
+          title="Рисовать в выделенной области"
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => { event.stopPropagation(); onStartDrawing(bounds); }}
+        >✎</button>
+      ) : null}
+      {handle("move", entity === undefined ? "Переместить область" : "Переместить элемент")}
+      {regionRect === undefined ? handle("rotate", "Повернуть элемент") : null}
+      {handle("resize", entity === undefined ? "Изменить размер области" : "Изменить размер элемента")}
     </div>
   );
 }

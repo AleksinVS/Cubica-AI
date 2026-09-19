@@ -1,0 +1,20 @@
+.panel { min-width: 0; display: flex; flex-direction: column; gap: 14px; height: 100%; padding: 16px; box-sizing: border-box; overflow: auto; background: #fff; color: #24272b; }
+.heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.heading h2 { margin: 0; font-size: 18px; font-weight: 600; }
+.heading span { color: #70726d; font-size: 12px; }
+.field { display: grid; gap: 7px; min-width: 0; }
+.field label, .candidateLabel { font-size: 13px; font-weight: 600; }
+.select, .textarea { width: 100%; min-width: 0; box-sizing: border-box; border: 1px solid #c9ccc2; border-radius: 6px; background: #fff; color: inherit; font: inherit; }
+.select { min-height: 44px; padding: 8px 10px; }
+.textarea { min-height: 170px; padding: 10px; resize: vertical; line-height: 1.5; }
+.textarea:read-only { background: #f7f7f5; }
+.help { margin: 0; color: #70726d; font-size: 12px; line-height: 1.45; }
+.candidate { display: grid; gap: 7px; padding-left: 12px; border-left: 2px solid #d5d8ce; }
+.candidate textarea { min-height: 100px; }
+.notice { margin: 0; padding: 9px 10px; border-left: 3px solid #b56a24; color: #744417; background: #fff8ef; font-size: 13px; line-height: 1.45; }
+.actions { display: flex; justify-content: flex-end; gap: 8px; }
+.button { min-width: 44px; min-height: 44px; padding: 8px 14px; border: 1px solid #c9ccc2; border-radius: 6px; background: #fff; color: inherit; font: inherit; cursor: pointer; }
+.buttonPrimary { border-color: #27352c; background: #27352c; color: #fff; }
+.button:disabled { cursor: default; opacity: .45; }
+.empty { margin: auto 0; color: #70726d; font-size: 14px; line-height: 1.5; }
+@media (max-width: 700px) { .panel { padding: 12px; } .textarea { min-height: 130px; } }

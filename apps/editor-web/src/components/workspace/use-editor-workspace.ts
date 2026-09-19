@@ -12,12 +12,11 @@
  * the presentational `EditorWorkspace` component and the panels in this folder
  * consume the returned controller object.
  */
-import {
-  applyNodeChanges,
+import type {
   Position,
-  type ReactFlowInstance,
-  type Node,
-  type NodeChange
+  ReactFlowInstance,
+  Node,
+  NodeChange
 } from "@xyflow/react";
 import {
   buildAddViewFacetChangeSet,
@@ -52,6 +51,9 @@ import {
   type ClassifyChangeSetResult,
   type EditorChangeSet,
   type EditorDiffSummaryItem,
+  type EditorMutationConfirmedResponse,
+  type EditorMutationPreparedResponse,
+  type EditorMutationPrepareRequest,
   type EditorEntity,
   type EditorEntityProjection,
   type EditorEntityProjectionDocument,
@@ -127,6 +129,7 @@ import {
 } from "@/lib/preview-message-adapter";
 import { buildEditorAgentContextProjection } from "@/lib/agent-context-projection";
 import { captureRegionSnapshotForAgent } from "@/lib/preview-region-snapshot";
+import { isMvpMetadataOnlyChangeSet } from "@/components/workspace/mvp-element-operations";
 import {
   useEditorAgentConnection,
   type EditorAgentToolResult,
@@ -137,7 +140,6 @@ import {
   buildEditorAgentSurface,
   buildEditorApprovalEnvelope,
   editorApplyApprovalScope,
-  editorSaveApprovalScope,
   editorUndoApprovalScope,
   prototypeProposalGatesPassed,
   toAgentDiagnostic,
@@ -169,6 +171,7 @@ import {
 import { useEditorVersionHistory } from "@/components/workspace/use-editor-version-history";
 import { buildSaveVersionMetadata } from "@/components/workspace/save-version-metadata";
 import { dryRunMultiDocumentChangeSet } from "@/components/workspace/multi-document-apply";
+import { postEditorMutation } from "@/components/workspace/editor-mutation-client";
 import {
   deriveIntentJournalEntries,
   scopeActiveFilePointers,
@@ -378,7 +381,7 @@ export type EntityRefactorDialogState =
  * unchanged. The presentational `EditorWorkspace` component consumes the object
  * returned here and renders it through the panels in `./`.
  */
-export function useEditorWorkspace() {
+export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const requestedGameId = searchParams.get("gameId");
@@ -504,6 +507,9 @@ export function useEditorWorkspace() {
   const previewFrameAcceptingMessagesRef = useRef(false);
   const previewFrameLoadWaitersRef = useRef(new Set<() => void>());
   const previewSessionWaitersRef = useRef(new Set<(sessionId: string) => void>());
+  const previewBuildSerialRef = useRef<Promise<unknown> | null>(null);
+  const previewBuildRequestRef = useRef(0);
+
   // Runtime event ids never rewind. This signed offset maps that durable
   // ledger onto the editor's logical T0..Tn timeline after a restore.
   const previewRuntimeSequenceOffsetRef = useRef(0);
@@ -529,6 +535,20 @@ export function useEditorWorkspace() {
     prototypeExtractionProposal,
     setPrototypeExtractionProposal
   } = useAiPatchState();
+  const [pendingMvpMutation, setPendingMvpMutation] = useState<{
+    readonly plan: PlannedAiChangeSet;
+    readonly prepared: EditorMutationPreparedResponse;
+    readonly request: EditorMutationPrepareRequest;
+    readonly siblingSourceRevision: string;
+  } | null>(null);
+  const pendingMvpMutationRef = useRef(pendingMvpMutation);
+  const mvpMutationBusyRef = useRef(false);
+  const mvpPrepareEpochRef = useRef(0);
+  const mvpJournalHashesRef = useRef(new Map<string, readonly {
+    readonly filePath: string;
+    readonly beforeHash: string;
+    readonly afterHash: string;
+  }[]>());
 
   const {
     leftSidebarPanel,
@@ -690,6 +710,14 @@ export function useEditorWorkspace() {
   // referencing a game entity contributes its view facet to that game entity, so
   // the projection carries all facets and cross-document occurrences.
   const [projectionSiblingDocuments, setProjectionSiblingDocuments] = useState<readonly ProjectionSiblingDocument[]>([]);
+  const siblingSourceRevision = useMemo(
+    () => projectionSiblingDocuments.map((document) => `${document.filePath}:${hashEditorText(document.text)}`).sort().join("|"),
+    [projectionSiblingDocuments]
+  );
+  const previewBuildInputRef = useRef({ currentDocument, jsonText, sessionId: editorSession?.sessionId, siblingSourceRevision });
+  previewBuildInputRef.current = { currentDocument, jsonText, sessionId: editorSession?.sessionId, siblingSourceRevision };
+  const mvpLiveSourceRef = useRef({ currentDocument, jsonText, sessionId: editorSession?.sessionId, siblingSourceRevision, projectionSiblingDocuments });
+  mvpLiveSourceRef.current = { currentDocument, jsonText, sessionId: editorSession?.sessionId, siblingSourceRevision, projectionSiblingDocuments };
   // The active preview channel (the open UI document's channel, or undefined for a
   // game document). Server-derived and stable per open; a projection input, so it
   // is in the incremental/full-rebuild decision AND the warm-start cache key.
@@ -1102,7 +1130,7 @@ export function useEditorWorkspace() {
   const leftSidebarOpen = leftSidebarPanel !== undefined;
   const rightSidebarPanel: RightSidebarPanel | undefined = propertyPanelOpen ? "properties" : jsonPanelOpen ? "json" : undefined;
   const rightSidebarOpen = rightSidebarPanel !== undefined;
-  const effectivePreviewInspectMode = previewInspectMode && !altPlayActive && !previewPointerPlayMode;
+  const effectivePreviewInspectMode = previewInspectMode && (options.mvp === true || (!altPlayActive && !previewPointerPlayMode));
   const previewModeLabel = effectivePreviewInspectMode ? t.toolbar.inspect : t.toolbar.play;
   // Playthrough-axis freshness (editor-preview-first-ux §9.6). A prepared preview
   // lags behind edits when there are unsaved edits (`isDirty`) or saved content
@@ -1154,35 +1182,18 @@ export function useEditorWorkspace() {
     proposePrototypeExtraction: (input) => runAgentPrototypeExtractionTool(input),
     preparePrototypeChangeSet: () => runAgentPreparePrototypeChangeSetTool(),
     dryRunChangeSet: (input) => runAgentDryRunTool(input.prompt),
-    applyChangeSet: (input) => runAgentApplyTool(input.prompt, input.approval),
-    undoLastPatch: async (input) => runAgentUndoTool(input?.approval),
     preparePreview: async () => {
       await handlePreview();
       return {
         ok: true,
         summary: "Preview preparation requested through the existing editor preview route."
       };
-    },
-    saveSession: async (input) => {
-      const approvalError = validateEditorAgentApproval(
-        input.approval,
-        "editor.saveSession",
-        editorSaveApprovalScope(currentDocument.versionHash ?? "no-version-hash", editorSession?.sessionId)
-      );
-      if (approvalError !== null) {
-        return approvalError;
-      }
-
-      await handleSave();
-      return {
-        ok: true,
-        summary: "Save requested through the existing editor file route."
-      };
     }
   };
 
   const projectedNodes = useMemo<SemanticFlowNode[]>(
     () => {
+      if (options.mvp === true) return [];
       const countByDepth = new Map<number, number>();
       for (const node of viewModel.nodes) {
         const depth = getNodeDepth(node);
@@ -1209,8 +1220,8 @@ export function useEditorWorkspace() {
           id: node.id,
           type: "semantic",
           position: localNodePositions.get(node.id) ?? editorLayout.nodes[node.id]?.position ?? getNodePosition(xByDepth.get(depth) ?? 0, slot),
-          sourcePosition: Position.Right,
-          targetPosition: Position.Left,
+          sourcePosition: "right" as Position,
+          targetPosition: "left" as Position,
           handles: semanticNodeHandles,
           initialWidth: semanticNodeWidth,
           initialHeight: semanticNodeHeight,
@@ -1662,7 +1673,8 @@ export function useEditorWorkspace() {
   // on the freshness axis so it fires only when the preview genuinely lags valid
   // edits; "Превью" is excluded (edits there wait for explicit "Применить").
   useEffect(() => {
-    if (!shouldAutoApplyPreview({ editorMode, freshness: previewFreshness })) {
+    // MVP writes use the validated mutation path, which schedules its own preview.
+    if (options.mvp === true || !shouldAutoApplyPreview({ editorMode, freshness: previewFreshness })) {
       return;
     }
     const handle = window.setTimeout(() => {
@@ -1674,6 +1686,7 @@ export function useEditorWorkspace() {
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
+      if (options.mvp === true) return;
       if (event.key === "Alt") {
         setAltPlayActive(true);
         setPreviewPointerPlayMode(false);
@@ -1800,7 +1813,10 @@ export function useEditorWorkspace() {
   }, [previewChannel, previewUrl, previewEntities, selectedNode?.pointer, selectedPreviewEntityId]);
 
   const onNodesChange = useCallback((changes: NodeChange[]) => {
-    setFlowNodes((nodes) => applyNodeChanges(changes, nodes));
+    // Legacy graph support is loaded only if that explicit interaction is used.
+    void import("@xyflow/react").then(({ applyNodeChanges }) => {
+      setFlowNodes((nodes) => applyNodeChanges(changes, nodes));
+    });
     setLocalNodePositions((currentPositions) => {
       const nextPositions = new Map(currentPositions);
 
@@ -1905,7 +1921,7 @@ export function useEditorWorkspace() {
     regionSnapshotTokenRef.current += 1;
     setPreviewRegionSnapshot(null);
     setPreviewAiIntent(null);
-    setPreviewInspectMode(false);
+    setPreviewInspectMode(options.mvp === true);
     setAltPlayActive(false);
     setPreviewPointerPlayMode(false);
     setPreviewPointSelectionMode(false);
@@ -1941,6 +1957,7 @@ export function useEditorWorkspace() {
   }
 
   function clearAiSessionState() {
+    mvpJournalHashesRef.current.clear();
     setAiApplyState("idle");
     setAiPatchJournal([]);
     setAiRedoJournal([]);
@@ -2247,15 +2264,32 @@ export function useEditorWorkspace() {
     readonly sessionId?: string;
     readonly playerUrl?: string;
   }> {
+    const requestId = ++previewBuildRequestRef.current;
+    const captured = previewBuildInputRef.current;
+    const isCurrent = () => requestId === previewBuildRequestRef.current &&
+      captured.sessionId === previewBuildInputRef.current.sessionId &&
+      captured.currentDocument.gameId === previewBuildInputRef.current.currentDocument.gameId &&
+      captured.currentDocument.versionHash === previewBuildInputRef.current.currentDocument.versionHash &&
+      captured.jsonText === previewBuildInputRef.current.jsonText &&
+      captured.siblingSourceRevision === previewBuildInputRef.current.siblingSourceRevision;
+    // Keep one compiler request in flight and only the newest queued request.
+    // Cancelling fetch would leave the server compiling, so await its completion.
+    if (previewBuildSerialRef.current !== null) await previewBuildSerialRef.current.catch(() => {});
+    if (!isCurrent()) return { ready: false };
     setWorkflowState("previewing");
     setStatusMessage("Preparing player preview...");
     setPluginDiagnostics([]);
 
     try {
-      const result = await postEditorWorkflow("/api/editor/preview", {
-        gameId: currentDocument.gameId,
-        sessionId: editorSession?.sessionId
+      const pending = postEditorWorkflow("/api/editor/preview", {
+        gameId: captured.currentDocument.gameId,
+        sessionId: captured.sessionId
       });
+      previewBuildSerialRef.current = pending;
+      const result = await pending.finally(() => {
+        if (previewBuildSerialRef.current === pending) previewBuildSerialRef.current = null;
+      });
+      if (!isCurrent()) return { ready: false };
       setWorkflowDiagnostics(result.diagnostics ?? []);
       setPluginDiagnostics(pluginDiagnosticsFromWorkflowResponse(result));
 
@@ -2274,18 +2308,18 @@ export function useEditorWorkspace() {
         setSelectedPreviewEntityId(undefined);
         setPreviewPromptContext(null);
         setPreviewAiIntent(null);
-        setPreviewInspectMode(false);
+        setPreviewInspectMode(options.mvp === true);
         setAltPlayActive(false);
         setPreviewPointerPlayMode(false);
         setPreviewPointSelectionMode(false);
         clearPreviewPointerPlayReset();
         setPreviewTrace(createPreviewPlaythroughTrace({
           traceId: `preview-${Date.now()}`,
-          gameId: currentDocument.gameId
+          gameId: captured.currentDocument.gameId
         }));
         setSelectedPreviewTraceSequence(undefined);
         setPreviewRollbackState("idle");
-        setPreviewAppliedVersionHash(currentDocument.versionHash);
+        setPreviewAppliedVersionHash(captured.currentDocument.versionHash);
         // A fresh valid snapshot: the "N правок назад" counter restarts (§3.5).
         setEditsSincePreview(0);
         setWorkflowState("ready");
@@ -2305,6 +2339,7 @@ export function useEditorWorkspace() {
       setStatusMessage("Preview is not ready");
       return { ready: false };
     } catch (error) {
+      if (!isCurrent()) return { ready: false };
       setWorkflowState("error");
       setStatusMessage(error instanceof Error ? error.message : "Preview failed.");
       return { ready: false };
@@ -2313,10 +2348,10 @@ export function useEditorWorkspace() {
 
   async function handlePreview() {
     if (currentDocument.source !== "repository" || isDirty || hasLocalSchemaBlockingDiagnostics) {
-      return;
+      return { ready: false };
     }
 
-    await preparePreviewSession();
+    return preparePreviewSession();
   }
 
   /**
@@ -2786,7 +2821,15 @@ export function useEditorWorkspace() {
     regionSnapshotTokenRef.current += 1;
     setPreviewRegionSnapshot(null);
     setSelectedPreviewEntityId(entity.entityId);
-    selectAuthoringPointerFromPreview(entity);
+    if (options.mvp === true) {
+      const sourceFile = typeof entity.metadata?.sourceFile === "string" ? entity.metadata.sourceFile : undefined;
+      const sourceFilePath = sourceFile === undefined ? undefined : toRepositoryAuthoringFilePath(sourceFile, currentDocument.gameId);
+      const resolved = sourceFilePath === undefined ? undefined
+        : viewModel.editorEntityProjection.entitiesBySourcePointer.get(`${sourceFilePath}#${entity.authoringPointer}`)?.[0];
+      setEntityTreeSelectedEntityId(resolved?.entityId);
+    } else {
+      selectAuthoringPointerFromPreview(entity);
+    }
     setPreviewPromptContext({
       kind: "entity",
       point,
@@ -2827,6 +2870,47 @@ export function useEditorWorkspace() {
     // infeasible) leaves the region prompt on the entity list, which is correct.
     if (snapshot !== null && regionSnapshotTokenRef.current === token) {
       setPreviewRegionSnapshot(snapshot);
+    }
+  }
+
+  async function captureMvpPreviewRegion(rect: PreviewRect) {
+    const snapshot = await captureRegionSnapshotForAgent(previewRendererAdapterRef.current, rect);
+    setPreviewRegionSnapshot(snapshot);
+    return snapshot;
+  }
+
+  async function submitMvpElementPrompt(filePath: string, pointer: string, label: string, prompt: string): Promise<boolean> {
+    const document = viewModel.entityProjectionDocuments.find((candidate) => candidate.filePath === filePath);
+    const value = document?.json === undefined ? undefined : readJsonPointer(document.json, pointer);
+    if (options.mvp !== true || value === undefined || prompt.trim() === "") return false;
+    const intent: EditorPatchIntent = {
+      id: `mvp-element-intent:${crypto.randomUUID()}`,
+      kind: "preview-prompt",
+      prompt: prompt.trim(),
+      activeFilePath: currentDocument.filePath,
+      targetPointers: [pointer],
+      createdAt: new Date().toISOString(),
+      selectionKind: "entity"
+    };
+    setAiApplyState("planning");
+    setStatusMessage("Планирование изменения элемента...");
+    try {
+      const response = await requestAiChangeSet(intent, [{ filePath, pointer, label, value }]);
+      if (!response.ok || response.changeSet === undefined) {
+        setAiApplyState("blocked");
+        setStatusMessage(response.diagnostics?.[0]?.message ?? "Изменение не удалось подготовить.");
+        return false;
+      }
+      return prepareMvpMutation(response.changeSet, {
+        intent,
+        changeSet: response.changeSet,
+        diagnostics: response.diagnostics ?? [],
+        targetPointers: [pointer]
+      });
+    } catch (error) {
+      setAiApplyState("blocked");
+      setStatusMessage(error instanceof Error ? error.message : "Изменение не удалось подготовить.");
+      return false;
     }
   }
 
@@ -2872,6 +2956,17 @@ export function useEditorWorkspace() {
             return;
           }
           setAgentPlannedChangeSet(null);
+          if (options.mvp === true) {
+            const prepared = await prepareMvpMutation(response.changeSet, {
+              intent: planContext.intent,
+              changeSet: response.changeSet,
+              diagnostics: response.diagnostics ?? [],
+              targetPointers: planContext.intent.targetPointers
+            });
+            updateIntentQueue((current) => transitionIntent(current, intentId, prepared ? "done" : "failed"));
+            forgetIntentRunner(intentId);
+            return;
+          }
           reconcileAndApplyIntent(intentId, {
             intent: planContext.intent,
             changeSet: response.changeSet,
@@ -2893,6 +2988,15 @@ export function useEditorWorkspace() {
         ok: false,
         summary: planned.summary,
         diagnostics: planned.diagnostics.map(toAgentDiagnostic)
+      };
+    }
+
+    if (options.mvp === true) {
+      const prepared = await prepareMvpMutation(planned.plan.changeSet, planned.plan);
+      return {
+        ok: prepared,
+        summary: prepared ? `Предложение подготовлено: ${planned.plan.changeSet.summary}` : "Не удалось подготовить временный предпросмотр.",
+        changeSetId: planned.plan.changeSet.id
       };
     }
 
@@ -3023,6 +3127,16 @@ export function useEditorWorkspace() {
     }
 
     const plan = prototypeProposalToPlannedChangeSet(plannedProposal.proposal, currentDocument.filePath);
+    if (options.mvp === true) {
+      setAgentPlannedChangeSet(plan);
+      setPrototypeExtractionProposal(null);
+      const prepared = await prepareMvpMutation(plan.changeSet, plan);
+      return {
+        ok: prepared,
+        summary: prepared ? `Предложение подготовлено: ${plan.changeSet.summary}` : "Не удалось подготовить временный предпросмотр.",
+        changeSetId: plan.changeSet.id
+      };
+    }
     const dryRun = dryRunPlannedAiChangeSet(plan);
     const routedDiagnostics = dryRun.diagnostics.map(toRoutedDiagnostic);
     setAiDiagnostics(routedDiagnostics);
@@ -3075,10 +3189,20 @@ export function useEditorWorkspace() {
       };
     }
 
+    if (options.mvp === true) {
+      const prepared = await prepareMvpMutation(planned.changeSet, planned);
+      return {
+        ok: prepared,
+        summary: prepared ? `Предложение подготовлено: ${planned.changeSet.summary}` : "Не удалось подготовить временный предпросмотр.",
+        changeSetId: planned.changeSet.id
+      };
+    }
+
     const dryRun = dryRunPlannedAiChangeSet(planned);
     setAiDiagnostics(dryRun.diagnostics.map(toRoutedDiagnostic));
     setAiDiffSummary(dryRun.diffSummary);
     setStatusMessage(dryRun.ok ? `Dry-run passed: ${planned.changeSet.summary}` : "AI ChangeSet failed dry-run validation.");
+
 
     return {
       ok: dryRun.ok,
@@ -3587,6 +3711,214 @@ export function useEditorWorkspace() {
       Object.keys(changedPointersByFile).length === 0 ? null : { changedPointersByFile, text: activeNextText };
   }
 
+  function mvpMutationRequest(changeSet: EditorChangeSet): EditorMutationPrepareRequest {
+    if (currentDocument.source !== "repository" || currentDocument.versionHash === undefined || editorSession?.sessionId === undefined) {
+      throw new Error("Изменение требует активной сессии редактора.");
+    }
+    // A sibling-only effect cannot persist a dirty active buffer. Showing that
+    // buffer in the candidate would make confirm diverge from the current build.
+    if (jsonText !== savedText && !changeSet.jsonPatches.some((patch) => patch.filePath === currentDocument.filePath)) {
+      throw new Error("Сначала сохраните правки открытого файла: изменение затрагивает только соседние документы.");
+    }
+    return {
+      action: "prepare",
+      gameId: currentDocument.gameId,
+      sessionId: editorSession.sessionId,
+      activeFilePath: currentDocument.filePath,
+      activeDocument: { text: jsonText, versionHash: currentDocument.versionHash },
+      changeSet: changeSet as unknown as EditorMutationPrepareRequest["changeSet"]
+    };
+  }
+
+  function mvpDiffSummary(items: EditorMutationConfirmedResponse["diffSummary"]): readonly EditorDiffSummaryItem[] {
+    return items.map((item) => ({ ...item, before: undefined, after: undefined }));
+  }
+
+  function cancelMvpMutation() {
+    if (mvpMutationBusyRef.current && pendingMvpMutationRef.current !== null) return;
+    mvpPrepareEpochRef.current += 1;
+    pendingMvpMutationRef.current = null;
+    setPendingMvpMutation(null);
+    setAiApplyState("idle");
+    setStatusMessage("Предложенное изменение отменено.");
+  }
+
+  async function prepareMvpMutation(changeSet: EditorChangeSet, plan = plannedFromEntityChangeSet(changeSet)): Promise<boolean> {
+    if (options.mvp !== true || mvpMutationBusyRef.current) return false;
+    const epoch = ++mvpPrepareEpochRef.current;
+    pendingMvpMutationRef.current = null;
+    setPendingMvpMutation(null);
+    mvpMutationBusyRef.current = true;
+    setAiApplyState("planning");
+    try {
+      const request = mvpMutationRequest(changeSet);
+      const response = await postEditorMutation(request);
+      if (epoch !== mvpPrepareEpochRef.current) return false;
+      if (response.status !== "prepared") throw new Error("Сервер не подготовил изменение.");
+      const live = mvpLiveSourceRef.current;
+      if (live.sessionId !== request.sessionId || live.currentDocument.filePath !== request.activeFilePath ||
+          live.jsonText !== request.activeDocument.text || live.currentDocument.versionHash !== request.activeDocument.versionHash ||
+          live.siblingSourceRevision !== siblingSourceRevision) {
+        throw new Error("Источники изменились во время подготовки. Повторите предпросмотр.");
+      }
+      setAiDiagnostics(response.diagnostics.map(toRoutedDiagnostic));
+      setAiDiffSummary(mvpDiffSummary(response.diffSummary));
+      if (!response.preview.ready || response.preview.playerUrl === undefined) {
+        setAiApplyState("blocked");
+        setStatusMessage(response.preview.diagnostics[0]?.message ?? "Временный предпросмотр недоступен.");
+        return false;
+      }
+      const pending = { plan, prepared: response, request, siblingSourceRevision };
+      pendingMvpMutationRef.current = pending;
+      setPendingMvpMutation(pending);
+      setAiApplyState("idle");
+      setStatusMessage(`Изменение подготовлено для просмотра: ${changeSet.summary}`);
+      return true;
+    } catch (error) {
+      if (epoch === mvpPrepareEpochRef.current) {
+        setAiApplyState("blocked");
+        setStatusMessage(error instanceof Error ? error.message : "Не удалось подготовить изменение.");
+      }
+      return false;
+    } finally {
+      mvpMutationBusyRef.current = false;
+    }
+  }
+
+  function adoptMvpMutation(
+    result: EditorMutationConfirmedResponse,
+    plan: PlannedAiChangeSet,
+    request: EditorMutationPrepareRequest,
+    sourceSiblingRevision: string,
+    journal: "append" | "undo" | "redo" | "none" = "append"
+  ): boolean {
+    const live = mvpLiveSourceRef.current;
+    if (live.sessionId !== request.sessionId || live.currentDocument.gameId !== request.gameId ||
+        live.currentDocument.filePath !== request.activeFilePath ||
+        live.currentDocument.versionHash !== request.activeDocument.versionHash) return false;
+    const activeEditedDuringRequest = live.jsonText !== request.activeDocument.text;
+    const siblingEditedDuringRequest = live.siblingSourceRevision !== sourceSiblingRevision;
+    const localEditsRemain = activeEditedDuringRequest || siblingEditedDuringRequest;
+    const activeDocument = result.documents.find((document) => document.filePath === request.activeFilePath);
+    const nextText = activeEditedDuringRequest ? live.jsonText : activeDocument?.text ?? live.jsonText;
+    const nextDocument = activeDocument === undefined ? live.currentDocument : { ...live.currentDocument, versionHash: activeDocument.versionHash };
+    const nextSiblings = live.projectionSiblingDocuments.map((sibling) => {
+      if (siblingEditedDuringRequest) return sibling;
+      const updated = result.documents.find((document) => document.filePath === sibling.filePath);
+      return updated === undefined ? sibling : { ...sibling, text: updated.text };
+    });
+    const nextSiblingRevision = nextSiblings.map((sibling) => `${sibling.filePath}:${hashEditorText(sibling.text)}`).sort().join("|");
+    if (localEditsRemain) pendingProjectionEditRef.current = null;
+    else stashIncrementalProjectionEditByFile(result.changedPointersByFile, nextText);
+    setJsonText(nextText);
+    if (activeDocument !== undefined) setSavedText(activeDocument.text);
+    setCurrentDocument(nextDocument);
+    setProjectionSiblingDocuments(nextSiblings);
+    previewBuildInputRef.current = {
+      currentDocument: nextDocument,
+      jsonText: nextText,
+      sessionId: editorSession?.sessionId,
+      siblingSourceRevision: nextSiblingRevision
+    };
+    if (journal === "append") {
+      const step = createPatchJournalStep({
+        id: `mvp-patch-${Date.now()}`,
+        createdAt: new Date().toISOString(),
+        intent: plan.intent,
+        forward: plan.changeSet,
+        inverse: result.inverseChangeSet as unknown as EditorChangeSet,
+        beforeText: request.activeDocument.text,
+        afterText: activeDocument?.text ?? request.activeDocument.text,
+        diffSummary: mvpDiffSummary(result.diffSummary),
+        diagnostics: []
+      });
+      setAiPatchJournal((current) => [...current, step]);
+      setAiRedoJournal([]);
+    }
+    if (journal === "append" || journal === "none") {
+      mvpJournalHashesRef.current.set(plan.changeSet.id, result.documents.map((document) => ({
+        filePath: document.filePath,
+        beforeHash: document.previousVersionHash,
+        afterHash: document.versionHash
+      })));
+    }
+    setAiDiffSummary(mvpDiffSummary(result.diffSummary));
+    setAgentPlannedChangeSet(null);
+    clearWorkflowAndPluginDiagnostics();
+    setReverseDiagnostics([]);
+    setLastEditSource("ai");
+    setSaveState("idle");
+    setAiApplyState("applied");
+    setStatusMessage(localEditsRemain
+      ? "Изменение применено; новые локальные правки сохранены в редакторе, предпросмотр устарел."
+      : `Применено: ${result.summary}`);
+    if (!localEditsRemain && isMvpMetadataOnlyChangeSet(plan.changeSet)) {
+      setPreviewAppliedVersionHash(nextDocument.versionHash);
+    }
+    if (!localEditsRemain && !isMvpMetadataOnlyChangeSet(plan.changeSet) &&
+        (activeDocument !== undefined || live.jsonText === savedText)) void preparePreviewSession();
+    return true;
+  }
+
+  async function confirmMvpMutation(): Promise<boolean> {
+    const pending = pendingMvpMutationRef.current;
+    if (options.mvp !== true || pending === null || mvpMutationBusyRef.current) return false;
+    if (pending.request.activeDocument.text !== jsonText ||
+        pending.request.activeDocument.versionHash !== currentDocument.versionHash ||
+        pending.request.sessionId !== editorSession?.sessionId ||
+        pending.siblingSourceRevision !== siblingSourceRevision) {
+      setAiApplyState("blocked");
+      setStatusMessage("Источники изменились после предпросмотра. Подготовьте изменение снова.");
+      pendingMvpMutationRef.current = null;
+      setPendingMvpMutation(null);
+      return false;
+    }
+    mvpMutationBusyRef.current = true;
+    setAiApplyState("applying");
+    try {
+      const result = await postEditorMutation({ ...pending.request, action: "confirm", effectDigest: pending.prepared.effectDigest });
+      if (result.status !== "confirmed") throw new Error("Сервер не подтвердил изменение.");
+      pendingMvpMutationRef.current = null;
+      setPendingMvpMutation(null);
+      const adopted = adoptMvpMutation(result, pending.plan, pending.request, pending.siblingSourceRevision);
+      if (!adopted) setAiApplyState("idle");
+      return adopted;
+    } catch (error) {
+      pendingMvpMutationRef.current = null;
+      setPendingMvpMutation(null);
+      setAiApplyState("blocked");
+      setStatusMessage(error instanceof Error ? error.message : "Подтверждение отклонено.");
+      return false;
+    } finally {
+      mvpMutationBusyRef.current = false;
+    }
+  }
+
+  async function directMvpMutation(
+    changeSet: EditorChangeSet,
+    journal: "append" | "undo" | "redo" = "append"
+  ): Promise<boolean> {
+    if (options.mvp !== true || mvpMutationBusyRef.current) return false;
+    mvpMutationBusyRef.current = true;
+    pendingMvpMutationRef.current = null;
+    setPendingMvpMutation(null);
+    setAiApplyState("applying");
+    try {
+      const request = mvpMutationRequest(changeSet);
+      const result = await postEditorMutation({ ...request, action: "direct" });
+      if (result.status !== "direct") throw new Error("Сервер не применил изменение.");
+      const adopted = adoptMvpMutation(result, plannedFromEntityChangeSet(changeSet), request, siblingSourceRevision, journal);
+      if (!adopted) setAiApplyState("idle");
+      return adopted;
+    } catch (error) {
+      setAiApplyState("blocked");
+      setStatusMessage(error instanceof Error ? error.message : "Изменение отклонено.");
+      return false;
+    } finally {
+      mvpMutationBusyRef.current = false;
+    }
+  }
+
   /** Outcome of {@link commitMultiDocumentChangeSet}: active facet texts + inverse. */
   type MultiDocumentCommitResult =
     | {
@@ -3616,6 +3948,37 @@ export function useEditorWorkspace() {
    * the inverse ChangeSet, reverting siblings on disk and the active in memory.
    */
   async function commitMultiDocumentChangeSet(changeSet: EditorChangeSet): Promise<MultiDocumentCommitResult> {
+    if (options.mvp === true) {
+      if (mvpMutationBusyRef.current) {
+        return { ok: false, diagnostics: [{ severity: "error", source: "change-set", pointer: "", label: "/", message: "Другая правка ещё выполняется.", range: undefined }] };
+      }
+      mvpMutationBusyRef.current = true;
+      const activeBeforeText = jsonText;
+      try {
+        const request = mvpMutationRequest(changeSet);
+        const result = await postEditorMutation({ ...request, action: "direct" });
+        if (result.status !== "direct") throw new Error("Сервер не применил изменение.");
+        if (!adoptMvpMutation(result, plannedFromEntityChangeSet(changeSet), request, siblingSourceRevision, "none")) {
+          throw new Error("Сессия сменилась во время применения; откройте актуальный проект.");
+        }
+        return {
+          ok: true,
+          activeBeforeText,
+          activeAfterText: result.documents.find((document) => document.filePath === currentDocument.filePath)?.text ?? activeBeforeText,
+          inverseChangeSet: result.inverseChangeSet as unknown as EditorChangeSet,
+          diffSummary: mvpDiffSummary(result.diffSummary)
+        };
+      } catch (error) {
+        const diagnostics: RoutedEditorDiagnostic[] = [{
+          severity: "error", source: "change-set", pointer: "", label: "/",
+          message: error instanceof Error ? error.message : "Изменение отклонено.", range: undefined
+        }];
+        setAiDiagnostics(diagnostics);
+        return { ok: false, diagnostics };
+      } finally {
+        mvpMutationBusyRef.current = false;
+      }
+    }
     const activeFilePath = currentDocument.filePath;
     const activeBeforeText = jsonText;
     const dryRun = dryRunMultiDocumentChangeSet({
@@ -4186,6 +4549,30 @@ export function useEditorWorkspace() {
     };
   }
 
+  async function applyMvpEntityReturnedIntent(input: ReturnedIntentInput): Promise<ReturnedIntentApplyOutcome> {
+    const entity = viewModel.editorEntityProjection.entityById.get(input.entityId);
+    const result = interpretReturnedIntent(input, {
+      currentSourceHashes: entity === undefined ? undefined : computeEntitySourceHashes(entity)
+    });
+    recordReturnedIntentTelemetry(result.path, result.stale === true, result.report);
+    if (result.stale === true) {
+      setStatusMessage("Источник изменился — обновите проекцию перед применением.");
+      return { path: result.path, stale: true, report: [], applied: false, forwarded: false };
+    }
+    if (result.path === "deterministic") {
+      if (result.changeSet === null) {
+        return { path: "deterministic", stale: false, report: result.report, applied: false, forwarded: false };
+      }
+      const prepared = await prepareMvpMutation(result.changeSet, plannedChangeSetFromReturnedIntent(result.changeSet, input.entityId));
+      return {
+        path: "deterministic", stale: false, report: result.report, applied: false, forwarded: false,
+        message: prepared ? "Изменение подготовлено. Проверьте вариант и подтвердите." : "Не удалось подготовить вариант. Проверьте сообщение редактора."
+      };
+    }
+    const forwarded = forwardReturnedIntentToAgent(input, entity);
+    return { path: "agent", stale: false, report: result.report, applied: false, forwarded };
+  }
+
   /** Wraps an interpreter ChangeSet as a `PlannedAiChangeSet` for the shared point. */
   function plannedChangeSetFromReturnedIntent(changeSet: EditorChangeSet, entityId: string): PlannedAiChangeSet {
     const createdAt = new Date().toISOString();
@@ -4265,6 +4652,17 @@ export function useEditorWorkspace() {
             failIntent(intentId, diagnostics[0]?.message ?? "Агент не вернул применимое изменение.");
             return;
           }
+          if (options.mvp === true) {
+            const prepared = await prepareMvpMutation(response.changeSet, {
+              intent,
+              changeSet: response.changeSet,
+              diagnostics: response.diagnostics ?? [],
+              targetPointers: intent.targetPointers
+            });
+            updateIntentQueue((current) => transitionIntent(current, intentId, prepared ? "done" : "failed"));
+            forgetIntentRunner(intentId);
+            return;
+          }
           reconcileAndApplyIntent(intentId, {
             intent,
             changeSet: response.changeSet,
@@ -4322,6 +4720,16 @@ export function useEditorWorkspace() {
     return step.affectedFiles.some((filePath) => filePath !== currentDocument.filePath);
   }
 
+  function canReplayMvpStep(step: PatchJournalStep, direction: "undo" | "redo"): boolean {
+    const hashes = mvpJournalHashesRef.current.get(step.forward.id);
+    if (hashes === undefined) return true;
+    const texts = liveAuthoringTextByFilePath();
+    return hashes.every(({ filePath, beforeHash, afterHash }) => {
+      const text = texts.get(filePath);
+      return text !== undefined && hashEditorText(text) === (direction === "undo" ? afterHash : beforeHash);
+    });
+  }
+
   /**
    * Undo/redo of a MULTI-DOCUMENT journal step (Phase 6.2a). Replays the shared
    * atomic apply with the step's inverse (undo) or forward (redo) ChangeSet, which
@@ -4364,6 +4772,21 @@ export function useEditorWorkspace() {
     if (hashEditorText(jsonText) !== step.afterHash) {
       setAiApplyState("blocked");
       setStatusMessage("Undo is blocked because the document changed outside the AI journal.");
+      return;
+    }
+
+    if (options.mvp === true) {
+      if (!canReplayMvpStep(step, "undo")) {
+        setAiApplyState("blocked");
+        setStatusMessage("Undo заблокирован: один из исходных документов изменился после правки.");
+        return;
+      }
+      void directMvpMutation(step.inverse, "undo").then((applied) => {
+        if (!applied) return;
+        setAiPatchJournal((current) => current.slice(0, -1));
+        setAiRedoJournal((current) => [...current, step]);
+        setAiApplyState("undone");
+      });
       return;
     }
 
@@ -4410,6 +4833,20 @@ export function useEditorWorkspace() {
     if (hashEditorText(jsonText) !== step.beforeHash) {
       setAiApplyState("blocked");
       setStatusMessage("Redo is blocked because the document changed outside the AI journal.");
+      return;
+    }
+
+    if (options.mvp === true) {
+      if (!canReplayMvpStep(step, "redo")) {
+        setAiApplyState("blocked");
+        setStatusMessage("Redo заблокирован: один из исходных документов изменился после отмены.");
+        return;
+      }
+      void directMvpMutation(step.forward, "redo").then((applied) => {
+        if (!applied) return;
+        setAiPatchJournal((current) => [...current, step]);
+        setAiRedoJournal((current) => current.slice(0, -1));
+      });
       return;
     }
 
@@ -4777,6 +5214,9 @@ export function useEditorWorkspace() {
   }
 
   function applyLoadedDocument(document: AuthoringFileDocument, layoutDocument?: EditorLayoutDocument) {
+    mvpPrepareEpochRef.current += 1;
+    pendingMvpMutationRef.current = null;
+    setPendingMvpMutation(null);
     setCurrentDocument({
       source: "repository",
       gameId: document.gameId,
@@ -4853,6 +5293,9 @@ export function useEditorWorkspace() {
   }
 
   function loadEmbeddedFallback(error?: unknown) {
+    mvpPrepareEpochRef.current += 1;
+    pendingMvpMutationRef.current = null;
+    setPendingMvpMutation(null);
     const fallbackText = `${JSON.stringify(embeddedAuthoringSample, null, 2)}\n`;
     setAvailableGames([]);
     setAvailableFiles([]);
@@ -4991,6 +5434,8 @@ export function useEditorWorkspace() {
 
 
   return {
+    mvp: options.mvp === true,
+    editorSession,
     agentConnection,
     editorAgentContext,
     editorAgentTools,
@@ -5122,6 +5567,12 @@ export function useEditorWorkspace() {
     // Text mode «источник» + returned-intent apply (Phase 4.2).
     captureEntitySource,
     applyEntityReturnedIntent,
+    applyMvpEntityReturnedIntent,
+    pendingMvpMutation,
+    prepareMvpMutation,
+    confirmMvpMutation,
+    cancelMvpMutation,
+    directMvpMutation,
     returnedIntentTelemetry,
     previewTraceEntries,
     selectedPreviewTraceEvent,
@@ -5155,13 +5606,31 @@ export function useEditorWorkspace() {
     handleSidebarResizeStart,
     previewIframeRef,
     handlePreviewFrameLoad,
+    previewRuntimeSessionId,
+    acceptRestoredPreviewSession: (sessionId: string) => {
+      if (previewUrl === null) return;
+      const next = new URL(previewUrl);
+      next.searchParams.set("sessionId", sessionId);
+      next.searchParams.set("previewInstanceId", crypto.randomUUID());
+      previewFrameAcceptingMessagesRef.current = false;
+      previewRuntimeSessionIdRef.current = undefined;
+      previewRuntimeSequenceOffsetRef.current = 0;
+      setPreviewRuntimeSessionId(undefined);
+      setPreviewTrace(createPreviewPlaythroughTrace({ traceId: `preview-${Date.now()}`, gameId: currentDocument.gameId }));
+      setSelectedPreviewTraceSequence(undefined);
+      // Reload current UI/resources together with the newly admitted state.
+      setPreviewUrl(next.toString());
+    },
     previewEntities,
     selectedPreviewEntityId,
     previewPointSelectionMode,
     previewPromptContext,
+    previewRegionSnapshot,
     previewUnresolvedEntityCount,
     handlePreviewEntitySelect,
     handlePreviewRegionSelect,
+    captureMvpPreviewRegion,
+    submitMvpElementPrompt,
     setSelectedPreviewEntityId,
     handlePreviewPromptSubmit,
     handlePreviewTemporaryPlayChange,

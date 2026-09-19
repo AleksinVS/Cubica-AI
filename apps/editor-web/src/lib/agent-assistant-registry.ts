@@ -80,11 +80,11 @@ export const cubicaAssistantRegistry = [
       "pluginDiagnostics"
     ],
     allowedTools: editorAgentToolNames,
-    sideEffectPolicy: "human-approved",
-    auditLevel: "mutating",
+    sideEffectPolicy: "read-only",
+    auditLevel: "read",
     version: "1.0.0",
     status: "implemented",
-    description: "Authoring assistant for bounded EditorChangeSet planning, dry-run, apply, undo, preview and save."
+    description: "Authoring assistant for bounded EditorChangeSet planning, dry-run and preview."
   },
   {
     agentId: "portal.catalog",

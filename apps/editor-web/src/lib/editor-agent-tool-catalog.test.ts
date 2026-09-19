@@ -20,9 +20,7 @@ describe("editor agent tool catalog", () => {
 
     for (const toolName of editorAgentToolNames) {
       expect(source).toContain(`getEditorAgentToolDefinition("${toolName}")`);
-      if (toolName !== "editor.requestHumanApproval") {
-        expect(source).toContain(`toCubicaToolResult("${toolName}"`);
-      }
+      expect(source).toContain(`toCubicaToolResult("${toolName}"`);
     }
     expect(source).not.toMatch(/name:\s*["']editor\./u);
   });
@@ -35,15 +33,13 @@ describe("editor agent tool catalog", () => {
     }
   });
 
-  it("requires approval for every mutating editor tool", () => {
+  it("does not expose authoring mutations or approval to the model", () => {
     const mutatingTools = listEditorAgentToolDefinitions().filter((tool) => tool.auditLevel === "mutating");
-
-    expect(mutatingTools.map((tool) => tool.name).sort()).toEqual([
-      "editor.applyChangeSet",
-      "editor.saveSession",
-      "editor.undoLastPatch"
-    ]);
-    expect(mutatingTools.every((tool) => tool.sideEffectPolicy === "human-approved" && tool.requiresApproval)).toBe(true);
+    expect(mutatingTools).toEqual([]);
+    for (const forbidden of ["editor.applyChangeSet", "editor.undoLastPatch", "editor.saveSession", "editor.requestHumanApproval"]) {
+      expect(editorAgentToolNames).not.toContain(forbidden);
+      expect(readFileSync(editorAgentUiSourcePath, "utf8")).not.toContain(`getEditorAgentToolDefinition("${forbidden}")`);
+    }
   });
 
   it("does not allow ad-hoc editor tools outside the catalog", () => {

@@ -13,11 +13,7 @@ export type EditorAssistantToolName =
   | "editor.proposePrototypeExtraction"
   | "editor.preparePrototypeChangeSet"
   | "editor.dryRunChangeSet"
-  | "editor.requestHumanApproval"
-  | "editor.applyChangeSet"
-  | "editor.undoLastPatch"
-  | "editor.preparePreview"
-  | "editor.saveSession";
+  | "editor.preparePreview";
 
 export type EditorAssistantToolCatalogEntry = CubicaAgentToolDefinition & {
   readonly name: EditorAssistantToolName;
@@ -55,40 +51,12 @@ export const editorAgentToolCatalog = {
     auditLevel: "read",
     requiresApproval: false
   },
-  "editor.applyChangeSet": {
-    name: "editor.applyChangeSet",
-    description: "Apply a planned EditorChangeSet after dry-run validation. Requires a Cubica approval envelope.",
-    sideEffectPolicy: "human-approved",
-    auditLevel: "mutating",
-    requiresApproval: true
-  },
-  "editor.requestHumanApproval": {
-    name: "editor.requestHumanApproval",
-    description: "Ask the editor user for a Cubica approval envelope for one scoped mutating editor operation.",
-    sideEffectPolicy: "read-only",
-    auditLevel: "read",
-    requiresApproval: false
-  },
-  "editor.undoLastPatch": {
-    name: "editor.undoLastPatch",
-    description: "Undo the last AI patch through the existing Cubica undo journal.",
-    sideEffectPolicy: "human-approved",
-    auditLevel: "mutating",
-    requiresApproval: true
-  },
   "editor.preparePreview": {
     name: "editor.preparePreview",
     description: "Prepare the current editor session preview through the existing session-aware preview route.",
     sideEffectPolicy: "system-approved",
     auditLevel: "read",
     requiresApproval: false
-  },
-  "editor.saveSession": {
-    name: "editor.saveSession",
-    description: "Save the current editor session after a Cubica approval envelope is verified.",
-    sideEffectPolicy: "human-approved",
-    auditLevel: "mutating",
-    requiresApproval: true
   }
 } as const satisfies Record<EditorAssistantToolName, EditorAssistantToolCatalogEntry>;
 

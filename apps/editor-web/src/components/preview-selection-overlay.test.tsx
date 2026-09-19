@@ -413,6 +413,116 @@ describe("PreviewSelectionOverlay", () => {
       root?.unmount();
     });
   });
+
+  it("cycles stacked MVP elements on repeated clicks within five pixels", async () => {
+    const onSelectEntity = vi.fn();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    let root: Root | undefined;
+    await act(async () => {
+      root = createRoot(container);
+      root.render(<PreviewSelectionOverlay mvp entities={entities} selectedEntityId={undefined} promptContext={null}
+        proposedIntent={null} unresolvedCount={0} onSelectEntity={onSelectEntity} onSelectRegion={vi.fn()}
+        onClearContext={vi.fn()} onPromptDraftChange={vi.fn()} onPromptSubmit={vi.fn()} onPromptClose={vi.fn()} />);
+    });
+    const layer = container.querySelector<HTMLElement>("[data-testid='preview-selection-overlay']");
+    mockLayerRect(layer);
+    await act(async () => {
+      dispatchPointer(layer, "pointerdown", { clientX: 30, clientY: 40 });
+      dispatchPointer(layer, "pointerup", { clientX: 30, clientY: 40 });
+      dispatchPointer(layer, "pointerdown", { clientX: 34, clientY: 42 });
+      dispatchPointer(layer, "pointerup", { clientX: 34, clientY: 42 });
+    });
+    expect(onSelectEntity.mock.calls.map(([entity]) => entity.entityId)).toEqual(["front", "back"]);
+    expect(container.querySelector("[aria-label='Слои под указателем']")?.textContent).toContain("Screen");
+    await act(async () => root?.unmount());
+  });
+
+  it("moves a selected region locally and never commits element geometry", async () => {
+    const onGeometryCommit = vi.fn();
+    const onRegionRectChange = vi.fn();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    let root: Root | undefined;
+    await act(async () => {
+      root = createRoot(container);
+      root.render(<PreviewSelectionOverlay mvp entities={entities} selectedEntityId={undefined}
+        promptContext={{ kind: "region", point: { x: 10, y: 10 }, rect: { x: 10, y: 10, width: 50, height: 50 }, entities, draft: "" }}
+        proposedIntent={null} unresolvedCount={0} onSelectEntity={vi.fn()} onSelectRegion={vi.fn()}
+        onClearContext={vi.fn()} onPromptDraftChange={vi.fn()} onPromptSubmit={vi.fn()} onPromptClose={vi.fn()}
+        onGeometryCommit={onGeometryCommit} onRegionRectChange={onRegionRectChange} />);
+    });
+    const move = container.querySelector<HTMLButtonElement>("[aria-label='Переместить область']");
+    await act(async () => {
+      dispatchPointer(move, "pointerdown", { clientX: 20, clientY: 20 });
+      dispatchPointer(move, "pointermove", { clientX: 30, clientY: 25 });
+      dispatchPointer(move, "pointerup", { clientX: 30, clientY: 25 });
+    });
+    expect(onRegionRectChange).toHaveBeenCalledWith({ x: 20, y: 15, width: 50, height: 50 });
+    expect(onGeometryCommit).not.toHaveBeenCalled();
+    await act(async () => root?.unmount());
+  });
+
+  it("cancels an interrupted element gesture without mutation", async () => {
+    const onGeometryCommit = vi.fn();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    let root: Root | undefined;
+    await act(async () => {
+      root = createRoot(container);
+      root.render(<PreviewSelectionOverlay mvp entities={entities} selectedEntityId="front" promptContext={null}
+        proposedIntent={null} unresolvedCount={0} onSelectEntity={vi.fn()} onSelectRegion={vi.fn()}
+        onClearContext={vi.fn()} onPromptDraftChange={vi.fn()} onPromptSubmit={vi.fn()} onPromptClose={vi.fn()}
+        onGeometryCommit={onGeometryCommit} />);
+    });
+    const move = container.querySelector<HTMLButtonElement>("[aria-label='Переместить элемент']");
+    await act(async () => {
+      dispatchPointer(move, "pointerdown", { clientX: 30, clientY: 30 });
+      dispatchPointer(move, "pointermove", { clientX: 80, clientY: 40 });
+      dispatchPointer(move, "pointercancel", { clientX: 80, clientY: 40 });
+    });
+    expect(onGeometryCommit).not.toHaveBeenCalled();
+    await act(async () => root?.unmount());
+  });
+
+  it("starts temporary drawing from selected element bounds without authoring mutation", async () => {
+    const onStartDrawing = vi.fn();
+    const onGeometryCommit = vi.fn();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    let root: Root | undefined;
+    await act(async () => {
+      root = createRoot(container);
+      root.render(<PreviewSelectionOverlay mvp entities={entities} selectedEntityId="front" promptContext={null}
+        proposedIntent={null} unresolvedCount={0} onSelectEntity={vi.fn()} onSelectRegion={vi.fn()}
+        onClearContext={vi.fn()} onPromptDraftChange={vi.fn()} onPromptSubmit={vi.fn()} onPromptClose={vi.fn()}
+        onGeometryCommit={onGeometryCommit} onStartDrawing={onStartDrawing} />);
+    });
+    await act(async () => { container.querySelector<HTMLButtonElement>("[aria-label='Рисовать в выделенной области']")?.click(); });
+    expect(onStartDrawing).toHaveBeenCalledWith(entities[1]?.bounds);
+    expect(onGeometryCommit).not.toHaveBeenCalled();
+    await act(async () => root?.unmount());
+  });
+
+  it("starts temporary drawing from region bounds and hides the pencil when no callback exists", async () => {
+    const onStartDrawing = vi.fn();
+    const rect = { x: 8, y: 12, width: 95, height: 70 };
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    let root: Root | undefined;
+    const base = {
+      mvp: true, entities, selectedEntityId: undefined, proposedIntent: null, unresolvedCount: 0,
+      promptContext: { kind: "region" as const, point: { x: 8, y: 12 }, rect, entities, draft: "" },
+      onSelectEntity: vi.fn(), onSelectRegion: vi.fn(), onClearContext: vi.fn(), onPromptDraftChange: vi.fn(),
+      onPromptSubmit: vi.fn(), onPromptClose: vi.fn()
+    };
+    await act(async () => { root = createRoot(container); root.render(<PreviewSelectionOverlay {...base} onStartDrawing={onStartDrawing} />); });
+    await act(async () => { container.querySelector<HTMLButtonElement>("[aria-label='Рисовать в выделенной области']")?.click(); });
+    expect(onStartDrawing).toHaveBeenCalledWith(rect);
+    await act(async () => { root?.render(<PreviewSelectionOverlay {...base} />); });
+    expect(container.querySelector("[aria-label='Рисовать в выделенной области']")).toBeNull();
+    await act(async () => root?.unmount());
+  });
 });
 
 function mockLayerRect(element: HTMLElement | null) {
@@ -438,7 +548,7 @@ function mockLayerRect(element: HTMLElement | null) {
 
 function dispatchPointer(
   element: HTMLElement | null,
-  type: "pointerdown" | "pointermove" | "pointerup",
+  type: "pointerdown" | "pointermove" | "pointerup" | "pointercancel",
   init: MouseEventInit
 ) {
   element?.dispatchEvent(
