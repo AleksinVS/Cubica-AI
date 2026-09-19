@@ -173,6 +173,7 @@ import {
 } from "@/components/workspace/api-client";
 import { useEditorVersionHistory } from "@/components/workspace/use-editor-version-history";
 import { buildSaveVersionMetadata } from "@/components/workspace/save-version-metadata";
+import { matchSavedAuthoringScope, type SaveAuthoringScope } from "@/components/workspace/save-authoring-state";
 import { dryRunMultiDocumentChangeSet } from "@/components/workspace/multi-document-apply";
 import { postEditorMutation } from "@/components/workspace/editor-mutation-client";
 import {
@@ -2152,6 +2153,18 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
     if (!mvpDocumentReady || currentDocument.source !== "repository" || currentDocument.versionHash === undefined || hasBlockingDiagnostics) {
       return;
     }
+    const saveScope: SaveAuthoringScope = {
+      gameId: currentDocument.gameId,
+      filePath: currentDocument.filePath,
+      versionHash: currentDocument.versionHash,
+      sessionId: editorSession?.sessionId,
+      loadEpoch: repositoryLoadEpochRef.current
+    };
+    const matchSave = (saved?: SavedAuthoringFileDocument) => matchSavedAuthoringScope({
+      document: mvpLiveSourceRef.current.currentDocument,
+      sessionId: editorSessionRef.current?.sessionId,
+      loadEpoch: repositoryLoadEpochRef.current
+    }, saveScope, saved);
 
     setSaveState("saving");
     setStatusMessage("Saving...");
@@ -2181,6 +2194,12 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
           readonly pluginValidation?: EditorPluginValidationResult;
         };
         if (response.status === 422 && body.pluginValidation !== undefined) {
+          const saveMatch = matchSave(body as SavedAuthoringFileDocument);
+          if (saveMatch === "stale") return;
+          if (saveMatch === "superseded") {
+            setSaveState("idle");
+            return;
+          }
           const nextPluginDiagnostics = body.pluginValidation.diagnostics;
           adoptSavedDocumentVersion(body);
           setPluginDiagnostics(nextPluginDiagnostics);
@@ -2191,6 +2210,12 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
           return;
         }
         if (response.status === 409 && body.code === "version_conflict") {
+          const saveMatch = matchSave();
+          if (saveMatch === "stale") return;
+          if (saveMatch === "superseded") {
+            setSaveState("idle");
+            return;
+          }
           setSaveState("conflict");
           setStatusMessage(t.history.errorConflict);
           await versionHistory.loadFirstPage();
@@ -2201,19 +2226,31 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
       }
 
       const saved = (await response.json()) as SavedAuthoringFileDocument;
+      const saveMatch = matchSave(saved);
+      if (saveMatch === "stale") return;
+      if (saveMatch === "superseded") {
+        setSaveState("idle");
+        return;
+      }
       const nextPluginDiagnostics = diagnosticsFromPluginValidation(saved.pluginValidation);
-      applyLoadedDocument(saved);
+      adoptSavedDocumentVersion(saved);
       setSaveState("saved");
       setWorkflowDiagnostics(nextPluginDiagnostics);
       setPluginDiagnostics(nextPluginDiagnostics);
       clearAiSessionState();
-      clearPreparedPreview();
+      if (options.mvp !== true) clearPreparedPreview();
       setWorkflowState("idle");
       setSaveAuthorComment("");
       setSessionRecoveryDismissed(true);
       await versionHistory.loadFirstPage();
       setStatusMessage(editorSession === null ? "Сохранено в проекте" : "Создана новая сохранённая версия");
     } catch (error) {
+      const saveMatch = matchSave();
+      if (saveMatch === "stale") return;
+      if (saveMatch === "superseded") {
+        setSaveState("idle");
+        return;
+      }
       const message = error instanceof Error ? error.message : "Save failed.";
       setSaveState(message.includes("changed on disk") ? "conflict" : "error");
       setStatusMessage(message);
@@ -2383,10 +2420,9 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
   }
 
   /**
-   * Persists the current buffer to the session worktree WITHOUT the full
-   * document-reload reset that the Save button performs (`applyLoadedDocument`),
-   * so the apply pipeline can push edits into the worktree while keeping the
-   * author's selection, tree, and (about-to-be-rebuilt) preview stable. Reuses
+   * Persists the current buffer to the session worktree without creating a
+   * durable version. The Save button now also preserves the open projection;
+   * this path only updates the worktree before preparing a new preview. Reuses
    * the existing `/api/editor/file` route; returns whether the worktree now
    * holds the current buffer.
    */
