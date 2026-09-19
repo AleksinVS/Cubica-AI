@@ -39,5 +39,6 @@
   "runtime-api-openapi.yaml": "Current OpenAPI 3.1 contract for the implemented services/runtime-api modular monolith HTTP API по ADR-051.",
   "runtime-mechanics-language.md": "Нормативное описание цепочки Game Intent → типизированный Mechanics IR и каталога операций.",
   "testing-strategy.md": "Стратегия проверок по уровням риска и пользовательским границам.",
-  "universality-analysis.md": "Анализ универсальности платформенных механизмов и границ игрового содержимого."
+  "universality-analysis.md": "Анализ универсальности платформенных механизмов и границ игрового содержимого.",
+  "editor-mvp-ux.md": "Принятая PM спецификация MVP редактора: плавающее меню, чат и правила, выбор, три блока промта, рисование, wireframe и отладочное прохождение."
 }

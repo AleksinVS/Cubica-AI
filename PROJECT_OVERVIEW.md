@@ -36,7 +36,7 @@
 - `apps/player-web/` — канонический web delivery слой.
 - `packages/contracts/*`, `packages/view-protocol/` — общие контракты и
   framework-agnostic клиентский шов.
-- `packages/editor-engine/` + `apps/editor-web/` — authoring-контур редактора.
+- `packages/editor-engine/` + `apps/editor-web/` — authoring-контур редактора. MVP от 2026-09-19 ориентирован на предпросмотр и чаты, редактирование элемента через три текстовых блока и рисование; дерево манифеста и JSON-редактор исключены из MVP. Цель и статус реализации различаются: спецификация — `docs/architecture/editor-mvp-ux.md`, работа — `TSK-20260919-editor-mvp`.
 - `draft/*` — прототипы и references, не источники истины для runtime-логики.
 
 ### Основные сценарии использования
@@ -154,7 +154,7 @@ API First применяется на обоих уровнях: current `servic
     [`docs/architecture/GAME_AUTHORING_GUIDE.md`](docs/architecture/GAME_AUTHORING_GUIDE.md)
     описывает действующий контракт.
   - **Gameplay Object State Model (ADR-041)**: игровые объекты (карточки, ресурсы, персонажи, клетки, задачи) получают authoring-first модель состояния. Authoring-манифест описывает типы объектов и фасеты состояния, runtime state хранит экземпляры объектов, а Presenter строит безопасную проекцию для UI. `simple-choice` подтверждает этот путь через типизированные запросы и команды Mechanics IR без старых object effects или постоянного резервного исполнителя.
-  - **Semantic Prototype Authoring Layer (ADR-030, Draft)**: целевой authoring-слой для game/UI manifests должен стать обязательным редактируемым источником для новых и изменяемых манифестов; runtime/player продолжают получать generated JSON, валидный по runtime JSON Schema.
+  - **Semantic Prototype Authoring Layer (ADR-030, Accepted)**: authoring-слой является обязательным редактируемым источником для новых и изменяемых game/UI-манифестов. Компилятор раскрывает прототипы в runtime JSON, проверенный по JSON Schema; runtime/player не интерпретируют authoring-конструкции. CI проверяет соответствие исходников и собранных файлов. Разделение исходников и результата сборки применяется как к логике игры, так и к её UI по каналам.
   - **Authoring prototype extraction and promotion (ADR-050, Accepted)**: локальные прототипы игры являются первым уровнем дедупликации authoring-структур; платформенные прототипы появляются только через ручное повышение после проверки универсальности, версии, примеров и validation gates. Регулярный аудит разделен на быстрый deterministic PR scan и недельный LLM-семантический поиск смысловых кандидатов, который запускается по расписанию в CI, не применяет изменения и не заменяет deterministic gates; редактор должен предупреждать о пропущенном, просроченном или частичном weekly audit.
   - **Структура манифеста может различаться у разных игр**.
     - Базовая структура манифеста и принципы описаны в `docs/architecture/schemas/manifest-structure.md`.

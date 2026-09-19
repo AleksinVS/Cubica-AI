@@ -41,12 +41,12 @@ The following proposed decisions require explicit product-manager review before 
 | [ADR-027](027-universality-improvements.md) | Platform Universality Improvements | Accepted |
 | [ADR-028](028-action-templates-for-compact-manifests.md) | Action Templates for Compact Manifests | Superseded by ADR-084 |
 | [ADR-029](029-three-tier-logic-model-ladder-of-power.md) | Three-Tier Logic Model (The Ladder of Power) | Superseded by ADR-084 |
-| [ADR-030](030-semantic-prototype-manifests.md) | Семантические прототипы манифестов с компиляцией | Draft |
+| [ADR-030](030-semantic-prototype-manifests.md) | Семантические прототипы манифестов с компиляцией | Accepted |
 | [ADR-031](031-lightweight-task-plan-and-handoff-system.md) | Lightweight Task, Plan, and Handoff System | Accepted |
 | [ADR-032](032-portal-session-launch-boundary.md) | Portal Session Launch Boundary | Proposed |
 | [ADR-033](033-portal-runtime-session-binding.md) | Portal Runtime Session Binding | Accepted |
-| [ADR-034](034-editor-engine-authoring-manifest-editor.md) | Editor Engine For Authoring Manifest Editing | Draft |
-| [ADR-035](035-editor-engine-progressive-semantic-graph-ux.md) | Progressive Semantic Graph UX For Editor Engine | Draft |
+| [ADR-034](034-editor-engine-authoring-manifest-editor.md) | Editor Engine For Authoring Manifest Editing | Accepted |
+| [ADR-035](035-editor-engine-progressive-semantic-graph-ux.md) | Progressive Semantic Graph UX For Editor Engine | Accepted |
 | [ADR-036](036-semantic-authoring-and-preview-timeline-editor.md) | Semantic Authoring Structure And Preview-Timeline Editor | Accepted |
 | [ADR-037](037-project-local-plugins-and-marketplace-safe-evolution.md) | Project-Local Plugins And Marketplace-Safe Evolution | Accepted |
 | [ADR-038](038-testing-architecture-and-policy.md) | Testing Architecture And Policy | Accepted |
@@ -115,3 +115,4 @@ The following proposed decisions require explicit product-manager review before 
 | [ADR-102](102-ordered-bounded-iteration.md) | Упорядоченный обход и позиция в нём | Accepted |
 | [ADR-103](103-portable-public-gameplay-journal.md) | Переносимый журнал подтверждённых публичных событий | Accepted |
 | [ADR-104](104-verifiable-session-ai-debrief.md) | Проверяемый ИИ-разбор подтверждённой истории сессии | Accepted |
+| [ADR-106](106-editor-debug-session-control-and-checkpoints.md) | серверное управление отладочной сессией и полные снимки | Accepted |
