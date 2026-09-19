@@ -37,6 +37,10 @@ export const createSessionRequestSchema = {
       "minimum": 0,
       "maximum": 64,
       "description": "Requested local agent seats. Runtime assigns the last N server-derived seats; omitted is equivalent to zero."
+    },
+    "debugPaused": {
+      "type": "boolean",
+      "description": "Start a local editor preview paused. Requires contentSourceId; omitted preserves legacy behavior."
     }
   },
   "allOf": [

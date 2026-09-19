@@ -11,6 +11,32 @@ function BridgeHarness({ options }: { readonly options: EditorPreviewBridgeOptio
 }
 
 describe("useEditorPreviewBridge", () => {
+  it("admits debug commands only from the exact parent origin and canonical schema", async () => {
+    vi.spyOn(window.parent, "postMessage").mockImplementation(() => undefined);
+    const onDebugSession = vi.fn().mockResolvedValue({
+      source: "cubica-player-web", type: "debugSessionResult", protocolVersion: 1,
+      requestId: "debug-1", sessionId: "session-1", ok: false, error: "Unavailable"
+    });
+    const mounted = render(<BridgeHarness options={{
+      enabled: true, parentOrigin: "https://editor.example.test", refreshSignal: "initial", onDebugSession
+    }} />);
+    const command = {
+      source: "cubica-editor-web", type: "debugSession", protocolVersion: 1,
+      requestId: "debug-1", sessionId: "session-1", operation: "pause", payload: { expectedStateVersion: 1 }
+    };
+    for (const [origin, data, source] of [
+      ["https://attacker.example.test", command, window.parent],
+      ["https://editor.example.test", { ...command, credential: "injected" }, window.parent],
+      ["https://editor.example.test", command, null]
+    ] as const) {
+      window.dispatchEvent(new MessageEvent("message", { origin, data, source }));
+    }
+    expect(onDebugSession).not.toHaveBeenCalled();
+    window.dispatchEvent(new MessageEvent("message", { origin: "https://editor.example.test", data: command, source: window.parent }));
+    await vi.waitFor(() => expect(onDebugSession).toHaveBeenCalledOnce());
+    expect(onDebugSession).toHaveBeenCalledWith(command);
+    mounted.unmount();
+  });
   afterEach(() => {
     vi.restoreAllMocks();
   });

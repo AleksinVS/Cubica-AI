@@ -166,6 +166,7 @@ export async function createNewSessionWithOptions(input: {
   readonly participantCount?: number;
   readonly agentSeatCount?: number;
   readonly accessMode?: "local" | "private-invite";
+  readonly debugPaused?: boolean;
 }): Promise<CreatedPrivateSession> {
   const response = await fetch("/api/runtime/sessions", {
     method: "POST",
@@ -176,7 +177,8 @@ export async function createNewSessionWithOptions(input: {
       ...(input.contentSourceId === undefined ? {} : { contentSourceId: input.contentSourceId }),
       ...(input.participantCount === undefined ? {} : { participantCount: input.participantCount }),
       ...(input.agentSeatCount === undefined ? {} : { agentSeatCount: input.agentSeatCount }),
-      ...(input.accessMode === undefined ? {} : { accessMode: input.accessMode })
+      ...(input.accessMode === undefined ? {} : { accessMode: input.accessMode }),
+      ...(input.debugPaused === undefined ? {} : { debugPaused: input.debugPaused })
     })
   });
   if (!response.ok) {

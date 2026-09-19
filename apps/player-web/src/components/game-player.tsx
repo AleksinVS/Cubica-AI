@@ -11,6 +11,7 @@ import type {
 import { ManifestAction } from "@cubica/contracts-manifest";
 import { useLocale } from "@/components/locale-context";
 import type { PlayerState } from "@/presenter/types";
+import type { EditorDebugBridgeRequest } from "@cubica/contracts-session";
 import type { ViewCommand } from "@cubica/view-protocol";
 import type { GameConfigData } from "@/presenter/game-config";
 import { GamePresenter } from "@/presenter/game-presenter";
@@ -181,6 +182,24 @@ export function GamePlayer({
 
   const presenterRef = useRef<GamePresenter | null>(null);
   const rootRef = useRef<HTMLElement | null>(null);
+  const handleEditorDebugSession = useCallback(async (request: EditorDebugBridgeRequest) => {
+    const presenter = presenterRef.current;
+    if (presenter === null) throw new Error("Отладочная сессия ещё не готова.");
+    return presenter.handleEditorDebugCommand(request);
+  }, []);
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root || playerState?.debugPaused !== true) return;
+    root.setAttribute("data-debug-paused", "true");
+    const animations = typeof root.getAnimations === "function"
+      ? root.getAnimations({ subtree: true }).filter(animation => animation.playState === "running")
+      : [];
+    animations.forEach(animation => animation.pause());
+    return () => {
+      root.removeAttribute("data-debug-paused");
+      animations.forEach(animation => { if (animation.playState === "paused") animation.play(); });
+    };
+  }, [playerState?.debugPaused]);
   const previewSessionSnapshot = useMemo<EditorPreviewSessionSnapshot | undefined>(() => {
     const snapshot = presenterRef.current?.sessionSnapshot;
     if (snapshot === null || snapshot === undefined || snapshot.version === undefined) {
@@ -212,7 +231,8 @@ export function GamePlayer({
     refreshSignal: `${screenKey ?? ""}:${layoutMode}:${activePanel ?? ""}:${playerState?.sessionId ?? ""}:${playerState?.log?.length ?? 0}`,
     sessionSnapshot: previewSessionSnapshot,
     lastCompletedAction: lastCompletedPreviewAction,
-    onRestorePreviewSession: handleEditorPreviewRestore
+    onRestorePreviewSession: handleEditorPreviewRestore,
+    onDebugSession: handleEditorDebugSession
   });
 
   useEffect(() => {

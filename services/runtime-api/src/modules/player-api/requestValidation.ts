@@ -1,12 +1,16 @@
 import type {
   CreateSessionRequest,
+  DebugSessionControlRequest,
+  SaveDebugCheckpointRequest,
   DispatchActionInput,
   RestorePreviewSessionRequest,
   TransportRoadPreviewRequest
 } from "@cubica/contracts-session";
 import {
   getCreateSessionRequestValidationErrors,
-  validateCreateSessionRequestShape
+  validateCreateSessionRequestShape,
+  validateDebugSessionControlRequest,
+  validateSaveDebugCheckpointRequest
 } from "@cubica/contracts-session";
 import type {
   SessionAiDebriefConfirmRequest,
@@ -149,6 +153,20 @@ export const parseCreateSessionRequest = (body: unknown): CreateSessionRequest =
 export const parseDispatchActionRequest = (body: unknown): DispatchActionInput => {
   return parseRuntimeCommand(body, "POST /actions body");
 };
+
+export function parseDebugSessionControlRequest(body: unknown): DebugSessionControlRequest {
+  if (!validateDebugSessionControlRequest(body)) {
+    throw new RequestValidationError("Debug control body does not match its OpenAPI schema.");
+  }
+  return body;
+}
+
+export function parseSaveDebugCheckpointRequest(body: unknown): SaveDebugCheckpointRequest {
+  if (!validateSaveDebugCheckpointRequest(body)) {
+    throw new RequestValidationError("Checkpoint save body does not match its OpenAPI schema.");
+  }
+  return body;
+}
 
 function parseRuntimeCommand(body: unknown, label: string): DispatchActionInput {
   if (!validateRuntimeCommand(body)) {

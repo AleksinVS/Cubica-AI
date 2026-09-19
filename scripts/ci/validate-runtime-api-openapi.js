@@ -119,6 +119,13 @@ const expectedOperations = [
     tag: "EditorPreview",
     marker: "preview-restore"
   },
+  { method: "get", path: "/sessions/{sessionId}/debug", operationId: "getDebugSessionControl", tag: "EditorPreview", marker: "debugControlMatch" },
+  { method: "post", path: "/sessions/{sessionId}/debug/pause", operationId: "pauseDebugSession", tag: "EditorPreview", marker: "debugToggleMatch" },
+  { method: "post", path: "/sessions/{sessionId}/debug/resume", operationId: "resumeDebugSession", tag: "EditorPreview", marker: "debugToggleMatch" },
+  { method: "get", path: "/sessions/{sessionId}/debug/checkpoints", operationId: "listDebugCheckpoints", tag: "EditorPreview", marker: "debugCheckpointsMatch" },
+  { method: "post", path: "/sessions/{sessionId}/debug/checkpoints", operationId: "saveDebugCheckpoint", tag: "EditorPreview", marker: "debugCheckpointsMatch" },
+  { method: "delete", path: "/sessions/{sessionId}/debug/checkpoints/{checkpointId}", operationId: "deleteDebugCheckpoint", tag: "EditorPreview", marker: "debugCheckpointMatch" },
+  { method: "post", path: "/sessions/{sessionId}/debug/checkpoints/{checkpointId}/restore", operationId: "restoreDebugCheckpoint", tag: "EditorPreview", marker: "debugRestoreMatch" },
   { method: "post", path: "/actions", operationId: "dispatchAction", tag: "RuntimeActions", marker: 'requestUrl.pathname === "/actions"' },
   {
     method: "post",
@@ -350,6 +357,13 @@ function validateSchemaCoverage(spec) {
     "ContentReloadResponse",
     "CreateSessionRequest",
     "CreatedSessionResponse",
+    "DebugSessionControlRequest",
+    "DebugSessionControlResponse",
+    "SaveDebugCheckpointRequest",
+    "DebugCheckpointMetadata",
+    "DebugCheckpointListResponse",
+    "EditorDebugBridgeRequest",
+    "EditorDebugBridgeResponse",
     "DispatchActionRequest",
     "ErrorResponse",
     "GameReadinessResponse",
@@ -544,6 +558,13 @@ function validateSessionTrustContract(spec) {
     ["/sessions/{sessionId}/events", "get"],
     ["/sessions/{sessionId}/public-journal", "get"],
     ["/sessions/{sessionId}/preview-restore", "post"],
+    ["/sessions/{sessionId}/debug", "get"],
+    ["/sessions/{sessionId}/debug/pause", "post"],
+    ["/sessions/{sessionId}/debug/resume", "post"],
+    ["/sessions/{sessionId}/debug/checkpoints", "get"],
+    ["/sessions/{sessionId}/debug/checkpoints", "post"],
+    ["/sessions/{sessionId}/debug/checkpoints/{checkpointId}", "delete"],
+    ["/sessions/{sessionId}/debug/checkpoints/{checkpointId}/restore", "post"],
     ["/actions", "post"],
     ["/action-previews/transport-road", "post"],
     ["/agent-turns", "post"]
@@ -714,6 +735,83 @@ function validateSessionAiDebriefContract(spec) {
   }
 }
 
+function validateEditorDebugContract(spec) {
+  const schemas = spec.components.schemas;
+  const checkpointBase = "/sessions/{sessionId}/debug/checkpoints";
+  const operations = [
+    ["/sessions/{sessionId}/debug", "get", "200", "DebugSessionControlResponse"],
+    ["/sessions/{sessionId}/debug/pause", "post", "200", "DebugSessionControlResponse"],
+    ["/sessions/{sessionId}/debug/resume", "post", "200", "DebugSessionControlResponse"],
+    [checkpointBase, "get", "200", "DebugCheckpointListResponse"],
+    [checkpointBase, "post", "201", "DebugCheckpointMetadata"],
+    [`${checkpointBase}/{checkpointId}/restore`, "post", "201", "CreatedSessionResponse"]
+  ];
+  for (const [pathTemplate, method, status, schemaName] of operations) {
+    const operation = spec.paths[pathTemplate]?.[method];
+    if (operation?.["x-cubica-scope"] !== "editor-preview" ||
+        operation.responses?.[status]?.content?.["application/json"]?.schema?.$ref !==
+          `#/components/schemas/${schemaName}`) {
+      fail(`${method.toUpperCase()} ${pathTemplate} must return its canonical editor-preview response`);
+    }
+  }
+  const deletion = spec.paths[`${checkpointBase}/{checkpointId}`]?.delete;
+  if (deletion?.["x-cubica-scope"] !== "editor-preview" || deletion.responses?.["204"] === undefined) {
+    fail("Checkpoint deletion must remain a scoped, body-free 204 operation");
+  }
+  for (const [pathTemplate, schemaName] of [
+    ["/sessions/{sessionId}/debug/pause", "DebugSessionControlRequest"],
+    ["/sessions/{sessionId}/debug/resume", "DebugSessionControlRequest"],
+    [checkpointBase, "SaveDebugCheckpointRequest"]
+  ]) {
+    if (spec.paths[pathTemplate]?.post?.requestBody?.$ref !== `#/components/requestBodies/${schemaName}`) {
+      fail(`POST ${pathTemplate} must use ${schemaName}`);
+    }
+  }
+  for (const [pathTemplate, method] of [
+    ["/sessions/{sessionId}/debug", "get"],
+    ["/sessions/{sessionId}/debug/pause", "post"],
+    ["/sessions/{sessionId}/debug/resume", "post"],
+    [checkpointBase, "get"],
+    [checkpointBase, "post"],
+    [`${checkpointBase}/{checkpointId}`, "delete"],
+    [`${checkpointBase}/{checkpointId}/restore`, "post"]
+  ]) {
+    if (spec.paths[pathTemplate]?.[method]?.responses?.["403"]?.$ref !==
+        "#/components/responses/Forbidden") {
+      fail(`${method.toUpperCase()} ${pathTemplate} must document controller authorization`);
+    }
+  }
+  const metadata = schemas.DebugCheckpointMetadata;
+  const allowedMetadata = ["checkpointId", "createdAt", "expiresAt", "label", "sourceStateVersion"];
+  if (metadata?.type !== "object" || metadata.additionalProperties !== false ||
+      JSON.stringify(Object.keys(metadata.properties ?? {}).sort()) !== JSON.stringify(allowedMetadata) ||
+      JSON.stringify([...(metadata.required ?? [])].sort()) !== JSON.stringify(allowedMetadata) ||
+      metadata.properties.checkpointId?.format !== "uuid" ||
+      metadata.properties.createdAt?.type !== "string" ||
+      metadata.properties.createdAt?.format !== "date-time" ||
+      metadata.properties.expiresAt?.type !== "string" ||
+      metadata.properties.sourceStateVersion?.minimum !== 0 ||
+      metadata.properties.expiresAt?.format !== "date-time") {
+    fail("DebugCheckpointMetadata must expose only the closed public metadata shape");
+  }
+  const list = schemas.DebugCheckpointListResponse;
+  if (list?.additionalProperties !== false ||
+      JSON.stringify(list.required) !== JSON.stringify(["checkpoints"]) ||
+      list.properties?.checkpoints?.type !== "array" ||
+      list.properties.checkpoints.maxItems !== 20 ||
+      list.properties.checkpoints.items?.$ref !== "#/components/schemas/DebugCheckpointMetadata") {
+    fail("DebugCheckpointListResponse must contain at most 20 public metadata records");
+  }
+  const control = schemas.DebugSessionControlResponse;
+  if (control?.additionalProperties !== false ||
+      JSON.stringify(Object.keys(control.properties ?? {}).sort()) !==
+        JSON.stringify(["paused", "sessionId", "version"]) ||
+      JSON.stringify([...(control.required ?? [])].sort()) !==
+        JSON.stringify(["paused", "sessionId", "version"])) {
+    fail("DebugSessionControlResponse must not expose protected state");
+  }
+}
+
 try {
   const spec = parseOpenApi();
   validateSpecShape(spec);
@@ -727,6 +825,7 @@ try {
   validatePreciseRuntimeShapes(spec);
   validatePublicJournalContract(spec);
   validateSessionAiDebriefContract(spec);
+  validateEditorDebugContract(spec);
   console.log("validate-runtime-api-openapi: OK");
 } catch (error) {
   console.error("validate-runtime-api-openapi: failed");

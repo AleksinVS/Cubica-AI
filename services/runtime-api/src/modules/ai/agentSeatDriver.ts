@@ -80,6 +80,7 @@ export class AgentSeatDriver {
     while (steps < MAX_AGENT_SEAT_DRIVER_STEPS) {
       const snapshot = await input.sessionStore.getSession(input.sessionId);
       if (snapshot === null) throw new SessionStoreUnavailableError();
+      if (snapshot.debugPaused) return { snapshot, steps };
       const active = activeAgentParticipant(snapshot);
       if (active === undefined) return { snapshot, steps };
 

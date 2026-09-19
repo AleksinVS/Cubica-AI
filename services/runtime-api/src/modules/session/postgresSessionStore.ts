@@ -11,6 +11,10 @@ import type {
   ArchivedSessionAudit,
   CreateSessionInput,
   CreatedSession,
+  DebugCheckpointMetadata,
+  StoredDebugCheckpointMetadata,
+  DebugCheckpointRestoreInput,
+  DebugCheckpointRestoreResult,
   ImmutableGameBundle,
   LockedSessionOperation,
   SessionAuthenticationInput,
@@ -40,12 +44,22 @@ import {
 import {
   assertNextSessionVersion,
   assertProtectedEventSequenceUnchanged,
+  DebugCheckpointLimitError,
+  DebugSessionPausedError,
   SessionAuthenticationError,
   PublicJournalTooLargeError,
   SessionStoreUnavailableError,
   SessionVersionConflictError,
   SessionWriteLockedError
 } from "./sessionStoreErrors.ts";
+import { HttpError } from "../errors.ts";
+import {
+  assertDebugController,
+  assertDebugPauseUnchanged,
+  DEBUG_CHECKPOINT_LIMIT,
+  makeProtectedDebugCheckpoint,
+  type ProtectedDebugCheckpoint
+} from "./debugSession.ts";
 import { createPublicGameplayJournalByteAccumulator } from "./publicGameplayJournal.ts";
 import {
   assertCreationPrincipalsMatchParticipants,
@@ -58,6 +72,7 @@ interface SessionRow extends QueryResultRow {
   game_id: string;
   bundle_hash: string;
   content_source_id: string | null;
+  debug_paused: boolean;
   session_role: SessionRole | null;
   participants: unknown;
   state: unknown;
@@ -151,6 +166,16 @@ interface SystemScheduleRow extends QueryResultRow {
   updated_at: Date | string;
 }
 
+interface DebugCheckpointRow extends QueryResultRow {
+  checkpoint_id: string;
+  source_session_id: string;
+  label: string;
+  created_at: Date | string;
+  expires_at: Date | string;
+  source_state_version: string | number;
+  payload: unknown;
+}
+
 interface SessionReadinessRow extends QueryResultRow {
   writable: boolean;
   can_select: boolean;
@@ -182,6 +207,7 @@ const SESSION_COLUMNS = `
   game_id,
   bundle_hash,
   content_source_id,
+  debug_paused,
   session_role,
   participants,
   state,
@@ -201,6 +227,7 @@ const SELECT_SESSION = `SELECT ${SESSION_COLUMNS}
   FROM game_sessions
   WHERE id = $1 AND archived_at IS NULL AND bundle_hash IS NOT NULL`;
 const SELECT_SESSION_FOR_UPDATE = `${SELECT_SESSION} FOR UPDATE NOWAIT`;
+const SELECT_SESSION_FOR_UPDATE_WAIT = `${SELECT_SESSION} FOR UPDATE`;
 const SELECT_ARCHIVED_SESSION = `SELECT ${SESSION_COLUMNS}, archived_at
   FROM game_sessions
   WHERE id = $1 AND archived_at IS NOT NULL AND bundle_hash IS NOT NULL`;
@@ -275,15 +302,16 @@ export class PostgresSessionStore<TState = unknown> implements SessionStorePort<
         client,
         sessionId,
          `INSERT INTO game_sessions (
-           id, game_id, bundle_hash, content_source_id, session_role, participants, state,
+           id, game_id, bundle_hash, content_source_id, debug_paused, session_role, participants, state,
            state_version, last_event_sequence
-         ) VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb, 0, 0)
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb, 0, 0)
          RETURNING ${SESSION_COLUMNS}`,
         [
           sessionId,
           input.gameId,
           input.immutableBundle.bundleHash,
           input.contentSourceId ?? null,
+          input.debugPaused ?? false,
           input.sessionRole ?? null,
           JSON.stringify(input.participants),
           JSON.stringify(input.initialState)
@@ -332,6 +360,173 @@ export class PostgresSessionStore<TState = unknown> implements SessionStorePort<
     } catch (error) {
       throw mapDatabaseOperationalError(error);
     }
+  }
+
+  async readDebugControl(input: SessionAuthenticationInput): Promise<SessionRecord<TState>> {
+    return this.runLockedTransaction(input.sessionId, async (client, current) => {
+      await this.requireDebugController(client, input, current);
+      return current!;
+    }, true);
+  }
+
+  async setDebugPaused(
+    input: SessionAuthenticationInput & { expectedStateVersion: number; paused: boolean }
+  ): Promise<SessionRecord<TState>> {
+    return this.runLockedTransaction(input.sessionId, async (client, current) => {
+      await this.requireDebugController(client, input, current);
+      if (current!.debugPaused === input.paused) return current!;
+      if (current!.version.stateVersion !== input.expectedStateVersion) {
+        throw new SessionVersionConflictError(input.sessionId, input.expectedStateVersion);
+      }
+      const next: SessionRecord<TState> = {
+        ...current!, debugPaused: input.paused,
+        version: { ...current!.version, stateVersion: current!.version.stateVersion + 1 },
+        updatedAt: new Date()
+      };
+      await this.writeUpdatedSession(client, current!, next, true);
+      return next;
+    }, true);
+  }
+
+  async saveDebugCheckpoint(
+    input: SessionAuthenticationInput & { label: string }
+  ): Promise<DebugCheckpointMetadata> {
+    return this.runLockedTransaction(input.sessionId, async (client, current) => {
+      await this.requireDebugController(client, input, current);
+      await this.removeExpiredDebugCheckpoints(client, input.sessionId, new Date());
+      if (!current!.debugPaused) throw new HttpError(409, "Pause the preview before saving a checkpoint.");
+      const now = new Date();
+      const count = await queryClient<{ count: string }>(client, input.sessionId,
+        `SELECT count(*)::text AS count FROM debug_session_checkpoints
+         WHERE source_session_id = $1 AND expires_at > $2`, [input.sessionId, now]);
+      if (Number(count.rows[0]?.count ?? 0) >= DEBUG_CHECKPOINT_LIMIT) throw new DebugCheckpointLimitError();
+      const scheduleRows = await queryClient<SystemScheduleRow>(client, input.sessionId,
+        `SELECT ${SYSTEM_SCHEDULE_COLUMNS} FROM system_schedules WHERE session_id = $1 ORDER BY schedule_id`,
+        [input.sessionId]);
+      const checkpoint = makeProtectedDebugCheckpoint(
+        current!, scheduleRows.rows.map(mapSystemScheduleRow), input.label, randomUUID(), now
+      );
+      const payload = JSON.stringify(checkpoint);
+      const inserted = await queryClient(client, input.sessionId,
+        `INSERT INTO debug_session_checkpoints
+          (checkpoint_id, source_session_id, label, created_at, expires_at, source_state_version, byte_size, payload)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb)`,
+        [checkpoint.metadata.checkpointId, input.sessionId, checkpoint.metadata.label,
+          checkpoint.metadata.createdAt, checkpoint.metadata.expiresAt,
+          checkpoint.metadata.sourceStateVersion, Buffer.byteLength(payload, "utf8"), payload]);
+      if (inserted.rowCount !== 1) throw new SessionStoreUnavailableError();
+      return toWireDebugCheckpointMetadata(checkpoint.metadata);
+    }, true);
+  }
+
+  async listDebugCheckpoints(input: SessionAuthenticationInput): Promise<Array<DebugCheckpointMetadata>> {
+    return this.runLockedTransaction(input.sessionId, async (client, current) => {
+      await this.requireDebugController(client, input, current);
+      await this.removeExpiredDebugCheckpoints(client, input.sessionId, new Date());
+      const result = await queryClient<DebugCheckpointRow>(client, input.sessionId,
+        `SELECT checkpoint_id, source_session_id, label, created_at, expires_at, source_state_version, payload
+         FROM debug_session_checkpoints WHERE source_session_id = $1 AND expires_at > $2
+         ORDER BY created_at DESC, checkpoint_id DESC LIMIT 20`, [input.sessionId, new Date()]);
+      return result.rows.map(mapDebugCheckpointMetadata);
+    }, true);
+  }
+
+  async deleteDebugCheckpoint(input: SessionAuthenticationInput & { checkpointId: string }): Promise<void> {
+    await this.runLockedTransaction(input.sessionId, async (client, current) => {
+      await this.requireDebugController(client, input, current);
+      await this.removeExpiredDebugCheckpoints(client, input.sessionId, new Date());
+      await queryClient(client, input.sessionId,
+        `DELETE FROM debug_session_checkpoints WHERE source_session_id = $1 AND checkpoint_id::text = $2`,
+        [input.sessionId, input.checkpointId]);
+    }, true);
+  }
+
+  async restoreDebugCheckpoint(input: DebugCheckpointRestoreInput): Promise<DebugCheckpointRestoreResult<TState>> {
+    return this.runLockedTransaction(input.sessionId, async (client, current) => {
+      const sourcePrincipal = await this.requireDebugController(client, input, current);
+      await this.removeExpiredDebugCheckpoints(client, input.sessionId, new Date());
+      const read = await queryClient<DebugCheckpointRow>(client, input.sessionId,
+        `SELECT checkpoint_id, source_session_id, label, created_at, expires_at, source_state_version, payload
+         FROM debug_session_checkpoints
+         WHERE source_session_id = $1 AND checkpoint_id::text = $2 AND expires_at > $3`,
+        [input.sessionId, input.checkpointId, new Date()]);
+      const row = read.rows[0];
+      if (row === undefined) throw new HttpError(404, "Debug checkpoint was not found.");
+      const payload = row.payload as ProtectedDebugCheckpoint<TState>;
+      if (payload.sourceSessionId !== current!.sessionId || payload.bundleHash !== current!.bundleHash ||
+          payload.contentSourceId !== current!.contentSourceId || !Array.isArray(payload.schedules)) {
+        throw new SessionStoreUnavailableError();
+      }
+      assertSessionParticipantsMatchState(payload.participants, payload.state, { allowAgents: true });
+      assertCreationPrincipalsMatchParticipants([input.principal], payload.participants);
+      if (input.principal.kind !== "local-controller" || input.principal.role !== sourcePrincipal.role ||
+          !/^[a-f0-9]{64}$/u.test(input.principal.credentialSha256)) {
+        throw new SessionStoreUnavailableError();
+      }
+      const sessionId = randomUUID();
+      const sessionWrite = await queryClient<SessionRow>(client, sessionId,
+        `INSERT INTO game_sessions (
+           id, game_id, bundle_hash, content_source_id, debug_paused, session_role,
+           participants, state, state_version, last_event_sequence
+         ) VALUES ($1, $2, $3, $4, TRUE, $5, $6::jsonb, $7::jsonb, 0, 0)
+         RETURNING ${SESSION_COLUMNS}`,
+        [sessionId, payload.gameId, payload.bundleHash, payload.contentSourceId,
+          payload.sessionRole ?? null, JSON.stringify(payload.participants), JSON.stringify(payload.state)]);
+      const principalWrite = await queryClient<PrincipalRow>(client, sessionId,
+        `INSERT INTO session_principals
+          (principal_id, session_id, principal_kind, session_role, actor_scope, credential_sha256)
+         VALUES ($1, $2, $3, $4, $5::jsonb, $6)
+         RETURNING principal_id, session_id, principal_kind, session_role, actor_scope, created_at`,
+        [input.principal.principalId, sessionId, input.principal.kind, input.principal.role,
+          JSON.stringify(input.principal.actorScope), input.principal.credentialSha256]);
+      for (const schedule of payload.schedules) {
+        if (schedule.sessionId !== input.sessionId || schedule.bundleHash !== payload.bundleHash) {
+          throw new SessionStoreUnavailableError();
+        }
+        await queryClient(client, sessionId,
+          `INSERT INTO system_schedules (
+             schedule_id, session_id, bundle_hash, action_id, params, definition_hash,
+             trigger, false_policy, max_occurrences, next_occurrence, status, created_at, updated_at
+           ) VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7::jsonb, $8, $9, $10, $11, $12, $13)`,
+          [schedule.scheduleId, sessionId, schedule.bundleHash, schedule.actionId,
+            JSON.stringify(schedule.params), schedule.definitionHash, JSON.stringify(schedule.trigger),
+            schedule.falsePolicy, schedule.maxOccurrences, schedule.nextOccurrence, schedule.status,
+            schedule.createdAt, schedule.updatedAt]);
+      }
+      return {
+        session: mapSessionRow<TState>(requireSingleRow(sessionWrite)),
+        principal: mapPrincipalRow(requireSingleRow(principalWrite)),
+        checkpoint: mapDebugCheckpointMetadata(row)
+      };
+    }, true);
+  }
+
+  /** Bound each authenticated checkpoint transaction's global expiry work. */
+  private async removeExpiredDebugCheckpoints(
+    client: SessionDatabaseClient, sessionId: string, now: Date
+  ): Promise<void> {
+    await queryClient(client, sessionId,
+      `DELETE FROM debug_session_checkpoints
+       WHERE checkpoint_id IN (
+         SELECT checkpoint_id FROM debug_session_checkpoints
+         WHERE expires_at <= $1 ORDER BY expires_at, checkpoint_id
+         LIMIT 100 FOR UPDATE SKIP LOCKED
+       )`, [now]);
+  }
+
+  private async requireDebugController(
+    client: SessionDatabaseClient, input: SessionAuthenticationInput,
+    current: SessionRecord<TState> | null
+  ): Promise<SessionPrincipal> {
+    if (current === null) throw new SessionAuthenticationError();
+    const read = await queryClient<PrincipalRow>(client, input.sessionId,
+      `SELECT principal_id, session_id, principal_kind, session_role, actor_scope, created_at
+       FROM session_principals WHERE session_id = $1 AND credential_sha256 = $2`,
+      [input.sessionId, input.credentialSha256]);
+    if (read.rows[0] === undefined) throw new SessionAuthenticationError();
+    const principal = mapPrincipalRow(read.rows[0]);
+    assertDebugController(current, principal);
+    return principal;
   }
 
   async authenticateSession(input: SessionAuthenticationInput): Promise<SessionPrincipal | null> {
@@ -507,7 +702,7 @@ export class PostgresSessionStore<TState = unknown> implements SessionStorePort<
            AND EXISTS (
              SELECT 1 FROM game_sessions s
              WHERE s.id = system_schedules.session_id
-               AND s.archived_at IS NULL AND s.bundle_hash IS NOT NULL
+               AND s.archived_at IS NULL AND s.bundle_hash IS NOT NULL AND s.debug_paused = FALSE
            )
          ORDER BY created_at ASC, schedule_id ASC
          LIMIT $2`,
@@ -541,6 +736,7 @@ export class PostgresSessionStore<TState = unknown> implements SessionStorePort<
         if (current === null) {
           throw new SessionVersionConflictError(sessionId, 0);
         }
+        if (current.debugPaused) throw new DebugSessionPausedError();
         assertProtectedEventSequenceUnchanged(current, operationResult.updatedSession);
         await this.writeUpdatedSession(client, current, operationResult.updatedSession);
       }
@@ -591,6 +787,7 @@ export class PostgresSessionStore<TState = unknown> implements SessionStorePort<
       const existingReceipt = receiptRead.rows[0] === undefined
         ? undefined
         : mapReceiptRow(receiptRead.rows[0]);
+      if (current.debugPaused && existingReceipt === undefined) throw new DebugSessionPausedError();
       const operationResult = await operation({
         currentSession: current,
         principal,
@@ -607,6 +804,9 @@ export class PostgresSessionStore<TState = unknown> implements SessionStorePort<
           return receipt.rows[0] === undefined ? null : mapReceiptRow(receipt.rows[0]);
         }
       });
+      if (current.debugPaused && (operationResult.updatedSession !== undefined || operationResult.receipt !== undefined || (operationResult.events?.length ?? 0) > 0 || (operationResult.scheduleMutations?.length ?? 0) > 0)) {
+        throw new DebugSessionPausedError();
+      }
 
       assertCommandTransactionResult({
         input,
@@ -664,6 +864,7 @@ export class PostgresSessionStore<TState = unknown> implements SessionStorePort<
       const existingReceipt = receiptRead.rows[0] === undefined
         ? undefined
         : mapReceiptRow(receiptRead.rows[0]);
+      if (current.debugPaused && existingReceipt === undefined) throw new DebugSessionPausedError();
 
       const scheduleRead = await queryClient<SystemScheduleRow>(
         client,
@@ -719,6 +920,9 @@ export class PostgresSessionStore<TState = unknown> implements SessionStorePort<
           return receipt.rows[0] === undefined ? null : mapReceiptRow(receipt.rows[0]);
         }
       });
+      if (current.debugPaused && (operationResult.updatedSession !== undefined || operationResult.receipt !== undefined || (operationResult.events?.length ?? 0) > 0)) {
+        throw new DebugSessionPausedError();
+      }
       assertSystemDisposition(existingReceipt, operationResult);
       assertCommandTransactionResult({
         input: { sessionId: input.sessionId, commandId: input.commandId, credentialSha256: "" },
@@ -753,7 +957,7 @@ export class PostgresSessionStore<TState = unknown> implements SessionStorePort<
     try {
       const result = await this.pool.query<SessionReadinessRow>(`
         WITH session_probe AS (
-          SELECT id, game_id, bundle_hash, content_source_id, session_role, state,
+          SELECT id, game_id, bundle_hash, content_source_id, debug_paused, session_role, state,
                  participants, history, state_version, last_event_sequence, archived_at, created_at, updated_at
           FROM game_sessions LIMIT 0
         ), principal_probe AS (
@@ -776,6 +980,10 @@ export class PostgresSessionStore<TState = unknown> implements SessionStorePort<
         ), schedule_probe AS (
           SELECT ${SYSTEM_SCHEDULE_COLUMNS}
           FROM system_schedules LIMIT 0
+        ), debug_checkpoint_probe AS (
+          SELECT checkpoint_id, source_session_id, label, created_at, expires_at,
+                 source_state_version, byte_size, payload
+          FROM debug_session_checkpoints LIMIT 0
         )
         SELECT
           current_setting('transaction_read_only') = 'off' AS writable,
@@ -784,15 +992,18 @@ export class PostgresSessionStore<TState = unknown> implements SessionStorePort<
             AND has_table_privilege(current_user, 'game_bundles', 'SELECT')
             AND has_table_privilege(current_user, 'command_receipts', 'SELECT')
             AND has_table_privilege(current_user, 'session_events', 'SELECT')
-            AND has_table_privilege(current_user, 'system_schedules', 'SELECT') AS can_select,
+            AND has_table_privilege(current_user, 'system_schedules', 'SELECT')
+            AND has_table_privilege(current_user, 'debug_session_checkpoints', 'SELECT') AS can_select,
           has_table_privilege(current_user, 'game_sessions', 'INSERT')
             AND has_table_privilege(current_user, 'session_principals', 'INSERT')
             AND has_table_privilege(current_user, 'game_bundles', 'INSERT')
             AND has_table_privilege(current_user, 'command_receipts', 'INSERT')
             AND has_table_privilege(current_user, 'session_events', 'INSERT')
-            AND has_table_privilege(current_user, 'system_schedules', 'INSERT') AS can_insert,
+            AND has_table_privilege(current_user, 'system_schedules', 'INSERT')
+            AND has_table_privilege(current_user, 'debug_session_checkpoints', 'INSERT') AS can_insert,
           has_table_privilege(current_user, 'game_sessions', 'UPDATE')
-            AND has_table_privilege(current_user, 'system_schedules', 'UPDATE') AS can_update
+            AND has_table_privilege(current_user, 'system_schedules', 'UPDATE')
+            AND has_table_privilege(current_user, 'debug_session_checkpoints', 'DELETE') AS can_update
       `);
       const readiness = result.rows[0];
       if (
@@ -925,7 +1136,8 @@ export class PostgresSessionStore<TState = unknown> implements SessionStorePort<
 
   private async runLockedTransaction<TResult>(
     sessionId: string,
-    operation: (client: SessionDatabaseClient, current: SessionRecord<TState> | null) => Promise<TResult>
+    operation: (client: SessionDatabaseClient, current: SessionRecord<TState> | null) => Promise<TResult>,
+    waitForLock = false
   ): Promise<TResult> {
     let client: SessionDatabaseClient;
     try {
@@ -938,7 +1150,8 @@ export class PostgresSessionStore<TState = unknown> implements SessionStorePort<
     try {
       await queryClient(client, sessionId, "BEGIN");
       transactionStarted = true;
-      const selected = await queryClient<SessionRow>(client, sessionId, SELECT_SESSION_FOR_UPDATE, [sessionId]);
+      const selected = await queryClient<SessionRow>(client, sessionId,
+        waitForLock ? SELECT_SESSION_FOR_UPDATE_WAIT : SELECT_SESSION_FOR_UPDATE, [sessionId]);
       const current = selected.rows[0] === undefined ? null : mapSessionRow<TState>(selected.rows[0]);
       const result = await operation(client, current);
       await queryClient(client, sessionId, "COMMIT");
@@ -956,8 +1169,10 @@ export class PostgresSessionStore<TState = unknown> implements SessionStorePort<
   private async writeUpdatedSession(
     client: SessionDatabaseClient,
     current: SessionRecord<TState>,
-    updated: SessionRecord<TState>
+    updated: SessionRecord<TState>,
+    allowDebugGateChange = false
   ): Promise<void> {
+    if (!allowDebugGateChange) assertDebugPauseUnchanged(current, updated);
     assertNextSessionVersion(current.sessionId, current, updated);
     assertSessionParticipantsImmutable(current, updated);
     if (updated.bundleHash !== current.bundleHash || updated.gameId !== current.gameId) {
@@ -968,6 +1183,7 @@ export class PostgresSessionStore<TState = unknown> implements SessionStorePort<
       current.sessionId,
       `UPDATE game_sessions SET
          content_source_id = $2,
+         debug_paused = $9,
          session_role = $3,
          state = $4::jsonb,
          state_version = $5,
@@ -983,7 +1199,8 @@ export class PostgresSessionStore<TState = unknown> implements SessionStorePort<
         updated.version.stateVersion,
         updated.version.lastEventSequence,
         updated.updatedAt,
-        current.version.stateVersion
+        current.version.stateVersion,
+        updated.debugPaused ?? false
       ]
     );
     if (write.rowCount !== 1) {
@@ -1400,6 +1617,7 @@ function mapSessionRow<TState>(row: SessionRow): SessionRecord<TState> {
     gameId: row.game_id,
     bundleHash: row.bundle_hash,
     ...(row.content_source_id === null ? {} : { contentSourceId: row.content_source_id }),
+    ...(row.debug_paused ? { debugPaused: true } : {}),
     participants,
     state,
     ...(row.session_role === null ? {} : { sessionRole: row.session_role }),
@@ -1412,6 +1630,24 @@ function mapSessionRow<TState>(row: SessionRow): SessionRecord<TState> {
     updatedAt: new Date(row.updated_at)
   };
   return session;
+}
+
+function mapDebugCheckpointMetadata(row: DebugCheckpointRow): DebugCheckpointMetadata {
+  return {
+    checkpointId: row.checkpoint_id,
+    label: row.label,
+    createdAt: new Date(row.created_at).toISOString(),
+    expiresAt: new Date(row.expires_at).toISOString(),
+    sourceStateVersion: parseSafeInteger(row.source_state_version)
+  };
+}
+
+function toWireDebugCheckpointMetadata(metadata: StoredDebugCheckpointMetadata): DebugCheckpointMetadata {
+  return {
+    ...metadata,
+    createdAt: metadata.createdAt.toISOString(),
+    expiresAt: metadata.expiresAt.toISOString()
+  };
 }
 
 /** Journal export only needs immutable session metadata, not JSONB state. */
@@ -1571,6 +1807,7 @@ function parseSafeInteger(value: string | number): number {
 
 function assertCreateInput<TState>(input: CreateSessionInput<TState>): void {
   if (
+    (input.debugPaused === true && input.contentSourceId === undefined) ||
     input.immutableBundle.gameId !== input.gameId ||
     !isValidImmutableBundleInput(input.immutableBundle) ||
     !/^[a-f0-9]{64}$/u.test(input.principal.credentialSha256)

@@ -53,6 +53,8 @@ import {
   assertGameId,
   parseAgentTurnRequest,
   parseCreateSessionRequest,
+  parseDebugSessionControlRequest,
+  parseSaveDebugCheckpointRequest,
   parseDispatchActionRequest,
   parseRestorePreviewSessionRequest,
   parseSessionAiDebriefConfirmRequest,
@@ -418,6 +420,67 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
         );
         publishSessionVersionSafely(sessionVersionEventHub, snapshot.version);
         sendJson(response, 200, snapshot);
+        return;
+      }
+
+      const debugControlMatch = requestUrl.pathname.match(/^\/sessions\/([^/]+)\/debug$/u);
+      if (request.method === "GET" && debugControlMatch) {
+        const control = await sessionService.readDebugControl(
+          decodePathSegment(debugControlMatch[1], "sessionId"),
+          requireBearerCredential(request.headers)
+        );
+        sendJson(response, 200, control);
+        return;
+      }
+
+      const debugToggleMatch = requestUrl.pathname.match(/^\/sessions\/([^/]+)\/debug\/(pause|resume)$/u);
+      if (request.method === "POST" && debugToggleMatch) {
+        const sessionId = decodePathSegment(debugToggleMatch[1], "sessionId");
+        const body = parseDebugSessionControlRequest(await readJsonBody(request));
+        const control = await sessionService.setDebugPaused(
+          sessionId,
+          requireBearerCredential(request.headers),
+          body.expectedStateVersion,
+          debugToggleMatch[2] === "pause"
+        );
+        publishSessionVersionSafely(sessionVersionEventHub, control.version);
+        sendJson(response, 200, control);
+        return;
+      }
+
+      const debugCheckpointsMatch = requestUrl.pathname.match(/^\/sessions\/([^/]+)\/debug\/checkpoints$/u);
+      if (debugCheckpointsMatch && (request.method === "GET" || request.method === "POST")) {
+        const sessionId = decodePathSegment(debugCheckpointsMatch[1], "sessionId");
+        const credential = requireBearerCredential(request.headers);
+        if (request.method === "GET") {
+          sendJson(response, 200, { checkpoints: await sessionService.listDebugCheckpoints(sessionId, credential) });
+        } else {
+          const body = parseSaveDebugCheckpointRequest(await readJsonBody(request));
+          sendJson(response, 201, await sessionService.saveDebugCheckpoint(sessionId, credential, body.label));
+        }
+        return;
+      }
+
+      const debugCheckpointMatch = requestUrl.pathname.match(/^\/sessions\/([^/]+)\/debug\/checkpoints\/([^/]+)$/u);
+      if (request.method === "DELETE" && debugCheckpointMatch) {
+        await sessionService.deleteDebugCheckpoint(
+          decodePathSegment(debugCheckpointMatch[1], "sessionId"),
+          requireBearerCredential(request.headers),
+          decodePathSegment(debugCheckpointMatch[2], "checkpointId")
+        );
+        response.writeHead(204);
+        response.end();
+        return;
+      }
+
+      const debugRestoreMatch = requestUrl.pathname.match(/^\/sessions\/([^/]+)\/debug\/checkpoints\/([^/]+)\/restore$/u);
+      if (request.method === "POST" && debugRestoreMatch) {
+        const restored = await sessionService.restoreDebugCheckpoint(
+          decodePathSegment(debugRestoreMatch[1], "sessionId"),
+          requireBearerCredential(request.headers),
+          decodePathSegment(debugRestoreMatch[2], "checkpointId")
+        );
+        sendJson(response, 201, restored);
         return;
       }
 

@@ -2557,3 +2557,8 @@ button.button-helper-arrow:focus-visible {
     left: 0.75rem;
   }
 }
+/* Confirmed debugger pause also holds CSS motion in the current preview. */
+.game-player-root[data-debug-paused="true"],
+.game-player-root[data-debug-paused="true"] * {
+  animation-play-state: paused !important;
+}

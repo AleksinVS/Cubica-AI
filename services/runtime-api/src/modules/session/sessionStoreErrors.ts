@@ -25,6 +25,25 @@ export class SessionWriteLockedError extends HttpError {
   }
 }
 
+/** A paused editor preview cannot begin a new state-changing operation. */
+export class DebugSessionPausedError extends HttpError {
+  constructor() {
+    super(423, "Editor preview is paused.", "DEBUG_SESSION_PAUSED");
+  }
+}
+
+export class DebugCheckpointLimitError extends HttpError {
+  constructor() {
+    super(409, "The preview session already has 20 unexpired checkpoints.", "DEBUG_CHECKPOINT_LIMIT");
+  }
+}
+
+export class DebugCheckpointTooLargeError extends HttpError {
+  constructor() {
+    super(413, "The complete preview checkpoint exceeds 8 MiB.", "DEBUG_CHECKPOINT_TOO_LARGE");
+  }
+}
+
 /** Database outage or invalid database readiness, without leaking SQL details. */
 export class SessionStoreUnavailableError extends HttpError {
   constructor() {

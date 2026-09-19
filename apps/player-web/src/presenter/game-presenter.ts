@@ -1,4 +1,6 @@
 import type { ViewCommand } from "@cubica/view-protocol";
+import type { EditorDebugBridgeRequest, EditorDebugBridgeResponse } from "@cubica/contracts-session";
+import { runEditorDebugCommand } from "@/presenter/runtime-debug-client";
 import type { PlayerFacingContent, GamePlayerUiContent } from "@cubica/contracts-manifest";
 import { ManifestAction } from "@cubica/contracts-manifest";
 import type {
@@ -102,6 +104,7 @@ export class GamePresenter {
   private resyncRequired = false;
   private sessionLifecycle = 0;
   private previewMode = false;
+  private previewPauseAck: { sessionId: string; stateVersion: number; paused: boolean } | null = null;
 
   constructor(options: {
     gateway: ReactViewGateway;
@@ -127,6 +130,43 @@ export class GamePresenter {
    */
   get sessionSnapshot(): GameSession | null {
     return this.session;
+  }
+
+  private get debugPaused(): boolean {
+    if (!this.previewMode || this.session === null) return false;
+    const ack = this.previewPauseAck;
+    // A delayed GET must not undo a newer control acknowledgement. Once a
+    // newer server snapshot arrives (including another tab's resume), it wins.
+    return ack?.sessionId === this.session.sessionId && ack.stateVersion >= this.session.version.stateVersion
+      ? ack.paused
+      : this.session.debugPaused === true;
+  }
+
+  /** Authenticated pause is independent of the editor's local inspect mode. */
+  async handleEditorDebugCommand(command: EditorDebugBridgeRequest): Promise<EditorDebugBridgeResponse> {
+    const failure = (error: string): EditorDebugBridgeResponse => ({
+      source: "cubica-player-web", type: "debugSessionResult", protocolVersion: 1,
+      requestId: command.requestId, sessionId: command.sessionId, ok: false, error
+    });
+    if (!this.previewMode || this.session === null || command.sessionId !== this.session.sessionId) {
+      return failure("Команда относится к другой отладочной сессии.");
+    }
+    // AB3: the runtime checkpoint does not yet retain UI/assets/plugins.
+    // Exposing restoration here would mix a saved game with mutable visuals.
+    if (!["status", "pause", "resume"].includes(command.operation)) {
+      return failure("Сохранение полного предпросмотра пока недоступно.");
+    }
+    const result = await runEditorDebugCommand(command, async () => {
+      throw new Error("Сохранение полного предпросмотра пока недоступно.");
+    });
+    if (result.ok && (result.operation === "status" || result.operation === "pause" || result.operation === "resume") && this.session?.sessionId === command.sessionId) {
+      if (this.previewPauseAck?.sessionId !== command.sessionId || result.data.version.stateVersion >= this.previewPauseAck.stateVersion) {
+        this.previewPauseAck = { sessionId: command.sessionId, stateVersion: result.data.version.stateVersion, paused: result.data.paused };
+      }
+      await this.syncView();
+      await this.refreshSession();
+    }
+    return result;
   }
 
   /**
@@ -201,6 +241,7 @@ export class GamePresenter {
     return {
       ...gameState,
       sessionId: this.session?.sessionId ?? null,
+      debugPaused: this.debugPaused,
       metrics,
       metricViews,
       screenKey,
@@ -229,6 +270,7 @@ export class GamePresenter {
    */
   async boot(): Promise<void> {
     const lifecycle = ++this.sessionLifecycle;
+    this.previewPauseAck = null;
     this.stopSessionEvents();
     // A private-invite credential is a bearer capability. Remove every
     // invite-prefixed fragment synchronously, including malformed ones, before
@@ -531,7 +573,7 @@ export class GamePresenter {
    * Обрабатывает событие от View или системы.
    */
   async handleEvent(request: ClientRequest): Promise<void> {
-    if (this.booting || this.isPending || !this.session) {
+    if (this.booting || this.isPending || !this.session || this.debugPaused) {
       return;
     }
 
@@ -655,7 +697,7 @@ export class GamePresenter {
    * transaction are validated before the next snapshot is accepted.
    */
   async handleSurfaceAction(action: CubicaSurfaceAction): Promise<void> {
-    if (this.booting || this.isPending || !this.session) {
+    if (this.booting || this.isPending || !this.session || this.debugPaused) {
       return;
     }
 
@@ -874,7 +916,7 @@ export class GamePresenter {
   }
 
   private async ensureAiDrivenSurface(): Promise<void> {
-    if (this.session === null) {
+    if (this.session === null || this.debugPaused) {
       return;
     }
     if (this.content.executionMode !== "ai-driven" || this.content.agentRuntime?.required !== true) {

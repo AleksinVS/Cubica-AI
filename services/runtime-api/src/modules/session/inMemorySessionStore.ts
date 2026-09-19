@@ -7,10 +7,15 @@
  */
 
 import { randomUUID } from "node:crypto";
+import { HttpError } from "../errors.ts";
 import type {
   ArchivedSessionAudit,
   CreateSessionInput,
   CreatedSession,
+  DebugCheckpointMetadata,
+  StoredDebugCheckpointMetadata,
+  DebugCheckpointRestoreInput,
+  DebugCheckpointRestoreResult,
   ImmutableGameBundle,
   LockedSessionOperation,
   SessionAuthenticationInput,
@@ -38,11 +43,20 @@ import {
 import {
   assertNextSessionVersion,
   assertProtectedEventSequenceUnchanged,
+  DebugCheckpointLimitError,
+  DebugSessionPausedError,
   SessionAuthenticationError,
   SessionStoreUnavailableError,
   SessionVersionConflictError,
   SessionWriteLockedError
 } from "./sessionStoreErrors.ts";
+import {
+  assertDebugController,
+  assertDebugPauseUnchanged,
+  DEBUG_CHECKPOINT_LIMIT,
+  makeProtectedDebugCheckpoint,
+  type ProtectedDebugCheckpoint
+} from "./debugSession.ts";
 import {
   assertCreationPrincipalsMatchParticipants,
   assertSessionParticipantsImmutable,
@@ -52,6 +66,14 @@ import {
 interface StoredPrincipal {
   principal: SessionPrincipal;
   credentialSha256: string;
+}
+
+function toWireDebugCheckpointMetadata(metadata: StoredDebugCheckpointMetadata): DebugCheckpointMetadata {
+  return {
+    ...metadata,
+    createdAt: metadata.createdAt.toISOString(),
+    expiresAt: metadata.expiresAt.toISOString()
+  };
 }
 
 export class InMemorySessionStore<TState = unknown> implements SessionStorePort<TState> {
@@ -65,6 +87,10 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
   /** Lifecycle metadata is separate so archiving cannot rewrite a snapshot. */
   private readonly archivedAtBySessionId = new Map<string, Date>();
   private readonly lockedSessionIds = new Set<string>();
+  private readonly lockWaiters = new Map<string, Set<() => void>>();
+  private readonly debugCheckpoints = new Map<string, ProtectedDebugCheckpoint<TState>>();
+  private readonly debugCheckpointIdsBySource = new Map<string, Set<string>>();
+  private debugCheckpointSweep?: IterableIterator<[string, ProtectedDebugCheckpoint<TState>]>;
 
   async createSession(command: CreateSessionInput<TState>): Promise<CreatedSession<TState>> {
     assertBundleInput(command);
@@ -91,6 +117,7 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
       gameId: command.gameId,
       bundleHash: command.immutableBundle.bundleHash,
       ...(command.contentSourceId === undefined ? {} : { contentSourceId: command.contentSourceId }),
+      ...(command.debugPaused === undefined ? {} : { debugPaused: command.debugPaused }),
       participants: structuredClone(command.participants),
       state: structuredClone(command.initialState),
       ...(command.sessionRole === undefined ? {} : { sessionRole: command.sessionRole }),
@@ -126,6 +153,105 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
     if (this.archivedAtBySessionId.has(sessionId)) return null;
     const session = this.sessions.get(sessionId);
     return session === undefined ? null : clone(session);
+  }
+
+  async readDebugControl(input: SessionAuthenticationInput): Promise<SessionRecord<TState>> {
+    return this.withSessionLock(input.sessionId, async () => clone(this.requireDebugController(input)));
+  }
+
+  async setDebugPaused(
+    input: SessionAuthenticationInput & { expectedStateVersion: number; paused: boolean }
+  ): Promise<SessionRecord<TState>> {
+    return this.withWaitingSessionLock(input.sessionId, async () => {
+      const current = this.requireDebugController(input);
+      if (current.debugPaused === input.paused) return clone(current);
+      if (current.version.stateVersion !== input.expectedStateVersion) {
+        throw new SessionVersionConflictError(input.sessionId, input.expectedStateVersion);
+      }
+      const next: SessionRecord<TState> = {
+        ...current, debugPaused: input.paused,
+        version: { ...current.version, stateVersion: current.version.stateVersion + 1 },
+        updatedAt: new Date()
+      };
+      this.sessions.set(input.sessionId, clone(next));
+      return clone(next);
+    });
+  }
+
+  async saveDebugCheckpoint(
+    input: SessionAuthenticationInput & { label: string }
+  ): Promise<DebugCheckpointMetadata> {
+    return this.withSessionLock(input.sessionId, async () => {
+      const current = this.requireDebugController(input);
+      this.removeExpiredDebugCheckpoints(new Date());
+      if (!current.debugPaused) throw new HttpError(409, "Pause the preview before saving a checkpoint.");
+      const now = new Date();
+      this.removeExpiredSourceCheckpoints(input.sessionId, now);
+      if ((this.debugCheckpointIdsBySource.get(input.sessionId)?.size ?? 0) >= DEBUG_CHECKPOINT_LIMIT) {
+        throw new DebugCheckpointLimitError();
+      }
+      const schedules = [...this.schedules.values()].filter((schedule) => schedule.sessionId === input.sessionId);
+      const checkpoint = makeProtectedDebugCheckpoint(current, schedules, input.label, randomUUID(), now);
+      this.debugCheckpoints.set(checkpoint.metadata.checkpointId, checkpoint);
+      const ids = this.debugCheckpointIdsBySource.get(input.sessionId) ?? new Set<string>();
+      ids.add(checkpoint.metadata.checkpointId);
+      this.debugCheckpointIdsBySource.set(input.sessionId, ids);
+      return toWireDebugCheckpointMetadata(checkpoint.metadata);
+    });
+  }
+
+  async listDebugCheckpoints(input: SessionAuthenticationInput): Promise<Array<DebugCheckpointMetadata>> {
+    return this.withSessionLock(input.sessionId, async () => {
+      this.requireDebugController(input);
+      const now = new Date();
+      this.removeExpiredDebugCheckpoints(now);
+      this.removeExpiredSourceCheckpoints(input.sessionId, now);
+      return [...(this.debugCheckpointIdsBySource.get(input.sessionId) ?? [])]
+        .map((id) => this.debugCheckpoints.get(id)!)
+        .sort((left, right) => right.metadata.createdAt.getTime() - left.metadata.createdAt.getTime())
+        .map((entry) => toWireDebugCheckpointMetadata(entry.metadata));
+    });
+  }
+
+  async deleteDebugCheckpoint(input: SessionAuthenticationInput & { checkpointId: string }): Promise<void> {
+    await this.withSessionLock(input.sessionId, async () => {
+      this.requireDebugController(input);
+      this.removeExpiredDebugCheckpoints(new Date());
+      const checkpoint = this.debugCheckpoints.get(input.checkpointId);
+      if (checkpoint?.sourceSessionId === input.sessionId) this.deleteStoredCheckpoint(input.checkpointId, checkpoint);
+    });
+  }
+
+  async restoreDebugCheckpoint(input: DebugCheckpointRestoreInput): Promise<DebugCheckpointRestoreResult<TState>> {
+    return this.withSessionLock(input.sessionId, async () => {
+      this.requireDebugController(input);
+      this.removeExpiredDebugCheckpoints(new Date());
+      const checkpoint = this.debugCheckpoints.get(input.checkpointId);
+      if (checkpoint?.sourceSessionId !== input.sessionId || checkpoint.metadata.expiresAt <= new Date()) {
+        throw new HttpError(404, "Debug checkpoint was not found.");
+      }
+      const bundle = this.bundles.get(checkpoint.bundleHash);
+      if (bundle === undefined) throw new SessionStoreUnavailableError();
+      const sourcePrincipal = this.findStoredPrincipal(input)?.principal;
+      if (input.principal.kind !== "local-controller" || input.principal.role !== sourcePrincipal?.role) {
+        throw new SessionStoreUnavailableError();
+      }
+      const created = await this.createSession({
+        gameId: checkpoint.gameId,
+        contentSourceId: checkpoint.contentSourceId,
+        debugPaused: true,
+        participants: checkpoint.participants,
+        initialState: checkpoint.state,
+        ...(checkpoint.sessionRole === undefined ? {} : { sessionRole: checkpoint.sessionRole }),
+        immutableBundle: bundle,
+        principal: input.principal
+      });
+      for (const schedule of checkpoint.schedules) {
+        const rebound = { ...clone(schedule), sessionId: created.session.sessionId };
+        this.schedules.set(systemScheduleKey(rebound.sessionId, rebound.scheduleId), rebound);
+      }
+      return { ...created, checkpoint: toWireDebugCheckpointMetadata(checkpoint.metadata) };
+    });
   }
 
   async authenticateSession(input: SessionAuthenticationInput): Promise<SessionPrincipal | null> {
@@ -238,6 +364,7 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
       throw new SessionStoreUnavailableError();
     }
     if (this.archivedAtBySessionId.has(sessionId)) return [];
+    if (this.sessions.get(sessionId)?.debugPaused) return [];
     return clone([...this.schedules.values()]
       .filter((schedule) => schedule.sessionId === sessionId && schedule.status === "pending")
       .sort((left, right) => left.createdAt.getTime() - right.createdAt.getTime() ||
@@ -260,6 +387,8 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
     ) {
       throw new SessionVersionConflictError(session.sessionId, options.expectedStateVersion);
     }
+    if (current.debugPaused) throw new DebugSessionPausedError();
+    assertDebugPauseUnchanged(current, session);
     assertNextSessionVersion(session.sessionId, current, session);
     assertProtectedEventSequenceUnchanged(current, session);
     assertSessionParticipantsImmutable(current, session);
@@ -281,6 +410,8 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
         if (current === undefined) {
           throw new SessionVersionConflictError(sessionId, 0);
         }
+        if (current.debugPaused) throw new DebugSessionPausedError();
+        assertDebugPauseUnchanged(current, operationResult.updatedSession);
         assertNextSessionVersion(sessionId, current, operationResult.updatedSession);
         assertProtectedEventSequenceUnchanged(current, operationResult.updatedSession);
         assertSessionParticipantsImmutable(current, operationResult.updatedSession);
@@ -318,6 +449,7 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
         input.commandId
       );
       const existingReceipt = this.receipts.get(receiptKey);
+      if (current.debugPaused && existingReceipt === undefined) throw new DebugSessionPausedError();
       const operationResult = await operation({
         currentSession: clone(current),
         principal: clone(storedPrincipal.principal),
@@ -332,6 +464,9 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
           return receipt === undefined ? null : clone(receipt);
         }
       });
+      if (current.debugPaused && (operationResult.updatedSession !== undefined || operationResult.receipt !== undefined || (operationResult.events?.length ?? 0) > 0 || (operationResult.scheduleMutations?.length ?? 0) > 0)) {
+        throw new DebugSessionPausedError();
+      }
 
       assertCommandTransactionResult({
         input,
@@ -343,6 +478,7 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
         events: operationResult.events
       });
       if (operationResult.updatedSession !== undefined) {
+        assertDebugPauseUnchanged(current, operationResult.updatedSession);
         assertSessionParticipantsImmutable(current, operationResult.updatedSession);
       }
       if ((operationResult.scheduleMutations?.length ?? 0) > 0 && (
@@ -394,6 +530,7 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
       const principal = systemSchedulerPrincipal(current.sessionId, schedule.createdAt);
       const receiptKey = commandReceiptKey(input.sessionId, principal.principalId, input.commandId);
       const existingReceipt = this.receipts.get(receiptKey);
+      if (current.debugPaused && existingReceipt === undefined) throw new DebugSessionPausedError();
       if (existingReceipt !== undefined) {
         assertSystemReceiptPins(input, schedule, existingReceipt);
       }
@@ -418,6 +555,9 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
           return receipt === undefined ? null : clone(receipt);
         }
       });
+      if (current.debugPaused && (operationResult.updatedSession !== undefined || operationResult.receipt !== undefined || (operationResult.events?.length ?? 0) > 0)) {
+        throw new DebugSessionPausedError();
+      }
       assertSystemDisposition(existingReceipt, operationResult);
       assertCommandTransactionResult({
         input: { sessionId: input.sessionId, commandId: input.commandId, credentialSha256: "" },
@@ -429,6 +569,7 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
         events: operationResult.events
       });
       if (operationResult.updatedSession !== undefined) {
+        assertDebugPauseUnchanged(current, operationResult.updatedSession);
         assertSessionParticipantsImmutable(current, operationResult.updatedSession);
       }
       if (operationResult.receipt !== undefined) {
@@ -471,7 +612,55 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
       return await operation();
     } finally {
       this.lockedSessionIds.delete(sessionId);
+      for (const wake of this.lockWaiters.get(sessionId) ?? []) wake();
+      this.lockWaiters.delete(sessionId);
     }
+  }
+
+  private async withWaitingSessionLock<TResult>(sessionId: string, operation: () => Promise<TResult>): Promise<TResult> {
+    while (this.lockedSessionIds.has(sessionId)) {
+      await new Promise<void>((resolve) => {
+        const waiters = this.lockWaiters.get(sessionId) ?? new Set<() => void>();
+        waiters.add(resolve);
+        this.lockWaiters.set(sessionId, waiters);
+      });
+    }
+    return this.withSessionLock(sessionId, operation);
+  }
+
+  private requireDebugController(input: SessionAuthenticationInput): SessionRecord<TState> {
+    const current = this.archivedAtBySessionId.has(input.sessionId) ? undefined : this.sessions.get(input.sessionId);
+    const principal = this.findStoredPrincipal(input)?.principal;
+    if (current === undefined || principal === undefined) throw new SessionAuthenticationError();
+    assertDebugController(current, principal);
+    return current;
+  }
+
+  private removeExpiredDebugCheckpoints(now: Date): void {
+    this.debugCheckpointSweep ??= this.debugCheckpoints.entries();
+    for (let inspected = 0; inspected < 100; inspected += 1) {
+      const next = this.debugCheckpointSweep.next();
+      if (next.done) {
+        this.debugCheckpointSweep = undefined;
+        break;
+      }
+      const [id, checkpoint] = next.value;
+      if (checkpoint.metadata.expiresAt <= now) this.deleteStoredCheckpoint(id, checkpoint);
+    }
+  }
+
+  private removeExpiredSourceCheckpoints(sessionId: string, now: Date): void {
+    for (const id of this.debugCheckpointIdsBySource.get(sessionId) ?? []) {
+      const checkpoint = this.debugCheckpoints.get(id);
+      if (checkpoint && checkpoint.metadata.expiresAt <= now) this.deleteStoredCheckpoint(id, checkpoint);
+    }
+  }
+
+  private deleteStoredCheckpoint(id: string, checkpoint: ProtectedDebugCheckpoint<TState>): void {
+    this.debugCheckpoints.delete(id);
+    const ids = this.debugCheckpointIdsBySource.get(checkpoint.sourceSessionId);
+    ids?.delete(id);
+    if (ids?.size === 0) this.debugCheckpointIdsBySource.delete(checkpoint.sourceSessionId);
   }
 
   private findStoredPrincipal(input: SessionAuthenticationInput): StoredPrincipal | undefined {
@@ -501,6 +690,7 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
 
 function assertBundleInput<TState>(command: CreateSessionInput<TState>): void {
   if (
+    (command.debugPaused === true && command.contentSourceId === undefined) ||
     command.immutableBundle.gameId !== command.gameId ||
     !isValidImmutableBundleInput(command.immutableBundle) ||
     !/^[a-f0-9]{64}$/u.test(command.principal.credentialSha256)

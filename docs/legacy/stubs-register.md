@@ -76,6 +76,8 @@
 | LEGACY-0075 | Antarctica stage-picks dead state | games/antarctica/authoring/game.authoring.json | реестр логических разрывов LGC-023, 2026-07-20 | Удалить неиспользуемые secret.stagePicks/stage_picks или задействовать осознанно как счётчик выборов этапа | Platform Team | active | Поля объявлены в начальном состоянии, но ни один план их не читает/пишет; эталон-аналог полей не имеет; снятие отложено PM до отдельной уборки (блок W2-B только регистрирует долг) |
 | LEGACY-0079 | hosted authoring studio | docs/architecture/adrs/065-editor-as-product-hosted-authoring-studio.md | full project review 2026-08-03 | Реализовать уже принятую hosted studio: авторизацию авторов, изоляцию проектов и совместную работу | Frontend Team | active | Архитектурная граница закрыта ADR-065; это запись исполнения, связанная с границей доверия стороннего кода LEGACY-0038 |
 
+| LEGACY-0084 | editor-debug-checkpoint-retention | services/runtime-api/src/modules/session/debugSession.ts | TSK-20260919-editor-mvp | До включения полных сохранений связать физическую очистку после простоя с жизненным циклом preview-пакета AB3 и проверить освобождение данных | Runtime Team | active | Доступ истекает через 7 суток; удаление пока пакетное по активности, максимум 100 строк на операцию |
+
 ## Архив заглушек
 | id | component | location | introduced_in | removal_plan | owner | status | notes |
 | --- | --- | --- | --- | --- | --- | --- | --- |

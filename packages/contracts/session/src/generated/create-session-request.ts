@@ -26,4 +26,8 @@ export interface CreateSessionRequest {
    * Requested local agent seats. Runtime assigns the last N server-derived seats; omitted is equivalent to zero.
    */
   agentSeatCount?: number;
+  /**
+   * Start a local editor preview paused. Requires contentSourceId; omitted preserves legacy behavior.
+   */
+  debugPaused?: boolean;
 }

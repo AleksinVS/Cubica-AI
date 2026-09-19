@@ -4,11 +4,28 @@ export type EventId = string;
 export type * from "./generated/public-gameplay-journal.ts";
 export { validatePortablePublicGameplayJournal } from "./publicGameplayJournalValidation.ts";
 export type { CreateSessionRequest } from "./generated/create-session-request.ts";
+export type { DebugSessionControlRequest } from "./generated/debug-session-control-request.ts";
+export type { DebugSessionControlResponse } from "./generated/debug-session-control-response.ts";
+export type { SaveDebugCheckpointRequest } from "./generated/save-debug-checkpoint-request.ts";
+export type { DebugCheckpointListResponse } from "./generated/debug-checkpoint-list-response.ts";
+export type { DebugCheckpointMetadata } from "./generated/debug-checkpoint-metadata.ts";
+export type { EditorDebugBridgeRequest } from "./generated/editor-debug-bridge-request.ts";
+export type { EditorDebugBridgeResponse } from "./generated/editor-debug-bridge-response.ts";
+export {
+  validateDebugSessionControlRequest,
+  validateSaveDebugCheckpointRequest,
+  validateDebugSessionControlResponse,
+  validateDebugCheckpointMetadata,
+  validateDebugCheckpointListResponse,
+  validateEditorDebugBridgeRequest,
+  validateEditorDebugBridgeResponse
+} from "./debugRequestValidation.ts";
 export {
   getCreateSessionRequestValidationErrors,
   validateCreateSessionRequestShape
 } from "./createSessionRequestValidation.ts";
 import type { SessionParticipant } from "./generated/session-participant.ts";
+import type { DebugCheckpointMetadata } from "./generated/debug-checkpoint-metadata.ts";
 export type { SessionParticipant } from "./generated/session-participant.ts";
 export { validateSessionParticipantsShape } from "./sessionParticipantValidation.ts";
 import type { PrivateSessionInvite } from "./generated/private-session-invite.ts";
@@ -103,6 +120,8 @@ export interface SessionRecord<TState = unknown> {
    * restored session could accidentally load canonical content instead.
    */
   contentSourceId?: string;
+  /** Server-owned execution gate for local editor preview sessions. */
+  debugPaused?: boolean;
   /** Authoritative immutable bindings between stable seats and gameplay actors. */
   participants: ReadonlyArray<SessionParticipant>;
   state: TState;
@@ -137,6 +156,7 @@ export interface ArchivedSessionAudit<TState = unknown> {
 export interface CreateSessionInput<TState = unknown> {
   gameId: string;
   contentSourceId?: string;
+  debugPaused?: boolean;
   initialState: TState;
   participants: ReadonlyArray<SessionParticipant>;
   sessionRole?: SessionRole;
@@ -144,6 +164,21 @@ export interface CreateSessionInput<TState = unknown> {
   principal: CreateSessionPrincipalInput;
   /** Additional seat-scoped credential digests persisted in the same creation transaction. */
   additionalPrincipals?: ReadonlyArray<CreateSessionPrincipalInput>;
+}
+
+/** Store-only timestamps; the canonical public metadata uses ISO strings. */
+export type StoredDebugCheckpointMetadata = Omit<DebugCheckpointMetadata, "createdAt" | "expiresAt"> & {
+  createdAt: Date;
+  expiresAt: Date;
+};
+
+export interface DebugCheckpointRestoreInput extends SessionAuthenticationInput {
+  checkpointId: string;
+  principal: CreateSessionPrincipalInput;
+}
+
+export interface DebugCheckpointRestoreResult<TState = unknown> extends CreatedSession<TState> {
+  checkpoint: DebugCheckpointMetadata;
 }
 
 /** Session and principal records created atomically by a store adapter. */
@@ -217,6 +252,7 @@ export interface CreateSessionResponse<TState = unknown> {
   participants: ReadonlyArray<SessionParticipant>;
   version: SessionStateVersion;
   state: TState;
+  debugPaused?: boolean;
   actionAvailability: Array<SessionActionAvailability>;
   agentControl?: AgentControl;
   /** Returned only by direct creation so a trusted BFF can store and hand it off. */
@@ -467,6 +503,7 @@ export interface DispatchActionResponse<TState = unknown> {
   participants: ReadonlyArray<SessionParticipant>;
   version: SessionStateVersion;
   state: TState;
+  debugPaused?: boolean;
   actionAvailability: Array<SessionActionAvailability>;
   agentControl?: AgentControl;
   receipt: PublicSessionCommandReceipt;
@@ -552,6 +589,7 @@ export interface RestorePreviewSessionResponse<TState = unknown> {
   participants: ReadonlyArray<SessionParticipant>;
   version: SessionStateVersion;
   state: TState;
+  debugPaused?: boolean;
   actionAvailability: Array<SessionActionAvailability>;
   restored: true;
 }
@@ -560,6 +598,13 @@ export interface SessionStorePort<TState = unknown> {
   /** Human-readable backing-store mode exposed through the readiness endpoint. */
   readonly mode: string;
   createSession(input: CreateSessionInput<TState>): Promise<CreatedSession<TState>>;
+  /** Each debug operation authenticates a local controller inside the source session lock. */
+  readDebugControl(input: SessionAuthenticationInput): Promise<SessionRecord<TState>>;
+  setDebugPaused(input: SessionAuthenticationInput & { expectedStateVersion: number; paused: boolean }): Promise<SessionRecord<TState>>;
+  saveDebugCheckpoint(input: SessionAuthenticationInput & { label: string }): Promise<DebugCheckpointMetadata>;
+  listDebugCheckpoints(input: SessionAuthenticationInput): Promise<Array<DebugCheckpointMetadata>>;
+  deleteDebugCheckpoint(input: SessionAuthenticationInput & { checkpointId: string }): Promise<void>;
+  restoreDebugCheckpoint(input: DebugCheckpointRestoreInput): Promise<DebugCheckpointRestoreResult<TState>>;
   getSession(sessionId: SessionId): Promise<SessionRecord<TState> | null>;
   /** Authenticate a live session from a credential digest without exposing it. */
   authenticateSession(input: SessionAuthenticationInput): Promise<SessionPrincipal | null>;
@@ -654,6 +699,7 @@ export interface SessionResponse<TState = unknown> {
   participants: ReadonlyArray<SessionParticipant>;
   version: SessionStateVersion;
   state: TState;
+  debugPaused?: boolean;
   actionAvailability: Array<SessionActionAvailability>;
   agentControl?: AgentControl;
 }
@@ -669,6 +715,7 @@ export interface ActionResponse<TState = unknown> {
   participants: ReadonlyArray<SessionParticipant>;
   version: SessionStateVersion;
   state: TState;
+  debugPaused?: boolean;
   actionAvailability: Array<SessionActionAvailability>;
   agentControl?: AgentControl;
   receipt: PublicSessionCommandReceipt;

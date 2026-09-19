@@ -208,6 +208,7 @@ export class RuntimeService {
         viewerRole: responseSessionRole,
         participants: responseSnapshot.participants,
         version: responseSnapshot.version,
+        ...(responseSnapshot.contentSourceId === undefined ? {} : { debugPaused: responseSnapshot.debugPaused ?? false }),
         state: projectedState,
         actionAvailability,
         ...(agentControl === undefined ? {} : { agentControl }),

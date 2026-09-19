@@ -25,6 +25,33 @@ const repoRoot = path.resolve(__dirname, "..", "..");
  * parity coverage without touching the drift-check wiring.
  */
 const JOBS = [
+  ...[
+    ["debug-session-control-request", "DebugSessionControlRequest"],
+    ["debug-session-control-response", "DebugSessionControlResponse"],
+    ["save-debug-checkpoint-request", "SaveDebugCheckpointRequest"],
+    ["debug-checkpoint-metadata", "DebugCheckpointMetadata"],
+    ["debug-checkpoint-list-response", "DebugCheckpointListResponse"],
+    ["editor-debug-bridge-request", "EditorDebugBridgeRequest"],
+    ["editor-debug-bridge-response", "EditorDebugBridgeResponse"]
+  ].flatMap(([name, rootName]) => [
+    {
+      name,
+      schema: path.join(repoRoot, "docs", "architecture", "runtime-api-openapi.yaml"),
+      schemaPath: ["components", "schemas", rootName],
+      output: path.join(repoRoot, "packages", "contracts", "session", "src", "generated", `${name}.ts`),
+      rootName,
+      compileRoot: true,
+      ignoreMinAndMaxItems: true
+    },
+    {
+      name: `${name}-schema-module`,
+      schema: path.join(repoRoot, "docs", "architecture", "runtime-api-openapi.yaml"),
+      schemaPath: ["components", "schemas", rootName],
+      output: path.join(repoRoot, "packages", "contracts", "session", "src", "generated", `${name}.schema.ts`),
+      outputKind: "typescript-schema",
+      exportName: `${rootName[0].toLowerCase()}${rootName.slice(1)}Schema`
+    }
+  ]),
   {
     name: "create-session-request",
     schema: path.join(repoRoot, "docs", "architecture", "runtime-api-openapi.yaml"),
@@ -316,6 +343,7 @@ async function generateOne(job) {
   const compileOptions = job.schemaPath
     ? {
         ...COMPILE_OPTIONS,
+        ...(job.ignoreMinAndMaxItems ? { ignoreMinAndMaxItems: true } : {}),
         bannerComment: BANNER
           .replace("canonical JSON Schema in docs/architecture/schemas/", "canonical OpenAPI component in docs/architecture/runtime-api-openapi.yaml")
           .replace("npm run generate:contracts", `node scripts/manifest-tools/generate-contracts-types.cjs --job=${job.name}`)

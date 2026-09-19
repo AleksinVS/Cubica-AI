@@ -95,6 +95,7 @@ export interface AgentTurnServiceResponse {
   readonly viewerRole?: SessionPrincipal["role"];
   readonly participants: SessionRecord<RuntimeState>["participants"];
   readonly version: SessionRecord<RuntimeState>["version"];
+  readonly debugPaused?: boolean;
   readonly state: RuntimeState;
   readonly actionAvailability: ReadonlyArray<SessionActionAvailability>;
   readonly agentTurn: CubicaAgentTurnResult;
@@ -191,6 +192,7 @@ export class AgentTurnService {
             viewerRole: principal.role,
             participants: current.participants,
             version: current.version,
+            ...(current.contentSourceId === undefined ? {} : { debugPaused: current.debugPaused ?? false }),
             state: projectActorState(current.state, bundle, viewerActorId),
             actionAvailability: projectSessionActionAvailability(current, bundle, {
               ...(viewerActorId === undefined ? {} : { actorPlayerId: viewerActorId }),
@@ -295,6 +297,7 @@ export class AgentTurnService {
             viewerRole: sessionRole,
             participants: current.participants,
             version: current.version,
+            ...(current.contentSourceId === undefined ? {} : { debugPaused: current.debugPaused ?? false }),
             state: projectActorState(current.state, bundle, viewerActorId),
             actionAvailability: projectSessionActionAvailability(current, bundle, {
               ...(viewerActorId === undefined ? {} : { actorPlayerId: viewerActorId }),
@@ -360,6 +363,7 @@ export class AgentTurnService {
             viewerRole: sessionRole,
             participants: current.participants,
             version: current.version,
+            ...(current.contentSourceId === undefined ? {} : { debugPaused: current.debugPaused ?? false }),
             state: projectActorState(current.state, bundle, viewerActorId),
             actionAvailability: projectSessionActionAvailability(current, bundle, {
               ...(viewerActorId === undefined ? {} : { actorPlayerId: viewerActorId }),
@@ -394,6 +398,7 @@ export class AgentTurnService {
             viewerRole: sessionRole,
             participants: current.participants,
             version: current.version,
+            ...(current.contentSourceId === undefined ? {} : { debugPaused: current.debugPaused ?? false }),
             state: projectActorState(current.state, bundle, viewerActorId),
             actionAvailability: projectSessionActionAvailability(current, bundle, {
               ...(viewerActorId === undefined ? {} : { actorPlayerId: viewerActorId }),
@@ -478,6 +483,7 @@ export class AgentTurnService {
           viewerRole: sessionRole,
           participants: nextSnapshot.participants,
           version: nextSnapshot.version,
+          ...(nextSnapshot.contentSourceId === undefined ? {} : { debugPaused: nextSnapshot.debugPaused ?? false }),
           state: projectActorState(nextSnapshot.state, bundle, nextViewerActorId),
           actionAvailability: projectSessionActionAvailability(nextSnapshot, bundle, {
             ...(nextViewerActorId === undefined ? {} : { actorPlayerId: nextViewerActorId }),
@@ -517,6 +523,7 @@ export class AgentTurnService {
           return {
             ...transaction.response,
             version: latest.version,
+            ...(latest.contentSourceId === undefined ? {} : { debugPaused: latest.debugPaused ?? false }),
             state: projectActorState(latest.state, refreshContext.bundle, latestViewerActorId),
             actionAvailability: projectSessionActionAvailability(latest, refreshContext.bundle, {
               ...(latestViewerActorId === undefined ? {} : { actorPlayerId: latestViewerActorId }),

@@ -2,6 +2,7 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { validateDebugCheckpointMetadata } from "@cubica/contracts-session";
 import type {
   CreateSessionInput,
   SessionCommandReceipt,
@@ -166,7 +167,75 @@ test("PostgreSQL creates immutable bundle, session and hashed principal atomical
   assert.equal(principalInsert?.values?.[5], credentialSha256);
   assert.equal(JSON.stringify(client.queries).includes("ses_"), false);
   const sessionInsert = client.queries.find(({ text }) => text.includes("INSERT INTO game_sessions"));
-  assert.equal(sessionInsert?.values?.[5], JSON.stringify(persistedRow.participants));
+  assert.equal(sessionInsert?.values?.[6], JSON.stringify(persistedRow.participants));
+});
+
+test("PostgreSQL pause waits on the authoritative row and refuses a new paused command", async () => {
+  const client = new ScriptedClient((text) => {
+    if (text.includes("FOR UPDATE") && text.includes("FROM game_sessions")) {
+      return result([{ ...persistedRow, debug_paused: false }]);
+    }
+    if (text.includes("FROM session_principals")) return result([principalRow]);
+    if (text.includes("UPDATE game_sessions")) return result([{ ...persistedRow, debug_paused: true, state_version: "5" }], 1);
+    if (text.includes("FROM game_bundles")) return result([bundleRow]);
+    if (text.includes("FROM command_receipts")) return result([]);
+    return result([]);
+  });
+  const store = new PostgresSessionStore<Record<string, unknown>>(new ScriptedPool(client));
+  const paused = await store.setDebugPaused({
+    sessionId, credentialSha256, expectedStateVersion: 4, paused: true
+  });
+  assert.equal(paused.debugPaused, true);
+  assert.equal(paused.version.stateVersion, 5);
+  const lock = client.queries.find(({ text }) => text.includes("FROM game_sessions") && text.includes("FOR UPDATE"));
+  assert.doesNotMatch(lock?.text ?? "", /NOWAIT/u);
+  assert.equal(client.queries.find(({ text }) => text.includes("UPDATE game_sessions"))?.values?.[8], true);
+
+  const pausedClient = new ScriptedClient((text) => {
+    if (text.includes("FOR UPDATE NOWAIT")) return result([{ ...persistedRow, debug_paused: true }]);
+    if (text.includes("FROM session_principals")) return result([principalRow]);
+    if (text.includes("FROM game_bundles")) return result([bundleRow]);
+    if (text.includes("FROM command_receipts")) return result([]);
+    return result([]);
+  });
+  const pausedStore = new PostgresSessionStore<Record<string, unknown>>(new ScriptedPool(pausedClient));
+  let called = false;
+  await assert.rejects(pausedStore.withCommandTransaction({ sessionId, credentialSha256, commandId }, async () => {
+    called = true;
+    return { result: undefined };
+  }), /paused/u);
+  assert.equal(called, false);
+  assert.equal(firstSqlWord(pausedClient.queries.at(-1)?.text ?? ""), "ROLLBACK");
+});
+
+test("PostgreSQL saves only metadata publicly while persisting protected checkpoint in one transaction", async () => {
+  const protectedRow = {
+    ...persistedRow,
+    debug_paused: true,
+    state: { public: { step: 1 }, secret: { randomStream: "never-public" } }
+  };
+  const client = new ScriptedClient((text) => {
+    if (text.includes("FOR UPDATE")) return result([protectedRow]);
+    if (text.includes("FROM session_principals")) return result([principalRow]);
+    if (text.includes("count(*)")) return result([{ count: "0" }]);
+    if (text.includes("FROM system_schedules")) return result([systemScheduleRow(systemSchedule({ maxOccurrences: 3, nextOccurrence: 2 }))]);
+    if (text.includes("INSERT INTO debug_session_checkpoints")) return result([], 1);
+    return result([]);
+  });
+  const store = new PostgresSessionStore<Record<string, unknown>>(new ScriptedPool(client));
+  const saved = await store.saveDebugCheckpoint({ sessionId, credentialSha256, label: "turn two" });
+  assert.deepEqual(Object.keys(saved).sort(), ["checkpointId", "createdAt", "expiresAt", "label", "sourceStateVersion"]);
+  assert.equal(validateDebugCheckpointMetadata(saved), true);
+  assert.equal(typeof saved.createdAt, "string");
+  const cleanup = client.queries.find(({ text }) => text.includes("DELETE FROM debug_session_checkpoints"));
+  assert.match(cleanup?.text ?? "", /expires_at <= \$1[\s\S]*LIMIT 100 FOR UPDATE SKIP LOCKED/u);
+  assert.equal(cleanup?.values?.length, 1);
+  assert.ok(cleanup?.values?.[0] instanceof Date);
+  assert.equal(JSON.stringify(saved).includes("never-public"), false);
+  const payload = String(client.queries.find(({ text }) => text.includes("INSERT INTO debug_session_checkpoints"))?.values?.[7]);
+  assert.match(payload, /never-public/u);
+  assert.match(payload, /"nextOccurrence":2/u);
+  assert.equal(firstSqlWord(client.queries.at(-1)?.text ?? ""), "COMMIT");
 });
 
 test("PostgreSQL persists every private participant principal in the creation transaction", async () => {
@@ -334,7 +403,7 @@ test("PostgreSQL accepts server-authorized agent participants", async () => {
 
   assert.deepEqual(created.session.participants, agentParticipants);
   const sessionInsert = client.queries.find(({ text }) => text.includes("INSERT INTO game_sessions"));
-  assert.equal(sessionInsert?.values?.[5], JSON.stringify(agentParticipants));
+  assert.equal(sessionInsert?.values?.[6], JSON.stringify(agentParticipants));
 });
 
 test("PostgreSQL session reads delegate participant shape to the canonical validator", async () => {

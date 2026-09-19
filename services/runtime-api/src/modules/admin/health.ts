@@ -140,7 +140,7 @@ export async function checkContentSubsystem(
  * This keeps readiness honest: whatever store is injected is reported, rather
  * than a hardcoded "in-memory".
  */
-export function deriveSessionStoreMode(sessionStore: SessionStorePort<unknown>): string {
+export function deriveSessionStoreMode(sessionStore: Pick<SessionStorePort<unknown>, "mode">): string {
   if (typeof sessionStore.mode === "string" && sessionStore.mode.length > 0) {
     return sessionStore.mode;
   }

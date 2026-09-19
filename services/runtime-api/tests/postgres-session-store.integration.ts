@@ -18,8 +18,16 @@ const databaseUrl = process.env.TEST_POSTGRES_DATABASE_URL;
 
 test("PostgreSQL state, command receipt and event ledger survive a store restart", {
   skip: databaseUrl === undefined ? "set TEST_POSTGRES_DATABASE_URL to a disposable database" : false
-}, async () => {
+}, async (t) => {
   assert.ok(databaseUrl);
+  const schemaName = `runtime_debug_${randomUUID().replaceAll("-", "")}`;
+  const adminPool = new Pool({ connectionString: databaseUrl });
+  t.after(async () => {
+    await adminPool.query(`DROP SCHEMA IF EXISTS ${schemaName} CASCADE`);
+    await adminPool.end();
+  });
+  await adminPool.query(`CREATE SCHEMA ${schemaName}`);
+  const isolatedPoolConfig = { connectionString: databaseUrl, options: `-c search_path=${schemaName}` };
   const testDirectory = path.dirname(fileURLToPath(import.meta.url));
   const migration001 = await readFile(path.resolve(testDirectory, "../migrations/001_game_sessions.up.sql"), "utf8");
   const migration002 = await readFile(
@@ -42,16 +50,21 @@ test("PostgreSQL state, command receipt and event ledger survive a store restart
     path.resolve(testDirectory, "../migrations/006_session_ai_debriefs.up.sql"),
     "utf8"
   );
-  const setupPool = new Pool({ connectionString: databaseUrl });
+  const migration007 = await readFile(
+    path.resolve(testDirectory, "../migrations/007_editor_debug_sessions.up.sql"),
+    "utf8"
+  );
+  const setupPool = new Pool(isolatedPoolConfig);
   await setupPool.query(migration001);
   await setupPool.query(migration002);
   await setupPool.query(migration003);
   await setupPool.query(migration004);
   await setupPool.query(migration005);
   await setupPool.query(migration006);
+  await setupPool.query(migration007);
   await setupPool.end();
 
-  const firstPool = new Pool({ connectionString: databaseUrl });
+  const firstPool = new Pool(isolatedPoolConfig);
   const firstStore = new PostgresSessionStore<Record<string, unknown>>(asSessionDatabasePool(firstPool));
   const immutableBundle = createImmutableBundleContent("persistence-integration-fixture", {});
   const credentialSha256 = "b".repeat(64);
@@ -183,7 +196,7 @@ test("PostgreSQL state, command receipt and event ledger survive a store restart
   assert.deepEqual(await firstStore.getSessionEvents(created.session.sessionId), [commandEvent]);
   await firstStore.close();
 
-  const secondPool = new Pool({ connectionString: databaseUrl });
+  const secondPool = new Pool(isolatedPoolConfig);
   const secondStore = new PostgresSessionStore<Record<string, unknown>>(asSessionDatabasePool(secondPool));
   const restored = await secondStore.getSession(created.session.sessionId);
   assert.deepEqual(restored?.state, { public: { step: 2 } });
@@ -225,7 +238,62 @@ test("PostgreSQL state, command receipt and event ledger survive a store restart
   });
   assert.deepEqual(replayed, commandReceipt.result);
   assert.equal((await secondStore.getSessionEvents(created.session.sessionId)).length, 1);
-  await secondPool.query("DELETE FROM game_sessions WHERE id = $1", [created.session.sessionId]);
-  await secondPool.query("DELETE FROM game_sessions WHERE id = $1", [privateCreated.session.sessionId]);
+  await secondStore.setDebugPaused({
+    sessionId: created.session.sessionId, credentialSha256, expectedStateVersion: 1, paused: true
+  });
+  const saved = await secondStore.saveDebugCheckpoint({
+    sessionId: created.session.sessionId, credentialSha256, label: "durable run"
+  });
   await secondStore.close();
+
+  const thirdPool = new Pool(isolatedPoolConfig);
+  const thirdStore = new PostgresSessionStore<Record<string, unknown>>(asSessionDatabasePool(thirdPool));
+  assert.equal((await thirdStore.listDebugCheckpoints({
+    sessionId: created.session.sessionId, credentialSha256
+  }))[0]?.checkpointId, saved.checkpointId);
+  const restoredFork = await thirdStore.restoreDebugCheckpoint({
+    sessionId: created.session.sessionId,
+    credentialSha256,
+    checkpointId: saved.checkpointId,
+    principal: {
+      principalId: randomUUID(), kind: "local-controller", role: "facilitator",
+      actorScope: { kind: "all-session-actors" }, credentialSha256: "8".repeat(64)
+    }
+  });
+  assert.notEqual(restoredFork.session.sessionId, created.session.sessionId);
+  assert.equal(restoredFork.session.debugPaused, true);
+  assert.deepEqual(restoredFork.session.state, { public: { step: 2 } });
+  assert.deepEqual(restoredFork.session.version, {
+    sessionId: restoredFork.session.sessionId, stateVersion: 0, lastEventSequence: 0
+  });
+  assert.equal(await thirdStore.getCommandReceipt({
+    sessionId: restoredFork.session.sessionId, credentialSha256: "8".repeat(64), commandId
+  }), null);
+  assert.deepEqual(await thirdStore.getSessionEvents(restoredFork.session.sessionId), []);
+  const liveForkPoint = await thirdStore.saveDebugCheckpoint({
+    sessionId: restoredFork.session.sessionId, credentialSha256: "8".repeat(64), label: "live fork"
+  });
+  await thirdPool.query(
+    `UPDATE debug_session_checkpoints
+     SET created_at = NOW() - INTERVAL '2 seconds', expires_at = NOW() - INTERVAL '1 second'
+     WHERE checkpoint_id = $1`, [saved.checkpointId]
+  );
+  await assert.rejects(thirdStore.listDebugCheckpoints({
+    sessionId: restoredFork.session.sessionId, credentialSha256
+  }));
+  assert.equal((await thirdPool.query(
+    "SELECT count(*)::integer AS count FROM debug_session_checkpoints WHERE checkpoint_id = $1",
+    [saved.checkpointId]
+  )).rows[0].count, 1);
+  assert.deepEqual((await thirdStore.listDebugCheckpoints({
+    sessionId: restoredFork.session.sessionId, credentialSha256: "8".repeat(64)
+  })).map((entry) => entry.checkpointId), [liveForkPoint.checkpointId]);
+  assert.equal((await thirdPool.query(
+    "SELECT count(*)::integer AS count FROM debug_session_checkpoints WHERE checkpoint_id = $1",
+    [saved.checkpointId]
+  )).rows[0].count, 0);
+  await thirdPool.query("DELETE FROM game_sessions WHERE id = $1", [restoredFork.session.sessionId]);
+  await thirdPool.query("DELETE FROM game_sessions WHERE id = $1", [created.session.sessionId]);
+  await thirdPool.query("DELETE FROM game_sessions WHERE id = $1", [privateCreated.session.sessionId]);
+  await thirdStore.close();
 });

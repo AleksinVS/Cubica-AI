@@ -64,6 +64,37 @@ test("ordinary human action automatically drives the next immutable agent partic
   }
 });
 
+test("paused preview never invokes the agent provider through either entry point", async () => {
+  let providerCalls = 0;
+  const fixture = await createFixture(async () => {
+    providerCalls += 1;
+    throw new Error("provider must not be called after pause");
+  }, { activePlayerId: "p2", contentSourceId: "editor-preview", debugPaused: true });
+  try {
+    const driven = await fixture.driver.drive({
+      sessionStore: fixture.store,
+      credentialSha256: fixture.access.principal.credentialSha256,
+      sessionId: fixture.sessionId
+    });
+    assert.equal(driven.steps, 0);
+    assert.equal(driven.snapshot.debugPaused, true);
+    await assert.rejects(fixture.turnService.runTurn({
+      sessionStore: fixture.store,
+      credentialSha256: fixture.access.principal.credentialSha256,
+      request: {
+        sessionId: fixture.sessionId,
+        commandId: `cli_${"P".repeat(22)}`,
+        actionId: "agent.turn",
+        expectedStateVersion: 0,
+        params: {}
+      }
+    }), /paused/u);
+    assert.equal(providerCalls, 0);
+  } finally {
+    await fixture.store.close();
+  }
+});
+
 test("the same bounded driver handles a session whose initial active participant is an agent", async () => {
   let calls = 0;
   const fixture = await createFixture(async (input) => {
@@ -366,6 +397,8 @@ async function createFixture(
     failurePolicy?: "pause" | "retry" | "deterministicFallback" | "facilitatorTakeover";
     activePlayerId?: "p1" | "p2";
     agentPlayerIds?: ReadonlyArray<"p1" | "p2">;
+    contentSourceId?: string;
+    debugPaused?: boolean;
   } = {}
 ) {
   const manifest = neutralManifest(options);
@@ -379,6 +412,8 @@ async function createFixture(
   const activePlayerId = options.activePlayerId ?? "p1";
   const created = await store.createSession({
     gameId: manifest.meta.id,
+    ...(options.contentSourceId === undefined ? {} : { contentSourceId: options.contentSourceId }),
+    ...(options.debugPaused === undefined ? {} : { debugPaused: options.debugPaused }),
     participants: [
       { seatId: "p1", playerId: "p1", kind: agentPlayerIds.has("p1") ? "agent" : "human", joinState: "local" },
       { seatId: "p2", playerId: "p2", kind: agentPlayerIds.has("p2") ? "agent" : "human", joinState: "local" }
@@ -402,7 +437,7 @@ async function createFixture(
   const turnService = new AgentTurnService(admission, runner);
   const driver = new AgentSeatDriver(turnService);
   const runtime = new RuntimeService(admission, undefined, driver);
-  return { store, access, sessionId: created.session.sessionId, runtime, driver };
+  return { store, access, sessionId: created.session.sessionId, runtime, driver, turnService };
 }
 
 function neutralManifest(options: {

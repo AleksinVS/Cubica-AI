@@ -7,6 +7,7 @@
  */
 import { useEffect, type RefObject } from "react";
 import type { SessionStateVersion } from "@cubica/contracts-session";
+import { validateEditorDebugBridgeRequest, type EditorDebugBridgeRequest, type EditorDebugBridgeResponse } from "@cubica/contracts-session";
 
 export interface EditorPreviewBridgeOptions {
   readonly enabled: boolean;
@@ -15,6 +16,7 @@ export interface EditorPreviewBridgeOptions {
   readonly sessionSnapshot?: EditorPreviewSessionSnapshot;
   readonly lastCompletedAction?: EditorPreviewCompletedAction;
   readonly onRestorePreviewSession?: (request: EditorPreviewRestoreRequest) => Promise<EditorPreviewSessionSnapshot>;
+  readonly onDebugSession?: (request: EditorDebugBridgeRequest) => Promise<EditorDebugBridgeResponse>;
 }
 
 interface PreviewRect {
@@ -144,6 +146,22 @@ export function useEditorPreviewBridge(rootRef: RefObject<HTMLElement | null>, o
         schedulePost();
         return;
       }
+      if (validateEditorDebugBridgeRequest(event.data)) {
+        const command = event.data;
+        if (options.onDebugSession !== undefined) {
+          void options.onDebugSession(command).then((response) => {
+            window.parent.postMessage(response, parentOrigin);
+            schedulePost();
+          }).catch(() => {
+            window.parent.postMessage({
+              source: "cubica-player-web", type: "debugSessionResult", protocolVersion: 1,
+              requestId: command.requestId, sessionId: command.sessionId, ok: false,
+              error: "Команда отладки не выполнена."
+            }, parentOrigin);
+          });
+        }
+        return;
+      }
       if (isRestoreRequest(event.data)) {
         void handleRestoreRequest(event.data);
       }
@@ -237,7 +255,8 @@ export function useEditorPreviewBridge(rootRef: RefObject<HTMLElement | null>, o
     options.refreshSignal,
     options.sessionSnapshot,
     options.lastCompletedAction,
-    options.onRestorePreviewSession
+    options.onRestorePreviewSession,
+    options.onDebugSession
   ]);
 }
 

@@ -622,6 +622,57 @@
         }
       }
     },
+    "/sessions/{sessionId}/debug": {
+      "get": {
+        "tags": ["EditorPreview"], "operationId": "getDebugSessionControl", "x-cubica-scope": "editor-preview",
+        "security": [{ "SessionBearer": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/SessionId" }],
+        "responses": { "200": { "description": "Authoritative preview execution status.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/DebugSessionControlResponse" } } } }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" } }
+      }
+    },
+    "/sessions/{sessionId}/debug/pause": {
+      "post": {
+        "tags": ["EditorPreview"], "operationId": "pauseDebugSession", "x-cubica-scope": "editor-preview",
+        "security": [{ "SessionBearer": [] }], "parameters": [{ "$ref": "#/components/parameters/SessionId" }],
+        "requestBody": { "$ref": "#/components/requestBodies/DebugSessionControlRequest" },
+        "responses": { "200": { "description": "Session is paused.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/DebugSessionControlResponse" } } } }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "409": { "$ref": "#/components/responses/Conflict" } }
+      }
+    },
+    "/sessions/{sessionId}/debug/resume": {
+      "post": {
+        "tags": ["EditorPreview"], "operationId": "resumeDebugSession", "x-cubica-scope": "editor-preview",
+        "security": [{ "SessionBearer": [] }], "parameters": [{ "$ref": "#/components/parameters/SessionId" }],
+        "requestBody": { "$ref": "#/components/requestBodies/DebugSessionControlRequest" },
+        "responses": { "200": { "description": "Session is running.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/DebugSessionControlResponse" } } } }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "409": { "$ref": "#/components/responses/Conflict" } }
+      }
+    },
+    "/sessions/{sessionId}/debug/checkpoints": {
+      "get": {
+        "tags": ["EditorPreview"], "operationId": "listDebugCheckpoints", "x-cubica-scope": "editor-preview",
+        "security": [{ "SessionBearer": [] }], "parameters": [{ "$ref": "#/components/parameters/SessionId" }],
+        "responses": { "200": { "description": "Saved checkpoint metadata.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/DebugCheckpointListResponse" } } } }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" } }
+      },
+      "post": {
+        "tags": ["EditorPreview"], "operationId": "saveDebugCheckpoint", "x-cubica-scope": "editor-preview",
+        "security": [{ "SessionBearer": [] }], "parameters": [{ "$ref": "#/components/parameters/SessionId" }],
+        "requestBody": { "$ref": "#/components/requestBodies/SaveDebugCheckpointRequest" },
+        "responses": { "201": { "description": "Checkpoint saved while paused.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/DebugCheckpointMetadata" } } } }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "409": { "$ref": "#/components/responses/Conflict" }, "413": { "$ref": "#/components/responses/PayloadTooLarge" } }
+      }
+    },
+    "/sessions/{sessionId}/debug/checkpoints/{checkpointId}": {
+      "delete": {
+        "tags": ["EditorPreview"], "operationId": "deleteDebugCheckpoint", "x-cubica-scope": "editor-preview",
+        "security": [{ "SessionBearer": [] }], "parameters": [{ "$ref": "#/components/parameters/SessionId" }, { "name": "checkpointId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": { "204": { "description": "Checkpoint deleted or already absent." }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" } }
+      }
+    },
+    "/sessions/{sessionId}/debug/checkpoints/{checkpointId}/restore": {
+      "post": {
+        "tags": ["EditorPreview"], "operationId": "restoreDebugCheckpoint", "x-cubica-scope": "editor-preview",
+        "security": [{ "SessionBearer": [] }], "parameters": [{ "$ref": "#/components/parameters/SessionId" }, { "name": "checkpointId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": { "201": { "description": "Fresh paused preview session; credential disclosed once.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreatedSessionResponse" } } } }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" } }
+      }
+    },
     "/sessions/{sessionId}/preview-restore": {
       "post": {
         "tags": ["Sessions", "EditorPreview"],
@@ -990,6 +1041,14 @@
           }
         }
       },
+      "DebugSessionControlRequest": {
+        "required": true,
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/DebugSessionControlRequest" } } }
+      },
+      "SaveDebugCheckpointRequest": {
+        "required": true,
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SaveDebugCheckpointRequest" } } }
+      },
       "RestorePreviewSessionRequest": {
         "required": true,
         "content": {
@@ -1145,6 +1204,7 @@
           "participants": { "$ref": "#/components/schemas/SessionParticipants" },
           "version": { "$ref": "#/components/schemas/SessionStateVersion" },
           "state": { "$ref": "#/components/schemas/JsonObject" },
+          "debugPaused": { "type": "boolean" },
           "actionAvailability": { "$ref": "#/components/schemas/SessionActionAvailabilityList" },
           "agentControl": { "$ref": "#/components/schemas/AgentControl" },
           "receipt": { "$ref": "#/components/schemas/PublicCommandReceipt" }
@@ -1201,6 +1261,7 @@
           "participants": { "$ref": "#/components/schemas/SessionParticipants" },
           "version": { "$ref": "#/components/schemas/SessionStateVersion" },
           "state": { "$ref": "#/components/schemas/JsonObject" },
+          "debugPaused": { "type": "boolean" },
           "actionAvailability": { "$ref": "#/components/schemas/SessionActionAvailabilityList" },
           "agentTurn": { "$ref": "#/components/schemas/JsonObject" },
           "receipt": { "$ref": "#/components/schemas/PublicCommandReceipt" }
@@ -1259,6 +1320,10 @@
             "minimum": 0,
             "maximum": 64,
             "description": "Requested local agent seats. Runtime assigns the last N server-derived seats; omitted is equivalent to zero."
+          },
+          "debugPaused": {
+            "type": "boolean",
+            "description": "Start a local editor preview paused. Requires contentSourceId; omitted preserves legacy behavior."
           }
         },
         "allOf": [
@@ -1545,6 +1610,670 @@
         },
         "additionalProperties": false
       },
+      "DebugSessionControlRequest": {
+        "type": "object", "required": ["expectedStateVersion"],
+        "properties": { "expectedStateVersion": { "type": "integer", "minimum": 0 } },
+        "additionalProperties": false
+      },
+      "DebugSessionControlResponse": {
+        "type": "object", "required": ["sessionId", "paused", "version"],
+        "properties": { "sessionId": { "type": "string" }, "paused": { "type": "boolean" }, "version": { "$ref": "#/components/schemas/SessionStateVersion" } },
+        "additionalProperties": false
+      },
+      "SaveDebugCheckpointRequest": {
+        "type": "object", "required": ["label"],
+        "properties": { "label": { "type": "string", "minLength": 1, "maxLength": 120 } },
+        "additionalProperties": false
+      },
+      "DebugCheckpointMetadata": {
+        "type": "object", "required": ["checkpointId", "label", "createdAt", "expiresAt", "sourceStateVersion"],
+        "properties": {
+          "checkpointId": { "type": "string", "format": "uuid" },
+          "label": { "type": "string", "minLength": 1, "maxLength": 120 },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "expiresAt": { "type": "string", "format": "date-time" },
+          "sourceStateVersion": { "type": "integer", "minimum": 0 }
+        }, "additionalProperties": false
+      },
+      "DebugCheckpointListResponse": {
+        "type": "object", "required": ["checkpoints"],
+        "properties": { "checkpoints": { "type": "array", "maxItems": 20, "items": { "$ref": "#/components/schemas/DebugCheckpointMetadata" } } },
+        "additionalProperties": false
+      },
+      "EditorDebugBridgeRequest": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "source",
+              "type",
+              "protocolVersion",
+              "requestId",
+              "sessionId",
+              "operation"
+            ],
+            "properties": {
+              "source": {
+                "const": "cubica-editor-web"
+              },
+              "type": {
+                "const": "debugSession"
+              },
+              "protocolVersion": {
+                "const": 1
+              },
+              "requestId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "sessionId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "operation": {
+                "const": "status"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "source",
+              "type",
+              "protocolVersion",
+              "requestId",
+              "sessionId",
+              "operation"
+            ],
+            "properties": {
+              "source": {
+                "const": "cubica-editor-web"
+              },
+              "type": {
+                "const": "debugSession"
+              },
+              "protocolVersion": {
+                "const": 1
+              },
+              "requestId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "sessionId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "operation": {
+                "const": "list"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "source",
+              "type",
+              "protocolVersion",
+              "requestId",
+              "sessionId",
+              "operation",
+              "payload"
+            ],
+            "properties": {
+              "source": {
+                "const": "cubica-editor-web"
+              },
+              "type": {
+                "const": "debugSession"
+              },
+              "protocolVersion": {
+                "const": 1
+              },
+              "requestId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "sessionId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "operation": {
+                "const": "pause"
+              },
+              "payload": {
+                "$ref": "#/components/schemas/DebugSessionControlRequest"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "source",
+              "type",
+              "protocolVersion",
+              "requestId",
+              "sessionId",
+              "operation",
+              "payload"
+            ],
+            "properties": {
+              "source": {
+                "const": "cubica-editor-web"
+              },
+              "type": {
+                "const": "debugSession"
+              },
+              "protocolVersion": {
+                "const": 1
+              },
+              "requestId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "sessionId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "operation": {
+                "const": "resume"
+              },
+              "payload": {
+                "$ref": "#/components/schemas/DebugSessionControlRequest"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "source",
+              "type",
+              "protocolVersion",
+              "requestId",
+              "sessionId",
+              "operation",
+              "payload"
+            ],
+            "properties": {
+              "source": {
+                "const": "cubica-editor-web"
+              },
+              "type": {
+                "const": "debugSession"
+              },
+              "protocolVersion": {
+                "const": 1
+              },
+              "requestId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "sessionId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "operation": {
+                "const": "save"
+              },
+              "payload": {
+                "$ref": "#/components/schemas/SaveDebugCheckpointRequest"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "source",
+              "type",
+              "protocolVersion",
+              "requestId",
+              "sessionId",
+              "operation",
+              "checkpointId"
+            ],
+            "properties": {
+              "source": {
+                "const": "cubica-editor-web"
+              },
+              "type": {
+                "const": "debugSession"
+              },
+              "protocolVersion": {
+                "const": 1
+              },
+              "requestId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "sessionId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "operation": {
+                "const": "delete"
+              },
+              "checkpointId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "source",
+              "type",
+              "protocolVersion",
+              "requestId",
+              "sessionId",
+              "operation",
+              "checkpointId"
+            ],
+            "properties": {
+              "source": {
+                "const": "cubica-editor-web"
+              },
+              "type": {
+                "const": "debugSession"
+              },
+              "protocolVersion": {
+                "const": 1
+              },
+              "requestId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "sessionId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "operation": {
+                "const": "restore"
+              },
+              "checkpointId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "EditorDebugBridgeResponse": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "source",
+              "type",
+              "protocolVersion",
+              "requestId",
+              "sessionId",
+              "ok",
+              "operation",
+              "data"
+            ],
+            "properties": {
+              "source": {
+                "const": "cubica-player-web"
+              },
+              "type": {
+                "const": "debugSessionResult"
+              },
+              "protocolVersion": {
+                "const": 1
+              },
+              "requestId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "sessionId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "ok": {
+                "const": true
+              },
+              "operation": {
+                "const": "status"
+              },
+              "data": {
+                "$ref": "#/components/schemas/DebugSessionControlResponse"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "source",
+              "type",
+              "protocolVersion",
+              "requestId",
+              "sessionId",
+              "ok",
+              "operation",
+              "data"
+            ],
+            "properties": {
+              "source": {
+                "const": "cubica-player-web"
+              },
+              "type": {
+                "const": "debugSessionResult"
+              },
+              "protocolVersion": {
+                "const": 1
+              },
+              "requestId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "sessionId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "ok": {
+                "const": true
+              },
+              "operation": {
+                "const": "list"
+              },
+              "data": {
+                "$ref": "#/components/schemas/DebugCheckpointListResponse"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "source",
+              "type",
+              "protocolVersion",
+              "requestId",
+              "sessionId",
+              "ok",
+              "operation",
+              "data"
+            ],
+            "properties": {
+              "source": {
+                "const": "cubica-player-web"
+              },
+              "type": {
+                "const": "debugSessionResult"
+              },
+              "protocolVersion": {
+                "const": 1
+              },
+              "requestId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "sessionId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "ok": {
+                "const": true
+              },
+              "operation": {
+                "const": "pause"
+              },
+              "data": {
+                "$ref": "#/components/schemas/DebugSessionControlResponse"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "source",
+              "type",
+              "protocolVersion",
+              "requestId",
+              "sessionId",
+              "ok",
+              "operation",
+              "data"
+            ],
+            "properties": {
+              "source": {
+                "const": "cubica-player-web"
+              },
+              "type": {
+                "const": "debugSessionResult"
+              },
+              "protocolVersion": {
+                "const": 1
+              },
+              "requestId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "sessionId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "ok": {
+                "const": true
+              },
+              "operation": {
+                "const": "resume"
+              },
+              "data": {
+                "$ref": "#/components/schemas/DebugSessionControlResponse"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "source",
+              "type",
+              "protocolVersion",
+              "requestId",
+              "sessionId",
+              "ok",
+              "operation",
+              "data"
+            ],
+            "properties": {
+              "source": {
+                "const": "cubica-player-web"
+              },
+              "type": {
+                "const": "debugSessionResult"
+              },
+              "protocolVersion": {
+                "const": 1
+              },
+              "requestId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "sessionId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "ok": {
+                "const": true
+              },
+              "operation": {
+                "const": "save"
+              },
+              "data": {
+                "$ref": "#/components/schemas/DebugCheckpointMetadata"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "source",
+              "type",
+              "protocolVersion",
+              "requestId",
+              "sessionId",
+              "ok",
+              "operation",
+              "data"
+            ],
+            "properties": {
+              "source": {
+                "const": "cubica-player-web"
+              },
+              "type": {
+                "const": "debugSessionResult"
+              },
+              "protocolVersion": {
+                "const": 1
+              },
+              "requestId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "sessionId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "ok": {
+                "const": true
+              },
+              "operation": {
+                "const": "delete"
+              },
+              "data": {
+                "type": "null"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "source",
+              "type",
+              "protocolVersion",
+              "requestId",
+              "sessionId",
+              "ok",
+              "operation",
+              "data"
+            ],
+            "properties": {
+              "source": {
+                "const": "cubica-player-web"
+              },
+              "type": {
+                "const": "debugSessionResult"
+              },
+              "protocolVersion": {
+                "const": 1
+              },
+              "requestId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "sessionId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "ok": {
+                "const": true
+              },
+              "operation": {
+                "const": "restore"
+              },
+              "data": {
+                "$ref": "#/components/schemas/DebugSessionControlResponse"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "source",
+              "type",
+              "protocolVersion",
+              "requestId",
+              "sessionId",
+              "ok",
+              "error"
+            ],
+            "properties": {
+              "source": {
+                "const": "cubica-player-web"
+              },
+              "type": {
+                "const": "debugSessionResult"
+              },
+              "protocolVersion": {
+                "const": 1
+              },
+              "requestId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "sessionId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "ok": {
+                "const": false
+              },
+              "error": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
       "RestorePreviewSessionRequest": {
         "type": "object",
         "required": ["state", "version"],
@@ -1575,6 +2304,7 @@
           "participants": { "$ref": "#/components/schemas/SessionParticipants" },
           "version": { "$ref": "#/components/schemas/SessionStateVersion" },
           "state": { "$ref": "#/components/schemas/JsonObject" },
+          "debugPaused": { "type": "boolean" },
           "actionAvailability": { "$ref": "#/components/schemas/SessionActionAvailabilityList" },
           "restored": { "const": true }
         },
@@ -1590,6 +2320,7 @@
           "participants": { "$ref": "#/components/schemas/SessionParticipants" },
           "version": { "$ref": "#/components/schemas/SessionStateVersion" },
           "state": { "$ref": "#/components/schemas/JsonObject" },
+          "debugPaused": { "type": "boolean" },
           "actionAvailability": { "$ref": "#/components/schemas/SessionActionAvailabilityList" },
           "agentControl": { "$ref": "#/components/schemas/AgentControl" }
         },
@@ -1617,6 +2348,7 @@
           "participants": { "$ref": "#/components/schemas/SessionParticipants" },
           "version": { "$ref": "#/components/schemas/SessionStateVersion" },
           "state": { "$ref": "#/components/schemas/JsonObject" },
+          "debugPaused": { "type": "boolean" },
           "actionAvailability": { "$ref": "#/components/schemas/SessionActionAvailabilityList" },
           "agentControl": { "$ref": "#/components/schemas/AgentControl" },
           "credential": { "$ref": "#/components/schemas/SessionCredential" },

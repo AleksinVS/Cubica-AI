@@ -12,6 +12,8 @@ import { createDefaultGameConfig, createDefaultGameConfigData } from "./game-con
 import { GamePresenter } from "./game-presenter";
 import { ReactViewGateway } from "./react-view-gateway";
 import * as runtimeClient from "./runtime-client";
+import * as debugClient from "./runtime-debug-client";
+import type { EditorDebugBridgeResponse } from "@cubica/contracts-session";
 import {
   loadPendingRuntimeCommand,
   savePendingRuntimeCommand
@@ -990,7 +992,7 @@ function versionedSession(stateVersion: number, lastEventSequence: number): Game
   };
 }
 
-async function bootPresenterWithSession(initial: GameSession, refreshed = initial) {
+async function bootPresenterWithSession(initial: GameSession, refreshed = initial, editorPreviewMode = false) {
   const content = neutralContent(initial.gameId);
   const gateway = new ReactViewGateway();
   vi.spyOn(runtimeClient, "createNewSessionWithOptions").mockResolvedValue(initial);
@@ -998,7 +1000,8 @@ async function bootPresenterWithSession(initial: GameSession, refreshed = initia
   const presenter = new GamePresenter({
     gateway,
     content,
-    config: createDefaultGameConfig(createDefaultGameConfigData(content))
+    config: createDefaultGameConfig(createDefaultGameConfigData(content)),
+    editorPreviewMode
   });
   await presenter.boot();
   resume.mockClear();
@@ -1055,3 +1058,45 @@ function fetchRequestVersions(fetchMock: ReturnType<typeof vi.fn>): number[] {
     return Number(body.expectedStateVersion);
   });
 }
+
+describe("GamePresenter debug pause", () => {
+  const command = {
+    source: "cubica-editor-web", type: "debugSession", protocolVersion: 1,
+    requestId: "control-1", sessionId: "session-hotseat", operation: "pause", payload: { expectedStateVersion: 1 }
+  } as const;
+  it("waits for server acknowledgment, blocks gameplay and retains pause over an older snapshot", async () => {
+    const initial = turnSession("p1");
+    const { presenter } = await bootPresenterWithSession(initial, initial, true);
+    let resolve!: (response: EditorDebugBridgeResponse) => void;
+    vi.spyOn(debugClient, "runEditorDebugCommand").mockReturnValue(new Promise(done => { resolve = done; }));
+    const turn = vi.spyOn(runtimeClient, "runAgentTurn");
+    const pending = presenter.handleEditorDebugCommand(command);
+    expect(presenter.playerState.debugPaused).toBe(false);
+    resolve({
+      source: "cubica-player-web", type: "debugSessionResult", protocolVersion: 1,
+      requestId: "control-1", sessionId: "session-hotseat", ok: true, operation: "pause",
+      data: { sessionId: "session-hotseat", paused: true, version: { ...initial.version, stateVersion: 2 } }
+    });
+    await pending;
+    expect(presenter.playerState.debugPaused).toBe(true);
+    await presenter.handleSurfaceAction({ id: "turn", kind: "agentTurn", target: "turn.advance", sideEffectPolicy: "system-approved" });
+    expect(turn).not.toHaveBeenCalled();
+    // A later authoritative resume, e.g. from another tab, overrides our ack.
+    vi.mocked(runtimeClient.resumeSession).mockResolvedValue({ ...initial, debugPaused: false, version: { ...initial.version, stateVersion: 3 } });
+    await presenter.refreshSession();
+    expect(presenter.playerState.debugPaused).toBe(false);
+  });
+  it("rejects normal sessions, wrong preview sessions and incomplete full-preview restoration before network calls", async () => {
+    const initial = turnSession("p1");
+    const client = vi.spyOn(debugClient, "runEditorDebugCommand");
+    const normal = await bootPresenterWithSession(initial);
+    expect(await normal.presenter.handleEditorDebugCommand(command)).toMatchObject({ ok: false });
+    const preview = await bootPresenterWithSession(initial, initial, true);
+    expect(await preview.presenter.handleEditorDebugCommand({ ...command, sessionId: "foreign" })).toMatchObject({ ok: false });
+    expect(await preview.presenter.handleEditorDebugCommand({
+      source: command.source, type: command.type, protocolVersion: 1, requestId: "restore", sessionId: initial.sessionId,
+      operation: "restore", checkpointId: "saved"
+    })).toMatchObject({ ok: false });
+    expect(client).not.toHaveBeenCalled();
+  });
+});

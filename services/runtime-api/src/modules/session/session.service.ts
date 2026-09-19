@@ -10,6 +10,8 @@ import type {
   ArchivedSessionAudit,
   CreateSessionRequest,
   CreateSessionResponse,
+  DebugCheckpointMetadata,
+  DebugSessionControlResponse,
   GetSessionResponse,
   PortablePublicGameplayJournal,
   RestorePreviewSessionRequest,
@@ -32,6 +34,7 @@ import { HttpError, NotFoundError, RequestValidationError } from "../errors.ts";
 import { RUNTIME_BUDGETS, assertMechanicsStateWithinBudget } from "../mechanics/budget.ts";
 import { assertStateMatchesModel } from "../mechanics/stateModel.ts";
 import { projectSessionActionAvailability } from "../runtime/actionAvailability.ts";
+import { processPendingSystemSchedules } from "../runtime/systemScheduler.ts";
 import { projectPlayerSessionState } from "./playerSessionProjection.ts";
 import {
   createLocalSessionAccess,
@@ -99,6 +102,9 @@ export class SessionService {
     if (privateInvite && request.contentSourceId !== undefined) {
       throw new RequestValidationError("Private-invite sessions cannot use editor preview content");
     }
+    if (request.debugPaused && request.contentSourceId === undefined) {
+      throw new RequestValidationError("debugPaused requires an editor preview contentSourceId.");
+    }
     if (privateInvite && (request.agentSeatCount ?? 0) > 0) {
       throw new RequestValidationError("Private-invite sessions cannot contain agent seats");
     }
@@ -149,6 +155,7 @@ export class SessionService {
     const created = await this.sessionStore.createSession({
       gameId,
       ...(request.contentSourceId === undefined ? {} : { contentSourceId: request.contentSourceId }),
+      ...(request.debugPaused ? { debugPaused: true } : {}),
       initialState,
       participants,
       sessionRole,
@@ -161,7 +168,7 @@ export class SessionService {
       snapshot: SessionRecord<RuntimeState>;
       agentControl?: Awaited<ReturnType<typeof projectAgentControl>>;
     } | undefined;
-    if (this.agentSeatDriver !== undefined) {
+    if (this.agentSeatDriver !== undefined && !request.debugPaused) {
       try {
         driven = await this.agentSeatDriver.drive({
           sessionStore: this.sessionStore,
@@ -210,6 +217,7 @@ export class SessionService {
       viewerRole: created.principal.role,
       participants: snapshot.participants,
       version: snapshot.version,
+      ...(snapshot.contentSourceId === undefined ? {} : { debugPaused: snapshot.debugPaused ?? false }),
       state: projectPlayerSessionState({
         state: snapshot.state,
         stateModel: bundle.manifest.mechanics.stateModel,
@@ -243,6 +251,7 @@ export class SessionService {
       viewerRole: principal.role,
       participants: snapshot.participants,
       version: snapshot.version,
+      ...(snapshot.contentSourceId === undefined ? {} : { debugPaused: snapshot.debugPaused ?? false }),
       state: projectPlayerSessionState({
         state: snapshot.state,
         stateModel: bundle.manifest.mechanics.stateModel,
@@ -368,6 +377,7 @@ export class SessionService {
           viewerRole: access.principal.role,
           participants: restored.participants,
           version: restored.version,
+          debugPaused: restored.debugPaused ?? false,
           state: projectPlayerSessionState({
             state: restored.state,
             stateModel: bundle.manifest.mechanics.stateModel,
@@ -381,6 +391,100 @@ export class SessionService {
         }
       };
     });
+  }
+
+  async readDebugControl(sessionId: SessionId, accessToken: string): Promise<DebugSessionControlResponse> {
+    const snapshot = await this.sessionStore.readDebugControl({
+      sessionId, credentialSha256: hashSessionCredential(accessToken)
+    });
+    return { sessionId, paused: snapshot.debugPaused ?? false, version: snapshot.version };
+  }
+
+  async setDebugPaused(
+    sessionId: SessionId, accessToken: string, expectedStateVersion: number, paused: boolean
+  ): Promise<DebugSessionControlResponse> {
+    const credentialSha256 = hashSessionCredential(accessToken);
+    let snapshot = await this.sessionStore.setDebugPaused({
+      sessionId, credentialSha256, expectedStateVersion, paused
+    });
+    if (!paused) {
+      try {
+        await processPendingSystemSchedules(this.sessionStore, sessionId);
+        if (this.agentSeatDriver !== undefined) {
+          snapshot = (await this.agentSeatDriver.drive({
+            sessionStore: this.sessionStore, credentialSha256, sessionId
+          })).snapshot;
+        }
+      } catch (error) {
+        console.error(`[debug-session] resumed session driver failed for ${sessionId}:`,
+          error instanceof Error ? error.message : String(error));
+      }
+      snapshot = await this.sessionStore.getSession(sessionId) ?? snapshot;
+    }
+    return { sessionId, paused: snapshot.debugPaused ?? false, version: snapshot.version };
+  }
+
+  async saveDebugCheckpoint(sessionId: SessionId, accessToken: string, label: string): Promise<DebugCheckpointMetadata> {
+    const normalized = label.trim();
+    if (normalized.length === 0 || normalized.length > 120) {
+      throw new RequestValidationError("Checkpoint label must contain 1 to 120 characters.");
+    }
+    return this.sessionStore.saveDebugCheckpoint({
+      sessionId, credentialSha256: hashSessionCredential(accessToken), label: normalized
+    });
+  }
+
+  async listDebugCheckpoints(sessionId: SessionId, accessToken: string): Promise<Array<DebugCheckpointMetadata>> {
+    return this.sessionStore.listDebugCheckpoints({
+      sessionId, credentialSha256: hashSessionCredential(accessToken)
+    });
+  }
+
+  async deleteDebugCheckpoint(sessionId: SessionId, accessToken: string, checkpointId: string): Promise<void> {
+    await this.sessionStore.deleteDebugCheckpoint({
+      sessionId, credentialSha256: hashSessionCredential(accessToken), checkpointId
+    });
+  }
+
+  async restoreDebugCheckpoint(
+    sessionId: SessionId, accessToken: string, checkpointId: string
+  ): Promise<CreateSessionResponse<RuntimeState>> {
+    const credentialSha256 = hashSessionCredential(accessToken);
+    const source = await this.sessionStore.readDebugControl({ sessionId, credentialSha256 });
+    let currentSourceBundle: GameBundle;
+    try {
+      currentSourceBundle = await contentService.getBundle(source.gameId, source.contentSourceId);
+    } catch {
+      throw new HttpError(409, "Editor preview content is unavailable; the saved run cannot be resumed safely.");
+    }
+    if (currentSourceBundle.bundleHash !== source.bundleHash) {
+      throw new HttpError(409, "Editor preview rules changed; the saved run cannot be resumed safely.");
+    }
+    const access = await this.authenticateSessionIdentity(sessionId, accessToken);
+    const localAccess = createLocalSessionAccess(access.principal.role);
+    const created = await this.sessionStore.restoreDebugCheckpoint({
+      sessionId,
+      credentialSha256,
+      checkpointId,
+      principal: localAccess.principal
+    });
+    const bundle = await this.getPinnedBundle(created.session);
+    const actorPlayerId = resolveSessionViewerActor(created.session, created.principal);
+    return {
+      sessionId: created.session.sessionId,
+      gameId: created.session.gameId,
+      viewerRole: created.principal.role,
+      participants: created.session.participants,
+      version: created.session.version,
+      debugPaused: true,
+      state: projectPlayerSessionState({
+        state: created.session.state,
+        stateModel: bundle.manifest.mechanics.stateModel,
+        ...(actorPlayerId === undefined ? {} : { actorPlayerId })
+      }),
+      actionAvailability: [],
+      credential: localAccess.accessToken
+    };
   }
 
   getSessionStore(): SessionStorePort<RuntimeState> {

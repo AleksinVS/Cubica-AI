@@ -229,6 +229,7 @@ export function projectSessionActionAvailability(
   bundle: GameBundle,
   viewer: ActionAvailabilityViewer
 ): Array<SessionActionAvailability> {
+  if (snapshot.debugPaused) return [];
   const { sessionRole, actorPlayerId } = viewer;
   const basisStateVersion = snapshot.version.stateVersion;
   const metadata = listActionAvailabilityMetadata(bundle);
