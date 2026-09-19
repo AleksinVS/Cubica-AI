@@ -68,13 +68,15 @@ export function applyUiComponentGeometryStyle(
 
   if (geometryStyle.width !== undefined) {
     setImportant(element, "width", geometryStyle.width);
-    setImportant(element, "min-width", "0px");
-    setImportant(element, "max-width", "none");
+    // A flex/grid parent must not grow or shrink an explicit editor dimension back to
+    // its old allocation. Auto sizing still follows the normal layout.
+    setImportant(element, "min-width", geometryStyle.width === "auto" ? "0px" : geometryStyle.width);
+    setImportant(element, "max-width", geometryStyle.width === "auto" ? "none" : geometryStyle.width);
   }
   if (geometryStyle.height !== undefined) {
     setImportant(element, "height", geometryStyle.height);
-    setImportant(element, "min-height", "0px");
-    setImportant(element, "max-height", "none");
+    setImportant(element, "min-height", geometryStyle.height === "auto" ? "0px" : geometryStyle.height);
+    setImportant(element, "max-height", geometryStyle.height === "auto" ? "none" : geometryStyle.height);
   }
   if (geometryStyle.transform !== undefined) {
     setImportant(element, "transform", geometryStyle.transform);

@@ -110,13 +110,16 @@ describe("UiComponentNode declarative action binding (ADR-055)", () => {
     expect(root.style.backgroundImage).toContain("/fixture-background.png");
     expect(area.style.width).toBe("320px");
     expect(area.style.getPropertyPriority("width")).toBe("important");
-    expect(area.style.minWidth).toBe("0px");
+    expect(area.style.minWidth).toBe("320px");
+    expect(area.style.maxWidth).toBe("320px");
     expect(area.style.getPropertyPriority("min-width")).toBe("important");
     expect(area.style.transform).toBe("translate(8px, -4px) rotate(2deg)");
     expect(area.style.getPropertyPriority("transform")).toBe("important");
     expect(button.style.width).toBe("50%");
     expect(button.style.getPropertyPriority("width")).toBe("important");
     expect(button.style.height).toBe("2rem");
+    expect(button.style.minHeight).toBe("2rem");
+    expect(button.style.maxHeight).toBe("2rem");
     expect(button.style.transform).toBe("translate(-3px, 6px) rotate(-1deg)");
 
     // Removing authored geometry must release the important declarations and
