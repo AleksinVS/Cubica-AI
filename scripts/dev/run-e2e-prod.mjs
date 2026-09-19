@@ -68,6 +68,14 @@ function requireSuccess(label, result) {
   }
 }
 
+// Exercise the approved chat surface in editor profiles. These flags are also
+// inherited by Playwright servers; callers may explicitly override them.
+if (profile === "full" || profile === "editor") {
+  process.env.NEXT_PUBLIC_CUBICA_EDITOR_AGENT_UI ??= "1";
+  process.env.CUBICA_EDITOR_AGENT_RUNTIME ??= "1";
+  process.env.CUBICA_EDITOR_AGENT_LOCAL_BACKEND ??= "1";
+}
+
 // Every current profile needs player-web. Editor and full additionally need
 // editor-web; the two builds always remain strictly sequential.
 requireSuccess("build player-web", run(
