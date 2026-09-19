@@ -205,27 +205,17 @@ export function findAuthoringSourceForRuntimePointer(
     readonly gameId?: string;
   } = {}
 ): PreviewSourceMapping | undefined {
-  for (const sourceMap of sourceMaps) {
-    const source = mapGeneratedPointerToAuthoring(sourceMap, runtimePointer);
-    if (source === undefined) {
-      continue;
-    }
-
-    if (
-      options.currentAuthoringFile === undefined ||
-      sourceFileMatchesAuthoringFile(source.file, options.currentAuthoringFile, options.gameId)
-    ) {
-      return source;
-    }
+  // The open game document has a root mapping too. A more specific UI mapping
+  // must win, or clicking any rendered component selects the whole game.
+  let pointer: string | undefined = normalizeGeneratedPointer(runtimePointer);
+  while (pointer !== undefined) {
+    const anchor = pointer;
+    const matching = sourceMaps.filter(sourceMap => (sourceMap.mappings[anchor]?.length ?? 0) > 0);
+    const preferred = matching.find(sourceMap => options.currentAuthoringFile !== undefined &&
+      sourceFileMatchesAuthoringFile(sourceMap.mappings[anchor][0].file, options.currentAuthoringFile, options.gameId)) ?? matching[0];
+    if (preferred !== undefined) return mapGeneratedPointerToAuthoring(preferred, runtimePointer);
+    pointer = parentPointer(pointer);
   }
-
-  for (const sourceMap of sourceMaps) {
-    const source = mapGeneratedPointerToAuthoring(sourceMap, runtimePointer);
-    if (source !== undefined) {
-      return source;
-    }
-  }
-
   return undefined;
 }
 

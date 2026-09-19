@@ -235,10 +235,20 @@ export function MvpDrawing({
 
   useEffect(() => {
     if (promptOpen) {
-      textareaRef.current?.focus();
-      if (textareaRef.current) resizePrompt(textareaRef.current);
+      const textarea = textareaRef.current;
+      textarea?.focus();
+      if (textarea) {
+        textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+        resizePrompt(textarea);
+      }
     }
   }, [promptOpen]);
+
+  useEffect(() => {
+    if (popupVisible && !promptOpen && !isBusy && popupRef.current instanceof HTMLButtonElement) {
+      popupRef.current.focus();
+    }
+  }, [isBusy, popupVisible, promptOpen]);
 
   const normalizedPointFromEvent = useCallback(
     (event: React.PointerEvent<SVGSVGElement>): MvpDrawingPoint => {
@@ -377,7 +387,7 @@ export function MvpDrawing({
   };
 
   const handlePromptButtonKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
-    if (event.key.length === 1 && !event.metaKey && !event.ctrlKey && !event.altKey) {
+    if (!isBusy && event.key.length === 1 && !event.metaKey && !event.ctrlKey && !event.altKey) {
       event.preventDefault();
       openPrompt(event.key);
     }
@@ -542,6 +552,7 @@ export function MvpDrawing({
             style={{ left: popupPosition.left, top: popupPosition.top } as CSSProperties}
             onClick={() => openPrompt()}
             onKeyDown={handlePromptButtonKeyDown}
+            disabled={isBusy}
             aria-label="Открыть ввод промта"
             title="Открыть ввод промта"
           >

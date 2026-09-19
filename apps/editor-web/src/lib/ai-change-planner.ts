@@ -122,8 +122,8 @@ function chooseTextEditTarget(
   const preferredRelativePointers = labelKeywords.some((keyword) => promptLower.includes(keyword))
     ? ["_label", "title", "name", "props/text", "text", "body"]
     : textKeywords.some((keyword) => promptLower.includes(keyword))
-      ? ["props/text", "text", "title", "body", "_label", "name"]
-      : ["props/text", "text", "_label", "title", "name", "body"];
+      ? ["props/text", "props/html", "props/caption", "props/title", "props/summary", "text", "title", "body", "_label", "name"]
+      : ["props/text", "props/html", "props/caption", "props/title", "props/summary", "text", "_label", "title", "name", "body"];
 
   for (const relativePointer of preferredRelativePointers) {
     const relative = `/${relativePointer}`;

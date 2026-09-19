@@ -3,6 +3,23 @@ import { describe, expect, it } from "vitest";
 import { planAiChangeSet } from "./ai-change-planner";
 
 describe("AI ChangeSet planner baseline", () => {
+  it.each(["html", "caption", "title", "summary"])("edits visible props/%s before the authoring label", (property) => {
+    const result = planAiChangeSet({
+      intent: {
+        id: "visible-text", kind: "preview-prompt", prompt: "Измени текст на «Проверка MVP»",
+        activeFilePath: "ui/web.authoring.json", targetPointers: ["/root/screens/0/root"],
+        createdAt: "2026-09-19T00:00:00.000Z"
+      },
+      targets: [{ filePath: "ui/web.authoring.json", pointer: "/root/screens/0/root",
+        value: { _type: "ui.Component", _label: "Название в редакторе", props: { [property]: "Исходный текст" } } }]
+    });
+    expect(result.ok).toBe(true);
+    expect(result.ok && result.changeSet.jsonPatches[0]?.operations).toEqual([
+      { op: "test", path: `/root/screens/0/root/props/${property}`, value: "Исходный текст" },
+      { op: "replace", path: `/root/screens/0/root/props/${property}`, value: "Проверка MVP" }
+    ]);
+  });
+
   it("creates bounded JSON Patch operations for object text edits", () => {
     const result = planAiChangeSet({
       intent: {

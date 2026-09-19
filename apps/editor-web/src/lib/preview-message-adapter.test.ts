@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  findAuthoringSourceForRuntimePointer,
   isPlayerPreviewBridgeReadyMessage,
   isPlayerPreviewEntitiesMessage,
   isPlayerPreviewRestoreResultMessage,
@@ -145,6 +146,18 @@ describe("preview message adapter", () => {
       })
     ]);
     expect(result.unresolved.map((entity) => entity.entityId)).toEqual(["unknown"]);
+  });
+
+  it("prefers the specific UI mapping over the open game document root", () => {
+    const gameMap: PreviewSelectionSourceMap = {
+      generatedFile: "games/example/game.manifest.json", sourceFile: "games/example/authoring/game.authoring.json",
+      mappings: { "": [{ file: "games/example/authoring/game.authoring.json", pointer: "/root" }] }
+    };
+    for (const maps of [[gameMap, sourceMap], [sourceMap, gameMap]]) {
+      expect(findAuthoringSourceForRuntimePointer(maps, "/screens/S1/root/children/0", {
+        currentAuthoringFile: "game.authoring.json", gameId: "example"
+      })).toEqual({ file: "games/example/authoring/ui/web.authoring.json", pointer: "/root/screens/0/root/children/0" });
+    }
   });
 
   it("matches repository-relative and authoring-relative file names", () => {

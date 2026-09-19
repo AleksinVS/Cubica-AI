@@ -58,6 +58,23 @@ function setTextareaValue(text: string): void {
   textarea.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
+function typeFocusedText(text: string): void {
+  for (const character of text) {
+    const target = document.activeElement;
+    if (!(target instanceof HTMLElement)) throw new Error("focused typing target was not rendered");
+    const event = new KeyboardEvent("keydown", { key: character, bubbles: true, cancelable: true });
+    target.dispatchEvent(event);
+    if (!event.defaultPrevented && target instanceof HTMLTextAreaElement) {
+      const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
+      const start = target.selectionStart ?? target.value.length;
+      const end = target.selectionEnd ?? start;
+      setter?.call(target, `${target.value.slice(0, start)}${character}${target.value.slice(end)}`);
+      target.setSelectionRange(start + character.length, start + character.length);
+      target.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+  }
+}
+
 afterEach(() => {
   vi.restoreAllMocks();
   act(() => root?.unmount());
@@ -94,6 +111,48 @@ describe("MvpDrawing model", () => {
 });
 
 describe("MvpDrawing", () => {
+  it("focuses the launcher and accepts the first and subsequent typed characters", () => {
+    render(<MvpDrawing onSubmit={vi.fn().mockResolvedValue(undefined)} />);
+    setSurfaceBounds(stage());
+    drawOneStroke();
+
+    const launcher = container?.querySelector("button[aria-label='Открыть ввод промта']");
+    if (!(launcher instanceof HTMLButtonElement)) throw new Error("prompt launcher was not rendered");
+    expect(document.activeElement).toBe(launcher);
+
+    act(() => typeFocusedText("П"));
+
+    const textarea = container?.querySelector("textarea");
+    expect(textarea).toBeInstanceOf(HTMLTextAreaElement);
+    expect(document.activeElement).toBe(textarea);
+    expect((textarea as HTMLTextAreaElement).selectionStart).toBe(1);
+    expect((textarea as HTMLTextAreaElement).selectionEnd).toBe(1);
+
+    act(() => typeFocusedText("ромт"));
+
+    expect((textarea as HTMLTextAreaElement).value).toBe("Промт");
+    expect(document.activeElement).toBe(textarea);
+  });
+
+  it("restores launcher focus after a temporary disabled state", () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(<MvpDrawing onSubmit={onSubmit} />);
+    setSurfaceBounds(stage());
+    drawOneStroke();
+
+    const undoButton = container?.querySelector("button[aria-label='Отменить последний штрих или текст']");
+    if (!(undoButton instanceof HTMLButtonElement)) throw new Error("undo button was not rendered");
+    undoButton.focus();
+
+    act(() => root?.render(<MvpDrawing onSubmit={onSubmit} disabled />));
+    expect(container?.querySelector("button[aria-label='Открыть ввод промта']")).toBeNull();
+
+    act(() => root?.render(<MvpDrawing onSubmit={onSubmit} />));
+    const launcher = container?.querySelector("button[aria-label='Открыть ввод промта']");
+    expect(launcher).toBeInstanceOf(HTMLButtonElement);
+    expect(document.activeElement).toBe(launcher);
+  });
+
   it("keeps Text separate from Prompt", async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
     render(<MvpDrawing onSubmit={onSubmit} />);

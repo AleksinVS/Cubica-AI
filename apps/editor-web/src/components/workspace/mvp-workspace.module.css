@@ -7,13 +7,13 @@
 .preview :global(.preview-wireframe-host) { padding-top: 86px; }
 .projectBar { display: flex; align-items: center; gap: 12px; border-top: 1px solid #e3e3df; background: #fff; padding: 0 14px; min-width: 0; font-size: 13px; }
 .projectBar select { min-width: 0; max-width: 240px; border: 0; background: transparent; color: inherit; min-height: 44px; }
-.stateLabel { color: #777970; white-space: nowrap; }
+.stateLabel { color: #666b60; white-space: nowrap; }
 .versionActions { margin-left: auto; display: flex; gap: 4px; }
 .shell button { cursor: pointer; }
 .versionActions button, .conversations button, .saveDialog button { min-height: 44px; min-width: 44px; border: 1px solid transparent; border-radius: 6px; background: transparent; padding: 8px 12px; color: inherit; }
 .versionActions button:hover, .conversations button:hover { background: #f2f2ed; }
 .shell button:disabled { cursor: default; opacity: .45; }
-.shell button:focus-visible, .shell select:focus-visible, .shell input:focus-visible { outline: 2px solid #465fc4; outline-offset: 2px; }
+.shell button:focus-visible, .shell select:focus-visible, .shell input:focus-visible, .shell textarea:focus-visible { outline: 2px solid #465fc4; outline-offset: 2px; }
 .notices { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); max-width: min(640px, calc(100% - 24px)); z-index: 24; font-size: 13px; }
 .notices p { padding: 10px 14px; background: #fff; border: 1px solid #dddcd4; border-radius: 8px; box-shadow: 0 4px 20px #24272b10; }
 .notices button { border: 0; background: transparent; min-width: 36px; min-height: 36px; }
