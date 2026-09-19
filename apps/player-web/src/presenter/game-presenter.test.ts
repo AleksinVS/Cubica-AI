@@ -1079,6 +1079,7 @@ describe("GamePresenter debug pause", () => {
     });
     await pending;
     expect(presenter.playerState.debugPaused).toBe(true);
+    expect(presenter.sessionSnapshot?.debugPaused).toBe(true);
     await presenter.handleSurfaceAction({ id: "turn", kind: "agentTurn", target: "turn.advance", sideEffectPolicy: "system-approved" });
     expect(turn).not.toHaveBeenCalled();
     // A later authoritative resume, e.g. from another tab, overrides our ack.
@@ -1086,17 +1087,22 @@ describe("GamePresenter debug pause", () => {
     await presenter.refreshSession();
     expect(presenter.playerState.debugPaused).toBe(false);
   });
-  it("rejects normal sessions, wrong preview sessions and incomplete full-preview restoration before network calls", async () => {
+  it("rejects normal sessions and wrong preview control while allowing authenticated old-origin restore", async () => {
     const initial = turnSession("p1");
     const client = vi.spyOn(debugClient, "runEditorDebugCommand");
     const normal = await bootPresenterWithSession(initial);
     expect(await normal.presenter.handleEditorDebugCommand(command)).toMatchObject({ ok: false });
     const preview = await bootPresenterWithSession(initial, initial, true);
     expect(await preview.presenter.handleEditorDebugCommand({ ...command, sessionId: "foreign" })).toMatchObject({ ok: false });
-    expect(await preview.presenter.handleEditorDebugCommand({
-      source: command.source, type: command.type, protocolVersion: 1, requestId: "restore", sessionId: initial.sessionId,
-      operation: "restore", checkpointId: "saved"
-    })).toMatchObject({ ok: false });
     expect(client).not.toHaveBeenCalled();
+    client.mockResolvedValue({ source: "cubica-player-web", type: "debugSessionResult", protocolVersion: 1,
+      requestId: "restore", sessionId: "old-origin", ok: true, operation: "restore",
+      data: { sessionId: "new-session", paused: true, version: { sessionId: "new-session", stateVersion: 1, lastEventSequence: 0 } } });
+    expect(await preview.presenter.handleEditorDebugCommand({
+      source: command.source, type: command.type, protocolVersion: 1, requestId: "restore", sessionId: "old-origin",
+      operation: "restore", checkpointId: "saved"
+    })).toMatchObject({ ok: true });
+    expect(client).toHaveBeenCalledOnce();
+    expect(preview.presenter.sessionSnapshot?.sessionId).toBe(initial.sessionId);
   });
 });

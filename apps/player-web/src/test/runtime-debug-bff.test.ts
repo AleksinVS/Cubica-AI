@@ -44,17 +44,26 @@ describe("debug BFF", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it("rejects all checkpoint operations even with a valid browser cookie while AB3 is open", async () => {
-    const fetchMock = vi.fn();
+  it("forwards checkpoint CRUD through origin authentication and installs restored credential only in HttpOnly cookie", async () => {
+    const fetchMock = vi.fn().mockImplementation(async (url: string | URL) => String(url).endsWith("/restore")
+      ? new Response(JSON.stringify({ sessionId: "restored", credential: "new-secret", debugPaused: true, state: { public: {} } }))
+      : new Response(JSON.stringify({ checkpoints: [] })));
     vi.stubGlobal("fetch", fetchMock);
-    const responses = await Promise.all([
-      GET(request("GET"), context(["checkpoints"])),
-      POST(request("POST"), context(["checkpoints"])),
-      DELETE(request("DELETE"), context(["checkpoints", "saved"])),
-      POST(request("POST"), context(["checkpoints", "saved", "restore"]))
-    ]);
-    expect(responses.map(response => response.status)).toEqual([404, 404, 404, 404]);
-    expect(fetchMock).not.toHaveBeenCalled();
+    const listed = await GET(request("GET"), context(["checkpoints"]));
+    expect(listed.status).toBe(200);
+    const saved = await POST(request("POST", true, '{"label":"First turn"}'), context(["checkpoints"]));
+    expect(saved.status).toBe(200);
+    const deleted = await DELETE(request("DELETE"), context(["checkpoints", "saved"]));
+    expect(deleted.status).toBe(200);
+    const restored = await POST(request("POST"), context(["checkpoints", "saved", "restore"]));
+    expect(restored.status).toBe(200);
+    const body = await restored.json();
+    expect(body).toMatchObject({ sessionId: "restored", debugPaused: true });
+    expect(body).not.toHaveProperty("credential");
+    expect(restored.headers.get("set-cookie")).toContain(runtimeCredentialCookieName("restored"));
+    expect(restored.headers.get("set-cookie")).toContain("HttpOnly");
+    expect(restored.headers.get("set-cookie")).not.toContain(runtimeCredentialCookieName("origin"));
+    expect(fetchMock.mock.calls.every(([, init]) => new Headers(init.headers).get("Authorization") === "Bearer origin-secret")).toBe(true);
   });
 
   it("rejects oversized commands before forwarding", async () => {

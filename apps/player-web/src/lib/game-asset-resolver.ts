@@ -59,8 +59,9 @@ export function createEmptyGameAssetResolver(): GameAssetResolver {
 export function loadGameAssetResolver(input: {
   readonly runtimeApiUrl: string;
   readonly gameId: string;
+  readonly contentSourceId?: string;
 }): Promise<GameAssetResolver> {
-  const cacheKey = `${input.runtimeApiUrl}:${input.gameId}`;
+  const cacheKey = JSON.stringify([input.runtimeApiUrl, input.gameId, input.contentSourceId ?? null]);
   const cached = resolverCache.get(cacheKey);
   if (cached !== undefined) {
     return cached;
@@ -73,9 +74,10 @@ export function loadGameAssetResolver(input: {
   const indexUrl = new URL(
     `/game-assets/${encodeURIComponent(input.gameId)}/index.json`,
     input.runtimeApiUrl
-  ).toString();
+  );
+  if (input.contentSourceId !== undefined) indexUrl.searchParams.set("contentSourceId", input.contentSourceId);
   const pending = Promise.resolve()
-    .then(() => fetch(indexUrl))
+    .then(() => fetch(indexUrl.toString()))
     .then(async (response) => {
       if (!response.ok) {
         return createEmptyGameAssetResolver();

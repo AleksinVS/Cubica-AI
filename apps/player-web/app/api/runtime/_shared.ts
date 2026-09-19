@@ -134,7 +134,8 @@ export async function forwardAuthenticatedRuntimeRequest(
   request: NextRequest,
   sessionId: string,
   path: string,
-  init: RequestInit
+  init: RequestInit,
+  mapResponse: (response: Response) => Promise<Response> = proxyRuntimeResponse
 ): Promise<Response> {
   const credential = request.cookies.get(runtimeCredentialCookieName(sessionId))?.value;
   if (!credential) {
@@ -146,7 +147,7 @@ export async function forwardAuthenticatedRuntimeRequest(
 
   const headers = new Headers(init.headers);
   headers.set("Authorization", `Bearer ${credential}`);
-  return forwardRuntimeRequest(path, { ...init, headers });
+  return mapResponse(await requestRuntime(path, { ...init, headers }));
 }
 
 /**

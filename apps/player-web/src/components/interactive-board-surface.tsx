@@ -30,6 +30,8 @@ import {
   type InteractiveBoardSceneHandle
 } from "@/plugins/phaser-scene-registry";
 
+import { createPreviewScenePause } from "@/lib/preview-renderer-pause";
+
 import styles from "./interactive-board-surface.module.css";
 import type { PlayerLayoutMode } from "@/lib/player-layout-mode";
 
@@ -63,6 +65,7 @@ export function InteractiveBoardSurface({
 }) {
   const surfaceRef = useRef<HTMLElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const applyDebugPauseRef = useRef<((paused: boolean) => void) | null>(null);
   const handleRef = useRef<InteractiveBoardSceneHandle | null>(null);
   const sessionRef = useRef(session);
   const dispatchRef = useRef(dispatchAction);
@@ -91,7 +94,9 @@ export function InteractiveBoardSurface({
   sessionRef.current = session;
   dispatchRef.current = dispatchAction;
   previewTransportRoadRef.current = previewTransportRoad;
-  isPendingRef.current = isPending;
+  isPendingRef.current = isPending || session.debugPaused === true;
+
+  useEffect(() => { applyDebugPauseRef.current?.(session.debugPaused === true); }, [session.debugPaused]);
 
   /**
    * Record the browser-visible part of an action without adding React state or
@@ -256,6 +261,11 @@ export function InteractiveBoardSurface({
           },
           scene: handle.scene
         });
+        const applyDebugPause = createPreviewScenePause(game);
+        applyDebugPauseRef.current = applyDebugPause;
+        // PRE_STEP precedes every scene update, including a scene started while paused.
+        game.events.on(Phaser.Core.Events.PRE_STEP, () => applyDebugPause(sessionRef.current.debugPaused === true));
+        applyDebugPause(sessionRef.current.debugPaused === true);
         // Keep the selected renderer observable for performance diagnostics.
         // AUTO may choose the slower Canvas fallback on a device where WebGL
         // is unavailable; recording that fact avoids blaming game rules or the
@@ -332,6 +342,7 @@ export function InteractiveBoardSurface({
 
     return () => {
       cancelled = true;
+      applyDebugPauseRef.current = null;
       resizeObserver?.disconnect();
       if (handleRef.current === handle) {
         handleRef.current = null;

@@ -53,7 +53,8 @@ export async function runEditorDebugCommand(
         if (snapshot.debugPaused !== true || snapshot.sessionId === command.sessionId) {
           throw new Error("Сервер не подтвердил новую сессию в паузе.");
         }
-        data = { sessionId: snapshot.sessionId, paused: true, version: snapshot.version };
+        // Confirm the restored session is ready before parent navigation.
+        data = await requestDebug(snapshot.sessionId, "");
         break;
       }
     }
@@ -62,6 +63,10 @@ export async function runEditorDebugCommand(
     if (response.ok && (response.operation === "status" || response.operation === "pause" || response.operation === "resume") &&
       (response.data.sessionId !== command.sessionId || response.data.version.sessionId !== command.sessionId)) {
       throw new Error("Ответ относится к другой отладочной сессии.");
+    }
+    if (response.ok && response.operation === "restore" &&
+      (response.data.sessionId === command.sessionId || response.data.version.sessionId !== response.data.sessionId || !response.data.paused)) {
+      throw new Error("Сервер не подтвердил восстановление отдельной сессии в паузе.");
     }
     return response;
   } catch (error) {

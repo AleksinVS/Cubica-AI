@@ -1,5 +1,6 @@
 "use client";
 
+import { pausePreviewDom } from "@/lib/preview-renderer-pause";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import type {
@@ -150,7 +151,7 @@ export function GamePlayer({
 
     let cancelled = false;
     setGameAssets(null);
-    void loadGameAssetResolver({ runtimeApiUrl, gameId: content.gameId }).then((resolver) => {
+    void loadGameAssetResolver({ runtimeApiUrl, gameId: content.gameId, contentSourceId }).then((resolver) => {
       if (!cancelled) {
         setGameAssets(resolver);
       }
@@ -158,7 +159,7 @@ export function GamePlayer({
     return () => {
       cancelled = true;
     };
-  }, [content.gameId, needsGameAssets, runtimeApiUrl]);
+  }, [content.gameId, contentSourceId, needsGameAssets, runtimeApiUrl]);
 
   // Game-owned stylesheets (ADR-091): inject a <link> per declared asset:<id>
   // once the asset resolver is loaded, and remove them on unmount/reload. The
@@ -190,15 +191,7 @@ export function GamePlayer({
   useEffect(() => {
     const root = rootRef.current;
     if (!root || playerState?.debugPaused !== true) return;
-    root.setAttribute("data-debug-paused", "true");
-    const animations = typeof root.getAnimations === "function"
-      ? root.getAnimations({ subtree: true }).filter(animation => animation.playState === "running")
-      : [];
-    animations.forEach(animation => animation.pause());
-    return () => {
-      root.removeAttribute("data-debug-paused");
-      animations.forEach(animation => { if (animation.playState === "paused") animation.play(); });
-    };
+    return pausePreviewDom(root);
   }, [playerState?.debugPaused]);
   const previewSessionSnapshot = useMemo<EditorPreviewSessionSnapshot | undefined>(() => {
     const snapshot = presenterRef.current?.sessionSnapshot;
