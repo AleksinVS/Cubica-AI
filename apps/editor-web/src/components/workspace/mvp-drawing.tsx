@@ -65,6 +65,9 @@ export interface MvpDrawingProps {
 
 const MAX_FILE_BYTES = 8 * 1024 * 1024;
 const ACCEPTED_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
+const DRAWING_STROKE_WIDTH_RATIO = 0.006;
+const ANNOTATION_FONT_SIZE = 20;
+const ANNOTATION_LINE_HEIGHT = 26;
 
 type MarkHistoryEntry =
   | { readonly kind: "stroke"; readonly id: number }
@@ -470,6 +473,13 @@ export function MvpDrawing({
   };
 
   const drawFramePoint = (point: MvpDrawingPoint) => toFramePoint(point, frame, surfaceSize);
+  const svgWidth = Math.max(1, surfaceSize.width);
+  const svgHeight = Math.max(1, surfaceSize.height);
+  const strokeWidth = Math.min(svgWidth, svgHeight) * DRAWING_STROKE_WIDTH_RATIO;
+  const drawPixelPoint = (point: MvpDrawingPoint) => {
+    const framePoint = drawFramePoint(point);
+    return { x: framePoint.x * svgWidth, y: framePoint.y * svgHeight };
+  };
   const visibleStrokes = [...strokes, ...(activePoints.length ? [{ id: -1, points: activePoints }] : [])];
 
   return (
@@ -494,7 +504,7 @@ export function MvpDrawing({
       <svg
         ref={svgRef}
         className={styles.canvas}
-        viewBox="0 0 1 1"
+        viewBox={`0 0 ${svgWidth} ${svgHeight}`}
         preserveAspectRatio="none"
         role="img"
         aria-label="Холст рисования"
@@ -505,17 +515,29 @@ export function MvpDrawing({
         onLostPointerCapture={discardActiveStroke}
       >
         {visibleStrokes.map((stroke) => {
-          const points = stroke.points.map(drawFramePoint);
+          const points = stroke.points.map(drawPixelPoint);
           const d = points.map((point, index) => `${index ? "L" : "M"}${point.x} ${point.y}`).join(" ");
           return points.length > 1 ? (
-            <path key={`stroke-${stroke.id}`} className={styles.stroke} d={d} pathLength={1} />
+            <path key={`stroke-${stroke.id}`} className={styles.stroke} d={d} pathLength={1} style={{ strokeWidth }} />
           ) : (
-            <circle key={`stroke-${stroke.id}`} className={styles.strokeDot} cx={points[0]?.x ?? 0} cy={points[0]?.y ?? 0} r=".006" />
+            <circle key={`stroke-${stroke.id}`} className={styles.strokeDot} cx={points[0]?.x ?? 0} cy={points[0]?.y ?? 0} r={strokeWidth} style={{ strokeWidth }} />
           );
         })}
         {annotations.map((annotation) => {
-          const point = toFramePoint({ x: annotation.x, y: annotation.y }, frame, surfaceSize);
-          return <text key={`annotation-${annotation.id}`} className={styles.annotation} x={point.x} y={point.y}>{annotation.text}</text>;
+          const point = drawPixelPoint({ x: annotation.x, y: annotation.y });
+          return (
+            <text
+              key={`annotation-${annotation.id}`}
+              className={styles.annotation}
+              x={point.x}
+              y={point.y}
+              fontSize={`${ANNOTATION_FONT_SIZE}px`}
+            >
+              {annotation.text.split("\n").map((line, index) => (
+                <tspan key={`${annotation.id}-${index}`} x={point.x} dy={index === 0 ? 0 : ANNOTATION_LINE_HEIGHT}>{line}</tspan>
+              ))}
+            </text>
+          );
         })}
       </svg>
 

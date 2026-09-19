@@ -46,21 +46,23 @@
   stroke: var(--drawing-ink);
   stroke-linecap: round;
   stroke-linejoin: round;
-  stroke-width: .006;
+  filter: drop-shadow(0 0 1px rgba(255, 255, 255, .88));
 }
 
 .strokeDot {
   fill: var(--drawing-ink);
+  filter: drop-shadow(0 0 1px rgba(255, 255, 255, .88));
 }
 
 .annotation {
-  fill: #fff;
-  font-size: .06;
+  fill: var(--drawing-ink);
+  font-size: 20px;
   font-weight: 600;
   paint-order: stroke;
   pointer-events: none;
-  stroke: var(--drawing-ink);
-  stroke-width: .0009;
+  stroke: #fff;
+  stroke-linejoin: round;
+  stroke-width: 3px;
 }
 
 .toolbar {

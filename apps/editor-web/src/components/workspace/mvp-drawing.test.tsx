@@ -153,6 +153,39 @@ describe("MvpDrawing", () => {
     expect(document.activeElement).toBe(launcher);
   });
 
+  it("renders pixel-sized multiline annotations in the measured SVG viewport", () => {
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
+      left: 0,
+      top: 0,
+      width: 320,
+      height: 180,
+      right: 320,
+      bottom: 180,
+      x: 0,
+      y: 0,
+      toJSON: () => ({})
+    } as DOMRect);
+    render(<MvpDrawing onSubmit={vi.fn().mockResolvedValue(undefined)} />);
+    drawOneStroke();
+
+    act(() => (container?.querySelector("button[aria-label='Открыть ввод промта']") as HTMLButtonElement).click());
+    act(() => setTextareaValue("Button\nLine 2"));
+    act(() => (container?.querySelector("button[aria-label='Добавить текст на рисунок']") as HTMLButtonElement).click());
+
+    const svg = container?.querySelector("svg");
+    const path = container?.querySelector("path");
+    const text = container?.querySelector("text");
+    if (!(svg instanceof SVGSVGElement) || !(path instanceof SVGPathElement) || !(text instanceof SVGTextElement)) {
+      throw new Error("drawing annotation was not rendered");
+    }
+    expect(svg.getAttribute("viewBox")).toBe("0 0 320 180");
+    expect(path.getAttribute("d")).toBe("M24 36 L84 72");
+    expect(text.getAttribute("font-size")).toBe("20px");
+    expect(text.querySelectorAll("tspan")).toHaveLength(2);
+    expect(text.querySelector("tspan")?.textContent).toBe("Button");
+    expect(text.querySelectorAll("tspan")[1]?.getAttribute("dy")).toBe("26");
+  });
+
   it("keeps Text separate from Prompt", async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
     render(<MvpDrawing onSubmit={onSubmit} />);
