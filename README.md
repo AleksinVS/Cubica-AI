@@ -3,12 +3,14 @@
 Монорепозиторий платформы Cubica: сервисы, SDK, игры, скрипты и документация.
 
 ## Быстрый старт
+
 - Общий обзор и целевая архитектура: `PROJECT_OVERVIEW.md`.
 - Структура репозитория: `PROJECT_STRUCTURE.yaml`.
 - Стратегия планирования: `docs/tasks/STRATEGY.md`.
 - Текущие приоритеты: `NEXT_STEPS.md`.
 - Правила задач и передачи артефактов: `docs/tasks/README.md`.
 - Ручные debug-скрипты: `scripts/debug/README.md`.
+- Запуск MVP редактора: [локальная инструкция](docs/processes/service-recovery-runbook.md#локальная-проверка-mvp-редактора).
 - Локальная браузерная диагностика: `docs/processes/local-browser-diagnostics.md`.
 
 ## Разработка на Windows
