@@ -46,8 +46,16 @@ export type EditorDebugBridgeResponse =
           checkpointId: string;
           label: string;
           createdAt: string;
-          expiresAt: string;
           sourceStateVersion: number;
+          compatibility: "compatible" | "incompatible" | "unavailable";
+          compatibilityReason?:
+            | "state-model"
+            | "participants"
+            | "schedule"
+            | "storage-bindings"
+            | "content-unavailable"
+            | "rules-unavailable"
+            | "runtime-policy";
         }[];
       };
     }
@@ -99,8 +107,16 @@ export type EditorDebugBridgeResponse =
         checkpointId: string;
         label: string;
         createdAt: string;
-        expiresAt: string;
         sourceStateVersion: number;
+        compatibility: "compatible" | "incompatible" | "unavailable";
+        compatibilityReason?:
+          | "state-model"
+          | "participants"
+          | "schedule"
+          | "storage-bindings"
+          | "content-unavailable"
+          | "rules-unavailable"
+          | "runtime-policy";
       };
     }
   | {

@@ -14,6 +14,7 @@ import { InMemorySessionStore } from "../src/modules/session/inMemorySessionStor
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const fixtureRoot = path.join(repoRoot, ".tmp", "game-assets-runtime-test");
+const previewRoot = path.join(repoRoot, ".tmp", "game-assets-preview-runtime-test");
 const gameId = "test-game";
 const assetsRoot = path.join(fixtureRoot, "games", gameId, "assets");
 const publishedRoot = path.join(fixtureRoot, "games", gameId, "published");
@@ -36,6 +37,7 @@ let baseUrl = "";
 
 before(async () => {
   await rm(fixtureRoot, { recursive: true, force: true });
+  await rm(previewRoot, { recursive: true, force: true });
   await mkdir(assetsRoot, { recursive: true });
   await writeFile(svgPath, '<svg viewBox="0 0 10 10"><path d="M0 0h10v10z"/></svg>');
   await writeFile(path.join(assetsRoot, "token.png"), Buffer.from([0x89, 0x50, 0x4e, 0x47]));
@@ -71,6 +73,7 @@ before(async () => {
 after(async () => {
   await runtimeApi.close();
   await rm(fixtureRoot, { recursive: true, force: true });
+  await rm(previewRoot, { recursive: true, force: true });
 });
 
 test("GET asset index is stable and uses content-addressed URLs", async () => {
@@ -149,6 +152,34 @@ test("serves published stylesheet as text/css with an immutable cache", async ()
   assert.equal(response.headers.get("cache-control"), "public, max-age=31536000, immutable");
   assert.equal(response.headers.get("x-content-type-options"), "nosniff");
   assert.equal(await response.text(), stylesheetCss);
+});
+
+test("preview asset index and delivery use the registered source for images and rewritten CSS", async () => {
+  const previewAssets = path.join(previewRoot, "games", gameId, "assets");
+  await mkdir(path.join(previewAssets, "styles"), { recursive: true });
+  await writeFile(path.join(previewAssets, "board.svg"), '<svg viewBox="0 0 1 1"><circle r="1"/></svg>');
+  await writeFile(path.join(previewAssets, "styles", "theme.css"), '.board{background:url(asset:board)}\n');
+  await writeFile(path.join(previewAssets, "assets.json"), JSON.stringify({ gameId, assets: [
+    { id: "board", file: "board.svg", kind: "image", origin: { type: "authored-in-repo" } }
+  ], stylesheets: [
+    { id: "theme", file: "styles/theme.css", kind: "css", origin: { type: "authored-in-repo" } }
+  ] }));
+  assetContentService.registerLocalContentRoot("editor-source", previewRoot);
+  const response = await fetch(`${baseUrl}/game-assets/${gameId}/index.json?contentSourceId=editor-source`);
+  const index = await response.json() as GameAssetIndex;
+  assert.equal(response.status, 200);
+  assert.match(index.assets.board.url, /contentSourceId=editor-source$/u);
+  assert.match(index.assets.theme.url, /contentSourceId=editor-source$/u);
+  const image = await fetch(`${baseUrl}${index.assets.board.url}`);
+  assert.equal(image.status, 200);
+  assert.match(await image.text(), /circle/u);
+  const stylesheet = await fetch(`${baseUrl}${index.assets.theme.url}`);
+  assert.equal(stylesheet.status, 200);
+  assert.equal(await stylesheet.text(), `.board{background:url("${index.assets.board.url}")}\n`);
+  assert.equal((await fetch(`${baseUrl}${index.assets.board.url.replace("editor-source", "missing-source")}`)).status, 404);
+  const publishedIndex = await (await fetch(`${baseUrl}/game-assets/${gameId}/index.json`)).json() as GameAssetIndex;
+  assert.notEqual(publishedIndex.assets.board.url, index.assets.board.url);
+  assert.equal(publishedIndex.assets.theme.url, `/game-stylesheets/${gameId}/theme/${stylesheetHash}.css`);
 });
 
 test("stylesheet route returns 404 for unknown id and wrong hash", async () => {

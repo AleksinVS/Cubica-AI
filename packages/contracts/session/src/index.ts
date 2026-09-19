@@ -167,14 +167,29 @@ export interface CreateSessionInput<TState = unknown> {
 }
 
 /** Store-only timestamps; the canonical public metadata uses ISO strings. */
-export type StoredDebugCheckpointMetadata = Omit<DebugCheckpointMetadata, "createdAt" | "expiresAt"> & {
+export type StoredDebugCheckpointMetadata = Omit<DebugCheckpointMetadata, "createdAt" | "compatibility" | "compatibilityReason"> & {
   createdAt: Date;
-  expiresAt: Date;
 };
 
-export interface DebugCheckpointRestoreInput extends SessionAuthenticationInput {
+/** Protected store-only data. Never serialize this through a player or editor endpoint. */
+export interface DebugCheckpointSnapshot<TState = unknown> {
+  readonly metadata: StoredDebugCheckpointMetadata;
+  readonly sourceSessionId: string;
+  readonly gameId: string;
+  readonly bundleHash: string;
+  readonly contentSourceId: string;
+  readonly sessionRole?: SessionRecord<TState>["sessionRole"];
+  readonly participants: SessionRecord<TState>["participants"];
+  readonly state: TState;
+  readonly schedules: readonly SessionSystemSchedule[];
+}
+
+export interface DebugCheckpointRestoreInput<TState = unknown> extends SessionAuthenticationInput {
   checkpointId: string;
   principal: CreateSessionPrincipalInput;
+  targetImmutableBundle: CreateImmutableGameBundleInput;
+  targetContentSourceId: string;
+  validateCheckpoint: (checkpoint: DebugCheckpointSnapshot<TState>) => void;
 }
 
 export interface DebugCheckpointRestoreResult<TState = unknown> extends CreatedSession<TState> {
@@ -603,8 +618,12 @@ export interface SessionStorePort<TState = unknown> {
   setDebugPaused(input: SessionAuthenticationInput & { expectedStateVersion: number; paused: boolean }): Promise<SessionRecord<TState>>;
   saveDebugCheckpoint(input: SessionAuthenticationInput & { label: string }): Promise<DebugCheckpointMetadata>;
   listDebugCheckpoints(input: SessionAuthenticationInput): Promise<Array<DebugCheckpointMetadata>>;
+  inspectDebugCheckpoints(
+    input: SessionAuthenticationInput & { checkpointId?: string },
+    inspect: (checkpoint: DebugCheckpointSnapshot<TState>) => DebugCheckpointMetadata
+  ): Promise<Array<DebugCheckpointMetadata>>;
   deleteDebugCheckpoint(input: SessionAuthenticationInput & { checkpointId: string }): Promise<void>;
-  restoreDebugCheckpoint(input: DebugCheckpointRestoreInput): Promise<DebugCheckpointRestoreResult<TState>>;
+  restoreDebugCheckpoint(input: DebugCheckpointRestoreInput<TState>): Promise<DebugCheckpointRestoreResult<TState>>;
   getSession(sessionId: SessionId): Promise<SessionRecord<TState> | null>;
   /** Authenticate a live session from a credential digest without exposing it. */
   authenticateSession(input: SessionAuthenticationInput): Promise<SessionPrincipal | null>;

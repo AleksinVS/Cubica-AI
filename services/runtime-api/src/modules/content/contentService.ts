@@ -15,16 +15,22 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
 import AjvLib from "ajv";
 import addFormatsLib from "ajv-formats";
 import { loadGameBundle, type GameBundle, extractInitialState } from "./manifestLoader.ts";
 import { NotFoundError } from "../errors.ts";
 import type { IGameRepository } from "./repository.ts";
 import { LocalFileGameRepository } from "./localFileRepository.ts";
+import { HttpError } from "../errors.ts";
 
 const Ajv = (AjvLib as any).default || AjvLib;
 const addFormats = (addFormatsLib as any).default || addFormatsLib;
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../../../");
+const require = createRequire(import.meta.url);
+const { rewriteCssAssetTokens } = require("../../../../../scripts/manifest-tools/build-game-stylesheets.cjs") as {
+  rewriteCssAssetTokens: (css: string, imageIndex: ReadonlyMap<string, string>, label: string) => string;
+};
 const publishedBundleSchema = JSON.parse(readFileSync(
   path.join(repoRoot, "docs", "architecture", "schemas", "player-web-plugin-bundles.schema.json"),
   "utf8"
@@ -388,6 +394,7 @@ export class ContentService {
   private readonly localRepositoryFactory: (contentRoot: string) => IGameRepository;
   private readonly repositoriesBySourceId = new Map<string, IGameRepository>();
   private readonly contentSourceGenerations = new Map<string, number>();
+  private readonly contentSourceLeases = new Map<string, number>();
   private readonly playerWebPluginBundlesBySourceId = new Map<string, readonly LocalPlayerWebPluginBundle[]>();
   private readonly gameAssetHashCache = new Map<string, { readonly mtimeMs: number; readonly sha256: string }>();
   
@@ -413,10 +420,30 @@ export class ContentService {
     contentRoot: string,
     pluginBundles: readonly LocalPlayerWebPluginBundle[] = []
   ): void {
+    if ((this.contentSourceLeases.get(sourceId) ?? 0) > 0) {
+      throw new HttpError(409, "Preview content is in use by a checkpoint operation; retry compilation.");
+    }
     this.contentSourceGenerations.set(sourceId, this.contentSourceGeneration(sourceId) + 1);
     this.repositoriesBySourceId.set(sourceId, this.localRepositoryFactory(contentRoot));
     this.playerWebPluginBundlesBySourceId.set(sourceId, pluginBundles);
     this.clearBundleCache(undefined, sourceId);
+  }
+
+  async withStableLocalContentSource<T>(sourceId: string, operation: () => Promise<T>): Promise<T> {
+    this.repositoryForSource(sourceId);
+    const generation = this.contentSourceGeneration(sourceId);
+    this.contentSourceLeases.set(sourceId, (this.contentSourceLeases.get(sourceId) ?? 0) + 1);
+    try {
+      const result = await operation();
+      if (generation !== this.contentSourceGeneration(sourceId)) {
+        throw new HttpError(409, "Preview content changed during checkpoint operation.");
+      }
+      return result;
+    } finally {
+      const remaining = (this.contentSourceLeases.get(sourceId) ?? 1) - 1;
+      if (remaining) this.contentSourceLeases.set(sourceId, remaining);
+      else this.contentSourceLeases.delete(sourceId);
+    }
   }
 
   /**
@@ -444,7 +471,13 @@ export class ContentService {
 
       const repository = this.repositoryForSource(contentSourceId);
       const generation = this.contentSourceGeneration(contentSourceId);
-      const bundle = await loadGameBundle(gameId, repository);
+      let bundle: GameBundle;
+      try { bundle = await loadGameBundle(gameId, repository); }
+      catch (error) {
+        // A completed source swap may retire the directory this reader opened.
+        if (generation !== this.contentSourceGeneration(contentSourceId) || repository !== this.repositoryForSource(contentSourceId)) continue;
+        throw error;
+      }
       if (
         generation !== this.contentSourceGeneration(contentSourceId) ||
         repository !== this.repositoryForSource(contentSourceId)
@@ -600,22 +633,29 @@ export class ContentService {
    * (ADR-091). The player-web renderer and Phaser scenes resolve both through
    * this single index; an unknown id fails closed on the client.
    */
-  async getGameAssetIndex(gameId: string): Promise<GameAssetIndex> {
-    const registry = await this.loadGameAssetsRegistry(gameId);
+  async getGameAssetIndex(gameId: string, contentSourceId?: string): Promise<GameAssetIndex> {
+    const registry = await this.loadGameAssetsRegistry(gameId, contentSourceId);
     const imageEntries = await Promise.all(registry.assets.map(async (asset) => {
-      const sha256 = await this.getGameAssetHash(gameId, asset.file);
+      const sha256 = await this.getGameAssetHash(gameId, asset.file, undefined, contentSourceId);
       const extension = path.extname(asset.file).slice(1).toLowerCase();
       return [asset.id, {
-        url: `/game-assets/${encodeURIComponent(gameId)}/${encodeURIComponent(asset.id)}/${sha256}.${extension}`,
+        url: `/game-assets/${encodeURIComponent(gameId)}/${encodeURIComponent(asset.id)}/${sha256}.${extension}${this.sourceQuery(contentSourceId)}`,
         kind: asset.kind
       }] as const;
     }));
 
-    const stylesheetMetadata = await this.loadPublishedGameStylesheets(gameId);
-    const stylesheetEntries = stylesheetMetadata.map((stylesheet) => [
-      stylesheet.stylesheetId,
-      { url: stylesheet.url, kind: "css" as const }
-    ] as const);
+    const stylesheetEntries = contentSourceId === undefined
+      ? (await this.loadPublishedGameStylesheets(gameId)).map((stylesheet) => [
+        stylesheet.stylesheetId, { url: stylesheet.url, kind: "css" as const }
+      ] as const)
+      : await Promise.all((registry.stylesheets ?? []).map(async (stylesheet) => {
+        const text = await this.previewStylesheetSource(gameId, stylesheet.file, contentSourceId, imageEntries);
+        const hash = createHash("sha256").update(text, "utf8").digest("hex");
+        return [stylesheet.id, {
+          url: `/game-stylesheets/${encodeURIComponent(gameId)}/${encodeURIComponent(stylesheet.id)}/${hash}.css${this.sourceQuery(contentSourceId)}`,
+          kind: "css" as const
+        }] as const;
+      }));
 
     return { gameId, assets: Object.fromEntries([...imageEntries, ...stylesheetEntries]) };
   }
@@ -625,7 +665,20 @@ export class ContentService {
     readonly gameId: string;
     readonly stylesheetId: string;
     readonly contentHash: string;
+    readonly contentSourceId?: string;
   }): Promise<GameStylesheetDelivery> {
+    if (input.contentSourceId !== undefined) {
+      const registry = await this.loadGameAssetsRegistry(input.gameId, input.contentSourceId);
+      const stylesheet = registry.stylesheets?.find((candidate) => candidate.id === input.stylesheetId);
+      if (stylesheet === undefined) throw new NotFoundError("Game stylesheet was not found");
+      const index = await this.getGameAssetIndex(input.gameId, input.contentSourceId);
+      const imageEntries = Object.entries(index.assets).filter(([, asset]) => asset.kind === "image");
+      const text = await this.previewStylesheetSource(input.gameId, stylesheet.file, input.contentSourceId, imageEntries);
+      if (createHash("sha256").update(text, "utf8").digest("hex") !== input.contentHash) {
+        throw new NotFoundError("Game stylesheet was not found");
+      }
+      return { text, contentType: GAME_STYLESHEET_CONTENT_TYPE };
+    }
     const stylesheets = await this.loadPublishedGameStylesheets(input.gameId);
     const stylesheet = stylesheets.find((candidate) =>
       candidate.stylesheetId === input.stylesheetId &&
@@ -677,8 +730,9 @@ export class ContentService {
     readonly assetId: string;
     readonly contentHash: string;
     readonly extension: string;
+    readonly contentSourceId?: string;
   }): Promise<GameAssetFileDelivery> {
-    const registry = await this.loadGameAssetsRegistry(input.gameId);
+    const registry = await this.loadGameAssetsRegistry(input.gameId, input.contentSourceId);
     const asset = registry.assets.find((candidate) => candidate.id === input.assetId);
     if (asset === undefined) {
       throw new NotFoundError("Game asset was not found");
@@ -689,17 +743,17 @@ export class ContentService {
       throw new NotFoundError("Game asset was not found");
     }
 
-    const metadataBefore = await this.getGameAssetMetadataOrNotFound(input.gameId, asset.file);
-    const expectedHash = await this.getGameAssetHash(input.gameId, asset.file, metadataBefore.mtimeMs);
+    const metadataBefore = await this.getGameAssetMetadataOrNotFound(input.gameId, asset.file, input.contentSourceId);
+    const expectedHash = await this.getGameAssetHash(input.gameId, asset.file, metadataBefore.mtimeMs, input.contentSourceId);
     if (expectedHash !== input.contentHash) {
       throw new NotFoundError("Game asset was not found");
     }
 
-    const bytes = await this.getGameAssetBytesOrNotFound(input.gameId, asset.file);
-    const metadataAfter = await this.getGameAssetMetadataOrNotFound(input.gameId, asset.file);
-    if (metadataAfter.mtimeMs !== metadataBefore.mtimeMs) {
+    const bytes = await this.getGameAssetBytesOrNotFound(input.gameId, asset.file, input.contentSourceId);
+    const metadataAfter = await this.getGameAssetMetadataOrNotFound(input.gameId, asset.file, input.contentSourceId);
+    if (input.contentSourceId !== undefined || metadataAfter.mtimeMs !== metadataBefore.mtimeMs) {
       const actualHash = createHash("sha256").update(bytes).digest("hex");
-      this.gameAssetHashCache.set(`${input.gameId}:${asset.file}`, {
+      this.gameAssetHashCache.set(`${input.contentSourceId ?? "published"}:${input.gameId}:${asset.file}`, {
         mtimeMs: metadataAfter.mtimeMs,
         sha256: actualHash
       });
@@ -727,8 +781,8 @@ export class ContentService {
     return repository;
   }
 
-  private async loadGameAssetsRegistry(gameId: string): Promise<RootGameAssets> {
-    const raw = await this.repository.getGameAssetsRegistryRaw(gameId);
+  private async loadGameAssetsRegistry(gameId: string, contentSourceId?: string): Promise<RootGameAssets> {
+    const raw = await this.repositoryForSource(contentSourceId).getGameAssetsRegistryRaw(gameId);
     if (raw === undefined) {
       throw new NotFoundError(`Game assets for "${gameId}" were not found`);
     }
@@ -752,25 +806,25 @@ export class ContentService {
     return typedRegistry;
   }
 
-  private async getGameAssetHash(gameId: string, file: string, knownMtimeMs?: number): Promise<string> {
+  private async getGameAssetHash(gameId: string, file: string, knownMtimeMs?: number, contentSourceId?: string): Promise<string> {
     const metadata = knownMtimeMs === undefined
-      ? await this.getGameAssetMetadataOrNotFound(gameId, file)
+      ? await this.getGameAssetMetadataOrNotFound(gameId, file, contentSourceId)
       : { mtimeMs: knownMtimeMs };
-    const cacheKey = `${gameId}:${file}`;
+    const cacheKey = `${contentSourceId ?? "published"}:${gameId}:${file}`;
     const cached = this.gameAssetHashCache.get(cacheKey);
-    if (cached?.mtimeMs === metadata.mtimeMs) {
+    if (contentSourceId === undefined && cached?.mtimeMs === metadata.mtimeMs) {
       return cached.sha256;
     }
 
-    const bytes = await this.getGameAssetBytesOrNotFound(gameId, file);
+    const bytes = await this.getGameAssetBytesOrNotFound(gameId, file, contentSourceId);
     const sha256 = createHash("sha256").update(bytes).digest("hex");
     this.gameAssetHashCache.set(cacheKey, { mtimeMs: metadata.mtimeMs, sha256 });
     return sha256;
   }
 
-  private async getGameAssetMetadataOrNotFound(gameId: string, file: string) {
+  private async getGameAssetMetadataOrNotFound(gameId: string, file: string, contentSourceId?: string) {
     try {
-      return await this.repository.getGameAssetFileMetadata(gameId, file);
+      return await this.repositoryForSource(contentSourceId).getGameAssetFileMetadata(gameId, file);
     } catch (error) {
       if (isMissingFileError(error)) {
         throw new NotFoundError("Game asset was not found");
@@ -779,15 +833,31 @@ export class ContentService {
     }
   }
 
-  private async getGameAssetBytesOrNotFound(gameId: string, file: string): Promise<Buffer> {
+  private async getGameAssetBytesOrNotFound(gameId: string, file: string, contentSourceId?: string): Promise<Buffer> {
     try {
-      return await this.repository.getGameAssetFileBytes(gameId, file);
+      return await this.repositoryForSource(contentSourceId).getGameAssetFileBytes(gameId, file);
     } catch (error) {
       if (isMissingFileError(error)) {
         throw new NotFoundError("Game asset was not found");
       }
       throw error;
     }
+  }
+
+  private sourceQuery(contentSourceId: string | undefined): string {
+    return contentSourceId === undefined ? "" : `?contentSourceId=${encodeURIComponent(contentSourceId)}`;
+  }
+
+  private async previewStylesheetSource(
+    gameId: string,
+    file: string,
+    contentSourceId: string,
+    imageEntries: ReadonlyArray<readonly [string, { readonly url: string; readonly kind: "image" | "css" }]>
+  ): Promise<string> {
+    const raw = await this.getGameAssetBytesOrNotFound(gameId, file, contentSourceId);
+    const imageIndex = new Map(imageEntries.filter(([, entry]) => entry.kind === "image")
+      .map(([id, entry]) => [id, entry.url] as const));
+    return rewriteCssAssetTokens(raw.toString("utf8"), imageIndex, file);
   }
 
   private bundleCacheKey(gameId: string, contentSourceId: string | undefined): string {

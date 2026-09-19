@@ -10,8 +10,8 @@ export const debugCheckpointMetadataSchema = {
     "checkpointId",
     "label",
     "createdAt",
-    "expiresAt",
-    "sourceStateVersion"
+    "sourceStateVersion",
+    "compatibility"
   ],
   "properties": {
     "checkpointId": {
@@ -27,13 +27,29 @@ export const debugCheckpointMetadataSchema = {
       "type": "string",
       "format": "date-time"
     },
-    "expiresAt": {
-      "type": "string",
-      "format": "date-time"
-    },
     "sourceStateVersion": {
       "type": "integer",
       "minimum": 0
+    },
+    "compatibility": {
+      "type": "string",
+      "enum": [
+        "compatible",
+        "incompatible",
+        "unavailable"
+      ]
+    },
+    "compatibilityReason": {
+      "type": "string",
+      "enum": [
+        "state-model",
+        "participants",
+        "schedule",
+        "storage-bindings",
+        "content-unavailable",
+        "rules-unavailable",
+        "runtime-policy"
+      ]
     }
   },
   "additionalProperties": false

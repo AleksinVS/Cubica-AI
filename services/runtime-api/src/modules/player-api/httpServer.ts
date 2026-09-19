@@ -284,7 +284,9 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
       if (gameAssetIndexMatch) {
         const gameId = gameAssetIndexMatch[1];
         assertGameId(gameId, "gameId");
-        const index = await assetContentService.getGameAssetIndex(gameId);
+        const contentSourceId = requestUrl.searchParams.get("contentSourceId") ?? undefined;
+        if (contentSourceId !== undefined) assertContentSourceId(contentSourceId, "contentSourceId");
+        const index = await assetContentService.getGameAssetIndex(gameId, contentSourceId);
         response.writeHead(200, {
           "Access-Control-Allow-Origin": "*",
           "Cache-Control": "no-cache",
@@ -301,7 +303,9 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
       if (gameAssetFileMatch) {
         const [, gameId, assetId, contentHash, extension] = gameAssetFileMatch;
         assertGameId(gameId, "gameId");
-        const delivery = await assetContentService.getGameAssetFile({ gameId, assetId, contentHash, extension });
+        const contentSourceId = requestUrl.searchParams.get("contentSourceId") ?? undefined;
+        if (contentSourceId !== undefined) assertContentSourceId(contentSourceId, "contentSourceId");
+        const delivery = await assetContentService.getGameAssetFile({ gameId, assetId, contentHash, extension, contentSourceId });
         response.writeHead(200, {
           "Access-Control-Allow-Origin": "*",
           "Cache-Control": "public, max-age=31536000, immutable",
@@ -341,7 +345,9 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
       if (gameStylesheetMatch) {
         const [, gameId, stylesheetId, contentHash] = gameStylesheetMatch;
         assertGameId(gameId, "gameId");
-        const delivery = await assetContentService.getGameStylesheetSource({ gameId, stylesheetId, contentHash });
+        const contentSourceId = requestUrl.searchParams.get("contentSourceId") ?? undefined;
+        if (contentSourceId !== undefined) assertContentSourceId(contentSourceId, "contentSourceId");
+        const delivery = await assetContentService.getGameStylesheetSource({ gameId, stylesheetId, contentHash, contentSourceId });
         response.writeHead(200, {
           "Access-Control-Allow-Origin": "*",
           "Cache-Control": "public, max-age=31536000, immutable",

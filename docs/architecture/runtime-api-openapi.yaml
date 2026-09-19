@@ -227,6 +227,9 @@
         "parameters": [
           {
             "$ref": "#/components/parameters/GameId"
+          },
+          {
+            "$ref": "#/components/parameters/OptionalContentSourceId"
           }
         ],
         "responses": {
@@ -239,6 +242,9 @@
                 }
               }
             }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
           },
           "404": {
             "$ref": "#/components/responses/NotFound"
@@ -267,6 +273,9 @@
           },
           {
             "$ref": "#/components/parameters/AssetExtension"
+          },
+          {
+            "$ref": "#/components/parameters/OptionalContentSourceId"
           }
         ],
         "responses": {
@@ -278,6 +287,9 @@
               "image/webp": { "schema": { "type": "string", "format": "binary" } },
               "image/svg+xml": { "schema": { "type": "string", "format": "binary" } }
             }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
           },
           "404": {
             "$ref": "#/components/responses/NotFound"
@@ -303,6 +315,9 @@
           },
           {
             "$ref": "#/components/parameters/ContentHash"
+          },
+          {
+            "$ref": "#/components/parameters/OptionalContentSourceId"
           }
         ],
         "responses": {
@@ -1477,7 +1492,7 @@
             "type": "string"
           },
           "kind": {
-            "const": "image"
+            "enum": ["image", "css"]
           }
         }
       },
@@ -1626,13 +1641,14 @@
         "additionalProperties": false
       },
       "DebugCheckpointMetadata": {
-        "type": "object", "required": ["checkpointId", "label", "createdAt", "expiresAt", "sourceStateVersion"],
+        "type": "object", "required": ["checkpointId", "label", "createdAt", "sourceStateVersion", "compatibility"],
         "properties": {
           "checkpointId": { "type": "string", "format": "uuid" },
           "label": { "type": "string", "minLength": 1, "maxLength": 120 },
           "createdAt": { "type": "string", "format": "date-time" },
-          "expiresAt": { "type": "string", "format": "date-time" },
-          "sourceStateVersion": { "type": "integer", "minimum": 0 }
+          "sourceStateVersion": { "type": "integer", "minimum": 0 },
+          "compatibility": { "type": "string", "enum": ["compatible", "incompatible", "unavailable"] },
+          "compatibilityReason": { "type": "string", "enum": ["state-model", "participants", "schedule", "storage-bindings", "content-unavailable", "rules-unavailable", "runtime-policy"] }
         }, "additionalProperties": false
       },
       "DebugCheckpointListResponse": {

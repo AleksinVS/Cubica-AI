@@ -54,6 +54,9 @@ test("PostgreSQL state, command receipt and event ledger survive a store restart
     path.resolve(testDirectory, "../migrations/007_editor_debug_sessions.up.sql"),
     "utf8"
   );
+  const migration008 = await readFile(
+    path.resolve(testDirectory, "../migrations/008_debug_checkpoints_without_expiry.up.sql"), "utf8"
+  );
   const setupPool = new Pool(isolatedPoolConfig);
   await setupPool.query(migration001);
   await setupPool.query(migration002);
@@ -62,6 +65,7 @@ test("PostgreSQL state, command receipt and event ledger survive a store restart
   await setupPool.query(migration005);
   await setupPool.query(migration006);
   await setupPool.query(migration007);
+  await setupPool.query(migration008);
   await setupPool.end();
 
   const firstPool = new Pool(isolatedPoolConfig);
@@ -255,6 +259,8 @@ test("PostgreSQL state, command receipt and event ledger survive a store restart
     sessionId: created.session.sessionId,
     credentialSha256,
     checkpointId: saved.checkpointId,
+    targetImmutableBundle: immutableBundle, targetContentSourceId: "preview-source",
+    validateCheckpoint: () => {},
     principal: {
       principalId: randomUUID(), kind: "local-controller", role: "facilitator",
       actorScope: { kind: "all-session-actors" }, credentialSha256: "8".repeat(64)
@@ -274,10 +280,8 @@ test("PostgreSQL state, command receipt and event ledger survive a store restart
     sessionId: restoredFork.session.sessionId, credentialSha256: "8".repeat(64), label: "live fork"
   });
   await thirdPool.query(
-    `UPDATE debug_session_checkpoints
-     SET created_at = NOW() - INTERVAL '2 seconds', expires_at = NOW() - INTERVAL '1 second'
-     WHERE checkpoint_id = $1`, [saved.checkpointId]
-  );
+    `UPDATE debug_session_checkpoints SET created_at = NOW() - INTERVAL '30 days'
+     WHERE checkpoint_id = $1`, [saved.checkpointId]);
   await assert.rejects(thirdStore.listDebugCheckpoints({
     sessionId: restoredFork.session.sessionId, credentialSha256
   }));
@@ -291,7 +295,7 @@ test("PostgreSQL state, command receipt and event ledger survive a store restart
   assert.equal((await thirdPool.query(
     "SELECT count(*)::integer AS count FROM debug_session_checkpoints WHERE checkpoint_id = $1",
     [saved.checkpointId]
-  )).rows[0].count, 0);
+  )).rows[0].count, 1);
   await thirdPool.query("DELETE FROM game_sessions WHERE id = $1", [restoredFork.session.sessionId]);
   await thirdPool.query("DELETE FROM game_sessions WHERE id = $1", [created.session.sessionId]);
   await thirdPool.query("DELETE FROM game_sessions WHERE id = $1", [privateCreated.session.sessionId]);

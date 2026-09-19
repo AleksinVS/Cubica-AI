@@ -224,17 +224,107 @@ test("PostgreSQL saves only metadata publicly while persisting protected checkpo
   });
   const store = new PostgresSessionStore<Record<string, unknown>>(new ScriptedPool(client));
   const saved = await store.saveDebugCheckpoint({ sessionId, credentialSha256, label: "turn two" });
-  assert.deepEqual(Object.keys(saved).sort(), ["checkpointId", "createdAt", "expiresAt", "label", "sourceStateVersion"]);
+  assert.deepEqual(Object.keys(saved).sort(), ["checkpointId", "compatibility", "compatibilityReason", "createdAt", "label", "sourceStateVersion"]);
   assert.equal(validateDebugCheckpointMetadata(saved), true);
   assert.equal(typeof saved.createdAt, "string");
-  const cleanup = client.queries.find(({ text }) => text.includes("DELETE FROM debug_session_checkpoints"));
-  assert.match(cleanup?.text ?? "", /expires_at <= \$1[\s\S]*LIMIT 100 FOR UPDATE SKIP LOCKED/u);
-  assert.equal(cleanup?.values?.length, 1);
-  assert.ok(cleanup?.values?.[0] instanceof Date);
+  assert.equal(client.queries.some(({ text }) => text.includes("DELETE FROM debug_session_checkpoints")), false);
   assert.equal(JSON.stringify(saved).includes("never-public"), false);
   const payload = String(client.queries.find(({ text }) => text.includes("INSERT INTO debug_session_checkpoints"))?.values?.[7]);
   assert.match(payload, /never-public/u);
   assert.match(payload, /"nextOccurrence":2/u);
+  assert.equal(firstSqlWord(client.queries.at(-1)?.text ?? ""), "COMMIT");
+});
+
+test("PostgreSQL inspection reads metadata IDs first and only one protected payload at a time", async () => {
+  const firstId = "44444444-4444-4444-8444-444444444444";
+  const secondId = "55555555-5555-4555-8555-555555555555";
+  const ids = [firstId, secondId];
+  const client = new ScriptedClient((text, values) => {
+    if (text.includes("FOR UPDATE")) return result([{ ...persistedRow, debug_paused: true }]);
+    if (text.includes("FROM session_principals")) return result([principalRow]);
+    if (text.includes("SELECT checkpoint_id FROM debug_session_checkpoints")) {
+      return result(ids.filter((id) => values?.[1] === undefined || id === values[1])
+        .map((checkpoint_id) => ({ checkpoint_id })));
+    }
+    if (text.includes("SELECT payload FROM debug_session_checkpoints")) {
+      const id = String(values?.[1]);
+      return result([{ payload: { metadata: { checkpointId: id, label: id, createdAt: now,
+        sourceStateVersion: 4 }, state: { secret: { seed: "never-public" } } } }]);
+    }
+    return result([]);
+  });
+  const store = new PostgresSessionStore<Record<string, unknown>>(new ScriptedPool(client));
+  const inspect = (checkpoint: { metadata: { checkpointId: string; createdAt: Date; sourceStateVersion: number } }) => ({
+    checkpointId: checkpoint.metadata.checkpointId,
+    label: checkpoint.metadata.checkpointId,
+    createdAt: checkpoint.metadata.createdAt.toISOString(),
+    sourceStateVersion: checkpoint.metadata.sourceStateVersion,
+    compatibility: "unavailable" as const,
+    compatibilityReason: "content-unavailable" as const
+  });
+  const list = await store.inspectDebugCheckpoints({ sessionId, credentialSha256 }, inspect);
+  assert.deepEqual(list.map((entry) => entry.checkpointId), ids);
+  assert.equal(JSON.stringify(list).includes("never-public"), false);
+  const queries = client.queries.filter(({ text }) => text.includes("debug_session_checkpoints"));
+  assert.equal(queries.length, 3);
+  assert.doesNotMatch(queries[0]!.text, /payload/u);
+  assert.equal(queries.slice(1).every(({ text }) => /SELECT payload FROM/u.test(text)), true);
+  assert.equal(firstSqlWord(client.queries.at(-1)?.text ?? ""), "COMMIT");
+
+  client.queries.length = 0;
+  const one = await store.inspectDebugCheckpoints({ sessionId, credentialSha256, checkpointId: secondId }, inspect);
+  assert.deepEqual(one.map((entry) => entry.checkpointId), [secondId]);
+  assert.equal(client.queries.filter(({ text }) => text.includes("SELECT payload FROM")).length, 1);
+});
+
+test("PostgreSQL restore validates before writing and rebinds accepted schedules to the current bundle", async () => {
+  const target = createImmutableBundleContent("fixture-game", { revision: 2 });
+  const savedPoint = {
+    metadata: { checkpointId: "44444444-4444-4444-8444-444444444444", label: "old",
+      createdAt: now, sourceStateVersion: 4 },
+    sourceSessionId: sessionId, gameId: "fixture-game", bundleHash,
+    contentSourceId: "editor-source", sessionRole: "facilitator",
+    participants: persistedRow.participants, state: persistedRow.state,
+    schedules: [systemSchedule({ maxOccurrences: 3, nextOccurrence: 2 })]
+  };
+  const checkpointRow = { checkpoint_id: savedPoint.metadata.checkpointId,
+    source_session_id: sessionId, label: "old", created_at: now, expires_at: null,
+    source_state_version: "4", payload: savedPoint };
+  const client = new ScriptedClient((text, values) => {
+    if (text.includes("FOR UPDATE")) return result([{ ...persistedRow, debug_paused: true }]);
+    if (text.includes("FROM session_principals")) return result([principalRow]);
+    if (text.includes("FROM debug_session_checkpoints")) return result([checkpointRow]);
+    if (text.includes("INSERT INTO game_bundles")) return result([{ ...bundleRow,
+      bundle_hash: target.bundleHash, canonical_bytes: target.canonicalBytes,
+      canonical_bundle: target.canonicalBundle }], 1);
+    if (text.includes("INSERT INTO game_sessions")) return result([{
+      ...persistedRow, session_id: values?.[0], bundle_hash: target.bundleHash,
+      debug_paused: true, state_version: "0", last_event_sequence: "0"
+    }], 1);
+    if (text.includes("INSERT INTO session_principals")) return result([{
+      ...principalRow, principal_id: values?.[0], session_id: values?.[1]
+    }], 1);
+    if (text.includes("INSERT INTO system_schedules")) return result([], 1);
+    return result([]);
+  });
+  const store = new PostgresSessionStore<Record<string, unknown>>(new ScriptedPool(client));
+  const input = {
+    sessionId, credentialSha256, checkpointId: savedPoint.metadata.checkpointId,
+    targetImmutableBundle: target, targetContentSourceId: "editor-source",
+    principal: { principalId: "55555555-5555-4555-8555-555555555555", kind: "local-controller" as const,
+      role: "facilitator" as const, actorScope: { kind: "all-session-actors" as const },
+      credentialSha256: "8".repeat(64) }
+  };
+  await assert.rejects(store.restoreDebugCheckpoint({ ...input, validateCheckpoint: () => {
+    throw new Error("model rejected");
+  } }), /model rejected/u);
+  assert.equal(client.queries.some(({ text }) => text.includes("INSERT INTO game_bundles")), false);
+  assert.equal(firstSqlWord(client.queries.at(-1)?.text ?? ""), "ROLLBACK");
+  client.queries.length = 0;
+  const restored = await store.restoreDebugCheckpoint({ ...input, validateCheckpoint: () => {} });
+  assert.equal(restored.session.bundleHash, target.bundleHash);
+  assert.equal(restored.session.debugPaused, true);
+  assert.equal(client.queries.find(({ text }) => text.includes("INSERT INTO system_schedules"))?.values?.[2], target.bundleHash);
   assert.equal(firstSqlWord(client.queries.at(-1)?.text ?? ""), "COMMIT");
 });
 
@@ -1323,7 +1413,8 @@ test("in-memory bundle is content-addressed and cannot be mutated through a read
 test("readiness checks every command-ledger table and required privileges", async () => {
   const pool = new ScriptedPool(
     new ScriptedClient(() => result([])),
-    () => result([{ writable: true, can_select: true, can_insert: true, can_update: true }])
+    () => result([{ writable: true, can_select: true, can_insert: true, can_update: true,
+      checkpoint_expiry_nullable: true }])
   );
   const store = new PostgresSessionStore(pool);
   await store.checkReadiness();

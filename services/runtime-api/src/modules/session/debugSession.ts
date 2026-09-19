@@ -1,5 +1,6 @@
 import type {
   StoredDebugCheckpointMetadata,
+  DebugCheckpointSnapshot,
   SessionPrincipal,
   SessionRecord,
   SessionSystemSchedule
@@ -8,19 +9,7 @@ import { DebugCheckpointTooLargeError, SessionAuthorizationError, SessionStoreUn
 
 export const DEBUG_CHECKPOINT_LIMIT = 20;
 export const DEBUG_CHECKPOINT_MAX_BYTES = 8 * 1024 * 1024;
-export const DEBUG_CHECKPOINT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-
-export interface ProtectedDebugCheckpoint<TState> {
-  readonly metadata: StoredDebugCheckpointMetadata;
-  readonly sourceSessionId: string;
-  readonly gameId: string;
-  readonly bundleHash: string;
-  readonly contentSourceId: string;
-  readonly sessionRole?: SessionRecord<TState>["sessionRole"];
-  readonly participants: SessionRecord<TState>["participants"];
-  readonly state: TState;
-  readonly schedules: readonly SessionSystemSchedule[];
-}
+export type ProtectedDebugCheckpoint<TState> = DebugCheckpointSnapshot<TState>;
 
 export function assertDebugController<TState>(session: SessionRecord<TState> | null, principal: SessionPrincipal | null): asserts session is SessionRecord<TState> {
   if (session?.contentSourceId === undefined || principal?.kind !== "local-controller") {
@@ -40,7 +29,6 @@ export function makeProtectedDebugCheckpoint<TState>(
   const checkpoint: ProtectedDebugCheckpoint<TState> = {
     metadata: {
       checkpointId, label, createdAt: now,
-      expiresAt: new Date(now.getTime() + DEBUG_CHECKPOINT_TTL_MS),
       sourceStateVersion: session.version.stateVersion
     },
     sourceSessionId: session.sessionId,

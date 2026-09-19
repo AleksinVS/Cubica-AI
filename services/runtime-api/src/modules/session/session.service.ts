@@ -36,6 +36,7 @@ import { assertStateMatchesModel } from "../mechanics/stateModel.ts";
 import { projectSessionActionAvailability } from "../runtime/actionAvailability.ts";
 import { processPendingSystemSchedules } from "../runtime/systemScheduler.ts";
 import { projectPlayerSessionState } from "./playerSessionProjection.ts";
+import { assessCheckpointCompatibility, requireCheckpointCompatibility } from "./checkpointCompatibility.ts";
 import {
   createLocalSessionAccess,
   createParticipantSessionAccess,
@@ -429,15 +430,53 @@ export class SessionService {
     if (normalized.length === 0 || normalized.length > 120) {
       throw new RequestValidationError("Checkpoint label must contain 1 to 120 characters.");
     }
-    return this.sessionStore.saveDebugCheckpoint({
+    const saved = await this.sessionStore.saveDebugCheckpoint({
       sessionId, credentialSha256: hashSessionCredential(accessToken), label: normalized
     });
+    const assessed = await this.assessDebugCheckpoints(sessionId, accessToken, saved.checkpointId);
+    if (assessed[0] === undefined) throw new HttpError(409, "Saved checkpoint changed before compatibility could be assessed.");
+    return assessed[0];
   }
 
   async listDebugCheckpoints(sessionId: SessionId, accessToken: string): Promise<Array<DebugCheckpointMetadata>> {
-    return this.sessionStore.listDebugCheckpoints({
-      sessionId, credentialSha256: hashSessionCredential(accessToken)
-    });
+    return this.assessDebugCheckpoints(sessionId, accessToken);
+  }
+
+  private async assessDebugCheckpoints(
+    sessionId: SessionId, accessToken: string, checkpointId?: string
+  ): Promise<Array<DebugCheckpointMetadata>> {
+    const credentialSha256 = hashSessionCredential(accessToken);
+    const source = await this.sessionStore.readDebugControl({ sessionId, credentialSha256 });
+    let previous: GameBundle | undefined;
+    try {
+      previous = await this.getPinnedBundle(source);
+    } catch { /* Protected checkpoint metadata remains listable if old rules cannot load. */ }
+    const inspect = (current: GameBundle | undefined) => this.sessionStore.inspectDebugCheckpoints(
+      { sessionId, credentialSha256, ...(checkpointId === undefined ? {} : { checkpointId }) },
+      (checkpoint) => {
+        const compatibility = current && previous
+          ? assessCheckpointCompatibility(checkpoint, previous, current)
+          : { compatibility: "unavailable" as const,
+              compatibilityReason: current ? "rules-unavailable" as const : "content-unavailable" as const };
+        return { checkpointId: checkpoint.metadata.checkpointId, label: checkpoint.metadata.label,
+          createdAt: new Date(checkpoint.metadata.createdAt).toISOString(),
+          sourceStateVersion: checkpoint.metadata.sourceStateVersion, ...compatibility };
+      }
+    );
+    let enteredSourceLease = false;
+    try {
+      return await contentService.withStableLocalContentSource(source.contentSourceId!, async () => {
+        enteredSourceLease = true;
+        let current: GameBundle | undefined;
+        try {
+          current = await contentService.getBundle(source.gameId, source.contentSourceId);
+        } catch { /* Missing current content makes the catalog unavailable, not lost. */ }
+        return inspect(current);
+      });
+    } catch (error) {
+      if (!enteredSourceLease && error instanceof NotFoundError) return inspect(undefined);
+      throw error;
+    }
   }
 
   async deleteDebugCheckpoint(sessionId: SessionId, accessToken: string, checkpointId: string): Promise<void> {
@@ -451,24 +490,33 @@ export class SessionService {
   ): Promise<CreateSessionResponse<RuntimeState>> {
     const credentialSha256 = hashSessionCredential(accessToken);
     const source = await this.sessionStore.readDebugControl({ sessionId, credentialSha256 });
-    let currentSourceBundle: GameBundle;
-    try {
-      currentSourceBundle = await contentService.getBundle(source.gameId, source.contentSourceId);
-    } catch {
-      throw new HttpError(409, "Editor preview content is unavailable; the saved run cannot be resumed safely.");
-    }
-    if (currentSourceBundle.bundleHash !== source.bundleHash) {
-      throw new HttpError(409, "Editor preview rules changed; the saved run cannot be resumed safely.");
-    }
     const access = await this.authenticateSessionIdentity(sessionId, accessToken);
     const localAccess = createLocalSessionAccess(access.principal.role);
-    const created = await this.sessionStore.restoreDebugCheckpoint({
-      sessionId,
-      credentialSha256,
-      checkpointId,
-      principal: localAccess.principal
+    let enteredStore = false;
+    const restore = async () => contentService.withStableLocalContentSource(source.contentSourceId!, async () => {
+        const currentBundle = await contentService.getBundle(source.gameId, source.contentSourceId);
+        const currentRole = currentBundle.manifest.config.sessionMode === "facilitated" ? "facilitator" : "player";
+        if (access.principal.role !== currentRole) throw new HttpError(409, "Saved controller role is incompatible with the current game model.");
+        const oldBundle = await this.getPinnedBundle(source);
+        enteredStore = true;
+        const restored = await this.sessionStore.restoreDebugCheckpoint({
+          sessionId, credentialSha256, checkpointId, principal: localAccess.principal,
+          targetImmutableBundle: toImmutableGameBundle(currentBundle),
+          targetContentSourceId: source.contentSourceId!,
+          validateCheckpoint: (checkpoint) => requireCheckpointCompatibility(checkpoint, oldBundle, currentBundle)
+        });
+        return { bundle: currentBundle, created: restored };
     });
-    const bundle = await this.getPinnedBundle(created.session);
+    let bundle: GameBundle;
+    let created: Awaited<ReturnType<typeof this.sessionStore.restoreDebugCheckpoint>>;
+    try {
+      ({ bundle, created } = await restore());
+    } catch (error) {
+      if (!enteredStore && error instanceof NotFoundError) {
+        throw new HttpError(409, "Current preview content is unavailable; saved state cannot be restored.");
+      }
+      throw error;
+    }
     const actorPlayerId = resolveSessionViewerActor(created.session, created.principal);
     return {
       sessionId: created.session.sessionId,

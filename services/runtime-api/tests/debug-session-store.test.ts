@@ -9,7 +9,6 @@ import {
   type SessionSystemSchedule
 } from "@cubica/contracts-session";
 import { createImmutableBundleContent } from "../src/modules/content/immutableBundle.ts";
-import { contentService } from "../src/modules/content/contentService.ts";
 import { InMemorySessionStore } from "../src/modules/session/inMemorySessionStore.ts";
 import { hashSessionCredential } from "../src/modules/session/sessionAuthentication.ts";
 import { processPendingSystemSchedules } from "../src/modules/runtime/systemScheduler.ts";
@@ -127,11 +126,12 @@ test("paused checkpoint forks full hidden state, pinned rules and schedule progr
   const saved = await store.saveDebugCheckpoint({ sessionId, credentialSha256: digest, label: "current run" });
   assert.equal(validateDebugCheckpointMetadata(saved), true);
   assert.equal(typeof saved.createdAt, "string");
-  assert.equal(typeof saved.expiresAt, "string");
+  assert.equal(saved.compatibility, "unavailable");
   assert.equal(saved.sourceStateVersion, 2);
   assert.equal((await store.listDebugCheckpoints({ sessionId, credentialSha256: digest })).length, 1);
   const restored = await store.restoreDebugCheckpoint({
     sessionId, credentialSha256: digest, checkpointId: saved.checkpointId,
+    targetImmutableBundle: bundle, targetContentSourceId: "editor-preview", validateCheckpoint: () => {},
     principal: { principalId: randomUUID(), kind: "local-controller", role: "player",
       actorScope: { kind: "all-session-actors" }, credentialSha256: replacementDigest }
   });
@@ -165,10 +165,56 @@ test("debug store requires a preview local controller and enforces saved-point b
   await assert.rejects(store.saveDebugCheckpoint({ sessionId, credentialSha256: digest, label: "overflow" }), DebugCheckpointLimitError);
 });
 
-test("authenticated activity sweeps expired checkpoints across sessions without touching live foreign points", async () => {
+test("in-memory inspection visits only the requested snapshot and cannot mutate the saved state", async () => {
+  const { store, sessionId } = await fixture();
+  await store.setDebugPaused({ sessionId, credentialSha256: digest, expectedStateVersion: 0, paused: true });
+  await store.saveDebugCheckpoint({ sessionId, credentialSha256: digest, label: "other" });
+  const target = await store.saveDebugCheckpoint({ sessionId, credentialSha256: digest, label: "target" });
+  let inspected = 0;
+  const entries = await store.inspectDebugCheckpoints(
+    { sessionId, credentialSha256: digest, checkpointId: target.checkpointId },
+    (snapshot) => {
+      inspected += 1;
+      assert.equal(snapshot.metadata.checkpointId, target.checkpointId);
+      snapshot.state.secret.seed = "mutated-copy";
+      return target;
+    }
+  );
+  assert.equal(inspected, 1);
+  assert.deepEqual(entries, [target]);
+  const again = await store.inspectDebugCheckpoints(
+    { sessionId, credentialSha256: digest, checkpointId: target.checkpointId },
+    (snapshot) => {
+      assert.equal(snapshot.state.secret.seed, "hidden-rng-stream");
+      return target;
+    }
+  );
+  assert.deepEqual(again, [target]);
+  await assert.rejects(store.inspectDebugCheckpoints(
+    { sessionId, credentialSha256: replacementDigest }, () => target
+  ));
+});
+
+test("saving one checkpoint inspects only its new snapshot", async () => {
+  const { store, sessionId } = await fixture();
+  await store.setDebugPaused({ sessionId, credentialSha256: digest, expectedStateVersion: 0, paused: true });
+  await store.saveDebugCheckpoint({ sessionId, credentialSha256: digest, label: "older" });
+  const inspectedIds: Array<string | undefined> = [];
+  const originalInspect = store.inspectDebugCheckpoints.bind(store);
+  store.inspectDebugCheckpoints = async (input, inspect) => {
+    inspectedIds.push(input.checkpointId);
+    return originalInspect(input, inspect);
+  };
+  const service = new SessionService({ sessionStore: store as never });
+  const saved = await service.saveDebugCheckpoint(sessionId, accessToken, "new");
+  assert.deepEqual(inspectedIds, [saved.checkpointId]);
+  assert.equal(saved.compatibility, "unavailable");
+});
+
+test("authenticated activity preserves old checkpoints across sessions without revealing foreign points", async () => {
   const { store, sessionId, bundle } = await fixture();
   await store.setDebugPaused({ sessionId, credentialSha256: digest, expectedStateVersion: 0, paused: true });
-  const expired = await store.saveDebugCheckpoint({ sessionId, credentialSha256: digest, label: "old" });
+  const older = await store.saveDebugCheckpoint({ sessionId, credentialSha256: digest, label: "old" });
   const foreign = await store.createSession({
     gameId: "neutral-debug-fixture", contentSourceId: "editor-preview", participants,
     initialState: { public: { step: 1 }, secret: { seed: "other" } }, immutableBundle: bundle,
@@ -180,13 +226,13 @@ test("authenticated activity sweeps expired checkpoints across sessions without 
     expectedStateVersion: 0, paused: true });
   const live = await store.saveDebugCheckpoint({ sessionId: foreignId, credentialSha256: replacementDigest, label: "live" });
   const stored = (store as unknown as {
-    debugCheckpoints: Map<string, { metadata: { expiresAt: Date } }>;
+    debugCheckpoints: Map<string, { metadata: { createdAt: Date } }>;
   }).debugCheckpoints;
-  stored.get(expired.checkpointId)!.metadata.expiresAt = new Date(0);
+  stored.get(older.checkpointId)!.metadata.createdAt = new Date(0);
   await assert.rejects(store.listDebugCheckpoints({ sessionId: foreignId, credentialSha256: digest }));
-  assert.equal(stored.has(expired.checkpointId), true);
+  assert.equal(stored.has(older.checkpointId), true);
   await store.listDebugCheckpoints({ sessionId: foreignId, credentialSha256: replacementDigest });
-  assert.equal(stored.has(expired.checkpointId), false);
+  assert.equal(stored.has(older.checkpointId), true);
   assert.equal(stored.has(live.checkpointId), true);
 });
 
@@ -206,39 +252,58 @@ test("checkpoint size rejects complete protected payload above 8 MiB", async () 
   assert.deepEqual(await store.listDebugCheckpoints({ sessionId, credentialSha256: digest }), []);
 });
 
-test("expired checkpoint is hidden and cannot be restored", async () => {
-  const { store, sessionId } = await fixture();
+test("old checkpoint remains available and can be restored", async () => {
+  const { store, sessionId, bundle } = await fixture();
   await store.setDebugPaused({ sessionId, credentialSha256: digest, expectedStateVersion: 0, paused: true });
-  const saved = await store.saveDebugCheckpoint({ sessionId, credentialSha256: digest, label: "expires" });
+  const saved = await store.saveDebugCheckpoint({ sessionId, credentialSha256: digest, label: "old" });
   const stored = (store as unknown as {
-    debugCheckpoints: Map<string, { metadata: { expiresAt: Date } }>;
+    debugCheckpoints: Map<string, { metadata: { createdAt: Date } }>;
   }).debugCheckpoints.get(saved.checkpointId)!;
-  stored.metadata.expiresAt = new Date(0);
-  assert.deepEqual(await store.listDebugCheckpoints({ sessionId, credentialSha256: digest }), []);
-  await assert.rejects(store.restoreDebugCheckpoint({
+  stored.metadata.createdAt = new Date(0);
+  assert.equal((await store.listDebugCheckpoints({ sessionId, credentialSha256: digest })).length, 1);
+  const restored = await store.restoreDebugCheckpoint({
     sessionId, credentialSha256: digest, checkpointId: saved.checkpointId,
+    targetImmutableBundle: bundle, targetContentSourceId: "editor-preview", validateCheckpoint: () => {},
     principal: { principalId: randomUUID(), kind: "local-controller", role: "player",
       actorScope: { kind: "all-session-actors" }, credentialSha256: replacementDigest }
-  }), /not found/u);
+  });
+  assert.equal(restored.session.debugPaused, true);
 });
 
-test("restore rejects changed preview rules before creating any fork", async () => {
+test("compatible restore atomically pins current rules and rejects validation before creating a fork", async () => {
+  const { store, sessionId } = await fixture();
+  await store.setDebugPaused({ sessionId, credentialSha256: digest, expectedStateVersion: 0, paused: true });
+  const saved = await store.saveDebugCheckpoint({ sessionId, credentialSha256: digest, label: "old model" });
+  const current = createImmutableBundleContent("neutral-debug-fixture", { changed: true });
+  const sessions = (store as unknown as { sessions: Map<string, unknown> }).sessions;
+  const count = sessions.size;
+  const input = {
+    sessionId, credentialSha256: digest, checkpointId: saved.checkpointId,
+    targetImmutableBundle: current, targetContentSourceId: "editor-preview",
+    principal: { principalId: randomUUID(), kind: "local-controller" as const, role: "player" as const,
+      actorScope: { kind: "all-session-actors" as const }, credentialSha256: replacementDigest }
+  };
+  await assert.rejects(store.restoreDebugCheckpoint({ ...input, validateCheckpoint: () => {
+    throw new Error("current model rejects saved state");
+  } }), /current model rejects/u);
+  assert.equal(sessions.size, count);
+  const restored = await store.restoreDebugCheckpoint({ ...input,
+    validateCheckpoint: (checkpoint) => assert.equal(checkpoint.bundleHash !== current.bundleHash, true) });
+  assert.equal(restored.session.bundleHash, current.bundleHash);
+  assert.deepEqual(restored.session.state, { public: { step: 1 }, secret: { seed: "hidden-rng-stream" } });
+  assert.equal((await store.getSession(sessionId))?.bundleHash === current.bundleHash, false);
+});
+
+test("restore rejects unavailable current preview before creating any fork", async () => {
   const { store, sessionId } = await fixture();
   await store.setDebugPaused({ sessionId, credentialSha256: digest, expectedStateVersion: 0, paused: true });
   const saved = await store.saveDebugCheckpoint({ sessionId, credentialSha256: digest, label: "old rules" });
-  const original = contentService.getBundle;
   const sessions = (store as unknown as { sessions: Map<string, unknown> }).sessions;
   const countBefore = sessions.size;
-  contentService.getBundle = async (gameId) => ({
-    gameId, bundleHash: "cubica-bundle-v1:sha256:" + "0".repeat(64), manifest: {} as never
-  });
-  try {
-    const service = new SessionService({ sessionStore: store as never });
-    await assert.rejects(service.restoreDebugCheckpoint(sessionId, accessToken, saved.checkpointId), /rules changed/u);
-    assert.equal(sessions.size, countBefore);
-  } finally {
-    contentService.getBundle = original;
-  }
+  const service = new SessionService({ sessionStore: store as never });
+  await assert.rejects(service.restoreDebugCheckpoint(sessionId, accessToken, saved.checkpointId),
+    /Current preview content is unavailable/u);
+  assert.equal(sessions.size, countBefore);
 });
 
 

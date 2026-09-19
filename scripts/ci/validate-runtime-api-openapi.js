@@ -782,16 +782,19 @@ function validateEditorDebugContract(spec) {
     }
   }
   const metadata = schemas.DebugCheckpointMetadata;
-  const allowedMetadata = ["checkpointId", "createdAt", "expiresAt", "label", "sourceStateVersion"];
+  const allowedMetadata = ["checkpointId", "compatibility", "compatibilityReason", "createdAt", "label", "sourceStateVersion"];
+  const requiredMetadata = ["checkpointId", "compatibility", "createdAt", "label", "sourceStateVersion"];
   if (metadata?.type !== "object" || metadata.additionalProperties !== false ||
       JSON.stringify(Object.keys(metadata.properties ?? {}).sort()) !== JSON.stringify(allowedMetadata) ||
-      JSON.stringify([...(metadata.required ?? [])].sort()) !== JSON.stringify(allowedMetadata) ||
+      JSON.stringify([...(metadata.required ?? [])].sort()) !== JSON.stringify(requiredMetadata) ||
       metadata.properties.checkpointId?.format !== "uuid" ||
       metadata.properties.createdAt?.type !== "string" ||
       metadata.properties.createdAt?.format !== "date-time" ||
-      metadata.properties.expiresAt?.type !== "string" ||
       metadata.properties.sourceStateVersion?.minimum !== 0 ||
-      metadata.properties.expiresAt?.format !== "date-time") {
+      JSON.stringify(metadata.properties.compatibility?.enum) !== JSON.stringify(["compatible", "incompatible", "unavailable"]) ||
+      JSON.stringify(metadata.properties.compatibilityReason?.enum) !== JSON.stringify([
+        "state-model", "participants", "schedule", "storage-bindings", "content-unavailable", "rules-unavailable", "runtime-policy"
+      ])) {
     fail("DebugCheckpointMetadata must expose only the closed public metadata shape");
   }
   const list = schemas.DebugCheckpointListResponse;

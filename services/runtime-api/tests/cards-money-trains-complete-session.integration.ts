@@ -116,7 +116,8 @@ const migrationPaths = [
   path.join(repoRoot, "services", "runtime-api", "migrations", "004_session_participants.up.sql"),
   path.join(repoRoot, "services", "runtime-api", "migrations", "005_session_event_metric_changes.up.sql"),
   path.join(repoRoot, "services", "runtime-api", "migrations", "006_session_ai_debriefs.up.sql"),
-  path.join(repoRoot, "services", "runtime-api", "migrations", "007_editor_debug_sessions.up.sql")
+  path.join(repoRoot, "services", "runtime-api", "migrations", "007_editor_debug_sessions.up.sql"),
+  path.join(repoRoot, "services", "runtime-api", "migrations", "008_debug_checkpoints_without_expiry.up.sql")
 ];
 const databaseUrl = process.env.TEST_POSTGRES_DATABASE_URL;
 const transcript = await readTranscriptIfReady();

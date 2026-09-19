@@ -67,7 +67,7 @@ test("the published source cannot alias an explicit source named default", async
   assert.equal(preview.readCount("source-isolation"), 1);
 });
 
-test("an in-flight load cannot repopulate a replaced content source cache", async () => {
+for (const retiredWhileReading of [false, true]) test(`an in-flight load cannot repopulate a replaced content source cache (retired=${retiredWhileReading})`, async () => {
   const template = JSON.parse(await readFile(
     new URL("../../../games/simple-choice/game.manifest.json", import.meta.url),
     "utf8"
@@ -79,6 +79,7 @@ test("an in-flight load cannot repopulate a replaced content source cache", asyn
   const oldRepository = new CountingManifestRepository(template, "old", async () => {
     markEntered();
     await oldGate;
+    if (retiredWhileReading) throw Object.assign(new Error("retired root"), { code: "ENOENT" });
   });
   const newRepository = new CountingManifestRepository(template, "new");
   const repositories = new Map([
@@ -100,6 +101,29 @@ test("an in-flight load cannot repopulate a replaced content source cache", asyn
   const fresh = await service.getBundle("source-race", "preview");
   assert.equal(fresh.manifest.meta.description, "new");
   assert.equal(newRepository.readCount("source-race"), 1);
+});
+
+test("checkpoint source lease prevents a rebuild from replacing content before restore commits", async () => {
+  const template = JSON.parse(await readFile(
+    new URL("../../../games/simple-choice/game.manifest.json", import.meta.url), "utf8"
+  )) as Record<string, unknown>;
+  const repository = new CountingManifestRepository(template);
+  const service = new ContentService(repository, () => repository);
+  service.registerLocalContentRoot("editor-source", "old-root");
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => { release = resolve; });
+  let entered!: () => void;
+  const started = new Promise<void>((resolve) => { entered = resolve; });
+  const restore = service.withStableLocalContentSource("editor-source", async () => {
+    entered();
+    await held;
+  });
+  await started;
+  assert.throws(() => service.registerLocalContentRoot("editor-source", "new-root"),
+    /in use by a checkpoint operation/u);
+  release();
+  await restore;
+  service.registerLocalContentRoot("editor-source", "new-root");
 });
 
 test("player content projects the published AI debrief methodology without game-specific branches", async () => {

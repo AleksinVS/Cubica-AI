@@ -72,7 +72,8 @@ function toWireDebugCheckpointMetadata(metadata: StoredDebugCheckpointMetadata):
   return {
     ...metadata,
     createdAt: metadata.createdAt.toISOString(),
-    expiresAt: metadata.expiresAt.toISOString()
+    compatibility: "unavailable",
+    compatibilityReason: "content-unavailable"
   };
 }
 
@@ -90,7 +91,6 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
   private readonly lockWaiters = new Map<string, Set<() => void>>();
   private readonly debugCheckpoints = new Map<string, ProtectedDebugCheckpoint<TState>>();
   private readonly debugCheckpointIdsBySource = new Map<string, Set<string>>();
-  private debugCheckpointSweep?: IterableIterator<[string, ProtectedDebugCheckpoint<TState>]>;
 
   async createSession(command: CreateSessionInput<TState>): Promise<CreatedSession<TState>> {
     assertBundleInput(command);
@@ -183,10 +183,8 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
   ): Promise<DebugCheckpointMetadata> {
     return this.withSessionLock(input.sessionId, async () => {
       const current = this.requireDebugController(input);
-      this.removeExpiredDebugCheckpoints(new Date());
       if (!current.debugPaused) throw new HttpError(409, "Pause the preview before saving a checkpoint.");
       const now = new Date();
-      this.removeExpiredSourceCheckpoints(input.sessionId, now);
       if ((this.debugCheckpointIdsBySource.get(input.sessionId)?.size ?? 0) >= DEBUG_CHECKPOINT_LIMIT) {
         throw new DebugCheckpointLimitError();
       }
@@ -203,9 +201,6 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
   async listDebugCheckpoints(input: SessionAuthenticationInput): Promise<Array<DebugCheckpointMetadata>> {
     return this.withSessionLock(input.sessionId, async () => {
       this.requireDebugController(input);
-      const now = new Date();
-      this.removeExpiredDebugCheckpoints(now);
-      this.removeExpiredSourceCheckpoints(input.sessionId, now);
       return [...(this.debugCheckpointIdsBySource.get(input.sessionId) ?? [])]
         .map((id) => this.debugCheckpoints.get(id)!)
         .sort((left, right) => right.metadata.createdAt.getTime() - left.metadata.createdAt.getTime())
@@ -213,41 +208,57 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
     });
   }
 
+  async inspectDebugCheckpoints(
+    input: SessionAuthenticationInput & { checkpointId?: string },
+    inspect: (checkpoint: ProtectedDebugCheckpoint<TState>) => DebugCheckpointMetadata
+  ): Promise<Array<DebugCheckpointMetadata>> {
+    return this.withSessionLock(input.sessionId, async () => {
+      this.requireDebugController(input);
+      return [...(this.debugCheckpointIdsBySource.get(input.sessionId) ?? [])]
+        .map((id) => this.debugCheckpoints.get(id)!)
+        .filter((checkpoint) => input.checkpointId === undefined || checkpoint.metadata.checkpointId === input.checkpointId)
+        .sort((left, right) => right.metadata.createdAt.getTime() - left.metadata.createdAt.getTime())
+        .map((checkpoint) => inspect(clone(checkpoint)));
+    });
+  }
+
   async deleteDebugCheckpoint(input: SessionAuthenticationInput & { checkpointId: string }): Promise<void> {
     await this.withSessionLock(input.sessionId, async () => {
       this.requireDebugController(input);
-      this.removeExpiredDebugCheckpoints(new Date());
       const checkpoint = this.debugCheckpoints.get(input.checkpointId);
       if (checkpoint?.sourceSessionId === input.sessionId) this.deleteStoredCheckpoint(input.checkpointId, checkpoint);
     });
   }
 
-  async restoreDebugCheckpoint(input: DebugCheckpointRestoreInput): Promise<DebugCheckpointRestoreResult<TState>> {
+  async restoreDebugCheckpoint(input: DebugCheckpointRestoreInput<TState>): Promise<DebugCheckpointRestoreResult<TState>> {
     return this.withSessionLock(input.sessionId, async () => {
-      this.requireDebugController(input);
-      this.removeExpiredDebugCheckpoints(new Date());
+      const source = this.requireDebugController(input);
       const checkpoint = this.debugCheckpoints.get(input.checkpointId);
-      if (checkpoint?.sourceSessionId !== input.sessionId || checkpoint.metadata.expiresAt <= new Date()) {
+      if (checkpoint?.sourceSessionId !== input.sessionId) {
         throw new HttpError(404, "Debug checkpoint was not found.");
       }
-      const bundle = this.bundles.get(checkpoint.bundleHash);
-      if (bundle === undefined) throw new SessionStoreUnavailableError();
+      if (checkpoint.bundleHash !== source.bundleHash ||
+          checkpoint.contentSourceId !== source.contentSourceId ||
+          checkpoint.contentSourceId !== input.targetContentSourceId ||
+          checkpoint.gameId !== input.targetImmutableBundle.gameId) throw new SessionStoreUnavailableError();
+      input.validateCheckpoint(clone(checkpoint));
       const sourcePrincipal = this.findStoredPrincipal(input)?.principal;
       if (input.principal.kind !== "local-controller" || input.principal.role !== sourcePrincipal?.role) {
         throw new SessionStoreUnavailableError();
       }
       const created = await this.createSession({
         gameId: checkpoint.gameId,
-        contentSourceId: checkpoint.contentSourceId,
+        contentSourceId: input.targetContentSourceId,
         debugPaused: true,
         participants: checkpoint.participants,
         initialState: checkpoint.state,
         ...(checkpoint.sessionRole === undefined ? {} : { sessionRole: checkpoint.sessionRole }),
-        immutableBundle: bundle,
+        immutableBundle: input.targetImmutableBundle,
         principal: input.principal
       });
       for (const schedule of checkpoint.schedules) {
-        const rebound = { ...clone(schedule), sessionId: created.session.sessionId };
+        const rebound = { ...clone(schedule), sessionId: created.session.sessionId,
+          bundleHash: created.session.bundleHash };
         this.schedules.set(systemScheduleKey(rebound.sessionId, rebound.scheduleId), rebound);
       }
       return { ...created, checkpoint: toWireDebugCheckpointMetadata(checkpoint.metadata) };
@@ -634,26 +645,6 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
     if (current === undefined || principal === undefined) throw new SessionAuthenticationError();
     assertDebugController(current, principal);
     return current;
-  }
-
-  private removeExpiredDebugCheckpoints(now: Date): void {
-    this.debugCheckpointSweep ??= this.debugCheckpoints.entries();
-    for (let inspected = 0; inspected < 100; inspected += 1) {
-      const next = this.debugCheckpointSweep.next();
-      if (next.done) {
-        this.debugCheckpointSweep = undefined;
-        break;
-      }
-      const [id, checkpoint] = next.value;
-      if (checkpoint.metadata.expiresAt <= now) this.deleteStoredCheckpoint(id, checkpoint);
-    }
-  }
-
-  private removeExpiredSourceCheckpoints(sessionId: string, now: Date): void {
-    for (const id of this.debugCheckpointIdsBySource.get(sessionId) ?? []) {
-      const checkpoint = this.debugCheckpoints.get(id);
-      if (checkpoint && checkpoint.metadata.expiresAt <= now) this.deleteStoredCheckpoint(id, checkpoint);
-    }
   }
 
   private deleteStoredCheckpoint(id: string, checkpoint: ProtectedDebugCheckpoint<TState>): void {
