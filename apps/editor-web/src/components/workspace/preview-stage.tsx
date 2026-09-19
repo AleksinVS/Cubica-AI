@@ -6,7 +6,7 @@
  * otherwise it shows the empty state with a "Prepare preview" button.
  * Presentational: all state and handlers come from the {@link EditorWorkspaceController}.
  */
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { editorRu as t } from "@/lib/locale";
 import { PreviewSelectionOverlay } from "@/components/preview-selection-overlay";
@@ -17,6 +17,8 @@ import { PreviewModeBanner } from "@/components/workspace/preview-mode-banner";
 import { TelegramStructuralViewer, type TelegramStructuralSelection } from "@/components/workspace/telegram-structural-viewer";
 import { formatPreviewUnbuiltMessage } from "@/components/workspace/workspace-helpers";
 import { projectTelegramAuthoringManifest } from "@/lib/telegram-structural-projection";
+import { projectEditorWireframe, type EditorWireframeNode } from "@/lib/editor-wireframe-projection";
+import { EditorWireframe, type EditorWireframeSelection } from "./editor-wireframe";
 
 import type { EditorWorkspaceController } from "./use-editor-workspace.ts";
 
@@ -117,7 +119,18 @@ export function PreviewStage({ controller }: { controller: EditorWorkspaceContro
     [telegramDocument]
   );
 
-  const resolveTelegramEntityId = useCallback((sourceFilePath: string, sourcePointer: string): string | undefined => {
+  const webDocument = useMemo(
+    () => viewModel.entityProjectionDocuments.find((document) => document.documentKind === "ui" && document.channel === "web"),
+    [viewModel.entityProjectionDocuments]
+  );
+  const wireframeProjection = useMemo(
+    () => previewUrl === null && webDocument?.json !== undefined
+      ? projectEditorWireframe(webDocument.json, webDocument.filePath)
+      : null,
+    [previewUrl, webDocument]
+  );
+
+  const resolveSourceEntityId = useCallback((sourceFilePath: string, sourcePointer: string): string | undefined => {
     let pointer = sourcePointer;
     while (pointer !== "") {
       const entity = viewModel.editorEntityProjection.entitiesBySourcePointer
@@ -129,15 +142,35 @@ export function PreviewStage({ controller }: { controller: EditorWorkspaceContro
   }, [viewModel.editorEntityProjection.entitiesBySourcePointer]);
 
   const selectedTelegramSourcePointer = telegramProjection?.messages.flatMap((message) => [message, ...message.actions])
-    .find((item) => resolveTelegramEntityId(item.sourceFilePath, item.sourcePointer) === selectedPreviewEntityId)
+    .find((item) => resolveSourceEntityId(item.sourceFilePath, item.sourcePointer) === selectedPreviewEntityId)
     ?.sourcePointer;
+
+  const [wireframeSelection, setWireframeSelection] = useState<EditorWireframeSelection | null>(null);
+  const selectedWireframeSourcePointer = useMemo(() => {
+    // Incomplete nodes still receive visual selection even before the authoring
+    // projection can resolve a writable entity. Keep their exact source point.
+    if (wireframeSelection?.sourceFilePath === webDocument?.filePath && wireframeSelection !== null &&
+      resolveSourceEntityId(wireframeSelection.sourceFilePath, wireframeSelection.sourcePointer) === selectedPreviewEntityId) {
+      return wireframeSelection.sourcePointer;
+    }
+    if (selectedPreviewEntityId === undefined || wireframeProjection === null) return undefined;
+    const findSelected = (nodes: readonly EditorWireframeNode[]): string | undefined => {
+      for (const node of nodes) {
+        if (resolveSourceEntityId(node.sourceFilePath, node.sourcePointer) === selectedPreviewEntityId) return node.sourcePointer;
+        const child = findSelected(node.children);
+        if (child !== undefined) return child;
+      }
+      return undefined;
+    };
+    return findSelected(wireframeProjection.screens.flatMap(screen => screen.nodes));
+  }, [selectedPreviewEntityId, wireframeProjection, resolveSourceEntityId, wireframeSelection, webDocument?.filePath]);
 
   function handleTelegramSelection(selection: TelegramStructuralSelection) {
     if (telegramDocument === undefined) return;
     // Buttons are often facets of their containing component rather than a
     // standalone entity. Walk towards the document root until the entity
     // projection provides the nearest stable authoring owner.
-    const entityId = resolveTelegramEntityId(selection.sourceFilePath, selection.sourcePointer);
+    const entityId = resolveSourceEntityId(selection.sourceFilePath, selection.sourcePointer);
     if (entityId !== undefined) handleChannelEntitySelect(entityId);
   }
 
@@ -153,7 +186,7 @@ export function PreviewStage({ controller }: { controller: EditorWorkspaceContro
               projection={telegramProjection}
               selectedSourcePointer={selectedTelegramSourcePointer}
               onSelect={handleTelegramSelection}
-              resolveEditorEntityId={resolveTelegramEntityId}
+              resolveEditorEntityId={resolveSourceEntityId}
               inspectMode={effectivePreviewInspectMode}
               missingViewCallout={telegramMissingViewCallout}
             />
@@ -217,6 +250,30 @@ export function PreviewStage({ controller }: { controller: EditorWorkspaceContro
               }}
               onTemporaryPlayChange={handlePreviewTemporaryPlayChange}
             />
+          </div>
+        ) : wireframeProjection !== null ? (
+          <div className="preview-wireframe-host">
+            {previewBlockedPlate !== null ? (
+              <p role="status">{formatPreviewUnbuiltMessage(previewBlockedPlate.blockingErrorCount)}</p>
+            ) : null}
+            <EditorWireframe
+              projection={wireframeProjection}
+              selectedSourcePointer={selectedWireframeSourcePointer}
+              onSelect={(selection) => {
+                setWireframeSelection(selection);
+                const entityId = resolveSourceEntityId(selection.sourceFilePath, selection.sourcePointer);
+                if (entityId !== undefined) handleChannelEntitySelect(entityId);
+                else {
+                  handleInspectorClose();
+                  setSelectedPreviewEntityId(undefined);
+                }
+              }}
+            />
+            <button
+              type="button"
+              onClick={handlePreview}
+              disabled={currentDocument.source !== "repository" || isDirty || hasLocalSchemaBlockingDiagnostics || workflowState === "compiling" || workflowState === "previewing"}
+            >{t.previewStage.preparePreview}</button>
           </div>
         ) : previewBlockedPlate !== null && !previewBlockedPlate.hasLastValidSnapshot ? (
           // First compile is broken and there is NO valid snapshot to keep on

@@ -1,0 +1,230 @@
+.menu {
+  --mvp-menu-control: 44px;
+  --mvp-menu-ink: #202731;
+  --mvp-menu-active: #5374de;
+  --mvp-menu-surface: #ffffff;
+  align-items: center;
+  background: var(--mvp-menu-surface);
+  border: 1px solid rgba(32, 39, 49, 0.08);
+  border-radius: 16px;
+  box-shadow: 0 12px 28px rgba(26, 34, 46, 0.13), 0 2px 7px rgba(26, 34, 46, 0.08);
+  color: var(--mvp-menu-ink);
+  display: flex;
+  gap: 4px;
+  left: 50%;
+  max-width: calc(100vw - 16px);
+  padding: 6px;
+  position: fixed;
+  top: 16px;
+  transform: translateX(-50%);
+  z-index: 30;
+}
+
+.menu.isPositioned {
+  transform: none;
+}
+
+.mainControls {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  justify-content: center;
+  min-width: 0;
+}
+
+.secondaryControls {
+  align-items: center;
+  display: flex;
+  flex: 0 0 auto;
+  gap: 2px;
+}
+
+.control,
+.handle {
+  align-items: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  color: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  flex: 0 0 var(--mvp-menu-control);
+  height: var(--mvp-menu-control);
+  justify-content: center;
+  padding: 0;
+  position: relative;
+  transition: background-color 140ms ease, color 140ms ease, border-color 140ms ease;
+  width: var(--mvp-menu-control);
+}
+
+.control svg,
+.handle svg {
+  height: 22px;
+  width: 22px;
+}
+
+.control:hover,
+.control:focus-visible,
+.handle:hover,
+.handle:focus-visible {
+  background: #f0f3fb;
+  border-color: rgba(83, 116, 222, 0.2);
+  outline: none;
+}
+
+.control.isActive {
+  background: #e9edfc;
+  color: var(--mvp-menu-active);
+}
+
+.control:disabled {
+  color: #a2a9b4;
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.control:disabled:hover {
+  background: transparent;
+  border-color: transparent;
+}
+
+.handle {
+  color: #7f8998;
+  cursor: grab;
+  touch-action: none;
+}
+
+.handle:active {
+  cursor: grabbing;
+}
+
+.handle svg {
+  height: 18px;
+  width: 18px;
+}
+
+.pinButton.isPinned {
+  background: #e9edfc;
+  color: var(--mvp-menu-active);
+}
+
+.popover {
+  background: var(--mvp-menu-surface);
+  border: 1px solid rgba(32, 39, 49, 0.1);
+  border-radius: 14px;
+  box-shadow: 0 12px 28px rgba(26, 34, 46, 0.13), 0 2px 7px rgba(26, 34, 46, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  left: 50%;
+  max-height: min(420px, calc(100vh - 84px));
+  max-width: calc(100vw - 16px);
+  min-width: min(268px, calc(100vw - 32px));
+  overflow: auto;
+  padding: 14px;
+  position: absolute;
+  top: calc(100% + 8px);
+  transform: translateX(-50%);
+  width: max-content;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.group + .group {
+  border-top: 1px solid #edf0f4;
+  padding-top: 10px;
+}
+
+.groupTitle {
+  color: #6d7684;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin: 0 0 3px;
+  text-transform: uppercase;
+}
+
+.row,
+.saveButton {
+  align-items: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  color: var(--mvp-menu-ink);
+  cursor: pointer;
+  display: flex;
+  font-size: 13px;
+  justify-content: flex-start;
+  min-height: 44px;
+  padding: 5px 8px;
+  text-align: left;
+  width: 100%;
+}
+
+.row:hover,
+.row:focus-visible,
+.saveButton:hover,
+.saveButton:focus-visible {
+  background: #f0f3fb;
+  border-color: rgba(83, 116, 222, 0.2);
+  outline: none;
+}
+
+.saveButton {
+  border-color: #dfe4ec;
+  color: var(--mvp-menu-active);
+  font-weight: 650;
+  justify-content: center;
+  margin-top: 1px;
+}
+
+.saveButton:disabled {
+  color: #969eaa;
+  cursor: not-allowed;
+}
+
+.empty {
+  color: #7f8998;
+  font-size: 12px;
+  margin: 0;
+}
+
+@media (max-width: 420px) {
+  .menu[data-expanded="true"] {
+    align-items: stretch;
+    flex-wrap: wrap;
+    justify-content: center;
+    padding: 5px;
+    top: 8px;
+    width: calc(100vw - 16px);
+  }
+
+  .mainControls {
+    flex: 1 1 100%;
+    justify-content: center;
+  }
+
+  .secondaryControls {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .popover {
+    left: auto;
+    right: -1px;
+    transform: none;
+    width: min(288px, calc(100vw - 16px));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .control,
+  .handle {
+    transition: none;
+  }
+}

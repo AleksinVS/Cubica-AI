@@ -1762,9 +1762,9 @@ export function useEditorWorkspace() {
   }, [sidebarResizeState]);
 
   useEffect(() => {
-    // Telegram owns a separate same-origin DOM adapter. Its project entity ids
-    // are not expected in the Web iframe descriptor list.
-    if (previewChannel !== "web") {
+    // Structural channel viewers select authoring entities before an iframe
+    // exists; only a running Web preview owns the runtime descriptor list.
+    if (previewChannel !== "web" || previewUrl === null) {
       return;
     }
     if (selectedPreviewEntityId === undefined) {
@@ -1774,10 +1774,10 @@ export function useEditorWorkspace() {
     if (!previewEntities.some((entity) => entity.entityId === selectedPreviewEntityId)) {
       setSelectedPreviewEntityId(undefined);
     }
-  }, [previewChannel, previewEntities, selectedPreviewEntityId]);
+  }, [previewChannel, previewUrl, previewEntities, selectedPreviewEntityId]);
 
   useEffect(() => {
-    if (previewChannel !== "web") {
+    if (previewChannel !== "web" || previewUrl === null) {
       return;
     }
     const pointer = selectedNode?.pointer;
@@ -1797,7 +1797,7 @@ export function useEditorWorkspace() {
         setSelectedPreviewEntityId(undefined);
       }
     }
-  }, [previewChannel, previewEntities, selectedNode?.pointer, selectedPreviewEntityId]);
+  }, [previewChannel, previewUrl, previewEntities, selectedNode?.pointer, selectedPreviewEntityId]);
 
   const onNodesChange = useCallback((changes: NodeChange[]) => {
     setFlowNodes((nodes) => applyNodeChanges(changes, nodes));

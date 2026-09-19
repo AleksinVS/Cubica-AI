@@ -1,0 +1,244 @@
+.canvas {
+  --wireframe-ink: #252b35;
+  --wireframe-muted: #727b88;
+  --wireframe-line: #dfe3e9;
+  background: #fff;
+  border: 1px solid #e7e9ed;
+  border-radius: 14px;
+  box-sizing: border-box;
+  color: var(--wireframe-ink);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 100%;
+  min-width: 0;
+  padding: 12px;
+}
+
+.header {
+  align-items: center;
+  border-bottom: 1px solid #eef0f3;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  min-width: 0;
+  padding: 0 0 10px;
+}
+
+.heading {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.eyebrow {
+  color: var(--wireframe-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.heading strong {
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.screenPicker {
+  align-items: center;
+  color: var(--wireframe-muted);
+  display: flex;
+  flex: 0 1 180px;
+  font-size: 11px;
+  gap: 6px;
+  min-width: 0;
+}
+
+.screenPicker select {
+  background: #fff;
+  border: 1px solid var(--wireframe-line);
+  border-radius: 7px;
+  color: var(--wireframe-ink);
+  font: inherit;
+  min-height: 44px;
+  min-width: 0;
+  padding: 5px 7px;
+  width: 100%;
+}
+
+.screenPicker select:focus-visible,
+.leaf:focus-visible,
+.container:focus-visible,
+.nodeHeader:focus-visible {
+  border-color: #7693df;
+  outline: 2px solid rgba(83, 116, 222, .2);
+  outline-offset: 1px;
+}
+
+.notice {
+  background: #faf8f0;
+  border: 1px solid #eee4c8;
+  border-radius: 8px;
+  color: #726340;
+  font-size: 11px;
+  line-height: 1.4;
+  padding: 7px 9px;
+}
+
+.screen {
+  min-width: 0;
+}
+
+.screenCaption {
+  color: var(--wireframe-muted);
+  font-size: 11px;
+  margin: 0 2px 7px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tree {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+
+.node {
+  box-sizing: border-box;
+  color: inherit;
+  font: inherit;
+  min-height: 44px;
+  min-width: 0;
+  text-align: left;
+  width: 100%;
+}
+
+.container {
+  background: #fcfcfd;
+  border: 1px solid var(--wireframe-line);
+  border-radius: 9px;
+  cursor: pointer;
+  padding: 7px;
+}
+
+.leaf {
+  align-items: center;
+  background: #fff;
+  border: 1px dashed #cfd5de;
+  border-radius: 7px;
+  cursor: pointer;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 7px 9px;
+}
+
+.container:hover,
+.leaf:hover {
+  border-color: #aeb9cd;
+}
+
+.selected {
+  background: #f2f5ff;
+  border-color: #7892dd;
+  box-shadow: inset 3px 0 0 #7892dd;
+}
+
+.nodeHeader {
+  align-items: center;
+  appearance: none;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  font: inherit;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 44px;
+  min-width: 0;
+  padding: 0;
+  text-align: left;
+  width: 100%;
+}
+
+.nodeLabel {
+  flex: 1 1 auto;
+  font-size: 12px;
+  line-height: 1.35;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.nodeKind,
+.truncationLabel {
+  background: #f3f5f8;
+  border-radius: 4px;
+  color: var(--wireframe-muted);
+  flex: 0 0 auto;
+  font-size: 10px;
+  letter-spacing: .01em;
+  padding: 2px 4px;
+  white-space: nowrap;
+}
+
+.nodeDetail {
+  flex: 0 0 100%;
+  max-width: 100%;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  text-overflow: ellipsis;
+  white-space: normal;
+}
+
+.truncationLabel {
+  background: #fbf6e8;
+  color: #947e42;
+}
+
+.children {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 6px 0 0;
+  padding: 0;
+}
+
+.leafGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
+}
+
+.empty {
+  align-items: flex-start;
+  color: var(--wireframe-muted);
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+  gap: 5px;
+  line-height: 1.45;
+  padding: 28px 10px;
+}
+
+.empty strong {
+  color: var(--wireframe-ink);
+  font-size: 13px;
+}
+
+@media (max-width: 420px) {
+  .header {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .screenPicker {
+    flex-basis: auto;
+    width: 100%;
+  }
+}

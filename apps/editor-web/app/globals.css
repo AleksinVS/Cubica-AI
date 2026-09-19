@@ -521,6 +521,31 @@ textarea {
   position: relative;
 }
 
+.preview-wireframe-host {
+  align-self: stretch;
+  height: 100%;
+  min-width: 0;
+  overflow: auto;
+  padding: 16px;
+  width: 100%;
+}
+
+.preview-wireframe-host > button {
+  background: #fff;
+  border: 1px solid #cfd6e2;
+  border-radius: 8px;
+  color: #202731;
+  cursor: pointer;
+  margin-top: 12px;
+  min-height: 44px;
+  padding: 8px 16px;
+}
+
+.preview-wireframe-host > button:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
 .preview-viewport-canvas {
   background: #ffffff;
   height: 100%;
