@@ -14,18 +14,33 @@ export interface MvpMenuEntry {
 
 export type MvpDisabledModes = Partial<Record<MvpMenuMode | "scenario", string>>;
 
-const MAIN_ITEMS: ReadonlyArray<{
-  readonly mode: MvpMenuMode | "scenario";
+type MainMenuItem = {
+  readonly mode: MvpMenuMode | "scenario" | "add";
   readonly label: string;
   readonly icon: MvpMenuIconName;
-}> = [
+};
+
+const MAIN_ITEMS: ReadonlyArray<MainMenuItem> = [
   { mode: "chat", label: "Чат", icon: "chat" },
   { mode: "editor", label: "Редактор", icon: "editor" },
   { mode: "drawing", label: "Рисование", icon: "drawing" },
   { mode: "play", label: "Игра", icon: "play" },
   { mode: "scenario", label: "Сценарий", icon: "scenario" },
-  { mode: "rules", label: "Правила", icon: "rules" }
+  { mode: "add", label: "Добавить", icon: "add" }
 ];
+
+const PENCIL_COLORS = [
+  { value: "#ef4444", label: "Красный" },
+  { value: "#f97316", label: "Оранжевый" },
+  { value: "#eab308", label: "Жёлтый" },
+  { value: "#22c55e", label: "Зелёный" },
+  { value: "#3b82f6", label: "Синий" },
+  { value: "#a855f7", label: "Фиолетовый" },
+  { value: "#202731", label: "Чёрный" }
+] as const;
+
+const PENCIL_WIDTHS = [1, 3, 5, 8] as const;
+const DRAG_THRESHOLD = 6;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), Math.max(min, max));
@@ -35,25 +50,29 @@ function viewportWidth(): number {
   return typeof window === "undefined" || window.innerWidth <= 0 ? 320 : window.innerWidth;
 }
 
-/**
- * Compact, self-contained editor tool menu. The active tool is controlled by
- * `activeMode`; all scenario rows are caller-owned and only emit selection
- * callbacks. The optional save action has no state mutation inside this menu.
- */
+type OpenPopover = "scenario" | "drawing" | "add" | null;
+type DragState = { pointerId: number; startX: number; startLeft: number; moved: boolean };
+
+/** Compact editor toolbar with caller-owned mode and row data. */
 export interface MvpFloatingMenuProps {
   readonly activeMode: MvpMenuMode;
   readonly onModeChange: (mode: MvpMenuMode) => void;
   readonly playState?: MvpPlayState;
   readonly savedStates?: readonly MvpMenuEntry[];
   readonly scenarioStages?: readonly MvpMenuEntry[];
+  readonly addEntries?: readonly MvpMenuEntry[];
   readonly onSelectSavedState?: (id: string) => void;
   readonly onSelectScenarioStage?: (id: string) => void;
+  readonly onAddEntry?: (id: string) => void;
   readonly onSaveState?: () => void;
   readonly onDeleteSavedState?: (id: string) => void;
+  /** @deprecated Kept for caller compatibility; compatibility is checked by the caller. */
   readonly onRefreshSavedStates?: () => void;
   readonly canSaveState?: boolean;
   readonly disabledModes?: MvpDisabledModes;
-  /** Starts open to match the expanded desktop editor surface. */
+  readonly pencilColor?: string;
+  readonly pencilWidth?: number;
+  readonly onPencilChange?: (value: { color: string; width: number }) => void;
   readonly defaultExpanded?: boolean;
 }
 
@@ -63,33 +82,50 @@ export function MvpFloatingMenu({
   playState = "idle",
   savedStates = [],
   scenarioStages = [],
+  addEntries = [],
   onSelectSavedState,
   onSelectScenarioStage,
+  onAddEntry,
   onSaveState,
   onDeleteSavedState,
   onRefreshSavedStates,
   canSaveState = false,
   disabledModes = {},
+  pencilColor = "#ef4444",
+  pencilWidth = 3,
+  onPencilChange,
   defaultExpanded = true
 }: MvpFloatingMenuProps) {
+  void onRefreshSavedStates;
+
   const menuRef = useRef<HTMLDivElement>(null);
   const activeToolRef = useRef<HTMLButtonElement | null>(null);
   const scenarioTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const drawingTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const addTriggerRef = useRef<HTMLButtonElement | null>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const collapseTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const dragRef = useRef<{ pointerId: number; startX: number; startLeft: number } | null>(null);
-  const collapsedInteractionRef = useRef(false);
+  const dragRef = useRef<DragState | null>(null);
+  const suppressClickRef = useRef(false);
   const focusAfterRevealRef = useRef(false);
   const holdsRef = useRef({ pinned: false, focus: false, pointer: false, popover: false });
   const [revealed, setRevealed] = useState(defaultExpanded);
   const [pinned, setPinned] = useState(false);
   const [focusWithin, setFocusWithin] = useState(false);
   const [pointerWithin, setPointerWithin] = useState(false);
-  const [popoverOpen, setPopoverOpen] = useState(false);
+  const [openPopover, setOpenPopover] = useState<OpenPopover>(null);
+  const [dragging, setDragging] = useState(false);
   const [left, setLeft] = useState<number | null>(null);
   const [popoverLeft, setPopoverLeft] = useState<number | null>(null);
+  const [selectedPencilColor, setSelectedPencilColor] = useState(pencilColor);
+  const [selectedPencilWidth, setSelectedPencilWidth] = useState(pencilWidth);
 
-  const isExpanded = revealed || pinned || focusWithin || pointerWithin || popoverOpen || dragRef.current !== null;
+  const isExpanded = revealed || pinned || focusWithin || pointerWithin || openPopover !== null || dragging;
+  const popoverOpen = openPopover !== null;
+  const activeMainMode = activeMode === "rules" ? "scenario" : activeMode;
+
+  useEffect(() => setSelectedPencilColor(pencilColor), [pencilColor]);
+  useEffect(() => setSelectedPencilWidth(pencilWidth), [pencilWidth]);
 
   const clearCollapseTimer = useCallback(() => {
     if (collapseTimerRef.current !== undefined) {
@@ -98,10 +134,9 @@ export function MvpFloatingMenu({
     }
   }, []);
 
-  const updatePopover = useCallback((value: boolean | ((open: boolean) => boolean)) => {
-    const nextValue = typeof value === "function" ? value(holdsRef.current.popover) : value;
-    holdsRef.current.popover = nextValue;
-    setPopoverOpen(nextValue);
+  const setPopover = useCallback((next: OpenPopover) => {
+    holdsRef.current.popover = next !== null;
+    setOpenPopover(next);
   }, []);
 
   const requestCollapse = useCallback(() => {
@@ -109,10 +144,8 @@ export function MvpFloatingMenu({
     collapseTimerRef.current = setTimeout(() => {
       collapseTimerRef.current = undefined;
       const holds = holdsRef.current;
-      if (!holds.pinned && !holds.focus && !holds.pointer && !holds.popover && dragRef.current === null) {
-        setRevealed(false);
-      }
-    }, 250);
+      if (!holds.pinned && !holds.focus && !holds.pointer && !holds.popover && dragRef.current === null) setRevealed(false);
+    }, 220);
   }, [clearCollapseTimer]);
 
   const measureWidth = useCallback(() => {
@@ -138,9 +171,7 @@ export function MvpFloatingMenu({
     return measured && measured.width > 0 ? measured.left : (viewportWidth() - width) / 2;
   }, [left, measureWidth]);
 
-  const recenter = useCallback(() => {
-    setLeft(null);
-  }, []);
+  const recenter = useCallback(() => setLeft(null), []);
 
   const revealAndFocus = useCallback(() => {
     clearCollapseTimer();
@@ -159,20 +190,13 @@ export function MvpFloatingMenu({
     [currentLeft, measureWidth]
   );
 
-  useEffect(() => {
-    return () => {
-      clearCollapseTimer();
-    };
-  }, [clearCollapseTimer]);
+  useEffect(() => () => clearCollapseTimer(), [clearCollapseTimer]);
 
   useLayoutEffect(() => {
     if (focusAfterRevealRef.current && isExpanded) {
       focusAfterRevealRef.current = false;
-      if (activeToolRef.current && !activeToolRef.current.disabled) {
-        activeToolRef.current.focus();
-      } else {
-        menuRef.current?.querySelector<HTMLButtonElement>("[role='toolbar'] button:not(:disabled)")?.focus();
-      }
+      if (activeToolRef.current && !activeToolRef.current.disabled) activeToolRef.current.focus();
+      else menuRef.current?.querySelector<HTMLButtonElement>("[role='toolbar'] button:not([tabindex='-1'])")?.focus();
     }
   }, [isExpanded]);
 
@@ -181,11 +205,7 @@ export function MvpFloatingMenu({
       const element = menuRef.current;
       if (!element) return;
       const rect = element.getBoundingClientRect();
-      const within =
-        event.clientX >= rect.left - 24 &&
-        event.clientX <= rect.right + 24 &&
-        event.clientY >= rect.top - 24 &&
-        event.clientY <= rect.bottom + 24;
+      const within = event.clientX >= rect.left - 24 && event.clientX <= rect.right + 24 && event.clientY >= rect.top - 24 && event.clientY <= rect.bottom + 24;
       if (within) {
         clearCollapseTimer();
         holdsRef.current.pointer = true;
@@ -194,9 +214,7 @@ export function MvpFloatingMenu({
       } else if (holdsRef.current.pointer) {
         holdsRef.current.pointer = false;
         setPointerWithin(false);
-        if (!holdsRef.current.pinned && !holdsRef.current.focus && !holdsRef.current.popover && dragRef.current === null) {
-          requestCollapse();
-        }
+        if (!holdsRef.current.pinned && !holdsRef.current.focus && !holdsRef.current.popover && dragRef.current === null) requestCollapse();
       }
     };
     document.addEventListener("pointermove", handleProximity);
@@ -207,13 +225,14 @@ export function MvpFloatingMenu({
     if (!popoverOpen) return;
     const closeOnOutsidePointer = (event: PointerEvent) => {
       const element = menuRef.current;
-      if (element && !element.contains(event.target as Node)) updatePopover(false);
+      if (element && !element.contains(event.target as Node)) setPopover(null);
     };
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       event.preventDefault();
-      updatePopover(false);
-      scenarioTriggerRef.current?.focus();
+      const trigger = openPopover === "scenario" ? scenarioTriggerRef : openPopover === "drawing" ? drawingTriggerRef : addTriggerRef;
+      setPopover(null);
+      trigger.current?.focus();
     };
     document.addEventListener("pointerdown", closeOnOutsidePointer);
     document.addEventListener("keydown", closeOnEscape);
@@ -221,7 +240,7 @@ export function MvpFloatingMenu({
       document.removeEventListener("pointerdown", closeOnOutsidePointer);
       document.removeEventListener("keydown", closeOnEscape);
     };
-  }, [popoverOpen, updatePopover]);
+  }, [openPopover, popoverOpen, setPopover]);
 
   const clampPopover = useCallback(() => {
     const menu = menuRef.current;
@@ -237,9 +256,7 @@ export function MvpFloatingMenu({
     setPopoverLeft(clamp(centered, minimum, maximum));
   }, [measureWidth, popoverOpen]);
 
-  useLayoutEffect(() => {
-    clampPopover();
-  }, [clampPopover, isExpanded, left]);
+  useLayoutEffect(() => clampPopover(), [clampPopover, isExpanded, left]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -253,18 +270,10 @@ export function MvpFloatingMenu({
   useEffect(() => {
     const menu = menuRef.current;
     if (!menu || left === null) return;
-    const reclamp = () => {
-      clampMenuLeft(left);
-      clampPopover();
-    };
-    const observer = typeof ResizeObserver === "function" ? new ResizeObserver(reclamp) : undefined;
+    const observer = typeof ResizeObserver === "function" ? new ResizeObserver(() => clampMenuLeft(left)) : undefined;
     observer?.observe(menu);
-    window.addEventListener("resize", reclamp);
-    return () => {
-      observer?.disconnect();
-      window.removeEventListener("resize", reclamp);
-    };
-  }, [clampMenuLeft, clampPopover, left]);
+    return () => observer?.disconnect();
+  }, [clampMenuLeft, left]);
 
   const handlePointerEnter = () => {
     clearCollapseTimer();
@@ -275,18 +284,10 @@ export function MvpFloatingMenu({
 
   const handlePointerLeave = (event: React.PointerEvent<HTMLDivElement>) => {
     const rect = menuRef.current?.getBoundingClientRect();
-    const withinProximity = Boolean(
-      rect &&
-        event.clientX >= rect.left - 24 &&
-        event.clientX <= rect.right + 24 &&
-        event.clientY >= rect.top - 24 &&
-        event.clientY <= rect.bottom + 24
-    );
+    const withinProximity = Boolean(rect && event.clientX >= rect.left - 24 && event.clientX <= rect.right + 24 && event.clientY >= rect.top - 24 && event.clientY <= rect.bottom + 24);
     holdsRef.current.pointer = withinProximity;
     setPointerWithin(withinProximity);
-    if (!withinProximity && !holdsRef.current.pinned && !holdsRef.current.focus && !holdsRef.current.popover && dragRef.current === null) {
-      requestCollapse();
-    }
+    if (!withinProximity && !holdsRef.current.pinned && !holdsRef.current.focus && !holdsRef.current.popover && dragRef.current === null) requestCollapse();
   };
 
   const handleFocusCapture = () => {
@@ -302,18 +303,17 @@ export function MvpFloatingMenu({
       const stillFocused = Boolean(element && element.contains(document.activeElement));
       holdsRef.current.focus = stillFocused;
       setFocusWithin(stillFocused);
-      if (!stillFocused && !holdsRef.current.pinned && !holdsRef.current.pointer && !holdsRef.current.popover && dragRef.current === null) {
-        requestCollapse();
-      }
+      if (!stillFocused && !holdsRef.current.pinned && !holdsRef.current.pointer && !holdsRef.current.popover && dragRef.current === null) requestCollapse();
     }, 0);
   };
 
-  const startDrag = (event: React.PointerEvent<HTMLButtonElement>) => {
-    event.preventDefault();
+  const startDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+    const target = event.target instanceof Element ? event.target : null;
+    if (!target || target.closest("[role='menu']")) return;
+    const inToolbar = target.closest("[data-mvp-toolbar]") || target === menuRef.current;
+    if (!inToolbar) return;
     clearCollapseTimer();
-    const startLeft = currentLeft();
-    dragRef.current = { pointerId: event.pointerId, startX: event.clientX, startLeft };
-    setRevealed(true);
+    dragRef.current = { pointerId: event.pointerId, startX: event.clientX, startLeft: currentLeft(), moved: false };
     if (typeof event.currentTarget.setPointerCapture === "function") {
       try {
         event.currentTarget.setPointerCapture(event.pointerId);
@@ -323,19 +323,28 @@ export function MvpFloatingMenu({
     }
   };
 
-  const moveDrag = (event: React.PointerEvent<HTMLButtonElement>) => {
+  const moveDrag = (event: React.PointerEvent<HTMLDivElement>) => {
     const drag = dragRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
-    clampMenuLeft(drag.startLeft + event.clientX - drag.startX);
+    const delta = event.clientX - drag.startX;
+    if (!drag.moved && Math.abs(delta) < DRAG_THRESHOLD) return;
+    drag.moved = true;
+    setDragging(true);
+    setRevealed(true);
+    event.preventDefault();
+    clampMenuLeft(drag.startLeft + delta);
   };
 
-  const finishDrag = (event?: React.PointerEvent<HTMLButtonElement>) => {
+  const finishDrag = (event?: React.PointerEvent<HTMLDivElement>) => {
     if (event && dragRef.current && event.pointerId !== dragRef.current.pointerId) return;
+    const moved = dragRef.current?.moved ?? false;
     dragRef.current = null;
+    setDragging(false);
+    if (moved) suppressClickRef.current = true;
     if (!holdsRef.current.pinned && !holdsRef.current.focus && !holdsRef.current.pointer && !holdsRef.current.popover) requestCollapse();
   };
 
-  const handleDragKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+  const handleDragKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "ArrowLeft") {
       event.preventDefault();
       moveByKeyboard(-24);
@@ -349,123 +358,121 @@ export function MvpFloatingMenu({
   };
 
   const handleModeClick = (mode: MvpMenuMode, event: React.MouseEvent<HTMLButtonElement>) => {
-    if (!isExpanded || collapsedInteractionRef.current) {
-      collapsedInteractionRef.current = false;
+    if (!isExpanded) {
       event.preventDefault();
       revealAndFocus();
       return;
     }
-    updatePopover(false);
+    setPopover(null);
     onModeChange(mode);
   };
 
-  const closeScenarioAndRestoreFocus = useCallback(() => {
-    updatePopover(false);
-    scenarioTriggerRef.current?.focus();
-  }, [updatePopover]);
+  const closePopoverAndRestoreFocus = useCallback(() => {
+    const trigger = openPopover === "scenario" ? scenarioTriggerRef : openPopover === "drawing" ? drawingTriggerRef : addTriggerRef;
+    setPopover(null);
+    trigger.current?.focus();
+  }, [openPopover, setPopover]);
+
+  const choosePencil = (color: string, width: number) => {
+    setSelectedPencilColor(color);
+    setSelectedPencilWidth(width);
+    onPencilChange?.({ color, width });
+  };
 
   const playLabel = playState === "running" ? "Пауза игры" : playState === "paused" ? "Продолжить игру" : "Игра";
 
   return (
     <div
       ref={menuRef}
-      className={`${styles.menu} ${left !== null ? styles.isPositioned : ""}`}
+      className={`${styles.menu} ${left !== null ? styles.isPositioned : ""} ${!isExpanded ? styles.isCollapsed : ""}`}
       style={left !== null ? { left } : undefined}
       data-expanded={isExpanded ? "true" : "false"}
       aria-label="Плавающее меню редактора"
       onPointerEnter={handlePointerEnter}
       onPointerLeave={handlePointerLeave}
+      onPointerDown={startDrag}
+      onPointerMove={moveDrag}
+      onPointerUp={finishDrag}
+      onPointerCancel={finishDrag}
+      onLostPointerCapture={() => finishDrag()}
+      onKeyDown={handleDragKeyDown}
+      onClickCapture={(event) => {
+        if (suppressClickRef.current) {
+          suppressClickRef.current = false;
+          event.preventDefault();
+          event.stopPropagation();
+        }
+      }}
       onFocusCapture={handleFocusCapture}
       onBlurCapture={handleBlurCapture}
     >
-      {isExpanded ? (
-        <>
-          <div className={styles.mainControls} role="toolbar" aria-label="Инструменты редактора">
-            {MAIN_ITEMS.map((item) => {
-              const disabledReason = disabledModes[item.mode];
-              const disabled = disabledReason !== undefined;
-              const isScenario = item.mode === "scenario";
-              const label = item.mode === "play" ? playLabel : item.label;
-              const icon: MvpMenuIconName = item.mode === "play" && playState === "running" ? "pause" : item.icon;
-              return (
-                <button
-                  key={item.mode}
-                  ref={(element) => {
-                    if (isScenario) scenarioTriggerRef.current = element;
-                    if (item.mode === activeMode) activeToolRef.current = element;
-                  }}
-                  type="button"
-                  className={`${styles.control} ${activeMode === item.mode ? styles.isActive : ""}`}
-                  aria-label={label}
-                  aria-current={!isScenario && activeMode === item.mode ? "page" : undefined}
-                  aria-expanded={isScenario ? popoverOpen : undefined}
-                  aria-haspopup={isScenario ? "menu" : undefined}
-                  aria-disabled={disabled || undefined}
-                  disabled={disabled}
-                  title={disabledReason ?? label}
-                  onClick={(event) => {
-                    if (disabled) return;
-                    if (isScenario) {
-                      updatePopover((open) => !open);
-                      return;
-                    }
-                    handleModeClick(item.mode, event);
-                  }}
-                >
-                  <MvpMenuIcon name={icon} />
-                </button>
-              );
-            })}
-          </div>
-          <div className={styles.secondaryControls} aria-label="Настройки меню">
+      <div className={styles.mainControls} role="toolbar" aria-label="Панель инструментов" title="Панель инструментов" data-mvp-toolbar>
+        {MAIN_ITEMS.map((item) => {
+          const isScenario = item.mode === "scenario";
+          const isAdd = item.mode === "add";
+          const isDrawing = item.mode === "drawing";
+          const isActive = item.mode === activeMainMode;
+          const disabledReason = isScenario ? disabledModes.scenario : item.mode === "add" ? undefined : disabledModes[item.mode];
+          const disabled = disabledReason !== undefined;
+          const label = item.mode === "play" ? playLabel : item.label;
+          const icon: MvpMenuIconName = item.mode === "play" && playState === "running" ? "pause" : item.icon;
+          const visible = isExpanded || isActive;
+          return (
             <button
+              key={item.mode}
+              ref={(element) => {
+                if (isScenario) scenarioTriggerRef.current = element;
+                if (isDrawing) drawingTriggerRef.current = element;
+                if (isAdd) addTriggerRef.current = element;
+                if (isActive) activeToolRef.current = element;
+              }}
               type="button"
-              className={styles.handle}
-              aria-label="Переместить меню по горизонтали"
-              title="Переместить меню по горизонтали"
-              onPointerDown={startDrag}
-              onPointerMove={moveDrag}
-              onPointerUp={finishDrag}
-              onPointerCancel={finishDrag}
-              onLostPointerCapture={() => finishDrag()}
-              onKeyDown={handleDragKeyDown}
-            >
-              <MvpMenuIcon name="drag" />
-            </button>
-            <button
-              type="button"
-              className={`${styles.control} ${styles.pinButton} ${pinned ? styles.isPinned : ""}`}
-              aria-label={pinned ? "Открепить меню" : "Закрепить меню"}
-              aria-pressed={pinned}
-              title={pinned ? "Открепить меню" : "Закрепить меню"}
-              onClick={() => {
-                clearCollapseTimer();
-                const nextPinned = !holdsRef.current.pinned;
-                holdsRef.current.pinned = nextPinned;
-                setPinned(nextPinned);
-                setRevealed(true);
+              className={`${styles.control} ${isActive ? styles.isActive : ""} ${!visible ? styles.isHidden : ""}`}
+              aria-label={label}
+              aria-current={isActive ? "page" : undefined}
+              aria-expanded={(isScenario || isDrawing || isAdd) ? openPopover === item.mode : undefined}
+              aria-haspopup={(isScenario || isDrawing || isAdd) ? "menu" : undefined}
+              aria-disabled={disabled || undefined}
+              disabled={disabled && isExpanded}
+              tabIndex={visible ? 0 : -1}
+              title={disabledReason ?? label}
+              onClick={(event) => {
+                if (!isExpanded) {
+                  handleModeClick(activeMode, event);
+                  return;
+                }
+                if (disabled) return;
+                if (isScenario || isDrawing || isAdd) {
+                  if (isDrawing) onModeChange("drawing");
+                  setPopover(openPopover === item.mode ? null : item.mode);
+                }
+                else handleModeClick(item.mode, event);
               }}
             >
-              <MvpMenuIcon name="pin" />
+              <MvpMenuIcon name={icon} />
             </button>
-          </div>
-        </>
-      ) : (
+          );
+        })}
+      </div>
+      <div className={styles.secondaryControls} aria-label="Настройки меню" data-mvp-toolbar>
         <button
           type="button"
-          className={`${styles.control} ${styles.isActive}`}
-          aria-label={activeMode === "play" ? playLabel : MAIN_ITEMS.find((item) => item.mode === activeMode)?.label}
-          title={disabledModes[activeMode] ?? "Нажмите, чтобы показать меню"}
-          onPointerDown={() => {
-            collapsedInteractionRef.current = true;
+          className={`${styles.control} ${styles.pinButton} ${pinned ? styles.isPinned : ""} ${!isExpanded ? styles.isHidden : ""}`}
+          aria-label={pinned ? "Открепить меню" : "Закрепить меню"}
+          aria-pressed={pinned}
+          title={pinned ? "Открепить меню" : "Закрепить меню"}
+          tabIndex={isExpanded ? 0 : -1}
+          onClick={() => {
+            clearCollapseTimer();
+            const nextPinned = !holdsRef.current.pinned;
+            holdsRef.current.pinned = nextPinned;
+            setPinned(nextPinned);
+            setRevealed(true);
           }}
-          onClick={(event) => handleModeClick(activeMode, event)}
         >
-          <MvpMenuIcon
-            name={activeMode === "play" && playState === "running" ? "pause" : MAIN_ITEMS.find((item) => item.mode === activeMode)?.icon ?? "editor"}
-          />
+          <MvpMenuIcon name="pin" />
         </button>
-      )}
+      </div>
 
       {isExpanded && popoverOpen ? (
         <div
@@ -473,67 +480,67 @@ export function MvpFloatingMenu({
           className={styles.popover}
           style={popoverLeft !== null ? { left: popoverLeft, transform: "none" } : undefined}
           role="menu"
-          aria-label="Сценарий"
+          aria-label={openPopover === "scenario" ? "Сценарий" : openPopover === "drawing" ? "Настройки рисования" : "Добавить"}
         >
-          <section className={styles.group} aria-labelledby="mvp-saved-states">
-            <h2 id="mvp-saved-states" className={styles.groupTitle}>
-              Сохранённые состояния
-            </h2>
-            {savedStates.length > 0 ? (
-              savedStates.map((entry) => (
-                <div key={entry.id} className={styles.savedRow}>
-                  <button type="button" className={styles.row} role="menuitem"
-                    disabled={entry.disabledReason !== undefined} title={entry.disabledReason}
-                    onClick={() => { onSelectSavedState?.(entry.id); closeScenarioAndRestoreFocus(); }}>
+          {openPopover === "scenario" ? (
+            <>
+              <section className={styles.group} aria-labelledby="mvp-saved-states">
+                <h2 id="mvp-saved-states" className={styles.groupTitle}>Сохранённые состояния</h2>
+                {savedStates.length > 0 ? savedStates.map((entry) => (
+                  <div key={entry.id} className={styles.savedRow}>
+                    <button type="button" className={styles.row} role="menuitem" title={entry.disabledReason} onClick={() => { onSelectSavedState?.(entry.id); closePopoverAndRestoreFocus(); }}>
+                      <span>{entry.label}{entry.disabledReason ? <small>{entry.disabledReason}</small> : null}</span>
+                    </button>
+                    {onDeleteSavedState ? <button type="button" className={styles.deleteButton} role="menuitem" aria-label={`Удалить сохранение «${entry.label}»`} onClick={() => onDeleteSavedState(entry.id)}>×</button> : null}
+                  </div>
+                )) : <p className={styles.empty}>Нет сохранённых состояний</p>}
+                {onSaveState ? (
+                  <button type="button" className={styles.saveButton} disabled={!canSaveState} aria-label={canSaveState ? "Сохранить состояние" : "Сохранение недоступно"} title={canSaveState ? "Сохранить состояние" : "Сохранение недоступно"} onClick={() => { onSaveState(); closePopoverAndRestoreFocus(); }}>
+                    <MvpMenuIcon name="save" />
+                  </button>
+                ) : null}
+              </section>
+              <section className={styles.group} aria-labelledby="mvp-scenario-stages">
+                <h2 id="mvp-scenario-stages" className={styles.groupTitle}>Этапы сценария</h2>
+                {scenarioStages.length > 0 ? scenarioStages.map((entry) => (
+                  <button key={entry.id} type="button" className={styles.row} role="menuitem" disabled={entry.disabledReason !== undefined} title={entry.disabledReason} onClick={() => { onSelectScenarioStage?.(entry.id); closePopoverAndRestoreFocus(); }}>
                     <span>{entry.label}{entry.disabledReason ? <small>{entry.disabledReason}</small> : null}</span>
                   </button>
-                  {onDeleteSavedState ? <button type="button" className={styles.deleteButton}
-                    role="menuitem" aria-label={`Удалить сохранение «${entry.label}»`}
-                    onClick={() => onDeleteSavedState(entry.id)}>×</button> : null}
-                </div>
-              ))
-            ) : (
-              <p className={styles.empty}>Нет сохранённых состояний</p>
-            )}
-            {onRefreshSavedStates ? <button type="button" className={styles.row} onClick={onRefreshSavedStates}>Проверить совместимость</button> : null}
-            {onSaveState ? (
-              <button
-                type="button"
-                className={styles.saveButton}
-                disabled={!canSaveState}
-                title={canSaveState ? "Сохранить состояние" : "Сохранение недоступно"}
-                onClick={() => {
-                  onSaveState();
-                  closeScenarioAndRestoreFocus();
-                }}
-              >
-                Сохранить состояние
-              </button>
-            ) : null}
-          </section>
-          <section className={styles.group} aria-labelledby="mvp-scenario-stages">
-            <h2 id="mvp-scenario-stages" className={styles.groupTitle}>
-              Этапы сценария
-            </h2>
-            {scenarioStages.length > 0 ? (
-              scenarioStages.map((entry) => (
-                <button
-                  key={entry.id}
-                  type="button"
-                  className={styles.row}
-                  role="menuitem"
-                  onClick={() => {
-                    onSelectScenarioStage?.(entry.id);
-                    closeScenarioAndRestoreFocus();
-                  }}
-                >
-                  {entry.label}
+                )) : <p className={styles.empty}>Этапы не объявлены</p>}
+              </section>
+              <section className={styles.group} aria-labelledby="mvp-scenario-rules">
+                <h2 id="mvp-scenario-rules" className={styles.groupTitle}>Правила</h2>
+                <button type="button" className={styles.row} role="menuitem" disabled={disabledModes.rules !== undefined} title={disabledModes.rules} onClick={() => { onModeChange("rules"); closePopoverAndRestoreFocus(); }}>
+                  <MvpMenuIcon name="rules" />
+                  <span>Правила</span>
                 </button>
-              ))
-            ) : (
-              <p className={styles.empty}>Этапы не объявлены</p>
-            )}
-          </section>
+              </section>
+            </>
+          ) : openPopover === "add" ? (
+            <section className={styles.group} aria-labelledby="mvp-add-items">
+              <h2 id="mvp-add-items" className={styles.groupTitle}>Добавить</h2>
+              {addEntries.length > 0 ? addEntries.map((entry) => (
+                <button key={entry.id} type="button" className={styles.row} role="menuitem" disabled={entry.disabledReason !== undefined} title={entry.disabledReason} onClick={() => { onAddEntry?.(entry.id); closePopoverAndRestoreFocus(); }}>
+                  <span>{entry.label}{entry.disabledReason ? <small>{entry.disabledReason}</small> : null}</span>
+                </button>
+              )) : <p className={styles.empty}>Действия добавления не объявлены</p>}
+            </section>
+          ) : (
+            <>
+              <section className={styles.group} aria-labelledby="mvp-pencil-colors">
+                <h2 id="mvp-pencil-colors" className={styles.groupTitle}>Цвет</h2>
+                <div className={styles.swatches}>
+                  {PENCIL_COLORS.map((color) => <button key={color.value} type="button" className={`${styles.swatch} ${selectedPencilColor === color.value ? styles.swatchActive : ""}`} style={{ backgroundColor: color.value }} aria-label={`Цвет карандаша: ${color.label}`} aria-pressed={selectedPencilColor === color.value} title={color.label} onClick={() => choosePencil(color.value, selectedPencilWidth)} />)}
+                </div>
+              </section>
+              <section className={styles.group} aria-labelledby="mvp-pencil-widths">
+                <h2 id="mvp-pencil-widths" className={styles.groupTitle}>Толщина</h2>
+                <div className={styles.widths}>
+                  {PENCIL_WIDTHS.map((width) => <button key={width} type="button" className={`${styles.widthButton} ${selectedPencilWidth === width ? styles.widthActive : ""}`} aria-label={`Толщина карандаша: ${width} пикс.`} aria-pressed={selectedPencilWidth === width} onClick={() => choosePencil(selectedPencilColor, width)}>{width}</button>)}
+                </div>
+              </section>
+            </>
+          )}
         </div>
       ) : null}
     </div>

@@ -1,6 +1,6 @@
 import React, { type SVGProps } from "react";
 
-export type MvpMenuIconName = "chat" | "editor" | "drawing" | "play" | "pause" | "scenario" | "rules" | "pin" | "drag";
+export type MvpMenuIconName = "chat" | "editor" | "drawing" | "play" | "pause" | "scenario" | "rules" | "pin" | "drag" | "add" | "save";
 
 type IconProps = SVGProps<SVGSVGElement> & {
   readonly name: MvpMenuIconName;
@@ -77,6 +77,19 @@ export function MvpMenuIcon({ name, ...props }: IconProps) {
       return (
         <svg {...common} {...props}>
           <path d="M5 12h14M8 8l-3 4 3 4M16 8l3 4-3 4" />
+        </svg>
+      );
+    case "add":
+      return (
+        <svg {...common} {...props}>
+          <path d="M12 5v14M5 12h14" strokeWidth="2.2" />
+        </svg>
+      );
+    case "save":
+      return (
+        <svg {...common} {...props}>
+          <path d="M5 4.5h11l3 3V19.5H5V4.5Z" />
+          <path d="M8 4.5v5h7v-5M8 19.5v-5h8v5" />
         </svg>
       );
   }
