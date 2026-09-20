@@ -1055,10 +1055,10 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
   }, [stateFixtures, activeScreenEntityId]);
   const effectiveSelectedFixtureId = selectedFixtureId ?? defaultFixtureId;
   const agentConnection = useEditorAgentConnection();
-  const hasMvpRuleSelection = options.mvp === true && selectedPreviewEntityId?.startsWith("mvp-rule:") === true;
-  const selectedMvpRule = hasMvpRuleSelection
+  const selectedMvpRule = options.mvp === true
     ? availableMvpRules.find((entity) => entity.entityId === selectedPreviewEntityId)
     : undefined;
+  const hasMvpRuleSelection = selectedMvpRule !== undefined;
   const agentSelectedPointers = useMemo(() => {
     const pointers = new Set<string>();
     if (selectedMvpRule?.primarySource.filePath === currentDocument.filePath) {
@@ -1840,10 +1840,10 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
     }
 
     if (!previewEntities.some((entity) => entity.entityId === selectedPreviewEntityId) &&
-        !(options.mvp === true && selectedPreviewEntityId.startsWith("mvp-rule:"))) {
+        selectedMvpRule === undefined) {
       setSelectedPreviewEntityId(undefined);
     }
-  }, [previewChannel, previewUrl, previewEntities, selectedPreviewEntityId, options.mvp]);
+  }, [previewChannel, previewUrl, previewEntities, selectedPreviewEntityId, selectedMvpRule]);
 
   useEffect(() => {
     // The MVP preview owns its selection. A stale legacy tree pointer would
