@@ -4,6 +4,13 @@ import path from "node:path";
 
 const editorUrl = process.env.E2E_EDITOR_URL ?? "http://127.0.0.1:3202";
 const runtimeUrl = process.env.E2E_RUNTIME_URL ?? "http://127.0.0.1:3201";
+const separator = "\n=======================\n";
+
+function withOneOff(raw: string, intent: string): string {
+  const boundary = raw.indexOf(separator);
+  if (boundary < 0) throw Error("Missing first prompt separator");
+  return intent + raw.slice(boundary);
+}
 interface EditorSessionListResponse {
   readonly session: { readonly sessionId: string };
 }
@@ -22,6 +29,14 @@ interface PlayerContentWithPlugins {
 // These scenarios replace the removed tree/JSON/timeline UI tests. They exercise
 // the same real session, compiler and runtime through the approved MVP surfaces.
 test.describe("editor MVP", { tag: "@editor" }, () => {
+  test.beforeEach(async ({ page }) => {
+    page.on("pageerror", (error) => console.error("Editor browser error:", error.stack));
+    const userId = `e2e-mvp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    await page.route("**/api/editor/session", async (route) => {
+      if (route.request().method() !== "POST") return route.continue();
+      await route.continue({ postData: JSON.stringify({ ...route.request().postDataJSON(), userId }) });
+    });
+  });
   test("edits a candidate, transforms an element, restores current UI and sends a drawing", async ({
     page,
     request,
@@ -45,36 +60,36 @@ test.describe("editor MVP", { tag: "@editor" }, () => {
       await expect(page.getByTestId("editor-wireframe")).toBeVisible({
         timeout: 45000,
       });
-      await page
-        .getByRole("button", { name: "Закрепить меню", exact: true })
-        .click();
+      await page.getByRole("button", { name: "Закрепить меню", exact: true }).click();
+      await expect(page.getByRole("button", { name: "Открепить меню", exact: true })).toHaveAttribute("aria-pressed", "true");
+      await page.getByRole("button", { name: "Чат", exact: true }).click();
+      await page.getByRole("button", { name: "＋ Новый диалог", exact: true }).click();
+      const conversations = page.getByRole("complementary", { name: "Диалоги", exact: true });
+      const initialChatTitle = await conversations.locator('button[aria-current="true"]').innerText();
+      await page.getByRole("button", { name: "Редактор", exact: true }).click();
       const score = page.locator(
         '[data-wireframe-source-pointer="/root/screens/0/root/children/0/children/0"]',
       );
       await score.click();
-      const panel = page.getByRole("complementary", {
-        name: "Редактор элемента",
-        exact: true,
-      });
+      const panel = page.locator('[aria-label="Редактор элемента"]');
       await expect(panel).toBeVisible();
-      await panel
-        .getByLabel("Название элемента", { exact: true })
-        .fill("Счёт MVP");
-      await panel
-        .getByRole("button", { name: "Сохранить", exact: true })
-        .click();
-      await expect(
-        panel.getByText("Название сохранено.", { exact: false }),
-      ).toBeVisible({ timeout: 45000 });
-      await panel
-        .getByLabel("Авторское описание элемента", { exact: true })
-        .fill("Показывает текущий счёт.");
-      await panel
-        .getByRole("button", { name: "Сохранить описание", exact: true })
-        .click();
+      const draft = panel.getByRole("textbox", { name: "Единый текст элемента" });
+      const original = await draft.inputValue();
+      const sections = original.split(separator);
+      expect(sections).toHaveLength(3);
+      const scoreLabel = `Счёт MVP ${Date.now()}`;
+      sections[1] = "Показывает текущий счёт.";
+      sections[2] = sections[2].replace(/^_label:.*(?=\n|$)/, `_label: ${JSON.stringify(scoreLabel)}`);
+      await draft.fill(sections.join(separator));
+      await panel.getByRole("button", { name: "Сохранить элемент" }).click();
       await expect(
         panel.getByText("Авторское описание сохранено.", { exact: false }),
       ).toBeVisible({ timeout: 45000 });
+      const savedSource = await request.get(`${editorUrl}/api/editor/file?gameId=simple-choice&filePath=ui/web.authoring.json&sessionId=${editorSessionId}`);
+      expect(savedSource.status()).toBe(200);
+      const savedUi = JSON.parse((await savedSource.json()).text);
+      expect(savedUi.root.screens[0].root.children[0].children[0]._label).toBe(scoreLabel);
+      expect(savedUi.root.screens[0].root.children[0].children[0]._prompt.raw).toBe("Показывает текущий счёт.");
 
       await panel
         .getByRole("button", { name: "Закрыть редактор элемента" })
@@ -84,10 +99,10 @@ test.describe("editor MVP", { tag: "@editor" }, () => {
           '[data-wireframe-source-pointer="/root/screens/0/root/children/1/children/0"]',
         )
         .click();
-      await panel
-        .getByLabel("Разовая правка элемента", { exact: true })
-        .fill("Измени текст на «Проверка MVP»");
-      await panel.getByRole("button", { name: "Подготовить вариант" }).click();
+      const buttonDraft = panel.getByRole("textbox", { name: "Единый текст элемента" });
+      const candidateText = `Проверка MVP ${Date.now()}`;
+      await buttonDraft.fill(withOneOff(await buttonDraft.inputValue(), `Измени текст на «${candidateText}»`));
+      await panel.getByRole("button", { name: "Сохранить элемент" }).click();
       const candidate = page.getByRole("region", {
         name: "Предложенное изменение",
       });
@@ -98,7 +113,7 @@ test.describe("editor MVP", { tag: "@editor" }, () => {
       await expect(
         page
           .frameLocator('iframe[title="Предпросмотр предложенного изменения"]')
-          .getByText("Проверка MVP", { exact: true }),
+          .getByText(candidateText, { exact: true }),
       ).toBeVisible({ timeout: 20000 });
 
       await candidate
@@ -158,19 +173,13 @@ test.describe("editor MVP", { tag: "@editor" }, () => {
         metricBox.x + metricBox.width / 2,
         metricBox.y + metricBox.height / 2,
       );
-      await expect(
-        page.getByRole("button", {
-          name: "Изменить размер элемента",
-          exact: true,
-        }),
-      ).toBeEnabled({ timeout: 15000 });
+      const resizeHandle = page.getByRole("button", { name: "Изменить размер элемента: se" });
+      await expect(resizeHandle).toBeEnabled({ timeout: 15000 });
       await page.mouse.move(800, 700);
       await expect(
         page.getByRole("listbox", { name: "Слои под указателем" }),
       ).not.toBeVisible({ timeout: 5_000 });
-      const resize = await page
-        .getByRole("button", { name: "Изменить размер элемента", exact: true })
-        .boundingBox();
+      const resize = await resizeHandle.boundingBox();
       if (!resize) throw new Error("Missing resize handle");
       const beforeResizeUrl = await frame.getAttribute("src");
       await page.mouse.move(
@@ -241,9 +250,9 @@ test.describe("editor MVP", { tag: "@editor" }, () => {
           response.url().endsWith("/api/editor/file") &&
           response.request().method() === "PUT",
       );
-      await page
-        .getByRole("button", { name: "Сохранить версию", exact: true })
-        .click();
+      await page.getByRole("button", { name: "Выбор игры" }).click();
+      await expect(page.getByRole("combobox", { name: "Текущая игра" })).toHaveValue("simple-choice");
+      await page.getByRole("button", { name: "Сохранить версию", exact: true }).click();
       expect((await versionSave).status()).toBe(200);
       await expect(
         page.getByRole("button", { name: "Сохранить версию", exact: true }),
@@ -260,24 +269,21 @@ test.describe("editor MVP", { tag: "@editor" }, () => {
         restoredMetricBox.y + restoredMetricBox.height / 2,
       );
       await expect(panel).toBeVisible();
-      await panel
-        .getByLabel("Разовая правка элемента", { exact: true })
-        .fill("Сделай показатель заметнее");
-      await panel.getByRole("button", { name: "Подготовить вариант" }).click();
+      const metricDraft = panel.getByRole("textbox", { name: "Единый текст элемента" });
+      const freePrompt = `Сделай показатель заметнее (${Date.now()})`;
+      await metricDraft.fill(withOneOff(await metricDraft.inputValue(), freePrompt));
+      await panel.getByRole("button", { name: "Сохранить элемент" }).click();
       await expect(
         page.getByRole("region", { name: "Чат с агентом" }),
       ).toBeVisible();
       await expect(
-        page.getByText("Сделай показатель заметнее", { exact: true }),
+        page.getByText(freePrompt, { exact: true }),
       ).toBeVisible();
       await expect(
         page.getByText("Контекст выбранного источника (", { exact: false }),
       ).toHaveCount(0);
-      await expect(
-        page.getByRole("button", { name: "Правила", exact: true }),
-      ).toBeEnabled();
-
-      await page.getByRole("button", { name: "Правила", exact: true }).click();
+      await page.getByRole("button", { name: "Сценарий", exact: true }).click();
+      await page.getByRole("menuitem", { name: "Правила", exact: true }).click();
       await expect(page.getByTestId("mvp-rules-panel")).toBeVisible();
       await page
         .getByTestId("mvp-rules-text")
@@ -309,7 +315,7 @@ test.describe("editor MVP", { tag: "@editor" }, () => {
       ).not.toBeVisible();
       await page
         .getByRole("complementary", { name: "Диалоги", exact: true })
-        .getByRole("button", { name: "Работа над игрой", exact: true })
+        .getByRole("button", { name: initialChatTitle, exact: true })
         .click();
       await expect(
         page.getByText("Как работать с редактором?", { exact: true }),
@@ -325,15 +331,13 @@ test.describe("editor MVP", { tag: "@editor" }, () => {
       await page.mouse.down();
       await page.mouse.move(rect.x + 300, rect.y + 220, { steps: 8 });
       await page.mouse.up();
-      await expect(
-        page.getByRole("button", { name: "Открыть ввод промта" }),
-      ).toBeVisible();
+      await expect(page.getByLabel("Инструкция для промта или текстовая пометка")).toBeVisible();
       await page.keyboard.type("Button");
       await expect(
         page.getByLabel("Инструкция для промта или текстовая пометка"),
       ).toHaveValue("Button");
       await page
-        .getByRole("button", { name: "Добавить текст на рисунок" })
+        .getByRole("button", { name: "Текст на рисунке" })
         .click();
 
       await page.locator("input[type=file]").setInputFiles({
@@ -346,7 +350,7 @@ test.describe("editor MVP", { tag: "@editor" }, () => {
       });
       await expect(page.locator("input[type=file]")).toBeEnabled();
       await page.mouse.click(rect.x + 400, rect.y + 350);
-      await page.getByRole("button", { name: "Открыть ввод промта" }).click();
+      await expect(page.getByLabel("Инструкция для промта или текстовая пометка")).toBeVisible();
       await page
         .getByLabel("Инструкция для промта или текстовая пометка")
         .fill("Объясни этот рисунок");
@@ -368,13 +372,92 @@ test.describe("editor MVP", { tag: "@editor" }, () => {
       ).toBeVisible();
 
       await page.setViewportSize({ width: 390, height: 844 });
-      await page.getByRole("button", { name: "Правила", exact: true }).click();
+      await page.getByRole("button", { name: "Сценарий", exact: true }).click();
+      await page.getByRole("menuitem", { name: "Правила", exact: true }).click();
     } finally {
       await page.close().catch(() => undefined);
       if (editorSessionId)
         await request.delete(`${editorUrl}/api/editor/session`, {
           data: { sessionId: editorSessionId },
         });
+    }
+  });
+  test("keeps one editable draft and reveals the toolbar across its full width", async ({ page, request }) => {
+    test.setTimeout(90_000);
+    await page.setViewportSize({ width: 1200, height: 900 });
+    let sessionId: string | undefined;
+    try {
+      const opening = page.waitForResponse((response) => response.url().endsWith("/api/editor/session") && response.request().method() === "POST");
+      await page.goto(`${editorUrl}/?gameId=simple-choice&file=game.authoring.json`);
+      const response = await opening;
+      expect(response.status()).toBe(200);
+      sessionId = (await response.json()).session.sessionId;
+      await expect(page.getByTestId("editor-wireframe")).toBeVisible();
+
+      const menu = page.locator('[aria-label="Плавающее меню редактора"]');
+      const reveal = async () => {
+        const box = await menu.boundingBox();
+        if (!box) throw Error("Missing toolbar proximity area");
+        await page.mouse.move(box.x + box.width / 2, 2);
+        await expect(menu).toHaveAttribute("data-expanded", "true");
+      };
+      const toolbar = page.getByRole("toolbar", { name: "Панель инструментов" });
+      await expect(toolbar.getByRole("button")).toHaveCount(6);
+      await reveal();
+      await expect(menu).toHaveAttribute("data-expanded", "true");
+      const active = toolbar.locator('[aria-current="page"]');
+      const expanded = await active.boundingBox();
+      if (!expanded) throw Error("Missing active tool");
+      await page.mouse.move(1100, 700);
+      await expect(menu).toHaveAttribute("data-expanded", "false");
+      const menuBox = await menu.boundingBox();
+      if (!menuBox) throw Error("Missing floating toolbar");
+      await page.mouse.move(menuBox.x + menuBox.width - 10, menuBox.y + menuBox.height / 2);
+      await expect(menu).toHaveAttribute("data-expanded", "true");
+      const revealed = await active.boundingBox();
+      if (!revealed) throw Error("Missing revealed active tool");
+      expect(Math.abs(revealed.x - expanded.x)).toBeLessThan(1);
+
+      await page.locator('[data-wireframe-source-pointer="/root/screens/0/root/children/0/children/0"]').click();
+      const panel = page.locator('[aria-label="Редактор элемента"]');
+      const draft = panel.getByRole("textbox", { name: "Единый текст элемента" });
+      const initial = await draft.inputValue();
+      expect(initial.split(separator)).toHaveLength(3);
+      await draft.focus();
+      await draft.evaluate((node) => (node as HTMLTextAreaElement).setSelectionRange(0, 0));
+      await page.keyboard.type("x");
+      await draft.evaluate((node, marker) => {
+        const textarea = node as HTMLTextAreaElement;
+        const pos = textarea.value.indexOf(marker) + marker.length;
+        textarea.setSelectionRange(pos, pos);
+      }, separator);
+      await page.keyboard.type("y");
+      await draft.evaluate((node) => {
+        const textarea = node as HTMLTextAreaElement;
+        textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+      });
+      await page.keyboard.type("z");
+      await draft.press("ControlOrMeta+z");
+      await draft.press("ControlOrMeta+z");
+      await draft.press("ControlOrMeta+z");
+      await expect(draft).toHaveValue(initial);
+
+      const invalid = `${initial}${separator}лишний раздел`;
+      await draft.fill(invalid);
+      await panel.getByRole("button", { name: "Сохранить элемент" }).click();
+      await expect(panel.getByRole("status")).toContainText("Количество разделителей: 3; нужно 2");
+      await expect(draft).toHaveValue(invalid);
+      await expect(page.getByRole("region", { name: "Предложенное изменение" })).toHaveCount(0);
+      await reveal();
+      await page.getByRole("button", { name: "Чат", exact: true }).click();
+      await expect(panel).not.toBeVisible();
+      await reveal();
+      await page.getByRole("button", { name: "Редактор", exact: true }).click();
+      await expect(draft).toBeVisible();
+      await expect(draft).toHaveValue(invalid);
+    } finally {
+      await page.close().catch(() => undefined);
+      if (sessionId) await request.delete(`${editorUrl}/api/editor/session`, { data: { sessionId } });
     }
   });
   test("serves changed Antarctica session plugin bundle to preview", async ({
@@ -394,13 +477,12 @@ test.describe("editor MVP", { tag: "@editor" }, () => {
       await page.goto(
         `${editorUrl}/?gameId=antarctica&file=game.authoring.json`,
       );
-      await expect(page.getByTestId("editor-wireframe")).toBeVisible();
-
       const sessionResponse = await sessionResponsePromise;
       expect(sessionResponse.status()).toBe(200);
       const sessionBody =
         (await sessionResponse.json()) as EditorSessionListResponse;
       editorSessionId = sessionBody.session.sessionId;
+      await expect(page.getByTestId("editor-wireframe")).toBeVisible({ timeout: 45_000 });
 
       const marker = `e2e-session-plugin-${editorSessionId}`;
       const editorProjectRoot = process.env.E2E_EDITOR_PROJECT_ROOT;

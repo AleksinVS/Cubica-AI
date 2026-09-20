@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 const editorUrl = process.env.E2E_EDITOR_URL ?? "http://127.0.0.1:3202";
+const separator = "\n=======================\n";
 
 /** Save through the MVP interface; history restoration remains an API capability. */
 async function saveElementLabel(page: Page, label: string): Promise<string> {
@@ -9,26 +10,29 @@ async function saveElementLabel(page: Page, label: string): Promise<string> {
       '[data-wireframe-source-pointer="/root/screens/0/root/children/0/children/0"]',
     )
     .click();
-  const panel = page.getByRole("complementary", {
-    name: "Редактор элемента",
-    exact: true,
-  });
-  await panel.getByLabel("Название элемента", { exact: true }).fill(label);
-  await panel.getByRole("button", { name: "Сохранить", exact: true }).click();
+  const panel = page.locator('[aria-label="Редактор элемента"]');
+  const draft = panel.getByRole("textbox", { name: "Единый текст элемента" });
+  const sections = (await draft.inputValue()).split(separator);
+  expect(sections).toHaveLength(3);
+  sections[2] = sections[2].replace(/^_label:.*(?=\n|$)/, `_label: ${JSON.stringify(label)}`);
+  await draft.fill(sections.join(separator));
+  await panel.getByRole("button", { name: "Сохранить элемент" }).click();
   await expect(
-    panel.getByText("Название сохранено.", { exact: false }),
+    panel.getByText("Авторское описание сохранено.", { exact: false }),
   ).toBeVisible({ timeout: 45_000 });
   await panel
     .getByRole("button", { name: "Закрыть редактор элемента" })
     .click();
+  const gameMenu = page.getByRole("button", { name: "Выбор игры" });
+  if (await gameMenu.getAttribute("aria-expanded") !== "true") await gameMenu.click();
+  const saveVersion = page.getByRole("button", { name: "Сохранить версию", exact: true });
+  await expect(saveVersion).toBeVisible();
   const saveResponsePromise = page.waitForResponse(
     (response) =>
       response.url().endsWith("/api/editor/file") &&
       response.request().method() === "PUT",
   );
-  await page
-    .getByRole("button", { name: "Сохранить версию", exact: true })
-    .click();
+  await saveVersion.click();
   const response = await saveResponsePromise;
   const saved = await response.json();
   expect(response.status(), JSON.stringify(saved)).toBe(200);
@@ -41,6 +45,13 @@ async function saveElementLabel(page: Page, label: string): Promise<string> {
 }
 
 test.describe("editor-web durable author history", { tag: "@editor" }, () => {
+  test.beforeEach(async ({ page }) => {
+    const userId = `e2e-history-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    await page.route("**/api/editor/session", async (route) => {
+      if (route.request().method() !== "POST") return route.continue();
+      await route.continue({ postData: JSON.stringify({ ...route.request().postDataJSON(), userId }) });
+    });
+  });
   test("saves two versions through MVP and restores older content through the history API", async ({
     page,
     request,
