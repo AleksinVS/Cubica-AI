@@ -41,4 +41,31 @@ describe("drawing message transport", () => {
     expect(message.context).toContain('"text":"Играть"');
     expect(isEditorAgentProtocolUserMessage(toEditorUserMessage(message))).toBe(true);
   });
+
+  it("rasterizes each stroke with its captured color and width", async () => {
+    const colors: string[] = [];
+    const widths: number[] = [];
+    const arcs: unknown[][] = [];
+    const context = {
+      beginPath: vi.fn(), moveTo: vi.fn(), lineTo: vi.fn(), stroke: vi.fn(), fill: vi.fn(), arc: (...args: unknown[]) => arcs.push(args), fillText: vi.fn(), strokeText: vi.fn(),
+      set strokeStyle(value: string) { colors.push(value); },
+      set lineWidth(value: number) { widths.push(value); },
+      lineCap: "round", lineJoin: "round", shadowColor: "", shadowBlur: 0
+    } as unknown as CanvasRenderingContext2D;
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(context);
+    vi.spyOn(HTMLCanvasElement.prototype, "toDataURL").mockReturnValue("data:image/png;base64,AA==");
+    await drawingAgentMessage({
+      prompt: "x",
+      strokes: [
+        { color: "#ef4444", widthRatio: 0.01, points: [{ x: 0.1, y: 0.2 }, { x: 0.5, y: 0.5 }] },
+        { color: "#3b82f6", widthRatio: 0.01, points: [{ x: 0.5, y: 0.5 }] }
+      ],
+      annotations: [],
+      background: { dataUrl: "data:image/jpeg;base64,AQ==", width: 400, height: 200 }
+    });
+    expect(colors).toContain("#ef4444");
+    expect(colors).toContain("#3b82f6");
+    expect(widths).toContain(8);
+    expect(arcs[0]?.[2]).toBe(4);
+  });
 });

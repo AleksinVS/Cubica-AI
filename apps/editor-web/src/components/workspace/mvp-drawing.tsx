@@ -1,8 +1,9 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import type { PreviewPoint } from "@cubica/editor-engine";
 
 import styles from "./mvp-drawing.module.css";
+import { MvpFloatingPrompt, compactPromptWidth } from "./mvp-floating-prompt.tsx";
 import {
-  clampPopupPosition,
   canAppendDrawingPoint,
   canStartDrawingStroke,
   getContainedImageFrame,
@@ -25,6 +26,10 @@ export interface MvpDrawingRegion {
 
 export interface MvpDrawingStroke {
   readonly points: readonly MvpDrawingPoint[];
+  readonly color?: string;
+  readonly width?: number;
+  /** Width normalized to the shortest side of the visible image frame. */
+  readonly widthRatio?: number;
 }
 
 export interface MvpDrawingAnnotation {
@@ -61,20 +66,33 @@ export interface MvpDrawingProps {
   readonly initialBackground?: MvpDrawingBackground;
   readonly children?: ReactNode;
   readonly className?: string;
+  readonly pencilColor?: string;
+  readonly pencilWidth?: number;
 }
 
 const MAX_FILE_BYTES = 8 * 1024 * 1024;
 const ACCEPTED_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
-const DRAWING_STROKE_WIDTH_RATIO = 0.006;
 const ANNOTATION_FONT_SIZE = 20;
 const ANNOTATION_LINE_HEIGHT = 26;
+const DEFAULT_PENCIL_COLOR = "#ef4444";
+const DEFAULT_PENCIL_WIDTH = 3;
+const CLICK_MOVEMENT_THRESHOLD = 3;
 
 type MarkHistoryEntry =
   | { readonly kind: "stroke"; readonly id: number }
   | { readonly kind: "annotation"; readonly id: number };
 type StoredStroke = MvpDrawingStroke & { readonly id: number };
 type StoredAnnotation = MvpDrawingAnnotation & { readonly id: number };
-type ActiveStroke = { readonly pointerId: number; readonly points: MvpDrawingPoint[] };
+type ActiveStroke = {
+  readonly pointerId: number;
+  readonly points: MvpDrawingPoint[];
+  readonly color: string;
+  readonly width: number;
+  readonly widthRatio?: number;
+  readonly startClientX: number;
+  readonly startClientY: number;
+  readonly maxDistance: number;
+};
 
 let nextMarkId = 1;
 
@@ -142,16 +160,16 @@ export function MvpDrawing({
   region,
   initialBackground,
   children,
-  className
+  className,
+  pencilColor = DEFAULT_PENCIL_COLOR,
+  pencilWidth = DEFAULT_PENCIL_WIDTH
 }: MvpDrawingProps) {
   const stageRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const popupRef = useRef<HTMLElement | null>(null);
   const activeStrokeRef = useRef<ActiveStroke | null>(null);
   const activeRenderFrameRef = useRef<number | null>(null);
-  const popupAnchorRef = useRef<MvpDrawingPoint>({ x: 0.5, y: 0.25 });
-  const popupDrawingPointRef = useRef<MvpDrawingPoint>({ x: 0.5, y: 0.25 });
+  const promptDrawingPointRef = useRef<MvpDrawingPoint>({ x: 0.5, y: 0.25 });
   const mountedRef = useRef(true);
   const uploadSequenceRef = useRef(0);
   const [surfaceSize, setSurfaceSize] = useState<MvpDrawingSize>({ width: 1, height: 1 });
@@ -163,13 +181,13 @@ export function MvpDrawing({
   );
   const [strokes, setStrokes] = useState<StoredStroke[]>([]);
   const [activePoints, setActivePoints] = useState<MvpDrawingPoint[]>([]);
+  const [activeStrokeStyle, setActiveStrokeStyle] = useState<{ color: string; width: number; widthRatio?: number } | undefined>();
   const [annotations, setAnnotations] = useState<StoredAnnotation[]>([]);
   const [history, setHistory] = useState<MarkHistoryEntry[]>([]);
   const [draftPrompt, setDraftPrompt] = useState("");
   const [promptOpen, setPromptOpen] = useState(false);
-  const [popupVisible, setPopupVisible] = useState(false);
-  const [popupPosition, setPopupPosition] = useState({ left: 8, top: 8 });
-  const [popupSize, setPopupSize] = useState<MvpDrawingSize>({ width: 90, height: 44 });
+  const [promptPoint, setPromptPoint] = useState<PreviewPoint>({ x: 8, y: 8 });
+  const [promptInstance, setPromptInstance] = useState(0);
   const [localError, setLocalError] = useState<string | undefined>();
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -211,32 +229,6 @@ export function MvpDrawing({
   }, [measureSurface]);
 
   useEffect(() => {
-    if (!popupVisible) return;
-    const nextFrame = frameForSurface(surfaceSize, backgroundSize);
-    const nextAnchor = toFramePoint(popupDrawingPointRef.current, nextFrame, surfaceSize);
-    popupAnchorRef.current = nextAnchor;
-    setPopupPosition(clampPopupPosition(nextAnchor, surfaceSize, popupSize));
-  }, [popupVisible, surfaceSize, backgroundSize, popupSize]);
-
-  useEffect(() => {
-    if (!popupVisible) return;
-    const element = popupRef.current;
-    if (!element) return;
-    const updateMeasuredSize = () => {
-      const rect = element.getBoundingClientRect();
-      if (!rect.width || !rect.height) return;
-      setPopupSize((previous) => previous.width === rect.width && previous.height === rect.height
-        ? previous
-        : { width: rect.width, height: rect.height });
-    };
-    updateMeasuredSize();
-    if (typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(updateMeasuredSize);
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, [popupVisible, promptOpen]);
-
-  useEffect(() => {
     if (promptOpen) {
       const textarea = textareaRef.current;
       textarea?.focus();
@@ -245,13 +237,7 @@ export function MvpDrawing({
         resizePrompt(textarea);
       }
     }
-  }, [promptOpen]);
-
-  useEffect(() => {
-    if (popupVisible && !promptOpen && !isBusy && popupRef.current instanceof HTMLButtonElement) {
-      popupRef.current.focus();
-    }
-  }, [isBusy, popupVisible, promptOpen]);
+  }, [isBusy, promptInstance, promptOpen]);
 
   const normalizedPointFromEvent = useCallback(
     (event: React.PointerEvent<SVGSVGElement>): MvpDrawingPoint => {
@@ -262,13 +248,12 @@ export function MvpDrawing({
     [backgroundSize, surfaceSize]
   );
 
-  const updatePopupAnchor = useCallback(
-    (point: MvpDrawingPoint) => {
+  const pointInSurface = useCallback(
+    (point: MvpDrawingPoint): PreviewPoint => {
       const rect = pointerRect(stageRef.current ?? svgRef.current ?? document.body, surfaceSize);
       const currentFrame = frameForSurface({ width: rect.width, height: rect.height }, backgroundSize);
-      popupDrawingPointRef.current = point;
-      popupAnchorRef.current = toFramePoint(point, currentFrame, { width: rect.width, height: rect.height });
-      setPopupPosition(clampPopupPosition(popupAnchorRef.current, { width: rect.width, height: rect.height }));
+      const normalized = toFramePoint(point, currentFrame, { width: rect.width, height: rect.height });
+      return { x: normalized.x * rect.width, y: normalized.y * rect.height };
     },
     [backgroundSize, surfaceSize]
   );
@@ -284,12 +269,23 @@ export function MvpDrawing({
       return;
     }
     const point = normalizedPointFromEvent(event);
-    activeStrokeRef.current = { pointerId: event.pointerId, points: [point] };
+    const frameMinimum = Math.min(frame.width, frame.height);
+    activeStrokeRef.current = {
+      pointerId: event.pointerId,
+      points: [point],
+      color: pencilColor,
+      width: pencilWidth,
+      widthRatio: frameMinimum > 0 ? pencilWidth / frameMinimum : undefined,
+      startClientX: event.clientX,
+      startClientY: event.clientY,
+      maxDistance: 0
+    };
     if (activeRenderFrameRef.current !== null) cancelAnimationFrame(activeRenderFrameRef.current);
     activeRenderFrameRef.current = null;
     setActivePoints([point]);
-    setPopupVisible(false);
+    setActiveStrokeStyle({ color: pencilColor, width: pencilWidth, widthRatio: frameMinimum > 0 ? pencilWidth / frameMinimum : undefined });
     setPromptOpen(false);
+    setDraftPrompt("");
     setLocalError(undefined);
     try {
       event.currentTarget.setPointerCapture(event.pointerId);
@@ -305,9 +301,10 @@ export function MvpDrawing({
       setLocalError("Достигнут лимит точек рисунка (20 000).");
       return;
     }
+    const maxDistance = Math.max(active.maxDistance, Math.hypot(event.clientX - active.startClientX, event.clientY - active.startClientY));
     const nextPoints = appendDistinctPoint(active.points, normalizedPointFromEvent(event));
+    activeStrokeRef.current = nextPoints.length === active.points.length ? { ...active, maxDistance } : { ...active, points: nextPoints, maxDistance };
     if (nextPoints.length === active.points.length) return;
-    activeStrokeRef.current = { ...active, points: nextPoints };
     if (activeRenderFrameRef.current === null) {
       activeRenderFrameRef.current = requestAnimationFrame(() => {
         activeRenderFrameRef.current = null;
@@ -323,6 +320,7 @@ export function MvpDrawing({
     if (activeRenderFrameRef.current !== null) cancelAnimationFrame(activeRenderFrameRef.current);
     activeRenderFrameRef.current = null;
     setActivePoints([]);
+    setActiveStrokeStyle(undefined);
     if (event) {
       try {
         event.currentTarget.releasePointerCapture(event.pointerId);
@@ -339,22 +337,26 @@ export function MvpDrawing({
     if (activeRenderFrameRef.current !== null) cancelAnimationFrame(activeRenderFrameRef.current);
     activeRenderFrameRef.current = null;
     setActivePoints([]);
+    setActiveStrokeStyle(undefined);
     try {
       event.currentTarget.releasePointerCapture(event.pointerId);
     } catch {
       // Pointer capture is optional in the DOM used by component tests.
     }
     const endpoint = normalizedPointFromEvent(event);
+    const movement = Math.max(active.maxDistance, Math.hypot(event.clientX - active.startClientX, event.clientY - active.startClientY));
     const points = canAppendDrawingPoint(committedPoints, active.points.length)
       ? appendDistinctPoint(active.points, endpoint)
       : active.points;
+    if (movement < CLICK_MOVEMENT_THRESHOLD) {
+      openPromptAt(endpoint);
+      return;
+    }
     if (!points.length) return;
     const id = nextMarkId++;
-    setStrokes((previous) => [...previous, { id, points }]);
+    setStrokes((previous) => [...previous, { id, points, color: active.color, width: active.width, widthRatio: active.widthRatio }]);
     setHistory((previous) => [...previous, { kind: "stroke", id }]);
-    updatePopupAnchor(points[points.length - 1]);
-    setPopupSize({ width: 90, height: 44 });
-    setPopupVisible(true);
+    openPromptAt(points[points.length - 1]);
   };
 
   const undo = () => {
@@ -363,7 +365,6 @@ export function MvpDrawing({
     setHistory((previous) => previous.slice(0, -1));
     if (last.kind === "stroke") setStrokes((previous) => previous.filter((stroke) => stroke.id !== last.id));
     else setAnnotations((previous) => previous.filter((annotation) => annotation.id !== last.id));
-    setPopupVisible(false);
     setPromptOpen(false);
   };
 
@@ -372,28 +373,22 @@ export function MvpDrawing({
     setAnnotations([]);
     setHistory([]);
     setActivePoints([]);
+    setActiveStrokeStyle(undefined);
     activeStrokeRef.current = null;
     if (activeRenderFrameRef.current !== null) cancelAnimationFrame(activeRenderFrameRef.current);
     activeRenderFrameRef.current = null;
-    setPopupVisible(false);
     setPromptOpen(false);
     setLocalError(undefined);
   };
 
-  const openPrompt = (seed = "") => {
+  const openPromptAt = (point: MvpDrawingPoint) => {
     if (isBusy) return;
     setLocalError(undefined);
-    if (seed) setDraftPrompt((previous) => previous + seed);
-    setPopupSize({ width: 270, height: 200 });
+    promptDrawingPointRef.current = point;
+    setPromptPoint(pointInSurface(point));
+    setPromptInstance((previous) => previous + 1);
+    setDraftPrompt("");
     setPromptOpen(true);
-    setPopupVisible(true);
-  };
-
-  const handlePromptButtonKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
-    if (!isBusy && event.key.length === 1 && !event.metaKey && !event.ctrlKey && !event.altKey) {
-      event.preventDefault();
-      openPrompt(event.key);
-    }
   };
 
   const resizePrompt = (textarea: HTMLTextAreaElement) => {
@@ -405,12 +400,11 @@ export function MvpDrawing({
     const text = draftPrompt.trim();
     if (!text || isBusy) return;
     const id = nextMarkId++;
-    const drawingPoint = popupDrawingPointRef.current;
+    const drawingPoint = promptDrawingPointRef.current;
     setAnnotations((previous) => [...previous, { id, text, x: drawingPoint.x, y: drawingPoint.y }]);
     setHistory((previous) => [...previous, { kind: "annotation", id }]);
     setDraftPrompt("");
     setPromptOpen(false);
-    setPopupVisible(false);
     setLocalError(undefined);
   };
 
@@ -430,7 +424,6 @@ export function MvpDrawing({
       });
       setDraftPrompt("");
       setPromptOpen(false);
-      setPopupVisible(false);
       onDone?.();
     } catch (error) {
       setLocalError(errorText(error, "Не удалось отправить промт. Черновик сохранён."));
@@ -475,12 +468,16 @@ export function MvpDrawing({
   const drawFramePoint = (point: MvpDrawingPoint) => toFramePoint(point, frame, surfaceSize);
   const svgWidth = Math.max(1, surfaceSize.width);
   const svgHeight = Math.max(1, surfaceSize.height);
-  const strokeWidth = Math.min(svgWidth, svgHeight) * DRAWING_STROKE_WIDTH_RATIO;
   const drawPixelPoint = (point: MvpDrawingPoint) => {
     const framePoint = drawFramePoint(point);
     return { x: framePoint.x * svgWidth, y: framePoint.y * svgHeight };
   };
-  const visibleStrokes = [...strokes, ...(activePoints.length ? [{ id: -1, points: activePoints }] : [])];
+  const visibleStrokes = [
+    ...strokes,
+    ...(activePoints.length
+      ? [{ id: -1, points: activePoints, color: activeStrokeStyle?.color ?? pencilColor, width: activeStrokeStyle?.width ?? pencilWidth, widthRatio: activeStrokeStyle?.widthRatio }]
+      : [])
+  ];
 
   return (
     <div ref={stageRef} className={stageStyle(className)} aria-label="Область рисования">
@@ -517,10 +514,14 @@ export function MvpDrawing({
         {visibleStrokes.map((stroke) => {
           const points = stroke.points.map(drawPixelPoint);
           const d = points.map((point, index) => `${index ? "L" : "M"}${point.x} ${point.y}`).join(" ");
+          const width = stroke.widthRatio !== undefined
+            ? stroke.widthRatio * Math.min(frame.width, frame.height)
+            : stroke.width ?? pencilWidth;
+          const color = stroke.color ?? pencilColor;
           return points.length > 1 ? (
-            <path key={`stroke-${stroke.id}`} className={styles.stroke} d={d} pathLength={1} style={{ strokeWidth }} />
+            <path key={`stroke-${stroke.id}`} className={styles.stroke} d={d} pathLength={1} style={{ stroke: color, strokeWidth: width }} />
           ) : (
-            <circle key={`stroke-${stroke.id}`} className={styles.strokeDot} cx={points[0]?.x ?? 0} cy={points[0]?.y ?? 0} r={strokeWidth} style={{ strokeWidth }} />
+            <circle key={`stroke-${stroke.id}`} className={styles.strokeDot} cx={points[0]?.x ?? 0} cy={points[0]?.y ?? 0} r={width / 2} style={{ fill: color }} />
           );
         })}
         {annotations.map((annotation) => {
@@ -541,46 +542,34 @@ export function MvpDrawing({
         })}
       </svg>
 
-      {popupVisible && !disabled ? (
-        promptOpen ? (
-          <form
-            ref={(element) => { popupRef.current = element; }}
-            className={styles.prompt}
-            style={{ left: popupPosition.left, top: popupPosition.top } as CSSProperties}
-            onSubmit={submitPrompt}
-          >
+      {promptOpen && !disabled ? (
+        <MvpFloatingPrompt
+          key={promptInstance}
+          point={promptPoint}
+          width={compactPromptWidth(draftPrompt, 76)}
+          label="Промт рисования"
+          className={styles.prompt}
+        >
+          <form className={styles.promptForm} onSubmit={submitPrompt}>
+            <button type="button" className={styles.promptClose} disabled={isBusy} onClick={() => { setDraftPrompt(""); setPromptOpen(false); }} aria-label="Закрыть промт" title="Закрыть промт">×</button>
             <textarea
               ref={textareaRef}
+              autoFocus
               aria-label="Инструкция для промта или текстовая пометка"
               value={draftPrompt}
               onChange={(event) => {
                 setDraftPrompt(event.target.value);
                 resizePrompt(event.currentTarget);
               }}
-              placeholder="Опишите изменение…"
               rows={1}
               disabled={isBusy}
             />
             <div className={styles.promptActions}>
-              <button type="submit" disabled={isBusy || !draftPrompt.trim()} aria-label="Отправить промт">Промт</button>
-              <button type="button" disabled={isBusy || !draftPrompt.trim()} onClick={addAnnotation} aria-label="Добавить текст на рисунок">Текст</button>
+              <button type="submit" disabled={isBusy || !draftPrompt.trim()} aria-label="Отправить промт" title="Отправить промт"><span aria-hidden="true">↗</span></button>
+              <button type="button" disabled={isBusy || !draftPrompt.trim()} onClick={addAnnotation} aria-label="Текст на рисунке" title="Текст на рисунке"><span aria-hidden="true">T</span></button>
             </div>
           </form>
-        ) : (
-          <button
-            ref={(element) => { popupRef.current = element; }}
-            type="button"
-            className={styles.promptLauncher}
-            style={{ left: popupPosition.left, top: popupPosition.top } as CSSProperties}
-            onClick={() => openPrompt()}
-            onKeyDown={handlePromptButtonKeyDown}
-            disabled={isBusy}
-            aria-label="Открыть ввод промта"
-            title="Открыть ввод промта"
-          >
-            <span className={styles.launcherLabel}>Промт</span><span className={styles.caret} aria-hidden="true" />
-          </button>
-        )
+        </MvpFloatingPrompt>
       ) : null}
 
       <div className={styles.toolbar} role="toolbar" aria-label="Инструменты рисования">
@@ -593,7 +582,6 @@ export function MvpDrawing({
         {onCancel ? <button type="button" className={styles.iconButton} onClick={onCancel} disabled={isBusy} aria-label="Закрыть рисование" title="Закрыть">←</button> : null}
       </div>
       {localError ? <p className={styles.status} role="status">{localError}</p> : null}
-      {background ? <p className={styles.backgroundHint}>Фон добавлен отдельно от предпросмотра</p> : null}
     </div>
   );
 }

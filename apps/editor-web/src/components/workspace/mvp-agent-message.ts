@@ -30,12 +30,20 @@ export async function drawingAgentMessage(submission: MvpDrawingSubmission,
   const canvas = document.createElement("canvas"); canvas.width = width; canvas.height = height;
   const context = canvas.getContext("2d");
   if (!context) throw new Error("Браузер не смог подготовить рисунок.");
-  context.strokeStyle = "#27303a"; context.lineWidth = Math.min(width, height) * .006; context.lineCap = "round"; context.lineJoin = "round";
+  const defaultStrokeWidth = Math.min(width, height) * .006;
+  context.lineCap = "round"; context.lineJoin = "round";
   context.shadowColor = "rgba(255, 255, 255, .88)"; context.shadowBlur = 2;
   for (const stroke of submission.strokes) {
+    const strokeColor = stroke.color ?? "#27303a";
+    const strokeWidth = stroke.widthRatio !== undefined
+      ? stroke.widthRatio * Math.min(width, height)
+      : stroke.width ?? defaultStrokeWidth;
+    context.strokeStyle = strokeColor;
+    context.fillStyle = strokeColor;
+    context.lineWidth = strokeWidth;
     if (stroke.points.length === 1) {
-      context.beginPath(); context.fillStyle = "#27303a";
-      context.arc(stroke.points[0].x * width, stroke.points[0].y * height, context.lineWidth, 0, 2 * Math.PI); context.fill();
+      context.beginPath();
+      context.arc(stroke.points[0].x * width, stroke.points[0].y * height, strokeWidth / 2, 0, 2 * Math.PI); context.fill();
       continue;
     }
     context.beginPath();

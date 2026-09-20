@@ -111,20 +111,18 @@ describe("MvpDrawing model", () => {
 });
 
 describe("MvpDrawing", () => {
-  it("focuses the launcher and accepts the first and subsequent typed characters", () => {
+  it("opens a focused empty prompt after a stroke and accepts typed characters", () => {
     render(<MvpDrawing onSubmit={vi.fn().mockResolvedValue(undefined)} />);
     setSurfaceBounds(stage());
     drawOneStroke();
 
-    const launcher = container?.querySelector("button[aria-label='Открыть ввод промта']");
-    if (!(launcher instanceof HTMLButtonElement)) throw new Error("prompt launcher was not rendered");
-    expect(document.activeElement).toBe(launcher);
-
-    act(() => typeFocusedText("П"));
-
     const textarea = container?.querySelector("textarea");
     expect(textarea).toBeInstanceOf(HTMLTextAreaElement);
     expect(document.activeElement).toBe(textarea);
+    expect((textarea as HTMLTextAreaElement).selectionStart).toBe(0);
+    expect((textarea as HTMLTextAreaElement).selectionEnd).toBe(0);
+
+    act(() => typeFocusedText("П"));
     expect((textarea as HTMLTextAreaElement).selectionStart).toBe(1);
     expect((textarea as HTMLTextAreaElement).selectionEnd).toBe(1);
 
@@ -134,7 +132,7 @@ describe("MvpDrawing", () => {
     expect(document.activeElement).toBe(textarea);
   });
 
-  it("restores launcher focus after a temporary disabled state", () => {
+  it("restores prompt focus after a temporary disabled state", () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
     render(<MvpDrawing onSubmit={onSubmit} />);
     setSurfaceBounds(stage());
@@ -145,12 +143,55 @@ describe("MvpDrawing", () => {
     undoButton.focus();
 
     act(() => root?.render(<MvpDrawing onSubmit={onSubmit} disabled />));
-    expect(container?.querySelector("button[aria-label='Открыть ввод промта']")).toBeNull();
+    expect(container?.querySelector("textarea")).toBeNull();
 
     act(() => root?.render(<MvpDrawing onSubmit={onSubmit} />));
-    const launcher = container?.querySelector("button[aria-label='Открыть ввод промта']");
-    expect(launcher).toBeInstanceOf(HTMLButtonElement);
-    expect(document.activeElement).toBe(launcher);
+    const textarea = container?.querySelector("textarea");
+    expect(textarea).toBeInstanceOf(HTMLTextAreaElement);
+    expect(document.activeElement).toBe(textarea);
+  });
+
+  it("does not create a dot for a short blank-area click", () => {
+    render(<MvpDrawing onSubmit={vi.fn().mockResolvedValue(undefined)} />);
+    const svg = container?.querySelector("svg");
+    if (!(svg instanceof SVGSVGElement)) throw new Error("drawing canvas was not rendered");
+    setSurfaceBounds(svg);
+    act(() => {
+      svg.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0, pointerId: 12, clientX: 20, clientY: 20 }));
+      svg.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, pointerId: 12, clientX: 22, clientY: 21 }));
+    });
+    expect(container?.querySelectorAll("path, circle")).toHaveLength(0);
+    expect(container?.querySelector("textarea")).toBeInstanceOf(HTMLTextAreaElement);
+    expect(document.activeElement).toBe(container?.querySelector("textarea"));
+  });
+
+  it("keeps a stroke when its path crosses the threshold and returns to its start", () => {
+    render(<MvpDrawing onSubmit={vi.fn().mockResolvedValue(undefined)} />);
+    const svg = container?.querySelector("svg");
+    if (!(svg instanceof SVGSVGElement)) throw new Error("drawing canvas was not rendered");
+    setSurfaceBounds(svg);
+    act(() => {
+      svg.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0, pointerId: 13, clientX: 20, clientY: 20 }));
+      svg.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, pointerId: 13, clientX: 40, clientY: 20 }));
+      svg.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, pointerId: 13, clientX: 20, clientY: 20 }));
+      svg.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, pointerId: 13, clientX: 20, clientY: 20 }));
+    });
+    expect(container?.querySelectorAll("path, circle")).toHaveLength(1);
+    expect(container?.querySelector("textarea")).toBeInstanceOf(HTMLTextAreaElement);
+  });
+
+  it("captures pencil color and width on each stroke", () => {
+    render(<MvpDrawing onSubmit={vi.fn().mockResolvedValue(undefined)} pencilColor="#ef4444" pencilWidth={5} />);
+    setSurfaceBounds(stage());
+    drawOneStroke();
+    act(() => root?.render(<MvpDrawing onSubmit={vi.fn().mockResolvedValue(undefined)} pencilColor="#3b82f6" pencilWidth={1} />));
+    drawOneStroke();
+    const paths = Array.from(container?.querySelectorAll("path") ?? []);
+    expect(paths).toHaveLength(2);
+    expect((paths[0] as SVGPathElement).style.stroke).toBe("#ef4444");
+    expect((paths[0] as SVGPathElement).style.strokeWidth).toBe("5");
+    expect((paths[1] as SVGPathElement).style.stroke).toBe("#3b82f6");
+    expect((paths[1] as SVGPathElement).style.strokeWidth).toBe("1");
   });
 
   it("renders pixel-sized multiline annotations in the measured SVG viewport", () => {
@@ -168,9 +209,8 @@ describe("MvpDrawing", () => {
     render(<MvpDrawing onSubmit={vi.fn().mockResolvedValue(undefined)} />);
     drawOneStroke();
 
-    act(() => (container?.querySelector("button[aria-label='Открыть ввод промта']") as HTMLButtonElement).click());
     act(() => setTextareaValue("Button\nLine 2"));
-    act(() => (container?.querySelector("button[aria-label='Добавить текст на рисунок']") as HTMLButtonElement).click());
+    act(() => (container?.querySelector("button[aria-label='Текст на рисунке']") as HTMLButtonElement).click());
 
     const svg = container?.querySelector("svg");
     const path = container?.querySelector("path");
@@ -192,11 +232,8 @@ describe("MvpDrawing", () => {
     setSurfaceBounds(stage());
     drawOneStroke();
 
-    const launcher = container?.querySelector("button[aria-label='Открыть ввод промта']");
-    expect(launcher).not.toBeNull();
-    act(() => (launcher as HTMLButtonElement).click());
     act(() => setTextareaValue("Подпиши кнопку"));
-    const textButton = container?.querySelector("button[aria-label='Добавить текст на рисунок']");
+    const textButton = container?.querySelector("button[aria-label='Текст на рисунке']");
     expect(textButton).not.toBeNull();
     act(() => (textButton as HTMLButtonElement).click());
     expect(onSubmit).not.toHaveBeenCalled();
@@ -208,7 +245,6 @@ describe("MvpDrawing", () => {
     const region = { x: 0.1, y: 0.2, width: 0.5, height: 0.4 };
     render(<MvpDrawing onSubmit={onSubmit} region={region} />);
     drawOneStroke();
-    act(() => (container?.querySelector("button[aria-label='Открыть ввод промта']") as HTMLButtonElement).click());
     act(() => setTextareaValue("Измени цвет"));
     await act(async () => {
       (container?.querySelector("button[aria-label='Отправить промт']") as HTMLButtonElement).click();
@@ -230,7 +266,7 @@ describe("MvpDrawing", () => {
       svg.dispatchEvent(new PointerEvent("pointercancel", { bubbles: true, pointerId: 4, clientX: 60, clientY: 60 }));
     });
     expect(container?.querySelectorAll("path, circle")).toHaveLength(0);
-    expect(container?.querySelector("button[aria-label='Открыть ввод промта']")).toBeNull();
+    expect(container?.querySelector("textarea")).toBeNull();
   });
 
   it("cleans an active stroke when pointer capture is lost", () => {
