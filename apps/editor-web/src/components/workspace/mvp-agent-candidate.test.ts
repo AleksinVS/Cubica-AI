@@ -62,4 +62,13 @@ describe("MVP agent candidate boundary", () => {
     const accepted = vi.fn(async () => {});
     expect((await forwardMvpAgentRequest(accepted, "Change", "context")).forwarded).toBe(true);
   });
+
+  it("limits the complete authored draft even when it is hidden from the chat", async () => {
+    const sender = vi.fn(async () => {});
+    expect((await forwardMvpAgentRequest(sender, "Change", "source", "x".repeat(12_001))).forwarded).toBe(false);
+    expect(sender).not.toHaveBeenCalled();
+    const draft = "x".repeat(12_000);
+    expect((await forwardMvpAgentRequest(sender, "Change", "source", draft)).forwarded).toBe(true);
+    expect(sender).toHaveBeenCalledWith({ text: "Change", context: `source\n\n${draft}` });
+  });
 });

@@ -53,12 +53,13 @@ export function isMvpAgentCandidateScopeCurrent(
 export async function forwardMvpAgentRequest(
   sender: EditorMessageSender | null,
   prompt: string,
-  context: string
+  context: string,
+  draftContext?: string
 ): Promise<{ readonly forwarded: boolean; readonly message: string }> {
   if (sender === null) return { forwarded: false, message: "Агент не подключён. Текст сохранён в поле; откройте чат после подключения." };
-  if (prompt.length > 12_000) return { forwarded: false, message: "Запрос слишком длинный. Сократите текст до 12 000 символов." };
+  if (prompt.length > 12_000 || (draftContext?.length ?? 0) > 12_000) return { forwarded: false, message: "Запрос слишком длинный. Сократите текст до 12 000 символов." };
   try {
-    await sender({ text: prompt, context });
+    await sender({ text: prompt, context: draftContext === undefined ? context : `${context}\n\n${draftContext}` });
     return { forwarded: true, message: "Запрос отправлен агенту. Следите за ответом в чате." };
   } catch (error) {
     return { forwarded: false, message: error instanceof Error ? error.message : "Агент не принял запрос." };

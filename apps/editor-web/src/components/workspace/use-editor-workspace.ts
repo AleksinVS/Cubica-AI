@@ -3034,7 +3034,7 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
     const result = await forwardMvpAgentRequest(sender, prompt,
       `Контекст выбранного источника (только для подготовки, без записи): ${JSON.stringify({
         gameId: scope.gameId, sources: context, contextToken: scope.token
-      })}\nЕсли нужна правка, вызовите editor.prepareCandidate с JSON EditorChangeSet в changeSetJson и contextToken. Меняйте только указанные filePath и вложенные JSON-указатели. Применение подтверждает человек.${draftContext === undefined ? "" : `\n\n${draftContext}`}`);
+      })}\nЕсли нужна правка, вызовите editor.prepareCandidate с JSON EditorChangeSet в changeSetJson и contextToken. Меняйте только указанные filePath и вложенные JSON-указатели. Применение подтверждает человек.`, draftContext);
     if (result.forwarded) {
       if (mvpAgentScopeRef.current === scope) {
         setMvpAgentForwardedCount((count) => count + 1);
