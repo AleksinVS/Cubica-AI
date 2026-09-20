@@ -1460,7 +1460,8 @@
                         }
                       },
                       "_type": "ui.AntarcticaClosePanelButton",
-                      "type": "buttonComponent"
+                      "type": "buttonComponent",
+                      "_label": "Закрыть панель «журнал ходов»"
                     },
                     {
                       "id": "btn-hint",
@@ -1475,18 +1476,21 @@
                         }
                       },
                       "_type": "ui.AntarcticaShowPanelButton",
-                      "type": "buttonComponent"
+                      "type": "buttonComponent",
+                      "_label": "Открыть панель «подсказка»"
                     }
                   ],
                   "_type": "ui.AntarcticaPanelButtonContainer",
-                  "type": "areaComponent"
+                  "type": "areaComponent",
+                  "_label": "Кнопки панели «Журнал ходов»"
                 }
               ]
             }
           ]
         },
         "_type": "ui.AntarcticaOverlayPanel",
-        "type": "panel"
+        "type": "panel",
+        "_label": "Журнал ходов"
       },
       "hint": {
         "title": "Подсказка",
@@ -1506,35 +1510,43 @@
               "children": [
                 {
                   "_type": "ui.AntarcticaTopbarRemainingDaysMetric",
-                  "type": "gameVariableComponent"
+                  "type": "gameVariableComponent",
+                  "_label": "Остаток дней"
                 },
                 {
                   "_type": "ui.AntarcticaTopbarProMetric",
-                  "type": "gameVariableComponent"
+                  "type": "gameVariableComponent",
+                  "_label": "Знания"
                 },
                 {
                   "_type": "ui.AntarcticaTopbarRepMetric",
-                  "type": "gameVariableComponent"
+                  "type": "gameVariableComponent",
+                  "_label": "Доверие"
                 },
                 {
                   "_type": "ui.AntarcticaTopbarLidMetric",
-                  "type": "gameVariableComponent"
+                  "type": "gameVariableComponent",
+                  "_label": "Энергия"
                 },
                 {
                   "_type": "ui.AntarcticaTopbarManMetric",
-                  "type": "gameVariableComponent"
+                  "type": "gameVariableComponent",
+                  "_label": "Контроль"
                 },
                 {
                   "_type": "ui.AntarcticaTopbarStatMetric",
-                  "type": "gameVariableComponent"
+                  "type": "gameVariableComponent",
+                  "_label": "Статус"
                 },
                 {
                   "_type": "ui.AntarcticaTopbarContMetric",
-                  "type": "gameVariableComponent"
+                  "type": "gameVariableComponent",
+                  "_label": "Контакт"
                 },
                 {
                   "_type": "ui.AntarcticaTopbarConstrMetric",
-                  "type": "gameVariableComponent"
+                  "type": "gameVariableComponent",
+                  "_label": "Конструктив"
                 }
               ]
             },
@@ -1584,7 +1596,8 @@
                     }
                   },
                   "_type": "ui.AntarcticaShowPanelButton",
-                  "type": "buttonComponent"
+                  "type": "buttonComponent",
+                  "_label": "Открыть панель «журнал ходов»"
                 },
                 {
                   "id": "btn-hint",
@@ -1599,7 +1612,8 @@
                     }
                   },
                   "_type": "ui.AntarcticaClosePanelButton",
-                  "type": "buttonComponent"
+                  "type": "buttonComponent",
+                  "_label": "Закрыть панель «подсказка»"
                 },
                 {
                   "id": "nav-left",
@@ -1608,7 +1622,8 @@
                     "disabled": true
                   },
                   "_type": "ui.AntarcticaNavButton",
-                  "type": "buttonComponent"
+                  "type": "buttonComponent",
+                  "_label": "Назад"
                 },
                 {
                   "id": "nav-right",
@@ -1617,16 +1632,19 @@
                     "disabled": true
                   },
                   "_type": "ui.AntarcticaNavButton",
-                  "type": "buttonComponent"
+                  "type": "buttonComponent",
+                  "_label": "Вперед"
                 }
               ],
               "_type": "ui.AntarcticaPanelButtonContainer",
-              "type": "areaComponent"
+              "type": "areaComponent",
+              "_label": "Кнопки панели «Подсказка»"
             }
           ]
         },
         "_type": "ui.AntarcticaOverlayPanel",
-        "type": "panel"
+        "type": "panel",
+        "_label": "Подсказка"
       }
     },
     "layouts": {

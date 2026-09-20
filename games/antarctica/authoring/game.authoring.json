@@ -1747,217 +1747,288 @@
         "objects": {
           "cards": {
             "1": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Создать клуб изучения айсберга"
             },
             "2": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Рассказать как можно большему количеству пингвинов"
             },
             "3": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Поговорить с Аленой"
             },
             "4": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Зайти к Георгию"
             },
             "5": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Обратиться к Вожаку Леониду"
             },
             "6": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Встретиться с Василием"
             },
             "7": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Выступление Алены на Совете"
             },
             "8": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Обсуждения через поддержку Вожака"
             },
             "9": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Модель айсберга для Совета"
             },
             "10": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Предварительные разговоры с Советом"
             },
             "11": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Презентация через страх катастрофы"
             },
             "12": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Презентация дневника наблюдений"
             },
             "13": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Дозировать информацию перед собранием"
             },
             "14": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Заранее вовлечь лояльных пингвинов"
             },
             "15": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Поработать с тревожными пингвинами"
             },
             "16": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Подготовить скептиков заранее"
             },
             "17": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Подготовить решение и план Советом"
             },
             "18": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Создать штаб на общем собрании"
             },
             "19": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Разъяснительная работа среди населения"
             },
             "20": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Индивидуальная работа с личным составом"
             },
             "21": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Установочное совещание и план действий"
             },
             "22": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Ловля кальмаров"
             },
             "23": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Тимбилдинг"
             },
             "24": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: График дежурства команды"
             },
             "25": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Статистика климатических изменений"
             },
             "26": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Сбор идей со всеми пингвинами"
             },
             "27": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Работа с опытными решателями"
             },
             "28": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Укрепление айсберга"
             },
             "29": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Консультации с соседними колониями"
             },
             "30": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Серия мозговых штурмов"
             },
             "31": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Создать комитет по борьбе с лже-наукой. Провести детальную разъяснительную работу со всеми пингв"
             },
             "32": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Сделать мотивирующие листовки Айсберг не спасет себя сам! Узнай, что ты можешь сделать? В них об"
             },
             "33": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Выявить наиболее тревожных пингвинов и провести работу с ними: успокоить, привлечь их к разъясни"
             },
             "34": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Разработать и внедрить разумную систему наказаний для тех, кто сеет панику: штрафы за дезинформа"
             },
             "35": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Провести серию выступлений для небольших групп пингвинов, пользуясь более неформальной обстановк"
             },
             "36": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Провести разъяснения с каждым пингвином персонально. Для этого подготовить специальную расширенн"
             },
             "37": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Было столько идей, что может быть, некоторые были пропущены? Нужно проверить записи, сделать кат"
             },
             "38": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Можно сделать еще одно общее собрание, но теперь уже с подготовкой – все должны принести не мене"
             },
             "39": {
-              "_type": "game.AntarcticaHiddenCardState"
+              "_type": "game.AntarcticaHiddenCardState",
+              "_label": "Скрытое состояние: Лидер предлагает оставить пока поиск решения, отдохнуть. Лучше просто понаблюдать за жизнью коло"
             },
             "40": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Решения не видно и пингвины волнуются. Нужно провести встречи в группах (родственных и по месту "
             },
             "41": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Выбрать случайным образом несколько групп пингвинов и провести с ними разъяснительную работу. Оц"
             },
             "42": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Все яснее, что айсберг не спасти. Может быть, вопрос в том, как спасти пингвинов? Нужно разработ"
             },
             "43": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Леонид собирает общее собрание и выступает с призывом сплотиться и преодолеть многовековую оседл"
             },
             "44": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Леонид собирает общее собрание и выступает с презентацией на основе слайдов Профессора, подробно"
             },
             "45": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Леонид собирает общее собрание, дает слово Евгению и Алене, которые в ярких красках рассказывают"
             },
             "46": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Совет собирает общее собрание, на котором выступает Профессор. Он подробно рассказывает о логике"
             },
             "47": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Совет принимает решение донести информацию через серию собраний. Все члены Совета и Команды изме"
             },
             "48": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Совет решает распространить решение через персональные письма. В письмах сочетаются сухие факты "
             },
             "49": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Провести работу с лидерами мнений (у Профессора есть как раз свежий социальный граф колонии). Пр"
             },
             "50": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Провести совещания о будущих переменах по месту работы пингвинов с участием команды перемен и пр"
             },
             "51": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: вечерние встречи с семьями пингвинов, узнать об их страхах и сомне"
             },
             "52": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Организовать семинары в детских садах и школах о том, как прекрасны путешествия. Провести конкур"
             },
             "53": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Сделать видео-ролик для Айсберг-ТВ и показывать его так часто, как возможно. В ролике рассказать"
             },
             "54": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Заполнить айсберг жизнеутверждающими постерами о несгибаемости пингвинов, их юморе и любви к при"
             },
             "55": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Привлечь скептиков"
             },
             "56": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Нейтрализовать Григория"
             },
             "57": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Поговорить с детьми"
             },
             "58": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Семейные ужины"
             },
             "59": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Усилить участие"
             },
             "60": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Школа разведчика"
             },
             "61": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Отправить элитную группу"
             },
             "62": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Добрать желающих"
             },
             "63": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Доукомплектовать лучшими"
             },
             "64": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Пресечь борьбу"
             },
             "65": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Развести конфликт"
             },
             "66": {
-              "_type": "game.AntarcticaHiddenCardState"
+              "_type": "game.AntarcticaHiddenCardState",
+              "_label": "Скрытое состояние: Отправить готовую группу"
             },
             "67": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Кабинетный анализ"
             },
             "68": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Отправить экспертную группу"
             },
             "69": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Готовить второй переезд"
             },
             "70": {
-              "_type": "game.AntarcticaAvailableCardState"
+              "_type": "game.AntarcticaAvailableCardState",
+              "_label": "Доступное состояние: Взять паузу"
             },
             "3902": {
-              "_type": "game.AntarcticaHiddenCardState"
+              "_type": "game.AntarcticaHiddenCardState",
+              "_label": "Скрытое состояние: Лидер предлагает оставить пока поиск решения, отдохнуть. Лучше просто понаблюдать за жизнью коло (поздний вариант)"
             }
           }
         },
