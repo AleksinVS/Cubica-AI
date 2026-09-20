@@ -183,4 +183,32 @@ describe("MVP authoring actions", () => {
     expect(splitMvpDraftLabelHeader('_label: "Новое имя"\nСущность: старая')).toEqual({ label: "Новое имя", returnedText: "Сущность: старая" });
     expect(splitMvpDraftLabelHeader('_label: ""\nСущность: старая')).toMatchObject({ error: expect.any(String) });
   });
+
+  it("lists and instantiates inherited Antarctica UI prototypes with child overrides", async () => {
+    const text = await readFile(path.join(process.cwd(), "..", "..", "games", "antarctica", "authoring", uiPath), "utf8");
+    const ui = { filePath: uiPath, documentKind: "ui" as const, channel: "web", json: JSON.parse(text) as JsonValue };
+    const definitionType = "ui.AntarcticaTopbarRemainingDaysMetric";
+    expect(mvpPrototypeEntries([ui])).toContainEqual({ id: definitionType, label: "Topbar-метрика remainingDays Antarctica" });
+    const created = buildMvpCreateItem(`prototype:${definitionType}`, [ui], { filePath: uiPath, pointer: "/root/screens/0" });
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+    const operation = created.changeSet.jsonPatches[0]?.operations.at(-1);
+    const node = operation !== undefined && "value" in operation ? operation.value as JsonObject : undefined;
+    expect(node).toBeDefined();
+    if (node === undefined) return;
+    expect(node.type).toBe("gameVariableComponent");
+    expect((node.props as JsonObject).metricId).toBe("remainingDays");
+    expect((node.props as JsonObject).backgroundImage).toBe("asset:top-sidebar-days-top");
+    expect(node.id).not.toBe("remainingDays");
+    expect(dryRun(created.changeSet, [ui]).ok).toBe(true);
+
+    const broken = JSON.parse(text) as Record<string, JsonValue>;
+    const definitions = broken._definitions as Record<string, JsonValue>;
+    definitions[definitionType] = { ...(definitions[definitionType] as JsonObject), _extends: "ui.MissingMetricBadge" };
+    const brokenUi = { ...ui, json: broken };
+    expect(mvpPrototypeEntries([brokenUi]).some((entry) => entry.id === definitionType)).toBe(false);
+    expect(buildMvpCreateItem(`prototype:${definitionType}`, [brokenUi], { filePath: uiPath, pointer: "/root/screens/0" })).toMatchObject({ ok: false });
+    definitions[definitionType] = { ...(definitions[definitionType] as JsonObject), _extends: definitionType };
+    expect(mvpPrototypeEntries([brokenUi]).some((entry) => entry.id === definitionType)).toBe(false);
+  });
 });

@@ -150,8 +150,9 @@ export function buildMvpCreateItem(
   } else {
     const definitionType = kind.slice("prototype:".length);
     const definitions = readJsonPointer(ui.json, "/_definitions");
-    const definition = isPlainJsonObject(definitions) ? definitions[definitionType] : undefined;
-    if (!definitionType.startsWith("ui.") || !isPlainJsonObject(definition) || typeof definition.type !== "string") {
+    const definition = isPlainJsonObject(definitions) && definitionType.startsWith("ui.")
+      ? resolveDefinitionBody(definitionType, definitions) : undefined;
+    if (definition === undefined || typeof definition.type !== "string") {
       return { ok: false, reason: "Выбранный UI-прототип недоступен для этой страницы." };
     }
     node = instantiateMvpPrototype(definitionType, definition, ids);
@@ -164,8 +165,11 @@ export function mvpPrototypeEntries(documents: readonly EditorEntityProjectionDo
   return documentsForKind(documents, "ui").flatMap((document) => {
     const definitions = isPlainJsonObject(document.json) ? readJsonPointer(document.json, "/_definitions") : undefined;
     return isPlainJsonObject(definitions) ? Object.entries(definitions)
-      .filter(([id, value]) => id.startsWith("ui.") && isPlainJsonObject(value) && typeof value.type === "string")
-      .map(([id, value]) => ({ id, label: isPlainJsonObject(value) && typeof value._label === "string" ? value._label : id })) : [];
+      .flatMap(([id]) => {
+        const body = id.startsWith("ui.") ? resolveDefinitionBody(id, definitions) : undefined;
+        return body !== undefined && typeof body.type === "string"
+          ? [{ id, label: typeof body._label === "string" ? body._label : id }] : [];
+      }) : [];
   });
 }
 
@@ -233,19 +237,20 @@ function mergeBody(parent: JsonObject, child: JsonObject): Record<string, JsonVa
   return merged;
 }
 
+function resolveDefinitionBody(type: string, definitions: JsonObject, visited = new Set<string>()): Record<string, JsonValue> | undefined {
+  const definition = definitions[type];
+  if (!isPlainJsonObject(definition) || visited.has(type) || visited.size >= 5) return undefined;
+  visited.add(type);
+  const parent = typeof definition._extends === "string" ? resolveDefinitionBody(definition._extends, definitions, visited) : {};
+  if (parent === undefined) return undefined;
+  const body = clone(definition) as Record<string, JsonValue>;
+  delete body._extends;
+  return mergeBody(parent, body);
+}
+
 function expandedSourceBody(source: JsonObject, definitions: JsonObject): Record<string, JsonValue> | undefined {
-  const resolve = (type: string, visited: Set<string>): Record<string, JsonValue> | undefined => {
-    const definition = definitions[type];
-    if (!isPlainJsonObject(definition)) return {};
-    if (visited.has(type) || visited.size >= 5) return undefined;
-    visited.add(type);
-    const parent = typeof definition._extends === "string" ? resolve(definition._extends, visited) : {};
-    if (parent === undefined) return undefined;
-    const body = clone(definition) as Record<string, JsonValue>;
-    delete body._extends;
-    return mergeBody(parent, body);
-  };
-  const parent = typeof source._type === "string" ? resolve(source._type, new Set()) : {};
+  const parent = typeof source._type === "string" && isPlainJsonObject(definitions[source._type])
+    ? resolveDefinitionBody(source._type, definitions) : {};
   if (parent === undefined) return undefined;
   const combined = mergeBody(parent, source);
   delete combined._extends;
