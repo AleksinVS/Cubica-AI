@@ -7,6 +7,8 @@ import {
   buildMvpGeometryChangeSet,
   geometrySupport,
   isMvpMetadataOnlyChangeSet,
+  resizeMvpRect,
+  type MvpResizeAnchor,
   type MvpElementSource
 } from "./mvp-element-operations";
 
@@ -47,5 +49,32 @@ describe("MVP element source mutations", () => {
     expect(geometrySupport(fractional)).toMatch(/пиксели/u);
     expect(buildMvpGeometryChangeSet(fractional, { x: 0, y: 0, width: 100, height: 50 }, { kind: "resize", dx: 20, dy: 10 })).toBeUndefined();
     expect(geometrySupport({ ...source, value: { ...source.value, type: "interactiveBoardSurface" } })).toMatch(/отдельно/u);
+  });
+
+  it("resizes from each of eight anchors while fixing the opposite sides", () => {
+    const bounds = { x: 10, y: 20, width: 100, height: 80 };
+    const expected: Record<MvpResizeAnchor, typeof bounds> = {
+      nw: { x: 20, y: 26, width: 90, height: 74 },
+      n: { x: 10, y: 26, width: 100, height: 74 },
+      ne: { x: 10, y: 26, width: 110, height: 74 },
+      e: { x: 10, y: 20, width: 110, height: 80 },
+      se: { x: 10, y: 20, width: 110, height: 86 },
+      s: { x: 10, y: 20, width: 100, height: 86 },
+      sw: { x: 20, y: 20, width: 90, height: 86 },
+      w: { x: 20, y: 20, width: 90, height: 80 }
+    };
+    for (const anchor of Object.keys(expected) as MvpResizeAnchor[]) {
+      expect(resizeMvpRect(bounds, 10, 6, anchor), anchor).toEqual(expected[anchor]);
+    }
+    expect(resizeMvpRect(bounds, 999, 999, "nw")).toEqual({ x: 98, y: 88, width: 12, height: 12 });
+  });
+
+  it("persists a west-edge resize as width plus translation, preserving the opposite edge", () => {
+    const styled = { ...source, value: { ...source.value, style: { width: 100, height: 80 } } };
+    const changed = buildMvpGeometryChangeSet(styled, { x: 10, y: 20, width: 100, height: 80 },
+      { kind: "resize", dx: 20, dy: 0, anchor: "w" });
+    expect(changed?.jsonPatches[0]?.operations.at(-1)).toMatchObject({ op: "replace", value: {
+      width: 80, height: 80, transform: "translate(20px, 0px) rotate(0deg)"
+    } });
   });
 });

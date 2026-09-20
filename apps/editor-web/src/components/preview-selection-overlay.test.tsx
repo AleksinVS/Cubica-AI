@@ -438,6 +438,34 @@ describe("PreviewSelectionOverlay", () => {
     await act(async () => root?.unmount());
   });
 
+  it("clears selection only from an outside click and cycles overlapping objects from frame clicks", async () => {
+    const onSelectEntity = vi.fn();
+    const onClearContext = vi.fn();
+    const container = document.createElement("div"); document.body.appendChild(container);
+    let root: Root | undefined;
+    await act(async () => { root = createRoot(container); root.render(<PreviewSelectionOverlay mvp entities={entities} selectedEntityId="front"
+      promptContext={null} proposedIntent={null} unresolvedCount={0} onSelectEntity={onSelectEntity} onSelectRegion={vi.fn()}
+      onClearContext={onClearContext} onPromptDraftChange={vi.fn()} onPromptSubmit={vi.fn()} onPromptClose={vi.fn()} />); });
+    const layer = container.querySelector<HTMLElement>("[data-testid='preview-selection-overlay']");
+    mockLayerRect(layer);
+    const frame = container.querySelector<HTMLElement>("[aria-label='Выбран элемент: Button']");
+    await act(async () => {
+      dispatchPointer(frame, "pointerdown", { clientX: 30, clientY: 40 });
+      dispatchPointer(frame, "pointerup", { clientX: 30, clientY: 40 });
+      dispatchPointer(frame, "pointerdown", { clientX: 30, clientY: 40 });
+      dispatchPointer(frame, "pointerup", { clientX: 30, clientY: 40 });
+    });
+    expect(onSelectEntity.mock.calls.map(([item]) => item.entityId)).toEqual(["front", "back"]);
+    expect(onClearContext).not.toHaveBeenCalled();
+    await act(async () => {
+      dispatchPointer(layer, "pointerdown", { clientX: 260, clientY: 160 });
+      dispatchPointer(layer, "pointerup", { clientX: 260, clientY: 160 });
+    });
+    expect(onClearContext).toHaveBeenCalledTimes(1);
+    expect(onSelectEntity).toHaveBeenCalledTimes(2);
+    await act(async () => root?.unmount()); container.remove();
+  });
+
   it("moves a selected region locally and never commits element geometry", async () => {
     const onGeometryCommit = vi.fn();
     const onRegionRectChange = vi.fn();
@@ -452,7 +480,7 @@ describe("PreviewSelectionOverlay", () => {
         onClearContext={vi.fn()} onPromptDraftChange={vi.fn()} onPromptSubmit={vi.fn()} onPromptClose={vi.fn()}
         onGeometryCommit={onGeometryCommit} onRegionRectChange={onRegionRectChange} />);
     });
-    const move = container.querySelector<HTMLButtonElement>("[aria-label='Переместить область']");
+    const move = container.querySelector<HTMLElement>("[aria-label='Выделенная область']");
     await act(async () => {
       dispatchPointer(move, "pointerdown", { clientX: 20, clientY: 20 });
       dispatchPointer(move, "pointermove", { clientX: 30, clientY: 25 });
@@ -475,7 +503,7 @@ describe("PreviewSelectionOverlay", () => {
         onClearContext={vi.fn()} onPromptDraftChange={vi.fn()} onPromptSubmit={vi.fn()} onPromptClose={vi.fn()}
         onGeometryCommit={onGeometryCommit} />);
     });
-    const move = container.querySelector<HTMLButtonElement>("[aria-label='Переместить элемент']");
+    const move = container.querySelector<HTMLElement>("[aria-label='Выбран элемент: Button']");
     await act(async () => {
       dispatchPointer(move, "pointerdown", { clientX: 30, clientY: 30 });
       dispatchPointer(move, "pointermove", { clientX: 80, clientY: 40 });
@@ -485,9 +513,27 @@ describe("PreviewSelectionOverlay", () => {
     await act(async () => root?.unmount());
   });
 
-  it("starts temporary drawing from selected element bounds without authoring mutation", async () => {
-    const onStartDrawing = vi.fn();
+  it("moves an element by dragging its frame and exposes eight resize and four rotate hit areas", async () => {
     const onGeometryCommit = vi.fn();
+    const container = document.createElement("div"); document.body.appendChild(container);
+    let root: Root | undefined;
+    await act(async () => { root = createRoot(container); root.render(<PreviewSelectionOverlay mvp entities={entities} selectedEntityId="front"
+      promptContext={null} proposedIntent={null} unresolvedCount={0} onSelectEntity={vi.fn()} onSelectRegion={vi.fn()}
+      onClearContext={vi.fn()} onPromptDraftChange={vi.fn()} onPromptSubmit={vi.fn()} onPromptClose={vi.fn()}
+      onGeometryCommit={onGeometryCommit} />); });
+    const frame = container.querySelector<HTMLElement>("[aria-label='Выбран элемент: Button']");
+    expect(container.querySelectorAll("[aria-label^='Изменить размер элемента:']")).toHaveLength(8);
+    expect(container.querySelectorAll("[aria-label^='Повернуть элемент:']")).toHaveLength(4);
+    await act(async () => {
+      dispatchPointer(frame, "pointerdown", { clientX: 30, clientY: 40 });
+      dispatchPointer(frame, "pointermove", { clientX: 50, clientY: 55 });
+      dispatchPointer(frame, "pointerup", { clientX: 50, clientY: 55 });
+    });
+    expect(onGeometryCommit).toHaveBeenCalledWith(entities[1], { kind: "move", dx: 20, dy: 15 });
+    await act(async () => root?.unmount()); container.remove();
+  });
+
+  it("keeps the selected frame limited to geometry controls", async () => {
     const container = document.createElement("div");
     document.body.appendChild(container);
     let root: Root | undefined;
@@ -496,16 +542,15 @@ describe("PreviewSelectionOverlay", () => {
       root.render(<PreviewSelectionOverlay mvp entities={entities} selectedEntityId="front" promptContext={null}
         proposedIntent={null} unresolvedCount={0} onSelectEntity={vi.fn()} onSelectRegion={vi.fn()}
         onClearContext={vi.fn()} onPromptDraftChange={vi.fn()} onPromptSubmit={vi.fn()} onPromptClose={vi.fn()}
-        onGeometryCommit={onGeometryCommit} onStartDrawing={onStartDrawing} />);
+        onGeometryCommit={vi.fn()} />);
     });
-    await act(async () => { container.querySelector<HTMLButtonElement>("[aria-label='Рисовать в выделенной области']")?.click(); });
-    expect(onStartDrawing).toHaveBeenCalledWith(entities[1]?.bounds);
-    expect(onGeometryCommit).not.toHaveBeenCalled();
+    const frame = container.querySelector<HTMLElement>("[aria-label='Выбран элемент: Button']");
+    expect(frame?.querySelectorAll("button")).toHaveLength(12);
+    expect(frame?.querySelector("[aria-label='Рисовать в выделенной области']")).toBeNull();
     await act(async () => root?.unmount());
   });
 
-  it("starts temporary drawing from region bounds and hides the pencil when no callback exists", async () => {
-    const onStartDrawing = vi.fn();
+  it("keeps region controls limited to eight resize dots", async () => {
     const rect = { x: 8, y: 12, width: 95, height: 70 };
     const container = document.createElement("div");
     document.body.appendChild(container);
@@ -516,11 +561,10 @@ describe("PreviewSelectionOverlay", () => {
       onSelectEntity: vi.fn(), onSelectRegion: vi.fn(), onClearContext: vi.fn(), onPromptDraftChange: vi.fn(),
       onPromptSubmit: vi.fn(), onPromptClose: vi.fn()
     };
-    await act(async () => { root = createRoot(container); root.render(<PreviewSelectionOverlay {...base} onStartDrawing={onStartDrawing} />); });
-    await act(async () => { container.querySelector<HTMLButtonElement>("[aria-label='Рисовать в выделенной области']")?.click(); });
-    expect(onStartDrawing).toHaveBeenCalledWith(rect);
-    await act(async () => { root?.render(<PreviewSelectionOverlay {...base} />); });
-    expect(container.querySelector("[aria-label='Рисовать в выделенной области']")).toBeNull();
+    await act(async () => { root = createRoot(container); root.render(<PreviewSelectionOverlay {...base} />); });
+    const frame = container.querySelector<HTMLElement>("[aria-label='Выделенная область']");
+    expect(frame?.querySelectorAll("button")).toHaveLength(8);
+    expect(frame?.querySelector("[aria-label^='Повернуть элемент:']")).toBeNull();
     await act(async () => root?.unmount());
   });
 });

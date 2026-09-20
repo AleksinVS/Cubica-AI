@@ -15,7 +15,7 @@ export interface MvpPromptTextareaProps {
 export const MvpPromptTextarea = forwardRef<HTMLTextAreaElement, MvpPromptTextareaProps>(function MvpPromptTextarea(
   { value, onChange, disabled, className, onHeightChange, "aria-label": ariaLabel }, ref
 ) {
-  const localRef = useRef<HTMLTextAreaElement>(null);
+  const localRef = useRef<HTMLTextAreaElement | null>(null);
 
   useLayoutEffect(() => {
     const textarea = localRef.current;

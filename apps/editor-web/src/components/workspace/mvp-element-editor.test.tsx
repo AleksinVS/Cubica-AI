@@ -1,134 +1,172 @@
 import React, { act, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import type { EditorEntity, PreviewEntityDescriptor } from "@cubica/editor-engine";
 
 import { MvpElementEditor } from "./mvp-element-editor";
+import { MVP_PROMPT_SEPARATOR, serializeMvpPromptDocument } from "./mvp-prompt-document";
 import type { MvpElementSource } from "./mvp-element-operations";
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
+beforeAll(() => {
+  if (Element.prototype.hasPointerCapture === undefined) {
+    Object.defineProperty(Element.prototype, "hasPointerCapture", { configurable: true, value: () => false });
+  }
+});
+
 const entity: EditorEntity = {
-  entityId: "button-1",
-  kind: "ui-component",
-  label: "Ответ",
+  entityId: "button-1", kind: "ui-component", label: "Ответ",
   primarySource: { filePath: "ui/web.authoring.json", pointer: "/root/screens/0/root/children/0", documentKind: "ui", channel: "web" },
-  facets: {},
-  diagnostics: []
+  facets: {}, diagnostics: []
 };
 const source: MvpElementSource = { filePath: entity.primarySource.filePath, pointer: entity.primarySource.pointer,
   value: { _type: "ui.Component", _label: "Ответ", type: "button", _prompt: { status: "draft", raw: "Понятный выбор", source: "user", language: "ru", updatedAt: "2026-09-19T00:00:00.000Z" } } };
+const capture = { entityId: entity.entityId, projectionYaml: "type: button\nlabel: Ответ", facetSourceMap: { lines: [] }, sourceHashes: {} };
+
+function setTextarea(textarea: HTMLTextAreaElement | null, text: string) {
+  Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")?.set?.call(textarea, text);
+  textarea?.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+function saveButton(container: HTMLElement) {
+  return container.querySelector<HTMLButtonElement>("[aria-label='Сохранить элемент']");
+}
+
+function textArea(container: HTMLElement) {
+  return container.querySelector<HTMLTextAreaElement>("textarea[aria-label='Единый текст элемента']");
+}
+
+function baseProps(onSave = vi.fn(async () => ({ ok: true, message: "Сохранено." }))) {
+  return { source, entity, label: "Ответ", onClose: vi.fn(), onCapture: vi.fn(() => capture), onSave };
+}
 
 describe("MvpElementEditor", () => {
-  it("preserves a free-form draft when the agent cannot accept it", async () => {
+  it("sends all three edited sections in one save call", async () => {
     const container = document.createElement("div"); document.body.appendChild(container);
-    const onPrompt = vi.fn(async () => ({ ready: false, forwarded: false, message: "Агент не подключён." }));
+    const onSave = vi.fn(async () => ({ ok: true, message: "Сохранено." }));
+    const props = baseProps(onSave);
     let root: Root | undefined;
-    await act(async () => { root = createRoot(container); root.render(<MvpElementEditor source={source} entity={entity} label="Ответ"
-      onClose={vi.fn()} onDirect={vi.fn()} onPrompt={onPrompt} onCapture={vi.fn()} onApplyYaml={vi.fn()} />); });
-    const input = container.querySelector<HTMLTextAreaElement>("[aria-label='Разовая правка элемента']");
-    await act(async () => {
-      Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")?.set?.call(input, "Сделай кнопку синей");
-      input?.dispatchEvent(new Event("input", { bubbles: true }));
-    });
-    await act(async () => { [...container.querySelectorAll<HTMLButtonElement>("button")]
-      .find(button => button.textContent === "Подготовить вариант")?.click(); });
-    expect(onPrompt).toHaveBeenCalledWith(source.filePath, source.pointer, "Ответ", "Сделай кнопку синей");
-    expect(input?.value).toBe("Сделай кнопку синей");
-    expect(container.textContent).toContain("Агент не подключён.");
+    await act(async () => { root = createRoot(container); root.render(<MvpElementEditor {...props} />); });
+    const textarea = textArea(container);
+    expect(container.querySelectorAll("textarea")).toHaveLength(1);
+    expect(textarea?.value).toContain(`\n${MVP_PROMPT_SEPARATOR}\n`);
+    const draft = serializeMvpPromptDocument(["Сделай кнопку синей", "Объясни выбор", "_label: \"Новый ответ\"\ntype: button"]);
+    await act(async () => setTextarea(textarea, draft));
+    await act(async () => saveButton(container)?.click());
+    expect(onSave).toHaveBeenCalledTimes(1);
+    expect(onSave).toHaveBeenCalledWith({ source, capture, oneOff: "Сделай кнопку синей", authorIntent: "Объясни выбор", yaml: "_label: \"Новый ответ\"\ntype: button" });
+    expect(textarea?.value).toBe(draft);
     await act(async () => root?.unmount()); container.remove();
   });
 
-  it("keeps three independent drafts and refuses to save after the source changes", async () => {
-    const onDirect = vi.fn(async () => true);
-    const onPrompt = vi.fn(async () => ({ ready: true, forwarded: false, message: "Вариант подготовлен." }));
-    const container = document.createElement("div");
-    document.body.appendChild(container);
-    let root: Root | undefined;
-    const props = {
-      entity, label: "Ответ", onClose: vi.fn(), onDirect, onPrompt,
-      onCapture: vi.fn(() => ({ entityId: entity.entityId, projectionYaml: "label: Ответ", facetSourceMap: { lines: [] }, sourceHashes: {} })),
-      onApplyYaml: vi.fn(async () => ({ path: "deterministic" as const, stale: false, report: [], applied: false, forwarded: false }))
-    };
-    await act(async () => { root = createRoot(container); root.render(<MvpElementEditor {...props} source={source} />); });
-    expect([...container.querySelectorAll("section h3")].map((item) => item.textContent)).toEqual([
-      "Разовая правка", "Авторское описание", "Структурированный текст"
-    ]);
-    const oneOff = container.querySelector<HTMLTextAreaElement>("[aria-label='Разовая правка элемента']");
-    await act(async () => {
-      const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")?.set;
-      setter?.call(oneOff, "Сделай кнопку крупнее");
-      oneOff?.dispatchEvent(new Event("input", { bubbles: true }));
-    });
-    expect(container.querySelector<HTMLTextAreaElement>("[aria-label='Авторское описание элемента']")?.value).toBe("Понятный выбор");
-    expect(container.querySelector<HTMLTextAreaElement>("[aria-label='Структурированный текст элемента']")?.value).toBe("label: Ответ");
-    await act(async () => { root?.render(<MvpElementEditor {...props} source={{ ...source, value: { ...source.value, _label: "Изменено извне" } }} />); });
-    await act(async () => {
-      [...container.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent === "Сохранить описание")?.click(); });
-    expect(onDirect).not.toHaveBeenCalled();
-    expect(container.textContent).toContain("Источник изменился");
-    await act(async () => root?.unmount());
-  });
-
-  it("keeps the selected layer identity when two layers have the same label", async () => {
+  it("keeps malformed raw drafts and reports the exact separator count without saving", async () => {
     const container = document.createElement("div"); document.body.appendChild(container);
-    const layers = ["first", "second"].map(entityId => ({ entityId, label: "Ответ" } as PreviewEntityDescriptor));
+    const onSave = vi.fn(async () => ({ ok: true, message: "Сохранено." }));
     let root: Root | undefined;
-    await act(async () => {
-      root = createRoot(container);
-      root.render(<MvpElementEditor label="Ответ" selectedLayerId="second" layers={layers}
-        onClose={vi.fn()} onDirect={vi.fn()} onPrompt={vi.fn()} onCapture={vi.fn()} onApplyYaml={vi.fn()} />);
-    });
-    expect(container.querySelector<HTMLSelectElement>("[aria-label='Выбрать слой']")?.value).toBe("second");
+    await act(async () => { root = createRoot(container); root.render(<MvpElementEditor {...baseProps(onSave)} />); });
+    const textarea = textArea(container);
+    for (const [raw, count] of [
+      ["Совсем без разделителей", 0],
+      [`Первый\n${MVP_PROMPT_SEPARATOR}\nВторой`, 1],
+      [`Первый\n======================\nВторой`, 0],
+      [serializeMvpPromptDocument(["A", "B", "C"]) + `\n${MVP_PROMPT_SEPARATOR}\nD`, 3]
+    ] as const) {
+      await act(async () => setTextarea(textarea, raw));
+      await act(async () => saveButton(container)?.click());
+      expect(textarea?.value).toBe(raw);
+      expect(container.querySelector("[role='status']")?.textContent).toContain(`Количество разделителей: ${count}`);
+    }
+    expect(onSave).not.toHaveBeenCalled();
     await act(async () => root?.unmount()); container.remove();
   });
 
-  it("shows a clear unmapped-node state on a narrow viewport", async () => {
-    const container = document.createElement("div");
-    container.style.width = "320px";
-    document.body.appendChild(container);
+  it("blocks a stale edited draft but follows an external reload while pristine", async () => {
+    const container = document.createElement("div"); document.body.appendChild(container);
+    const onSave = vi.fn(async () => ({ ok: true, message: "Сохранено." }));
+    const props = baseProps(onSave);
     let root: Root | undefined;
-    await act(async () => {
-      root = createRoot(container);
-      root.render(<MvpElementEditor label="Неполный элемент" onClose={vi.fn()} onDirect={vi.fn()} onPrompt={vi.fn()}
-        onCapture={vi.fn()} onApplyYaml={vi.fn()} />);
-    });
-    expect(container.querySelector("[aria-label='Редактор элемента']")).not.toBeNull();
-    expect(container.textContent).toContain("нет точного редактируемого источника");
-    await act(async () => root?.unmount());
+    await act(async () => { root = createRoot(container); root.render(<MvpElementEditor {...props} />); });
+    const reloaded = { ...source, value: { ...source.value, _label: "Ответ после загрузки" } };
+    await act(async () => { root?.render(<MvpElementEditor {...props} source={reloaded} />); });
+    expect(textArea(container)?.value).toContain("Ответ после загрузки");
+    const draft = serializeMvpPromptDocument(["Мой несохранённый текст", "Замысел", "yaml: true"]);
+    await act(async () => setTextarea(textArea(container), draft));
+    const changedAgain = { ...reloaded, value: { ...reloaded.value, _label: "Изменено другим автором" } };
+    await act(async () => { root?.render(<MvpElementEditor {...props} source={changedAgain} />); });
+    await act(async () => saveButton(container)?.click());
+    expect(onSave).not.toHaveBeenCalled();
+    expect(textArea(container)?.value).toBe(draft);
+    expect(container.querySelector("[role='status']")?.textContent).toContain("Элемент изменился");
+    await act(async () => root?.unmount()); container.remove();
   });
 
-  it("accepts a second metadata save after the first server result rerenders the source", async () => {
-    const onDirect = vi.fn(async (changeSet: { readonly jsonPatches: readonly { readonly operations: readonly { readonly op: string; readonly path: string; readonly value?: unknown }[] }[] }) => {
-      const write = changeSet.jsonPatches[0]?.operations.at(-1);
-      if (write?.op === "replace" || write?.op === "add") setSourceFromWrite?.(write.path.endsWith("/_prompt") ? "_prompt" : "_label", write.value);
-      return true;
+  it("rebases after a successful metadata save so a second save is accepted", async () => {
+    const container = document.createElement("div"); document.body.appendChild(container);
+    const onSave = vi.fn(async ({ source: current, authorIntent }: { source: MvpElementSource; authorIntent: string }) => {
+      setSource?.({ ...current, value: { ...current.value, _prompt: { status: "draft", raw: authorIntent, source: "user", language: "ru", updatedAt: "2026-09-20T00:00:00.000Z" } } });
+      return { ok: true, message: "Сохранено." };
     });
-    let setSourceFromWrite: ((field: "_label" | "_prompt", value: unknown) => void) | undefined;
-    const container = document.createElement("div");
-    document.body.appendChild(container);
+    let setSource: ((next: MvpElementSource) => void) | undefined;
     function Harness() {
-      const [current, setCurrent] = useState(source);
-      setSourceFromWrite = (field, value) => setCurrent((prior) => ({ ...prior, value: { ...prior.value, [field]: value as string } }));
-      return <MvpElementEditor source={current} entity={entity} label="Ответ" onClose={vi.fn()} onDirect={onDirect}
-        onPrompt={vi.fn()} onCapture={vi.fn(() => undefined)} onApplyYaml={vi.fn()} />;
+      const [current, update] = useState(source);
+      setSource = update;
+      return <MvpElementEditor {...baseProps(onSave)} source={current} />;
     }
     let root: Root | undefined;
     await act(async () => { root = createRoot(container); root.render(<Harness />); });
-    const name = container.querySelector<HTMLInputElement>("[aria-label='Название элемента']");
-    await act(async () => {
-      Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set?.call(name, "Новое имя");
-      name?.dispatchEvent(new Event("input", { bubbles: true }));
-    });
-    await act(async () => { [...container.querySelectorAll<HTMLButtonElement>("button")].find((item) => item.textContent === "Сохранить")?.click(); });
-    const author = container.querySelector<HTMLTextAreaElement>("[aria-label='Авторское описание элемента']");
-    await act(async () => {
-      Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")?.set?.call(author, "Новый замысел");
-      author?.dispatchEvent(new Event("input", { bubbles: true }));
-    });
-    await act(async () => { [...container.querySelectorAll<HTMLButtonElement>("button")].find((item) => item.textContent === "Сохранить описание")?.click(); });
-    expect(onDirect).toHaveBeenCalledTimes(2);
-    expect(container.textContent).not.toContain("Источник изменился");
-    await act(async () => root?.unmount());
+    await act(async () => setTextarea(textArea(container), serializeMvpPromptDocument(["", "Первый замысел", "yaml: true"])));
+    await act(async () => saveButton(container)?.click());
+    await act(async () => setTextarea(textArea(container), serializeMvpPromptDocument(["", "Второй замысел", "yaml: true"])));
+    await act(async () => saveButton(container)?.click());
+    expect(onSave).toHaveBeenCalledTimes(2);
+    expect(onSave.mock.calls[1]?.[0].authorIntent).toBe("Второй замысел");
+    expect(container.querySelector("[role='status']")?.textContent).not.toContain("Элемент изменился");
+    await act(async () => root?.unmount()); container.remove();
+  });
+
+  it("opens template save on a long hold without performing a normal save", async () => {
+    vi.useFakeTimers();
+    const container = document.createElement("div"); document.body.appendChild(container);
+    const onSave = vi.fn(async () => ({ ok: true, message: "Сохранено." }));
+    const onSavePrototype = vi.fn(async () => ({ ok: true, message: "Шаблон сохранён." }));
+    let root: Root | undefined;
+    try {
+      await act(async () => { root = createRoot(container); root.render(<MvpElementEditor {...baseProps(onSave)} onSavePrototype={onSavePrototype} />); });
+      const button = saveButton(container);
+      await act(async () => {
+        button?.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, button: 0 }));
+        vi.advanceTimersByTime(550);
+        button?.dispatchEvent(new MouseEvent("pointerup", { bubbles: true, button: 0 }));
+        button?.click();
+      });
+      expect(onSave).not.toHaveBeenCalled();
+      const template = [...container.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent === "Сохранить как шаблон");
+      expect(template).toBeDefined();
+      await act(async () => template?.click());
+      expect(onSavePrototype).toHaveBeenCalledWith(source);
+    } finally {
+      await act(async () => root?.unmount()); container.remove(); vi.useRealTimers();
+    }
+  });
+
+  it("uses layer identities despite duplicate labels and exposes page/game scope choices", async () => {
+    const container = document.createElement("div"); document.body.appendChild(container);
+    const layers = ["first", "second"].map((entityId) => ({ entityId, label: "Ответ" } as PreviewEntityDescriptor));
+    const onSelectLayer = vi.fn();
+    const onSelectScope = vi.fn();
+    let root: Root | undefined;
+    await act(async () => { root = createRoot(container); root.render(<MvpElementEditor {...baseProps()} layers={layers} selectedLayerId="second"
+      layerPoint={{ x: 32, y: 48 }} onSelectLayer={onSelectLayer} onSelectScope={onSelectScope} />); });
+    await act(async () => container.querySelector<HTMLButtonElement>("[aria-label='Слои: Ответ']")?.click());
+    const options = [...container.querySelectorAll<HTMLButtonElement>("[role='option']")];
+    expect(options.slice(0, 2).map((item) => item.textContent)).toEqual(["Ответ", "Ответ"]);
+    expect(options[1]?.getAttribute("aria-selected")).toBe("true");
+    await act(async () => options[0]?.click());
+    expect(onSelectLayer).toHaveBeenCalledWith(layers[0], { x: 32, y: 48 }, layers);
+    await act(async () => container.querySelector<HTMLButtonElement>("[aria-label='Слои: Ответ']")?.click());
+    await act(async () => [...container.querySelectorAll<HTMLButtonElement>("[role='option']")].find((item) => item.textContent === "Игра")?.click());
+    expect(onSelectScope).toHaveBeenCalledWith("game", { x: 32, y: 48 });
+    await act(async () => root?.unmount()); container.remove();
   });
 });
