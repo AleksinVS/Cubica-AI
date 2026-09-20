@@ -117,3 +117,5 @@ The following proposed decisions require explicit product-manager review before 
 | [ADR-104](104-verifiable-session-ai-debrief.md) | Проверяемый ИИ-разбор подтверждённой истории сессии | Accepted |
 | [ADR-105](105-preview-confirmed-editor-mutations.md) | Предпросмотр и подтверждение точного изменения в редакторе | Accepted |
 | [ADR-106](106-editor-debug-session-control-and-checkpoints.md) | серверная пауза и сохранения, совместимые с текущей моделью игры | Accepted |
+| [ADR-107](107-live-editor-preview-and-scene-navigation.md) | обновление предпросмотра без перезагрузки и просмотр авторских сцен | Accepted |
+| [ADR-108](108-prototype-defined-semantic-yaml-editing.md) | смысловая YAML-проекция и явное редактирование прототипов | Proposed |
