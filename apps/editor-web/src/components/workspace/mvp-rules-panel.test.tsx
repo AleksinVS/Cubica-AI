@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { EditorEntity, EditorEntityProjectionDocument, JsonObject } from "@cubica/editor-engine";
 
 import { MvpRulesPanel } from "./mvp-rules-panel.tsx";
-import { buildMvpRuleChangeSet } from "./mvp-rules-panel-helpers.ts";
+import { buildMvpRuleChangeSet, projectMvpRuleEntities, ruleEntities } from "./mvp-rules-panel-helpers.ts";
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -64,6 +64,18 @@ afterEach(() => {
 });
 
 describe("MvpRulesPanel helper", () => {
+  it("projects newly authored rules from the real logic/rules path", () => {
+    const rules = projectMvpRuleEntities([{
+      filePath: "game.authoring.json", documentKind: "game",
+      json: { root: { logic: { rules: [{ id: "new-rule", _type: "game.Rule", _label: "Новое правило", _semantics: "Описание" }] } } }
+    }]);
+    expect(ruleEntities(rules)).toEqual([expect.objectContaining({
+      label: "Новое правило",
+      primarySource: expect.objectContaining({ pointer: "/root/logic/rules/0" })
+    })]);
+    expect(ruleEntities([{ ...rules[0]!, primarySource: { ...rules[0]!.primarySource, pointer: "/root/rules/0" } }])).toEqual([]);
+  });
+
   it("builds confirmed canonical metadata with a normalized text", () => {
     const source: JsonObject = { _label: "Демо-игра" };
     const changeSet = buildMvpRuleChangeSet(

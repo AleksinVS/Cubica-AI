@@ -48,7 +48,29 @@ export function ruleEntities(entities: readonly EditorEntity[]): readonly Editor
   return entities.filter((entity) => {
     if (entity.kind === "game-root" || entity.kind === "game-action") return entity.primarySource.documentKind === "game";
     const pointer = entity.primarySource.pointer;
-    return entity.primarySource.documentKind === "game" && (pointer === "/root/rules" || pointer.startsWith("/root/rules/"));
+    return entity.primarySource.documentKind === "game" && (pointer === "/root/logic/rules" || pointer.startsWith("/root/logic/rules/"));
+  });
+}
+
+/** Rules are authoring-only today, so the MVP panel projects their exact pointers locally. */
+export function projectMvpRuleEntities(documents: readonly EditorEntityProjectionDocument[]): readonly EditorEntity[] {
+  return documents.flatMap((document) => {
+    if (document.documentKind !== "game" || document.json === undefined) return [];
+    const rules = readJsonPointer(document.json, "/root/logic/rules");
+    if (!Array.isArray(rules)) return [];
+    return rules.flatMap((value, index): EditorEntity[] => {
+      if (!isPlainJsonObject(value)) return [];
+      const pointer = `/root/logic/rules/${index}`;
+      const source = { filePath: document.filePath, pointer, documentKind: "game" as const };
+      return [{
+        entityId: `mvp-rule:${document.filePath}#${pointer}`,
+        kind: "content-block",
+        label: typeof value._label === "string" ? value._label : `Правило ${index + 1}`,
+        primarySource: source,
+        facets: { logic: [source] },
+        diagnostics: []
+      }];
+    });
   });
 }
 

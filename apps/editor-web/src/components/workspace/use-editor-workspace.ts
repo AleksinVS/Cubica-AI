@@ -132,7 +132,9 @@ import { captureRegionSnapshotForAgent } from "@/lib/preview-region-snapshot";
 import { redactAgentContextValue } from "@/lib/agent-context-projection";
 import type { EditorMessageSender } from "@/components/workspace/mvp-agent-message";
 import { forwardMvpAgentRequest, isMvpAgentCandidateScopeCurrent, isMvpExactTextOrNamePrompt, parseMvpAgentCandidate, resolveMvpAgentCandidateScope, type MvpAgentCandidateScope } from "@/components/workspace/mvp-agent-candidate";
-import { isMvpMetadataOnlyChangeSet } from "@/components/workspace/mvp-element-operations";
+import { buildMvpElementAuthorPromptChangeSet, buildMvpElementNameChangeSet, isMvpMetadataOnlyChangeSet, type MvpElementSource } from "@/components/workspace/mvp-element-operations";
+import { buildMvpCreateItem, buildMvpSavePrototype, combineMvpDraftChanges, mvpPrototypeEntries, mvpSourceEntity, splitMvpDraftLabelHeader, type MvpAuthoringSource, type MvpCreateKind } from "@/components/workspace/mvp-authoring-actions";
+import { projectMvpRuleEntities } from "@/components/workspace/mvp-rules-panel-helpers";
 import {
   useEditorAgentConnection,
   type EditorAgentToolResult,
@@ -840,6 +842,15 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
       workflowDiagnostics
     ]
   );
+  const availableMvpPrototypes = useMemo(
+    () => mvpPrototypeEntries(viewModel.entityProjectionDocuments.filter((document) =>
+      document.documentKind === "ui" && (activeChannel === undefined || document.channel === activeChannel))),
+    [viewModel.entityProjectionDocuments, activeChannel]
+  );
+  const availableMvpRules = useMemo(
+    () => [...viewModel.editorEntityProjection.entities, ...projectMvpRuleEntities(viewModel.entityProjectionDocuments)],
+    [viewModel.editorEntityProjection.entities, viewModel.entityProjectionDocuments]
+  );
 
   // Post-commit: remember the committed projection state so the NEXT edit can
   // diff against it, and surface the update telemetry (design-spec §5). Reading
@@ -1029,9 +1040,15 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
   }, [stateFixtures, activeScreenEntityId]);
   const effectiveSelectedFixtureId = selectedFixtureId ?? defaultFixtureId;
   const agentConnection = useEditorAgentConnection();
+  const hasMvpRuleSelection = options.mvp === true && selectedPreviewEntityId?.startsWith("mvp-rule:") === true;
+  const selectedMvpRule = hasMvpRuleSelection
+    ? availableMvpRules.find((entity) => entity.entityId === selectedPreviewEntityId)
+    : undefined;
   const agentSelectedPointers = useMemo(() => {
     const pointers = new Set<string>();
-    if (selectedNode?.pointer !== undefined && selectedNode.pointer !== "") {
+    if (selectedMvpRule?.primarySource.filePath === currentDocument.filePath) {
+      pointers.add(selectedMvpRule.primarySource.pointer);
+    } else if (!hasMvpRuleSelection && selectedNode?.pointer !== undefined && selectedNode.pointer !== "") {
       pointers.add(selectedNode.pointer);
     }
     for (const entity of previewPromptContext?.entities ?? []) {
@@ -1040,7 +1057,7 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
       }
     }
     return [...pointers];
-  }, [previewPromptContext?.entities, selectedNode?.pointer]);
+  }, [previewPromptContext?.entities, selectedNode?.pointer, selectedMvpRule, hasMvpRuleSelection, currentDocument.filePath]);
   const agentSelectedPreviewEntities = useMemo(
     () =>
       (previewPromptContext?.entities ?? (selectedPreviewEntityId === undefined ? [] : previewEntities.filter((entity) => entity.entityId === selectedPreviewEntityId))).map(
@@ -1055,6 +1072,7 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
   );
   const agentSelectedEditorEntities = useMemo(() => {
     const entitiesById = new Map<string, (typeof viewModel.editorEntityProjection.entities)[number]>();
+    if (selectedMvpRule !== undefined) entitiesById.set(selectedMvpRule.entityId, selectedMvpRule);
     for (const pointer of agentSelectedPointers) {
       const sourceKey = `${currentDocument.filePath}#${pointer}`;
       for (const entity of viewModel.editorEntityProjection.entitiesBySourcePointer.get(sourceKey) ?? []) {
@@ -1063,7 +1081,7 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
     }
 
     return [...entitiesById.values()];
-  }, [agentSelectedPointers, currentDocument.filePath, viewModel.editorEntityProjection.entities, viewModel.editorEntityProjection.entitiesBySourcePointer]);
+  }, [agentSelectedPointers, currentDocument.filePath, viewModel.editorEntityProjection.entities, viewModel.editorEntityProjection.entitiesBySourcePointer, selectedMvpRule]);
   const editorAgentContext = useMemo(
     () =>
       buildEditorAgentContextProjection({
@@ -1806,10 +1824,11 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
       return;
     }
 
-    if (!previewEntities.some((entity) => entity.entityId === selectedPreviewEntityId)) {
+    if (!previewEntities.some((entity) => entity.entityId === selectedPreviewEntityId) &&
+        !(options.mvp === true && selectedPreviewEntityId.startsWith("mvp-rule:"))) {
       setSelectedPreviewEntityId(undefined);
     }
-  }, [previewChannel, previewUrl, previewEntities, selectedPreviewEntityId]);
+  }, [previewChannel, previewUrl, previewEntities, selectedPreviewEntityId, options.mvp]);
 
   useEffect(() => {
     // The MVP preview owns its selection. A stale legacy tree pointer would
@@ -4097,6 +4116,126 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
     }
   }
 
+  function isCurrentMvpElementSource(source: MvpElementSource): boolean {
+    if (!mvpDocumentReady || (source.pointer !== "/root" && !source.pointer.startsWith("/root/"))) return false;
+    const text = liveAuthoringTextByFilePath().get(source.filePath);
+    if (text === undefined) return false;
+    try {
+      return JSON.stringify(readJsonPointer(JSON.parse(text) as JsonValue, source.pointer)) === JSON.stringify(source.value);
+    } catch {
+      return false;
+    }
+  }
+
+  async function createMvpItem(
+    kind: MvpCreateKind,
+    pageSource?: MvpAuthoringSource
+  ): Promise<{ ok: boolean; message: string; source?: MvpAuthoringSource; entityId?: string }> {
+    if (!mvpDocumentReady || pendingMvpMutationRef.current !== null) {
+      return { ok: false, message: "Дождитесь загрузки игры или завершите просмотр подготовленной правки." };
+    }
+    const documents = pageSource === undefined
+      ? viewModel.entityProjectionDocuments.filter((document) => document.documentKind !== "ui" ||
+          activeChannel === undefined || document.channel === activeChannel)
+      : viewModel.entityProjectionDocuments;
+    const built = buildMvpCreateItem(kind, documents, pageSource);
+    if (!built.ok) return { ok: false, message: built.reason };
+    const applied = await directMvpMutation(built.changeSet);
+    return applied
+      ? { ok: true, message: built.changeSet.summary, source: built.source, entityId: built.entityId }
+      : { ok: false, message: "Создание отклонено проверкой источника. Обновите редактор и повторите." };
+  }
+
+  async function saveMvpPrototype(source: MvpElementSource): Promise<{ ok: boolean; message: string }> {
+    if (!isCurrentMvpElementSource(source) || pendingMvpMutationRef.current !== null) {
+      return { ok: false, message: "Источник изменился или ожидает подтверждения. Выберите элемент снова." };
+    }
+    const built = buildMvpSavePrototype(source, viewModel.entityProjectionDocuments);
+    if (!built.ok) return { ok: false, message: built.reason };
+    const applied = await directMvpMutation(built.changeSet);
+    return { ok: applied, message: applied
+      ? "Прототип сохранён в авторском UI-файле и доступен для добавления."
+      : "Прототип не сохранён: проверка источника отклонила изменение." };
+  }
+
+  async function saveMvpElementDraft(input: {
+    source: MvpElementSource;
+    capture?: EntitySourceCapture;
+    oneOff: string;
+    authorIntent: string;
+    yaml: string;
+  }): Promise<{ ok: boolean; pending?: boolean; message: string }> {
+    const { source, capture } = input;
+    if (!isCurrentMvpElementSource(source) || pendingMvpMutationRef.current !== null) {
+      return { ok: false, message: "Элемент изменился после открытия. Обновите панель; черновик сохранён." };
+    }
+    if (capture !== undefined) {
+      const freshCapture = captureMvpElementSource(source);
+      if (freshCapture === undefined || capture.entityId !== freshCapture.entityId ||
+          capture.projectionYaml !== freshCapture.projectionYaml ||
+          JSON.stringify(capture.facetSourceMap) !== JSON.stringify(freshCapture.facetSourceMap) ||
+          Object.entries(capture.sourceHashes).some(([filePath, hash]) => {
+            const text = liveAuthoringTextByFilePath().get(filePath);
+            return text === undefined || hashEditorText(text) !== hash;
+          }) || Object.keys(capture.sourceHashes).length !== 1 || capture.sourceHashes[source.filePath] === undefined) {
+        return { ok: false, message: "Структурированный источник устарел. Обновите элемент; черновик сохранён." };
+      }
+    }
+    const oneOff = input.oneOff.trim();
+    const authorIntent = input.authorIntent.trim();
+    const parsedYaml = splitMvpDraftLabelHeader(input.yaml);
+    if (parsedYaml.error !== undefined) return { ok: false, message: `${parsedYaml.error} Черновик сохранён.` };
+    const yaml = parsedYaml.returnedText.trim();
+    let structured: EditorChangeSet | null = null;
+    let needsAgent = oneOff !== "" || (yaml !== "" && capture === undefined);
+    if (!needsAgent && yaml !== "" && capture !== undefined) {
+      try {
+        const interpreted = interpretReturnedIntent({ ...capture, returnedText: parsedYaml.returnedText }, {
+          currentSourceHashes: Object.fromEntries([...liveAuthoringTextByFilePath()].map(([filePath, text]) => [filePath, hashEditorText(text)]))
+        });
+        if (interpreted.stale === true) return { ok: false, message: "Структурированный источник устарел. Черновик сохранён." };
+        needsAgent = interpreted.path === "agent";
+        structured = interpreted.changeSet;
+      } catch (error) {
+        return { ok: false, message: error instanceof Error ? error.message : "Структурированное намерение не распознано." };
+      }
+    }
+    const nameChange = parsedYaml.label === undefined ? undefined : buildMvpElementNameChangeSet(source, parsedYaml.label);
+    const promptChange = buildMvpElementAuthorPromptChangeSet(source, authorIntent);
+    const metadataWrites = [nameChange, promptChange].filter((change): change is EditorChangeSet => change !== undefined)
+      .flatMap((change) => change.jsonPatches.flatMap((patch) => patch.operations).filter((operation) => operation.op !== "test"));
+    const metadata: EditorChangeSet | undefined = metadataWrites.length === 0 ? undefined : {
+      id: `mvp-draft-metadata-${crypto.randomUUID()}`,
+      summary: "Сохранить имя и авторское описание элемента",
+      jsonPatches: [{ filePath: source.filePath, operations: [
+        { op: "test", path: source.pointer, value: source.value }, ...metadataWrites
+      ] }]
+    };
+    if (needsAgent) {
+      const scope = captureMvpAgentScope([{ filePath: source.filePath, pointer: source.pointer }]);
+      if (scope === null) return { ok: false, message: "Выбранный источник недоступен агенту. Черновик сохранён." };
+      const sections = [
+        `Разовый запрос:\n${oneOff || "(нет)"}`,
+        `Название элемента (_label):\n${parsedYaml.label ?? (typeof source.value._label === "string" ? source.value._label : "(без изменений)")}`,
+        `Авторское описание (_prompt.raw):\n${authorIntent || "(пусто)"}`,
+        `Структурированное намерение:\n${yaml || "(без изменений)"}`
+      ];
+      const sent = await sendMvpAgentIntent(`Измени выбранный элемент одним предложением с учётом всех разделов. Не записывай исходники самостоятельно.\n\n${sections.join("\n\n")}`, scope);
+      return { ok: sent.forwarded, pending: sent.forwarded, message: sent.message };
+    }
+    if (structured === null && metadata === undefined) return { ok: true, message: "Изменений нет." };
+    if (structured === null) {
+      const applied = await directMvpMutation(metadata!);
+      return { ok: applied, message: applied ? "Авторское описание сохранено." : "Не удалось сохранить описание; черновик сохранён." };
+    }
+    const changeSet = metadata === undefined ? structured : combineMvpDraftChanges(source, structured, metadata);
+    if (changeSet === undefined) return { ok: false, message: "Разделы затрагивают одно и то же поле. Уточните правку; черновик сохранён." };
+    const prepared = await prepareMvpMutation(changeSet, plannedChangeSetFromReturnedIntent(changeSet, capture!.entityId));
+    return { ok: prepared, pending: prepared, message: prepared
+      ? "Вариант подготовлен. Проверьте и подтвердите его в предпросмотре."
+      : mvpPrepareErrorRef.current ?? "Не удалось подготовить изменение; черновик сохранён." };
+  }
+
   /** Outcome of {@link commitMultiDocumentChangeSet}: active facet texts + inverse. */
   type MultiDocumentCommitResult =
     | {
@@ -4658,6 +4797,21 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
       projectionYaml: projection.text,
       facetSourceMap: projection.facetSourceMap,
       sourceHashes: computeEntitySourceHashes(entity)
+    };
+  }
+
+  function captureMvpElementSource(source: MvpElementSource): EntitySourceCapture | undefined {
+    if (!isCurrentMvpElementSource(source)) return undefined;
+    const document = viewModel.entityProjectionDocuments.find((item) => item.filePath === source.filePath);
+    const text = liveAuthoringTextByFilePath().get(source.filePath);
+    if (document === undefined || text === undefined || (document.documentKind !== "game" && document.documentKind !== "ui")) return undefined;
+    const entity = mvpSourceEntity(source, document.documentKind);
+    const projection = buildEditorEntityYamlProjection({ entity, documents: viewModel.entityProjectionDocuments });
+    return {
+      entityId: entity.entityId,
+      projectionYaml: projection.text,
+      facetSourceMap: projection.facetSourceMap,
+      sourceHashes: { [source.filePath]: hashEditorText(text) }
     };
   }
 
@@ -5755,6 +5909,7 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
     confirmRenameEntityId,
     // Text mode «источник» + returned-intent apply (Phase 4.2).
     captureEntitySource,
+    captureMvpElementSource,
     applyEntityReturnedIntent,
     applyMvpEntityReturnedIntent,
     pendingMvpMutation,
@@ -5762,6 +5917,11 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
     confirmMvpMutation,
     cancelMvpMutation,
     directMvpMutation,
+    mvpPrototypeEntries: availableMvpPrototypes,
+    mvpRuleEntities: availableMvpRules,
+    createMvpItem,
+    saveMvpPrototype,
+    saveMvpElementDraft,
     returnedIntentTelemetry,
     previewTraceEntries,
     selectedPreviewTraceEvent,
