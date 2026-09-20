@@ -1,0 +1,6 @@
+.window { position: absolute; z-index: 13; box-sizing: border-box; width: var(--prompt-width, 280px); min-width: 76px; min-height: 46px; max-width: min(620px, 100vw); max-height: min(75vh, 720px); resize: both; overflow: auto; padding: 7px; border: 0; border-radius: 5px; background: #fffffff5; color: #263029; box-shadow: 0 4px 22px #15251d26; font: 12px/1.5 ui-monospace, SFMono-Regular, monospace; pointer-events: auto; }
+.window textarea { display: block; box-sizing: border-box; width: 100%; min-height: 28px; border: 0; border-radius: 0; padding: 0; resize: none; outline: none; background: transparent; color: inherit; font: inherit; }
+.window:focus-within { box-shadow: 0 4px 22px #15251d26, 0 0 0 1px #426e5d50; }
+.window button { color: inherit; font: inherit; cursor: pointer; }
+.window button:focus-visible { outline: 2px solid #39725b; outline-offset: 1px; }
+.window button:disabled { opacity: .4; cursor: default; }

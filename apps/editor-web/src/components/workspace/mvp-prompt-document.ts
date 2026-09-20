@@ -23,7 +23,7 @@ export function parseMvpPromptDocument(text: string): ParsedMvpPromptDocument {
     if (lines[index] === MVP_PROMPT_SEPARATOR) separators.push(index);
   }
   if (separators.length !== 2) {
-    return { ok: false, message: `Нужны ровно две отдельные строки-разделителя «${MVP_PROMPT_SEPARATOR}».` };
+    return { ok: false, message: `Количество разделителей: ${separators.length}; нужно 2. ${separators.length > 2 ? "Удалите лишние строки-разделители." : `Восстановите строки «${MVP_PROMPT_SEPARATOR}».`} Текст не сохранён и остаётся в поле.` };
   }
   return {
     ok: true,

@@ -38,8 +38,9 @@ export function useMvpDebugSession(input: {
   const [savedStates, setSavedStates] = useState<MvpSavedState[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [incompatibleState, setIncompatibleState] = useState<{ state: MvpSavedState; reason: string } | null>(null);
 
-  useEffect(() => { setSavedStates([]); }, [input.catalogKey]);
+  useEffect(() => { setSavedStates([]); setIncompatibleState(null); }, [input.catalogKey]);
 
   useEffect(() => {
     generation.current++;
@@ -86,6 +87,7 @@ export function useMvpDebugSession(input: {
     ].sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
     // An authoritative empty list, never a timeout or unavailable source, permits pruning the hint.
     if (response.data.checkpoints.length === 0) forgetDebugOrigin(key, sessionId);
+    return response.data.checkpoints.map(item => ({ ...item, sourceSessionId: sessionId }));
   }, [request]);
 
   const refreshCatalog = useCallback(async () => {
@@ -152,7 +154,8 @@ export function useMvpDebugSession(input: {
 
   return {
     status: status?.sessionId === input.sessionId ? status : null,
-    savedStates, busy, error,
+    savedStates, busy, error, incompatibleState,
+    dismissIncompatibleState: () => setIncompatibleState(null),
     dismissError: () => setError(null),
     refresh: () => perform(refreshCatalog),
     setPaused: (paused: boolean) => perform(() => changePause(paused)),
@@ -165,7 +168,14 @@ export function useMvpDebugSession(input: {
       await refreshSavedStates(sessionId);
     }),
     restore: (state: MvpSavedState) => perform(async () => {
-      const reason = savedStateUnavailableReason(state);
+      setIncompatibleState(null);
+      const current = (await refreshSavedStates(state.sourceSessionId))?.find(item => item.checkpointId === state.checkpointId);
+      if (current === undefined) throw new Error("Снимок больше недоступен. Список обновлён.");
+      const reason = savedStateUnavailableReason(current);
+      if (current.compatibility === "incompatible") {
+        setIncompatibleState({ state: current, reason: reason ?? "Состояние несовместимо с текущей моделью игры." });
+        return;
+      }
       if (reason) throw new Error(reason);
       await changePause(true);
       const response = await request({ operation: "restore", sessionId: state.sourceSessionId, checkpointId: state.checkpointId });
@@ -176,6 +186,7 @@ export function useMvpDebugSession(input: {
     deleteState: (state: MvpSavedState) => perform(async () => {
       await request({ operation: "delete", sessionId: state.sourceSessionId, checkpointId: state.checkpointId });
       await refreshSavedStates(state.sourceSessionId);
+      setIncompatibleState(null);
     })
   };
 }

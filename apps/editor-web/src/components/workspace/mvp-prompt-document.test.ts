@@ -38,4 +38,15 @@ describe("MVP prompt document", () => {
       expect("sections" in result).toBe(false);
     }
   });
+
+  it("reports the actual count when more than two separators would make the prompt roles ambiguous", () => {
+    const raw = ["Правка", "Описание", "yaml: true", "Лишняя часть"].join(`\n${MVP_PROMPT_SEPARATOR}\n`);
+    const result = parseMvpPromptDocument(raw);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.message).toContain("Количество разделителей: 3; нужно 2");
+      expect(result.message).toContain("Удалите лишние");
+    }
+    expect("sections" in result).toBe(false);
+  });
 });

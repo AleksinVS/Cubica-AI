@@ -17,6 +17,7 @@ import styles from "./editor-wireframe.module.css";
 export interface EditorWireframeSelection {
   readonly sourceFilePath: string;
   readonly sourcePointer: string;
+  readonly point?: { readonly x: number; readonly y: number };
 }
 
 export interface EditorWireframeProps {
@@ -172,7 +173,13 @@ function WireframeNodeView({
   const className = `${styles.node} ${node.children.length > 0 ? styles.container : styles.leaf}${selected ? ` ${styles.selected}` : ""}`;
   const select = (event: React.SyntheticEvent) => {
     event.stopPropagation();
-    onSelect({ sourceFilePath: node.sourceFilePath, sourcePointer: node.sourcePointer });
+    const native = event.nativeEvent;
+    const host = event.currentTarget.closest(".preview-frame-shell")?.getBoundingClientRect();
+    const box = event.currentTarget.getBoundingClientRect();
+    const point = native instanceof MouseEvent && native.detail !== 0
+      ? { x: native.clientX - (host?.left ?? 0), y: native.clientY - (host?.top ?? 0) }
+      : { x: box.right - (host?.left ?? 0), y: box.top - (host?.top ?? 0) };
+    onSelect({ sourceFilePath: node.sourceFilePath, sourcePointer: node.sourcePointer, point });
   };
   const activateKeyboard: React.KeyboardEventHandler<HTMLElement> = (event) => {
     if (event.key !== "Enter" && event.key !== " ") return;

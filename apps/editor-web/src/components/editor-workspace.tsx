@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { EditorAgentRuntimeHooks, EditorCopilotChatPanel } from "@/components/editor-agent-ui";
 import { MvpFloatingMenu, type MvpMenuMode } from "@/components/workspace/mvp-floating-menu";
 import { PreviewStage } from "@/components/workspace/preview-stage";
@@ -14,6 +14,8 @@ import { drawingAgentMessage, type EditorMessageSender } from "@/components/work
 import { isPlayerPreviewBridgeReadyMessage, isPlayerPreviewSessionSnapshotMessage } from "@/lib/preview-message-adapter";
 import { safeUrlOrigin } from "@/components/workspace/workspace-helpers";
 import styles from "@/components/workspace/mvp-workspace.module.css";
+import { buildMvpScenarioEntries } from "@/components/workspace/mvp-scenario-entries";
+import type { MvpCreateKind } from "@/components/workspace/mvp-authoring-actions";
 
 /** The preview stays mounted while the author changes conversational surfaces. */
 export function EditorWorkspace() {
@@ -35,6 +37,10 @@ export function EditorWorkspace() {
   const drawingReturnTo = useRef<"editor" | "chat" | "rules">("chat");
   const [drawingPending, setDrawingPending] = useState(false);
   const [workspaceError, setWorkspaceError] = useState<string | null>(null);
+  const [projectMenuOpen, setProjectMenuOpen] = useState(false);
+  const [pencil, setPencil] = useState({ color: "#ef4444", width: 3 });
+  const [pageSource, setPageSource] = useState<{ filePath: string; pointer: string }>();
+  const [requestedSource, setRequestedSource] = useState<{ filePath: string; pointer: string; requestId: number }>();
   const [attachments, setAttachments] = useState<Record<string, readonly { dataUrl: string; name: string }[]>>({});
   const senderRef = useRef<EditorMessageSender | null>(null);
   const onSenderReady = useCallback((sender: EditorMessageSender | null) => {
@@ -56,12 +62,19 @@ export function EditorWorkspace() {
   const building = controller.workflowState === "previewing" || controller.workflowState === "compiling";
   const mutationBusy = controller.aiApplyState === "planning" || controller.aiApplyState === "applying";
   const playState = controller.previewUrl === null ? "idle" : debug.status?.paused === false ? "running" : "paused";
+  const scenarioEntries = useMemo(() => buildMvpScenarioEntries(controller.viewModel.editorEntityProjection.entities, controller.viewModel.entityProjectionDocuments), [controller.viewModel.editorEntityProjection.entities, controller.viewModel.entityProjectionDocuments]);
 
   useEffect(() => {
     if (controller.mvpAgentForwardedCount <= lastForwardedCount.current) return;
     lastForwardedCount.current = controller.mvpAgentForwardedCount;
     setMode(chatKind);
   }, [controller.mvpAgentForwardedCount, chatKind]);
+
+  useEffect(() => {
+    if (chatKind === "rules" && selectedRule !== undefined && selectedRule !== controller.selectedPreviewEntityId && controller.mvpRuleEntities.some(entity => entity.entityId === selectedRule)) {
+      controller.handleChannelEntitySelect(selectedRule);
+    }
+  }, [chatKind, selectedRule, controller.mvpRuleEntities, controller.selectedPreviewEntityId]);
 
   function requestCandidateSnapshot(playerUrl: string) {
     const origin = safeUrlOrigin(playerUrl);
@@ -108,6 +121,9 @@ export function EditorWorkspace() {
     setDrawingRegion(undefined);
     setChatKind("chat");
     setWorkspaceError(null);
+    setPageSource(undefined);
+    setRequestedSource(undefined);
+    setProjectMenuOpen(false);
   }, [controller.currentDocument.gameId]);
 
   useEffect(() => {
@@ -147,7 +163,12 @@ export function EditorWorkspace() {
       return;
     }
     setPlayRequested(false);
-    if (next === "drawing") { setDrawingRegion(undefined); drawingReturnTo.current = chatKind; }
+    if (next === "drawing") {
+      const frame = controller.previewIframeRef.current?.getBoundingClientRect();
+      const rect = controller.previewPromptContext?.kind === "region" ? controller.previewPromptContext.rect : controller.previewEntities.find(item => item.entityId === controller.selectedPreviewEntityId)?.bounds;
+      setDrawingRegion(rect !== undefined && frame?.width && frame.height ? { x: rect.x / frame.width, y: rect.y / frame.height, width: rect.width / frame.width, height: rect.height / frame.height } : undefined);
+      drawingReturnTo.current = chatVisible ? chatKind : "editor";
+    }
     if (debug.status?.paused === false && !await debug.setPaused(true)) return;
     setMode(next);
   }
@@ -176,9 +197,37 @@ export function EditorWorkspace() {
     setActiveThread(id);
   }
 
+  async function addItem(kind: MvpCreateKind) {
+    if (debug.status?.paused === false && !await debug.setPaused(true)) return;
+    const result = await controller.createMvpItem(kind, pageSource);
+    if (!result.ok) { setWorkspaceError(result.message); return; }
+    setWorkspaceError(null);
+    if (kind === "rule") {
+      setSelectedRule(result.entityId);
+      setChatKind("rules");
+      setMode("rules");
+    } else {
+      setMode("editor");
+      if (result.source !== undefined) setRequestedSource({ ...result.source, requestId: Date.now() });
+    }
+  }
+
   return (
     <main className={styles.shell}>
       <EditorAgentRuntimeHooks enabled={controller.agentConnection.copilotReady} context={controller.editorAgentContext} tools={controller.editorAgentTools} />
+      <div className={styles.projectMenu} onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setProjectMenuOpen(false); }}>
+        <button type="button" className={styles.hamburger} aria-label="Выбор игры" title="Выбор игры" aria-expanded={projectMenuOpen} onClick={() => setProjectMenuOpen(open => !open)}>☰</button>
+        {projectMenuOpen ? <div className={styles.projectPopover}>
+          <select aria-label="Текущая игра" value={controller.currentDocument.gameId} onChange={event => { controller.handleGameChange(event.target.value); setProjectMenuOpen(false); }}>
+            {controller.availableGames.map(game => <option key={game} value={game}>{game}</option>)}
+          </select>
+          <div className={styles.versionActions}>
+            <button type="button" title="Отменить изменение" aria-label="Отменить изменение" disabled={!controller.mvpDocumentReady || controller.aiPatchJournal.length === 0} onClick={controller.handleUndoAiChange}>↶</button>
+            <button type="button" title="Повторить изменение" aria-label="Повторить изменение" disabled={!controller.mvpDocumentReady || controller.aiRedoJournal.length === 0} onClick={controller.handleRedoAiChange}>↷</button>
+            <button type="button" title="Сохранить версию" aria-label="Сохранить версию" onClick={() => void controller.handleSave()} disabled={!controller.mvpDocumentReady || controller.saveState === "saving"}>▣</button>
+          </div>
+        </div> : null}
+      </div>
       <MvpFloatingMenu
         activeMode={mode} onModeChange={next => void selectMode(next)} playState={playState}
         savedStates={debug.savedStates.map(item => ({ id: item.checkpointId, label: item.label, disabledReason: savedStateUnavailableReason(item) }))}
@@ -190,16 +239,21 @@ export function EditorWorkspace() {
           const state = debug.savedStates.find(item => item.checkpointId === id);
           if (state) void debug.deleteState(state);
         }}
-        scenarioStages={controller.viewModel.editorEntityProjection.entities.filter(entity => entity.kind === "game-step").map(entity => ({ id: entity.entityId, label: entity.label }))}
-        onSelectScenarioStage={id => { void selectMode("editor"); controller.handleChannelEntitySelect(id); }}
-        onRefreshSavedStates={() => void debug.refresh()}
+        scenarioStages={scenarioEntries}
+        onSelectScenarioStage={id => {
+          const entry = scenarioEntries.find(item => item.id === id);
+          if (entry !== undefined) void selectMode("editor").then(() => setRequestedSource({ ...entry.source, requestId: Date.now() }));
+        }}
+        pencilColor={pencil.color} pencilWidth={pencil.width} onPencilChange={setPencil}
+        addEntries={[{ id: "rule", label: "Правило" }, { id: "page", label: "Страница" }, { id: "element", label: "Элемент на странице" }, ...controller.mvpPrototypeEntries.map(item => ({ ...item, id: `prototype:${item.id}` }))].map(item => ({ ...item, disabledReason: !controller.mvpDocumentReady || mutationBusy ? "Дождитесь загрузки или сохранения игры" : undefined }))}
+        onAddEntry={id => void addItem(id as MvpCreateKind)}
         canSaveState={controller.mvpDocumentReady && debug.status !== null && !debug.busy && !building && !controller.pendingMvpMutation}
         onSaveState={() => { setSaveLabel(`Состояние ${debug.savedStates.length + 1}`); setSaveOpen(true); }}
         disabledModes={{ ...(chatBusy ? { chat: "Дождитесь ответа агента", rules: "Дождитесь ответа агента" } : {}), ...(!controller.mvpDocumentReady ? { play: "Дождитесь загрузки игры" } : mutationBusy ? { play: "Дождитесь применения изменения" } : controller.pendingMvpMutation ? { play: "Сначала примените или отмените предложенное изменение" } : debug.busy ? { play: "Дождитесь подтверждения отладки" } : building ? { play: "Подготавливаем текущую игру" } : {}) }}
       />
       <div className={styles.workArea}>
         <div className={styles.preview} hidden={chatVisible}>
-          <PreviewStage controller={controller} onStartDrawing={rect => {
+          <PreviewStage controller={controller} onPageSourceChange={setPageSource} requestedSource={requestedSource} onStartDrawing={rect => {
             const frame = controller.previewIframeRef.current?.getBoundingClientRect();
             if (!frame?.width || !frame.height) return;
             setDrawingRegion({ x: rect.x / frame.width, y: rect.y / frame.height, width: rect.width / frame.width, height: rect.height / frame.height });
@@ -207,6 +261,7 @@ export function EditorWorkspace() {
             setMode("drawing");
           }} />
           {mode === "drawing" ? <MvpDrawing className={styles.drawing}
+            pencilColor={pencil.color} pencilWidth={pencil.width}
             onSubmit={submitDrawing} pending={drawingPending} region={drawingRegion}
             disabled={debug.status?.paused === false || debug.busy} /> : null}
         </div>
@@ -230,7 +285,7 @@ export function EditorWorkspace() {
             </div>
             <aside className={styles.documents} aria-label="Материалы диалога">
               {chatKind === "rules" ? <MvpRulesPanel
-                entities={controller.viewModel.editorEntityProjection.entities}
+                entities={controller.mvpRuleEntities}
                 documents={controller.viewModel.entityProjectionDocuments}
                 selectedEntityId={selectedRule}
                 onSelectEntity={id => { setSelectedRule(id); controller.handleChannelEntitySelect(id); }}
@@ -256,19 +311,12 @@ export function EditorWorkspace() {
           {building ? <p role="status">Обновляем игру… Можно продолжать редактирование.</p> : mutationBusy ? <p role="status">Проверяем изменение…</p> : null}
           {workspaceError ? <p role="alert">{workspaceError}</p> : controller.workflowState === "error" || controller.workflowState === "blocked" || controller.aiApplyState === "blocked" ? <p role="alert">{controller.statusMessage}</p> : null}
           {debug.error ? <p role="alert">{debug.error} <button type="button" aria-label="Закрыть сообщение" onClick={debug.dismissError}>×</button></p> : null}
+          {debug.incompatibleState ? <p role="alert">{debug.incompatibleState.reason} Удалить снимок «{debug.incompatibleState.state.label}»?
+            <button type="button" disabled={debug.busy} onClick={() => { if (debug.incompatibleState !== null) void debug.deleteState(debug.incompatibleState.state); }}>Удалить</button>
+            <button type="button" onClick={debug.dismissIncompatibleState}>Оставить</button>
+          </p> : null}
         </div>
       </div>
-      <footer className={styles.projectBar}>
-        <select aria-label="Текущая игра" value={controller.currentDocument.gameId} onChange={event => controller.handleGameChange(event.target.value)}>
-          {controller.availableGames.map(game => <option key={game} value={game}>{game}</option>)}
-        </select>
-        <span className={styles.stateLabel}>{controller.previewUrl === null ? "Структурный макет" : debug.status?.paused ? "Пауза" : "Предпросмотр"}</span>
-        <div className={styles.versionActions}>
-          <button type="button" title="Отменить изменение" aria-label="Отменить изменение" disabled={!controller.mvpDocumentReady || controller.aiPatchJournal.length === 0} onClick={controller.handleUndoAiChange}>↶</button>
-          <button type="button" title="Повторить изменение" aria-label="Повторить изменение" disabled={!controller.mvpDocumentReady || controller.aiRedoJournal.length === 0} onClick={controller.handleRedoAiChange}>↷</button>
-          <button type="button" onClick={() => void controller.handleSave()} disabled={!controller.mvpDocumentReady || controller.saveState === "saving"}>Сохранить версию</button>
-        </div>
-      </footer>
       <dialog ref={saveDialogRef} className={styles.saveDialog} aria-labelledby="save-state-title" onClose={() => setSaveOpen(false)} onCancel={() => setSaveOpen(false)}>
         <form onSubmit={event => {
           event.preventDefault();

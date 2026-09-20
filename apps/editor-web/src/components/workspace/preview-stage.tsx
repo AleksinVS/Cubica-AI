@@ -6,8 +6,8 @@
  * otherwise it shows the empty state with a "Prepare preview" button.
  * Presentational: all state and handlers come from the {@link EditorWorkspaceController}.
  */
-import { readJsonPointer, type JsonObject, type PreviewRect } from "@cubica/editor-engine";
-import React, { useCallback, useMemo, useState } from "react";
+import { isPlainJsonObject, readJsonPointer, type JsonObject, type PreviewPoint, type PreviewRect } from "@cubica/editor-engine";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import { editorRu as t } from "@/lib/locale";
 import { PreviewSelectionOverlay } from "@/components/preview-selection-overlay";
@@ -25,9 +25,11 @@ import { buildMvpGeometryChangeSet, geometrySupport, type MvpElementSource } fro
 
 import type { EditorWorkspaceController } from "./use-editor-workspace.ts";
 
-export function PreviewStage({ controller, onStartDrawing }: {
+export function PreviewStage({ controller, onStartDrawing, onPageSourceChange, requestedSource }: {
   readonly controller: EditorWorkspaceController;
   readonly onStartDrawing?: (rect: PreviewRect) => void;
+  readonly onPageSourceChange?: (source: { filePath: string; pointer: string } | undefined) => void;
+  readonly requestedSource?: { filePath: string; pointer: string; requestId: number };
 }) {
   const {
     mvp,
@@ -156,6 +158,19 @@ export function PreviewStage({ controller, onStartDrawing }: {
     ?.sourcePointer;
 
   const [wireframeSelection, setWireframeSelection] = useState<EditorWireframeSelection | null>(null);
+  const [wireframeScreenId, setWireframeScreenId] = useState<string>();
+  const [scopeSelection, setScopeSelection] = useState<{ filePath: string; pointer: string; point: PreviewPoint } | null>(null);
+  useEffect(() => { setScopeSelection(null); setWireframeSelection(null); setWireframeScreenId(undefined); }, [currentDocument.gameId]);
+  useEffect(() => {
+    if (requestedSource === undefined) return;
+    setScopeSelection({ filePath: requestedSource.filePath, pointer: requestedSource.pointer, point: { x: 64, y: 64 } });
+    setSelectedPreviewEntityId(undefined);
+    setPreviewPromptContext(null);
+    const screenPointer = requestedSource.pointer.match(/^\/root\/screens\/[^/]+/u)?.[0];
+    const document = viewModel.entityProjectionDocuments.find(item => item.filePath === requestedSource.filePath);
+    const screen = document?.json === undefined || screenPointer === undefined ? undefined : readJsonPointer(document.json, screenPointer);
+    if (isPlainJsonObject(screen) && typeof screen.id === "string") setWireframeScreenId(screen.id);
+  }, [requestedSource]);
   const selectedWireframeSourcePointer = useMemo(() => {
     // Incomplete nodes still receive visual selection even before the authoring
     // projection can resolve a writable entity. Keep their exact source point.
@@ -192,13 +207,13 @@ export function PreviewStage({ controller, onStartDrawing }: {
     (selectedPreviewEntityId === undefined || resolveSourceEntityId(wireframeSelection.sourceFilePath, wireframeSelection.sourcePointer) === selectedPreviewEntityId)
     ? wireframeSelection : null;
   const selectedSourceFile = selectedPreviewDescriptor?.metadata?.sourceFile;
-  const selectedFilePath = previewUrl !== null
+  const selectedFilePath = scopeSelection?.filePath ?? (previewUrl !== null
     ? (typeof selectedSourceFile === "string" ? toRepositoryAuthoringFilePath(selectedSourceFile, currentDocument.gameId) : undefined)
       ?? selectedProjectionEntity?.primarySource.filePath
-    : matchingWireframeSelection?.sourceFilePath ?? selectedProjectionEntity?.primarySource.filePath;
-  const selectedSourcePointer = previewUrl !== null
+    : matchingWireframeSelection?.sourceFilePath ?? selectedProjectionEntity?.primarySource.filePath);
+  const selectedSourcePointer = scopeSelection?.pointer ?? (previewUrl !== null
     ? selectedPreviewDescriptor?.authoringPointer ?? selectedProjectionEntity?.primarySource.pointer
-    : matchingWireframeSelection?.sourcePointer ?? selectedProjectionEntity?.primarySource.pointer;
+    : matchingWireframeSelection?.sourcePointer ?? selectedProjectionEntity?.primarySource.pointer);
   const selectedDocument = viewModel.entityProjectionDocuments.find((document) => document.filePath === selectedFilePath);
   const selectedSourceValue = selectedDocument?.json === undefined || selectedSourcePointer === undefined
     ? undefined : readJsonPointer(selectedDocument.json, selectedSourcePointer);
@@ -211,6 +226,32 @@ export function PreviewStage({ controller, onStartDrawing }: {
   const mvpEntity = selectedSourceEntityId === undefined ? undefined : viewModel.editorEntityProjection.entityById.get(selectedSourceEntityId);
   const mvpPanelLabel = typeof mvpSource?.value._label === "string" ? mvpSource.value._label :
     selectedPreviewDescriptor?.label ?? selectedProjectionEntity?.label ?? matchingWireframeSelection?.sourcePointer.split("/").at(-1) ?? "Элемент";
+
+  const selectedPagePointer = selectedSourcePointer?.match(/^\/root\/screens\/[^/]+/u)?.[0];
+  const visiblePagePointer = previewUrl === null ? undefined : mvpPreviewEntities.find(item => item.visible && /^\/root\/screens\/[^/]+/u.test(item.authoringPointer))?.authoringPointer.match(/^\/root\/screens\/[^/]+/u)?.[0];
+  const webRoot = webDocument?.json === undefined ? undefined : readJsonPointer(webDocument.json, "/root");
+  const screens = isPlainJsonObject(webRoot) ? webRoot.screens : undefined;
+  const screenEntries = Array.isArray(screens) ? screens.map((value, index) => [String(index), value] as const)
+    : screens !== null && typeof screens === "object" ? Object.entries(screens) : [];
+  const entryId = wireframeScreenId ?? (isPlainJsonObject(webRoot) ? webRoot.entry_point : undefined);
+  const currentScreen = screenEntries.find(([key, value]) => key === entryId || value !== null && typeof value === "object" && !Array.isArray(value) && value.id === entryId) ?? screenEntries[0];
+  const pagePointer = selectedPagePointer ?? visiblePagePointer ?? (currentScreen === undefined ? undefined : `/root/screens/${currentScreen[0].replace(/~/gu, "~0").replace(/\//gu, "~1")}`);
+  useEffect(() => { onPageSourceChange?.(webDocument === undefined || pagePointer === undefined ? undefined : { filePath: webDocument.filePath, pointer: pagePointer }); }, [webDocument?.filePath, pagePointer, onPageSourceChange]);
+
+  function selectScope(scope: "game" | "page", point: PreviewPoint) {
+    const document = scope === "game" ? viewModel.entityProjectionDocuments.find((item) => item.documentKind === "game") : webDocument;
+    const pointer = scope === "game" ? "/root" : pagePointer;
+    if (document === undefined || pointer === undefined) return;
+    setSelectedPreviewEntityId(undefined);
+    setPreviewPromptContext(null);
+    setWireframeSelection(null);
+    setScopeSelection({ filePath: document.filePath, pointer, point });
+  }
+
+  function selectPreviewEntity(...args: Parameters<typeof handlePreviewEntitySelect>) {
+    setScopeSelection(null);
+    handlePreviewEntitySelect(...args);
+  }
 
   function handleTelegramSelection(selection: TelegramStructuralSelection) {
     if (telegramDocument === undefined) return;
@@ -284,6 +325,7 @@ export function PreviewStage({ controller, onStartDrawing }: {
                 if (previewPromptContext?.kind === "region") void handlePreviewRegionSelect(previewPromptContext.entities, rect, previewPromptContext.point);
               }}
               onStartDrawing={onStartDrawing}
+              onSelectScope={selectScope}
               disabled={!effectivePreviewInspectMode || (mvp && (controller.aiApplyState === "applying" || controller.aiApplyState === "planning"))}
               entities={mvpPreviewEntities}
               selectedEntityId={selectedPreviewEntityId}
@@ -291,12 +333,13 @@ export function PreviewStage({ controller, onStartDrawing }: {
               promptContext={previewPromptContext}
               proposedIntent={previewAiIntent}
               unresolvedCount={previewUnresolvedEntityCount}
-              onSelectEntity={handlePreviewEntitySelect}
+              onSelectEntity={selectPreviewEntity}
               onSelectRegion={handlePreviewRegionSelect}
               onClearContext={() => {
                 setSelectedPreviewEntityId(undefined);
                 setPreviewPromptContext(null);
                 setPreviewAiIntent(null);
+                setScopeSelection(null);
               }}
               onPromptDraftChange={(draft) =>
                 setPreviewPromptContext((current) => (current === null ? current : { ...current, draft }))
@@ -316,8 +359,11 @@ export function PreviewStage({ controller, onStartDrawing }: {
             ) : null}
             <EditorWireframe
               projection={wireframeProjection}
+              selectedScreenId={wireframeScreenId}
+              onScreenChange={setWireframeScreenId}
               selectedSourcePointer={selectedWireframeSourcePointer}
               onSelect={(selection) => {
+                setScopeSelection(null);
                 setWireframeSelection(selection);
                 const entityId = resolveSourceEntityId(selection.sourceFilePath, selection.sourcePointer);
                 if (entityId !== undefined) handleChannelEntitySelect(entityId);
@@ -364,23 +410,23 @@ export function PreviewStage({ controller, onStartDrawing }: {
             </button>
           </div>
         )}
-        {mvp && effectivePreviewInspectMode && (selectedPreviewDescriptor !== undefined || matchingWireframeSelection !== null && previewUrl === null || selectedProjectionEntity !== undefined) ? (
+        {mvp && effectivePreviewInspectMode && (scopeSelection !== null || selectedPreviewDescriptor !== undefined || matchingWireframeSelection !== null && previewUrl === null || selectedProjectionEntity !== undefined) ? (
           <MvpElementEditor
             key={`${selectedFilePath ?? "unmapped"}#${selectedSourcePointer ?? selectedPreviewEntityId ?? "unknown"}`}
             source={previewUrl === null && mvpEntity === undefined ? undefined : mvpSource}
             entity={mvpEntity}
             label={mvpPanelLabel}
             selectedLayerId={selectedPreviewDescriptor?.entityId}
-            bounds={inspectorBounds}
+            bounds={scopeSelection === null ? inspectorBounds : undefined}
             geometryUnsupportedReason={selectedPreviewDescriptor === undefined ? undefined : geometrySupport(mvpSource)}
             layers={previewPromptContext?.kind === "entity" ? previewPromptContext.entities.map((item) => mvpPreviewEntities.find((candidate) => candidate.entityId === item.entityId) ?? item) : undefined}
-            layerPoint={previewPromptContext?.kind === "entity" ? previewPromptContext.point : undefined}
-            onSelectLayer={handlePreviewEntitySelect}
-            onClose={() => { handleInspectorClose(); setSelectedPreviewEntityId(undefined); setWireframeSelection(null); }}
-            onDirect={directMvpMutation}
-            onPrompt={submitMvpElementPrompt}
-            onCapture={captureEntitySource}
-            onApplyYaml={applyMvpEntityReturnedIntent}
+            layerPoint={scopeSelection?.point ?? (previewPromptContext?.kind === "entity" ? previewPromptContext.point : matchingWireframeSelection?.point)}
+            onSelectLayer={selectPreviewEntity}
+            onSelectScope={selectScope}
+            onClose={() => { handleInspectorClose(); setSelectedPreviewEntityId(undefined); setWireframeSelection(null); setScopeSelection(null); setPreviewPromptContext(null); }}
+            onSave={controller.saveMvpElementDraft}
+            onSavePrototype={controller.saveMvpPrototype}
+            onCapture={(entity) => mvpSource === undefined ? captureEntitySource(entity) : controller.captureMvpElementSource(mvpSource)}
           />
         ) : null}
         {!mvp ? <EntityInspector

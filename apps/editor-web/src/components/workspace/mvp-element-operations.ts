@@ -8,8 +8,16 @@ export interface MvpElementSource {
 
 export type MvpGeometryGesture =
   | { readonly kind: "move"; readonly dx: number; readonly dy: number }
-  | { readonly kind: "resize"; readonly dx: number; readonly dy: number }
+  | { readonly kind: "resize"; readonly dx: number; readonly dy: number; readonly anchor?: MvpResizeAnchor }
   | { readonly kind: "rotate"; readonly degrees: number };
+
+export type MvpResizeAnchor = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
+
+export function resizeMvpRect(bounds: PreviewRect, dx: number, dy: number, anchor: MvpResizeAnchor = "se"): PreviewRect {
+  const width = Math.max(12, Math.min(16384, bounds.width + (anchor.includes("w") ? -dx : anchor.includes("e") ? dx : 0)));
+  const height = Math.max(12, Math.min(16384, bounds.height + (anchor.includes("n") ? -dy : anchor.includes("s") ? dy : 0)));
+  return { x: bounds.x + (anchor.includes("w") ? bounds.width - width : 0), y: bounds.y + (anchor.includes("n") ? bounds.height - height : 0), width, height };
+}
 
 const canonicalTransform = /^translate\((-?\d+(?:\.\d+)?)px,\s*(-?\d+(?:\.\d+)?)px\) rotate\((-?\d+(?:\.\d+)?)deg\)$/u;
 
@@ -103,8 +111,12 @@ export function buildMvpGeometryChangeSet(
     const width = style.width === undefined ? bounds.width : readPixels(style.width);
     const height = style.height === undefined ? bounds.height : readPixels(style.height);
     if (width === undefined || height === undefined) return undefined;
-    nextStyle.width = Math.max(12, Math.min(16384, finite(width + gesture.dx)));
-    nextStyle.height = Math.max(12, Math.min(16384, finite(height + gesture.dy)));
+    const next = resizeMvpRect({ ...bounds, width, height }, gesture.dx, gesture.dy, gesture.anchor);
+    nextStyle.width = finite(next.width);
+    nextStyle.height = finite(next.height);
+    x = finite(x + next.x - bounds.x);
+    y = finite(y + next.y - bounds.y);
+    if (next.x !== bounds.x || next.y !== bounds.y) nextStyle.transform = `translate(${x}px, ${y}px) rotate(${angle}deg)`;
   }
   if (gesture.kind !== "resize") nextStyle.transform = `translate(${x}px, ${y}px) rotate(${angle}deg)`;
   if (JSON.stringify(nextStyle) === JSON.stringify(style)) return undefined;
