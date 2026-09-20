@@ -20,7 +20,7 @@ import { formatPreviewUnbuiltMessage, toRepositoryAuthoringFilePath } from "@/co
 import { projectTelegramAuthoringManifest } from "@/lib/telegram-structural-projection";
 import { projectEditorWireframe, type EditorWireframeNode } from "@/lib/editor-wireframe-projection";
 import { EditorWireframe, type EditorWireframeSelection } from "./editor-wireframe";
-import { MvpElementEditor } from "./mvp-element-editor";
+import { MvpElementEditor, type MvpElementDraft } from "./mvp-element-editor";
 import { buildMvpGeometryChangeSet, geometrySupport, type MvpElementSource } from "./mvp-element-operations";
 
 import type { EditorWorkspaceController } from "./use-editor-workspace.ts";
@@ -158,6 +158,7 @@ export function PreviewStage({ controller, onStartDrawing, onPageSourceChange, r
     ?.sourcePointer;
 
   const [wireframeSelection, setWireframeSelection] = useState<EditorWireframeSelection | null>(null);
+  const promptDrafts = useMemo(() => new Map<string, MvpElementDraft>(), [currentDocument.gameId]);
   const [wireframeScreenId, setWireframeScreenId] = useState<string>();
   const [scopeSelection, setScopeSelection] = useState<{ filePath: string; pointer: string; point: PreviewPoint } | null>(null);
   useEffect(() => { setScopeSelection(null); setWireframeSelection(null); setWireframeScreenId(undefined); }, [currentDocument.gameId]);
@@ -410,8 +411,10 @@ export function PreviewStage({ controller, onStartDrawing, onPageSourceChange, r
             </button>
           </div>
         )}
-        {mvp && effectivePreviewInspectMode && (scopeSelection !== null || selectedPreviewDescriptor !== undefined || matchingWireframeSelection !== null && previewUrl === null || selectedProjectionEntity !== undefined) ? (
+        {mvp && (scopeSelection !== null || selectedPreviewDescriptor !== undefined || matchingWireframeSelection !== null && previewUrl === null || selectedProjectionEntity !== undefined) ? (
+          <div hidden={!effectivePreviewInspectMode}>
           <MvpElementEditor
+            drafts={promptDrafts}
             key={`${selectedFilePath ?? "unmapped"}#${selectedSourcePointer ?? selectedPreviewEntityId ?? "unknown"}`}
             source={previewUrl === null && mvpEntity === undefined ? undefined : mvpSource}
             entity={mvpEntity}
@@ -428,6 +431,7 @@ export function PreviewStage({ controller, onStartDrawing, onPageSourceChange, r
             onSavePrototype={controller.saveMvpPrototype}
             onCapture={(entity) => mvpSource === undefined ? captureEntitySource(entity) : controller.captureMvpElementSource(mvpSource)}
           />
+          </div>
         ) : null}
         {!mvp ? <EntityInspector
           entity={inspectorEntity}

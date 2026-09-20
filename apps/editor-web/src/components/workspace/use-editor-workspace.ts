@@ -4211,6 +4211,15 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
         { op: "test", path: source.pointer, value: source.value }, ...metadataWrites
       ] }]
     };
+    // Keep a single exact text/name command intact for the existing planner.
+    // Other draft changes must stay together in the agent's atomic proposal.
+    if (oneOff !== "" && isMvpExactTextOrNamePrompt(oneOff) && metadata === undefined &&
+        (yaml === "" || (capture !== undefined && parsedYaml.returnedText.trim() === capture.projectionYaml.trim()))) {
+      const result = await submitMvpElementPrompt(source.filePath, source.pointer,
+        parsedYaml.label ?? String(source.value._label ?? ""), oneOff);
+      const pending = result.ready || result.forwarded;
+      return { ok: pending, pending, message: result.message };
+    }
     if (needsAgent) {
       const scope = captureMvpAgentScope([{ filePath: source.filePath, pointer: source.pointer }]);
       if (scope === null) return { ok: false, message: "Выбранный источник недоступен агенту. Черновик сохранён." };

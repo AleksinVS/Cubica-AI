@@ -254,6 +254,15 @@ describe("MvpDrawing", () => {
     expect(container?.querySelector("[role='status']")?.textContent).toContain("Сервис недоступен");
   });
 
+  it("preserves an unsent draft when starting a second stroke", () => {
+    render(<MvpDrawing onSubmit={vi.fn().mockResolvedValue(undefined)} />);
+    setSurfaceBounds(stage());
+    drawOneStroke();
+    act(() => setTextareaValue("Не теряй этот черновик"));
+    drawOneStroke();
+    expect((container?.querySelector("textarea") as HTMLTextAreaElement).value).toBe("Не теряй этот черновик");
+  });
+
   it("discards a cancelled pointer stroke", () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
     render(<MvpDrawing onSubmit={onSubmit} />);

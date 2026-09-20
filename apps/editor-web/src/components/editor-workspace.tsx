@@ -38,6 +38,7 @@ export function EditorWorkspace() {
   const [drawingPending, setDrawingPending] = useState(false);
   const [workspaceError, setWorkspaceError] = useState<string | null>(null);
   const [projectMenuOpen, setProjectMenuOpen] = useState(false);
+  const modeRequestRef = useRef(0);
   const [pencil, setPencil] = useState({ color: "#ef4444", width: 3 });
   const [pageSource, setPageSource] = useState<{ filePath: string; pointer: string }>();
   const [requestedSource, setRequestedSource] = useState<{ filePath: string; pointer: string; requestId: number }>();
@@ -111,6 +112,7 @@ export function EditorWorkspace() {
   useEffect(() => {
     if (previousGame.current === controller.currentDocument.gameId) return;
     previousGame.current = controller.currentDocument.gameId;
+    modeRequestRef.current += 1;
     setMode("editor");
     setPlayRequested(false);
     setSaveOpen(false);
@@ -127,10 +129,12 @@ export function EditorWorkspace() {
   }, [controller.currentDocument.gameId]);
 
   useEffect(() => {
-    if (!playRequested || debug.status === null || debug.busy) return;
+    if (!playRequested || debug.status === null || debug.busy ||
+        controller.previewFreshness !== "fresh" || controller.workflowState !== "ready" ||
+        debug.status.sessionId !== controller.previewRuntimeSessionId) return;
     setPlayRequested(false);
     void debug.setPaused(false);
-  }, [playRequested, debug.status, debug.busy]);
+  }, [playRequested, debug.status, debug.busy, controller.previewFreshness, controller.workflowState, controller.previewRuntimeSessionId]);
 
   useEffect(() => {
     if (saveOpen) saveDialogRef.current?.showModal();
@@ -138,6 +142,7 @@ export function EditorWorkspace() {
   }, [saveOpen]);
 
   async function selectMode(next: MvpMenuMode) {
+    const requestId = ++modeRequestRef.current;
     setWorkspaceError(null);
     if (next === "chat" || next === "rules") {
       if (chatBusy && next !== chatKind) return;
@@ -152,14 +157,29 @@ export function EditorWorkspace() {
         setWorkspaceError("Дождитесь загрузки игры и редакторской сессии.");
         return;
       }
-      setMode("play");
-      if (controller.previewUrl === null) {
-        setPlayRequested(true);
+      if (debug.status?.paused === false) {
+        setMode("play");
+        await debug.setPaused(true);
+        return;
+      }
+      if (controller.previewUrl === null || controller.previewFreshness !== "fresh" || controller.workflowState !== "ready") {
         const result = await controller.handlePreview();
-        if (!result.ready) { setPlayRequested(false); setMode("editor"); setWorkspaceError(result.reason ?? "Игра изменилась во время подготовки. Повторите запуск."); }
-      } else if (debug.status !== null) {
-        await debug.setPaused(!debug.status.paused);
-      } else { setPlayRequested(true); }
+        if (requestId !== modeRequestRef.current) return;
+        if (!result.ready) {
+          setPlayRequested(false);
+          setWorkspaceError(result.reason ?? "Игра изменилась во время подготовки. Повторите запуск.");
+          return;
+        }
+        setMode("play");
+        setPlayRequested(true);
+        return;
+      }
+      setMode("play");
+      if (debug.status !== null && debug.status.sessionId === controller.previewRuntimeSessionId) {
+        await debug.setPaused(false);
+      } else {
+        setPlayRequested(true);
+      }
       return;
     }
     setPlayRequested(false);
@@ -170,6 +190,7 @@ export function EditorWorkspace() {
       drawingReturnTo.current = chatVisible ? chatKind : "editor";
     }
     if (debug.status?.paused === false && !await debug.setPaused(true)) return;
+    if (requestId !== modeRequestRef.current) return;
     setMode(next);
   }
 
@@ -218,7 +239,7 @@ export function EditorWorkspace() {
       <div className={styles.projectMenu} onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setProjectMenuOpen(false); }}>
         <button type="button" className={styles.hamburger} aria-label="Выбор игры" title="Выбор игры" aria-expanded={projectMenuOpen} onClick={() => setProjectMenuOpen(open => !open)}>☰</button>
         {projectMenuOpen ? <div className={styles.projectPopover}>
-          <select aria-label="Текущая игра" value={controller.currentDocument.gameId} onChange={event => { controller.handleGameChange(event.target.value); setProjectMenuOpen(false); }}>
+          <select aria-label="Текущая игра" value={controller.currentDocument.gameId} onChange={event => { modeRequestRef.current += 1; controller.handleGameChange(event.target.value); setProjectMenuOpen(false); }}>
             {controller.availableGames.map(game => <option key={game} value={game}>{game}</option>)}
           </select>
           <div className={styles.versionActions}>

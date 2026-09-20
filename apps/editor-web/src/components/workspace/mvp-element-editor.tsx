@@ -10,6 +10,7 @@ import { parseMvpPromptDocument, serializeMvpPromptDocument } from "./mvp-prompt
 import styles from "./mvp-element-editor.module.css";
 
 export interface MvpElementEditorProps {
+  readonly drafts?: Map<string, MvpElementDraft>;
   readonly source?: MvpElementSource;
   readonly entity?: EditorEntity;
   readonly label: string;
@@ -26,6 +27,13 @@ export interface MvpElementEditorProps {
   readonly onSavePrototype?: (source: MvpElementSource) => Promise<{ ok: boolean; message: string }>;
 }
 
+export interface MvpElementDraft {
+  readonly text: string;
+  readonly baseline: string;
+  readonly sourceSnapshot: string | undefined;
+  readonly capture: EntitySourceCapture | undefined;
+}
+
 function promptRaw(source: MvpElementSource | undefined): string {
   const prompt = source?.value._prompt;
   if (!isPlainJsonObject(prompt)) return "";
@@ -36,11 +44,13 @@ function documentText(source: MvpElementSource | undefined, label: string, captu
   return serializeMvpPromptDocument(["", promptRaw(source), `_label: ${JSON.stringify(source?.value._label ?? label)}\n${capture?.projectionYaml ?? ""}`]);
 }
 
-export function MvpElementEditor({ source, entity, label, selectedLayerId, bounds, geometryUnsupportedReason, layers = [], layerPoint, onSelectLayer, onSelectScope, onClose, onCapture, onSave, onSavePrototype }: MvpElementEditorProps) {
-  const [capture, setCapture] = useState(() => entity === undefined ? undefined : onCapture(entity));
-  const [draft, setDraft] = useState(() => documentText(source, label, capture));
-  const [baseline, setBaseline] = useState(draft);
-  const sourceSnapshot = useRef(JSON.stringify(source?.value));
+export function MvpElementEditor({ drafts, source, entity, label, selectedLayerId, bounds, geometryUnsupportedReason, layers = [], layerPoint, onSelectLayer, onSelectScope, onClose, onCapture, onSave, onSavePrototype }: MvpElementEditorProps) {
+  const draftKey = source === undefined ? undefined : `${source.filePath}#${source.pointer}`;
+  const retained = draftKey === undefined ? undefined : drafts?.get(draftKey);
+  const [capture, setCapture] = useState(() => retained?.capture ?? (entity === undefined ? undefined : onCapture(entity)));
+  const [draft, setDraft] = useState(() => retained?.text ?? documentText(source, label, capture));
+  const [baseline, setBaseline] = useState(() => retained?.baseline ?? draft);
+  const sourceSnapshot = useRef(retained === undefined ? JSON.stringify(source?.value) : retained.sourceSnapshot);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [showLayers, setShowLayers] = useState(false);
@@ -60,6 +70,10 @@ export function MvpElementEditor({ source, entity, label, selectedLayerId, bound
     setBaseline(text);
   }, [source, entity, onCapture, label, stale, draft, baseline]);
   useEffect(() => () => { if (hold.current !== undefined) clearTimeout(hold.current); }, []);
+  // Rebuilding the preview clears visual selection; reselecting the same source restores its draft.
+  useEffect(() => {
+    if (draftKey !== undefined) drafts?.set(draftKey, { text: draft, baseline, capture, sourceSnapshot: sourceSnapshot.current });
+  }, [draftKey, drafts, draft, baseline, capture]);
 
   async function save(asTemplate = false) {
     if (source === undefined || busy) return;
@@ -86,7 +100,7 @@ export function MvpElementEditor({ source, entity, label, selectedLayerId, bound
   return <MvpFloatingPrompt point={point} avoid={bounds} width={compactPromptWidth(draft, 220)} label="Редактор элемента">
     <button type="button" className={styles.textHeader} onClick={() => setShowLayers((open) => !open)} aria-label={`Слои: ${label}`} aria-expanded={showLayers}>{label}</button>
     <MvpPromptTextarea className={styles.unifiedText} value={draft} onChange={setDraft} disabled={source === undefined || busy} />
-    <button type="button" className={styles.promptClose} aria-label="Закрыть редактор элемента" title="Закрыть" onClick={onClose}>×</button>
+    <button type="button" className={styles.promptClose} aria-label="Закрыть редактор элемента" title="Закрыть" onClick={() => { if (draftKey !== undefined) drafts?.delete(draftKey); onClose(); }}>×</button>
     <button type="button" className={styles.promptSave} aria-label="Сохранить элемент" title="Сохранить; удерживайте для сохранения как шаблона" disabled={source === undefined || busy}
       onPointerDown={() => { held.current = false; hold.current = setTimeout(() => { held.current = true; setShowTemplate(true); }, 550); }}
       onPointerUp={() => { if (hold.current !== undefined) clearTimeout(hold.current); }}

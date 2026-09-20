@@ -285,7 +285,6 @@ export function MvpDrawing({
     setActivePoints([point]);
     setActiveStrokeStyle({ color: pencilColor, width: pencilWidth, widthRatio: frameMinimum > 0 ? pencilWidth / frameMinimum : undefined });
     setPromptOpen(false);
-    setDraftPrompt("");
     setLocalError(undefined);
     try {
       event.currentTarget.setPointerCapture(event.pointerId);
@@ -387,7 +386,6 @@ export function MvpDrawing({
     promptDrawingPointRef.current = point;
     setPromptPoint(pointInSurface(point));
     setPromptInstance((previous) => previous + 1);
-    setDraftPrompt("");
     setPromptOpen(true);
   };
 

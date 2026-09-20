@@ -3,7 +3,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import type { EditorEntity, PreviewEntityDescriptor } from "@cubica/editor-engine";
 
-import { MvpElementEditor } from "./mvp-element-editor";
+import { MvpElementEditor, type MvpElementDraft } from "./mvp-element-editor";
 import { MVP_PROMPT_SEPARATOR, serializeMvpPromptDocument } from "./mvp-prompt-document";
 import type { MvpElementSource } from "./mvp-element-operations";
 
@@ -42,6 +42,21 @@ function baseProps(onSave = vi.fn(async () => ({ ok: true, message: "Сохра�
 }
 
 describe("MvpElementEditor", () => {
+  it("restores an unsaved source draft after rebuilding clears selection", async () => {
+    const container = document.createElement("div"); document.body.appendChild(container);
+    const drafts = new Map<string, MvpElementDraft>();
+    const props = baseProps();
+    const root = createRoot(container);
+    await act(async () => root.render(<MvpElementEditor {...props} drafts={drafts} />));
+    const raw = `Незавершённый запрос\n${textArea(container)?.value}`;
+    await act(async () => setTextarea(textArea(container), raw));
+    await act(async () => root.render(null));
+    await act(async () => root.render(<MvpElementEditor {...props} drafts={drafts} />));
+    expect(textArea(container)?.value).toBe(raw);
+    await act(async () => container.querySelector<HTMLButtonElement>("[aria-label='Закрыть редактор элемента']")?.click());
+    expect(drafts.size).toBe(0);
+    await act(async () => root.unmount()); container.remove();
+  });
   it("sends all three edited sections in one save call", async () => {
     const container = document.createElement("div"); document.body.appendChild(container);
     const onSave = vi.fn(async () => ({ ok: true, message: "Сохранено." }));
