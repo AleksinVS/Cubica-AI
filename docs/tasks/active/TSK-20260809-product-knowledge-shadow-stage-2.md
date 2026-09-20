@@ -62,6 +62,26 @@ in_progress
   контейнер и private state уничтожены. Полная матрица и положительные пути не
   доказаны; DR-24 локально принят и реализован, следующий внешний вызов и
   Stage 3 закрыты.
+- DR-25 заблокирован 2026-09-11 до preactivation: PM разрешил одно
+  непроизводственное пятисценарное окно на `glm-4.7` с bounds
+  `90000/5000/100000/300000` ms, `maxAttempts=1`, без retry, но provider-policy
+  gate не пройден. Host resource preflight прошёл, однако независимый Sol-high
+  review заблокировал прямую связку `runShadowWorkerOnce` ->
+  `ZaiCodingPlanModelGateway`. Разрешение не израсходовано (`providerCalls=0`),
+  инфраструктура, Portal adapter, manifest, messages, candidate и private
+  operator не создавались; запись в Git продуктовой wiki и Stage 3 остаются
+  закрыты.
+- PM 2026-09-18 подтвердил наличие разрешения Z.AI на текущий Coding Plan
+  gateway и поручил продолжить то же, ещё не израсходованное окно DR-25.
+  Подтверждение принято как входное условие без независимой проверки письма.
+  Provider-policy blocker снят; технический допуск требует свежих exact
+  preflight и Sol-high `ACCEPT`. Stage 3 и запись в wiki не разрешены.
+- DR-26 принят PM 2026-09-18: официальная документация сообщает,
+  что `glm-4.7` автоматически направляется на `glm-5.3-flash`. Последняя
+  подтверждена в Coding catalog текущим ключом (HTTP 200, inference calls — 0).
+  Принят явный переход на `glm-5.3-flash` с прежним endpoint и bounds.
+  DR-25 не активируется до локальных проверок адаптера, exact preflight,
+  независимого Sol-high `ACCEPT` и безопасной смысловой оценки.
 
 ## Parent
 
@@ -327,6 +347,27 @@ approved
 но не могло заменить разрешение поставщика. После DR-23 актуальные условия
 перепроверены: прямой API-вызов из собственного evaluator требует отдельного
 письменного соглашения либо обычного API-тарифа. Новые внешние вызовы закрыты.
+
+DR-25 подтверждает этот gate: [Subscription Terms
+Z.AI](https://docs.z.ai/legal-agreement/subscription-terms), [Usage
+Policy](https://docs.z.ai/devpack/usage-policy), [API
+introduction](https://docs.z.ai/api-reference/introduction) и [supported
+tools/endpoints](https://docs.z.ai/devpack/tool/others) ограничивают Coding Plan
+поддержанными инструментами/сценариями. Pet/test статус исключения не создаёт.
+Supported CLI не сохраняет принятую границу gateway/no-tools/no-retry/bounded-I/O
+и не является допустимым proxy без нового решения PM и подтверждения провайдера.
+На остановке 2026-09-11 варианты не были выбраны:
+(A) письменное разрешение Z.AI при сохранении gateway;
+(B) General API после нового PM-решения о модели, цене и контракте; (C)
+local/mock; (D) supported CLI как новая transport boundary после PM-решения и
+доказательства. До этого provider call не повторяется, внешние вызовы и Stage 3
+закрыты, а в вывод не попадают credentials, bearer, диалог, содержимое,
+идентификаторы или provider payload.
+
+PM 2026-09-18 подтвердил наличие разрешения Z.AI на текущий gateway/model и
+поручил продолжить то же окно. Это входное условие от PM без независимой
+проверки письма; provider-policy blocker снят в прежних test-only границах.
+  Технические ворота preflight/Sol-high review и запрет Stage 3 остаются.
 
 Первый прогон выполнен после одновременной подготовки следующих условий;
 повторный реальный прогон требует снова подтвердить их актуальность:
@@ -1281,3 +1322,87 @@ worker и не открывает второй путь к модели или �
   choices, choice/message shape, finish, top-level/message tool calls,
   tolerated metadata, non-string content, legacy stage и exact evaluator
   binding новых стадий.
+
+### 2026-09-11 — основной AI agent, блокировка окна DR-25
+
+- Gate: PM разрешил одно непроизводственное пятисценарное окно на `glm-4.7` с
+  bounds `90000/5000/100000/300000` ms, `maxAttempts=1`, без retry, но
+  provider-policy gate не пройден. Host resource preflight прошёл; независимый
+  Sol-high review заблокировал прямую связку `runShadowWorkerOnce` ->
+  `ZaiCodingPlanModelGateway` по официальным условиям Coding Plan.
+- Safety: разрешение не израсходовано (`providerCalls=0`). PostgreSQL, Portal
+  adapter, manifest, messages, candidate и private operator не создавались;
+  provider-вызовы, Stage 3, запись в Git продуктовой wiki и вывод
+  credentials/bearer/диалога, содержимого, идентификаторов или provider payload
+  закрыты.
+- Options: не выбраны — письменное разрешение Z.AI при сохранении gateway;
+  General API после нового PM-решения о модели/цене/контракте; local/mock;
+  supported CLI только как новая transport boundary после PM-решения и
+  доказательства, не как workaround.
+- Blocker: pet/test статус не создаёт исключения; следующая попытка возможна
+  только после выбора допустимого варианта и подтверждения provider policy.
+
+### 2026-09-18 — основной AI agent, возобновление подготовки DR-25
+
+- Decision: PM подтвердил наличие разрешения Z.AI на текущий Coding Plan
+  gateway и поручил продолжить то же ещё не израсходованное окно. Подтверждение
+  принято как входное условие без независимой проверки письма; смены
+  архитектурной границы, provider/model и Stage 3 нет.
+- Plan: основной агент — сверка проекта, допуск и запуск; Sol high — временный
+  оператор поверх maintained enqueue/worker/evaluator и независимое
+  preactivation review. Небольшие связанные записи документации остаются у
+  основного агента. Provider call запрещён до exact preflight и `ACCEPT`.
+- Evidence: актуальный origin/main не изменился, чужие незавершённые правки в
+  корневом worktree не затронуты. Host resource preflight — READY. Package
+  tests — 257 passed / 70 DB-dependent skipped; package typecheck — PASS.
+- Bounds: `90000/5000/100000/300000` ms, `maxAttempts=1`, без retry, один
+  developer/game/policy и прежний порядок пяти категорий. Активное чтение,
+  применение кандидатов и запись в продуктовую wiki запрещены.
+- New blocker (DR-26): по запросу PM проверена доступность `glm-5.3-flash`:
+  [официальный overview](https://docs.z.ai/devpack/overview) разрешает её во
+  всех планах и указывает routing `glm-4.7` -> `glm-5.3-flash`. Authenticated
+  GET Coding `/models` — HTTP 200, точная модель в списке, inference calls — 0.
+  Строгие request/envelope model guards пока закрепляют `glm-4.7`; возможная
+  смена фактической модели не принимается молча. Запуск остановлен до решения
+  PM о явной миграции и свежих mock/preactivation доказательств.
+
+### 2026-09-18 — основной AI agent, принятие DR-26
+
+- Decision: PM согласовал явную замену на `glm-5.3-flash` и продолжение того
+  же одного окна с прежними параметрами. Exact request/envelope model,
+  endpoint, validator, no-tools/no-retry и запрет Stage 3 сохранены.
+- Changed: model constant, mock configuration и отрицательные случаи для
+  старого alias; root `.env` меняет только `PKS_MODEL`. Секреты не выводятся.
+  ADR-101 и архитектурный обзор отражают принятую модель; исторические окна
+  на `glm-4.7` не переписываются.
+- Next: свежие проверки, независимый Sol-high review и технический допуск.
+  Смысловая оценка требует просмотра в локальном `/dev/tty` без записи
+  содержимого в tool transcript; если он недоступен, окно не начинать.
+- Evidence: package tests — 258 passed / 70 DB-dependent skipped; package
+  typecheck — PASS. Проверки включают отказ старого alias в worker config и
+  response envelope. Это локальное доказательство, не генерация новой моделью.
+
+### 2026-09-18 — основной AI agent, техническая подготовка без активации
+
+- Review: независимый Sol-high — `ACCEPT_FOR_PREPARATION` для миграции и
+  приватного оператора, не preactivation `ACCEPT`. Approval marker не создавался.
+- Observed: одноразовый PostgreSQL с отдельными app/worker login, maintained
+  migrations и read-only seed создан. Preflight отказал до HTTP adapter:
+  существующий Portal `JWT_SECRET` короче 32 байт, необходимых приватному
+  оператору. Z.AI key/base/model проходят свои shape guards. Никакие секреты
+  не выводились и общий Portal не менялся. Вызовов HTTP authorization,
+  evaluator preflight, enqueue, worker и provider — 0.
+- Diagnosis: основной агент выполнил content-free проверку условия; Sol-high
+  автор оператора независимо подтвердил точку отказа по порядку кода.
+  Ослабление проверки и слепой повтор исключены.
+- Cleanup: maintained credential-free cleanup — PASS, initial/active runs,
+  metrics, messages, threads, text bytes — 0, Git unchanged. `unavailable` в
+  hard-stopped housekeeping report не является результатом модели. Destroy —
+  PASS, собственные container/private state/manifest/seed Git отсутствуют.
+- Next gate: PM должен выбрать тестовую подпись Portal без необоснованной
+  ротации общего секрета; отдельно обеспечить незаписываемый локальный терминал
+  для честной оценки каждого результата. Ни новый ключ/граница, ни автоматическая
+  смысловая оценка не внедрены. Permission DR-25 ещё не израсходовано.
+- Verification: миграция — 258 passed / 70 DB-dependent skipped, typecheck
+  PASS; private self-check/typecheck и review PASS. Реальная генерация новой
+  моделью, runtime authorization и положительные пути не доказаны.

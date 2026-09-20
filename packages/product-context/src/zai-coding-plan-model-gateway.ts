@@ -18,7 +18,7 @@ import { evaluateKnowledgePageRead, hasSecretLikeText } from './policy.ts';
 import { ShadowGroundingError, ShadowKnowledgeGrounding, type ShadowKnowledgeGroundingConfig, type ShadowKnowledgeSnapshot } from './shadow-grounding.ts';
 
 export const ZAI_CODING_PLAN_ENDPOINT = 'https://api.z.ai/api/coding/paas/v4/chat/completions';
-export const ZAI_CODING_PLAN_MODEL = 'glm-4.7';
+export const ZAI_CODING_PLAN_MODEL = 'glm-5.3-flash';
 export const ZAI_CODING_PLAN_MAX_TOKENS = 4096;
 
 const encoder = new TextEncoder();
