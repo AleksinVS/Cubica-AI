@@ -72,7 +72,9 @@ export function MvpElementEditor({ drafts, source, entity, label, selectedLayerI
   useEffect(() => () => { if (hold.current !== undefined) clearTimeout(hold.current); }, []);
   // Rebuilding the preview clears visual selection; reselecting the same source restores its draft.
   useEffect(() => {
-    if (draftKey !== undefined) drafts?.set(draftKey, { text: draft, baseline, capture, sourceSnapshot: sourceSnapshot.current });
+    if (draftKey === undefined) return;
+    if (draft === baseline) drafts?.delete(draftKey);
+    else drafts?.set(draftKey, { text: draft, baseline, capture, sourceSnapshot: sourceSnapshot.current });
   }, [draftKey, drafts, draft, baseline, capture]);
 
   async function save(asTemplate = false) {

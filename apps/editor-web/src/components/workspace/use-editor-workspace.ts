@@ -40,6 +40,8 @@ import {
   hasActiveIntent,
   INTENT_STALE_DIAGNOSTIC_CODE,
   hashEditorText,
+  inferEditorEntityDocumentChannel,
+  inferEditorEntityDocumentKind,
   interpretReturnedIntent,
   nextPendingIntentId,
   promoteNextRunnableIntent,
@@ -805,7 +807,7 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
         hydratedProjection = previousState.projection;
       }
 
-      return createEditorViewModel(jsonText, {
+      const model = createEditorViewModel(jsonText, {
         filePath: currentDocument.filePath,
         schemaRegistry,
         schemaId,
@@ -825,6 +827,19 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
         incremental,
         hydratedProjection
       });
+      // The projection builder infers the active document's kind internally;
+      // authoring actions and rule panels read this document list directly.
+      return {
+        ...model,
+        entityProjectionDocuments: model.entityProjectionDocuments.map((document) =>
+          document.filePath === currentDocument.filePath
+            ? {
+                ...document,
+                documentKind: document.documentKind ?? inferEditorEntityDocumentKind(document.json),
+                channel: document.channel ?? inferEditorEntityDocumentChannel(document.json)
+              }
+            : document)
+      };
     },
     [
       activeBranchRootId,
@@ -3002,7 +3017,7 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
     return { gameId: live.currentDocument.gameId, sessionId: live.sessionId, revisions };
   }
 
-  async function sendMvpAgentIntent(prompt: string, scope: MvpAgentCandidateScope): Promise<{ readonly forwarded: boolean; readonly message: string }> {
+  async function sendMvpAgentIntent(prompt: string, scope: MvpAgentCandidateScope, draftContext?: string): Promise<{ readonly forwarded: boolean; readonly message: string }> {
     if (!mvpDocumentReady || !isMvpAgentCandidateScopeCurrent(scope, mvpLiveCandidateContext())) {
       return { forwarded: false, message: "Источник изменился до отправки агенту. Текст сохранён в панели; повторите запрос." };
     }
@@ -3019,7 +3034,7 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
     const result = await forwardMvpAgentRequest(sender, prompt,
       `Контекст выбранного источника (только для подготовки, без записи): ${JSON.stringify({
         gameId: scope.gameId, sources: context, contextToken: scope.token
-      })}\nЕсли нужна правка, вызовите editor.prepareCandidate с JSON EditorChangeSet в changeSetJson и contextToken. Меняйте только указанные filePath и вложенные JSON-указатели. Применение подтверждает человек.`);
+      })}\nЕсли нужна правка, вызовите editor.prepareCandidate с JSON EditorChangeSet в changeSetJson и contextToken. Меняйте только указанные filePath и вложенные JSON-указатели. Применение подтверждает человек.${draftContext === undefined ? "" : `\n\n${draftContext}`}`);
     if (result.forwarded) {
       if (mvpAgentScopeRef.current === scope) {
         setMvpAgentForwardedCount((count) => count + 1);
@@ -4229,7 +4244,8 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
         `Авторское описание (_prompt.raw):\n${authorIntent || "(пусто)"}`,
         `Структурированное намерение:\n${yaml || "(без изменений)"}`
       ];
-      const sent = await sendMvpAgentIntent(`Измени выбранный элемент одним предложением с учётом всех разделов. Не записывай исходники самостоятельно.\n\n${sections.join("\n\n")}`, scope);
+      const draftContext = `Измени выбранный элемент одним предложением с учётом всех разделов. Не записывай исходники самостоятельно.\n\n${sections.join("\n\n")}`;
+      const sent = await sendMvpAgentIntent(oneOff || "Примени авторское описание и структурированное намерение.", scope, draftContext);
       return { ok: sent.forwarded, pending: sent.forwarded, message: sent.message };
     }
     if (structured === null && metadata === undefined) return { ok: true, message: "Изменений нет." };

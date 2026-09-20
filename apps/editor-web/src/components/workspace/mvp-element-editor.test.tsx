@@ -48,6 +48,7 @@ describe("MvpElementEditor", () => {
     const props = baseProps();
     const root = createRoot(container);
     await act(async () => root.render(<MvpElementEditor {...props} drafts={drafts} />));
+    expect(drafts.size).toBe(0);
     const raw = `Незавершённый запрос\n${textArea(container)?.value}`;
     await act(async () => setTextarea(textArea(container), raw));
     await act(async () => root.render(null));
