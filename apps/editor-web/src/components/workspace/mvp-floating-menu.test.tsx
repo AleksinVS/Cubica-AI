@@ -90,6 +90,27 @@ describe("MvpFloatingMenu", () => {
     expect(onModeChange).toHaveBeenCalledTimes(1);
   });
 
+  it("defers pointer capture until a toolbar gesture crosses the drag threshold", () => {
+    render(<MvpFloatingMenu activeMode="chat" onModeChange={vi.fn()} />);
+    const element = menu();
+    const editor = element.querySelector("button[aria-label='Редактор']");
+    if (!(editor instanceof HTMLButtonElement)) throw new Error("editor missing");
+    const setPointerCapture = vi.fn();
+    const hasPointerCapture = vi.fn(() => true);
+    const releasePointerCapture = vi.fn();
+    Object.assign(element, { setPointerCapture, hasPointerCapture, releasePointerCapture });
+    act(() => {
+      editor.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 8, clientX: 100 }));
+    });
+    expect(setPointerCapture).not.toHaveBeenCalled();
+    act(() => {
+      element.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, pointerId: 8, clientX: 120 }));
+      element.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, pointerId: 8, clientX: 120 }));
+    });
+    expect(setPointerCapture).toHaveBeenCalledWith(8);
+    expect(releasePointerCapture).toHaveBeenCalledWith(8);
+  });
+
   it("starts a drag from toolbar padding only after the movement threshold", () => {
     render(<MvpFloatingMenu activeMode="editor" onModeChange={vi.fn()} />);
     const element = menu();

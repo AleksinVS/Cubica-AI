@@ -314,13 +314,6 @@ export function MvpFloatingMenu({
     if (!inToolbar) return;
     clearCollapseTimer();
     dragRef.current = { pointerId: event.pointerId, startX: event.clientX, startLeft: currentLeft(), moved: false };
-    if (typeof event.currentTarget.setPointerCapture === "function") {
-      try {
-        event.currentTarget.setPointerCapture(event.pointerId);
-      } catch {
-        // happy-dom and older browsers can expose capture without a live pointer.
-      }
-    }
   };
 
   const moveDrag = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -328,7 +321,16 @@ export function MvpFloatingMenu({
     if (!drag || drag.pointerId !== event.pointerId) return;
     const delta = event.clientX - drag.startX;
     if (!drag.moved && Math.abs(delta) < DRAG_THRESHOLD) return;
-    drag.moved = true;
+    if (!drag.moved) {
+      drag.moved = true;
+      if (typeof event.currentTarget.setPointerCapture === "function") {
+        try {
+          event.currentTarget.setPointerCapture(event.pointerId);
+        } catch {
+          // happy-dom and older browsers can expose capture without a live pointer.
+        }
+      }
+    }
     setDragging(true);
     setRevealed(true);
     event.preventDefault();
@@ -338,6 +340,13 @@ export function MvpFloatingMenu({
   const finishDrag = (event?: React.PointerEvent<HTMLDivElement>) => {
     if (event && dragRef.current && event.pointerId !== dragRef.current.pointerId) return;
     const moved = dragRef.current?.moved ?? false;
+    if (event && typeof event.currentTarget.hasPointerCapture === "function") {
+      try {
+        if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+      } catch {
+        // Pointer capture is optional in the DOM used by component tests.
+      }
+    }
     dragRef.current = null;
     setDragging(false);
     if (moved) suppressClickRef.current = true;
@@ -454,7 +463,7 @@ export function MvpFloatingMenu({
           );
         })}
       </div>
-      <div className={styles.secondaryControls} aria-label="Настройки меню" data-mvp-toolbar>
+      <div className={styles.secondaryControls} aria-label="Панель инструментов" data-mvp-toolbar>
         <button
           type="button"
           className={`${styles.control} ${styles.pinButton} ${pinned ? styles.isPinned : ""} ${!isExpanded ? styles.isHidden : ""}`}
