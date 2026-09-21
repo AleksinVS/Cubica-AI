@@ -256,11 +256,12 @@ export function UiComponentNode(props: Parameters<typeof UiComponentNodeInner>[0
     return `${pointer}/props/${patch.property}`;
   };
   const component = useTemporaryPreviewComponent(props.component, pointer, ownerFor);
-  return <UiComponentNodeInner {...props} component={component} />;
+  return <UiComponentNodeInner {...props} component={component} previewSourceComponent={props.component} />;
 }
 
 function UiComponentNodeInner({
   component,
+  previewSourceComponent = component,
   metrics,
   onAction,
   screenKey,
@@ -283,6 +284,8 @@ function UiComponentNodeInner({
   mapFirstPanel,
 }: {
   component: GameUiComponent;
+  /** Authored component retains preview ownership while temporary values render. */
+  previewSourceComponent?: GameUiComponent;
   metrics: MetricsSnapshot;
   onAction: (command: string, payload: Record<string, unknown>) => void;
   screenKey?: string;
@@ -351,20 +354,21 @@ function UiComponentNodeInner({
   // containers without visual options are valid and behave like empty props.
   const componentProps = component.props ?? {};
   const effectiveVisualMode = component.visualMode ?? parentVisualMode ?? "auto";
-  const componentRuntimePointer = resolvePreviewRuntimePointer(component, runtimePointer);
-  const textEvidence = editorPreviewMode && content !== undefined && component.type !== "gameVariableComponent"
-    ? resolvePreviewTextBindingEvidence({ props: componentProps as Record<string, unknown>, content, gameState, localContext })
+  const componentRuntimePointer = resolvePreviewRuntimePointer(previewSourceComponent, runtimePointer);
+  const sourceComponentProps = previewSourceComponent.props ?? {};
+  const textEvidence = editorPreviewMode && content !== undefined && previewSourceComponent.type !== "gameVariableComponent"
+    ? resolvePreviewTextBindingEvidence({ props: sourceComponentProps as Record<string, unknown>, content, gameState, localContext })
     : undefined;
   const previewAttributes = createPreviewElementAttributes({
     enabled: editorPreviewMode,
-    component,
+    component: previewSourceComponent,
     runtimePointer: componentRuntimePointer,
     layer: screenKey,
     instanceKey: previewInstanceKey,
     contentRuntimePointer: textEvidence?.contentRuntimePointer ?? previewContentRuntimePointer,
     textBinding: editorPreviewMode && content !== undefined
-      ? component.type === "gameVariableComponent"
-        ? resolvePreviewMetricBinding(componentProps as Record<string, unknown>, content)
+      ? previewSourceComponent.type === "gameVariableComponent"
+        ? resolvePreviewMetricBinding(sourceComponentProps as Record<string, unknown>, content)
         : textEvidence?.textBinding
       : undefined
   });

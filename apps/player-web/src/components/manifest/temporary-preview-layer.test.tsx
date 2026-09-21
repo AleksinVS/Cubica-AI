@@ -46,6 +46,30 @@ describe("temporary preview renderer layer", () => {
     expect(screen.getByText("First")).toBeTruthy();
   });
 
+  it("keeps a dynamic text binding and content owner through successive temporary values", () => {
+    const info = withPreviewContentOrigin({ title: "Original" }, { runtimePointer: "/content/data/infos/0", fields: ["title"] });
+    const component = { type: "richTextComponent" as const, props: { html: "{{currentInfo.title}}" } };
+    const patch: TemporaryPreviewPatch = { operationId: "first-edit", runtimePointer: "/screens/scene/root/children/0",
+      ownerRuntimePointer: "/content/data/infos/0/title", property: "html", value: "First draft" };
+    const view = (patches: readonly TemporaryPreviewPatch[]) => <TemporaryPreviewLayerProvider patches={patches}>
+      <UiComponentNode component={component} metrics={{}} onAction={() => undefined} editorPreviewMode
+        runtimePointer="/screens/scene/root/children/0" gameState={{ currentInfo: info }} content={content} />
+    </TemporaryPreviewLayerProvider>;
+    const expectBoundTitle = (text: string) => {
+      const element = screen.getByText(text);
+      expect(element.getAttribute("data-preview-content-runtime-pointer")).toBe("/content/data/infos/0");
+      expect(JSON.parse(element.getAttribute("data-preview-text-binding") ?? "null")).toEqual({
+        prop: "html", expression: "{{currentInfo.title}}", contentRuntimePointer: "/content/data/infos/0/title"
+      });
+    };
+    const mounted = render(view([patch]));
+    expectBoundTitle("First draft");
+    mounted.rerender(view([{ ...patch, operationId: "second-edit", value: "Second draft" }]));
+    expectBoundTitle("Second draft");
+    mounted.rerender(view([]));
+    expectBoundTitle("Original");
+  });
+
   it("uses the existing renderer geometry path and clears without mutating the source component", () => {
     const component = { type: "richTextComponent" as const, props: { html: "Fixture" }, style: { width: 80 } };
     const patch: TemporaryPreviewPatch = { operationId: "op-2", runtimePointer: "/screens/scene/root/children/0",
