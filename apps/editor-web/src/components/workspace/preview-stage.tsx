@@ -381,6 +381,7 @@ export function PreviewStage({ controller, onStartDrawing, onPageSourceChange, r
               onSelectScope={selectScope}
               disabled={prototypeSelection !== null || !effectivePreviewInspectMode || (mvp && (controller.aiApplyState === "applying" || controller.aiApplyState === "planning"))}
               entities={mvpPreviewEntities}
+              selectionContextKey={JSON.stringify(mvpPreviewEntities[0]?.metadata?.previewContext ?? null)}
               selectedEntityId={selectedPreviewEntityId}
               pointSelectionEnabled={previewPointSelectionMode}
               promptContext={previewPromptContext}

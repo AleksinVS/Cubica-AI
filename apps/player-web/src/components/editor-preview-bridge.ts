@@ -83,8 +83,9 @@ export function useEditorPreviewBridge(rootRef: RefObject<HTMLElement | null>, o
     const parentOrigin: string = configuredParentOrigin;
 
     let frame: number | undefined;
+    let includeSessionSnapshot = false;
 
-    function postPreviewEntities() {
+    function postPreviewEntities(withSession: boolean) {
       const root = rootRef.current;
       if (root === null) {
         return;
@@ -108,7 +109,7 @@ export function useEditorPreviewBridge(rootRef: RefObject<HTMLElement | null>, o
         if (validatePlayerPreviewEntitiesMessage(message)) window.parent.postMessage(message, parentOrigin);
       }
 
-      if (options.sessionSnapshot !== undefined) {
+      if (withSession && options.sessionSnapshot !== undefined) {
         window.parent.postMessage(
           {
             source: "cubica-player-web",
@@ -126,14 +127,21 @@ export function useEditorPreviewBridge(rootRef: RefObject<HTMLElement | null>, o
     }
 
     function schedulePost() {
-      if (frame !== undefined) {
-        window.cancelAnimationFrame(frame);
-      }
-
-      frame = window.requestAnimationFrame(() => {
+      if (frame !== undefined) return;
+      let firedSynchronously = false;
+      const scheduledFrame = window.requestAnimationFrame(() => {
+        firedSynchronously = true;
         frame = undefined;
-        postPreviewEntities();
+        const withSession = includeSessionSnapshot;
+        includeSessionSnapshot = false;
+        postPreviewEntities(withSession);
       });
+      if (!firedSynchronously) frame = scheduledFrame;
+    }
+
+    function scheduleSnapshot() {
+      includeSessionSnapshot = true;
+      schedulePost();
     }
 
     function handleEditorMessage(event: MessageEvent) {
@@ -144,7 +152,7 @@ export function useEditorPreviewBridge(rootRef: RefObject<HTMLElement | null>, o
         return;
       }
       if (isSnapshotRequest(event.data)) {
-        schedulePost();
+        scheduleSnapshot();
         return;
       }
       if (validateEditorDebugBridgeRequest(event.data)) {
@@ -152,7 +160,7 @@ export function useEditorPreviewBridge(rootRef: RefObject<HTMLElement | null>, o
         if (options.onDebugSession !== undefined) {
           void options.onDebugSession(command).then((response) => {
             window.parent.postMessage(response, parentOrigin);
-            schedulePost();
+            scheduleSnapshot();
           }).catch(() => {
             window.parent.postMessage({
               source: "cubica-player-web", type: "debugSessionResult", protocolVersion: 1,
@@ -255,16 +263,42 @@ export function useEditorPreviewBridge(rootRef: RefObject<HTMLElement | null>, o
       );
     }
 
-    schedulePost();
+    scheduleSnapshot();
 
     const resizeObserver =
       typeof ResizeObserver === "undefined" || rootRef.current === null
         ? undefined
         : new ResizeObserver(schedulePost);
-    if (rootRef.current !== null) {
-      resizeObserver?.observe(rootRef.current);
+    const observedResizeTargets = new Set<Element>();
+    function syncResizeTargets() {
+      if (resizeObserver === undefined) return;
+      const root = rootRef.current;
+      const targets = new Set<Element>(root === null ? [] : [root, ...root.children, ...root.querySelectorAll(previewSelector)]);
+      for (const target of observedResizeTargets) {
+        if (!targets.has(target)) { resizeObserver.unobserve(target); observedResizeTargets.delete(target); }
+      }
+      for (const target of targets) {
+        if (!observedResizeTargets.has(target)) { resizeObserver.observe(target); observedResizeTargets.add(target); }
+      }
     }
+    syncResizeTargets();
+    const mutationObserver = typeof MutationObserver === "undefined" || rootRef.current === null
+      ? undefined
+      : new MutationObserver(() => { syncResizeTargets(); schedulePost(); });
+    mutationObserver?.observe(rootRef.current!, {
+      subtree: true, childList: true, characterData: true, attributes: true,
+      attributeFilter: ["class", "style", "hidden", "src", "width", "height",
+        "data-preview-runtime-pointer", "data-preview-content-runtime-pointer", "data-preview-entity-id",
+        "data-preview-label", "data-preview-semantic-role", "data-preview-layer", "data-preview-text-binding",
+        "data-preview-z-index", "data-preview-selectable"]
+    });
+    let disposed = false;
+    const fonts = document.fonts;
+    void fonts?.ready.then(() => { if (!disposed) schedulePost(); });
+    fonts?.addEventListener?.("loadingdone", schedulePost);
     window.addEventListener("resize", schedulePost);
+    window.addEventListener("scroll", schedulePost, true);
+    window.addEventListener("load", schedulePost, true);
     window.addEventListener("message", handleEditorMessage);
     // Tell the parent that the origin-checked request listener is now active.
     // The editor still repeats its request on iframe load, so either mounting
@@ -279,11 +313,16 @@ export function useEditorPreviewBridge(rootRef: RefObject<HTMLElement | null>, o
     );
 
     return () => {
+      disposed = true;
       if (frame !== undefined) {
         window.cancelAnimationFrame(frame);
       }
+      mutationObserver?.disconnect();
       resizeObserver?.disconnect();
+      fonts?.removeEventListener?.("loadingdone", schedulePost);
       window.removeEventListener("resize", schedulePost);
+      window.removeEventListener("scroll", schedulePost, true);
+      window.removeEventListener("load", schedulePost, true);
       window.removeEventListener("message", handleEditorMessage);
     };
   }, [

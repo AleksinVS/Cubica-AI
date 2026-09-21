@@ -48,6 +48,8 @@ export interface PreviewSelectionOverlayProps {
   readonly onSelectScope?: (scope: "game" | "page", point: PreviewPoint) => void;
   readonly disabled?: boolean;
   readonly entities: readonly PreviewEntityDescriptor[];
+  /** Accepted preview identity; repeated-click layer cycling stays within one scene. */
+  readonly selectionContextKey?: string;
   readonly selectedEntityId: string | undefined;
   readonly pointSelectionEnabled?: boolean;
   readonly promptContext: PreviewPromptContext | null;
@@ -84,6 +86,7 @@ export function PreviewSelectionOverlay({
   onSelectScope,
   disabled = false,
   entities,
+  selectionContextKey,
   selectedEntityId,
   pointSelectionEnabled = false,
   promptContext,
@@ -105,7 +108,8 @@ export function PreviewSelectionOverlay({
     readonly point: PreviewPoint;
     readonly entities: readonly PreviewEntityDescriptor[];
   } | null>(null);
-  const lastClickRef = useRef<{ readonly point: PreviewPoint; readonly ids: readonly string[]; readonly index: number } | null>(null);
+  const lastClickRef = useRef<{ readonly point: PreviewPoint; readonly ids: readonly string[];
+    readonly index: number; readonly contextKey?: string } | null>(null);
   const layerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const layerHeldRef = useRef(false);
   const [layerList, setLayerList] = useState<{ readonly point: PreviewPoint; readonly entities: readonly PreviewEntityDescriptor[] } | null>(null);
@@ -224,7 +228,8 @@ export function PreviewSelectionOverlay({
   function selectAt(point: PreviewPoint, isPointSelection = true) {
     const result = hitTestPreviewPoint(entities, point);
     const previous = lastClickRef.current;
-    const sameClick = previous !== null && Math.abs(previous.point.x - point.x) <= dragThresholdPx &&
+    const sameClick = previous !== null && previous.contextKey === selectionContextKey &&
+      Math.abs(previous.point.x - point.x) <= dragThresholdPx &&
       Math.abs(previous.point.y - point.y) <= dragThresholdPx &&
       previous.ids.join("\u0000") === result.entities.map((item) => item.entityId).join("\u0000");
     const selectedIndex = mvp && sameClick ? ((previous?.index ?? 0) + 1) % Math.max(1, result.entities.length) : 0;
@@ -242,7 +247,8 @@ export function PreviewSelectionOverlay({
     }
 
     if (mvp) {
-      lastClickRef.current = { point, ids: result.entities.map((item) => item.entityId), index: selectedIndex };
+      lastClickRef.current = { point, ids: result.entities.map((item) => item.entityId), index: selectedIndex,
+        contextKey: selectionContextKey };
       showLayerList(point, result.entities);
     }
     onSelectEntity(topEntity, point, result.entities);

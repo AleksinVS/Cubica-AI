@@ -438,6 +438,36 @@ describe("PreviewSelectionOverlay", () => {
     await act(async () => root?.unmount());
   });
 
+  it("restarts the layer cycle after an accepted scene changes with identical pointers and bounds", async () => {
+    const onSelectEntity = vi.fn();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    let root: Root | undefined;
+    const props = { mvp: true, entities, selectedEntityId: undefined, promptContext: null,
+      proposedIntent: null, unresolvedCount: 0, onSelectEntity, onSelectRegion: vi.fn(),
+      onClearContext: vi.fn(), onPromptDraftChange: vi.fn(), onPromptSubmit: vi.fn(), onPromptClose: vi.fn() };
+    await act(async () => {
+      root = createRoot(container);
+      root.render(<PreviewSelectionOverlay {...props} selectionContextKey="session-1:S1:info-0" />);
+    });
+    const layer = container.querySelector<HTMLElement>("[data-testid='preview-selection-overlay']");
+    mockLayerRect(layer);
+    await act(async () => {
+      dispatchPointer(layer, "pointerdown", { clientX: 30, clientY: 40 });
+      dispatchPointer(layer, "pointerup", { clientX: 30, clientY: 40 });
+      root?.render(<PreviewSelectionOverlay {...props} selectionContextKey="session-1:S1:info-1" />);
+    });
+    await act(async () => {
+      dispatchPointer(layer, "pointerdown", { clientX: 30, clientY: 40 });
+      dispatchPointer(layer, "pointerup", { clientX: 30, clientY: 40 });
+      dispatchPointer(layer, "pointerdown", { clientX: 30, clientY: 40 });
+      dispatchPointer(layer, "pointerup", { clientX: 30, clientY: 40 });
+    });
+    expect(onSelectEntity.mock.calls.map(([entity]) => entity.entityId)).toEqual(["front", "front", "back"]);
+    await act(async () => root?.unmount());
+    container.remove();
+  });
+
   it("clears selection only from an outside click and cycles overlapping objects from frame clicks", async () => {
     const onSelectEntity = vi.fn();
     const onClearContext = vi.fn();

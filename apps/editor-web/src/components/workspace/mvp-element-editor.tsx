@@ -149,15 +149,15 @@ export function MvpElementEditor({ drafts, source, entity, label, selectedLayerI
     </div> : <button type="button" className={styles.textHeader} onClick={() => setShowLayers((open) => !open)} aria-label={`Слои: ${label}`} aria-expanded={showLayers}>{label}</button>}
     <MvpPromptTextarea className={styles.unifiedText} value={draft} onChange={setDraft} disabled={source === undefined || busy} />
     <button type="button" className={styles.promptClose} aria-label="Закрыть редактор элемента" title="Закрыть" onClick={() => { if (draftKey !== undefined) drafts?.delete(draftKey); onClose(); }}>×</button>
-    <button type="button" className={styles.promptSave} aria-label="Сохранить элемент" title={`Сохранить; удерживайте для ${isPrototype ? "сохранения как нового прототипа" : "сохранения как шаблона"}`} disabled={source === undefined || busy}
-      onPointerDown={() => { held.current = false; hold.current = setTimeout(() => { held.current = true; setShowTemplate(true); }, 550); }}
+    <button type="button" className={styles.promptSave} aria-label="Сохранить элемент" title={onSavePrototype === undefined ? "Сохранить" : `Сохранить; удерживайте для ${isPrototype ? "сохранения как нового прототипа" : "сохранения как шаблона"}`} disabled={source === undefined || busy}
+      onPointerDown={() => { held.current = false; if (onSavePrototype !== undefined) hold.current = setTimeout(() => { held.current = true; setShowTemplate(true); }, 550); }}
       onPointerUp={() => { if (hold.current !== undefined) clearTimeout(hold.current); }}
       onPointerCancel={() => { if (hold.current !== undefined) clearTimeout(hold.current); }}
-      onContextMenu={(event) => { event.preventDefault(); setShowTemplate(true); }}
+      onContextMenu={(event) => { event.preventDefault(); if (onSavePrototype !== undefined) setShowTemplate(true); }}
       onClick={() => { if (!held.current) void save(); held.current = false; }}>
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M5 3h12l4 4v14H3V3h2zm2 0v7h10V3M7 21v-7h10v7" /></svg>
     </button>
-    {showTemplate ? <button type="button" className={styles.templateMenu} disabled={onSavePrototype === undefined || busy} onClick={() => void save(true)}>{isPrototype ? "Сохранить как новый прототип" : "Сохранить как шаблон"}</button> : null}
+    {showTemplate && onSavePrototype !== undefined ? <button type="button" className={styles.templateMenu} disabled={busy} onClick={() => void save(true)}>{isPrototype ? "Сохранить как новый прототип" : "Сохранить как шаблон"}</button> : null}
     {showLayers && !isPrototype ? <div className={styles.layerList} role="listbox" aria-label="Слои элемента" style={{ top: 24, left: 2 }}>
       {layers.map((layer) => <button type="button" key={layer.entityId} role="option" aria-selected={selectedLayerId === layer.entityId} onClick={() => { onSelectLayer?.(layer, point, layers); setShowLayers(false); }}>{layer.label}</button>)}
       {onSelectScope !== undefined ? <><button type="button" role="option" aria-selected={false} onClick={() => { onSelectScope("page", point); setShowLayers(false); }}>Страница</button><button type="button" role="option" aria-selected={false} onClick={() => { onSelectScope("game", point); setShowLayers(false); }}>Игра</button></> : null}

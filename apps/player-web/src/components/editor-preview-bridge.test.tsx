@@ -1,4 +1,4 @@
-import { render } from "@testing-library/react";
+import { render, waitFor } from "@testing-library/react";
 import React, { useRef } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { PlayerFacingContent } from "@cubica/contracts-manifest";
@@ -66,6 +66,98 @@ describe("useEditorPreviewBridge", () => {
   });
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it("refreshes child bounds after nested layout and scroll without a root resize", () => {
+    const observed = new Set<Element>();
+    let notifyResize: (() => void) | undefined;
+    class ChildResizeObserver {
+      constructor(callback: ResizeObserverCallback) {
+        notifyResize = () => callback([], this as unknown as ResizeObserver);
+      }
+      observe(element: Element) { observed.add(element); }
+      unobserve(element: Element) { observed.delete(element); }
+      disconnect() { observed.clear(); }
+    }
+    vi.stubGlobal("ResizeObserver", ChildResizeObserver);
+    const frames: FrameRequestCallback[] = [];
+    vi.spyOn(globalThis, "requestAnimationFrame").mockImplementation((callback) => {
+      frames.push(callback);
+      return frames.length;
+    });
+    vi.spyOn(globalThis, "cancelAnimationFrame").mockImplementation(() => undefined);
+    const flushFrame = () => { for (const callback of frames.splice(0)) callback(0); };
+    const postMessage = vi.spyOn(window.parent, "postMessage").mockImplementation(() => undefined);
+    const mounted = render(<BridgeHarness withEntity options={{ enabled: true,
+      parentOrigin: "https://editor.example.test", refreshSignal: "same",
+      sessionSnapshot: { sessionId: "session-1",
+        version: { sessionId: "session-1", stateVersion: 1, lastEventSequence: 0 }, state: { public: {} } }
+    }} />);
+    const child = mounted.container.querySelector<HTMLElement>("[data-preview-runtime-pointer]");
+    if (!child) throw Error("Missing annotated child");
+    let x = 10;
+    child.getBoundingClientRect = () => ({ x, y: 20, left: x, top: 20,
+      right: x + 80, bottom: 40, width: 80, height: 20, toJSON: () => ({}) });
+    flushFrame();
+    expect(observed.has(child)).toBe(true);
+    expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: "previewSessionSnapshot" }), "https://editor.example.test");
+    postMessage.mockClear();
+
+    x = 140;
+    notifyResize?.();
+    notifyResize?.();
+    expect(frames).toHaveLength(1);
+    flushFrame();
+    expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: "previewEntities",
+      entities: expect.arrayContaining([expect.objectContaining({ bounds: expect.objectContaining({ x: 140 }) })])
+    }), "https://editor.example.test");
+
+    expect(postMessage.mock.calls.some(([message]) => message.type === "previewSessionSnapshot")).toBe(false);
+    postMessage.mockClear();
+    x = 190;
+    window.dispatchEvent(new Event("scroll"));
+    flushFrame();
+    expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: "previewEntities",
+      entities: expect.arrayContaining([expect.objectContaining({ bounds: expect.objectContaining({ x: 190 }) })])
+    }), "https://editor.example.test");
+    expect(postMessage.mock.calls.some(([message]) => message.type === "previewSessionSnapshot")).toBe(false);
+  });
+
+  it("registers a late annotated child and publishes it without changing root dimensions", async () => {
+    const observed = new Set<Element>();
+    class ChildResizeObserver {
+      constructor(_callback: ResizeObserverCallback) {}
+      observe(element: Element) { observed.add(element); }
+      unobserve(element: Element) { observed.delete(element); }
+      disconnect() { observed.clear(); }
+    }
+    vi.stubGlobal("ResizeObserver", ChildResizeObserver);
+    vi.spyOn(globalThis, "requestAnimationFrame").mockImplementation((callback) =>
+      setTimeout(() => callback(0), 0) as unknown as number);
+    vi.spyOn(globalThis, "cancelAnimationFrame").mockImplementation((id) => clearTimeout(id));
+    const postMessage = vi.spyOn(window.parent, "postMessage").mockImplementation(() => undefined);
+    const mounted = render(<BridgeHarness options={{ enabled: true,
+      parentOrigin: "https://editor.example.test", refreshSignal: "same",
+      sessionSnapshot: { sessionId: "session-1",
+        version: { sessionId: "session-1", stateVersion: 1, lastEventSequence: 0 }, state: { public: {} } }
+    }} />);
+    const root = mounted.container.querySelector("main");
+    if (!root) throw Error("Missing bridge root");
+    const lateChild = document.createElement("span");
+    lateChild.dataset.previewRuntimePointer = "/screens/scene-a/root/children/late";
+    lateChild.dataset.previewEntityId = "late-plugin-child";
+    lateChild.getBoundingClientRect = () => ({ x: 55, y: 30, left: 55, top: 30,
+      right: 95, bottom: 50, width: 40, height: 20, toJSON: () => ({}) });
+    root.append(lateChild);
+
+    await waitFor(() => expect(observed.has(lateChild)).toBe(true));
+    await waitFor(() => expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({
+      type: "previewEntities", entities: expect.arrayContaining([expect.objectContaining({
+        entityId: "late-plugin-child", runtimePointer: "/screens/scene-a/root/children/late",
+        bounds: expect.objectContaining({ x: 55 })
+      })])
+    }), "https://editor.example.test"));
   });
 
   it.each([undefined, "not an origin"])("does not post preview data without a confirmed editor origin", (parentOrigin) => {

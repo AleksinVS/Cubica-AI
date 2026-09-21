@@ -33,39 +33,6 @@
               "instance",
               "prototype"
             ]
-          },
-          {
-            "id": "color",
-            "path": "/props/color",
-            "label": "Цвет текста",
-            "presentation": "text",
-            "facet": "view",
-            "expose": [
-              "instance",
-              "prototype"
-            ]
-          },
-          {
-            "id": "fontSize",
-            "path": "/props/fontSize",
-            "label": "Размер текста",
-            "presentation": "quantity",
-            "facet": "view",
-            "expose": [
-              "instance",
-              "prototype"
-            ]
-          },
-          {
-            "id": "backgroundImage",
-            "path": "/props/backgroundImage",
-            "label": "Фоновое изображение",
-            "presentation": "text",
-            "facet": "view",
-            "expose": [
-              "instance",
-              "prototype"
-            ]
           }
         ]
       }
@@ -99,39 +66,6 @@
               "instance",
               "prototype"
             ]
-          },
-          {
-            "id": "color",
-            "path": "/props/color",
-            "label": "Цвет текста",
-            "presentation": "text",
-            "facet": "view",
-            "expose": [
-              "instance",
-              "prototype"
-            ]
-          },
-          {
-            "id": "fontSize",
-            "path": "/props/fontSize",
-            "label": "Размер текста",
-            "presentation": "quantity",
-            "facet": "view",
-            "expose": [
-              "instance",
-              "prototype"
-            ]
-          },
-          {
-            "id": "backgroundImage",
-            "path": "/props/backgroundImage",
-            "label": "Фоновое изображение",
-            "presentation": "text",
-            "facet": "view",
-            "expose": [
-              "instance",
-              "prototype"
-            ]
           }
         ]
       }
@@ -154,39 +88,6 @@
             "id": "caption",
             "path": "/props/caption",
             "label": "Текст кнопки",
-            "presentation": "text",
-            "facet": "view",
-            "expose": [
-              "instance",
-              "prototype"
-            ]
-          },
-          {
-            "id": "color",
-            "path": "/props/color",
-            "label": "Цвет текста",
-            "presentation": "text",
-            "facet": "view",
-            "expose": [
-              "instance",
-              "prototype"
-            ]
-          },
-          {
-            "id": "fontSize",
-            "path": "/props/fontSize",
-            "label": "Размер текста",
-            "presentation": "quantity",
-            "facet": "view",
-            "expose": [
-              "instance",
-              "prototype"
-            ]
-          },
-          {
-            "id": "backgroundImage",
-            "path": "/props/backgroundImage",
-            "label": "Фоновое изображение",
             "presentation": "text",
             "facet": "view",
             "expose": [
@@ -223,39 +124,6 @@
             "id": "summary",
             "path": "/props/summary",
             "label": "Описание",
-            "presentation": "text",
-            "facet": "view",
-            "expose": [
-              "instance",
-              "prototype"
-            ]
-          },
-          {
-            "id": "color",
-            "path": "/props/color",
-            "label": "Цвет текста",
-            "presentation": "text",
-            "facet": "view",
-            "expose": [
-              "instance",
-              "prototype"
-            ]
-          },
-          {
-            "id": "fontSize",
-            "path": "/props/fontSize",
-            "label": "Размер текста",
-            "presentation": "quantity",
-            "facet": "view",
-            "expose": [
-              "instance",
-              "prototype"
-            ]
-          },
-          {
-            "id": "backgroundImage",
-            "path": "/props/backgroundImage",
-            "label": "Фоновое изображение",
             "presentation": "text",
             "facet": "view",
             "expose": [
@@ -331,39 +199,6 @@
             "expose": [
               "instance"
             ]
-          },
-          {
-            "id": "color",
-            "path": "/props/color",
-            "label": "Цвет текста",
-            "presentation": "text",
-            "facet": "view",
-            "expose": [
-              "instance",
-              "prototype"
-            ]
-          },
-          {
-            "id": "fontSize",
-            "path": "/props/fontSize",
-            "label": "Размер текста",
-            "presentation": "quantity",
-            "facet": "view",
-            "expose": [
-              "instance",
-              "prototype"
-            ]
-          },
-          {
-            "id": "backgroundImage",
-            "path": "/props/backgroundImage",
-            "label": "Фоновое изображение",
-            "presentation": "text",
-            "facet": "view",
-            "expose": [
-              "instance",
-              "prototype"
-            ]
           }
         ]
       }
@@ -414,28 +249,6 @@
             ]
           },
           {
-            "id": "color",
-            "path": "/props/color",
-            "label": "Цвет текста",
-            "presentation": "text",
-            "facet": "view",
-            "expose": [
-              "instance",
-              "prototype"
-            ]
-          },
-          {
-            "id": "fontSize",
-            "path": "/props/fontSize",
-            "label": "Размер текста",
-            "presentation": "quantity",
-            "facet": "view",
-            "expose": [
-              "instance",
-              "prototype"
-            ]
-          },
-          {
             "id": "backgroundImage",
             "path": "/props/backgroundImage",
             "label": "Фоновое изображение",
@@ -467,28 +280,6 @@
       "_projection": {
         "properties": [
           {
-            "id": "color",
-            "path": "/props/color",
-            "label": "Цвет текста",
-            "presentation": "text",
-            "facet": "view",
-            "expose": [
-              "instance",
-              "prototype"
-            ]
-          },
-          {
-            "id": "fontSize",
-            "path": "/props/fontSize",
-            "label": "Размер текста",
-            "presentation": "quantity",
-            "facet": "view",
-            "expose": [
-              "instance",
-              "prototype"
-            ]
-          },
-          {
             "id": "backgroundImage",
             "path": "/props/backgroundImage",
             "label": "Фоновое изображение",
@@ -517,28 +308,6 @@
       "_projection": {
         "properties": [
           {
-            "id": "color",
-            "path": "/props/color",
-            "label": "Цвет текста",
-            "presentation": "text",
-            "facet": "view",
-            "expose": [
-              "instance",
-              "prototype"
-            ]
-          },
-          {
-            "id": "fontSize",
-            "path": "/props/fontSize",
-            "label": "Размер текста",
-            "presentation": "quantity",
-            "facet": "view",
-            "expose": [
-              "instance",
-              "prototype"
-            ]
-          },
-          {
             "id": "backgroundImage",
             "path": "/props/backgroundImage",
             "label": "Фоновое изображение",
@@ -565,28 +334,6 @@
       "layout_mode": "topbar",
       "_projection": {
         "properties": [
-          {
-            "id": "color",
-            "path": "/props/color",
-            "label": "Цвет текста",
-            "presentation": "text",
-            "facet": "view",
-            "expose": [
-              "instance",
-              "prototype"
-            ]
-          },
-          {
-            "id": "fontSize",
-            "path": "/props/fontSize",
-            "label": "Размер текста",
-            "presentation": "quantity",
-            "facet": "view",
-            "expose": [
-              "instance",
-              "prototype"
-            ]
-          },
           {
             "id": "backgroundImage",
             "path": "/props/backgroundImage",
@@ -615,28 +362,6 @@
       },
       "_projection": {
         "properties": [
-          {
-            "id": "color",
-            "path": "/props/color",
-            "label": "Цвет текста",
-            "presentation": "text",
-            "facet": "view",
-            "expose": [
-              "instance",
-              "prototype"
-            ]
-          },
-          {
-            "id": "fontSize",
-            "path": "/props/fontSize",
-            "label": "Размер текста",
-            "presentation": "quantity",
-            "facet": "view",
-            "expose": [
-              "instance",
-              "prototype"
-            ]
-          },
           {
             "id": "backgroundImage",
             "path": "/props/backgroundImage",
@@ -674,39 +399,6 @@
             "expose": [
               "instance"
             ]
-          },
-          {
-            "id": "color",
-            "path": "/props/color",
-            "label": "Цвет текста",
-            "presentation": "text",
-            "facet": "view",
-            "expose": [
-              "instance",
-              "prototype"
-            ]
-          },
-          {
-            "id": "fontSize",
-            "path": "/props/fontSize",
-            "label": "Размер текста",
-            "presentation": "quantity",
-            "facet": "view",
-            "expose": [
-              "instance",
-              "prototype"
-            ]
-          },
-          {
-            "id": "backgroundImage",
-            "path": "/props/backgroundImage",
-            "label": "Фоновое изображение",
-            "presentation": "text",
-            "facet": "view",
-            "expose": [
-              "instance",
-              "prototype"
-            ]
           }
         ]
       }
@@ -733,39 +425,6 @@
             "facet": "content",
             "expose": [
               "instance"
-            ]
-          },
-          {
-            "id": "color",
-            "path": "/props/color",
-            "label": "Цвет текста",
-            "presentation": "text",
-            "facet": "view",
-            "expose": [
-              "instance",
-              "prototype"
-            ]
-          },
-          {
-            "id": "fontSize",
-            "path": "/props/fontSize",
-            "label": "Размер текста",
-            "presentation": "quantity",
-            "facet": "view",
-            "expose": [
-              "instance",
-              "prototype"
-            ]
-          },
-          {
-            "id": "backgroundImage",
-            "path": "/props/backgroundImage",
-            "label": "Фоновое изображение",
-            "presentation": "text",
-            "facet": "view",
-            "expose": [
-              "instance",
-              "prototype"
             ]
           }
         ]
@@ -846,28 +505,6 @@
       ],
       "_projection": {
         "properties": [
-          {
-            "id": "color",
-            "path": "/props/color",
-            "label": "Цвет текста",
-            "presentation": "text",
-            "facet": "view",
-            "expose": [
-              "instance",
-              "prototype"
-            ]
-          },
-          {
-            "id": "fontSize",
-            "path": "/props/fontSize",
-            "label": "Размер текста",
-            "presentation": "quantity",
-            "facet": "view",
-            "expose": [
-              "instance",
-              "prototype"
-            ]
-          },
           {
             "id": "backgroundImage",
             "path": "/props/backgroundImage",
