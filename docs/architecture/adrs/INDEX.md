@@ -119,4 +119,4 @@ The following proposed decisions require explicit product-manager review before 
 | [ADR-106](106-editor-debug-session-control-and-checkpoints.md) | серверная пауза и сохранения, совместимые с текущей моделью игры | Accepted |
 | [ADR-107](107-live-editor-preview-and-scene-navigation.md) | обновление предпросмотра без перезагрузки и просмотр авторских сцен | Accepted |
 | [ADR-108](108-prototype-defined-semantic-yaml-editing.md) | смысловая YAML-проекция и явное редактирование прототипов | Accepted |
-| [ADR-109](109-responsive-editor-draft-preview.md) | мгновенный черновой предпросмотр и приоритетная проверка | Proposed |
+| [ADR-109](109-responsive-editor-draft-preview.md) | мгновенный черновой предпросмотр и приоритетная проверка | Accepted |
