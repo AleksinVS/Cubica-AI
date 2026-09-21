@@ -13,7 +13,7 @@ import type {
 import { ManifestAction } from "@cubica/contracts-manifest";
 import { useLocale } from "@/components/locale-context";
 import type { PlayerState } from "@/presenter/types";
-import type { EditorDebugBridgeRequest, EditorPreviewSceneRequest, EditorPreviewPrototypeRequest } from "@cubica/contracts-session";
+import type { EditorDebugBridgeRequest, EditorPreviewSceneRequest, EditorPreviewPrototypeRequest, EditorPreviewTemporaryLayerRequest } from "@cubica/contracts-session";
 import type { ViewCommand } from "@cubica/view-protocol";
 import type { GameConfigData } from "@/presenter/game-config";
 import { GamePresenter } from "@/presenter/game-presenter";
@@ -24,6 +24,8 @@ import {
   type PlayerWebPluginLoadHandle
 } from "@/plugins/preview-plugin-loader";
 import { ManifestRenderer } from "@/components/manifest/manifest-renderer";
+import { TemporaryPreviewLayerProvider, type TemporaryPreviewPatch } from "@/components/manifest/temporary-preview-layer";
+import { projectUiComponentGeometryStyle } from "@/components/manifest/ui-component-style";
 import {
   previewPanelRootPointer,
   previewScreenRootPointer,
@@ -59,6 +61,45 @@ import { buildPrivateInviteFragment } from "@/lib/private-invite-fragment";
 export type { PlayerFacingMockup as GameMockup };
 
 const EMPTY_PLAYER_PLUGIN_BUNDLES: readonly PlayerWebPluginBundleReference[] = [];
+
+const TEMPORARY_TEXT_ROLES: Readonly<Record<string, readonly string[]>> = {
+  richTextComponent: ["html"],
+  buttonComponent: ["caption"],
+  cardComponent: ["text", "title", "summary"]
+};
+
+export function isValidTemporaryPatch(patch: TemporaryPreviewPatch, root: HTMLElement): boolean {
+  const geometry = patch.property === "width" || patch.property === "height" || patch.property === "transform";
+  if (geometry) {
+    if (patch.ownerRuntimePointer !== `${patch.runtimePointer}/style/${patch.property}` ||
+        !/^\/(?:screens|panels)\//u.test(patch.runtimePointer)) return false;
+    const projected = projectUiComponentGeometryStyle({ [patch.property]: patch.value });
+    if ((projected as Record<string, string> | undefined)?.[patch.property] === undefined) return false;
+    if ((patch.property === "width" || patch.property === "height") && typeof patch.value !== "number") return false;
+    if (patch.property === "transform" && typeof patch.value !== "string") return false;
+  } else if (typeof patch.value !== "string" || patch.value.includes("{{")) return false;
+  return [...root.querySelectorAll<HTMLElement>("[data-preview-runtime-pointer]")].some((element) => {
+    if (element.dataset.previewRuntimePointer !== patch.runtimePointer) return false;
+    if (geometry) return true;
+    if (!TEMPORARY_TEXT_ROLES[element.dataset.previewSemanticRole ?? ""]?.includes(patch.property)) return false;
+    const binding = element.dataset.previewTextBinding;
+    if (binding) {
+      try {
+        const parsed: unknown = JSON.parse(binding);
+        if (parsed && typeof parsed === "object" && (parsed as { prop?: unknown }).prop === patch.property) {
+          return (parsed as { contentRuntimePointer?: unknown }).contentRuntimePointer === patch.ownerRuntimePointer;
+        }
+      } catch { return false; }
+    }
+    if (patch.runtimePointer.startsWith("/content/")) return patch.ownerRuntimePointer === patch.runtimePointer;
+    return /^\/(?:screens|panels)\//u.test(patch.runtimePointer) &&
+      patch.ownerRuntimePointer === `${patch.runtimePointer}/props/${patch.property}`;
+  });
+}
+
+function temporaryLayerKey(sessionId: string | undefined, scene: EditorPreviewTemporaryLayerRequest["scene"]): string {
+  return JSON.stringify([sessionId, scene.screenId ?? null, scene.stepIndex ?? null, scene.activeInfoId ?? null]);
+}
 
 export type GamePlayerProps = {
   runtimeApiUrl: string;
@@ -107,6 +148,8 @@ export function GamePlayer({
   const [content, setContent] = useState(initialContent);
   const [gameUi, setGameUi] = useState(initialGameUi);
   const [activePreviewRevision, setActivePreviewRevision] = useState(previewRevision ?? "unverified");
+  const [temporaryPreviewLayer, setTemporaryPreviewLayer] = useState<{ key: string; patches: readonly TemporaryPreviewPatch[] } | null>(null);
+  const temporaryPreviewSequenceRef = useRef<{ sessionId: string; sequence: number } | null>(null);
   const previewRefreshEpochRef = useRef(0);
   const previewSceneActiveRef = useRef(false);
   const [previewSceneActive, setPreviewSceneActive] = useState(false);
@@ -303,6 +346,29 @@ export function GamePlayer({
     ...(typeof previewTimeline?.stepIndex === "number" ? { stepIndex: previewTimeline.stepIndex } : {}),
     ...(typeof previewTimeline?.activeInfoId === "string" ? { activeInfoId: previewTimeline.activeInfoId } : {})
   };
+  const temporaryContextKey = temporaryLayerKey(previewSessionSnapshot?.sessionId, previewSceneContext);
+  useEffect(() => {
+    setTemporaryPreviewLayer((current) => current?.key === temporaryContextKey && playerState?.debugPaused === true ? current : null);
+  }, [temporaryContextKey, playerState?.debugPaused]);
+  const handleTemporaryPreviewLayer = useCallback((request: EditorPreviewTemporaryLayerRequest) => {
+    const snapshot = presenterRef.current?.sessionSnapshot;
+    if (!editorPreviewMode || snapshot?.sessionId !== request.sessionId || snapshot.debugPaused !== true ||
+        previewPrototypeRef.current !== null) throw new Error("A paused editor preview session is required.");
+    if (request.compileRevision !== activePreviewRevision ||
+        temporaryLayerKey(request.sessionId, request.scene) !== temporaryLayerKey(request.sessionId, previewSceneContext))
+      throw new Error("Preview context changed; resend the current draft.");
+    const key = temporaryLayerKey(request.sessionId, request.scene);
+    const previous = temporaryPreviewSequenceRef.current;
+    if (previous?.sessionId === request.sessionId && request.sequence <= previous.sequence) return;
+    const root = rootRef.current;
+    if (!root) throw new Error("Preview renderer is not ready.");
+    for (const patch of request.patches) {
+      if (!isValidTemporaryPatch(patch, root)) throw new Error("Temporary preview target or value is not allowed.");
+    }
+    temporaryPreviewSequenceRef.current = { sessionId: request.sessionId, sequence: request.sequence };
+    setTemporaryPreviewLayer({ key, patches: request.patches });
+  }, [activePreviewRevision, editorPreviewMode, previewSceneContext.activeInfoId,
+    previewSceneContext.screenId, previewSceneContext.stepIndex]);
   const handleEditorPreviewRestore = useCallback(async (request: {
     readonly sessionId: string;
     readonly state: Record<string, unknown>;
@@ -329,6 +395,7 @@ export function GamePlayer({
     onRestorePreviewSession: handleEditorPreviewRestore,
     onDebugSession: handleEditorDebugSession,
     onRefreshPreviewContent: handlePreviewContentRefresh,
+    onTemporaryPreviewLayer: handleTemporaryPreviewLayer,
     onShowPreviewScene: handlePreviewScene,
     onShowPreviewPrototype: handlePreviewPrototype
   });
@@ -652,12 +719,15 @@ export function GamePlayer({
     )
   );
   const sessionSnapshot = presenterRef.current?.renderSessionSnapshot ?? undefined;
-  const blockPrototypeInteraction = previewPrototype === null ? undefined : (event: SyntheticEvent) => {
+  const visibleTemporaryPatches = temporaryPreviewLayer?.key === temporaryContextKey && state.debugPaused === true
+    ? temporaryPreviewLayer.patches : [];
+  const blockPrototypeInteraction = previewPrototype === null && visibleTemporaryPatches.length === 0 ? undefined : (event: SyntheticEvent) => {
     event.preventDefault();
     event.stopPropagation();
   };
 
   return (
+    <TemporaryPreviewLayerProvider patches={visibleTemporaryPatches}>
     <main ref={rootRef} className="shell game-player-root" style={rootStyle}
       onClickCapture={blockPrototypeInteraction}
       onPointerDownCapture={blockPrototypeInteraction}
@@ -772,6 +842,7 @@ export function GamePlayer({
       )}
       {state.error ? <div className="error inline-error">{state.error}</div> : null}
     </main>
+    </TemporaryPreviewLayerProvider>
   );
 }
 

@@ -12,6 +12,10 @@ export type { DebugCheckpointMetadata } from "./generated/debug-checkpoint-metad
 export type { EditorDebugBridgeRequest } from "./generated/editor-debug-bridge-request.ts";
 export type { EditorPreviewContentRefreshRequest } from "./generated/editor-preview-content-refresh-request.ts";
 export type { EditorPreviewContentRefreshResponse } from "./generated/editor-preview-content-refresh-response.ts";
+export type { EditorTemporaryPreviewLayerRequest } from "./generated/editor-temporary-preview-layer-request.ts";
+export type { EditorTemporaryPreviewLayerResponse } from "./generated/editor-temporary-preview-layer-response.ts";
+export type { EditorTemporaryPreviewLayerRequest as EditorPreviewTemporaryLayerRequest } from "./generated/editor-temporary-preview-layer-request.ts";
+export type { EditorTemporaryPreviewLayerResponse as EditorPreviewTemporaryLayerResponse } from "./generated/editor-temporary-preview-layer-response.ts";
 export type { EditorPreviewSceneRequest } from "./generated/editor-preview-scene-request.ts";
 export type { EditorPreviewSceneResponse } from "./generated/editor-preview-scene-response.ts";
 export type { PlayerPreviewEntitiesMessage } from "./generated/player-preview-entities-message.ts";
@@ -30,6 +34,10 @@ export {
   validateEditorDebugBridgeResponse,
   validateEditorPreviewContentRefreshRequest,
   validateEditorPreviewContentRefreshResponse,
+  validateEditorTemporaryPreviewLayerRequest,
+  validateEditorTemporaryPreviewLayerResponse,
+  validateEditorPreviewTemporaryLayerRequest,
+  validateEditorPreviewTemporaryLayerResponse,
   validateEditorPreviewSceneRequest,
   validateEditorPreviewSceneResponse,
   validatePlayerPreviewEntitiesMessage,

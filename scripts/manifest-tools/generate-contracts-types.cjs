@@ -54,6 +54,8 @@ const JOBS = [
     ["editor-debug-bridge-response", "EditorDebugBridgeResponse"],
     ["editor-preview-content-refresh-request", "EditorPreviewContentRefreshRequest"],
     ["editor-preview-content-refresh-response", "EditorPreviewContentRefreshResponse"],
+    ["editor-temporary-preview-layer-request", "EditorTemporaryPreviewLayerRequest"],
+    ["editor-temporary-preview-layer-response", "EditorTemporaryPreviewLayerResponse"],
     ["editor-preview-scene-request", "EditorPreviewSceneRequest"],
     ["editor-preview-scene-response", "EditorPreviewSceneResponse"],
     ["editor-preview-prototype-request", "EditorPreviewPrototypeRequest"],

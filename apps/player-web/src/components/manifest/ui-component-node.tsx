@@ -36,6 +36,7 @@ import {
 } from "./preview-metadata";
 import { resolvePreviewMetricBinding, resolvePreviewTextBindingEvidence } from "./preview-text-binding";
 import { readPreviewContentOrigin } from "@/lib/preview-content-origin";
+import { useTemporaryPreviewComponent, type TemporaryPreviewPatch } from "./temporary-preview-layer";
 import type { PlayerLayoutMode } from "@/lib/player-layout-mode";
 import {
   applyUiComponentGeometryStyle,
@@ -240,7 +241,25 @@ function resolveDesignImage(
  * При наличии itemTemplate итерирует по коллекции из gameState,
  * создавая локальный контекст для каждого элемента.
  */
-export function UiComponentNode({
+export function UiComponentNode(props: Parameters<typeof UiComponentNodeInner>[0]) {
+  const pointer = resolvePreviewRuntimePointer(props.component, props.runtimePointer);
+  const sourceProps = props.component.props as Record<string, unknown> | undefined;
+  const textEvidence = props.content && sourceProps
+    ? resolvePreviewTextBindingEvidence({ props: sourceProps, content: props.content,
+      gameState: props.gameState, localContext: props.localContext }) : undefined;
+  const ownerFor = (patch: TemporaryPreviewPatch): string | undefined => {
+    if (!pointer) return undefined;
+    if (["width", "height", "transform"].includes(patch.property)) return `${pointer}/style/${patch.property}`;
+    if (typeof sourceProps?.[patch.property] !== "string") return undefined;
+    if (textEvidence?.textBinding?.prop === patch.property) return textEvidence.textBinding.contentRuntimePointer;
+    if (pointer.startsWith("/content/")) return pointer;
+    return `${pointer}/props/${patch.property}`;
+  };
+  const component = useTemporaryPreviewComponent(props.component, pointer, ownerFor);
+  return <UiComponentNodeInner {...props} component={component} />;
+}
+
+function UiComponentNodeInner({
   component,
   metrics,
   onAction,

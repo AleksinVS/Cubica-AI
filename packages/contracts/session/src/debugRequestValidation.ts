@@ -10,6 +10,8 @@ import type { EditorDebugBridgeRequest } from "./generated/editor-debug-bridge-r
 import type { EditorDebugBridgeResponse } from "./generated/editor-debug-bridge-response.ts";
 import type { EditorPreviewContentRefreshRequest } from "./generated/editor-preview-content-refresh-request.ts";
 import type { EditorPreviewContentRefreshResponse } from "./generated/editor-preview-content-refresh-response.ts";
+import type { EditorTemporaryPreviewLayerRequest } from "./generated/editor-temporary-preview-layer-request.ts";
+import type { EditorTemporaryPreviewLayerResponse } from "./generated/editor-temporary-preview-layer-response.ts";
 import type { EditorPreviewSceneRequest } from "./generated/editor-preview-scene-request.ts";
 import type { EditorPreviewSceneResponse } from "./generated/editor-preview-scene-response.ts";
 import type { PlayerPreviewEntitiesMessage } from "./generated/player-preview-entities-message.ts";
@@ -26,6 +28,8 @@ import { editorDebugBridgeRequestSchema } from "./generated/editor-debug-bridge-
 import { editorDebugBridgeResponseSchema } from "./generated/editor-debug-bridge-response.schema.ts";
 import { editorPreviewContentRefreshRequestSchema } from "./generated/editor-preview-content-refresh-request.schema.ts";
 import { editorPreviewContentRefreshResponseSchema } from "./generated/editor-preview-content-refresh-response.schema.ts";
+import { editorTemporaryPreviewLayerRequestSchema } from "./generated/editor-temporary-preview-layer-request.schema.ts";
+import { editorTemporaryPreviewLayerResponseSchema } from "./generated/editor-temporary-preview-layer-response.schema.ts";
 import { editorPreviewSceneRequestSchema } from "./generated/editor-preview-scene-request.schema.ts";
 import { editorPreviewSceneResponseSchema } from "./generated/editor-preview-scene-response.schema.ts";
 import { playerPreviewEntitiesMessageSchema } from "./generated/player-preview-entities-message.schema.ts";
@@ -52,6 +56,8 @@ const bridgeRequest = ajv.compile(editorDebugBridgeRequestSchema as object) as V
 const bridgeResponse = ajv.compile(editorDebugBridgeResponseSchema as object) as ValidateFunction<EditorDebugBridgeResponse>;
 const previewRefreshRequest = ajv.compile(editorPreviewContentRefreshRequestSchema as object) as ValidateFunction<EditorPreviewContentRefreshRequest>;
 const previewRefreshResponse = ajv.compile(editorPreviewContentRefreshResponseSchema as object) as ValidateFunction<EditorPreviewContentRefreshResponse>;
+const temporaryLayerRequest = ajv.compile(editorTemporaryPreviewLayerRequestSchema as object) as ValidateFunction<EditorTemporaryPreviewLayerRequest>;
+const temporaryLayerResponse = ajv.compile(editorTemporaryPreviewLayerResponseSchema as object) as ValidateFunction<EditorTemporaryPreviewLayerResponse>;
 const previewSceneRequest = ajv.compile(editorPreviewSceneRequestSchema as object) as ValidateFunction<EditorPreviewSceneRequest>;
 const previewSceneResponse = ajv.compile(editorPreviewSceneResponseSchema as object) as ValidateFunction<EditorPreviewSceneResponse>;
 const previewEntitiesMessage = ajv.compile(playerPreviewEntitiesMessageSchema as object) as ValidateFunction<PlayerPreviewEntitiesMessage>;
@@ -95,6 +101,17 @@ export function validateEditorPreviewContentRefreshRequest(value: unknown): valu
 export function validateEditorPreviewContentRefreshResponse(value: unknown): value is EditorPreviewContentRefreshResponse {
   return previewRefreshResponse(value);
 }
+
+export function validateEditorTemporaryPreviewLayerRequest(value: unknown): value is EditorTemporaryPreviewLayerRequest {
+  return temporaryLayerRequest(value);
+}
+
+export function validateEditorTemporaryPreviewLayerResponse(value: unknown): value is EditorTemporaryPreviewLayerResponse {
+  return temporaryLayerResponse(value);
+}
+
+export const validateEditorPreviewTemporaryLayerRequest = validateEditorTemporaryPreviewLayerRequest;
+export const validateEditorPreviewTemporaryLayerResponse = validateEditorTemporaryPreviewLayerResponse;
 
 export function validateEditorPreviewSceneRequest(value: unknown): value is EditorPreviewSceneRequest {
   return previewSceneRequest(value);

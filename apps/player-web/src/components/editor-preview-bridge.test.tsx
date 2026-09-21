@@ -38,6 +38,29 @@ function BridgeHarness({ options, withEntity = false, withDirectBinding = false,
 }
 
 describe("useEditorPreviewBridge", () => {
+  it("admits temporary layer snapshots only from the exact parent origin and active session", async () => {
+    const postMessage = vi.spyOn(window.parent, "postMessage").mockImplementation(() => undefined);
+    const onTemporaryPreviewLayer = vi.fn();
+    const mounted = render(<BridgeHarness options={{ enabled: true, parentOrigin: "https://editor.example.test",
+      refreshSignal: "initial", onTemporaryPreviewLayer,
+      sessionSnapshot: { sessionId: "session-1", version: { sessionId: "session-1", stateVersion: 1,
+        lastEventSequence: 0 }, state: { public: {} } } }} />);
+    const request = { source: "cubica-editor-web", type: "temporaryPreviewLayer", protocolVersion: 1,
+      requestId: "layer-1", sessionId: "session-1", compileRevision: "rev-1", scene: {}, sequence: 1,
+      patches: [{ operationId: "op-1", runtimePointer: "/screens/scene-a/root/children/0",
+        ownerRuntimePointer: "/screens/scene-a/root/children/0/style/width", property: "width", value: 120 }] };
+    const send = (origin: string, data: unknown) => window.dispatchEvent(new MessageEvent("message", { origin, data, source: window.parent }));
+    send("https://untrusted.example.test", request);
+    send("https://editor.example.test", { ...request, patches: [{ ...request.patches[0], property: "gameState" }] });
+    send("https://editor.example.test", { ...request, sessionId: "different" });
+    expect(onTemporaryPreviewLayer).not.toHaveBeenCalled();
+    send("https://editor.example.test", request);
+    await waitFor(() => expect(onTemporaryPreviewLayer).toHaveBeenCalledWith(request));
+    expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: "temporaryPreviewLayerResult", ok: true,
+      sequence: 1 }), "https://editor.example.test");
+    mounted.unmount();
+  });
+
   it("admits debug commands only from the exact parent origin and canonical schema", async () => {
     vi.spyOn(window.parent, "postMessage").mockImplementation(() => undefined);
     const onDebugSession = vi.fn().mockResolvedValue({

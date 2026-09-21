@@ -7,10 +7,10 @@
  */
 import { useEffect, type RefObject } from "react";
 import type { SessionStateVersion } from "@cubica/contracts-session";
-import { validateEditorDebugBridgeRequest, validateEditorPreviewContentRefreshRequest, validateEditorPreviewSceneRequest,
+import { validateEditorDebugBridgeRequest, validateEditorPreviewContentRefreshRequest, validateEditorTemporaryPreviewLayerRequest, validateEditorPreviewSceneRequest,
   validateEditorPreviewPrototypeRequest,
   validatePlayerPreviewEntitiesMessage,
-  type EditorDebugBridgeRequest, type EditorDebugBridgeResponse, type EditorPreviewContentRefreshRequest,
+  type EditorDebugBridgeRequest, type EditorDebugBridgeResponse, type EditorPreviewContentRefreshRequest, type EditorTemporaryPreviewLayerRequest,
   type EditorPreviewSceneRequest, type EditorPreviewPrototypeRequest, type PlayerPreviewEntitiesMessage } from "@cubica/contracts-session";
 
 export interface EditorPreviewBridgeOptions {
@@ -26,6 +26,7 @@ export interface EditorPreviewBridgeOptions {
   readonly onRestorePreviewSession?: (request: EditorPreviewRestoreRequest) => Promise<EditorPreviewSessionSnapshot>;
   readonly onDebugSession?: (request: EditorDebugBridgeRequest) => Promise<EditorDebugBridgeResponse>;
   readonly onRefreshPreviewContent?: (request: EditorPreviewContentRefreshRequest) => Promise<{ readonly requiresRestart?: boolean }>;
+  readonly onTemporaryPreviewLayer?: (request: EditorTemporaryPreviewLayerRequest) => void;
   readonly onShowPreviewScene?: (request: EditorPreviewSceneRequest) => Promise<void>;
   readonly onShowPreviewPrototype?: (request: EditorPreviewPrototypeRequest) => Promise<void>;
 }
@@ -185,6 +186,20 @@ export function useEditorPreviewBridge(rootRef: RefObject<HTMLElement | null>, o
           error: error instanceof Error ? error.message.slice(0, 500) : "Preview refresh failed." }, parentOrigin));
         return;
       }
+      if (validateEditorTemporaryPreviewLayerRequest(event.data)) {
+        const request = event.data;
+        if (request.sessionId !== options.sessionSnapshot?.sessionId || options.onTemporaryPreviewLayer === undefined) return;
+        try {
+          options.onTemporaryPreviewLayer(request);
+          window.parent.postMessage({ source: "cubica-player-web", type: "temporaryPreviewLayerResult", protocolVersion: 1,
+            requestId: request.requestId, sessionId: request.sessionId, sequence: request.sequence, ok: true }, parentOrigin);
+        } catch (error: unknown) {
+          window.parent.postMessage({ source: "cubica-player-web", type: "temporaryPreviewLayerResult", protocolVersion: 1,
+            requestId: request.requestId, sessionId: request.sessionId, sequence: request.sequence, ok: false,
+            error: error instanceof Error ? error.message.slice(0, 500) : "Temporary preview layer rejected." }, parentOrigin);
+        }
+        return;
+      }
       if (validateEditorPreviewSceneRequest(event.data)) {
         const request = event.data;
         if (request.sessionId !== options.sessionSnapshot?.sessionId || options.onShowPreviewScene === undefined) return;
@@ -342,6 +357,7 @@ export function useEditorPreviewBridge(rootRef: RefObject<HTMLElement | null>, o
     options.onRestorePreviewSession,
     options.onDebugSession,
     options.onRefreshPreviewContent,
+    options.onTemporaryPreviewLayer,
     options.onShowPreviewScene,
     options.onShowPreviewPrototype
   ]);
