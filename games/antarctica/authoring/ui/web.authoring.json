@@ -8,7 +8,7 @@
       "_label": "Кнопка открытия панели Antarctica",
       "_semantics": "Локальный UI-прототип кнопки, которая открывает game-defined панель Antarctica через команду showPanel.",
       "_promptTemplate": {
-        "raw": "Создай кнопку-помощник Antarctica, которая открывает указанную UI-панель и сохраняет вариант helper.",
+        "raw": "Кнопка открывает выбранную вспомогательную панель игры.",
         "language": "ru",
         "appliesTo": "ui.AntarcticaShowPanelButton"
       },
@@ -41,7 +41,7 @@
       "_label": "Кнопка закрытия панели Antarctica",
       "_semantics": "Локальный UI-прототип кнопки, которая закрывает активную game-defined панель Antarctica через команду closePanel.",
       "_promptTemplate": {
-        "raw": "Создай кнопку-помощник Antarctica, которая закрывает указанную UI-панель и сохраняет вариант helper.",
+        "raw": "Кнопка закрывает выбранную вспомогательную панель игры.",
         "language": "ru",
         "appliesTo": "ui.AntarcticaClosePanelButton"
       },
@@ -74,7 +74,7 @@
       "_label": "Навигационная кнопка Antarctica",
       "_semantics": "Локальный UI-прототип кнопки навигации Antarctica; экземпляр задает направление, подпись и при необходимости disabled.",
       "_promptTemplate": {
-        "raw": "Создай навигационную кнопку Antarctica для перехода назад или вперед; подпись и disabled задаются экземпляром.",
+        "raw": "Кнопка перехода назад или вперёд. Подпись и доступность задаются для конкретной кнопки.",
         "language": "ru",
         "appliesTo": "ui.AntarcticaNavButton"
       },
@@ -102,7 +102,7 @@
       "_label": "Статическая информационная карточка Antarctica",
       "_semantics": "Локальный UI-прототип информационной карточки без игрового действия; переходы и выборы объявляются отдельно опубликованными Game Intents.",
       "_promptTemplate": {
-        "raw": "Создай статическую информационную карточку Antarctica; текст остается на экземпляре, а игровое действие не добавляется.",
+        "raw": "Информационная карточка без игрового действия. Текст задаётся отдельно для каждой карточки.",
         "language": "ru",
         "appliesTo": "ui.AntarcticaRequestServerCard"
       },
@@ -138,7 +138,7 @@
       "_label": "Карточка выбора на доске Antarctica",
       "_semantics": "Локальный UI-прототип динамической карточки доски Antarctica, которая берет данные из boardCards itemTemplate.",
       "_promptTemplate": {
-        "raw": "Создай карточку выбора для текущей доски Antarctica с title, summary, selectLabel, visualState и явным requestServer payload.actionId.",
+        "raw": "Карточка выбора действия на текущей доске: название, краткое описание, подпись кнопки и состояние выбора. Нажатие выполняет связанное игровое действие.",
         "language": "ru",
         "appliesTo": "ui.AntarcticaBoardChoiceCard"
       },
@@ -207,7 +207,7 @@
       "_label": "Метрика",
       "_semantics": "Локальный UI-прототип метрики Antarctica; экземпляр задает id, metricId и изображение. Начальная привязка pro заменяется при настройке новой метрики.",
       "_promptTemplate": {
-        "raw": "Создай метрику Antarctica; задай metricId, подпись и изображение для нужного показателя.",
+        "raw": "Показывает выбранный игровой показатель. Для каждого экземпляра выбираются показатель, подпись и изображение.",
         "language": "ru",
         "appliesTo": "ui.AntarcticaTopbarMetricBadge"
       },
@@ -267,7 +267,7 @@
       "_label": "Остаток дней",
       "_semantics": "Локальный UI-прототип topbar-метрики remainingDays; игровой смысл берется из game metric catalog.",
       "_promptTemplate": {
-        "raw": "Создай topbar-метрику remainingDays Antarctica с prominent layout.",
+        "raw": "Выделенный показатель оставшихся дней в верхней части экрана.",
         "language": "ru",
         "appliesTo": "ui.AntarcticaTopbarRemainingDaysMetric"
       },
@@ -297,7 +297,7 @@
       "_label": "Корневой экранный контейнер Antarctica",
       "_semantics": "Локальный UI-прототип корневого screenComponent для экранов Antarctica с общим арктическим фоном.",
       "_promptTemplate": {
-        "raw": "Создай корневой контейнер экрана Antarctica с общим фоновым изображением; cssClass задается экземпляром.",
+        "raw": "Основа страницы с общим фоновым изображением. Содержимое и дополнительные особенности оформления задаются на самой странице.",
         "language": "ru",
         "appliesTo": "ui.AntarcticaScreenRoot"
       },
@@ -325,7 +325,7 @@
       "_label": "Overlay-панель Antarctica",
       "_semantics": "Локальный UI-прототип game-defined overlay панели Antarctica; заголовок, design artifact и контент задаются экземпляром.",
       "_promptTemplate": {
-        "raw": "Создай overlay-панель Antarctica с mode overlay и topbar layout; содержимое задается экземпляром.",
+        "raw": "Вспомогательная панель поверх игры. Содержимое задаётся отдельно для каждой панели.",
         "language": "ru",
         "appliesTo": "ui.AntarcticaOverlayPanel"
       },
@@ -352,7 +352,7 @@
       "_label": "Контейнер кнопок панели Antarctica",
       "_semantics": "Локальный UI-прототип контейнера кнопок внутри game-defined панели Antarctica.",
       "_promptTemplate": {
-        "raw": "Создай контейнер кнопок панели Antarctica с классами button-container panel-buttons.",
+        "raw": "Группа кнопок вспомогательной панели с единым расположением и оформлением.",
         "language": "ru",
         "appliesTo": "ui.AntarcticaPanelButtonContainer"
       },
@@ -380,7 +380,7 @@
       "_label": "Заголовочный rich text Antarctica",
       "_semantics": "Локальный UI-прототип rich text заголовка Antarctica с fallback-card-head классом.",
       "_promptTemplate": {
-        "raw": "Создай rich text заголовка Antarctica; html задается экземпляром.",
+        "raw": "Заголовок с форматированием. Текст задаётся отдельно для каждого экземпляра.",
         "language": "ru",
         "appliesTo": "ui.AntarcticaFallbackHeadText"
       },
@@ -407,7 +407,7 @@
       "_label": "Основной rich text Antarctica",
       "_semantics": "Локальный UI-прототип rich text основного текста Antarctica с fallback-copy классом.",
       "_promptTemplate": {
-        "raw": "Создай rich text основного текста Antarctica; html задается экземпляром.",
+        "raw": "Основной текст с форматированием. Содержание задаётся отдельно для каждого экземпляра.",
         "language": "ru",
         "appliesTo": "ui.AntarcticaFallbackCopyText"
       },
@@ -434,7 +434,7 @@
       "_label": "Нижние стандартные кнопки Antarctica",
       "_semantics": "Локальный UI-прототип стандартного ряда кнопок: журнал, подсказка, назад, вперед.",
       "_promptTemplate": {
-        "raw": "Создай стандартный нижний ряд кнопок Antarctica: журнал, подсказка, назад и вперед.",
+        "raw": "Стандартный нижний ряд кнопок: журнал, подсказка, назад и вперёд.",
         "language": "ru",
         "appliesTo": "ui.AntarcticaDefaultBottomControls"
       },
