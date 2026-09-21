@@ -438,6 +438,34 @@ describe("PreviewSelectionOverlay", () => {
     await act(async () => root?.unmount());
   });
 
+  it("keeps the transient list opposite the measured element prompt after its placement changes", async () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    const wideEntity = { ...entities[1]!, bounds: { x: 0, y: 0, width: 800, height: 500 } };
+    const props = { mvp: true, entities: [wideEntity], selectedEntityId: undefined, promptContext: null,
+      proposedIntent: null, unresolvedCount: 0, onSelectEntity: vi.fn(), onSelectRegion: vi.fn(),
+      onClearContext: vi.fn(), onPromptDraftChange: vi.fn(), onPromptSubmit: vi.fn(), onPromptClose: vi.fn() };
+    await act(async () => root.render(<PreviewSelectionOverlay {...props}
+      elementPromptRect={{ x: 420, y: 210, width: 260, height: 180 }} />));
+    const overlay = container.querySelector<HTMLElement>(".preview-overlay-root");
+    const hitLayer = container.querySelector<HTMLElement>("[data-testid='preview-selection-overlay']");
+    const rect = { x: 0, y: 0, left: 0, top: 0, right: 800, bottom: 500, width: 800, height: 500, toJSON: () => ({}) };
+    if (overlay !== null) overlay.getBoundingClientRect = () => rect;
+    if (hitLayer !== null) hitLayer.getBoundingClientRect = () => rect;
+    await act(async () => {
+      dispatchPointer(hitLayer, "pointerdown", { clientX: 400, clientY: 220 });
+      dispatchPointer(hitLayer, "pointerup", { clientX: 400, clientY: 220 });
+    });
+    const list = container.querySelector<HTMLElement>("[aria-label='Слои под указателем']");
+    expect(Number.parseFloat(list?.style.left ?? "NaN") + 172).toBeLessThan(400);
+    await act(async () => root.render(<PreviewSelectionOverlay {...props}
+      elementPromptRect={{ x: 110, y: 210, width: 270, height: 180 }} />));
+    expect(Number.parseFloat(list?.style.left ?? "NaN")).toBeGreaterThan(400);
+    await act(async () => root.unmount());
+    container.remove();
+  });
+
   it("restarts the layer cycle after an accepted scene changes with identical pointers and bounds", async () => {
     const onSelectEntity = vi.fn();
     const container = document.createElement("div");

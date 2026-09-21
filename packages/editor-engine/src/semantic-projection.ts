@@ -43,6 +43,9 @@ export interface SemanticEntityProjection {
 
 const fallbackKeys = new Set(["title", "text", "label", "caption", "description", "icon", "alt"]);
 const technicalKeys = new Set(["id", "type", "_type", "_label", "_semantics", "_prompt", "_promptTemplate", "_projection", "gameEntityId", "source", "sourceMap", "expression", "computed"]);
+const facetGroupLabels: Readonly<Record<EditorEntityFacetKind, string>> = {
+  logic: "Правила", content: "Содержание", state: "Показатели", view: "Элемент", design: "Оформление", plugin: "Дополнения"
+};
 type ProjectionAjv = { compile(schema: unknown): (value: unknown) => boolean };
 type ProjectionAjvConstructor = new (options?: AjvOptions) => ProjectionAjv;
 const AjvConstructor = (AjvModule as unknown as { readonly default?: ProjectionAjvConstructor }).default ??
@@ -151,18 +154,38 @@ export function buildSemanticEntityProjection(input: BuildSemanticEntityProjecti
   const lines: string[] = [];
   const sourceLines: FacetSourceLine[] = [];
   const append = (line: string, meta: Omit<FacetSourceLine, "line">) => { sourceLines.push({ ...meta, line: lines.length }); lines.push(line); };
-  let group: string | undefined;
-  for (const property of properties) {
-    if (property.group !== group && property.group) append(`${property.group}:`, { kind: "facet", indent: 0, facetKind: property.facet });
-    group = property.group;
-    const indent = group ? 2 : 0;
-    const prefix = `${" ".repeat(indent)}${property.label}: `;
+  const appendProperty = (property: SemanticProperty, label: string, indent: number) => {
+    const prefix = `${" ".repeat(indent)}${formatYamlKey(label)}: `;
     append(`${prefix}${formatScalar(property.value)}`, {
       kind: "field-scalar", indent, filePath: property.writeTarget.filePath, pointer: property.writeTarget.pointer,
       valueKind: "scalar", valueStart: prefix.length, facetKind: property.facet,
       writeParents: property.writeTarget.parentObjects, writeOperation: property.writeTarget.operation === "agent" ? undefined : property.writeTarget.operation,
       agentOnly: property.writeTarget.operation === "agent" ? true : undefined
     });
+  };
+  // Group presentation without changing descriptor order or write targets. A group
+  // appears once even when its fields are interleaved with fields of another facet.
+  if (properties.length > 1 || properties.some((property) => property.group !== undefined)) {
+    const groups = new Map<string, SemanticProperty[]>();
+    for (const property of properties) {
+      const name = property.group ?? facetGroupLabels[property.facet];
+      const grouped = groups.get(name) ?? [];
+      grouped.push(property);
+      groups.set(name, grouped);
+    }
+    for (const [name, grouped] of groups) {
+      const commonFacet = grouped.every((property) => property.facet === grouped[0].facet) ? grouped[0].facet : undefined;
+      append(`${formatYamlKey(name)}:`, { kind: "facet", indent: 0, facetKind: commonFacet });
+      const usedLabels = new Set<string>();
+      for (const property of grouped) {
+        let label = property.label;
+        for (let suffix = 2; usedLabels.has(label); suffix += 1) label = `${property.label} (${suffix})`;
+        usedLabels.add(label);
+        appendProperty(property, label, 2);
+      }
+    }
+  } else if (properties[0] !== undefined) {
+    appendProperty(properties[0], properties[0].label, 0);
   }
   return { text: `${lines.join("\n")}\n`, facetSourceMap: { lines: sourceLines }, properties, definitionType, definitionSource, diagnostics };
 }
@@ -233,6 +256,10 @@ function pathTraversesArray(root: JsonObject, relative: string): boolean {
   return Array.isArray(current);
 }
 function formatScalar(value: JsonValue): string { return JSON.stringify(value); }
+function formatYamlKey(value: string): string {
+  return /^[\p{L}_][\p{L}\p{N}_-]*(?: [\p{L}\p{N}_-]+)*$/u.test(value) && !/^(?:true|false|null|yes|no|on|off)$/iu.test(value)
+    ? value : JSON.stringify(value);
+}
 
 /** Only AST operations with exact, compositional meaning receive a rule explanation. */
 function explainRule(value: JsonValue, documents: readonly EditorEntityProjectionDocument[], _dictionary: readonly EditorEntityFieldDictionaryEntry[]): string | undefined {

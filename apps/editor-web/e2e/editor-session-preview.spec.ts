@@ -93,8 +93,8 @@ test.describe("editor MVP", { tag: "@editor" }, () => {
       expect(sections).toHaveLength(3);
       const scoreLabel = `Счёт MVP ${Date.now()}`;
       sections[1] = "Показывает текущий счёт.";
-      expect(sections[2]).toMatch(/^"?Название элемента"?:/m);
-      sections[2] = sections[2].replace(/^("?Название элемента"?:).*$/m, `$1 ${JSON.stringify(scoreLabel)}`);
+      expect(sections[2]).toMatch(/^\s*"?Название элемента"?:/m);
+      sections[2] = sections[2].replace(/^(\s*"?Название элемента"?:).*$/m, `$1 ${JSON.stringify(scoreLabel)}`);
       await draft.fill(sections.join(separator));
       await panel.getByRole("button", { name: "Сохранить элемент" }).click();
       const firstCandidate = page.getByRole("region", { name: "Предложенное изменение" });

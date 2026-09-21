@@ -16,12 +16,13 @@ import {
   type PreviewPoint,
   type PreviewRect
 } from "@cubica/editor-engine";
-import React, { useEffect, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent, type PointerEvent } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent, type PointerEvent } from "react";
 
 import { editorRu as t } from "@/lib/locale";
 import mvpStyles from "@/components/workspace/mvp-element-editor.module.css";
 import { resizeMvpRect, type MvpGeometryGesture, type MvpResizeAnchor } from "./workspace/mvp-element-operations";
 import { MvpFloatingPrompt, compactPromptWidth } from "./workspace/mvp-floating-prompt";
+import { placeLayerList, type FloatingRect } from "./workspace/mvp-floating-placement";
 
 export interface PreviewAiIntent {
   readonly id: string;
@@ -53,6 +54,7 @@ export interface PreviewSelectionOverlayProps {
   readonly selectedEntityId: string | undefined;
   readonly pointSelectionEnabled?: boolean;
   readonly promptContext: PreviewPromptContext | null;
+  readonly elementPromptRect?: FloatingRect | null;
   readonly proposedIntent: PreviewAiIntent | null;
   readonly unresolvedCount: number;
   readonly onSelectEntity: (
@@ -90,6 +92,7 @@ export function PreviewSelectionOverlay({
   selectedEntityId,
   pointSelectionEnabled = false,
   promptContext,
+  elementPromptRect,
   proposedIntent,
   unresolvedCount,
   onSelectEntity,
@@ -112,9 +115,52 @@ export function PreviewSelectionOverlay({
     readonly index: number; readonly contextKey?: string } | null>(null);
   const layerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const layerHeldRef = useRef(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const layerListRef = useRef<HTMLDivElement>(null);
   const [layerList, setLayerList] = useState<{ readonly point: PreviewPoint; readonly entities: readonly PreviewEntityDescriptor[] } | null>(null);
+  const [layerPlacement, setLayerPlacement] = useState<{
+    readonly source: NonNullable<typeof layerList>;
+    readonly x: number;
+    readonly y: number;
+    readonly maxWidth: number;
+    readonly maxHeight: number;
+  } | null>(null);
+  const [regionPromptRect, setRegionPromptRect] = useState<FloatingRect | null>(null);
   const selectedEntity = entities.find((entity) => entity.entityId === selectedEntityId);
   const promptRegionRect = promptContext?.kind === "region" ? promptContext.rect : undefined;
+
+  useLayoutEffect(() => {
+    const root = rootRef.current;
+    const list = layerListRef.current;
+    if (layerList === null || root === null || list === null) return;
+    const positionList = () => {
+      const rootBox = root.getBoundingClientRect();
+      const rootWidth = rootBox.width || window.innerWidth;
+      const rootHeight = rootBox.height || window.innerHeight;
+      const bounds = {
+        left: Math.max(0, rootBox.left), top: Math.max(0, rootBox.top),
+        right: Math.min(window.innerWidth, rootBox.left + rootWidth),
+        bottom: Math.min(window.innerHeight, rootBox.top + rootHeight)
+      };
+      const point = { x: rootBox.left + layerList.point.x, y: rootBox.top + layerList.point.y };
+      const size = {
+        width: Math.min(172, bounds.right - bounds.left - 16),
+        height: Math.min(180, list.scrollHeight || 8 + (layerList.entities.length + (onSelectScope === undefined ? 0 : 2)) * 30)
+      };
+      const prompt = promptContext?.kind === "region" ? regionPromptRect : elementPromptRect;
+      const next = placeLayerList(point, size, bounds, prompt ?? undefined);
+      setLayerPlacement((current) => current?.source === layerList && current.x === next.x - rootBox.left &&
+        current.y === next.y - rootBox.top && current.maxWidth === next.maxWidth && current.maxHeight === next.maxHeight
+        ? current : { source: layerList, x: next.x - rootBox.left, y: next.y - rootBox.top,
+          maxWidth: next.maxWidth, maxHeight: next.maxHeight });
+    };
+    positionList();
+    const observer = typeof ResizeObserver === "undefined" ? undefined : new ResizeObserver(positionList);
+    observer?.observe(root);
+    observer?.observe(list);
+    window.addEventListener("resize", positionList);
+    return () => { observer?.disconnect(); window.removeEventListener("resize", positionList); };
+  }, [layerList, elementPromptRect, regionPromptRect, promptContext?.kind, onSelectScope]);
 
   useEffect(() => {
     return () => {
@@ -314,14 +360,14 @@ export function PreviewSelectionOverlay({
 
   if (disabled) {
     return (
-      <div className="preview-overlay-root" aria-label={t.selectionOverlay.layerAria}>
+      <div ref={rootRef} className="preview-overlay-root" aria-label={t.selectionOverlay.layerAria}>
         <div className="preview-selection-hit-layer is-disabled" data-testid="preview-selection-overlay" />
       </div>
     );
   }
 
   return (
-    <div className={`preview-overlay-root ${contextMenu !== null ? "has-context-menu" : ""}`} aria-label={t.selectionOverlay.layerAria}>
+    <div ref={rootRef} className={`preview-overlay-root ${contextMenu !== null ? "has-context-menu" : ""}`} aria-label={t.selectionOverlay.layerAria}>
       <div
         className="preview-selection-hit-layer"
         data-testid="preview-selection-overlay"
@@ -358,10 +404,14 @@ export function PreviewSelectionOverlay({
       ) : null}
       {mvp && layerList !== null ? (
         <div
+          ref={layerListRef}
           className={mvpStyles.layerList}
           role="listbox"
           aria-label="Слои под указателем"
-          style={{ left: Math.max(8, layerList.point.x - 184), top: Math.max(8, layerList.point.y - 10) }}
+          style={layerPlacement?.source === layerList
+            ? { left: layerPlacement.x, top: layerPlacement.y,
+              maxWidth: layerPlacement.maxWidth, maxHeight: layerPlacement.maxHeight }
+            : { left: 0, top: 0, visibility: "hidden" }}
           onPointerEnter={() => { layerHeldRef.current = true; }}
           onPointerLeave={() => { layerHeldRef.current = false; setLayerList(null); }}
           onFocus={() => { layerHeldRef.current = true; }}
@@ -396,6 +446,7 @@ export function PreviewSelectionOverlay({
           onDraftChange={onPromptDraftChange}
           onSubmit={onPromptSubmit}
           onClose={onPromptClose}
+          onPlacementChange={setRegionPromptRect}
           onSelectEntity={(entity) => onSelectEntity(entity, promptContext.point, promptContext.entities)}
         />
       ) : null}
@@ -573,6 +624,7 @@ function PreviewPromptBox({
   onDraftChange,
   onSubmit,
   onClose,
+  onPlacementChange,
   onSelectEntity
 }: {
   readonly mvp?: boolean;
@@ -581,6 +633,7 @@ function PreviewPromptBox({
   readonly onDraftChange: (draft: string) => void;
   readonly onSubmit: () => void;
   readonly onClose: () => void;
+  readonly onPlacementChange?: (rect: FloatingRect | null) => void;
   readonly onSelectEntity: (entity: PreviewEntityDescriptor) => void;
 }) {
   const textAreaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -596,7 +649,7 @@ function PreviewPromptBox({
     if (mvp && field !== null) { field.style.height = "0px"; field.style.height = `${Math.max(54, Math.min(380, field.scrollHeight))}px`; }
   }, [mvp, context.draft]);
 
-  if (mvp) return <MvpFloatingPrompt point={context.point} avoid={context.rect} width={compactPromptWidth(context.draft)} label="Промт для области">
+  if (mvp) return <MvpFloatingPrompt point={context.point} avoid={context.rect} width={compactPromptWidth(context.draft)} label="Промт для области" onPlacementChange={onPlacementChange}>
     <textarea ref={textAreaRef} aria-label={t.selectionOverlay.promptAria} rows={rows} value={context.draft}
       style={{ padding: "16px 20px 26px 2px" }} onChange={(event) => onDraftChange(event.target.value)}
       onKeyDown={(event) => { if ((event.ctrlKey || event.metaKey) && event.key === "Enter") { event.preventDefault(); onSubmit(); } }} />

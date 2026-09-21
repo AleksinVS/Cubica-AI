@@ -27,6 +27,81 @@ function neutralDocs(instance: JsonObject = { _type: "ui.ChildBadge", _label: "�
 const target = { filePath: uiPath, pointer: "/root/item" };
 
 describe("ADR-108 semantic projection", () => {
+  it("prints one section per facet, preserves exact scalar source mapping, and keeps one-field text compact", () => {
+    const docs = neutralDocs();
+    const projection = buildSemanticEntityProjection({ mode: "instance", target, documents: docs });
+    expect(projection.text).toContain('Элемент:\n  Название элемента: "Первый"');
+    expect(projection.text).toContain('  Название: "Базовый"');
+    const colorLine = projection.facetSourceMap.lines.find((line) => line.pointer === "/root/item/props/style/color")!;
+    const printed = projection.text.trimEnd().split("\n")[colorLine.line];
+    expect(printed.slice(colorLine.valueStart)).toBe('"синий"');
+    const single: EditorEntityProjectionDocument[] = [{ filePath: uiPath, documentKind: "ui", json: {
+      _definitions: { "ui.Single": { _projection: { properties: [{ id: "title", facet: "view", path: "/title", presentation: "text", label: "Заголовок" }] }, title: "Один" } },
+      root: { item: { _type: "ui.Single" } }
+    } }];
+    expect(buildSemanticEntityProjection({ mode: "instance", target, documents: single }).text).toBe('Заголовок: "Один"\n');
+  });
+
+  it("coalesces interleaved explicit groups and quotes unsafe or duplicate YAML keys without redirecting edits", () => {
+    const docs = neutralDocs();
+    const json = structuredClone(docs[0].json!) as JsonObject;
+    const base = (json._definitions as JsonObject)["ui.BaseBadge"] as JsonObject;
+    delete ((json._definitions as JsonObject)["ui.ChildBadge"] as Record<string, unknown>)._projection;
+    (base._projection as { properties: JsonObject[] }).properties = [
+      { id: "title", facet: "view", path: "/props/title", label: "Текст: главный", group: "Данные: основные", presentation: "text" },
+      { id: "color", facet: "view", path: "/props/style/color", label: "Цвет", group: "Вид", presentation: "choice" },
+      { id: "children", facet: "view", path: "/children/0/props/text", label: "Текст: главный", group: "Данные: основные", presentation: "text" }
+    ];
+    const projection = buildSemanticEntityProjection({ mode: "instance", target, documents: [{ ...docs[0], json }] });
+    expect(projection.text.match(/"Данные: основные":/gu)).toHaveLength(1);
+    expect(projection.text).toContain('  "Текст: главный": "исходный"');
+    expect(projection.text).toContain('  "Текст: главный (2)": "Базовый"');
+    expect(projection.text).toContain('Вид:\n  Цвет: "синий"');
+    const returnedText = projection.text.replace('"Текст: главный (2)": "Базовый"', '"Текст: главный (2)": "Новый"');
+    const result = interpretReturnedIntent({ projectionYaml: projection.text, returnedText,
+      facetSourceMap: projection.facetSourceMap, sourceHashes: {}, entityId: "item" });
+    expect(result.path).toBe("deterministic");
+    expect(result.changeSet?.jsonPatches[0].operations).toEqual([{ op: "add", path: "/root/item/props/title", value: "Новый" }]);
+  });
+
+  it("leaves a mixed-facet group header neutral while retaining exact facet and write target on each field", () => {
+    const docs = neutralDocs();
+    const json = structuredClone(docs[0].json!) as JsonObject;
+    delete ((json._definitions as JsonObject)["ui.ChildBadge"] as Record<string, unknown>)._projection;
+    const base = (json._definitions as JsonObject)["ui.BaseBadge"] as JsonObject;
+    const properties = (base._projection as { properties: JsonObject[] }).properties;
+    properties[0] = { id: "title", facet: "view", path: "/props/title", label: "Заголовок UI", group: "Общее", presentation: "text" };
+    properties.push({ id: "contentTitle", facet: "content", path: "/title", label: "Заголовок содержания", group: "Общее", presentation: "text" });
+    const game: EditorEntityProjectionDocument = { filePath: gamePath, documentKind: "game", json: { root: { content: { entries: [{ title: "Первый этап" }] } } } };
+    const projection = buildSemanticEntityProjection({ mode: "instance", target, documents: [{ ...docs[0], json }, game],
+      facets: [{ kind: "content", filePath: gamePath, pointer: "/root/content/entries/0" }] });
+    expect(projection.text.match(/^Общее:$/gmu)).toHaveLength(1);
+    const header = projection.facetSourceMap.lines.find((line) => line.kind === "facet" && projection.text.split("\n")[line.line] === "Общее:")!;
+    expect(header.facetKind).toBeUndefined();
+    expect(projection.facetSourceMap.lines.find((line) => line.pointer === "/root/item/props/title")?.facetKind).toBe("view");
+    expect(projection.facetSourceMap.lines.find((line) => line.pointer === "/root/content/entries/0/title")?.facetKind).toBe("content");
+    const result = interpretReturnedIntent({ projectionYaml: projection.text,
+      returnedText: projection.text.replace('Заголовок содержания: "Первый этап"', 'Заголовок содержания: "Второй этап"'),
+      facetSourceMap: projection.facetSourceMap, sourceHashes: {}, entityId: "item" });
+    expect(result.path).toBe("deterministic");
+    expect(result.changeSet?.jsonPatches).toEqual([{ filePath: gamePath,
+      operations: [{ op: "replace", path: "/root/content/entries/0/title", value: "Второй этап" }] }]);
+  });
+
+  it("keeps actual newlines escaped in one scalar so editing it preserves the exact string and target", () => {
+    const docs = neutralDocs();
+    const json = structuredClone(docs[0].json!) as JsonObject;
+    const base = (json._definitions as JsonObject)["ui.BaseBadge"] as JsonObject;
+    (base.props as Record<string, unknown>).title = "Первая строка\nВторая строка";
+    const projection = buildSemanticEntityProjection({ mode: "instance", target, documents: [{ ...docs[0], json }] });
+    expect(projection.text).toContain('Название: "Первая строка\\nВторая строка"');
+    const returnedText = projection.text.replace('Первая строка\\nВторая строка', 'Первая строка\\nТретья строка');
+    const result = interpretReturnedIntent({ projectionYaml: projection.text, returnedText,
+      facetSourceMap: projection.facetSourceMap, sourceHashes: {}, entityId: "item" });
+    expect(result.path).toBe("deterministic");
+    expect(result.changeSet?.jsonPatches[0].operations).toEqual([{ op: "add", path: "/root/item/props/title", value: "Первая строка\nТретья строка" }]);
+  });
+
   it("merges descriptor identity and values, then writes an inherited nested value only to the local instance", () => {
     const docs = neutralDocs();
     const projection = buildSemanticEntityProjection({ mode: "instance", target, documents: docs });

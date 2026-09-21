@@ -84,6 +84,7 @@ async function selectPreviewNode(page: Page, pointer: string) {
   }, { timeout: 15_000, message: `Ready exposed inspector point for ${pointer}` }).toBe(true);
   if (target.point === null) throw Error(`Missing inspector point for ${pointer}`);
   await page.mouse.click(target.point.x, target.point.y);
+  return target.point;
 }
 
 async function chooseInfo(page: Page, title: string) {
@@ -136,6 +137,41 @@ test.describe("Antarctica semantic authoring projection", { tag: "@editor" }, ()
     });
   });
 
+  test("keeps transient layers separate from the measured prompt at both viewport edges", async ({ page, request }) => {
+    test.setTimeout(180_000);
+    let sessionId: string | undefined;
+    try {
+      await page.setViewportSize({ width: 1600, height: 1200 });
+      sessionId = await openAntarctica(page);
+      const panel = page.locator('[aria-label="Редактор элемента"]');
+      for (const sample of [
+        { width: 1600, height: 1200, pointer: infoTitlePointer, name: "center" },
+        { width: 1600, height: 1200, pointer: "/screens/info-topbar/root/children/0/children/7", name: "right" },
+        { width: 390, height: 844, pointer: infoTitlePointer, name: "narrow" }
+      ]) {
+        if (await panel.isVisible()) await panel.getByRole("button", { name: "Закрыть редактор элемента" }).click();
+        await page.setViewportSize({ width: sample.width, height: sample.height });
+        const point = await selectPreviewNode(page, sample.pointer);
+        const layers = page.getByRole("listbox", { name: "Слои под указателем", exact: true });
+        await layers.getByRole("option").first().focus();
+        await expect.poll(async () => {
+          const a = await panel.boundingBox();
+          const b = await layers.boundingBox();
+          if (!a || !b) return false;
+          const disjoint = a.x + a.width <= b.x || b.x + b.width <= a.x || a.y + a.height <= b.y || b.y + b.height <= a.y;
+          return disjoint && b.x >= 0 && b.y >= 0 && b.x + b.width <= sample.width + 1 && b.y + b.height <= sample.height + 1;
+        }).toBe(true);
+        if (sample.name === "right") {
+          const a = (await panel.boundingBox())!;
+          const b = (await layers.boundingBox())!;
+          expect(a.x + a.width).toBeLessThanOrEqual(point.x);
+          expect(b.x).toBeGreaterThanOrEqual(point.x);
+        }
+        await page.screenshot({ path: `.tmp/ui-compare/editor-feedback-20260921/placement-${sample.name}.png` });
+      }
+    } finally { await closeSession(page, request, sessionId); }
+  });
+
   test("edits the actual selected info title while preserving its UI binding and sibling", async ({ page, request }) => {
     test.setTimeout(300_000);
     await page.setViewportSize({ width: 1600, height: 1200 });
@@ -153,7 +189,8 @@ test.describe("Antarctica semantic authoring projection", { tag: "@editor" }, ()
       const draft = panel.getByRole("textbox", { name: "Единый текст элемента" });
       const sections = (await draft.inputValue()).split(separator);
       expect(sections).toHaveLength(3);
-      expect(sections[2]).toContain(`Текст заголовка: ${JSON.stringify(firstTitle)}`);
+      expect(sections[2]).toContain(`Содержание:\n  Текст заголовка: ${JSON.stringify(firstTitle)}`);
+      expect(sections[2]).toMatch(/^Элемент:\n  Название элемента:/m);
       expect(sections[2]).not.toContain("{{currentInfo.title}}");
       expect(sections[2]).not.toMatch(/\b(?:_type|_projection|contentRuntimePointer|sourcePointer):/u);
       await page.screenshot({ path: ".tmp/adr108/semantic-title.png" });

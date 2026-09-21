@@ -21,6 +21,7 @@ import { projectTelegramAuthoringManifest } from "@/lib/telegram-structural-proj
 import { projectEditorWireframe, type EditorWireframeNode } from "@/lib/editor-wireframe-projection";
 import { EditorWireframe, type EditorWireframeSelection } from "./editor-wireframe";
 import { MvpElementEditor, mvpElementDraftKey, type MvpElementDraft } from "./mvp-element-editor";
+import type { FloatingRect } from "./mvp-floating-placement";
 import { mvpSourceEntity } from "./mvp-authoring-actions";
 import { buildMvpGeometryChangeSet, geometrySupport, type MvpElementSource } from "./mvp-element-operations";
 
@@ -162,6 +163,11 @@ export function PreviewStage({ controller, onStartDrawing, onPageSourceChange, r
   const promptDrafts = useMemo(() => new Map<string, MvpElementDraft>(), [currentDocument.gameId, controller.editorSession?.sessionId]);
   const [wireframeScreenId, setWireframeScreenId] = useState<string>();
   const [scopeSelection, setScopeSelection] = useState<{ filePath: string; pointer: string; point: PreviewPoint } | null>(null);
+  const [elementPromptRect, setElementPromptRect] = useState<FloatingRect | null>(null);
+  const handleElementPromptPlacement = useCallback((next: FloatingRect | null) => {
+    setElementPromptRect((current) => current?.x === next?.x && current?.y === next?.y &&
+      current?.width === next?.width && current?.height === next?.height ? current : next);
+  }, []);
   const [prototypeSelection, setPrototypeSelection] = useState<{
     instance: MvpElementSource;
     source: MvpElementSource;
@@ -386,6 +392,7 @@ export function PreviewStage({ controller, onStartDrawing, onPageSourceChange, r
               selectedEntityId={selectedPreviewEntityId}
               pointSelectionEnabled={previewPointSelectionMode}
               promptContext={previewPromptContext}
+              elementPromptRect={elementPromptRect}
               proposedIntent={previewAiIntent}
               unresolvedCount={previewUnresolvedEntityCount}
               onSelectEntity={selectPreviewEntity}
@@ -483,6 +490,7 @@ export function PreviewStage({ controller, onStartDrawing, onPageSourceChange, r
             geometryUnsupportedReason={prototypeSelection !== null || selectedPreviewDescriptor === undefined ? undefined : geometrySupport(mvpSource, effectiveStyle)}
             layers={previewPromptContext?.kind === "entity" ? previewPromptContext.entities.map((item) => mvpPreviewEntities.find((candidate) => candidate.entityId === item.entityId) ?? item) : undefined}
             layerPoint={prototypeSelection?.point ?? scopeSelection?.point ?? (previewPromptContext?.kind === "entity" ? previewPromptContext.point : matchingWireframeSelection?.point)}
+            onPlacementChange={handleElementPromptPlacement}
             onSelectLayer={selectPreviewEntity}
             onSelectScope={selectScope}
             onClose={() => { if (prototypeSelection !== null) { void returnToInstance(); return; } handleInspectorClose(); setSelectedPreviewEntityId(undefined); setWireframeSelection(null); setScopeSelection(null); setPreviewPromptContext(null); }}

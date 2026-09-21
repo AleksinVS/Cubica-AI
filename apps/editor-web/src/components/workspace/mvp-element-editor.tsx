@@ -5,6 +5,7 @@ import React, { useEffect, useRef, useState } from "react";
 import type { EntitySourceCapture } from "./entity-source-text-mode";
 import type { MvpElementSource } from "./mvp-element-operations";
 import { MvpFloatingPrompt, compactPromptWidth } from "./mvp-floating-prompt";
+import type { FloatingRect } from "./mvp-floating-placement";
 import { MvpPromptTextarea } from "./mvp-prompt-textarea";
 import { parseMvpPromptDocument, serializeMvpPromptDocument } from "./mvp-prompt-document";
 import styles from "./mvp-element-editor.module.css";
@@ -32,6 +33,7 @@ export interface MvpElementEditorProps {
   readonly onResetOverrides?: () => Promise<{ ok: boolean; message: string }>;
   readonly contextKey?: string;
   readonly localChildOverrides?: boolean;
+  readonly onPlacementChange?: (rect: FloatingRect | null) => void;
 }
 
 export interface MvpElementDraft {
@@ -64,7 +66,7 @@ export function mvpElementDraftKey(source: MvpElementSource | undefined, capture
   return JSON.stringify([source.filePath, source.pointer, editingPrototype ? "prototype" : "instance", sharedTargets]);
 }
 
-export function MvpElementEditor({ drafts, draftKey: scopedDraftKey, source, entity, label, selectedLayerId, bounds, geometryUnsupportedReason, layers = [], layerPoint, onSelectLayer, onSelectScope, onClose, onCapture, onSave, onSavePrototype, editingPrototype, onEditPrototype, onReturnToInstance, onResetOverrides, contextKey, localChildOverrides }: MvpElementEditorProps) {
+export function MvpElementEditor({ drafts, draftKey: scopedDraftKey, source, entity, label, selectedLayerId, bounds, geometryUnsupportedReason, layers = [], layerPoint, onSelectLayer, onSelectScope, onClose, onCapture, onSave, onSavePrototype, editingPrototype, onEditPrototype, onReturnToInstance, onResetOverrides, contextKey, localChildOverrides, onPlacementChange }: MvpElementEditorProps) {
   const isPrototype = editingPrototype !== undefined;
   const draftKey = scopedDraftKey ?? (source === undefined ? undefined : `${source.filePath}#${source.pointer}`);
   const retained = draftKey === undefined ? undefined : drafts?.get(draftKey);
@@ -163,7 +165,7 @@ export function MvpElementEditor({ drafts, draftKey: scopedDraftKey, source, ent
   const displayNotice = [notice, contextNotice].filter((part): part is string => part !== undefined && part !== "").join(" ") || geometryUnsupportedReason ||
     (localChildOverrides ? "Вложенные элементы заданы локально и не обновляются из прототипа группы." : undefined);
 
-  return <MvpFloatingPrompt point={point} avoid={bounds} width={compactPromptWidth(draft, 220)} label="Редактор элемента">
+  return <MvpFloatingPrompt point={point} avoid={bounds} width={compactPromptWidth(draft, 220)} label="Редактор элемента" onPlacementChange={onPlacementChange}>
     {editingPrototype !== undefined ? <div className={styles.prototypeHeader}>
       <span className={styles.prototypeLabel}>Прототип: {editingPrototype.name}</span>
       <button type="button" className={styles.prototypeBack} aria-label="Вернуться к экземпляру" title="Вернуться к экземпляру" onClick={() => onReturnToInstance?.()}>

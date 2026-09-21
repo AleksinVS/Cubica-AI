@@ -1,6 +1,6 @@
 .gestureFrame { position: absolute; z-index: 4; box-sizing: border-box; border: 2px dashed #fff; box-shadow: 0 0 0 1px #17212b, inset 0 0 0 1px #17212b; pointer-events: auto; cursor: move; touch-action: none; }
 .regionFrame { background: #d578521c; }
-.layerList { position: absolute; z-index: 9; width: 172px; max-height: 180px; overflow: auto; box-sizing: border-box; padding: 4px; border: 1px solid #d5ddd3; border-radius: 7px; background: #fff; box-shadow: 0 8px 25px #1c282b30; pointer-events: auto; }
+.layerList { position: absolute; z-index: 9; width: 172px; max-width: min(calc(100% - 16px), calc(100vw - 16px)); max-height: min(180px, calc(100% - 16px), calc(100vh - 16px)); overflow: auto; box-sizing: border-box; padding: 4px; border: 1px solid #d5ddd3; border-radius: 7px; background: #fff; box-shadow: 0 8px 25px #1c282b30; pointer-events: auto; }
 .layerList button { display: block; width: 100%; border: 0; border-radius: 4px; background: transparent; padding: 7px 8px; color: #263229; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
 .layerList button[aria-selected=true], .layerList button:hover { background: #eaf2e9; }
 .resizeDot, .rotationArea { position: absolute; z-index: 2; display: grid; place-items: center; transform: translate(-50%, -50%); border: 0; padding: 0; background: transparent; color: #fff; pointer-events: auto; touch-action: none; }
