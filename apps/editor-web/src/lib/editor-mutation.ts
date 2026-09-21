@@ -46,6 +46,17 @@ import {
 import { prepareRuntimeSession } from "./editor-preview-runtime";
 import { copyCandidatePluginBundles, createEditorMutationCandidate } from "./editor-mutation-candidate";
 import { validateAndBundleProjectPlugins } from "./project-plugin-validation";
+import { fingerprintProjectPluginInputs } from "./project-plugin-validation";
+import {
+  clearConfirmedCandidate,
+  clearConfirmedCandidatesForTests,
+  fingerprintCandidateArtifacts,
+  fingerprintCompilerInputs,
+  fingerprintGameTree,
+  rememberConfirmedCandidate
+} from "./editor-confirmed-preview";
+import type { EditorCompileArtifact } from "./compiler-workflow";
+import type { PlayerWebPluginBundleForRuntime } from "./project-plugin-validation";
 import { getSharedAuthoringSchemaRegistry, schemaIdForAuthoringDocument } from "./editor-json-schema";
 
 const editorMutationSchemaId = "https://cubica.platform/schemas/editor-mutation.schema.json";
@@ -87,14 +98,31 @@ interface PendingEffect {
   readonly baseEffectDigest: string;
   readonly confirmationDigest: string;
   readonly candidateRoot: string;
+  readonly sourceFingerprint?: string;
+  readonly pluginFingerprint?: string;
+  readonly compilerFingerprint?: string;
+  readonly artifactFingerprint?: string;
+  readonly artifacts: readonly EditorCompileArtifact[];
+  readonly pluginBundles: readonly PlayerWebPluginBundleForRuntime[];
 }
 
 // The lease serializes operations for a session; only a successfully rendered
 // candidate can authorize a later confirm in this server process.
 const pendingEffectsBySession = new Map<string, PendingEffect>();
+interface MutationReceipt {
+  readonly requestDigest: string;
+  readonly result: MutationRouteResult;
+  readonly repoRoot: string;
+  readonly gameId: string;
+}
+const completedOperationsBySession = new Map<string, Map<string, MutationReceipt>>();
+const previewCandidateRootBySession = new Map<string, string>();
 
 export function clearPendingEditorMutationEffectsForTests(): void {
   pendingEffectsBySession.clear();
+  completedOperationsBySession.clear();
+  previewCandidateRootBySession.clear();
+  clearConfirmedCandidatesForTests();
 }
 
 const requestSchemaRegistry = createMutationRequestSchemaRegistry();
@@ -113,6 +141,18 @@ export async function executeEditorMutation(
 ): Promise<MutationRouteResult> {
   const action = value.action;
   return withEditorSessionMutationLease(value.sessionId, `editor-mutation:${action}`, async () => {
+    const receiptKey = action === "prepare" ? undefined : `${action}\0${value.changeSet.id}`;
+    const requestDigest = createHash("sha256").update(stableStringify(value)).digest("hex");
+    const receipt = receiptKey === undefined ? undefined : completedOperationsBySession.get(value.sessionId)?.get(receiptKey);
+    if (receipt !== undefined) {
+      if (receipt.requestDigest !== requestDigest) throw new EditorRepositoryError("The editor operation id was reused for a different request.", 409);
+      const currentSession = await repoRootForSession(value.sessionId, value.gameId);
+      if (currentSession.repoRoot !== receipt.repoRoot || value.gameId !== receipt.gameId) {
+        throw new EditorRepositoryError("The completed editor operation belongs to another session source.", 409);
+      }
+      return receipt.result;
+    }
+    if (action === "prepare") pendingEffectsBySession.delete(value.sessionId);
     const prepared = await calculatePreparedEffect(value);
     if (!prepared.dryRun.ok) {
       return {
@@ -139,16 +179,24 @@ export async function executeEditorMutation(
     }
 
     if (action === "prepare") {
+      clearConfirmedCandidate(value.sessionId);
       const result = await buildMutationPreview({
         prepared,
         requestOrigin,
-        preserveRoot: pendingEffectsBySession.get(value.sessionId)?.candidateRoot
+        preserveRoot: previewCandidateRootBySession.get(value.sessionId)
       });
+      if (result.candidateRoot !== undefined) previewCandidateRootBySession.set(value.sessionId, result.candidateRoot);
       if (result.candidateRoot !== undefined && result.confirmationDigest !== undefined) {
         pendingEffectsBySession.set(value.sessionId, {
           baseEffectDigest: prepared.effectDigest,
           confirmationDigest: result.confirmationDigest,
-          candidateRoot: result.candidateRoot
+          candidateRoot: result.candidateRoot,
+          sourceFingerprint: result.sourceFingerprint,
+          pluginFingerprint: result.pluginFingerprint,
+          compilerFingerprint: result.compilerFingerprint,
+          artifactFingerprint: result.artifactFingerprint,
+          artifacts: result.artifacts ?? [],
+          pluginBundles: result.pluginBundles ?? []
         });
       }
       return {
@@ -176,14 +224,25 @@ export async function executeEditorMutation(
       throw new EditorRepositoryError("The prepared editor effect is stale or does not match this request.", 409);
     }
 
-    // Validate the exact after-text map without publishing generated files to
-    // the live worktree. The next current-preview build publishes after commit.
-    {
+    const pending = action === "confirm" ? pendingEffectsBySession.get(value.sessionId) : undefined;
+    const canReuse = pending?.sourceFingerprint !== undefined &&
+      pending.pluginFingerprint !== undefined && pending.artifactFingerprint !== undefined &&
+      pending.compilerFingerprint !== undefined &&
+      await candidateStillExact(prepared, pending);
+    // Direct mutations and invalidated candidates still validate the exact
+    // after-text map in an isolated root before changing authoring sources.
+    if (!canReuse) {
+      const pluginInputsChanged = pending?.pluginFingerprint !== undefined &&
+        await fingerprintProjectPluginInputs({ repoRoot: prepared.context.repoRoot, gameId: prepared.context.gameId }) !== pending.pluginFingerprint;
+      if (action === "direct" || pluginInputsChanged) {
+        const plugins = await validateAndBundleProjectPlugins({ repoRoot: prepared.context.repoRoot, gameId: prepared.context.gameId });
+        if (!plugins.ok) throw new EditorMutationValidationError("The changed plugin failed validation.", plugins.diagnostics);
+      }
       const candidate = await createEditorMutationCandidate({
         gameId: prepared.context.gameId,
         sessionId: prepared.context.sessionId,
         repoRoot: prepared.context.repoRoot,
-        preserveRoot: pendingEffectsBySession.get(value.sessionId)?.candidateRoot
+        preserveRoot: previewCandidateRootBySession.get(value.sessionId)
       });
       try {
         const compile = await compileGameForEditor({
@@ -214,7 +273,24 @@ export async function executeEditorMutation(
     });
     pendingEffectsBySession.delete(value.sessionId);
 
-    return {
+    if (canReuse && pending !== undefined && pending.pluginFingerprint !== undefined &&
+        pending.compilerFingerprint !== undefined && pending.artifactFingerprint !== undefined) {
+      try {
+        rememberConfirmedCandidate(value.sessionId, {
+          repoRoot: prepared.context.repoRoot,
+          gameId: prepared.context.gameId,
+          candidateRoot: pending.candidateRoot,
+          sourceFingerprint: await fingerprintGameTree(prepared.context.repoRoot, prepared.context.gameId),
+          pluginFingerprint: pending.pluginFingerprint,
+          compilerFingerprint: pending.compilerFingerprint,
+          artifactFingerprint: pending.artifactFingerprint,
+          artifacts: pending.artifacts,
+          pluginBundles: pending.pluginBundles
+        });
+      } catch { clearConfirmedCandidate(value.sessionId); }
+    } else clearConfirmedCandidate(value.sessionId);
+
+    const result: MutationRouteResult = {
       body: {
         ok: true,
         status: action === "direct" ? "direct" : "confirmed",
@@ -231,7 +307,32 @@ export async function executeEditorMutation(
         }))
       }
     };
+    if (receiptKey !== undefined) {
+      let receipts = completedOperationsBySession.get(value.sessionId);
+      if (receipts === undefined) { receipts = new Map(); completedOperationsBySession.set(value.sessionId, receipts); }
+      receipts.set(receiptKey, {
+        requestDigest, result,
+        repoRoot: prepared.context.repoRoot,
+        gameId: prepared.context.gameId
+      });
+      if (receipts.size > 64) receipts.delete(receipts.keys().next().value!);
+      if (completedOperationsBySession.size > 32) completedOperationsBySession.delete(completedOperationsBySession.keys().next().value!);
+    }
+    return result;
   });
+}
+
+async function candidateStillExact(prepared: PreparedEffect, pending: PendingEffect): Promise<boolean> {
+  try {
+    const [source, plugin, compiler, artifact] = await Promise.all([
+      fingerprintGameTree(prepared.context.repoRoot, prepared.context.gameId),
+      fingerprintProjectPluginInputs({ repoRoot: prepared.context.repoRoot, gameId: prepared.context.gameId }),
+      fingerprintCompilerInputs(prepared.context.repoRoot),
+      fingerprintCandidateArtifacts(pending.candidateRoot, pending.artifacts, pending.pluginBundles)
+    ]);
+    return source === pending.sourceFingerprint && plugin === pending.pluginFingerprint &&
+      compiler === pending.compilerFingerprint && artifact === pending.artifactFingerprint;
+  } catch { return false; }
 }
 
 class EditorMutationValidationError extends EditorRepositoryError {
@@ -433,8 +534,19 @@ async function buildMutationPreview(input: {
   readonly preview: Record<string, unknown>;
   readonly candidateRoot?: string;
   readonly confirmationDigest?: string;
+  readonly sourceFingerprint?: string;
+  readonly pluginFingerprint?: string;
+  readonly compilerFingerprint?: string;
+  readonly artifactFingerprint?: string;
+  readonly artifacts?: readonly EditorCompileArtifact[];
+  readonly pluginBundles?: readonly PlayerWebPluginBundleForRuntime[];
 }> {
   const { context } = input.prepared;
+  const [initialSource, initialCompiler, initialPlugins] = await Promise.all([
+    fingerprintGameTree(context.repoRoot, context.gameId).catch(() => undefined),
+    fingerprintCompilerInputs(context.repoRoot).catch(() => undefined),
+    fingerprintProjectPluginInputs({ repoRoot: context.repoRoot, gameId: context.gameId }).catch(() => undefined)
+  ]);
   const candidate = await createEditorMutationCandidate({
     gameId: context.gameId, sessionId: context.sessionId, repoRoot: context.repoRoot,
     preserveRoot: input.preserveRoot
@@ -471,9 +583,30 @@ async function buildMutationPreview(input: {
       await candidate.discard();
       return { preview: { ready: false, diagnostics: readiness.diagnostics.map(toMutationDiagnostic) } };
     }
+    const [sourceFingerprint, compilerFingerprint, pluginFingerprint, artifactFingerprint] = await Promise.all([
+      fingerprintGameTree(context.repoRoot, context.gameId).catch(() => undefined),
+      fingerprintCompilerInputs(context.repoRoot).catch(() => undefined),
+      fingerprintProjectPluginInputs({ repoRoot: context.repoRoot, gameId: context.gameId }).catch(() => undefined),
+      fingerprintCandidateArtifacts(candidate.repoRoot, compile.artifacts ?? [], pluginValidation.playerWebBundles).catch(() => undefined)
+    ]);
+    if (initialSource !== sourceFingerprint || initialCompiler !== compilerFingerprint ||
+        initialPlugins !== pluginFingerprint || pluginFingerprint !== pluginValidation.inputFingerprint) {
+      // Runtime may already reference this root. Keep its bytes available, but
+      // never authorize a candidate compiled across changing source inputs.
+      return {
+        candidateRoot: candidate.repoRoot,
+        preview: { ready: false, diagnostics: [toMutationDiagnostic("Source inputs changed during candidate validation; prepare again.")] }
+      };
+    }
     await candidate.retirePrevious().catch(() => undefined);
     return {
       candidateRoot: candidate.repoRoot,
+      sourceFingerprint,
+      pluginFingerprint,
+      compilerFingerprint,
+      artifactFingerprint,
+      artifacts: compile.artifacts,
+      pluginBundles: pluginValidation.playerWebBundles,
       confirmationDigest: createHash("sha256")
         .update(`${editorMutationDigestDomain}.candidate\0${input.prepared.effectDigest}\0${candidate.contentSourceId}`, "utf8")
         .digest("hex"),

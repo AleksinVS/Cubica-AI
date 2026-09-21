@@ -11,7 +11,13 @@ const state = vi.hoisted(() => ({
   lease: vi.fn(),
   candidateSequence: 0,
   candidateDiscard: vi.fn(),
-  candidateRetire: vi.fn()
+  candidateRetire: vi.fn(),
+  pluginValidation: vi.fn(),
+  sourceFingerprint: "source-1",
+  pluginFingerprint: "plugin-1",
+  compilerFingerprint: "compiler-1",
+  artifactFingerprint: "artifact-1",
+  rememberConfirmed: vi.fn()
 }));
 
 const hash = (text: string) => createHash("sha256").update(text).digest("hex");
@@ -76,7 +82,17 @@ vi.mock("./editor-mutation-candidate", () => ({
   copyCandidatePluginBundles: async () => undefined
 }));
 vi.mock("./project-plugin-validation", () => ({
-  validateAndBundleProjectPlugins: async () => ({ ok: true, playerWebBundles: [], diagnostics: [] })
+  validateAndBundleProjectPlugins: state.pluginValidation,
+  fingerprintProjectPluginInputs: async () => state.pluginFingerprint
+}));
+vi.mock("./editor-confirmed-preview", () => ({
+  fingerprintGameTree: async () => state.sourceFingerprint,
+  fingerprintCandidateArtifacts: async (_root: string, artifacts: readonly unknown[]) =>
+    artifacts.length > 0 ? state.artifactFingerprint : undefined,
+  fingerprintCompilerInputs: async () => state.compilerFingerprint,
+  rememberConfirmedCandidate: state.rememberConfirmed,
+  clearConfirmedCandidate: vi.fn(),
+  clearConfirmedCandidatesForTests: vi.fn()
 }));
 vi.mock("./editor-json-schema", () => ({
   getSharedAuthoringSchemaRegistry: () => ({}),
@@ -110,7 +126,12 @@ beforeEach(() => {
   state.disk.set(siblingFilePath, JSON.stringify({ v: 0 }));
   state.dryRunMode = "valid";
   state.candidateSequence = 0;
+  state.sourceFingerprint = "source-1";
+  state.pluginFingerprint = "plugin-1";
+  state.compilerFingerprint = "compiler-1";
+  state.artifactFingerprint = "artifact-1";
   vi.clearAllMocks();
+  state.pluginValidation.mockResolvedValue({ ok: true, playerWebBundles: [], diagnostics: [], inputFingerprint: "plugin-1" });
   state.candidateDiscard.mockResolvedValue(undefined);
   state.candidateRetire.mockResolvedValue(undefined);
   state.lease.mockImplementation(async (_sessionId, _operation, callback) => callback());
@@ -196,9 +217,9 @@ describe("server editor mutation boundary", () => {
     expect(secondDigest).not.toBe(firstDigest);
     await expect(executeEditorMutation(request("confirm", firstDigest), undefined))
       .rejects.toMatchObject({ statusCode: 409 });
-    await executeEditorMutation({ ...nextRequest, action: "confirm", effectDigest: secondDigest }, undefined);
-    await expect(executeEditorMutation({ ...nextRequest, action: "confirm", effectDigest: secondDigest }, undefined))
-      .rejects.toMatchObject({ statusCode: 409 });
+    const confirmed = await executeEditorMutation({ ...nextRequest, action: "confirm", effectDigest: secondDigest }, undefined);
+    expect(await executeEditorMutation({ ...nextRequest, action: "confirm", effectDigest: secondDigest }, undefined))
+      .toEqual(confirmed);
   });
 
   it("invalidates an older confirmation digest even when the same effect is prepared again", async () => {
@@ -218,6 +239,29 @@ describe("server editor mutation boundary", () => {
     const prepared = await executeEditorMutation(request("prepare"), undefined);
     const digest = (prepared.body as { effectDigest: string; preview: { ready: boolean } }).effectDigest;
     expect((prepared.body as { preview: { ready: boolean } }).preview.ready).toBe(false);
+    await expect(executeEditorMutation(request("confirm", digest), undefined))
+      .rejects.toMatchObject({ statusCode: 409 });
+    expect(state.apply).not.toHaveBeenCalled();
+  });
+
+  it("does not authorize a candidate when game sources change during preparation", async () => {
+    state.preview.mockImplementationOnce(async () => {
+      state.sourceFingerprint = "source-2";
+      return { ready: true, playerUrl: "http://player/", diagnostics: [] };
+    });
+    const prepared = await executeEditorMutation(request("prepare"), undefined);
+    expect((prepared.body as { preview: { ready: boolean } }).preview.ready).toBe(false);
+    await expect(executeEditorMutation(request("confirm", (prepared.body as { effectDigest: string }).effectDigest), undefined))
+      .rejects.toMatchObject({ statusCode: 409 });
+    expect(state.apply).not.toHaveBeenCalled();
+  });
+
+  it("invalidates an earlier ready confirmation when a newer preparation fails", async () => {
+    const first = await executeEditorMutation(request("prepare"), undefined);
+    const digest = (first.body as { effectDigest: string }).effectDigest;
+    state.dryRunMode = "invalid";
+    expect((await executeEditorMutation(request("prepare"), undefined)).status).toBe(422);
+    state.dryRunMode = "valid";
     await expect(executeEditorMutation(request("confirm", digest), undefined))
       .rejects.toMatchObject({ statusCode: 409 });
     expect(state.apply).not.toHaveBeenCalled();
@@ -248,6 +292,82 @@ describe("server editor mutation boundary", () => {
     expect(state.disk.get(siblingFilePath)).toBe(JSON.stringify({ v: 3 }));
     expect(state.apply.mock.calls[0]?.[0].expectedBeforeHashes[activeFilePath]).toBe(hash(JSON.stringify({ v: 0 })));
     expect(state.compile.mock.calls[1]?.[0].generatedArtifactRoot).toBe("/test/candidate");
+  });
+
+  it("reuses only the exact ready candidate and records it for the next preview", async () => {
+    state.pluginValidation.mockResolvedValue({ ok: true, playerWebBundles: [], diagnostics: [], inputFingerprint: "plugin-1" });
+    state.compile.mockResolvedValue({ ok: true, diagnostics: [], artifacts: [{
+      kind: "game", gameId: "simple-choice", sourceFile: "source", generatedFile: "game.manifest.json", sourceMapFile: "map.json"
+    }] });
+    const prepared = await executeEditorMutation(request("prepare"), undefined);
+    const digest = (prepared.body as { effectDigest: string }).effectDigest;
+    await executeEditorMutation(request("confirm", digest), undefined);
+    expect(state.compile).toHaveBeenCalledTimes(1);
+    expect(state.rememberConfirmed).toHaveBeenCalledOnce();
+    expect(state.apply).toHaveBeenCalledOnce();
+  });
+
+  it("recompiles and revalidates when plugin inputs change after preparation", async () => {
+    state.pluginValidation.mockResolvedValue({ ok: true, playerWebBundles: [], diagnostics: [], inputFingerprint: "plugin-1" });
+    state.compile.mockResolvedValue({ ok: true, diagnostics: [], artifacts: [{
+      kind: "game", gameId: "simple-choice", sourceFile: "source", generatedFile: "game.manifest.json", sourceMapFile: "map.json"
+    }] });
+    const prepared = await executeEditorMutation(request("prepare"), undefined);
+    state.pluginFingerprint = "plugin-2";
+    await executeEditorMutation(request("confirm", (prepared.body as { effectDigest: string }).effectDigest), undefined);
+    expect(state.compile).toHaveBeenCalledTimes(2);
+    expect(state.pluginValidation).toHaveBeenCalledTimes(2);
+    expect(state.rememberConfirmed).not.toHaveBeenCalled();
+  });
+
+  it("does not reuse a candidate after its generated artifact changes", async () => {
+    state.pluginValidation.mockResolvedValue({ ok: true, playerWebBundles: [], diagnostics: [], inputFingerprint: "plugin-1" });
+    state.compile.mockResolvedValue({ ok: true, diagnostics: [], artifacts: [{
+      kind: "game", gameId: "simple-choice", sourceFile: "source", generatedFile: "game.manifest.json", sourceMapFile: "map.json"
+    }] });
+    const prepared = await executeEditorMutation(request("prepare"), undefined);
+    state.artifactFingerprint = "damaged";
+    await executeEditorMutation(request("confirm", (prepared.body as { effectDigest: string }).effectDigest), undefined);
+    expect(state.compile).toHaveBeenCalledTimes(2);
+    expect(state.rememberConfirmed).not.toHaveBeenCalled();
+  });
+
+  it("does not reuse a candidate after compiler policy inputs change", async () => {
+    state.pluginValidation.mockResolvedValue({ ok: true, playerWebBundles: [], diagnostics: [], inputFingerprint: "plugin-1" });
+    state.compile.mockResolvedValue({ ok: true, diagnostics: [], artifacts: [{
+      kind: "game", gameId: "simple-choice", sourceFile: "source", generatedFile: "game.manifest.json", sourceMapFile: "map.json"
+    }] });
+    const prepared = await executeEditorMutation(request("prepare"), undefined);
+    state.compilerFingerprint = "compiler-2";
+    await executeEditorMutation(request("confirm", (prepared.body as { effectDigest: string }).effectDigest), undefined);
+    expect(state.compile).toHaveBeenCalledTimes(2);
+    expect(state.rememberConfirmed).not.toHaveBeenCalled();
+  });
+
+  it("returns a completed direct operation for the same request and rejects id reuse with another request", async () => {
+    const original = request("direct");
+    const first = await executeEditorMutation(original, undefined);
+    const retry = await executeEditorMutation(original, undefined);
+    expect(retry).toEqual(first);
+    expect(state.apply).toHaveBeenCalledOnce();
+    await expect(executeEditorMutation({ ...original, changeSet: { ...original.changeSet, summary: "different" } }, undefined))
+      .rejects.toMatchObject({ statusCode: 409 });
+    const next = request("direct");
+    const second = {
+      ...next,
+      activeDocument: { ...next.activeDocument, versionHash: hash(state.disk.get(activeFilePath)!) },
+      changeSet: {
+        ...next.changeSet,
+        id: "change-2",
+        jsonPatches: next.changeSet.jsonPatches.map((patch) => ({
+          ...patch, operations: patch.operations.map((operation) => operation.op === "replace"
+            ? { ...operation, value: 4 } : operation)
+        }))
+      }
+    };
+    await executeEditorMutation(second, undefined);
+    expect(await executeEditorMutation(original, undefined)).toEqual(first);
+    expect(state.apply).toHaveBeenCalledTimes(2);
   });
 
   it("rejects invalid and no-op effects without compilation or writes", async () => {
@@ -281,6 +401,15 @@ describe("server editor mutation boundary", () => {
     await expect(executeEditorMutation(request("direct"), undefined))
       .rejects.toMatchObject({ statusCode: 422 });
     expect(state.compile.mock.calls[0]?.[0].generatedArtifactRoot).toBe("/test/candidate");
+    expect(state.apply).not.toHaveBeenCalled();
+  });
+
+  it("rejects an invalid plugin on direct mutation before compiling or writing", async () => {
+    state.pluginValidation.mockResolvedValueOnce({
+      ok: false, playerWebBundles: [], diagnostics: [{ severity: "error", source: "plugin", pointer: "", label: "/", message: "unsafe" }]
+    });
+    await expect(executeEditorMutation(request("direct"), undefined)).rejects.toMatchObject({ statusCode: 422 });
+    expect(state.compile).not.toHaveBeenCalled();
     expect(state.apply).not.toHaveBeenCalled();
   });
 });

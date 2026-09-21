@@ -24,7 +24,9 @@ import {
   recoverPendingEditorCurrentPreview
 } from "@/lib/editor-mutation-candidate";
 import { readFile, readdir } from "node:fs/promises";
+import { copyFile, mkdir } from "node:fs/promises";
 import path from "node:path";
+import { reusableConfirmedCandidate } from "@/lib/editor-confirmed-preview";
 
 export const runtime = "nodejs";
 
@@ -113,13 +115,25 @@ async function buildSessionPreview(
 
   const current = await createEditorCurrentPreview({ repoRoot: worktreeRoot, sessionId, gameId });
   try {
-    const compile = await compileGameForEditor({
+    const confirmed = await reusableConfirmedCandidate({ sessionId, repoRoot: worktreeRoot, gameId });
+    const compile = confirmed === undefined ? await compileGameForEditor({
       gameId, checkOnly: false, repoRoot: worktreeRoot, generatedArtifactRoot: current.repoRoot
-    });
+    }) : { ok: true, diagnostics: [], artifacts: confirmed.artifacts };
     if (!compile.ok) {
       return Response.json({ ok: false, ready: false, gameId, diagnostics: compile.diagnostics, artifacts: compile.artifacts });
     }
-    const pluginValidation = await validateAndBundleProjectPlugins({ gameId, repoRoot: worktreeRoot });
+    if (confirmed !== undefined) {
+      for (const artifact of confirmed.artifacts) {
+        for (const relativeFile of [artifact.generatedFile, artifact.sourceMapFile]) {
+          const destination = path.join(current.repoRoot, relativeFile);
+          await mkdir(path.dirname(destination), { recursive: true });
+          await copyFile(path.join(confirmed.candidateRoot, relativeFile), destination);
+        }
+      }
+    }
+    const pluginValidation = confirmed === undefined
+      ? await validateAndBundleProjectPlugins({ gameId, repoRoot: worktreeRoot })
+      : { ok: true, diagnostics: [], playerWebBundles: confirmed.pluginBundles };
     if (!pluginValidation.ok) {
       return Response.json({
         ok: false, ready: false, gameId,
@@ -128,7 +142,7 @@ async function buildSessionPreview(
       });
     }
     await copyCandidatePluginBundles({
-      sourceRoot: worktreeRoot,
+      sourceRoot: confirmed?.candidateRoot ?? worktreeRoot,
       candidateRoot: current.repoRoot,
       relativeFilePaths: pluginValidation.playerWebBundles.map((bundle) => bundle.filePath)
     });

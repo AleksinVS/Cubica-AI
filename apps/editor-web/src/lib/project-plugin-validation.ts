@@ -8,7 +8,7 @@
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, statSync } from "node:fs";
-import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
+import { lstat, mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import {
@@ -71,6 +71,31 @@ export interface ProjectPluginValidationResult {
   readonly ok: boolean;
   readonly diagnostics: readonly EditorCompilerDiagnostic[];
   readonly playerWebBundles: readonly PlayerWebPluginBundleForRuntime[];
+  /** Complete authoring and platform input identity for candidate reuse. */
+  readonly inputFingerprint?: string;
+}
+
+interface PluginCacheEntry {
+  readonly fingerprint: string;
+  readonly result: Promise<PlayerWebPluginBundleForRuntime | undefined>;
+}
+
+const pluginCache = new Map<string, PluginCacheEntry>();
+let pluginTypecheckRuns = 0;
+let fingerprintPlatformRootForTests: string | undefined;
+
+export function setPluginFingerprintPlatformRootForTests(root: string | undefined): void {
+  fingerprintPlatformRootForTests = root;
+}
+
+export function pluginValidationCacheStatsForTests(): { readonly typecheckRuns: number } {
+  return { typecheckRuns: pluginTypecheckRuns };
+}
+
+export function clearPluginValidationCacheForTests(): void {
+  pluginCache.clear();
+  pluginTypecheckRuns = 0;
+  fingerprintPlatformRootForTests = undefined;
 }
 
 interface DiscoveredProjectPlugin {
@@ -100,6 +125,7 @@ export async function validateAndBundleProjectPlugins(input: {
   const diagnostics: EditorCompilerDiagnostic[] = [];
   const bundles: PlayerWebPluginBundleForRuntime[] = [];
   const discovered = await discoverProjectPlugins(repoRoot, input.gameId);
+  const inputFingerprint = await fingerprintProjectPluginInputs({ repoRoot, gameId: input.gameId });
 
   for (const discovery of discovered) {
     const pluginDiagnostics: EditorCompilerDiagnostic[] = [...discovery.diagnostics];
@@ -118,13 +144,7 @@ export async function validateAndBundleProjectPlugins(input: {
       continue;
     }
 
-    pluginDiagnostics.push(...await runPluginTypecheck(repoRoot, plugin));
-    if (hasErrors(pluginDiagnostics)) {
-      diagnostics.push(...pluginDiagnostics);
-      continue;
-    }
-
-    const bundle = await bundlePlayerWebPlugin(repoRoot, plugin).catch((error: unknown) => {
+    const bundle = await validateAndBundleCached(repoRoot, plugin, inputFingerprint).catch((error: unknown) => {
       pluginDiagnostics.push(pluginDiagnostic(repoRoot, plugin.pluginJsonPath, error instanceof Error ? error.message : "Plugin bundling failed."));
       return undefined;
     });
@@ -137,8 +157,106 @@ export async function validateAndBundleProjectPlugins(input: {
   return {
     ok: !hasErrors(diagnostics),
     diagnostics,
-    playerWebBundles: bundles
+    playerWebBundles: bundles,
+    inputFingerprint
   };
+}
+
+/** Hashes bytes, paths, validation policy and compiler inputs; mtimes are never identity. */
+export async function fingerprintProjectPluginInputs(input: {
+  readonly repoRoot: string;
+  readonly gameId: string;
+}): Promise<string> {
+  const repoRoot = path.resolve(input.repoRoot);
+  const platformRoot = fingerprintPlatformRootForTests ?? resolvePlatformRoot();
+  const hash = createHash("sha256");
+  hash.update("cubica.plugin-validation.v1\0");
+  hash.update(JSON.stringify({
+    gameId: input.gameId,
+    platformRoot,
+    validationTimeoutMs,
+    canonicalValidationScripts,
+    forbiddenDependencyKeys,
+    tsVersion: ts.version,
+    nodeVersion: process.version,
+    schema: pluginSchema
+  }));
+  const roots = [
+    path.join(repoRoot, "games", input.gameId, "plugins"),
+    path.join(platformRoot, "apps", "player-web", "src"),
+    path.join(platformRoot, "apps", "player-web", "package.json"),
+    path.join(platformRoot, "packages"),
+    path.join(platformRoot, "package.json"),
+    path.join(platformRoot, "package-lock.json"),
+    path.join(platformRoot, "node_modules", "typescript", "package.json"),
+    path.join(platformRoot, "node_modules", "typescript", "bin", "tsc"),
+    path.join(platformRoot, "node_modules", "typescript", "lib"),
+    path.join(platformRoot, "node_modules", "@types"),
+    path.join(platformRoot, "node_modules", "csstype"),
+    path.join(platformRoot, "node_modules", "react"),
+    path.join(platformRoot, "node_modules", "react-dom")
+  ];
+  for (const root of roots) await hashInputTree(hash, root, platformRoot);
+  return hash.digest("hex");
+}
+
+async function hashInputTree(hash: ReturnType<typeof createHash>, filePath: string, root: string): Promise<void> {
+  const details = await stat(filePath).catch((error: unknown) => {
+    if (isMissingFileError(error)) return undefined;
+    throw error;
+  });
+  hash.update(relativePath(root, filePath));
+  hash.update("\0");
+  if (details === undefined) { hash.update("missing\0"); return; }
+  if (details.isDirectory()) {
+    hash.update("directory\0");
+    for (const entry of (await readdir(filePath)).sort()) {
+      if (entry === "node_modules" || entry === ".tmp") continue;
+      await hashInputTree(hash, path.join(filePath, entry), root);
+    }
+  } else if (details.isFile()) {
+    hash.update("file\0");
+    hash.update(await readFile(filePath));
+    hash.update("\0");
+  } else {
+    hash.update("unsupported\0");
+  }
+}
+
+async function validateAndBundleCached(repoRoot: string, plugin: DiscoveredProjectPlugin,
+  fingerprint: string): Promise<PlayerWebPluginBundleForRuntime | undefined> {
+  const key = `${repoRoot}\0${plugin.manifest.gameId}\0${plugin.manifest.id}`;
+  const cached = pluginCache.get(key);
+  if (cached?.fingerprint === fingerprint) {
+    const bundle = await cached.result;
+    if (bundle !== undefined && await bundleArtifactIsValid(repoRoot, bundle)) return bundle;
+    pluginCache.delete(key);
+  }
+  const result = (async () => {
+    const diagnostics = await runPluginTypecheck(repoRoot, plugin);
+    if (hasErrors(diagnostics)) {
+      throw new Error(diagnostics.map((item) => item.message).join("\n\n"));
+    }
+    return bundlePlayerWebPlugin(repoRoot, plugin);
+  })();
+  pluginCache.delete(key);
+  pluginCache.set(key, { fingerprint, result });
+  if (pluginCache.size > 64) pluginCache.delete(pluginCache.keys().next().value!);
+  try {
+    return await result;
+  } catch (error) {
+    if (pluginCache.get(key)?.result === result) pluginCache.delete(key);
+    throw error;
+  }
+}
+
+async function bundleArtifactIsValid(repoRoot: string, bundle: PlayerWebPluginBundleForRuntime): Promise<boolean> {
+  const filePath = path.resolve(repoRoot, bundle.filePath);
+  if (!isInsidePath(path.join(repoRoot, ".tmp", "editor-plugin-bundles"), filePath)) return false;
+  try {
+    if (!(await lstat(filePath)).isFile()) return false;
+    return createHash("sha256").update(await readFile(filePath)).digest("hex") === bundle.contentHash;
+  } catch { return false; }
 }
 
 /**
@@ -392,6 +510,7 @@ async function runPluginTypecheck(
   repoRoot: string,
   plugin: DiscoveredProjectPlugin
 ): Promise<readonly EditorCompilerDiagnostic[]> {
+  pluginTypecheckRuns += 1;
   const tsconfigPath = await writeGeneratedTypecheckConfig(repoRoot, plugin);
   const platformRoot = resolvePlatformRoot();
   const tscPath = path.join(platformRoot, "node_modules", "typescript", "bin", "tsc");
@@ -493,10 +612,11 @@ async function bundlePlayerWebPlugin(
     "export const activate = __entry.activate;",
     "export default __entry;"
   ].join("\n");
-  const contentHash = createHash("sha256").update(bundleText).digest("hex");
+  const bundleBytes = `${bundleText}\n`;
+  const contentHash = createHash("sha256").update(bundleBytes).digest("hex");
   const outputPath = path.join(repoRoot, ".tmp", "editor-plugin-bundles", plugin.manifest.gameId, plugin.manifest.id, `${contentHash}.mjs`);
   await mkdir(path.dirname(outputPath), { recursive: true });
-  await writeFile(outputPath, `${bundleText}\n`, "utf8");
+  await writeFile(outputPath, bundleBytes, "utf8");
 
   return {
     pluginId: plugin.manifest.id,
