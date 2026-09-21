@@ -8,6 +8,22 @@ import { MvpPromptTextarea } from "./mvp-prompt-textarea";
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 describe("MvpPromptTextarea", () => {
+  it("shows empty-section hints without inserting them into the editable or submitted text", async () => {
+    const container = document.createElement("div");
+    const root = createRoot(container);
+    const raw = serializeMvpPromptDocument(["", "", "label: Item"]);
+    const onRaw = vi.fn();
+    await act(async () => root.render(<MvpPromptTextarea value={raw} onChange={onRaw} />));
+    expect(container.querySelectorAll("textarea")).toHaveLength(1);
+    expect(container.querySelector("textarea")?.value).toBe(raw);
+    expect(container.querySelector('[aria-hidden="true"]')?.textContent).toContain("Разовый запрос");
+    expect(container.querySelector('[aria-hidden="true"]')?.textContent).toContain("Авторское описание");
+    expect(onRaw).not.toHaveBeenCalled();
+    await act(async () => root.render(<MvpPromptTextarea value={serializeMvpPromptDocument(["Change", "Purpose", "label: Item"])} onChange={onRaw} />));
+    expect(container.querySelector('[aria-hidden="true"]')?.textContent).not.toContain("Разовый запрос");
+    await act(async () => root.unmount());
+  });
+
   it("keeps one native textarea and returns an invalid raw draft unchanged", async () => {
     const container = document.createElement("div");
     document.body.appendChild(container);

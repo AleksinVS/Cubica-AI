@@ -25,6 +25,8 @@ export type {
 } from "./generated/game-assets.ts";
 export type * from "./generated/mechanics-plan.ts";
 export type * from "./generated/game-intent.ts";
+export type { ProjectionDescriptor, ProjectionProperty } from "./generated/manifest-authoring-common.ts";
+export { manifestAuthoringCommonSchema } from "./generated/manifest-authoring-common.schema.ts";
 
 /**
  * Generic game state type. Game plugins extend this with their own

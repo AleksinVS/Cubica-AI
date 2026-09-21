@@ -17,7 +17,7 @@
   position: fixed;
   top: 0;
   transform: translateX(-50%);
-  transition: background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease, opacity 180ms ease;
+  transition: background-color 320ms ease, border-color 320ms ease, box-shadow 320ms ease, opacity 320ms ease;
   touch-action: none;
   z-index: 30;
 }
@@ -53,7 +53,7 @@
   justify-content: center;
   padding: 0;
   position: relative;
-  transition: background-color 140ms ease, color 140ms ease, border-color 140ms ease, opacity 180ms ease;
+  transition: background-color 140ms ease, color 140ms ease, border-color 140ms ease, opacity 320ms ease;
   width: var(--mvp-menu-control);
 }
 
@@ -74,12 +74,6 @@
   box-shadow: 0 2px 8px rgba(26, 34, 46, 0.09);
 }
 
-.control.isHidden {
-  opacity: 0;
-  pointer-events: none;
-  visibility: hidden;
-}
-
 .menu.isCollapsed .control.isActive { pointer-events: auto; }
 
 .control:disabled {
@@ -89,6 +83,14 @@
 }
 
 .control:disabled:hover { background: transparent; border-color: transparent; }
+
+.control.isHidden {
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+  transition: background-color 140ms ease, color 140ms ease, border-color 140ms ease, opacity 320ms ease, visibility 0s linear 320ms;
+}
+
 .pinButton.isPinned { background: #e9edfc; color: var(--mvp-menu-active); }
 
 .popover {
@@ -140,6 +142,7 @@
 .saveButton:focus-visible { background: #f0f3fb; border-color: rgba(83, 116, 222, 0.2); outline: none; }
 .row:disabled { color: #707988; cursor: not-allowed; }
 .row small { display: block; font-size: 11px; font-weight: 400; line-height: 1.35; margin-top: 2px; }
+.row svg { flex: 0 0 18px; height: 18px; width: 18px; }
 
 .saveButton {
   border-color: #dfe4ec;
@@ -176,5 +179,5 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .menu, .control { transition: none; }
+  .menu, .control, .control.isHidden { transition: none; }
 }

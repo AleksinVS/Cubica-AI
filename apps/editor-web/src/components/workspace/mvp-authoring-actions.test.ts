@@ -12,7 +12,7 @@ import {
 } from "@cubica/editor-engine";
 import { getSharedAuthoringSchemaRegistry, schemaIdForAuthoringDocument } from "@/lib/editor-json-schema";
 import { validateAuthoringForEditor } from "@/lib/compiler-workflow";
-import { buildMvpCreateItem, buildMvpSavePrototype, combineMvpDraftChanges, mvpPrototypeEntries, mvpSourceEntity, splitMvpDraftLabelHeader } from "./mvp-authoring-actions";
+import { buildMvpCreateItem, buildMvpSavePrototype, combineMvpDraftChanges, mvpPrototypeEntries, mvpSharedChangeImpact, mvpSourceEntity, splitMvpDraftLabelHeader } from "./mvp-authoring-actions";
 import { projectMvpRuleEntities, ruleEntities } from "./mvp-rules-panel-helpers";
 
 const root = path.join(process.cwd(), "..", "..", "games", "simple-choice", "authoring");
@@ -40,6 +40,18 @@ function dryRun(changeSet: EditorChangeSet, documents: readonly EditorEntityProj
 }
 
 describe("MVP authoring actions", () => {
+  it("warns for shared game content writes, but not local UI or author-intent metadata", () => {
+    const documents: EditorEntityProjectionDocument[] = [
+      { filePath: gamePath, documentKind: "game", json: {} },
+      { filePath: uiPath, documentKind: "ui", json: {} }
+    ];
+    const change = (filePath: string, field: string): EditorChangeSet => ({ id: "change", summary: "change",
+      jsonPatches: [{ filePath, operations: [{ op: "replace", path: field, value: "новое" }] }] });
+    expect(mvpSharedChangeImpact(change(gamePath, "/root/content/data/infos/0/title"), documents)).toMatch(/все его отображения/u);
+    expect(mvpSharedChangeImpact(change(uiPath, "/root/screens/0/root/props/title"), documents)).toBeUndefined();
+    expect(mvpSharedChangeImpact(change(gamePath, "/root/_promptTemplate/raw"), documents)).toBeUndefined();
+  });
+
   it("adds rules, pages and elements through real Simple Choice document dry-runs", async () => {
     const documents = await realDocuments();
     const rule = buildMvpCreateItem("rule", documents);
@@ -129,8 +141,10 @@ describe("MVP authoring actions", () => {
     expect(child.id).not.toBe("choice-card");
     expect((copy.props as JsonObject).targetId).toBe(child.id);
     expect((copy.props as JsonObject).sourceId).toBe(copy.id);
-    expect((copy.props as JsonObject).externalId).toBe("choice.accept");
-    expect((copy.props as JsonObject).actionId).toBe("choice-card");
+    expect((copy.props as JsonObject).externalId).toBeUndefined();
+    expect((copy.props as JsonObject).actionId).toBeUndefined();
+    expect((definition.props as JsonObject).externalId).toBe("choice.accept");
+    expect((definition.props as JsonObject).actionId).toBe("choice-card");
     expect(copy.gameEntityId).toBeUndefined();
     expect(readJsonPointer(afterInsert, pointer)).toEqual(selected);
 
@@ -184,11 +198,25 @@ describe("MVP authoring actions", () => {
     expect(splitMvpDraftLabelHeader('_label: ""\nСущность: старая')).toMatchObject({ error: expect.any(String) });
   });
 
-  it("lists and instantiates inherited Antarctica UI prototypes with child overrides", async () => {
+  it("offers one reusable Antarctica metric and a distinct remaining-days variant", async () => {
     const text = await readFile(path.join(process.cwd(), "..", "..", "games", "antarctica", "authoring", uiPath), "utf8");
     const ui = { filePath: uiPath, documentKind: "ui" as const, channel: "web", json: JSON.parse(text) as JsonValue };
+    const metricType = "ui.AntarcticaTopbarMetricBadge";
     const definitionType = "ui.AntarcticaTopbarRemainingDaysMetric";
-    expect(mvpPrototypeEntries([ui])).toContainEqual({ id: definitionType, label: "Topbar-метрика remainingDays Antarctica" });
+    const entries = mvpPrototypeEntries([ui]);
+    expect(entries).toContainEqual({ id: metricType, label: "Метрика" });
+    expect(entries).toContainEqual({ id: definitionType, label: "Остаток дней" });
+    expect(entries.filter((entry) => entry.id.startsWith("ui.AntarcticaTopbar") && entry.id.endsWith("Metric")))
+      .toEqual([expect.objectContaining({ id: definitionType })]);
+    const generic = buildMvpCreateItem(`prototype:${metricType}`, [ui], { filePath: uiPath, pointer: "/root/screens/0" });
+    expect(generic.ok).toBe(true);
+    if (!generic.ok) return;
+    const genericOperation = generic.changeSet.jsonPatches[0]?.operations.at(-1);
+    const genericNode = genericOperation !== undefined && "value" in genericOperation ? genericOperation.value as JsonObject : undefined;
+    expect(genericNode).toMatchObject({ _type: metricType, type: "gameVariableComponent" });
+    expect(genericNode?.props).toBeUndefined();
+    expect(dryRun(generic.changeSet, [ui]).ok).toBe(true);
+
     const created = buildMvpCreateItem(`prototype:${definitionType}`, [ui], { filePath: uiPath, pointer: "/root/screens/0" });
     expect(created.ok).toBe(true);
     if (!created.ok) return;
@@ -197,8 +225,9 @@ describe("MVP authoring actions", () => {
     expect(node).toBeDefined();
     if (node === undefined) return;
     expect(node.type).toBe("gameVariableComponent");
-    expect((node.props as JsonObject).metricId).toBe("remainingDays");
-    expect((node.props as JsonObject).backgroundImage).toBe("asset:top-sidebar-days-top");
+    expect(node.props).toBeUndefined();
+    expect(readJsonPointer(ui.json!, `/_definitions/${definitionType}/props/metricId`)).toBe("remainingDays");
+    expect(readJsonPointer(ui.json!, `/_definitions/${definitionType}/props/backgroundImage`)).toBe("asset:top-sidebar-days-top");
     expect(node.id).not.toBe("remainingDays");
     expect(dryRun(created.changeSet, [ui]).ok).toBe(true);
 

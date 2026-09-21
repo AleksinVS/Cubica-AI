@@ -370,12 +370,12 @@ describe("buildEntityGroupingTreeViewModel — real antarctica web", () => {
     return { projection, documents };
   }
 
-  it("byScreen shows the four web screens with the first flagged active and entity-tagged nodes", () => {
+  it("byScreen includes all five web screens, including team selection, with only the first active", () => {
     const { projection, documents } = antarcticaProjection();
     const model = buildEntityGroupingTreeViewModel({ projection, documents, grouping: "byScreen", activeChannel: "web" });
 
     const screens = model.root.children;
-    expect(screens).toHaveLength(4);
+    expect(screens).toHaveLength(5);
     expect(screens.every((node) => node.entityKind === "ui-screen")).toBe(true);
     expect(screens.filter((node) => node.isActiveContext === true)).toHaveLength(1);
     expect(screens[0].isActiveContext).toBe(true);

@@ -61,6 +61,8 @@
 @media(max-width:700px) { .candidateActions { flex-wrap: wrap; gap: 8px; padding: 10px; } .candidateActions p { flex-basis: 100%; margin: 0; } }
 
 .saveDialog::backdrop { background: #1c231b38; }
+.sceneNotice { position: absolute; bottom: 7px; left: 7px; z-index: 15; margin: 0; padding: 4px 7px; border-radius: 4px; background: #fffffff0; color: #263029; font: 12px/1.4 system-ui; pointer-events: none; }
+.preview :global(.preview-context-notice) { position: absolute; bottom: 7px; left: 7px; z-index: 15; margin: 0; padding: 4px 7px; background: #fffffff0; font: 12px/1.4 system-ui; pointer-events: none; }
 .candidateInChat { left: 220px; right: 300px; }
 @media(max-width:1000px) { .candidateInChat { left: 170px; right: 240px; } }
 @media(max-width:700px) { .candidateInChat { left: 0; right: 0; bottom: 30%; } }

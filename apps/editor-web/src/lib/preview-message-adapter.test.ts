@@ -7,9 +7,11 @@ import {
   isPlayerPreviewRestoreResultMessage,
   isPlayerPreviewSessionSnapshotMessage,
   mapGeneratedPointerToAuthoring,
+  mapPlayerPreviewEntitiesForSourceSnapshot,
   mapPlayerPreviewEntitiesToAuthoringDescriptors,
   sourceFileMatchesAuthoringFile,
-  type PreviewSelectionSourceMap
+  type PreviewSelectionSourceMap,
+  type PlayerPreviewEntitiesMessage
 } from "./preview-message-adapter";
 
 const sourceMap: PreviewSelectionSourceMap = {
@@ -37,7 +39,9 @@ describe("preview message adapter", () => {
       isPlayerPreviewEntitiesMessage({
         source: "cubica-player-web",
         type: "previewEntities",
-        version: 1,
+        version: 2,
+        context: { sessionId: "session-1", sessionVersion: { sessionId: "session-1", stateVersion: 0, lastEventSequence: 0 },
+          compileRevision: "revision-1", scene: {} },
         entities: []
       })
     ).toBe(true);
@@ -146,6 +150,22 @@ describe("preview message adapter", () => {
       })
     ]);
     expect(result.unresolved.map((entity) => entity.entityId)).toEqual(["unknown"]);
+  });
+
+  it("uses only the source map committed with a matching compile revision", () => {
+    const movedMap: PreviewSelectionSourceMap = { ...sourceMap, mappings: {
+      ...sourceMap.mappings,
+      "/screens/S1/root/children/0": [{ file: sourceMap.sourceFile, pointer: "/root/screens/0/root/children/1" }]
+    } };
+    const message = { source: "cubica-player-web", type: "previewEntities", version: 2,
+      context: { sessionId: "s", sessionVersion: { sessionId: "s", stateVersion: 0, lastEventSequence: 0 },
+        compileRevision: "new-revision", scene: {} },
+      entities: [{ entityId: "same-runtime-pointer", runtimePointer: "/screens/S1/root/children/0",
+        bounds: { x: 0, y: 0, width: 10, height: 10 } }] } satisfies PlayerPreviewEntitiesMessage;
+    expect(mapPlayerPreviewEntitiesForSourceSnapshot(message, { revision: "old-revision", maps: [sourceMap] })).toBeUndefined();
+    const mapped = mapPlayerPreviewEntitiesForSourceSnapshot(message, { revision: "new-revision", maps: [movedMap] },
+      { gameId: "example", currentAuthoringFile: "ui/web.authoring.json" });
+    expect(mapped?.descriptors[0]?.authoringPointer).toBe("/root/screens/0/root/children/1");
   });
 
   it("prefers the specific UI mapping over the open game document root", () => {

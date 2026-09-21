@@ -981,6 +981,37 @@ describe("GamePresenter declarative layout", () => {
   });
 });
 
+describe("GamePresenter authoring scene", () => {
+  it("projects a paused board without changing the authoritative session or retaining an info selection", async () => {
+    const content = neutralContent("scene-fixture");
+    const screen = (title: string) => ({ type: "screen" as const, title,
+      root: { type: "screenComponent" as const, props: {}, children: [] } });
+    const ui: GamePlayerUiContent = { id: "scene-fixture.ui.web", version: "1.0.0", gameId: content.gameId,
+      entryPoint: "S1", screens: { S1: screen("Info"), S2: screen("Board") } };
+    const presenter = new GamePresenter({ gateway: new ReactViewGateway(), content, gameUi: ui,
+      config: createDefaultGameConfig(createDefaultGameConfigData(content)), editorPreviewMode: true });
+    const original = { ...turnSession("p1"), gameId: content.gameId, debugPaused: true,
+      state: { public: { timeline: { screenId: "S1", stepIndex: 1, activeInfoId: "info-1", active_info_id: "info-1" },
+        ui: { activePanel: "info-panel" } }, secret: {} } } satisfies GameSession;
+    Reflect.set(presenter, "session", original);
+
+    await presenter.showPreviewScene({ screenId: "S2", stepIndex: 7 });
+    expect(presenter.playerState.screenKey).toBe("S2");
+    expect(presenter.playerState.activePanel).toBeNull();
+    expect((presenter.renderSessionSnapshot?.state.public as { timeline: Record<string, unknown> }).timeline)
+      .toMatchObject({ screenId: "S2", stepIndex: 7 });
+    expect((presenter.renderSessionSnapshot?.state.public as { timeline: Record<string, unknown> }).timeline)
+      .not.toHaveProperty("activeInfoId");
+    expect((presenter.renderSessionSnapshot?.state.public as { timeline: Record<string, unknown> }).timeline)
+      .not.toHaveProperty("active_info_id");
+    expect(presenter.sessionSnapshot).toBe(original);
+
+    await presenter.showPreviewScene(null);
+    expect(presenter.playerState.screenKey).toBe("S1");
+    expect(presenter.playerState.activePanel).toBe("info-panel");
+  });
+});
+
 function versionedSession(stateVersion: number, lastEventSequence: number): GameSession {
   return {
     ...turnSession("p1"),

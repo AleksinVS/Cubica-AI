@@ -123,6 +123,14 @@ export {
   reindexEditorEntityProjection,
   updateEditorEntityProjection
 } from "./entity-projection.ts";
+export { buildSemanticEntityProjection } from "./semantic-projection.ts";
+export type {
+  BuildSemanticEntityProjectionInput,
+  SemanticEntityProjection,
+  SemanticFacet,
+  SemanticProperty,
+  SemanticSource
+} from "./semantic-projection.ts";
 
 // Cross-cutting semantic pointer predicate for incremental invalidation.
 export { pointersOverlap } from "./semantics.ts";

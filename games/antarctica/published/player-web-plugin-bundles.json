@@ -8,10 +8,10 @@
       "apiVersion": "2.0",
       "target": "player-web",
       "scope": "published",
-      "contentHash": "f355402cec606e768e14052d726ba1eba20da3cb688be8d7f81a6dedf4ca2b6d",
-      "integrity": "sha256-81VALOxgbnaOFAUtcmuh66INo8toi+jX+Bpt7fTKK20=",
-      "filePath": "published/antarctica-player.f355402cec606e768e14052d726ba1eba20da3cb688be8d7f81a6dedf4ca2b6d.mjs",
-      "url": "/published-plugin-bundles/antarctica/antarctica-player/f355402cec606e768e14052d726ba1eba20da3cb688be8d7f81a6dedf4ca2b6d.mjs"
+      "contentHash": "fb0a470bba136a66734c491b6791d8c45c55a46e2fa0d45025cbb3841a2f2fc4",
+      "integrity": "sha256-+wpHC7oTamZzTEkbZ5HYxFxVpG4voNRQJcuzhBovL8Q=",
+      "filePath": "published/antarctica-player.fb0a470bba136a66734c491b6791d8c45c55a46e2fa0d45025cbb3841a2f2fc4.mjs",
+      "url": "/published-plugin-bundles/antarctica/antarctica-player/fb0a470bba136a66734c491b6791d8c45c55a46e2fa0d45025cbb3841a2f2fc4.mjs"
     }
   ]
 }

@@ -147,9 +147,11 @@ __pluginDefine("src/register.ts", (exports, module) => {
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createAntarcticaConfig = void 0;
+const plugin_api_1 = __pluginRequire("@cubica/player-web/plugin-api");
 const state_resolvers_1 = __pluginRequire("src/state-resolvers.ts");
 const BOARD_TOPBAR_SCREEN_KEY = "board-topbar";
 const INFO_TOPBAR_SCREEN_KEY = "info-topbar";
+const TEAM_SELECTION_SCREEN_KEY = "team-selection";
 const LEFT_SIDEBAR_SCREEN_KEY = "S1_LEFT";
 const ENTRY_SCREEN_KEY = "S1";
 // Antarctica uses S2 for several scenario scenes. Only these step indexes are
@@ -169,6 +171,9 @@ const createAntarcticaConfig = (data) => {
         },
         resolveScreenKey(screenId, stepIndex, infoId, gameUi) {
             if (screenId === "S2") {
+                if (stepIndex === 15 && gameUi?.screens[TEAM_SELECTION_SCREEN_KEY]) {
+                    return TEAM_SELECTION_SCREEN_KEY;
+                }
                 const boardKey = this.resolveBoardScreenKey?.(stepIndex) ?? null;
                 if (boardKey && gameUi?.screens[boardKey]) {
                     return boardKey;
@@ -210,9 +215,32 @@ const createAntarcticaConfig = (data) => {
         resolveGameState(content, session) {
             const publicState = session?.state?.public;
             const gameContent = (0, state_resolvers_1.resolveAntarcticaContent)(content);
-            const currentInfo = (0, state_resolvers_1.resolveCurrentInfoEntry)(gameContent, publicState);
+            const selectedInfo = (0, state_resolvers_1.resolveCurrentInfoEntry)(gameContent, publicState);
+            const infoIndex = selectedInfo === null ? -1 : gameContent?.infos.indexOf(selectedInfo) ?? -1;
+            const currentInfo = selectedInfo !== null && infoIndex >= 0 &&
+                gameContent?.infos.lastIndexOf(selectedInfo) === infoIndex
+                ? (0, plugin_api_1.withPreviewContentOrigin)({ ...selectedInfo }, {
+                    runtimePointer: `/content/data/infos/${infoIndex}`,
+                    fields: ["title", "body", "advanceLabel"]
+                })
+                : selectedInfo;
             const currentBoard = (0, state_resolvers_1.resolveCurrentBoard)(gameContent, publicState);
-            const currentTeamSelection = (0, state_resolvers_1.resolveCurrentTeamSelectionScene)(gameContent, publicState);
+            const selectedTeamSelection = (0, state_resolvers_1.resolveCurrentTeamSelectionScene)(gameContent, publicState);
+            const teamSelectionIndex = selectedTeamSelection === null ? -1 :
+                gameContent?.teamSelections?.indexOf(selectedTeamSelection) ?? -1;
+            const currentTeamSelection = selectedTeamSelection !== null && teamSelectionIndex >= 0 &&
+                gameContent?.teamSelections?.lastIndexOf(selectedTeamSelection) === teamSelectionIndex
+                ? (0, plugin_api_1.withPreviewContentOrigin)({
+                    ...selectedTeamSelection,
+                    members: selectedTeamSelection.members.map((member, index) => (0, plugin_api_1.withPreviewContentOrigin)({ ...member }, {
+                        runtimePointer: `/content/data/teamSelections/${teamSelectionIndex}/members/${index}`,
+                        fields: ["name", "summary", "selectLabel"]
+                    }))
+                }, {
+                    runtimePointer: `/content/data/teamSelections/${teamSelectionIndex}`,
+                    fields: ["title", "body", "confirmLabel"]
+                })
+                : selectedTeamSelection;
             const cardObjects = (0, state_resolvers_1.readCardObjects)(session);
             const selectedCardId = (0, state_resolvers_1.readSelectedCardId)(session);
             const boardCards = (0, state_resolvers_1.resolveBoardCards)(gameContent, currentBoard, cardObjects);
@@ -295,6 +323,7 @@ exports.readCanAdvance = readCanAdvance;
 exports.readSelectedCardId = readSelectedCardId;
 const plugin_api_1 = __pluginRequire("@cubica/player-web/plugin-api");
 Object.defineProperty(exports, "getFallbackActionEntries", { enumerable: true, get: function () { return plugin_api_1.getFallbackActionEntries; } });
+const plugin_api_2 = __pluginRequire("@cubica/player-web/plugin-api");
 /**
  * Reads the Antarctica-shaped public state from a session snapshot.
  *
@@ -487,13 +516,14 @@ function resolveBoardCards(gameContent, board, cardObjects) {
     if (!gameContent || !board) {
         return [];
     }
-    const cardsById = new Map(gameContent.cards.map((card) => [card.cardId, card]));
+    const cardsById = new Map(gameContent.cards.map((card, index) => [card.cardId, { card, index }]));
     return board.cardIds
         .map((cardId) => cardsById.get(cardId))
-        .filter((card) => {
-        if (!card) {
+        .filter((source) => {
+        if (!source) {
             return false;
         }
+        const card = source.card;
         const contentAvailable = card.available;
         const cardState = cardObjects?.[card.cardId];
         // Hidden cards are not visible
@@ -502,9 +532,12 @@ function resolveBoardCards(gameContent, board, cardObjects) {
         }
         return contentAvailable !== false;
     })
-        .map((card) => ({
+        .map(({ card, index }) => (0, plugin_api_2.withPreviewContentOrigin)({
         ...card,
         visualState: resolveCardVisualState(cardObjects?.[card.cardId])
+    }, {
+        runtimePointer: `/content/data/cards/${index}`,
+        fields: ["title", "summary", "backText", "selectLabel"]
     }));
 }
 function isCardJournalEntry(entry) {

@@ -26,6 +26,19 @@ const repoRoot = path.resolve(__dirname, "..", "..");
  */
 const JOBS = [
   {
+    name: "manifest-authoring-common",
+    schema: path.join(repoRoot, "docs", "architecture", "schemas", "manifest-authoring-common.schema.json"),
+    output: path.join(repoRoot, "packages", "contracts", "manifest", "src", "generated", "manifest-authoring-common.ts"),
+    rootName: "ManifestAuthoringCommonSchemaDefs"
+  },
+  {
+    name: "manifest-authoring-common-schema-module",
+    schema: path.join(repoRoot, "docs", "architecture", "schemas", "manifest-authoring-common.schema.json"),
+    output: path.join(repoRoot, "packages", "contracts", "manifest", "src", "generated", "manifest-authoring-common.schema.ts"),
+    outputKind: "typescript-schema",
+    exportName: "manifestAuthoringCommonSchema"
+  },
+  {
     name: "editor-mutation",
     schema: path.join(repoRoot, "docs", "architecture", "schemas", "editor-mutation.schema.json"),
     output: path.join(repoRoot, "packages", "editor-engine", "src", "generated", "editor-mutation.ts"),
@@ -38,7 +51,16 @@ const JOBS = [
     ["debug-checkpoint-metadata", "DebugCheckpointMetadata"],
     ["debug-checkpoint-list-response", "DebugCheckpointListResponse"],
     ["editor-debug-bridge-request", "EditorDebugBridgeRequest"],
-    ["editor-debug-bridge-response", "EditorDebugBridgeResponse"]
+    ["editor-debug-bridge-response", "EditorDebugBridgeResponse"],
+    ["editor-preview-content-refresh-request", "EditorPreviewContentRefreshRequest"],
+    ["editor-preview-content-refresh-response", "EditorPreviewContentRefreshResponse"],
+    ["editor-preview-scene-request", "EditorPreviewSceneRequest"],
+    ["editor-preview-scene-response", "EditorPreviewSceneResponse"],
+    ["editor-preview-prototype-request", "EditorPreviewPrototypeRequest"],
+    ["editor-preview-prototype-response", "EditorPreviewPrototypeResponse"],
+    ["editor-prototype-preview-request", "EditorPrototypePreviewRequest"],
+    ["editor-prototype-preview-response", "EditorPrototypePreviewResponse"],
+    ["player-preview-entities-message", "PlayerPreviewEntitiesMessage"]
   ].flatMap(([name, rootName]) => [
     {
       name,
@@ -326,6 +348,9 @@ async function generateOne(job) {
   source = structuredClone(source);
   if (job.schemaPath) {
     source = inlineOpenApiComponentRefs(source, sourceDocument);
+    if (job.name.startsWith("editor-preview-prototype-") || job.name === "editor-prototype-preview-response" || job.name === "editor-prototype-preview-response-schema-module") {
+      source = inlineCanonicalUiComponentRef(source);
+    }
   }
   if (job.outputKind === "json-schema") {
     return `${JSON.stringify(source, null, 2)}\n`;
@@ -338,8 +363,7 @@ async function generateOne(job) {
       "/* eslint-disable */",
       "/**",
       " * GENERATED FILE — DO NOT EDIT BY HAND.",
-      " * Derived from the canonical OpenAPI component in",
-      " * docs/architecture/runtime-api-openapi.yaml (ADR-025, ADR-056).",
+      ...(job.schemaPath ? [" * Derived from the canonical OpenAPI component in", " * docs/architecture/runtime-api-openapi.yaml (ADR-025, ADR-056)."] : [" * Derived from the canonical JSON Schema source."]),
       " */",
       `export const ${job.exportName} = ${JSON.stringify(source, null, 2)} as const;`,
       ""
@@ -402,6 +426,32 @@ function inlineOpenApiComponentRefs(value, document) {
     key,
     inlineOpenApiComponentRefs(entry, document)
   ]));
+}
+
+/** Resolve the one canonical external UI component ref for derived prototype-preview contracts. */
+function inlineCanonicalUiComponentRef(source) {
+  const ref = "https://cubica.platform/schemas/ui-manifest.v1.json#/definitions/uiComponent";
+  const serialized = JSON.stringify(source);
+  if (!serialized.includes(ref)) return source;
+  const schema = JSON.parse(fs.readFileSync(path.join(repoRoot, "docs", "architecture", "schemas", "ui-manifest.schema.json"), "utf8"));
+  if (schema.$id !== ref.split("#")[0]) throw new Error("Canonical UI component schema id changed.");
+  const definitions = {};
+  const collect = (name) => {
+    if (definitions[name] !== undefined) return;
+    const definition = schema.definitions?.[name];
+    if (definition === undefined) throw new Error(`Missing canonical UI definition ${name}`);
+    definitions[name] = structuredClone(definition);
+    const nested = JSON.stringify(definition).matchAll(/#\/definitions\/([A-Za-z0-9_]+)/gu);
+    for (const match of nested) collect(match[1]);
+  };
+  collect("uiComponent");
+  const rewrite = (value) => {
+    if (Array.isArray(value)) return value.map(rewrite);
+    if (!value || typeof value !== "object") return value;
+    if (value.$ref === ref) return { ...value, $ref: "#/definitions/uiComponent" };
+    return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, rewrite(entry)]));
+  };
+  return { ...rewrite(source), definitions: { ...(source.definitions || {}), ...definitions } };
 }
 
 async function run() {

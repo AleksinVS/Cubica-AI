@@ -93,6 +93,7 @@ const AUTHORING_KEYS = new Set([
   "_semantics",
   "_prompt",
   "_promptTemplate",
+  "_projection",
   "_requiresView",
   "_decorative",
   "_definitions",

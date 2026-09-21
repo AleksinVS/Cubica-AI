@@ -7,13 +7,16 @@
  */
 import type { HTMLAttributes } from "react";
 import type { GameUiComponent, GameUiComponentProps } from "@cubica/contracts-manifest";
+import type { PreviewTextBinding } from "./preview-text-binding";
 
 export type PreviewElementAttributes = HTMLAttributes<HTMLElement> & {
   readonly "data-preview-entity-id"?: string;
   readonly "data-preview-runtime-pointer"?: string;
+  readonly "data-preview-content-runtime-pointer"?: string;
   readonly "data-preview-label"?: string;
   readonly "data-preview-semantic-role"?: string;
   readonly "data-preview-layer"?: string;
+  readonly "data-preview-text-binding"?: string;
 };
 
 export function createPreviewElementAttributes(input: {
@@ -21,17 +24,22 @@ export function createPreviewElementAttributes(input: {
   readonly component: GameUiComponent;
   readonly runtimePointer: string | undefined;
   readonly layer?: string;
+  readonly textBinding?: PreviewTextBinding;
+  readonly instanceKey?: string;
+  readonly contentRuntimePointer?: string;
 }): PreviewElementAttributes {
   if (input.enabled !== true || input.runtimePointer === undefined) {
     return {};
   }
 
   return {
-    "data-preview-entity-id": buildPreviewEntityId(input.component, input.runtimePointer),
+    "data-preview-entity-id": buildPreviewEntityId(input.component, input.runtimePointer, input.instanceKey),
     "data-preview-runtime-pointer": input.runtimePointer,
+    "data-preview-content-runtime-pointer": input.contentRuntimePointer,
     "data-preview-label": resolvePreviewLabel(input.component),
     "data-preview-semantic-role": input.component.type,
-    "data-preview-layer": input.layer
+    "data-preview-layer": input.layer,
+    "data-preview-text-binding": input.textBinding === undefined ? undefined : JSON.stringify(input.textBinding)
   };
 }
 
@@ -43,8 +51,8 @@ export function screenRootRuntimePointer(screenKey: string | undefined): string 
   return screenKey === undefined ? undefined : `/screens/${escapeJsonPointerSegment(screenKey)}/root`;
 }
 
-function buildPreviewEntityId(component: GameUiComponent, runtimePointer: string): string {
-  return `${component.type}:${component.id ?? runtimePointer}`;
+function buildPreviewEntityId(component: GameUiComponent, runtimePointer: string, instanceKey?: string): string {
+  return `${component.type}:${runtimePointer}:${instanceKey ?? ""}`;
 }
 
 function resolvePreviewLabel(component: GameUiComponent): string {

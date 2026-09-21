@@ -42,7 +42,7 @@ export interface PreviewPromptContext {
 export interface PreviewSelectionOverlayProps {
   readonly mvp?: boolean;
   readonly geometryUnsupportedReason?: string;
-  readonly onGeometryCommit?: (entity: PreviewEntityDescriptor, gesture: MvpOverlayGesture) => void;
+  readonly onGeometryCommit?: (entity: PreviewEntityDescriptor, gesture: MvpOverlayGesture) => Promise<boolean> | void;
   readonly onRegionRectChange?: (rect: PreviewRect) => void;
   readonly onStartDrawing?: (rect: PreviewRect) => void;
   readonly onSelectScope?: (scope: "game" | "page", point: PreviewPoint) => void;
@@ -421,11 +421,12 @@ function MvpGestureFrame({
   readonly unsupportedReason?: string;
   readonly onStartDrawing?: (rect: PreviewRect) => void;
   readonly onClickPoint?: (point: PreviewPoint) => void;
-  readonly onCommit: (gesture: MvpOverlayGesture) => void;
+  readonly onCommit: (gesture: MvpOverlayGesture) => Promise<boolean> | void;
 }) {
   const bounds = entity?.bounds ?? regionRect;
   const frameRef = useRef<HTMLDivElement>(null);
   const gestureRef = useRef<{ kind: MvpOverlayGesture["kind"]; anchor?: MvpResizeAnchor; pointerId: number; x: number; y: number; startAngle: number } | null>(null);
+  const commitPendingRef = useRef(false);
   const [preview, setPreview] = useState<MvpOverlayGesture | null>(null);
   if (bounds === undefined) return null;
 
@@ -437,7 +438,7 @@ function MvpGestureFrame({
   const disabled = entity !== undefined && unsupportedReason !== undefined;
 
   function start(kind: MvpOverlayGesture["kind"], event: PointerEvent<HTMLElement>, anchor?: MvpResizeAnchor) {
-    if (bounds === undefined || event.button !== 0 || disabled && kind !== "move") return;
+    if (bounds === undefined || event.button !== 0 || commitPendingRef.current || disabled && kind !== "move") return;
     event.preventDefault();
     event.stopPropagation();
     const host = frameRef.current?.parentElement;
@@ -465,11 +466,27 @@ function MvpGestureFrame({
     const gesture = currentGesture(event);
     const started = gestureRef.current;
     gestureRef.current = null;
-    setPreview(null);
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
     const moved = gesture !== null && (gesture.kind === "rotate" ? Math.abs(gesture.degrees) >= 1 : Math.hypot(gesture.dx, gesture.dy) >= dragThresholdPx);
-    if (commit && moved && !disabled) onCommit(gesture!);
-    else if (commit && !moved && started?.kind === "move") {
+    if (commit && moved && !disabled && gesture !== null) {
+      setPreview(gesture);
+      try {
+        const result = onCommit(gesture);
+        if (result instanceof Promise) {
+          commitPendingRef.current = true;
+          const clearCommittedPreview = () => {
+            commitPendingRef.current = false;
+            setPreview(null);
+          };
+          void result.then(clearCommittedPreview, clearCommittedPreview);
+        } else setPreview(null);
+      } catch {
+        setPreview(null);
+      }
+    } else {
+      setPreview(null);
+    }
+    if (commit && !moved && started?.kind === "move") {
       const host = frameRef.current?.parentElement?.getBoundingClientRect();
       onClickPoint?.({ x: event.clientX - (host?.left ?? 0), y: event.clientY - (host?.top ?? 0) });
     }

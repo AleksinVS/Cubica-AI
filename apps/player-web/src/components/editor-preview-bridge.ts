@@ -7,37 +7,30 @@
  */
 import { useEffect, type RefObject } from "react";
 import type { SessionStateVersion } from "@cubica/contracts-session";
-import { validateEditorDebugBridgeRequest, type EditorDebugBridgeRequest, type EditorDebugBridgeResponse } from "@cubica/contracts-session";
+import { validateEditorDebugBridgeRequest, validateEditorPreviewContentRefreshRequest, validateEditorPreviewSceneRequest,
+  validateEditorPreviewPrototypeRequest,
+  validatePlayerPreviewEntitiesMessage,
+  type EditorDebugBridgeRequest, type EditorDebugBridgeResponse, type EditorPreviewContentRefreshRequest,
+  type EditorPreviewSceneRequest, type EditorPreviewPrototypeRequest, type PlayerPreviewEntitiesMessage } from "@cubica/contracts-session";
 
 export interface EditorPreviewBridgeOptions {
   readonly enabled: boolean;
   readonly parentOrigin: string | undefined;
   readonly refreshSignal: unknown;
   readonly sessionSnapshot?: EditorPreviewSessionSnapshot;
+  readonly compileRevision?: string;
+  readonly screenKey?: string;
+  readonly scene?: PlayerPreviewEntitiesMessage["context"]["scene"];
+  readonly prototypePreview?: PlayerPreviewEntitiesMessage["context"]["prototypePreview"];
   readonly lastCompletedAction?: EditorPreviewCompletedAction;
   readonly onRestorePreviewSession?: (request: EditorPreviewRestoreRequest) => Promise<EditorPreviewSessionSnapshot>;
   readonly onDebugSession?: (request: EditorDebugBridgeRequest) => Promise<EditorDebugBridgeResponse>;
+  readonly onRefreshPreviewContent?: (request: EditorPreviewContentRefreshRequest) => Promise<{ readonly requiresRestart?: boolean }>;
+  readonly onShowPreviewScene?: (request: EditorPreviewSceneRequest) => Promise<void>;
+  readonly onShowPreviewPrototype?: (request: EditorPreviewPrototypeRequest) => Promise<void>;
 }
 
-interface PreviewRect {
-  readonly x: number;
-  readonly y: number;
-  readonly width: number;
-  readonly height: number;
-}
-
-interface PlayerPreviewEntityMessage {
-  readonly entityId: string;
-  readonly runtimePointer: string;
-  readonly label?: string;
-  readonly semanticRole?: string;
-  readonly layer?: string;
-  readonly zIndex?: number;
-  readonly renderOrder?: number;
-  readonly bounds: PreviewRect;
-  readonly visible?: boolean;
-  readonly selectable?: boolean;
-}
+type PlayerPreviewEntityMessage = PlayerPreviewEntitiesMessage["entities"][number];
 
 export interface EditorPreviewSessionSnapshot {
   readonly sessionId: string;
@@ -97,15 +90,23 @@ export function useEditorPreviewBridge(rootRef: RefObject<HTMLElement | null>, o
         return;
       }
 
-      window.parent.postMessage(
-        {
+      if (options.sessionSnapshot !== undefined) {
+        const message = {
           source: "cubica-player-web",
           type: "previewEntities",
-          version: 1,
+          version: 2,
+          context: {
+            sessionId: options.sessionSnapshot.sessionId,
+            sessionVersion: options.sessionSnapshot.version,
+            compileRevision: options.compileRevision ?? "unverified",
+            ...(options.screenKey === undefined ? {} : { screenKey: options.screenKey }),
+            ...(options.prototypePreview === undefined ? {} : { prototypePreview: options.prototypePreview }),
+            scene: options.scene ?? {}
+          },
           entities: collectPreviewEntities(root)
-        },
-        parentOrigin
-      );
+        };
+        if (validatePlayerPreviewEntitiesMessage(message)) window.parent.postMessage(message, parentOrigin);
+      }
 
       if (options.sessionSnapshot !== undefined) {
         window.parent.postMessage(
@@ -160,6 +161,43 @@ export function useEditorPreviewBridge(rootRef: RefObject<HTMLElement | null>, o
             }, parentOrigin);
           });
         }
+        return;
+      }
+      if (validateEditorPreviewContentRefreshRequest(event.data)) {
+        const request = event.data;
+        if (request.sessionId !== options.sessionSnapshot?.sessionId || options.onRefreshPreviewContent === undefined) return;
+        void options.onRefreshPreviewContent(request).then((result) => {
+          window.parent.postMessage({ source: "cubica-player-web", type: "previewContentRefreshResult", protocolVersion: 1,
+            requestId: request.requestId, sessionId: request.sessionId, revision: request.revision,
+            ok: result.requiresRestart !== true, ...(result.requiresRestart ? { requiresRestart: true } : {}) }, parentOrigin);
+          // The new revision is published by the render triggered by the
+          // content swap, never by this stale effect closure.
+        }).catch((error: unknown) => window.parent.postMessage({ source: "cubica-player-web", type: "previewContentRefreshResult", protocolVersion: 1,
+          requestId: request.requestId, sessionId: request.sessionId, revision: request.revision, ok: false,
+          error: error instanceof Error ? error.message.slice(0, 500) : "Preview refresh failed." }, parentOrigin));
+        return;
+      }
+      if (validateEditorPreviewSceneRequest(event.data)) {
+        const request = event.data;
+        if (request.sessionId !== options.sessionSnapshot?.sessionId || options.onShowPreviewScene === undefined) return;
+        void options.onShowPreviewScene(request).then(() => {
+          window.parent.postMessage({ source: "cubica-player-web", type: "previewSceneResult", protocolVersion: 1,
+            requestId: request.requestId, sessionId: request.sessionId, ok: true }, parentOrigin);
+          // The rerender after scene selection publishes its new context.
+        }).catch((error: unknown) => window.parent.postMessage({ source: "cubica-player-web", type: "previewSceneResult", protocolVersion: 1,
+          requestId: request.requestId, sessionId: request.sessionId, ok: false,
+          error: error instanceof Error ? error.message.slice(0, 500) : "Scene preview failed." }, parentOrigin));
+        return;
+      }
+      if (validateEditorPreviewPrototypeRequest(event.data)) {
+        const request = event.data;
+        if (request.sessionId !== options.sessionSnapshot?.sessionId || options.onShowPreviewPrototype === undefined) return;
+        void options.onShowPreviewPrototype(request).then(() => {
+          window.parent.postMessage({ source: "cubica-player-web", type: "previewPrototypeResult", protocolVersion: 1,
+            requestId: request.requestId, sessionId: request.sessionId, ok: true }, parentOrigin);
+        }).catch((error: unknown) => window.parent.postMessage({ source: "cubica-player-web", type: "previewPrototypeResult", protocolVersion: 1,
+          requestId: request.requestId, sessionId: request.sessionId, ok: false,
+          error: error instanceof Error ? error.message.slice(0, 500) : "Prototype preview failed." }, parentOrigin));
         return;
       }
       if (isRestoreRequest(event.data)) {
@@ -254,9 +292,19 @@ export function useEditorPreviewBridge(rootRef: RefObject<HTMLElement | null>, o
     options.parentOrigin,
     options.refreshSignal,
     options.sessionSnapshot,
+    options.compileRevision,
+    options.screenKey,
+    options.scene?.screenId,
+    options.scene?.stepIndex,
+    options.scene?.activeInfoId,
+    options.prototypePreview?.runtimePointer,
+    options.prototypePreview?.requestId,
     options.lastCompletedAction,
     options.onRestorePreviewSession,
-    options.onDebugSession
+    options.onDebugSession,
+    options.onRefreshPreviewContent,
+    options.onShowPreviewScene,
+    options.onShowPreviewPrototype
   ]);
 }
 
@@ -318,8 +366,9 @@ function collectPreviewEntities(root: HTMLElement): readonly PlayerPreviewEntity
     const rect = element.getBoundingClientRect();
     const baseEntityId = element.dataset.previewEntityId ?? element.dataset.previewRuntimePointer ?? "entity";
     return {
-      entityId: `${baseEntityId}:${index}`,
+      entityId: baseEntityId,
       runtimePointer: element.dataset.previewRuntimePointer ?? "",
+      contentRuntimePointer: readDatasetValue(element.dataset.previewContentRuntimePointer),
       label: readDatasetValue(element.dataset.previewLabel),
       semanticRole: readDatasetValue(element.dataset.previewSemanticRole),
       layer: readDatasetValue(element.dataset.previewLayer),
@@ -332,9 +381,29 @@ function collectPreviewEntities(root: HTMLElement): readonly PlayerPreviewEntity
         height: rect.height
       },
       visible: rect.width > 0 && rect.height > 0 && isElementVisible(element),
-      selectable: element.dataset.previewSelectable !== "false"
+      selectable: element.dataset.previewSelectable !== "false",
+      displayText: previewLeafText(element),
+      textBinding: parsePreviewTextBinding(element.dataset.previewTextBinding)
     };
   });
+}
+
+function previewLeafText(element: HTMLElement): string | undefined {
+  if (!["buttonComponent", "richTextComponent", "gameVariableComponent", "cardComponent"].includes(element.dataset.previewSemanticRole ?? "")) return undefined;
+  const value = element.textContent?.replace(/\s+/gu, " ").trim() ?? "";
+  return value === "" ? undefined : value.slice(0, 500);
+}
+
+function parsePreviewTextBinding(raw: string | undefined): PlayerPreviewEntityMessage["textBinding"] {
+  if (raw === undefined || raw.length > 1500) return undefined;
+  try {
+    const value: unknown = JSON.parse(raw);
+    if (typeof value !== "object" || value === null || Array.isArray(value)) return undefined;
+    const record = value as Record<string, unknown>;
+    if (!["html", "caption", "text", "value"].includes(String(record.prop)) ||
+        typeof record.expression !== "string") return undefined;
+    return record as PlayerPreviewEntityMessage["textBinding"];
+  } catch { return undefined; }
 }
 
 function readDatasetValue(value: string | undefined): string | undefined {

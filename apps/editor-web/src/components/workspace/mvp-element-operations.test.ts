@@ -37,6 +37,10 @@ describe("MVP element source mutations", () => {
       op: "add", value: { status: "draft", raw: "Показывай простой выбор", source: "user", language: "ru" }
     });
     expect(isMvpMetadataOnlyChangeSet(author as NonNullable<typeof author>)).toBe(true);
+    const template = { ...author!, jsonPatches: [{ filePath: source.filePath, operations: [
+      { op: "add" as const, path: "/_definitions/ui.Example/_promptTemplate", value: "Описание прототипа" }
+    ] }] };
+    expect(isMvpMetadataOnlyChangeSet(template)).toBe(true);
     const moved = buildMvpGeometryChangeSet(source, { x: 20, y: 30, width: 120, height: 40 }, { kind: "move", dx: 13, dy: -2 });
     expect(moved?.jsonPatches[0]?.operations.at(-1)).toMatchObject({
       op: "add", value: { transform: "translate(13px, -2px) rotate(0deg)" }
@@ -49,6 +53,14 @@ describe("MVP element source mutations", () => {
     expect(geometrySupport(fractional)).toMatch(/пиксели/u);
     expect(buildMvpGeometryChangeSet(fractional, { x: 0, y: 0, width: 100, height: 50 }, { kind: "resize", dx: 20, dy: 10 })).toBeUndefined();
     expect(geometrySupport({ ...source, value: { ...source.value, type: "interactiveBoardSurface" } })).toMatch(/отдельно/u);
+  });
+
+  it("moves from an inherited transform while writing only a local style override", () => {
+    const effectiveStyle = { transform: "translate(30px, 5px) rotate(10deg)", color: "blue" };
+    const moved = buildMvpGeometryChangeSet(source, { x: 30, y: 5, width: 100, height: 50 },
+      { kind: "move", dx: 7, dy: -2 }, effectiveStyle);
+    expect(moved?.jsonPatches[0]?.operations.at(-1)).toEqual({ op: "add", path: `${source.pointer}/style`,
+      value: { transform: "translate(37px, 3px) rotate(10deg)" } });
   });
 
   it("resizes from each of eight anchors while fixing the opposite sides", () => {

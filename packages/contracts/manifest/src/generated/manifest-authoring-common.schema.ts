@@ -1,0 +1,411 @@
+/* eslint-disable */
+/**
+ * GENERATED FILE — DO NOT EDIT BY HAND.
+ * Derived from the canonical JSON Schema source.
+ */
+export const manifestAuthoringCommonSchema = {
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cubica.platform/schemas/manifest-authoring-common.schema.json",
+  "title": "Cubica Manifest Authoring Common Definitions",
+  "description": "Shared JSON Schema definitions for authoring manifests. Authoring manifest means the editable source JSON compiled into runtime game/UI manifests.",
+  "definitions": {
+    "semanticType": {
+      "type": "string",
+      "description": "Semantic type name used by authoring instances. It explains the node intent and resolves through a local definition.",
+      "pattern": "^[a-z][a-zA-Z0-9]*(\\.[A-Z][a-zA-Z0-9]*)+$"
+    },
+    "entityId": {
+      "type": "string",
+      "description": "Stable ASCII-first identifier used for references, JSON Pointer mapping and generated runtime maps.",
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]*$"
+    },
+    "editorLabel": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable editor name for a semantic entity. Cyrillic labels are allowed and expected for Russian authoring."
+    },
+    "semanticDescription": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Plain-language explanation of what this entity means in game logic or UI."
+    },
+    "promptStatus": {
+      "type": "string",
+      "description": "Lifecycle state of a saved element prompt. Draft stores unconfirmed author input, normalized stores agent-prepared text awaiting confirmation, and confirmed is the target saved state.",
+      "enum": [
+        "draft",
+        "normalized",
+        "confirmed"
+      ]
+    },
+    "promptSource": {
+      "type": "string",
+      "description": "Origin of the saved prompt text.",
+      "enum": [
+        "template",
+        "user",
+        "agent",
+        "imported",
+        "migration"
+      ]
+    },
+    "promptLanguage": {
+      "type": "string",
+      "description": "BCP-47-like language tag used for the prompt text, for example ru or en-US.",
+      "pattern": "^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$"
+    },
+    "isoDateTimeString": {
+      "type": "string",
+      "description": "UTC timestamp for authoring metadata. The schema uses a pattern instead of format so validation stays local and does not depend on optional Ajv format plugins.",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{3})?Z$"
+    },
+    "elementPrompt": {
+      "type": "object",
+      "description": "Saved authoring-only prompt for one concrete game/UI entity. It captures author intent for content, behavior, state effects and methodology; it must not leak into generated runtime manifests.",
+      "required": [
+        "status",
+        "raw",
+        "source",
+        "language",
+        "updatedAt"
+      ],
+      "properties": {
+        "status": {
+          "$ref": "#/definitions/promptStatus"
+        },
+        "raw": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Original user text or text copied from a prototype prompt template."
+        },
+        "normalized": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Agent-structured wording that preserves the raw prompt meaning and can be shown to the user for confirmation."
+        },
+        "source": {
+          "$ref": "#/definitions/promptSource"
+        },
+        "language": {
+          "$ref": "#/definitions/promptLanguage"
+        },
+        "updatedAt": {
+          "$ref": "#/definitions/isoDateTimeString"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "normalized",
+                  "confirmed"
+                ]
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "required": [
+              "normalized"
+            ]
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "promptTemplate": {
+      "type": "object",
+      "description": "Authoring-only prompt template stored on reusable prototypes. Editors copy raw template text into a new instance _prompt.raw before the user edits and confirms it.",
+      "required": [
+        "raw",
+        "language"
+      ],
+      "properties": {
+        "raw": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Prompt starter copied into a concrete element when the prototype is used."
+        },
+        "language": {
+          "$ref": "#/definitions/promptLanguage"
+        },
+        "appliesTo": {
+          "$ref": "#/definitions/semanticType",
+          "description": "Optional semantic type that this template is designed to create or refine."
+        }
+      },
+      "additionalProperties": false
+    },
+    "projectionProperty": {
+      "type": "object",
+      "description": "Authoring-only visible property of one prototype. Paths are JSON Pointers relative to the selected facet root; they do not grant write authority.",
+      "required": [
+        "id",
+        "facet",
+        "path",
+        "presentation"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-zA-Z0-9_.-]*$",
+          "description": "Stable identity within this prototype family, preserved across inherited refinements."
+        },
+        "facet": {
+          "type": "string",
+          "enum": [
+            "logic",
+            "content",
+            "state",
+            "view",
+            "design",
+            "plugin"
+          ]
+        },
+        "path": {
+          "type": "string",
+          "pattern": "^(/([^~/]|~[01])+)+$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "order": {
+          "type": "integer"
+        },
+        "group": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expose": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "instance",
+              "prototype",
+              "details"
+            ]
+          }
+        },
+        "presentation": {
+          "enum": [
+            "text",
+            "quantity",
+            "choice",
+            "rule"
+          ]
+        },
+        "reference": {
+          "type": "object",
+          "description": "A declared nested or linked facet selected from proven editor context, never an arbitrary query.",
+          "required": [
+            "facet",
+            "path"
+          ],
+          "properties": {
+            "facet": {
+              "enum": [
+                "logic",
+                "content",
+                "state",
+                "view",
+                "design",
+                "plugin"
+              ]
+            },
+            "path": {
+              "type": "string",
+              "pattern": "^(/([^~/]|~[01])+)+$"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "projectionDescriptor": {
+      "type": "object",
+      "description": "Authoring-only prototype property allowlist; child prototypes refine entries with the same id.",
+      "required": [
+        "properties"
+      ],
+      "properties": {
+        "properties": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/projectionProperty"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "requiresView": {
+      "description": "Authoring-only declaration that a game entity type/prototype REQUIRES a UI view (ADR-057 §4.2, §5; editor-preview-first-ux §2.1). `true` requires a view in every preview channel; the object form limits the requirement to the named channels. The editor raises the `entity-missing-view` diagnostic when a required view is absent in the active channel. This is authoring metadata: the compiler strips it and it never appears in runtime manifests.",
+      "oneOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "object",
+          "required": [
+            "channels"
+          ],
+          "properties": {
+            "channels": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": "Preview channel keys (for example web, telegram) in which the entity requires a view."
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "decorativeFlag": {
+      "type": "boolean",
+      "description": "Authoring-only declaration that a UI element is decorative and carries no game meaning (ADR-057 §4.2, §5; editor-preview-first-ux §2.1). A decorative element needs no reference to a game entity and is excluded from the `entity-view-orphan` diagnostic. This is authoring metadata: the compiler strips it and it never appears in runtime manifests."
+    },
+    "semanticEntity": {
+      "type": "object",
+      "description": "Base metadata for a real authoring entity shown by the editor entity tree. The authoring JSON remains the source of truth; this metadata must not leak into generated runtime manifests.",
+      "required": [
+        "_type",
+        "_label"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/entityId"
+        },
+        "_type": {
+          "$ref": "#/definitions/semanticType"
+        },
+        "_label": {
+          "$ref": "#/definitions/editorLabel"
+        },
+        "_semantics": {
+          "$ref": "#/definitions/semanticDescription"
+        },
+        "_prompt": {
+          "$ref": "#/definitions/elementPrompt"
+        },
+        "_requiresView": {
+          "$ref": "#/definitions/requiresView"
+        },
+        "_decorative": {
+          "$ref": "#/definitions/decorativeFlag"
+        }
+      },
+      "additionalProperties": true
+    },
+    "authoringDefinition": {
+      "type": "object",
+      "description": "Reusable authoring prototype. _semantics is required so people and agents can understand why this definition exists.",
+      "required": [
+        "_semantics"
+      ],
+      "properties": {
+        "_extends": {
+          "$ref": "#/definitions/semanticType",
+          "description": "Optional inheritance edge to another authoring definition."
+        },
+        "_semantics": {
+          "$ref": "#/definitions/semanticDescription"
+        },
+        "_label": {
+          "$ref": "#/definitions/editorLabel",
+          "description": "Optional editor-facing name for a reusable prototype. Real entity labels belong on root-owned entities."
+        },
+        "_promptTemplate": {
+          "$ref": "#/definitions/promptTemplate"
+        },
+        "_projection": {
+          "$ref": "#/definitions/projectionDescriptor"
+        },
+        "_requiresView": {
+          "$ref": "#/definitions/requiresView",
+          "description": "Prototype-level 'requires view' declaration inherited in spirit by instances of this type. See #/definitions/requiresView."
+        },
+        "_decorative": {
+          "$ref": "#/definitions/decorativeFlag",
+          "description": "Prototype-level 'decorative' declaration for reusable decorative UI prototypes. See #/definitions/decorativeFlag."
+        }
+      },
+      "additionalProperties": true
+    },
+    "definitionsMap": {
+      "type": "object",
+      "description": "Local registry of authoring definitions available to this manifest.",
+      "patternProperties": {
+        "^[a-z][a-zA-Z0-9]*(\\.[A-Z][a-zA-Z0-9]*)+$": {
+          "$ref": "#/definitions/authoringDefinition"
+        }
+      },
+      "additionalProperties": false
+    },
+    "sourceMap": {
+      "type": "object",
+      "description": "Companion file mapping generated runtime JSON Pointers back to authoring sources.",
+      "required": [
+        "version",
+        "generatedFile",
+        "sourceFile",
+        "mappings"
+      ],
+      "properties": {
+        "version": {
+          "const": 1
+        },
+        "generatedFile": {
+          "type": "string"
+        },
+        "sourceFile": {
+          "type": "string"
+        },
+        "mappings": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "file",
+                "pointer"
+              ],
+              "properties": {
+                "file": {
+                  "type": "string"
+                },
+                "pointer": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "verbatimSubtrees": {
+          "type": "array",
+          "description": "Sorted generated JSON Pointers whose entire subtree was omitted from `mappings` because it is a position-for-position verbatim copy of an ancestor's authoring subtree (see the authoring compiler's isPositionalMatch). A consumer that ignores this field still gets a correct, only less precise, answer by walking up to the nearest recorded ancestor as before; a consumer that reads it can append the remaining generated-pointer path to that ancestor's source pointer to recover the exact one. Optional so a source map produced before this field existed remains valid.",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+} as const;

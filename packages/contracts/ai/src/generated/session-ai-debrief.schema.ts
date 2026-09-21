@@ -1,8 +1,7 @@
 /* eslint-disable */
 /**
  * GENERATED FILE — DO NOT EDIT BY HAND.
- * Derived from the canonical OpenAPI component in
- * docs/architecture/runtime-api-openapi.yaml (ADR-025, ADR-056).
+ * Derived from the canonical JSON Schema source.
  */
 export const sessionAiDebriefSchema = {
   "$schema": "https://json-schema.org/draft/2020-12/schema",

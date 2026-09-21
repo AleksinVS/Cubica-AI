@@ -533,6 +533,31 @@ describe("PreviewSelectionOverlay", () => {
     await act(async () => root?.unmount()); container.remove();
   });
 
+  it("keeps an optimistic geometry outline until the asynchronous preview settles", async () => {
+    let settle: ((ready: boolean) => void) | undefined;
+    const onGeometryCommit = vi.fn(() => new Promise<boolean>((resolve) => { settle = resolve; }));
+    const container = document.createElement("div"); document.body.appendChild(container);
+    let root: Root | undefined;
+    await act(async () => { root = createRoot(container); root.render(<PreviewSelectionOverlay mvp entities={entities}
+      selectedEntityId="front" promptContext={null} proposedIntent={null} unresolvedCount={0}
+      onSelectEntity={vi.fn()} onSelectRegion={vi.fn()} onClearContext={vi.fn()}
+      onPromptDraftChange={vi.fn()} onPromptSubmit={vi.fn()} onPromptClose={vi.fn()}
+      onGeometryCommit={onGeometryCommit} />); });
+    const frame = container.querySelector<HTMLElement>("[aria-label='Выбран элемент: Button']");
+    await act(async () => {
+      dispatchPointer(frame, "pointerdown", { clientX: 30, clientY: 40 });
+      dispatchPointer(frame, "pointermove", { clientX: 50, clientY: 55 });
+      dispatchPointer(frame, "pointerup", { clientX: 50, clientY: 55 });
+    });
+    expect(onGeometryCommit).toHaveBeenCalledTimes(1);
+    expect(frame?.style.left).toBe("40px");
+    expect(frame?.style.top).toBe("45px");
+    await act(async () => { settle?.(false); });
+    expect(frame?.style.left).toBe("20px");
+    expect(frame?.style.top).toBe("30px");
+    await act(async () => root?.unmount()); container.remove();
+  });
+
   it("keeps the selected frame limited to geometry controls", async () => {
     const container = document.createElement("div");
     document.body.appendChild(container);

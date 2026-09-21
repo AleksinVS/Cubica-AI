@@ -946,6 +946,177 @@
       },
       "title": "Antarctica (Left Sidebar)",
       "layout_id": "layout.web.s1_left"
+    },
+    "team-selection": {
+      "type": "screen",
+      "layout_mode": "topbar",
+      "root": {
+        "type": "screenComponent",
+        "props": {
+          "backgroundImage": "asset:arctic-background",
+          "cssClass": "main-screen topbar-screen-shell team-selection-screen",
+          "decorativeBackground": true
+        },
+        "children": [
+          {
+            "type": "areaComponent",
+            "props": {
+              "cssClass": "game-variables-container topbar-variables-container",
+              "topbarCssClass": "topbar-variables-container"
+            },
+            "children": [
+              {
+                "type": "gameVariableComponent",
+                "id": "remainingDays",
+                "props": {
+                  "metricId": "remainingDays",
+                  "backgroundImage": "asset:top-sidebar-days-top",
+                  "layout": "prominent"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "pro",
+                "props": {
+                  "metricId": "pro",
+                  "backgroundImage": "asset:top-sidebar-znaniya"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "rep",
+                "props": {
+                  "metricId": "rep",
+                  "backgroundImage": "asset:top-sidebar-doverie"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "lid",
+                "props": {
+                  "metricId": "lid",
+                  "backgroundImage": "asset:top-sidebar-energia"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "man",
+                "props": {
+                  "metricId": "man",
+                  "backgroundImage": "asset:top-sidebar-kontrol"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "stat",
+                "props": {
+                  "metricId": "stat",
+                  "backgroundImage": "asset:top-sidebar-status"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "cont",
+                "props": {
+                  "metricId": "cont",
+                  "backgroundImage": "asset:top-sidebar-kontakt"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "constr",
+                "props": {
+                  "metricId": "constr",
+                  "backgroundImage": "asset:top-sidebar-konstruktiv"
+                }
+              },
+              {
+                "type": "areaComponent",
+                "props": {
+                  "cssClass": "sidebar-decoration",
+                  "topbarCssClass": "topbar-decoration"
+                }
+              }
+            ]
+          },
+          {
+            "type": "areaComponent",
+            "props": {
+              "cssClass": "main-content-area topbar-main-content",
+              "topbarCssClass": "topbar-main-content"
+            },
+            "children": [
+              {
+                "type": "richTextComponent",
+                "props": {
+                  "cssClass": "fallback-card-head",
+                  "html": "{{currentTeamSelection.title}}"
+                }
+              },
+              {
+                "type": "richTextComponent",
+                "props": {
+                  "cssClass": "fallback-copy",
+                  "html": "{{currentTeamSelection.body}}"
+                }
+              },
+              {
+                "type": "richTextComponent",
+                "props": {
+                  "html": "Выбрано: {{pickCount}} из {{currentTeamSelection.requiredPickCount}}"
+                }
+              },
+              {
+                "type": "areaComponent",
+                "props": {
+                  "cssClass": "cards-container team-member-cards"
+                },
+                "itemTemplate": {
+                  "collection": "{{currentTeamSelection.members}}",
+                  "itemKey": "member"
+                },
+                "children": [
+                  {
+                    "type": "cardComponent",
+                    "props": {
+                      "title": "{{member.name}}",
+                      "summary": "{{member.summary}}",
+                      "selectLabel": "Выбрать",
+                      "visualState": "{{teamFlags[member.memberId].selected ? \"selected\" : \"default\"}}"
+                    },
+                    "id": "team-member",
+                    "actions": {
+                      "onClick": {
+                        "command": "requestServer",
+                        "payload": {
+                          "actionId": "{{member.selectActionId}}"
+                        }
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "buttonComponent",
+                "props": {
+                  "caption": "{{currentTeamSelection.confirmLabel}}",
+                  "disabled": "{{pickCount !== currentTeamSelection.requiredPickCount}}"
+                },
+                "actions": {
+                  "onClick": {
+                    "command": "requestServer",
+                    "payload": {
+                      "actionId": "{{currentTeamSelection.confirmActionId}}"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "title": "Создание штаба",
+      "layout_id": "layout.web.info"
     }
   },
   "panels": {

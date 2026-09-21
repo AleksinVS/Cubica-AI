@@ -10,6 +10,15 @@ export type { SaveDebugCheckpointRequest } from "./generated/save-debug-checkpoi
 export type { DebugCheckpointListResponse } from "./generated/debug-checkpoint-list-response.ts";
 export type { DebugCheckpointMetadata } from "./generated/debug-checkpoint-metadata.ts";
 export type { EditorDebugBridgeRequest } from "./generated/editor-debug-bridge-request.ts";
+export type { EditorPreviewContentRefreshRequest } from "./generated/editor-preview-content-refresh-request.ts";
+export type { EditorPreviewContentRefreshResponse } from "./generated/editor-preview-content-refresh-response.ts";
+export type { EditorPreviewSceneRequest } from "./generated/editor-preview-scene-request.ts";
+export type { EditorPreviewSceneResponse } from "./generated/editor-preview-scene-response.ts";
+export type { PlayerPreviewEntitiesMessage } from "./generated/player-preview-entities-message.ts";
+export type { EditorPreviewPrototypeRequest } from "./generated/editor-preview-prototype-request.ts";
+export type { EditorPreviewPrototypeResponse } from "./generated/editor-preview-prototype-response.ts";
+export type { EditorPrototypePreviewRequest } from "./generated/editor-prototype-preview-request.ts";
+export type { EditorPrototypePreviewResponse } from "./generated/editor-prototype-preview-response.ts";
 export type { EditorDebugBridgeResponse } from "./generated/editor-debug-bridge-response.ts";
 export {
   validateDebugSessionControlRequest,
@@ -18,7 +27,16 @@ export {
   validateDebugCheckpointMetadata,
   validateDebugCheckpointListResponse,
   validateEditorDebugBridgeRequest,
-  validateEditorDebugBridgeResponse
+  validateEditorDebugBridgeResponse,
+  validateEditorPreviewContentRefreshRequest,
+  validateEditorPreviewContentRefreshResponse,
+  validateEditorPreviewSceneRequest,
+  validateEditorPreviewSceneResponse,
+  validatePlayerPreviewEntitiesMessage,
+  validateEditorPreviewPrototypeRequest,
+  validateEditorPreviewPrototypeResponse,
+  validateEditorPrototypePreviewRequest,
+  validateEditorPrototypePreviewResponse
 } from "./debugRequestValidation.ts";
 export {
   getCreateSessionRequestValidationErrors,

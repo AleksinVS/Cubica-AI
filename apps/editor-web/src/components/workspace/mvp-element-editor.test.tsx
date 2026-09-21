@@ -58,6 +58,15 @@ describe("MvpElementEditor", () => {
     expect(drafts.size).toBe(0);
     await act(async () => root.unmount()); container.remove();
   });
+
+  it("uses the semantic projection without injecting a technical label header", async () => {
+    const container = document.createElement("div"); document.body.appendChild(container);
+    const root = createRoot(container);
+    await act(async () => root.render(<MvpElementEditor {...baseProps()} />));
+    expect(textArea(container)?.value).toContain("type: button\nlabel: Ответ");
+    expect(textArea(container)?.value).not.toContain("_label:");
+    await act(async () => root.unmount()); container.remove();
+  });
   it("sends all three edited sections in one save call", async () => {
     const container = document.createElement("div"); document.body.appendChild(container);
     const onSave = vi.fn(async () => ({ ok: true, message: "Сохранено." }));
@@ -105,7 +114,7 @@ describe("MvpElementEditor", () => {
     await act(async () => { root = createRoot(container); root.render(<MvpElementEditor {...props} />); });
     const reloaded = { ...source, value: { ...source.value, _label: "Ответ после загрузки" } };
     await act(async () => { root?.render(<MvpElementEditor {...props} source={reloaded} />); });
-    expect(textArea(container)?.value).toContain("Ответ после загрузки");
+    expect(textArea(container)?.value).toContain("label: Ответ");
     const draft = serializeMvpPromptDocument(["Мой несохранённый текст", "Замысел", "yaml: true"]);
     await act(async () => setTextarea(textArea(container), draft));
     const changedAgain = { ...reloaded, value: { ...reloaded.value, _label: "Изменено другим автором" } };
@@ -114,6 +123,25 @@ describe("MvpElementEditor", () => {
     expect(onSave).not.toHaveBeenCalled();
     expect(textArea(container)?.value).toBe(draft);
     expect(container.querySelector("[role='status']")?.textContent).toContain("Элемент изменился");
+    await act(async () => root?.unmount()); container.remove();
+  });
+
+  it("re-captures a clean draft when context changes, then saves edits against the new context", async () => {
+    const container = document.createElement("div"); document.body.appendChild(container);
+    let currentCapture = capture;
+    const onCapture = vi.fn(() => currentCapture);
+    const onSave = vi.fn(async () => ({ ok: true, message: "Сохранено." }));
+    const props = { ...baseProps(onSave), onCapture };
+    let root: Root | undefined;
+    await act(async () => { root = createRoot(container); root.render(<MvpElementEditor {...props} contextKey="instance:one" />); });
+    currentCapture = { ...capture, projectionYaml: "type: button\nlabel: Другой контекст" };
+    await act(async () => { root?.render(<MvpElementEditor {...props} contextKey="instance:two" />); });
+    expect(textArea(container)?.value).toContain("label: Другой контекст");
+    const edited = serializeMvpPromptDocument(["", "Новый замысел", "type: button\nlabel: Другой контекст"]);
+    await act(async () => setTextarea(textArea(container), edited));
+    await act(async () => saveButton(container)?.click());
+    expect(onSave).toHaveBeenCalledWith({ source, capture: currentCapture, oneOff: "", authorIntent: "Новый замысел", yaml: "type: button\nlabel: Другой контекст" });
+    expect(container.querySelector("[role='status']")?.textContent).not.toContain("Контекст прототипа или экземпляра изменился");
     await act(async () => root?.unmount()); container.remove();
   });
 
@@ -164,6 +192,81 @@ describe("MvpElementEditor", () => {
     } finally {
       await act(async () => root?.unmount()); container.remove(); vi.useRealTimers();
     }
+  });
+
+  it("enters prototype editing from the instance layer menu and returns without deleting the draft", async () => {
+    const container = document.createElement("div"); document.body.appendChild(container);
+    const onEditPrototype = vi.fn();
+    const onReturnToInstance = vi.fn();
+    let root: Root | undefined;
+    await act(async () => { root = createRoot(container); root.render(<MvpElementEditor {...baseProps()} onEditPrototype={onEditPrototype} />); });
+    await act(async () => container.querySelector<HTMLButtonElement>("[aria-label='Слои: Ответ']")?.click());
+    await act(async () => [...container.querySelectorAll<HTMLButtonElement>("[role='option']")].find((item) => item.textContent === "Редактировать прототип")?.click());
+    expect(onEditPrototype).toHaveBeenCalledTimes(1);
+    await act(async () => root?.render(<MvpElementEditor {...baseProps()} editingPrototype={{ name: "Кнопка действия", affectedCount: 3, overriddenCount: 1 }} onReturnToInstance={onReturnToInstance} />));
+    expect(container.textContent).toContain("Прототип: Кнопка действия");
+    expect(container.textContent).toContain("Затронет наследников: 3");
+    await act(async () => container.querySelector<HTMLButtonElement>("[aria-label='Вернуться к экземпляру']")?.click());
+    expect(onReturnToInstance).toHaveBeenCalledTimes(1);
+    await act(async () => root?.unmount()); container.remove();
+  });
+
+  it("loads prototype static text as author intent and labels the long-hold action as a new prototype", async () => {
+    vi.useFakeTimers();
+    const container = document.createElement("div"); document.body.appendChild(container);
+    const prototypeSource: MvpElementSource = { ...source, value: { ...source.value, _prompt: { status: "draft", raw: "instance intent", source: "user", language: "ru", updatedAt: "2026-09-19T00:00:00.000Z" }, _promptTemplate: { raw: "fallback template", staticText: "prototype intent", language: "ru" } } };
+    const onSave = vi.fn(async () => ({ ok: true, message: "Сохранено." }));
+    const onSavePrototype = vi.fn(async () => ({ ok: true, message: "Новый прототип сохранён." }));
+    let root: Root | undefined;
+    try {
+      await act(async () => { root = createRoot(container); root.render(<MvpElementEditor {...baseProps(onSave)} source={prototypeSource} editingPrototype={{ name: "Кнопка", affectedCount: 2 }} onSavePrototype={onSavePrototype} />); });
+      expect(textArea(container)?.value).toContain("prototype intent");
+      expect(textArea(container)?.value).not.toContain("instance intent");
+      const button = saveButton(container);
+      await act(async () => {
+        button?.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, button: 0 }));
+        vi.advanceTimersByTime(550);
+        button?.dispatchEvent(new MouseEvent("pointerup", { bubbles: true, button: 0 }));
+        button?.click();
+      });
+      const template = [...container.querySelectorAll<HTMLButtonElement>("button")].find((item) => item.textContent === "Сохранить как новый прототип");
+      expect(template).toBeDefined();
+      await act(async () => template?.click());
+      expect(onSavePrototype).toHaveBeenCalledWith(prototypeSource);
+    } finally {
+      await act(async () => root?.unmount()); container.remove(); vi.useRealTimers();
+    }
+  });
+
+  it("switches cleanly from instance intent to prototype intent before editing", async () => {
+    const container = document.createElement("div"); document.body.appendChild(container);
+    const transitionSource: MvpElementSource = { ...source, value: { ...source.value, _promptTemplate: { raw: "prototype fallback", staticText: "prototype intent", language: "ru" } } };
+    const onSave = vi.fn(async () => ({ ok: true, message: "Сохранено." }));
+    const props = { ...baseProps(onSave), source: transitionSource };
+    let root: Root | undefined;
+    await act(async () => { root = createRoot(container); root.render(<MvpElementEditor {...props} contextKey="instance:button" />); });
+    expect(textArea(container)?.value).toContain("Понятный выбор");
+    await act(async () => { root?.render(<MvpElementEditor {...props} editingPrototype={{ name: "Кнопка", affectedCount: 1 }} contextKey="prototype:button" />); });
+    expect(textArea(container)?.value).toContain("prototype intent");
+    expect(textArea(container)?.value).not.toContain("Понятный выбор");
+    await act(async () => setTextarea(textArea(container), serializeMvpPromptDocument(["", "Прототипный замысел", "type: button"])));
+    await act(async () => saveButton(container)?.click());
+    expect(onSave).toHaveBeenCalledWith({ source: transitionSource, capture, oneOff: "", authorIntent: "Прототипный замысел", yaml: "type: button" });
+    await act(async () => root?.unmount()); container.remove();
+  });
+
+  it("preserves an edited draft and reports a stale context when the source stays unchanged", async () => {
+    const container = document.createElement("div"); document.body.appendChild(container);
+    const drafts = new Map<string, MvpElementDraft>();
+    const props = baseProps();
+    let root: Root | undefined;
+    await act(async () => { root = createRoot(container); root.render(<MvpElementEditor {...props} drafts={drafts} contextKey="instance:one" />); });
+    const draft = serializeMvpPromptDocument(["Мой черновик", "Замысел", "type: button"]);
+    await act(async () => setTextarea(textArea(container), draft));
+    await act(async () => { root?.render(<MvpElementEditor {...props} drafts={drafts} contextKey="prototype:button" />); });
+    expect(textArea(container)?.value).toBe(draft);
+    expect(container.querySelector("[role='status']")?.textContent).toContain("Контекст прототипа или экземпляра изменился");
+    await act(async () => root?.unmount()); container.remove();
   });
 
   it("uses layer identities despite duplicate labels and exposes page/game scope choices", async () => {

@@ -48,6 +48,7 @@ export {
   type PolylineSelectionPoint
 } from "@/plugins/polyline-selection";
 export type { GameAssetResolver } from "@/lib/game-asset-resolver";
+export { withPreviewContentOrigin } from "@/lib/preview-content-origin";
 
 // Generic session-state accessors only. Game-specific readers (team flags,
 // card objects, team selection, selected card id) intentionally do NOT live

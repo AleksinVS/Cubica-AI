@@ -1,10 +1,26 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { appendFile } from "node:fs/promises";
 import path from "node:path";
 
 const editorUrl = process.env.E2E_EDITOR_URL ?? "http://127.0.0.1:3202";
 const runtimeUrl = process.env.E2E_RUNTIME_URL ?? "http://127.0.0.1:3201";
 const separator = "\n=======================\n";
+
+async function selectPreviewNode(page: Page, pointer: string) {
+  const node = page.frameLocator('iframe[title="Предпросмотр игры"]').locator(`[data-preview-runtime-pointer="${pointer}"]`);
+  await expect(node).toBeVisible({ timeout: 60_000 });
+  const bounds = await node.boundingBox();
+  if (!bounds) throw Error("Missing rendered element bounds");
+  await page.mouse.click(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+}
+
+async function revealToolbar(page: Page) {
+  const menu = page.locator('[aria-label="Плавающее меню редактора"]');
+  const bounds = await menu.boundingBox();
+  if (!bounds) throw Error("Missing toolbar");
+  await page.mouse.move(bounds.x + bounds.width / 2, 2);
+  await expect(menu).toHaveAttribute("data-expanded", "true");
+}
 
 function withOneOff(raw: string, intent: string): string {
   const boundary = raw.indexOf(separator);
@@ -57,9 +73,8 @@ test.describe("editor MVP", { tag: "@editor" }, () => {
       const body = await response.json();
       if (response.status() !== 200) throw Error("Session creation failed");
       editorSessionId = body.session.sessionId;
-      await expect(page.getByTestId("editor-wireframe")).toBeVisible({
-        timeout: 45000,
-      });
+      await expect(page.locator('iframe[title="Предпросмотр игры"]')).toBeVisible({ timeout: 60_000 });
+      await revealToolbar(page);
       await page.getByRole("button", { name: "Закрепить меню", exact: true }).click();
       await expect(page.getByRole("button", { name: "Открепить меню", exact: true })).toHaveAttribute("aria-pressed", "true");
       await page.getByRole("button", { name: "Чат", exact: true }).click();
@@ -67,10 +82,7 @@ test.describe("editor MVP", { tag: "@editor" }, () => {
       const conversations = page.getByRole("complementary", { name: "Диалоги", exact: true });
       const initialChatTitle = await conversations.locator('button[aria-current="true"]').innerText();
       await page.getByRole("button", { name: "Редактор", exact: true }).click();
-      const score = page.locator(
-        '[data-wireframe-source-pointer="/root/screens/0/root/children/0/children/0"]',
-      );
-      await score.click();
+      await selectPreviewNode(page, "/screens/intro/root/children/0/children/0");
       const panel = page.locator('[aria-label="Редактор элемента"]');
       await expect(panel).toBeVisible();
       const draft = panel.getByRole("textbox", { name: "Единый текст элемента" });
@@ -79,12 +91,13 @@ test.describe("editor MVP", { tag: "@editor" }, () => {
       expect(sections).toHaveLength(3);
       const scoreLabel = `Счёт MVP ${Date.now()}`;
       sections[1] = "Показывает текущий счёт.";
-      sections[2] = sections[2].replace(/^_label:.*(?=\n|$)/, `_label: ${JSON.stringify(scoreLabel)}`);
+      sections[2] = sections[2].replace(/^"?Название элемента"?:.*(?=\n|$)/m, `"Название элемента": ${JSON.stringify(scoreLabel)}`);
       await draft.fill(sections.join(separator));
       await panel.getByRole("button", { name: "Сохранить элемент" }).click();
-      await expect(
-        panel.getByText("Авторское описание сохранено.", { exact: false }),
-      ).toBeVisible({ timeout: 45000 });
+      const firstCandidate = page.getByRole("region", { name: "Предложенное изменение" });
+      await expect(firstCandidate).toBeVisible({ timeout: 60_000 });
+      await firstCandidate.getByRole("button", { name: "Применить изменение" }).click();
+      await expect(firstCandidate).not.toBeVisible({ timeout: 60_000 });
       const savedSource = await request.get(`${editorUrl}/api/editor/file?gameId=simple-choice&filePath=ui/web.authoring.json&sessionId=${editorSessionId}`);
       expect(savedSource.status()).toBe(200);
       const savedUi = JSON.parse((await savedSource.json()).text);
@@ -94,11 +107,7 @@ test.describe("editor MVP", { tag: "@editor" }, () => {
       await panel
         .getByRole("button", { name: "Закрыть редактор элемента" })
         .click();
-      await page
-        .locator(
-          '[data-wireframe-source-pointer="/root/screens/0/root/children/1/children/0"]',
-        )
-        .click();
+      await selectPreviewNode(page, "/screens/intro/root/children/1/children/0");
       const buttonDraft = panel.getByRole("textbox", { name: "Единый текст элемента" });
       const candidateText = `Проверка MVP ${Date.now()}`;
       await buttonDraft.fill(withOneOff(await buttonDraft.inputValue(), `Измени текст на «${candidateText}»`));
@@ -392,7 +401,7 @@ test.describe("editor MVP", { tag: "@editor" }, () => {
       const response = await opening;
       expect(response.status()).toBe(200);
       sessionId = (await response.json()).session.sessionId;
-      await expect(page.getByTestId("editor-wireframe")).toBeVisible();
+      await expect(page.locator('iframe[title="Предпросмотр игры"]')).toBeVisible({ timeout: 60_000 });
 
       const menu = page.locator('[aria-label="Плавающее меню редактора"]');
       const reveal = async () => {
@@ -418,7 +427,7 @@ test.describe("editor MVP", { tag: "@editor" }, () => {
       if (!revealed) throw Error("Missing revealed active tool");
       expect(Math.abs(revealed.x - expanded.x)).toBeLessThan(1);
 
-      await page.locator('[data-wireframe-source-pointer="/root/screens/0/root/children/0/children/0"]').click();
+      await selectPreviewNode(page, "/screens/intro/root/children/0/children/0");
       const panel = page.locator('[aria-label="Редактор элемента"]');
       const draft = panel.getByRole("textbox", { name: "Единый текст элемента" });
       const initial = await draft.inputValue();
@@ -482,7 +491,7 @@ test.describe("editor MVP", { tag: "@editor" }, () => {
       const sessionBody =
         (await sessionResponse.json()) as EditorSessionListResponse;
       editorSessionId = sessionBody.session.sessionId;
-      await expect(page.getByTestId("editor-wireframe")).toBeVisible({ timeout: 45_000 });
+      await expect(page.locator('iframe[title="Предпросмотр игры"]')).toBeVisible({ timeout: 60_000 });
 
       const marker = `e2e-session-plugin-${editorSessionId}`;
       const editorProjectRoot = process.env.E2E_EDITOR_PROJECT_ROOT;
@@ -504,19 +513,9 @@ test.describe("editor MVP", { tag: "@editor" }, () => {
         "utf8",
       );
 
-      const previewButton = page.getByRole("button", {
-        name: "Подготовить превью",
-        exact: true,
+      const previewResponse = await request.post(`${editorUrl}/api/editor/preview`, {
+        data: { gameId: "antarctica", sessionId: editorSessionId, reuseLivePreview: true }
       });
-      await expect(previewButton).toBeEnabled();
-      const previewResponsePromise = page.waitForResponse(
-        (response) =>
-          response.url().endsWith("/api/editor/preview") &&
-          response.request().method() === "POST",
-      );
-      await previewButton.click();
-
-      const previewResponse = await previewResponsePromise;
       expect(previewResponse.status()).toBe(200);
       const previewBody =
         (await previewResponse.json()) as EditorPreviewResponse;

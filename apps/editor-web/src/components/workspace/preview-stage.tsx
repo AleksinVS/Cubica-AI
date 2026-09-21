@@ -7,7 +7,7 @@
  * Presentational: all state and handlers come from the {@link EditorWorkspaceController}.
  */
 import { isPlainJsonObject, readJsonPointer, type JsonObject, type PreviewPoint, type PreviewRect } from "@cubica/editor-engine";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { editorRu as t } from "@/lib/locale";
 import { PreviewSelectionOverlay } from "@/components/preview-selection-overlay";
@@ -21,6 +21,7 @@ import { projectTelegramAuthoringManifest } from "@/lib/telegram-structural-proj
 import { projectEditorWireframe, type EditorWireframeNode } from "@/lib/editor-wireframe-projection";
 import { EditorWireframe, type EditorWireframeSelection } from "./editor-wireframe";
 import { MvpElementEditor, type MvpElementDraft } from "./mvp-element-editor";
+import { mvpSourceEntity } from "./mvp-authoring-actions";
 import { buildMvpGeometryChangeSet, geometrySupport, type MvpElementSource } from "./mvp-element-operations";
 
 import type { EditorWorkspaceController } from "./use-editor-workspace.ts";
@@ -136,10 +137,10 @@ export function PreviewStage({ controller, onStartDrawing, onPageSourceChange, r
     [viewModel.entityProjectionDocuments]
   );
   const wireframeProjection = useMemo(
-    () => previewUrl === null && webDocument?.json !== undefined
+    () => !mvp && previewUrl === null && webDocument?.json !== undefined
       ? projectEditorWireframe(webDocument.json, webDocument.filePath)
       : null,
-    [previewUrl, webDocument]
+    [mvp, previewUrl, webDocument]
   );
 
   const resolveSourceEntityId = useCallback((sourceFilePath: string, sourcePointer: string): string | undefined => {
@@ -161,6 +162,51 @@ export function PreviewStage({ controller, onStartDrawing, onPageSourceChange, r
   const promptDrafts = useMemo(() => new Map<string, MvpElementDraft>(), [currentDocument.gameId]);
   const [wireframeScreenId, setWireframeScreenId] = useState<string>();
   const [scopeSelection, setScopeSelection] = useState<{ filePath: string; pointer: string; point: PreviewPoint } | null>(null);
+  const [prototypeSelection, setPrototypeSelection] = useState<{
+    instance: MvpElementSource;
+    source: MvpElementSource;
+    name: string;
+    affectedCount: number;
+    overriddenCount?: number;
+    point?: PreviewPoint;
+  } | null>(null);
+  const [prototypeNotice, setPrototypeNotice] = useState("");
+  const prototypeRequest = useRef(0);
+  const openingPrototypeRequest = useRef<number | null>(null);
+  const selectionIdentity = `${currentDocument.gameId}#${selectedPreviewEntityId ?? ""}#${requestedSource?.filePath ?? ""}#${requestedSource?.pointer ?? ""}`;
+  const selectionIdentityRef = useRef(selectionIdentity);
+  selectionIdentityRef.current = selectionIdentity;
+  useEffect(() => {
+    const invalidation = ++prototypeRequest.current;
+    if (openingPrototypeRequest.current !== null || prototypeSelection !== null) {
+      openingPrototypeRequest.current = null;
+      setPrototypeNotice("Возвращаем экземпляр…");
+      void controller.clearMvpPrototypePreview().then(result => {
+        if (invalidation === prototypeRequest.current) setPrototypeNotice(result.ok ? "Показан экземпляр." : result.message);
+      });
+      setPrototypeSelection(null);
+    }
+  }, [selectionIdentity]);
+  async function returnToInstance() {
+    prototypeRequest.current += 1;
+    openingPrototypeRequest.current = null;
+    const result = await controller.clearMvpPrototypePreview();
+    if (result && !result.ok) { setPrototypeNotice(result.message); return; }
+    setPrototypeSelection(null);
+    setPrototypeNotice("");
+  }
+  useEffect(() => {
+    prototypeRequest.current += 1;
+    openingPrototypeRequest.current = null;
+    setPrototypeSelection(null);
+    setPrototypeNotice("");
+  }, [currentDocument.gameId, previewUrl]);
+  useEffect(() => {
+    if (prototypeSelection !== null && controller.mvpPrototypePreviewIdentity === null) {
+      setPrototypeSelection(null);
+      setPrototypeNotice("Предпросмотр обновлён. Показан экземпляр.");
+    }
+  }, [controller.mvpPrototypePreviewIdentity, prototypeSelection]);
   useEffect(() => { setScopeSelection(null); setWireframeSelection(null); setWireframeScreenId(undefined); }, [currentDocument.gameId]);
   useEffect(() => {
     if (requestedSource === undefined) return;
@@ -208,11 +254,11 @@ export function PreviewStage({ controller, onStartDrawing, onPageSourceChange, r
     (selectedPreviewEntityId === undefined || resolveSourceEntityId(wireframeSelection.sourceFilePath, wireframeSelection.sourcePointer) === selectedPreviewEntityId)
     ? wireframeSelection : null;
   const selectedSourceFile = selectedPreviewDescriptor?.metadata?.sourceFile;
-  const selectedFilePath = scopeSelection?.filePath ?? (previewUrl !== null
+  const selectedFilePath = prototypeSelection?.source.filePath ?? scopeSelection?.filePath ?? (previewUrl !== null
     ? (typeof selectedSourceFile === "string" ? toRepositoryAuthoringFilePath(selectedSourceFile, currentDocument.gameId) : undefined)
       ?? selectedProjectionEntity?.primarySource.filePath
     : matchingWireframeSelection?.sourceFilePath ?? selectedProjectionEntity?.primarySource.filePath);
-  const selectedSourcePointer = scopeSelection?.pointer ?? (previewUrl !== null
+  const selectedSourcePointer = prototypeSelection?.source.pointer ?? scopeSelection?.pointer ?? (previewUrl !== null
     ? selectedPreviewDescriptor?.authoringPointer ?? selectedProjectionEntity?.primarySource.pointer
     : matchingWireframeSelection?.sourcePointer ?? selectedProjectionEntity?.primarySource.pointer);
   const selectedDocument = viewModel.entityProjectionDocuments.find((document) => document.filePath === selectedFilePath);
@@ -224,7 +270,12 @@ export function PreviewStage({ controller, onStartDrawing, onPageSourceChange, r
     : undefined;
   const selectedSourceEntityId = selectedFilePath !== undefined && selectedSourcePointer !== undefined
     ? resolveSourceEntityId(selectedFilePath, selectedSourcePointer) : undefined;
-  const mvpEntity = selectedSourceEntityId === undefined ? undefined : viewModel.editorEntityProjection.entityById.get(selectedSourceEntityId);
+  const mvpEntity = (selectedSourceEntityId === undefined ? undefined : viewModel.editorEntityProjection.entityById.get(selectedSourceEntityId)) ??
+    (mvpSource === undefined || (selectedDocument?.documentKind !== "game" && selectedDocument?.documentKind !== "ui") ? undefined : mvpSourceEntity(mvpSource, selectedDocument.documentKind));
+  const prototypeContext = mvpSource === undefined || prototypeSelection !== null ? undefined : controller.mvpPrototypeContext(mvpSource);
+  const effectiveStyle = mvpSource === undefined ? undefined : controller.mvpEffectiveStyle(mvpSource);
+  const editingMode = prototypeSelection === null ? "instance" : "prototype";
+  const semanticCapture = mvpSource === undefined ? undefined : controller.captureMvpElementSource(mvpSource, editingMode);
   const mvpPanelLabel = typeof mvpSource?.value._label === "string" ? mvpSource.value._label :
     selectedPreviewDescriptor?.label ?? selectedProjectionEntity?.label ?? matchingWireframeSelection?.sourcePointer.split("/").at(-1) ?? "Элемент";
 
@@ -316,18 +367,19 @@ export function PreviewStage({ controller, onStartDrawing, onPageSourceChange, r
             />
             <PreviewSelectionOverlay
               mvp={mvp}
-              geometryUnsupportedReason={geometrySupport(mvpSource)}
-              onGeometryCommit={(entity, gesture) => {
-                if (mvpSource === undefined || entity.entityId !== selectedPreviewEntityId) return;
-                const changeSet = buildMvpGeometryChangeSet(mvpSource, entity.bounds, gesture);
-                if (changeSet !== undefined) void directMvpMutation(changeSet);
+              geometryUnsupportedReason={geometrySupport(mvpSource, effectiveStyle)}
+              onGeometryCommit={async (entity, gesture) => {
+                if (mvpSource === undefined || entity.entityId !== selectedPreviewEntityId) return false;
+                const changeSet = buildMvpGeometryChangeSet(mvpSource, entity.bounds, gesture, effectiveStyle);
+                if (changeSet === undefined || !await directMvpMutation(changeSet)) return false;
+                return controller.waitForLatestPreviewBuild();
               }}
               onRegionRectChange={(rect) => {
                 if (previewPromptContext?.kind === "region") void handlePreviewRegionSelect(previewPromptContext.entities, rect, previewPromptContext.point);
               }}
               onStartDrawing={onStartDrawing}
               onSelectScope={selectScope}
-              disabled={!effectivePreviewInspectMode || (mvp && (controller.aiApplyState === "applying" || controller.aiApplyState === "planning"))}
+              disabled={prototypeSelection !== null || !effectivePreviewInspectMode || (mvp && (controller.aiApplyState === "applying" || controller.aiApplyState === "planning"))}
               entities={mvpPreviewEntities}
               selectedEntityId={selectedPreviewEntityId}
               pointSelectionEnabled={previewPointSelectionMode}
@@ -352,8 +404,9 @@ export function PreviewStage({ controller, onStartDrawing, onPageSourceChange, r
               }}
               onTemporaryPlayChange={handlePreviewTemporaryPlayChange}
             />
+            {prototypeSelection !== null ? <div aria-label="Окружение прототипа заблокировано" style={{ position: "absolute", inset: 0, zIndex: 11 }} /> : null}
           </div>
-        ) : wireframeProjection !== null ? (
+        ) : !mvp && wireframeProjection !== null ? (
           <div className="preview-wireframe-host">
             {previewBlockedPlate !== null ? (
               <p role="status">{formatPreviewUnbuiltMessage(previewBlockedPlate.blockingErrorCount)}</p>
@@ -392,6 +445,8 @@ export function PreviewStage({ controller, onStartDrawing, onPageSourceChange, r
               </button>
             ) : null}
           </div>
+        ) : mvp && workflowState === "previewing" ? (
+          <div className="preview-empty-state" role="status">Подготавливаем игру для редактора…</div>
         ) : (
           <div className="preview-empty-state">
             <strong>{selectedNode?.semanticTitle ?? t.previewStage.noSelection}</strong>
@@ -411,7 +466,8 @@ export function PreviewStage({ controller, onStartDrawing, onPageSourceChange, r
             </button>
           </div>
         )}
-        {mvp && (scopeSelection !== null || selectedPreviewDescriptor !== undefined || matchingWireframeSelection !== null && previewUrl === null || selectedProjectionEntity !== undefined) ? (
+        {prototypeNotice ? <p role="status" className="preview-context-notice">{prototypeNotice}</p> : null}
+        {mvp && (prototypeSelection !== null || scopeSelection !== null || selectedPreviewDescriptor !== undefined || matchingWireframeSelection !== null && previewUrl === null || selectedProjectionEntity !== undefined) ? (
           <div hidden={!effectivePreviewInspectMode}>
           <MvpElementEditor
             drafts={promptDrafts}
@@ -420,16 +476,35 @@ export function PreviewStage({ controller, onStartDrawing, onPageSourceChange, r
             entity={mvpEntity}
             label={mvpPanelLabel}
             selectedLayerId={selectedPreviewDescriptor?.entityId}
-            bounds={scopeSelection === null ? inspectorBounds : undefined}
-            geometryUnsupportedReason={selectedPreviewDescriptor === undefined ? undefined : geometrySupport(mvpSource)}
+            bounds={prototypeSelection === null && scopeSelection === null ? inspectorBounds : undefined}
+            geometryUnsupportedReason={prototypeSelection !== null || selectedPreviewDescriptor === undefined ? undefined : geometrySupport(mvpSource, effectiveStyle)}
             layers={previewPromptContext?.kind === "entity" ? previewPromptContext.entities.map((item) => mvpPreviewEntities.find((candidate) => candidate.entityId === item.entityId) ?? item) : undefined}
-            layerPoint={scopeSelection?.point ?? (previewPromptContext?.kind === "entity" ? previewPromptContext.point : matchingWireframeSelection?.point)}
+            layerPoint={prototypeSelection?.point ?? scopeSelection?.point ?? (previewPromptContext?.kind === "entity" ? previewPromptContext.point : matchingWireframeSelection?.point)}
             onSelectLayer={selectPreviewEntity}
             onSelectScope={selectScope}
-            onClose={() => { handleInspectorClose(); setSelectedPreviewEntityId(undefined); setWireframeSelection(null); setScopeSelection(null); setPreviewPromptContext(null); }}
-            onSave={controller.saveMvpElementDraft}
-            onSavePrototype={controller.saveMvpPrototype}
-            onCapture={(entity) => mvpSource === undefined ? captureEntitySource(entity) : controller.captureMvpElementSource(mvpSource)}
+            onClose={() => { if (prototypeSelection !== null) { void returnToInstance(); return; } handleInspectorClose(); setSelectedPreviewEntityId(undefined); setWireframeSelection(null); setScopeSelection(null); setPreviewPromptContext(null); }}
+            editingPrototype={prototypeSelection ?? undefined}
+            contextKey={semanticCapture?.contextKey}
+            localChildOverrides={prototypeContext?.localChildOverrides}
+            onEditPrototype={prototypeContext === undefined || mvpSource === undefined ? undefined : () => {
+              const instance = mvpSource;
+              const request = ++prototypeRequest.current;
+              const selectionAtStart = selectionIdentityRef.current;
+              openingPrototypeRequest.current = request;
+              setPrototypeNotice("Открываем прототип…");
+              void controller.showMvpPrototypePreview(instance, prototypeContext.source).then(result => {
+                if (request !== prototypeRequest.current || selectionAtStart !== selectionIdentityRef.current) return;
+                openingPrototypeRequest.current = null;
+                if (!result.ok) { setPrototypeNotice(result.message); return; }
+                setPrototypeSelection({ ...prototypeContext, instance, point: previewPromptContext?.kind === "entity" ? previewPromptContext.point : undefined });
+                setPrototypeNotice("");
+              });
+            }}
+            onReturnToInstance={() => { void returnToInstance(); }}
+            onResetOverrides={mvpSource === undefined || prototypeSelection !== null || !semanticCapture?.semantic?.properties.some(property => property.resetTarget !== undefined) ? undefined : () => controller.resetMvpInheritedProperties(mvpSource)}
+            onSave={input => controller.saveMvpElementDraft({ ...input, mode: editingMode })}
+            onSavePrototype={prototypeSelection === null ? controller.saveMvpPrototype : undefined}
+            onCapture={(entity) => mvpSource === undefined ? captureEntitySource(entity) : controller.captureMvpElementSource(mvpSource, editingMode)}
           />
           </div>
         ) : null}

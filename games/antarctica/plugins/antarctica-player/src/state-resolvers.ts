@@ -27,6 +27,7 @@ import {
   readStepIndex,
   resolveGameContent
 } from "@cubica/player-web/plugin-api";
+import { withPreviewContentOrigin } from "@cubica/player-web/plugin-api";
 
 type CardObjectState = {
   objectType: string;
@@ -371,14 +372,15 @@ export function resolveBoardCards(
     return [];
   }
 
-  const cardsById = new Map(gameContent.cards.map((card) => [card.cardId, card]));
+  const cardsById = new Map(gameContent.cards.map((card, index) => [card.cardId, { card, index }]));
   return board.cardIds
     .map((cardId) => cardsById.get(cardId))
-    .filter((card): card is GamePlayerBoardCard => {
-      if (!card) {
+    .filter((source): source is { card: GamePlayerBoardCard; index: number } => {
+      if (!source) {
         return false;
       }
 
+      const card = source.card;
       const contentAvailable = (card as GamePlayerBoardCard & { available?: boolean }).available;
       const cardState = cardObjects?.[card.cardId];
 
@@ -389,9 +391,12 @@ export function resolveBoardCards(
 
       return contentAvailable !== false;
     })
-    .map((card) => ({
+    .map(({ card, index }) => withPreviewContentOrigin({
       ...card,
       visualState: resolveCardVisualState(cardObjects?.[card.cardId])
+    }, {
+      runtimePointer: `/content/data/cards/${index}`,
+      fields: ["title", "summary", "backText", "selectLabel"]
     }));
 }
 

@@ -12,6 +12,7 @@ import type {
   GameConfigData,
   ResolverFactory
 } from "@cubica/player-web/plugin-api";
+import { withPreviewContentOrigin } from "@cubica/player-web/plugin-api";
 
 import type { AntarcticaGameState } from "./contracts";
 import {
@@ -33,6 +34,7 @@ import {
 
 const BOARD_TOPBAR_SCREEN_KEY = "board-topbar";
 const INFO_TOPBAR_SCREEN_KEY = "info-topbar";
+const TEAM_SELECTION_SCREEN_KEY = "team-selection";
 const LEFT_SIDEBAR_SCREEN_KEY = "S1_LEFT";
 const ENTRY_SCREEN_KEY = "S1";
 // Antarctica uses S2 for several scenario scenes. Only these step indexes are
@@ -58,6 +60,9 @@ export const createAntarcticaConfig: ResolverFactory<AntarcticaGameState, GamePl
 
     resolveScreenKey(screenId, stepIndex, infoId, gameUi) {
       if (screenId === "S2") {
+        if (stepIndex === 15 && gameUi?.screens[TEAM_SELECTION_SCREEN_KEY]) {
+          return TEAM_SELECTION_SCREEN_KEY;
+        }
         const boardKey = this.resolveBoardScreenKey?.(stepIndex) ?? null;
         if (boardKey && gameUi?.screens[boardKey]) {
           return boardKey;
@@ -104,9 +109,33 @@ export const createAntarcticaConfig: ResolverFactory<AntarcticaGameState, GamePl
     resolveGameState(content, session) {
       const publicState = session?.state?.public as Record<string, unknown> | undefined;
       const gameContent = resolveAntarcticaContent(content);
-      const currentInfo = resolveCurrentInfoEntry(gameContent, publicState);
+      const selectedInfo = resolveCurrentInfoEntry(gameContent, publicState);
+      const infoIndex = selectedInfo === null ? -1 : gameContent?.infos.indexOf(selectedInfo) ?? -1;
+      const currentInfo = selectedInfo !== null && infoIndex >= 0 &&
+        gameContent?.infos.lastIndexOf(selectedInfo) === infoIndex
+        ? withPreviewContentOrigin({ ...selectedInfo }, {
+            runtimePointer: `/content/data/infos/${infoIndex}`,
+            fields: ["title", "body", "advanceLabel"]
+          })
+        : selectedInfo;
       const currentBoard = resolveCurrentBoard(gameContent, publicState);
-      const currentTeamSelection = resolveCurrentTeamSelectionScene(gameContent, publicState);
+      const selectedTeamSelection = resolveCurrentTeamSelectionScene(gameContent, publicState);
+      const teamSelectionIndex = selectedTeamSelection === null ? -1 :
+        gameContent?.teamSelections?.indexOf(selectedTeamSelection) ?? -1;
+      const currentTeamSelection = selectedTeamSelection !== null && teamSelectionIndex >= 0 &&
+        gameContent?.teamSelections?.lastIndexOf(selectedTeamSelection) === teamSelectionIndex
+        ? withPreviewContentOrigin({
+            ...selectedTeamSelection,
+            members: selectedTeamSelection.members.map((member, index) =>
+              withPreviewContentOrigin({ ...member }, {
+                runtimePointer: `/content/data/teamSelections/${teamSelectionIndex}/members/${index}`,
+                fields: ["name", "summary", "selectLabel"]
+              }))
+          }, {
+            runtimePointer: `/content/data/teamSelections/${teamSelectionIndex}`,
+            fields: ["title", "body", "confirmLabel"]
+          })
+        : selectedTeamSelection;
       const cardObjects = readCardObjects(session);
       const selectedCardId = readSelectedCardId(session);
       const boardCards = resolveBoardCards(gameContent, currentBoard, cardObjects);

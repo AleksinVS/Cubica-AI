@@ -13,6 +13,7 @@ type PageProps = {
     contentSourceId?: string;
     editorOrigin?: string;
     previewInstanceId?: string;
+    previewRevision?: string;
   }>;
 };
 
@@ -64,6 +65,7 @@ export default async function Page({ searchParams }: PageProps) {
       editorPreviewParentOrigin={editorPreviewParentOrigin}
       playerPluginBundles={content.pluginBundles ?? []}
       contentSourceId={previewContentSourceId}
+      previewRevision={editorPreviewMode ? params?.previewRevision : undefined}
     />
   );
 }

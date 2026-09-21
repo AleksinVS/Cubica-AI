@@ -107,6 +107,9 @@ export function MvpFloatingMenu({
   const collapseTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const dragRef = useRef<DragState | null>(null);
   const suppressClickRef = useRef(false);
+  const pointerInteractionRef = useRef(false);
+  const pointerInteractionResetRef = useRef<number | undefined>(undefined);
+  const pointerFocusRef = useRef(false);
   const focusAfterRevealRef = useRef(false);
   const holdsRef = useRef({ pinned: false, focus: false, pointer: false, popover: false });
   const [revealed, setRevealed] = useState(defaultExpanded);
@@ -134,6 +137,21 @@ export function MvpFloatingMenu({
     }
   }, []);
 
+  const clearPointerInteractionReset = useCallback(() => {
+    if (pointerInteractionResetRef.current !== undefined) {
+      clearTimeout(pointerInteractionResetRef.current);
+      pointerInteractionResetRef.current = undefined;
+    }
+  }, []);
+
+  const schedulePointerInteractionReset = useCallback(() => {
+    clearPointerInteractionReset();
+    pointerInteractionResetRef.current = window.setTimeout(() => {
+      pointerInteractionResetRef.current = undefined;
+      pointerInteractionRef.current = false;
+    }, 0);
+  }, [clearPointerInteractionReset]);
+
   const setPopover = useCallback((next: OpenPopover) => {
     holdsRef.current.popover = next !== null;
     setOpenPopover(next);
@@ -145,7 +163,7 @@ export function MvpFloatingMenu({
       collapseTimerRef.current = undefined;
       const holds = holdsRef.current;
       if (!holds.pinned && !holds.focus && !holds.pointer && !holds.popover && dragRef.current === null) setRevealed(false);
-    }, 220);
+    }, 320);
   }, [clearCollapseTimer]);
 
   const measureWidth = useCallback(() => {
@@ -190,7 +208,10 @@ export function MvpFloatingMenu({
     [currentLeft, measureWidth]
   );
 
-  useEffect(() => () => clearCollapseTimer(), [clearCollapseTimer]);
+  useEffect(() => () => {
+    clearCollapseTimer();
+    clearPointerInteractionReset();
+  }, [clearCollapseTimer, clearPointerInteractionReset]);
 
   useLayoutEffect(() => {
     if (focusAfterRevealRef.current && isExpanded) {
@@ -283,15 +304,31 @@ export function MvpFloatingMenu({
   };
 
   const handlePointerLeave = (event: React.PointerEvent<HTMLDivElement>) => {
-    const rect = menuRef.current?.getBoundingClientRect();
-    const withinProximity = Boolean(rect && event.clientX >= rect.left - 24 && event.clientX <= rect.right + 24 && event.clientY >= rect.top - 24 && event.clientY <= rect.bottom + 24);
-    holdsRef.current.pointer = withinProximity;
-    setPointerWithin(withinProximity);
-    if (!withinProximity && !holdsRef.current.pinned && !holdsRef.current.focus && !holdsRef.current.popover && dragRef.current === null) requestCollapse();
+    void event;
+    if (dragRef.current && !dragRef.current.moved) {
+      dragRef.current = null;
+      setDragging(false);
+    }
+    pointerInteractionRef.current = false;
+    if (pointerFocusRef.current) {
+      holdsRef.current.focus = false;
+      setFocusWithin(false);
+    }
+    holdsRef.current.pointer = false;
+    setPointerWithin(false);
+    if (!holdsRef.current.pinned && !holdsRef.current.focus && !holdsRef.current.popover && dragRef.current === null) requestCollapse();
   };
 
   const handleFocusCapture = () => {
     clearCollapseTimer();
+    if (pointerInteractionRef.current) {
+      pointerFocusRef.current = true;
+      holdsRef.current.focus = false;
+      setFocusWithin(false);
+      setRevealed(true);
+      return;
+    }
+    pointerFocusRef.current = false;
     holdsRef.current.focus = true;
     setFocusWithin(true);
     setRevealed(true);
@@ -301,13 +338,18 @@ export function MvpFloatingMenu({
     window.setTimeout(() => {
       const element = menuRef.current;
       const stillFocused = Boolean(element && element.contains(document.activeElement));
-      holdsRef.current.focus = stillFocused;
-      setFocusWithin(stillFocused);
-      if (!stillFocused && !holdsRef.current.pinned && !holdsRef.current.pointer && !holdsRef.current.popover && dragRef.current === null) requestCollapse();
+      const shouldHoldFocus = stillFocused && !pointerInteractionRef.current && !pointerFocusRef.current;
+      if (!stillFocused) pointerFocusRef.current = false;
+      holdsRef.current.focus = shouldHoldFocus;
+      setFocusWithin(shouldHoldFocus);
+      if (!shouldHoldFocus && !holdsRef.current.pinned && !holdsRef.current.pointer && !holdsRef.current.popover && dragRef.current === null) requestCollapse();
     }, 0);
   };
 
   const startDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+    pointerInteractionRef.current = true;
+    holdsRef.current.focus = false;
+    setFocusWithin(false);
     const target = event.target instanceof Element ? event.target : null;
     if (!target || target.closest("[role='menu']")) return;
     const inToolbar = target.closest("[data-mvp-toolbar]") || target === menuRef.current;
@@ -339,6 +381,7 @@ export function MvpFloatingMenu({
 
   const finishDrag = (event?: React.PointerEvent<HTMLDivElement>) => {
     if (event && dragRef.current && event.pointerId !== dragRef.current.pointerId) return;
+    const hadPointerInteraction = pointerInteractionRef.current;
     const moved = dragRef.current?.moved ?? false;
     if (event && typeof event.currentTarget.hasPointerCapture === "function") {
       try {
@@ -348,6 +391,8 @@ export function MvpFloatingMenu({
       }
     }
     dragRef.current = null;
+    pointerInteractionRef.current = hadPointerInteraction;
+    if (hadPointerInteraction) schedulePointerInteractionReset();
     setDragging(false);
     if (moved) suppressClickRef.current = true;
     if (!holdsRef.current.pinned && !holdsRef.current.focus && !holdsRef.current.pointer && !holdsRef.current.popover) requestCollapse();
@@ -378,9 +423,12 @@ export function MvpFloatingMenu({
 
   const closePopoverAndRestoreFocus = useCallback(() => {
     const trigger = openPopover === "scenario" ? scenarioTriggerRef : openPopover === "drawing" ? drawingTriggerRef : addTriggerRef;
+    const restoringPointerFocus = pointerInteractionRef.current;
+    if (restoringPointerFocus) clearPointerInteractionReset();
     setPopover(null);
     trigger.current?.focus();
-  }, [openPopover, setPopover]);
+    if (restoringPointerFocus) schedulePointerInteractionReset();
+  }, [clearPointerInteractionReset, openPopover, schedulePointerInteractionReset, setPopover]);
 
   const choosePencil = (color: string, width: number) => {
     setSelectedPencilColor(color);
@@ -493,6 +541,12 @@ export function MvpFloatingMenu({
         >
           {openPopover === "scenario" ? (
             <>
+              <section className={styles.group} aria-label="Правила">
+                <button type="button" className={styles.row} role="menuitem" disabled={disabledModes.rules !== undefined} title={disabledModes.rules} onClick={() => { onModeChange("rules"); closePopoverAndRestoreFocus(); }}>
+                  <MvpMenuIcon name="rules" />
+                  <span>Правила</span>
+                </button>
+              </section>
               <section className={styles.group} aria-labelledby="mvp-saved-states">
                 <h2 id="mvp-saved-states" className={styles.groupTitle}>Сохранённые состояния</h2>
                 {savedStates.length > 0 ? savedStates.map((entry) => (
@@ -516,13 +570,6 @@ export function MvpFloatingMenu({
                     <span>{entry.label}{entry.disabledReason ? <small>{entry.disabledReason}</small> : null}</span>
                   </button>
                 )) : <p className={styles.empty}>Этапы не объявлены</p>}
-              </section>
-              <section className={styles.group} aria-labelledby="mvp-scenario-rules">
-                <h2 id="mvp-scenario-rules" className={styles.groupTitle}>Правила</h2>
-                <button type="button" className={styles.row} role="menuitem" disabled={disabledModes.rules !== undefined} title={disabledModes.rules} onClick={() => { onModeChange("rules"); closePopoverAndRestoreFocus(); }}>
-                  <MvpMenuIcon name="rules" />
-                  <span>Правила</span>
-                </button>
               </section>
             </>
           ) : openPopover === "add" ? (

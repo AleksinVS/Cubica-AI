@@ -1016,6 +1016,11 @@ export interface FacetSourceLine {
   readonly valueStart?: number;
   /** Facet this line belongs to; absent on the `Сущность:`/`Тип:` header lines. */
   readonly facetKind?: EditorEntityFacetKind;
+  /** Safe local parent creation for an inherited scalar override. */
+  readonly writeParents?: readonly string[];
+  readonly writeOperation?: "add" | "replace";
+  /** A rule or linked/shared value can only be changed by the agent proposal path. */
+  readonly agentOnly?: true;
 }
 
 /**

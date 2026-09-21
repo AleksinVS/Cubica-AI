@@ -2,7 +2,8 @@ import { expect, test } from "@playwright/test";
 
 const editorUrl = process.env.E2E_EDITOR_URL ?? "http://127.0.0.1:3202";
 
-test("selects structural authoring nodes before the first compiled preview", { tag: "@editor" }, async ({ page, request }) => {
+test("opens the actual preview immediately and selects an authored element", { tag: "@editor" }, async ({ page, request }) => {
+  test.setTimeout(90_000);
   let sessionId: string | undefined;
   try {
     const opening = page.waitForResponse(response =>
@@ -14,15 +15,14 @@ test("selects structural authoring nodes before the first compiled preview", { t
     const body = await response.json();
     sessionId = body.session.sessionId;
 
-    const wireframe = page.getByTestId("editor-wireframe");
-    await expect(wireframe).toBeVisible();
-    await expect(wireframe.getByLabel("Выбрать экран")).toBeVisible();
-    // The object-template node may not yet resolve to an editable entity. It
-    // must still visibly acknowledge selection and retain its source pointer.
-    const node = wireframe.locator("[data-wireframe-source-pointer]").last();
-    await node.click();
-    await expect(node).toHaveAttribute("aria-pressed", "true");
-    await expect(page.locator("iframe[title='Предпросмотр игры']")).toHaveCount(0);
+    await expect(page.getByTestId("editor-wireframe")).toHaveCount(0);
+    const frame = page.frameLocator("iframe[title='Предпросмотр игры']");
+    const node = frame.locator('[data-preview-runtime-pointer="/screens/intro/root/children/0/children/0"]');
+    await expect(node).toBeVisible({ timeout: 60_000 });
+    const bounds = await node.boundingBox();
+    if (!bounds) throw Error("No bounds for the rendered element");
+    await page.mouse.click(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+    await expect(page.getByRole("textbox", { name: "Единый текст элемента" })).toBeVisible();
   } finally {
     await page.close().catch(() => undefined);
     if (sessionId !== undefined) {

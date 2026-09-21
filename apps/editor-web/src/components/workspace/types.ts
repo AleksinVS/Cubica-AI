@@ -141,6 +141,7 @@ export interface EditorWorkflowResponse {
   readonly diagnostics?: readonly RoutedEditorDiagnostic[];
   readonly pluginValidation?: EditorPluginValidationResult;
   readonly playerUrl?: string;
+  readonly refreshKind?: "unchanged" | "ui" | "restart";
   readonly sessionId?: string;
   readonly sourceMaps?: readonly PreviewSelectionSourceMap[];
 }

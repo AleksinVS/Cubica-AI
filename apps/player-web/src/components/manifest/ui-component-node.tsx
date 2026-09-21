@@ -34,6 +34,8 @@ import {
   childRuntimePointer,
   createPreviewElementAttributes
 } from "./preview-metadata";
+import { resolvePreviewMetricBinding, resolvePreviewTextBindingEvidence } from "./preview-text-binding";
+import { readPreviewContentOrigin } from "@/lib/preview-content-origin";
 import type { PlayerLayoutMode } from "@/lib/player-layout-mode";
 import {
   applyUiComponentGeometryStyle,
@@ -251,6 +253,8 @@ export function UiComponentNode({
   designArtifacts,
   editorPreviewMode = false,
   runtimePointer,
+  previewInstanceKey,
+  previewContentRuntimePointer,
   content,
   session,
   onBoardAction,
@@ -277,6 +281,9 @@ export function UiComponentNode({
   editorPreviewMode?: boolean;
   /** Runtime JSON Pointer for the current component in the generated UI manifest. */
   runtimePointer?: string;
+  /** Stable source identity of an itemTemplate instance, propagated through its children. */
+  previewInstanceKey?: string;
+  previewContentRuntimePointer?: string;
   /** Player-facing content passed only to plugin-owned interactive surfaces. */
   content?: PlayerFacingContent;
   /** Authoritative snapshot passed only to plugin-owned interactive surfaces. */
@@ -326,11 +333,21 @@ export function UiComponentNode({
   const componentProps = component.props ?? {};
   const effectiveVisualMode = component.visualMode ?? parentVisualMode ?? "auto";
   const componentRuntimePointer = resolvePreviewRuntimePointer(component, runtimePointer);
+  const textEvidence = editorPreviewMode && content !== undefined && component.type !== "gameVariableComponent"
+    ? resolvePreviewTextBindingEvidence({ props: componentProps as Record<string, unknown>, content, gameState, localContext })
+    : undefined;
   const previewAttributes = createPreviewElementAttributes({
     enabled: editorPreviewMode,
     component,
     runtimePointer: componentRuntimePointer,
-    layer: screenKey
+    layer: screenKey,
+    instanceKey: previewInstanceKey,
+    contentRuntimePointer: textEvidence?.contentRuntimePointer ?? previewContentRuntimePointer,
+    textBinding: editorPreviewMode && content !== undefined
+      ? component.type === "gameVariableComponent"
+        ? resolvePreviewMetricBinding(componentProps as Record<string, unknown>, content)
+        : textEvidence?.textBinding
+      : undefined
   });
 
   // visualMode resolution: "auto" → "image" if designImageRef available, else "style"
@@ -384,6 +401,11 @@ export function UiComponentNode({
             ...localContext,
             [itemKey]: item,
           };
+          const sourceOrigin = readPreviewContentOrigin(item);
+          const itemInstanceKey = sourceOrigin === undefined
+            ? `${previewInstanceKey ?? componentRuntimePointer ?? ""}:index:${index}`
+            : `${previewInstanceKey ?? componentRuntimePointer ?? ""}:source:${sourceOrigin.runtimePointer}:occurrence:${items.slice(0, index).filter((candidate) =>
+                readPreviewContentOrigin(candidate)?.runtimePointer === sourceOrigin.runtimePointer).length}`;
 
           return (
             <React.Fragment key={`${component.id ?? "item"}-${index}`}>
@@ -402,6 +424,8 @@ export function UiComponentNode({
                   designArtifacts={designArtifacts}
                   editorPreviewMode={editorPreviewMode}
                   runtimePointer={childRuntimePointer(componentRuntimePointer, childIndex)}
+                  previewInstanceKey={itemInstanceKey}
+                  previewContentRuntimePointer={sourceOrigin?.runtimePointer}
                   content={content}
                   session={session}
                   onBoardAction={onBoardAction}
@@ -502,6 +526,8 @@ export function UiComponentNode({
           designArtifacts={designArtifacts}
           editorPreviewMode={editorPreviewMode}
           runtimePointer={childRuntimePointer(componentRuntimePointer, index)}
+          previewInstanceKey={previewInstanceKey}
+          previewContentRuntimePointer={previewContentRuntimePointer}
           content={content}
           session={session}
           onBoardAction={onBoardAction}
@@ -599,6 +625,8 @@ export function UiComponentNode({
                   designArtifacts={designArtifacts}
                   editorPreviewMode={editorPreviewMode}
                   runtimePointer={childRuntimePointer(componentRuntimePointer, index)}
+                  previewInstanceKey={previewInstanceKey}
+                  previewContentRuntimePointer={previewContentRuntimePointer}
                   content={content}
                   session={session}
                   onBoardAction={onBoardAction}
@@ -636,6 +664,8 @@ export function UiComponentNode({
               designArtifacts={designArtifacts}
               editorPreviewMode={editorPreviewMode}
               runtimePointer={childRuntimePointer(componentRuntimePointer, index)}
+              previewInstanceKey={previewInstanceKey}
+              previewContentRuntimePointer={previewContentRuntimePointer}
               content={content}
               session={session}
               onBoardAction={onBoardAction}

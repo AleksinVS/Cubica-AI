@@ -135,6 +135,42 @@
       },
       "additionalProperties": false
     },
+    "projectionProperty": {
+      "type": "object",
+      "description": "Authoring-only visible property of one prototype. Paths are JSON Pointers relative to the selected facet root; they do not grant write authority.",
+      "required": ["id", "facet", "path", "presentation"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-zA-Z0-9_.-]*$", "description": "Stable identity within this prototype family, preserved across inherited refinements." },
+        "facet": { "type": "string", "enum": ["logic", "content", "state", "view", "design", "plugin"] },
+        "path": { "type": "string", "pattern": "^(/([^~/]|~[01])+)+$" },
+        "label": { "type": "string", "minLength": 1 },
+        "description": { "type": "string", "minLength": 1 },
+        "order": { "type": "integer" },
+        "group": { "type": "string", "minLength": 1 },
+        "expose": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "enum": ["instance", "prototype", "details"] } },
+        "presentation": { "enum": ["text", "quantity", "choice", "rule"] },
+        "reference": {
+          "type": "object",
+          "description": "A declared nested or linked facet selected from proven editor context, never an arbitrary query.",
+          "required": ["facet", "path"],
+          "properties": {
+            "facet": { "enum": ["logic", "content", "state", "view", "design", "plugin"] },
+            "path": { "type": "string", "pattern": "^(/([^~/]|~[01])+)+$" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "projectionDescriptor": {
+      "type": "object",
+      "description": "Authoring-only prototype property allowlist; child prototypes refine entries with the same id.",
+      "required": ["properties"],
+      "properties": {
+        "properties": { "type": "array", "items": { "$ref": "#/definitions/projectionProperty" } }
+      },
+      "additionalProperties": false
+    },
     "requiresView": {
       "description": "Authoring-only declaration that a game entity type/prototype REQUIRES a UI view (ADR-057 §4.2, §5; editor-preview-first-ux §2.1). `true` requires a view in every preview channel; the object form limits the requirement to the named channels. The editor raises the `entity-missing-view` diagnostic when a required view is absent in the active channel. This is authoring metadata: the compiler strips it and it never appears in runtime manifests.",
       "oneOf": [
@@ -217,6 +253,9 @@
         },
         "_promptTemplate": {
           "$ref": "#/definitions/promptTemplate"
+        },
+        "_projection": {
+          "$ref": "#/definitions/projectionDescriptor"
         },
         "_requiresView": {
           "$ref": "#/definitions/requiresView",

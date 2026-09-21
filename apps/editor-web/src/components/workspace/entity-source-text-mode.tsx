@@ -29,7 +29,7 @@
  * supplied by the controller when the mode opens, and apply/refresh are callbacks.
  * No game/channel/type ids are hardcoded (CLAUDE §10).
  */
-import type { InterpretationLineReport, ReturnedIntentInput } from "@cubica/editor-engine";
+import type { InterpretationLineReport, ReturnedIntentInput, SemanticEntityProjection } from "@cubica/editor-engine";
 import React, { useState } from "react";
 
 import { editorRu as t } from "@/lib/locale";
@@ -41,7 +41,12 @@ import { editorRu as t } from "@/lib/locale";
  * documents at capture time, and the entity id. It is the `ReturnedIntentInput`
  * minus the (still-being-edited) `returnedText`.
  */
-export type EntitySourceCapture = Omit<ReturnedIntentInput, "returnedText">;
+export type EntitySourceCapture = Omit<ReturnedIntentInput, "returnedText"> & {
+  /** Hidden authoring owners and reset targets for ADR-108's semantic projection. */
+  readonly semantic?: SemanticEntityProjection;
+  readonly mode?: "instance" | "prototype";
+  readonly contextKey?: string;
+};
 
 /**
  * Outcome the controller returns from applying a returned intent, so the panel can

@@ -21,6 +21,8 @@ interface CurrentPreviewState {
 
 export interface EditorCurrentPreviewRoot {
   readonly repoRoot: string;
+  /** Last published immutable root, if this session already has a preview. */
+  readonly previousRoot?: string;
   readonly discard: () => Promise<void>;
   readonly stage: (pluginBundles: readonly PlayerWebPluginBundleForRuntime[]) => Promise<void>;
   readonly commit: () => Promise<void>;
@@ -78,6 +80,7 @@ export async function createEditorCurrentPreview(input: {
   let staged = false;
   return {
     repoRoot: root,
+    previousRoot: state.current === undefined ? undefined : path.join(parent, state.current),
     discard: async () => {
       if (!staged) await rm(root, { recursive: true, force: true });
     },

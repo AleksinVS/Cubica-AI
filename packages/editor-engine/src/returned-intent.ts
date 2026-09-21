@@ -232,6 +232,9 @@ interface ValueEdit {
   readonly filePath: string;
   readonly pointer: string;
   readonly value: JsonValue;
+  readonly writeParents?: readonly string[];
+  readonly writeOperation?: "add" | "replace";
+  readonly agentOnly?: true;
   /** `false` when the parsed new value equals the old one (cosmetic edit only). */
   readonly changed: boolean;
 }
@@ -307,13 +310,16 @@ function analyzeDiff(context: {
       const origText = projLines[pi].slice(line.valueStart);
       const nextText = retLines[ri].slice(line.valueStart);
       const parsed = parseEditedScalar(origText, nextText);
-      if (!parsed.ok) {
+      // A scalar projection cannot authorize replacing its leaf with JSON structure.
+      if (!parsed.ok || ((line.kind === "field-scalar" || line.kind === "array-scalar") &&
+        parsed.value !== null && typeof parsed.value === "object")) {
         badEdits.push({ pi, ri });
         continue;
       }
       const origParsed = parseProjectedScalar(origText);
       const changed = !(origParsed.ok && jsonValuesEqual(origParsed.value, parsed.value));
-      valueEdits.push({ pi, ri, filePath: line.filePath ?? "", pointer: line.pointer ?? "", value: parsed.value, changed });
+      valueEdits.push({ pi, ri, filePath: line.filePath ?? "", pointer: line.pointer ?? "", value: parsed.value, changed,
+        writeParents: line.writeParents, writeOperation: line.writeOperation, agentOnly: line.agentOnly });
     }
   }
 
@@ -385,7 +391,8 @@ function analyzeDiff(context: {
 
   const blocksUnrecognized = blocks.length > 0 && !blockApplies;
   const unrecognizedExists =
-    inserts.length > 0 || structuralDeletes.length > 0 || badEdits.length > 0 || brokenDeletes.length > 0 || blocksUnrecognized;
+    inserts.length > 0 || structuralDeletes.length > 0 || badEdits.length > 0 || brokenDeletes.length > 0 || blocksUnrecognized ||
+    realValueEdits.some((edit) => edit.agentOnly === true);
 
   return {
     path: unrecognizedExists ? "agent" : "deterministic",
@@ -577,6 +584,7 @@ function buildReport(
  */
 function buildChangeSet(analysis: DiffAnalysis, entityId: string): EditorChangeSet | null {
   const opsByFile = new Map<string, JsonPatchOperation[]>();
+  const addedParentsByFile = new Map<string, Set<string>>();
   const pushOp = (filePath: string, operation: JsonPatchOperation): void => {
     const existing = opsByFile.get(filePath);
     if (existing === undefined) {
@@ -589,7 +597,15 @@ function buildChangeSet(analysis: DiffAnalysis, entityId: string): EditorChangeS
   let replaceCount = 0;
   for (const edit of analysis.valueEdits) {
     if (edit.changed) {
-      pushOp(edit.filePath, { op: "replace", path: edit.pointer, value: edit.value });
+      const addedParents = addedParentsByFile.get(edit.filePath) ?? new Set<string>();
+      addedParentsByFile.set(edit.filePath, addedParents);
+      for (const parent of edit.writeParents ?? []) {
+        if (!addedParents.has(parent)) {
+          pushOp(edit.filePath, { op: "add", path: parent, value: {} });
+          addedParents.add(parent);
+        }
+      }
+      pushOp(edit.filePath, { op: edit.writeOperation ?? "replace", path: edit.pointer, value: edit.value });
       replaceCount += 1;
     }
   }

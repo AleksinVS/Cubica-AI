@@ -13,6 +13,22 @@ import type { MvpElementSource } from "./mvp-element-operations";
 export type MvpCreateKind = "rule" | "page" | "element" | `prototype:${string}`;
 export interface MvpAuthoringSource { readonly filePath: string; readonly pointer: string }
 
+/** Prototype intent stays a starter, never a copy of current values or formulas. */
+export function buildMvpPrototypePromptTemplateChangeSet(source: MvpElementSource, raw: string): EditorChangeSet | undefined {
+  if (!/^\/_definitions\/[^/]+$/u.test(source.pointer)) return undefined;
+  const text = raw.trim();
+  const previous = isPlainJsonObject(source.value._promptTemplate) ? source.value._promptTemplate : undefined;
+  if (text === (typeof previous?.raw === "string" ? previous.raw : "")) return undefined;
+  const path = `${source.pointer}/_promptTemplate`;
+  const operation = text === ""
+    ? previous === undefined ? undefined : { op: "remove" as const, path }
+    : { op: previous === undefined ? "add" as const : "replace" as const, path,
+      value: { raw: text, language: typeof previous?.language === "string" ? previous.language : "ru" } };
+  if (operation === undefined) return undefined;
+  return { id: `mvp-prototype-intent-${crypto.randomUUID()}`, summary: "Обновить замысел прототипа",
+    jsonPatches: [{ filePath: source.filePath, operations: [{ op: "test", path: source.pointer, value: source.value }, operation] }] };
+}
+
 export function mvpSourceEntity(source: MvpElementSource, documentKind: "game" | "ui"): EditorEntity {
   const facet = { filePath: source.filePath, pointer: source.pointer, documentKind } as const;
   return {
@@ -173,6 +189,45 @@ export function mvpPrototypeEntries(documents: readonly EditorEntityProjectionDo
   });
 }
 
+export function mvpPrototypeContext(source: MvpElementSource, documents: readonly EditorEntityProjectionDocument[]) {
+  const document = documents.find((item) => item.filePath === source.filePath && item.documentKind === "ui");
+  const definitions = document?.json === undefined ? undefined : readJsonPointer(document.json, "/_definitions");
+  const type = source.value._type;
+  if (typeof type !== "string" || !isPlainJsonObject(definitions) || !isPlainJsonObject(definitions[type])) return undefined;
+  const value = definitions[type] as JsonObject;
+  const pointer = `/_definitions/${encodeJsonPointerSegment(type)}`;
+  const derivesFrom = (candidate: string) => {
+    const seen = new Set<string>();
+    let current: string | undefined = candidate;
+    while (current && !seen.has(current) && seen.size < 5) {
+      if (current === type) return true;
+      seen.add(current);
+      const definition: JsonValue | undefined = definitions[current];
+      current = isPlainJsonObject(definition) && typeof definition._extends === "string" ? definition._extends : undefined;
+    }
+    return false;
+  };
+  let affectedCount = 0;
+  const count = (node: JsonValue | undefined): void => {
+    if (Array.isArray(node)) { for (const child of node) count(child); return; }
+    if (!isPlainJsonObject(node)) return;
+    if (typeof node._type === "string" && derivesFrom(node._type)) affectedCount += 1;
+    for (const child of Object.values(node)) count(child);
+  };
+  if (document?.json !== undefined) count(readJsonPointer(document.json, "/root"));
+  return { source: { filePath: source.filePath, pointer, value },
+    name: typeof value._label === "string" ? value._label : type, affectedCount,
+    localChildOverrides: Array.isArray(source.value.children) && Array.isArray(resolveDefinitionBody(type, definitions)?.children) };
+}
+
+export function mvpSharedChangeImpact(changeSet: EditorChangeSet, documents: readonly EditorEntityProjectionDocument[]): string | undefined {
+  const gameFiles = new Set(documents.filter(document => document.documentKind === "game").map(document => document.filePath));
+  const shared = changeSet.jsonPatches.some(patch => gameFiles.has(patch.filePath) && patch.operations.some(operation =>
+    operation.op !== "test" && !/\/(?:_label|_prompt|_promptTemplate|_semantics)(?:\/|$)/u.test(operation.path))) ||
+    changeSet.textPatches?.some(patch => gameFiles.has(patch.filePath));
+  return shared ? "Изменение игрового содержимого или правила затронет все его отображения." : undefined;
+}
+
 /** One server candidate must carry both structured edits and authored metadata. */
 export function combineMvpDraftChanges(
   source: MvpElementSource,
@@ -237,8 +292,21 @@ function mergeBody(parent: JsonObject, child: JsonObject): Record<string, JsonVa
   return merged;
 }
 
+function identityOverrides(original: JsonValue | undefined, rewritten: JsonValue): JsonValue | undefined {
+  if (JSON.stringify(original) === JSON.stringify(rewritten)) return undefined;
+  if (!isPlainJsonObject(original) || !isPlainJsonObject(rewritten)) return rewritten;
+  const result: Record<string, JsonValue> = {};
+  for (const [key, value] of Object.entries(rewritten)) {
+    const changed = identityOverrides(original[key], value);
+    if (changed !== undefined) result[key] = changed;
+  }
+  return result;
+}
+
 function resolveDefinitionBody(type: string, definitions: JsonObject, visited = new Set<string>()): Record<string, JsonValue> | undefined {
   const definition = definitions[type];
+  // The canonical platform component is a built-in base, not a game-local definition.
+  if (type === "ui.Component" && definition === undefined) return {};
   if (!isPlainJsonObject(definition) || visited.has(type) || visited.size >= 5) return undefined;
   visited.add(type);
   const parent = typeof definition._extends === "string" ? resolveDefinitionBody(definition._extends, definitions, visited) : {};
@@ -255,6 +323,15 @@ function expandedSourceBody(source: JsonObject, definitions: JsonObject): Record
   const combined = mergeBody(parent, source);
   delete combined._extends;
   return combined;
+}
+
+/** Calculation-only inherited style; geometry patches still test and edit the raw local source. */
+export function effectiveMvpElementStyle(source: MvpElementSource, documents: readonly EditorEntityProjectionDocument[]): JsonObject | undefined {
+  const document = documentsForKind(documents, "ui").find((item) => item.filePath === source.filePath);
+  if (document?.json === undefined || JSON.stringify(readJsonPointer(document.json, source.pointer)) !== JSON.stringify(source.value)) return undefined;
+  const definitions = readJsonPointer(document.json, "/_definitions");
+  const body = expandedSourceBody(source.value, isPlainJsonObject(definitions) ? definitions : {});
+  return body !== undefined && isPlainJsonObject(body.style) ? body.style : undefined;
 }
 
 /** The saved body is an exact reusable subtree; only instance identity stays out of the definition. */
@@ -284,6 +361,7 @@ export function buildMvpSavePrototype(source: MvpElementSource, documents: reado
   delete definition.id;
   delete definition.gameEntityId;
   delete definition._type;
+  delete definition._prompt;
   definition._label = `${typeof current._label === "string" ? current._label : rawId} — прототип`;
   definition._semantics = typeof current._semantics === "string" && current._semantics.trim() !== ""
     ? current._semantics : "Локальный прототип выбранного UI-элемента.";
@@ -307,14 +385,15 @@ function instantiateMvpPrototype(type: string, definition: JsonObject, usedIds: 
   for (const oldId of oldIds) replacements.set(oldId, uniqueId(oldId, usedIds));
   const newRootId = uniqueId(type.slice(3).replace(/[^a-zA-Z0-9]+/gu, "-").toLowerCase(), usedIds);
   replacements.set(prototypeRootReference, newRootId);
-  const node = rewriteLocalReferences(body, replacements) as Record<string, JsonValue>;
+  const rewritten = rewriteLocalReferences(body, replacements);
+  const node = (identityOverrides(body, rewritten) ?? {}) as Record<string, JsonValue>;
   delete node._extends;
   delete node._promptTemplate;
-  delete node._label;
-  delete node._semantics;
-  delete node._type;
+  delete node._projection;
   node.id = newRootId;
   node._type = type;
+  // Authoring v2 validates the concrete runtime discriminator before inheritance.
+  node.type = definition.type as string;
   node._label = typeof definition._label === "string" ? definition._label.replace(/ — прототип$/u, "") : type;
   node._semantics = typeof definition._semantics === "string" ? definition._semantics : "Экземпляр локального UI-прототипа.";
   if (isPlainJsonObject(definition._promptTemplate) && typeof definition._promptTemplate.raw === "string") {

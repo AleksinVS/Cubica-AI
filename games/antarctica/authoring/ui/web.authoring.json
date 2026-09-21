@@ -20,6 +20,54 @@
         "onClick": {
           "command": "showPanel"
         }
+      },
+      "_projection": {
+        "properties": [
+          {
+            "id": "caption",
+            "path": "/props/caption",
+            "label": "Текст кнопки",
+            "presentation": "text",
+            "facet": "view",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          },
+          {
+            "id": "color",
+            "path": "/props/color",
+            "label": "Цвет текста",
+            "presentation": "text",
+            "facet": "view",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          },
+          {
+            "id": "fontSize",
+            "path": "/props/fontSize",
+            "label": "Размер текста",
+            "presentation": "quantity",
+            "facet": "view",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          },
+          {
+            "id": "backgroundImage",
+            "path": "/props/backgroundImage",
+            "label": "Фоновое изображение",
+            "presentation": "text",
+            "facet": "view",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          }
+        ]
       }
     },
     "ui.AntarcticaClosePanelButton": {
@@ -38,6 +86,54 @@
         "onClick": {
           "command": "closePanel"
         }
+      },
+      "_projection": {
+        "properties": [
+          {
+            "id": "caption",
+            "path": "/props/caption",
+            "label": "Текст кнопки",
+            "presentation": "text",
+            "facet": "view",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          },
+          {
+            "id": "color",
+            "path": "/props/color",
+            "label": "Цвет текста",
+            "presentation": "text",
+            "facet": "view",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          },
+          {
+            "id": "fontSize",
+            "path": "/props/fontSize",
+            "label": "Размер текста",
+            "presentation": "quantity",
+            "facet": "view",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          },
+          {
+            "id": "backgroundImage",
+            "path": "/props/backgroundImage",
+            "label": "Фоновое изображение",
+            "presentation": "text",
+            "facet": "view",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          }
+        ]
       }
     },
     "ui.AntarcticaNavButton": {
@@ -51,6 +147,54 @@
       "type": "buttonComponent",
       "props": {
         "variant": "nav"
+      },
+      "_projection": {
+        "properties": [
+          {
+            "id": "caption",
+            "path": "/props/caption",
+            "label": "Текст кнопки",
+            "presentation": "text",
+            "facet": "view",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          },
+          {
+            "id": "color",
+            "path": "/props/color",
+            "label": "Цвет текста",
+            "presentation": "text",
+            "facet": "view",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          },
+          {
+            "id": "fontSize",
+            "path": "/props/fontSize",
+            "label": "Размер текста",
+            "presentation": "quantity",
+            "facet": "view",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          },
+          {
+            "id": "backgroundImage",
+            "path": "/props/backgroundImage",
+            "label": "Фоновое изображение",
+            "presentation": "text",
+            "facet": "view",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          }
+        ]
       }
     },
     "ui.AntarcticaRequestServerCard": {
@@ -61,7 +205,66 @@
         "language": "ru",
         "appliesTo": "ui.AntarcticaRequestServerCard"
       },
-      "type": "cardComponent"
+      "type": "cardComponent",
+      "_projection": {
+        "properties": [
+          {
+            "id": "title",
+            "path": "/props/title",
+            "label": "Заголовок",
+            "presentation": "text",
+            "facet": "view",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          },
+          {
+            "id": "summary",
+            "path": "/props/summary",
+            "label": "Описание",
+            "presentation": "text",
+            "facet": "view",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          },
+          {
+            "id": "color",
+            "path": "/props/color",
+            "label": "Цвет текста",
+            "presentation": "text",
+            "facet": "view",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          },
+          {
+            "id": "fontSize",
+            "path": "/props/fontSize",
+            "label": "Размер текста",
+            "presentation": "quantity",
+            "facet": "view",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          },
+          {
+            "id": "backgroundImage",
+            "path": "/props/backgroundImage",
+            "label": "Фоновое изображение",
+            "presentation": "text",
+            "facet": "view",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          }
+        ]
+      }
     },
     "ui.AntarcticaBoardChoiceCard": {
       "_label": "Карточка выбора на доске Antarctica",
@@ -86,21 +289,169 @@
             "actionId": "{{card.selectActionId}}"
           }
         }
+      },
+      "_projection": {
+        "properties": [
+          {
+            "id": "cardTitle",
+            "path": "/title",
+            "label": "Заголовок",
+            "presentation": "text",
+            "facet": "content",
+            "expose": [
+              "instance"
+            ]
+          },
+          {
+            "id": "cardSummary",
+            "path": "/summary",
+            "label": "Описание",
+            "presentation": "text",
+            "facet": "content",
+            "expose": [
+              "instance"
+            ]
+          },
+          {
+            "id": "cardBack",
+            "path": "/backText",
+            "label": "Текст после выбора",
+            "presentation": "text",
+            "facet": "content",
+            "expose": [
+              "instance"
+            ]
+          },
+          {
+            "id": "cardSelect",
+            "path": "/selectLabel",
+            "label": "Текст кнопки",
+            "presentation": "text",
+            "facet": "content",
+            "expose": [
+              "instance"
+            ]
+          },
+          {
+            "id": "color",
+            "path": "/props/color",
+            "label": "Цвет текста",
+            "presentation": "text",
+            "facet": "view",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          },
+          {
+            "id": "fontSize",
+            "path": "/props/fontSize",
+            "label": "Размер текста",
+            "presentation": "quantity",
+            "facet": "view",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          },
+          {
+            "id": "backgroundImage",
+            "path": "/props/backgroundImage",
+            "label": "Фоновое изображение",
+            "presentation": "text",
+            "facet": "view",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          }
+        ]
       }
     },
     "ui.AntarcticaTopbarMetricBadge": {
-      "_label": "Метрика верхней панели Antarctica",
-      "_semantics": "Базовый локальный UI-прототип метрики верхней панели Antarctica; конкретная метрика наследует id, metricId и изображение.",
+      "_label": "Метрика",
+      "_semantics": "Локальный UI-прототип метрики Antarctica; экземпляр задает id, metricId и изображение. Начальная привязка pro заменяется при настройке новой метрики.",
       "_promptTemplate": {
-        "raw": "Создай бейдж метрики верхней панели Antarctica; конкретная метрика задает id, metricId и изображение.",
+        "raw": "Создай метрику Antarctica; задай metricId, подпись и изображение для нужного показателя.",
         "language": "ru",
         "appliesTo": "ui.AntarcticaTopbarMetricBadge"
       },
-      "type": "gameVariableComponent"
+      "type": "gameVariableComponent",
+      "id": "new-metric",
+      "props": {
+        "metricId": "pro"
+      },
+      "_projection": {
+        "properties": [
+          {
+            "id": "metricLabel",
+            "path": "/label",
+            "label": "Название показателя",
+            "presentation": "text",
+            "facet": "state",
+            "expose": [
+              "instance"
+            ]
+          },
+          {
+            "id": "metricDescription",
+            "path": "/description",
+            "label": "Описание показателя",
+            "presentation": "text",
+            "facet": "state",
+            "expose": [
+              "instance"
+            ]
+          },
+          {
+            "id": "metricRule",
+            "path": "/computed/expression",
+            "label": "Правило вычисления",
+            "presentation": "rule",
+            "facet": "state",
+            "expose": [
+              "instance"
+            ]
+          },
+          {
+            "id": "color",
+            "path": "/props/color",
+            "label": "Цвет текста",
+            "presentation": "text",
+            "facet": "view",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          },
+          {
+            "id": "fontSize",
+            "path": "/props/fontSize",
+            "label": "Размер текста",
+            "presentation": "quantity",
+            "facet": "view",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          },
+          {
+            "id": "backgroundImage",
+            "path": "/props/backgroundImage",
+            "label": "Фоновое изображение",
+            "presentation": "text",
+            "facet": "view",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          }
+        ]
+      }
     },
     "ui.AntarcticaTopbarRemainingDaysMetric": {
       "_extends": "ui.AntarcticaTopbarMetricBadge",
-      "_label": "Topbar-метрика remainingDays Antarctica",
+      "_label": "Остаток дней",
       "_semantics": "Локальный UI-прототип topbar-метрики remainingDays; игровой смысл берется из game metric catalog.",
       "_promptTemplate": {
         "raw": "Создай topbar-метрику remainingDays Antarctica с prominent layout.",
@@ -112,111 +463,43 @@
         "metricId": "remainingDays",
         "backgroundImage": "asset:top-sidebar-days-top",
         "layout": "prominent"
-      }
-    },
-    "ui.AntarcticaTopbarProMetric": {
-      "_extends": "ui.AntarcticaTopbarMetricBadge",
-      "_label": "Метрика знаний Antarctica",
-      "_semantics": "Локальный прототип topbar-метрики знаний Antarctica.",
-      "_promptTemplate": {
-        "raw": "Создай topbar-метрику знаний Antarctica.",
-        "language": "ru",
-        "appliesTo": "ui.AntarcticaTopbarProMetric"
       },
-      "id": "pro",
-      "props": {
-        "metricId": "pro",
-        "backgroundImage": "asset:top-sidebar-znaniya"
-      }
-    },
-    "ui.AntarcticaTopbarRepMetric": {
-      "_extends": "ui.AntarcticaTopbarMetricBadge",
-      "_label": "Метрика доверия Antarctica",
-      "_semantics": "Локальный прототип topbar-метрики доверия Antarctica.",
-      "_promptTemplate": {
-        "raw": "Создай topbar-метрику доверия Antarctica.",
-        "language": "ru",
-        "appliesTo": "ui.AntarcticaTopbarRepMetric"
-      },
-      "id": "rep",
-      "props": {
-        "metricId": "rep",
-        "backgroundImage": "asset:top-sidebar-doverie"
-      }
-    },
-    "ui.AntarcticaTopbarLidMetric": {
-      "_extends": "ui.AntarcticaTopbarMetricBadge",
-      "_label": "Метрика энергии Antarctica",
-      "_semantics": "Локальный прототип topbar-метрики энергии Antarctica.",
-      "_promptTemplate": {
-        "raw": "Создай topbar-метрику энергии Antarctica.",
-        "language": "ru",
-        "appliesTo": "ui.AntarcticaTopbarLidMetric"
-      },
-      "id": "lid",
-      "props": {
-        "metricId": "lid",
-        "backgroundImage": "asset:top-sidebar-energia"
-      }
-    },
-    "ui.AntarcticaTopbarManMetric": {
-      "_extends": "ui.AntarcticaTopbarMetricBadge",
-      "_label": "Метрика контроля Antarctica",
-      "_semantics": "Локальный прототип topbar-метрики контроля Antarctica.",
-      "_promptTemplate": {
-        "raw": "Создай topbar-метрику контроля Antarctica.",
-        "language": "ru",
-        "appliesTo": "ui.AntarcticaTopbarManMetric"
-      },
-      "id": "man",
-      "props": {
-        "metricId": "man",
-        "backgroundImage": "asset:top-sidebar-kontrol"
-      }
-    },
-    "ui.AntarcticaTopbarStatMetric": {
-      "_extends": "ui.AntarcticaTopbarMetricBadge",
-      "_label": "Метрика статуса Antarctica",
-      "_semantics": "Локальный прототип topbar-метрики статуса Antarctica.",
-      "_promptTemplate": {
-        "raw": "Создай topbar-метрику статуса Antarctica.",
-        "language": "ru",
-        "appliesTo": "ui.AntarcticaTopbarStatMetric"
-      },
-      "id": "stat",
-      "props": {
-        "metricId": "stat",
-        "backgroundImage": "asset:top-sidebar-status"
-      }
-    },
-    "ui.AntarcticaTopbarContMetric": {
-      "_extends": "ui.AntarcticaTopbarMetricBadge",
-      "_label": "Метрика контакта Antarctica",
-      "_semantics": "Локальный прототип topbar-метрики контакта Antarctica.",
-      "_promptTemplate": {
-        "raw": "Создай topbar-метрику контакта Antarctica.",
-        "language": "ru",
-        "appliesTo": "ui.AntarcticaTopbarContMetric"
-      },
-      "id": "cont",
-      "props": {
-        "metricId": "cont",
-        "backgroundImage": "asset:top-sidebar-kontakt"
-      }
-    },
-    "ui.AntarcticaTopbarConstrMetric": {
-      "_extends": "ui.AntarcticaTopbarMetricBadge",
-      "_label": "Метрика конструктива Antarctica",
-      "_semantics": "Локальный прототип topbar-метрики конструктива Antarctica.",
-      "_promptTemplate": {
-        "raw": "Создай topbar-метрику конструктива Antarctica.",
-        "language": "ru",
-        "appliesTo": "ui.AntarcticaTopbarConstrMetric"
-      },
-      "id": "constr",
-      "props": {
-        "metricId": "constr",
-        "backgroundImage": "asset:top-sidebar-konstruktiv"
+      "_projection": {
+        "properties": [
+          {
+            "id": "color",
+            "path": "/props/color",
+            "label": "Цвет текста",
+            "presentation": "text",
+            "facet": "view",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          },
+          {
+            "id": "fontSize",
+            "path": "/props/fontSize",
+            "label": "Размер текста",
+            "presentation": "quantity",
+            "facet": "view",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          },
+          {
+            "id": "backgroundImage",
+            "path": "/props/backgroundImage",
+            "label": "Фоновое изображение",
+            "presentation": "text",
+            "facet": "view",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          }
+        ]
       }
     },
     "ui.AntarcticaScreenRoot": {
@@ -230,6 +513,43 @@
       "type": "screenComponent",
       "props": {
         "backgroundImage": "asset:arctic-background"
+      },
+      "_projection": {
+        "properties": [
+          {
+            "id": "color",
+            "path": "/props/color",
+            "label": "Цвет текста",
+            "presentation": "text",
+            "facet": "view",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          },
+          {
+            "id": "fontSize",
+            "path": "/props/fontSize",
+            "label": "Размер текста",
+            "presentation": "quantity",
+            "facet": "view",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          },
+          {
+            "id": "backgroundImage",
+            "path": "/props/backgroundImage",
+            "label": "Фоновое изображение",
+            "presentation": "text",
+            "facet": "view",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          }
+        ]
       }
     },
     "ui.AntarcticaOverlayPanel": {
@@ -242,7 +562,44 @@
       },
       "type": "panel",
       "mode": "overlay",
-      "layout_mode": "topbar"
+      "layout_mode": "topbar",
+      "_projection": {
+        "properties": [
+          {
+            "id": "color",
+            "path": "/props/color",
+            "label": "Цвет текста",
+            "presentation": "text",
+            "facet": "view",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          },
+          {
+            "id": "fontSize",
+            "path": "/props/fontSize",
+            "label": "Размер текста",
+            "presentation": "quantity",
+            "facet": "view",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          },
+          {
+            "id": "backgroundImage",
+            "path": "/props/backgroundImage",
+            "label": "Фоновое изображение",
+            "presentation": "text",
+            "facet": "view",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          }
+        ]
+      }
     },
     "ui.AntarcticaPanelButtonContainer": {
       "_label": "Контейнер кнопок панели Antarctica",
@@ -255,6 +612,43 @@
       "type": "areaComponent",
       "props": {
         "cssClass": "button-container panel-buttons"
+      },
+      "_projection": {
+        "properties": [
+          {
+            "id": "color",
+            "path": "/props/color",
+            "label": "Цвет текста",
+            "presentation": "text",
+            "facet": "view",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          },
+          {
+            "id": "fontSize",
+            "path": "/props/fontSize",
+            "label": "Размер текста",
+            "presentation": "quantity",
+            "facet": "view",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          },
+          {
+            "id": "backgroundImage",
+            "path": "/props/backgroundImage",
+            "label": "Фоновое изображение",
+            "presentation": "text",
+            "facet": "view",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          }
+        ]
       }
     },
     "ui.AntarcticaFallbackHeadText": {
@@ -268,6 +662,53 @@
       "type": "richTextComponent",
       "props": {
         "cssClass": "fallback-card-head"
+      },
+      "_projection": {
+        "properties": [
+          {
+            "id": "title",
+            "path": "/title",
+            "label": "Текст заголовка",
+            "presentation": "text",
+            "facet": "content",
+            "expose": [
+              "instance"
+            ]
+          },
+          {
+            "id": "color",
+            "path": "/props/color",
+            "label": "Цвет текста",
+            "presentation": "text",
+            "facet": "view",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          },
+          {
+            "id": "fontSize",
+            "path": "/props/fontSize",
+            "label": "Размер текста",
+            "presentation": "quantity",
+            "facet": "view",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          },
+          {
+            "id": "backgroundImage",
+            "path": "/props/backgroundImage",
+            "label": "Фоновое изображение",
+            "presentation": "text",
+            "facet": "view",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          }
+        ]
       }
     },
     "ui.AntarcticaFallbackCopyText": {
@@ -281,6 +722,53 @@
       "type": "richTextComponent",
       "props": {
         "cssClass": "fallback-copy"
+      },
+      "_projection": {
+        "properties": [
+          {
+            "id": "body",
+            "path": "/body",
+            "label": "Текст",
+            "presentation": "text",
+            "facet": "content",
+            "expose": [
+              "instance"
+            ]
+          },
+          {
+            "id": "color",
+            "path": "/props/color",
+            "label": "Цвет текста",
+            "presentation": "text",
+            "facet": "view",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          },
+          {
+            "id": "fontSize",
+            "path": "/props/fontSize",
+            "label": "Размер текста",
+            "presentation": "quantity",
+            "facet": "view",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          },
+          {
+            "id": "backgroundImage",
+            "path": "/props/backgroundImage",
+            "label": "Фоновое изображение",
+            "presentation": "text",
+            "facet": "view",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          }
+        ]
       }
     },
     "ui.AntarcticaDefaultBottomControls": {
@@ -355,7 +843,73 @@
             }
           }
         }
-      ]
+      ],
+      "_projection": {
+        "properties": [
+          {
+            "id": "color",
+            "path": "/props/color",
+            "label": "Цвет текста",
+            "presentation": "text",
+            "facet": "view",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          },
+          {
+            "id": "fontSize",
+            "path": "/props/fontSize",
+            "label": "Размер текста",
+            "presentation": "quantity",
+            "facet": "view",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          },
+          {
+            "id": "backgroundImage",
+            "path": "/props/backgroundImage",
+            "label": "Фоновое изображение",
+            "presentation": "text",
+            "facet": "view",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          }
+        ]
+      }
+    },
+    "ui.AntarcticaTeamMemberCard": {
+      "_label": "Участник штаба",
+      "_semantics": "Карточка участника текущего выбора штаба.",
+      "type": "cardComponent",
+      "_projection": {
+        "properties": [
+          {
+            "id": "memberName",
+            "facet": "content",
+            "path": "/name",
+            "label": "Имя",
+            "presentation": "text",
+            "expose": [
+              "instance"
+            ]
+          },
+          {
+            "id": "memberSummary",
+            "facet": "content",
+            "path": "/summary",
+            "label": "Описание",
+            "presentation": "text",
+            "expose": [
+              "instance"
+            ]
+          }
+        ]
+      }
     }
   },
   "root": {
@@ -441,46 +995,81 @@
                   "type": "gameVariableComponent"
                 },
                 {
-                  "_type": "ui.AntarcticaTopbarProMetric",
+                  "_type": "ui.AntarcticaTopbarMetricBadge",
                   "_label": "Знания",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "type": "gameVariableComponent"
+                  "type": "gameVariableComponent",
+                  "id": "pro",
+                  "props": {
+                    "metricId": "pro",
+                    "backgroundImage": "asset:top-sidebar-znaniya"
+                  }
                 },
                 {
-                  "_type": "ui.AntarcticaTopbarRepMetric",
+                  "_type": "ui.AntarcticaTopbarMetricBadge",
                   "_label": "Доверие",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "type": "gameVariableComponent"
+                  "type": "gameVariableComponent",
+                  "id": "rep",
+                  "props": {
+                    "metricId": "rep",
+                    "backgroundImage": "asset:top-sidebar-doverie"
+                  }
                 },
                 {
-                  "_type": "ui.AntarcticaTopbarLidMetric",
+                  "_type": "ui.AntarcticaTopbarMetricBadge",
                   "_label": "Энергия",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "type": "gameVariableComponent"
+                  "type": "gameVariableComponent",
+                  "id": "lid",
+                  "props": {
+                    "metricId": "lid",
+                    "backgroundImage": "asset:top-sidebar-energia"
+                  }
                 },
                 {
-                  "_type": "ui.AntarcticaTopbarManMetric",
+                  "_type": "ui.AntarcticaTopbarMetricBadge",
                   "_label": "Контроль",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "type": "gameVariableComponent"
+                  "type": "gameVariableComponent",
+                  "id": "man",
+                  "props": {
+                    "metricId": "man",
+                    "backgroundImage": "asset:top-sidebar-kontrol"
+                  }
                 },
                 {
-                  "_type": "ui.AntarcticaTopbarStatMetric",
+                  "_type": "ui.AntarcticaTopbarMetricBadge",
                   "_label": "Статус",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "type": "gameVariableComponent"
+                  "type": "gameVariableComponent",
+                  "id": "stat",
+                  "props": {
+                    "metricId": "stat",
+                    "backgroundImage": "asset:top-sidebar-status"
+                  }
                 },
                 {
-                  "_type": "ui.AntarcticaTopbarContMetric",
+                  "_type": "ui.AntarcticaTopbarMetricBadge",
                   "_label": "Контакт",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "type": "gameVariableComponent"
+                  "type": "gameVariableComponent",
+                  "id": "cont",
+                  "props": {
+                    "metricId": "cont",
+                    "backgroundImage": "asset:top-sidebar-kontakt"
+                  }
                 },
                 {
-                  "_type": "ui.AntarcticaTopbarConstrMetric",
+                  "_type": "ui.AntarcticaTopbarMetricBadge",
                   "_label": "Конструктив",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "type": "gameVariableComponent"
+                  "type": "gameVariableComponent",
+                  "id": "constr",
+                  "props": {
+                    "metricId": "constr",
+                    "backgroundImage": "asset:top-sidebar-konstruktiv"
+                  }
                 },
                 {
                   "_type": "ui.Component",
@@ -622,46 +1211,81 @@
                   "type": "gameVariableComponent"
                 },
                 {
-                  "_type": "ui.AntarcticaTopbarProMetric",
+                  "_type": "ui.AntarcticaTopbarMetricBadge",
                   "_label": "Знания",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "type": "gameVariableComponent"
+                  "type": "gameVariableComponent",
+                  "id": "pro",
+                  "props": {
+                    "metricId": "pro",
+                    "backgroundImage": "asset:top-sidebar-znaniya"
+                  }
                 },
                 {
-                  "_type": "ui.AntarcticaTopbarRepMetric",
+                  "_type": "ui.AntarcticaTopbarMetricBadge",
                   "_label": "Доверие",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "type": "gameVariableComponent"
+                  "type": "gameVariableComponent",
+                  "id": "rep",
+                  "props": {
+                    "metricId": "rep",
+                    "backgroundImage": "asset:top-sidebar-doverie"
+                  }
                 },
                 {
-                  "_type": "ui.AntarcticaTopbarLidMetric",
+                  "_type": "ui.AntarcticaTopbarMetricBadge",
                   "_label": "Энергия",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "type": "gameVariableComponent"
+                  "type": "gameVariableComponent",
+                  "id": "lid",
+                  "props": {
+                    "metricId": "lid",
+                    "backgroundImage": "asset:top-sidebar-energia"
+                  }
                 },
                 {
-                  "_type": "ui.AntarcticaTopbarManMetric",
+                  "_type": "ui.AntarcticaTopbarMetricBadge",
                   "_label": "Контроль",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "type": "gameVariableComponent"
+                  "type": "gameVariableComponent",
+                  "id": "man",
+                  "props": {
+                    "metricId": "man",
+                    "backgroundImage": "asset:top-sidebar-kontrol"
+                  }
                 },
                 {
-                  "_type": "ui.AntarcticaTopbarStatMetric",
+                  "_type": "ui.AntarcticaTopbarMetricBadge",
                   "_label": "Статус",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "type": "gameVariableComponent"
+                  "type": "gameVariableComponent",
+                  "id": "stat",
+                  "props": {
+                    "metricId": "stat",
+                    "backgroundImage": "asset:top-sidebar-status"
+                  }
                 },
                 {
-                  "_type": "ui.AntarcticaTopbarContMetric",
+                  "_type": "ui.AntarcticaTopbarMetricBadge",
                   "_label": "Контакт",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "type": "gameVariableComponent"
+                  "type": "gameVariableComponent",
+                  "id": "cont",
+                  "props": {
+                    "metricId": "cont",
+                    "backgroundImage": "asset:top-sidebar-kontakt"
+                  }
                 },
                 {
-                  "_type": "ui.AntarcticaTopbarConstrMetric",
+                  "_type": "ui.AntarcticaTopbarMetricBadge",
                   "_label": "Конструктив",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "type": "gameVariableComponent"
+                  "type": "gameVariableComponent",
+                  "id": "constr",
+                  "props": {
+                    "metricId": "constr",
+                    "backgroundImage": "asset:top-sidebar-konstruktiv"
+                  }
                 },
                 {
                   "_type": "ui.Component",
@@ -797,46 +1421,81 @@
                   "type": "gameVariableComponent"
                 },
                 {
-                  "_type": "ui.AntarcticaTopbarProMetric",
+                  "_type": "ui.AntarcticaTopbarMetricBadge",
                   "_label": "Знания",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "type": "gameVariableComponent"
+                  "type": "gameVariableComponent",
+                  "id": "pro",
+                  "props": {
+                    "metricId": "pro",
+                    "backgroundImage": "asset:top-sidebar-znaniya"
+                  }
                 },
                 {
-                  "_type": "ui.AntarcticaTopbarRepMetric",
+                  "_type": "ui.AntarcticaTopbarMetricBadge",
                   "_label": "Доверие",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "type": "gameVariableComponent"
+                  "type": "gameVariableComponent",
+                  "id": "rep",
+                  "props": {
+                    "metricId": "rep",
+                    "backgroundImage": "asset:top-sidebar-doverie"
+                  }
                 },
                 {
-                  "_type": "ui.AntarcticaTopbarLidMetric",
+                  "_type": "ui.AntarcticaTopbarMetricBadge",
                   "_label": "Энергия",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "type": "gameVariableComponent"
+                  "type": "gameVariableComponent",
+                  "id": "lid",
+                  "props": {
+                    "metricId": "lid",
+                    "backgroundImage": "asset:top-sidebar-energia"
+                  }
                 },
                 {
-                  "_type": "ui.AntarcticaTopbarManMetric",
+                  "_type": "ui.AntarcticaTopbarMetricBadge",
                   "_label": "Контроль",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "type": "gameVariableComponent"
+                  "type": "gameVariableComponent",
+                  "id": "man",
+                  "props": {
+                    "metricId": "man",
+                    "backgroundImage": "asset:top-sidebar-kontrol"
+                  }
                 },
                 {
-                  "_type": "ui.AntarcticaTopbarStatMetric",
+                  "_type": "ui.AntarcticaTopbarMetricBadge",
                   "_label": "Статус",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "type": "gameVariableComponent"
+                  "type": "gameVariableComponent",
+                  "id": "stat",
+                  "props": {
+                    "metricId": "stat",
+                    "backgroundImage": "asset:top-sidebar-status"
+                  }
                 },
                 {
-                  "_type": "ui.AntarcticaTopbarContMetric",
+                  "_type": "ui.AntarcticaTopbarMetricBadge",
                   "_label": "Контакт",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "type": "gameVariableComponent"
+                  "type": "gameVariableComponent",
+                  "id": "cont",
+                  "props": {
+                    "metricId": "cont",
+                    "backgroundImage": "asset:top-sidebar-kontakt"
+                  }
                 },
                 {
-                  "_type": "ui.AntarcticaTopbarConstrMetric",
+                  "_type": "ui.AntarcticaTopbarMetricBadge",
                   "_label": "Конструктив",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "type": "gameVariableComponent"
+                  "type": "gameVariableComponent",
+                  "id": "constr",
+                  "props": {
+                    "metricId": "constr",
+                    "backgroundImage": "asset:top-sidebar-konstruktiv"
+                  }
                 },
                 {
                   "_type": "ui.Component",
@@ -1236,6 +1895,226 @@
         },
         "title": "Antarctica (Left Sidebar)",
         "layout_id": "layout.web.s1_left"
+      },
+      {
+        "id": "team-selection",
+        "_type": "ui.Screen",
+        "_label": "Экран выбора штаба",
+        "_semantics": "Выбор участников штаба по опубликованным действиям текущего этапа.",
+        "type": "screen",
+        "layout_mode": "topbar",
+        "root": {
+          "_type": "ui.AntarcticaScreenRoot",
+          "_label": "Корневой контейнер",
+          "_semantics": "UI-компонент типа screenComponent.",
+          "props": {
+            "cssClass": "main-screen topbar-screen-shell team-selection-screen",
+            "decorativeBackground": true
+          },
+          "children": [
+            {
+              "_type": "ui.Component",
+              "_label": "Область game variables container topbar variables container",
+              "_semantics": "UI-компонент типа areaComponent.",
+              "type": "areaComponent",
+              "props": {
+                "cssClass": "game-variables-container topbar-variables-container",
+                "topbarCssClass": "topbar-variables-container"
+              },
+              "children": [
+                {
+                  "_type": "ui.AntarcticaTopbarRemainingDaysMetric",
+                  "_label": "Остаток дней",
+                  "_semantics": "UI-компонент типа gameVariableComponent.",
+                  "type": "gameVariableComponent"
+                },
+                {
+                  "_type": "ui.AntarcticaTopbarMetricBadge",
+                  "_label": "Знания",
+                  "_semantics": "UI-компонент типа gameVariableComponent.",
+                  "type": "gameVariableComponent",
+                  "id": "pro",
+                  "props": {
+                    "metricId": "pro",
+                    "backgroundImage": "asset:top-sidebar-znaniya"
+                  }
+                },
+                {
+                  "_type": "ui.AntarcticaTopbarMetricBadge",
+                  "_label": "Доверие",
+                  "_semantics": "UI-компонент типа gameVariableComponent.",
+                  "type": "gameVariableComponent",
+                  "id": "rep",
+                  "props": {
+                    "metricId": "rep",
+                    "backgroundImage": "asset:top-sidebar-doverie"
+                  }
+                },
+                {
+                  "_type": "ui.AntarcticaTopbarMetricBadge",
+                  "_label": "Энергия",
+                  "_semantics": "UI-компонент типа gameVariableComponent.",
+                  "type": "gameVariableComponent",
+                  "id": "lid",
+                  "props": {
+                    "metricId": "lid",
+                    "backgroundImage": "asset:top-sidebar-energia"
+                  }
+                },
+                {
+                  "_type": "ui.AntarcticaTopbarMetricBadge",
+                  "_label": "Контроль",
+                  "_semantics": "UI-компонент типа gameVariableComponent.",
+                  "type": "gameVariableComponent",
+                  "id": "man",
+                  "props": {
+                    "metricId": "man",
+                    "backgroundImage": "asset:top-sidebar-kontrol"
+                  }
+                },
+                {
+                  "_type": "ui.AntarcticaTopbarMetricBadge",
+                  "_label": "Статус",
+                  "_semantics": "UI-компонент типа gameVariableComponent.",
+                  "type": "gameVariableComponent",
+                  "id": "stat",
+                  "props": {
+                    "metricId": "stat",
+                    "backgroundImage": "asset:top-sidebar-status"
+                  }
+                },
+                {
+                  "_type": "ui.AntarcticaTopbarMetricBadge",
+                  "_label": "Контакт",
+                  "_semantics": "UI-компонент типа gameVariableComponent.",
+                  "type": "gameVariableComponent",
+                  "id": "cont",
+                  "props": {
+                    "metricId": "cont",
+                    "backgroundImage": "asset:top-sidebar-kontakt"
+                  }
+                },
+                {
+                  "_type": "ui.AntarcticaTopbarMetricBadge",
+                  "_label": "Конструктив",
+                  "_semantics": "UI-компонент типа gameVariableComponent.",
+                  "type": "gameVariableComponent",
+                  "id": "constr",
+                  "props": {
+                    "metricId": "constr",
+                    "backgroundImage": "asset:top-sidebar-konstruktiv"
+                  }
+                },
+                {
+                  "_type": "ui.Component",
+                  "_label": "Область sidebar decoration",
+                  "_semantics": "UI-компонент типа areaComponent.",
+                  "type": "areaComponent",
+                  "props": {
+                    "cssClass": "sidebar-decoration",
+                    "topbarCssClass": "topbar-decoration"
+                  }
+                }
+              ]
+            },
+            {
+              "_type": "ui.Component",
+              "_label": "Область main content area topbar main content",
+              "_semantics": "UI-компонент типа areaComponent.",
+              "type": "areaComponent",
+              "props": {
+                "cssClass": "main-content-area topbar-main-content",
+                "topbarCssClass": "topbar-main-content"
+              },
+              "children": [
+                {
+                  "_type": "ui.AntarcticaFallbackHeadText",
+                  "_label": "Заголовок выбора штаба",
+                  "_semantics": "Заголовок выбора штаба",
+                  "type": "richTextComponent",
+                  "props": {
+                    "html": "{{currentTeamSelection.title}}"
+                  }
+                },
+                {
+                  "_type": "ui.AntarcticaFallbackCopyText",
+                  "_label": "Описание выбора штаба",
+                  "_semantics": "Описание выбора штаба",
+                  "type": "richTextComponent",
+                  "props": {
+                    "html": "{{currentTeamSelection.body}}"
+                  }
+                },
+                {
+                  "_type": "ui.Component",
+                  "_label": "Количество выбранных участников",
+                  "_semantics": "Количество выбранных участников",
+                  "type": "richTextComponent",
+                  "props": {
+                    "html": "Выбрано: {{pickCount}} из {{currentTeamSelection.requiredPickCount}}"
+                  }
+                },
+                {
+                  "_type": "ui.Component",
+                  "_label": "Участники штаба",
+                  "_semantics": "Участники штаба",
+                  "type": "areaComponent",
+                  "props": {
+                    "cssClass": "cards-container team-member-cards"
+                  },
+                  "itemTemplate": {
+                    "collection": "{{currentTeamSelection.members}}",
+                    "itemKey": "member"
+                  },
+                  "children": [
+                    {
+                      "_type": "ui.AntarcticaTeamMemberCard",
+                      "_label": "Участник штаба",
+                      "_semantics": "Участник штаба",
+                      "type": "cardComponent",
+                      "props": {
+                        "title": "{{member.name}}",
+                        "summary": "{{member.summary}}",
+                        "selectLabel": "Выбрать",
+                        "visualState": "{{teamFlags[member.memberId].selected ? \"selected\" : \"default\"}}"
+                      },
+                      "id": "team-member",
+                      "actions": {
+                        "onClick": {
+                          "command": "requestServer",
+                          "payload": {
+                            "actionId": "{{member.selectActionId}}"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                {
+                  "_type": "ui.Component",
+                  "_label": "Подтвердить состав штаба",
+                  "_semantics": "Подтвердить состав штаба",
+                  "type": "buttonComponent",
+                  "props": {
+                    "caption": "{{currentTeamSelection.confirmLabel}}",
+                    "disabled": "{{pickCount !== currentTeamSelection.requiredPickCount}}"
+                  },
+                  "actions": {
+                    "onClick": {
+                      "command": "requestServer",
+                      "payload": {
+                        "actionId": "{{currentTeamSelection.confirmActionId}}"
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          ],
+          "type": "screenComponent"
+        },
+        "title": "Создание штаба",
+        "layout_id": "layout.web.info"
       }
     ],
     "panels": {
@@ -1514,39 +2393,74 @@
                   "_label": "Остаток дней"
                 },
                 {
-                  "_type": "ui.AntarcticaTopbarProMetric",
+                  "_type": "ui.AntarcticaTopbarMetricBadge",
                   "type": "gameVariableComponent",
-                  "_label": "Знания"
+                  "_label": "Знания",
+                  "id": "pro",
+                  "props": {
+                    "metricId": "pro",
+                    "backgroundImage": "asset:top-sidebar-znaniya"
+                  }
                 },
                 {
-                  "_type": "ui.AntarcticaTopbarRepMetric",
+                  "_type": "ui.AntarcticaTopbarMetricBadge",
                   "type": "gameVariableComponent",
-                  "_label": "Доверие"
+                  "_label": "Доверие",
+                  "id": "rep",
+                  "props": {
+                    "metricId": "rep",
+                    "backgroundImage": "asset:top-sidebar-doverie"
+                  }
                 },
                 {
-                  "_type": "ui.AntarcticaTopbarLidMetric",
+                  "_type": "ui.AntarcticaTopbarMetricBadge",
                   "type": "gameVariableComponent",
-                  "_label": "Энергия"
+                  "_label": "Энергия",
+                  "id": "lid",
+                  "props": {
+                    "metricId": "lid",
+                    "backgroundImage": "asset:top-sidebar-energia"
+                  }
                 },
                 {
-                  "_type": "ui.AntarcticaTopbarManMetric",
+                  "_type": "ui.AntarcticaTopbarMetricBadge",
                   "type": "gameVariableComponent",
-                  "_label": "Контроль"
+                  "_label": "Контроль",
+                  "id": "man",
+                  "props": {
+                    "metricId": "man",
+                    "backgroundImage": "asset:top-sidebar-kontrol"
+                  }
                 },
                 {
-                  "_type": "ui.AntarcticaTopbarStatMetric",
+                  "_type": "ui.AntarcticaTopbarMetricBadge",
                   "type": "gameVariableComponent",
-                  "_label": "Статус"
+                  "_label": "Статус",
+                  "id": "stat",
+                  "props": {
+                    "metricId": "stat",
+                    "backgroundImage": "asset:top-sidebar-status"
+                  }
                 },
                 {
-                  "_type": "ui.AntarcticaTopbarContMetric",
+                  "_type": "ui.AntarcticaTopbarMetricBadge",
                   "type": "gameVariableComponent",
-                  "_label": "Контакт"
+                  "_label": "Контакт",
+                  "id": "cont",
+                  "props": {
+                    "metricId": "cont",
+                    "backgroundImage": "asset:top-sidebar-kontakt"
+                  }
                 },
                 {
-                  "_type": "ui.AntarcticaTopbarConstrMetric",
+                  "_type": "ui.AntarcticaTopbarMetricBadge",
                   "type": "gameVariableComponent",
-                  "_label": "Конструктив"
+                  "_label": "Конструктив",
+                  "id": "constr",
+                  "props": {
+                    "metricId": "constr",
+                    "backgroundImage": "asset:top-sidebar-konstruktiv"
+                  }
                 }
               ]
             },

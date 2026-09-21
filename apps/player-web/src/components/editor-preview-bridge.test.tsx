@@ -1,13 +1,40 @@
 import { render } from "@testing-library/react";
 import React, { useRef } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { PlayerFacingContent } from "@cubica/contracts-manifest";
+import { withPreviewContentOrigin } from "@/lib/preview-content-origin";
 
 import { useEditorPreviewBridge, type EditorPreviewBridgeOptions } from "./editor-preview-bridge";
+import { UiComponentNode } from "./manifest/ui-component-node";
 
-function BridgeHarness({ options }: { readonly options: EditorPreviewBridgeOptions }) {
+function BridgeHarness({ options, withEntity = false, withDirectBinding = false, enclosingItemPointer }: {
+  readonly options: EditorPreviewBridgeOptions;
+  readonly withEntity?: boolean;
+  readonly withDirectBinding?: boolean;
+  readonly enclosingItemPointer?: string;
+}) {
   const rootRef = useRef<HTMLElement>(null);
   useEditorPreviewBridge(rootRef, options);
-  return <main ref={rootRef} />;
+  const selected = withPreviewContentOrigin({ id: "i0", title: "Opening" }, {
+    runtimePointer: "/content/data/infos/1", fields: ["title"]
+  });
+  const content: PlayerFacingContent = {
+    gameId: "neutral-preview", version: "1.0.0", name: "Neutral preview",
+    description: "Preview origin fixture", locale: "en-US",
+    playerConfig: { min: 1, max: 1 }, actions: [], mockups: [],
+    content: { data: { infos: [{ id: "i0", title: "Opening" }, selected] } }
+  };
+  return <main ref={rootRef}>{withEntity ? <span
+    data-preview-runtime-pointer="/screens/scene-a/root/children/0"
+    data-preview-entity-id="card:source-3"
+    data-preview-content-runtime-pointer="/content/data/cards/3"
+  /> : null}{withDirectBinding ? <UiComponentNode
+    component={{ type: "richTextComponent", props: { html: "{{currentInfo.title}}" } }}
+    metrics={{}} onAction={() => undefined} screenKey="scene-a" editorPreviewMode
+    runtimePointer="/screens/scene-a/root/children/1"
+    previewContentRuntimePointer={enclosingItemPointer}
+    gameState={{ currentInfo: selected }} content={content}
+  /> : null}</main>;
 }
 
 describe("useEditorPreviewBridge", () => {
@@ -65,9 +92,80 @@ describe("useEditorPreviewBridge", () => {
     });
     vi.spyOn(globalThis, "cancelAnimationFrame").mockImplementation(() => undefined);
 
-    render(<BridgeHarness options={{ enabled: true, parentOrigin: "https://editor.example.test", refreshSignal: "initial" }} />);
+    render(<BridgeHarness withEntity options={{ enabled: true, parentOrigin: "https://editor.example.test",
+      refreshSignal: "initial", compileRevision: "compile-7", screenKey: "scene-a",
+      scene: { screenId: "S2", stepIndex: 15 },
+      sessionSnapshot: {
+        sessionId: "session-1", version: { sessionId: "session-1", stateVersion: 3, lastEventSequence: 2 },
+        state: { public: {} }
+      } }} />);
 
-    expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: "previewEntities" }), "https://editor.example.test");
+    expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({
+      type: "previewEntities", version: 2,
+      context: {
+        sessionId: "session-1",
+        sessionVersion: { sessionId: "session-1", stateVersion: 3, lastEventSequence: 2 },
+        compileRevision: "compile-7", screenKey: "scene-a", scene: { screenId: "S2", stepIndex: 15 }
+      },
+      entities: expect.arrayContaining([expect.objectContaining({
+        entityId: "card:source-3", contentRuntimePointer: "/content/data/cards/3"
+      })])
+    }), "https://editor.example.test");
+  });
+
+  it.each([undefined, "/content/data/cards/3"])("uses the displayed text's exact owner with enclosing item %s", (enclosingItemPointer) => {
+    const postMessage = vi.spyOn(window.parent, "postMessage").mockImplementation(() => undefined);
+    vi.spyOn(globalThis, "requestAnimationFrame").mockImplementation((callback: FrameRequestCallback) => {
+      callback(0);
+      return 1;
+    });
+    vi.spyOn(globalThis, "cancelAnimationFrame").mockImplementation(() => undefined);
+    render(<BridgeHarness withDirectBinding enclosingItemPointer={enclosingItemPointer} options={{ enabled: true,
+      parentOrigin: "https://editor.example.test", refreshSignal: "initial", compileRevision: "compile-1",
+      sessionSnapshot: { sessionId: "session-1",
+        version: { sessionId: "session-1", stateVersion: 1, lastEventSequence: 0 }, state: { public: {} } }
+    }} />);
+    expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({
+      type: "previewEntities", entities: expect.arrayContaining([expect.objectContaining({
+        runtimePointer: "/screens/scene-a/root/children/1",
+        contentRuntimePointer: "/content/data/infos/1",
+        textBinding: { prop: "html", expression: "{{currentInfo.title}}",
+          contentRuntimePointer: "/content/data/infos/1/title" }
+      })])
+    }), "https://editor.example.test");
+  });
+
+  it("publishes scene and compile changes even when the session version stays fixed", () => {
+    const postMessage = vi.spyOn(window.parent, "postMessage").mockImplementation(() => undefined);
+    vi.spyOn(globalThis, "requestAnimationFrame").mockImplementation((callback: FrameRequestCallback) => {
+      callback(0);
+      return 1;
+    });
+    vi.spyOn(globalThis, "cancelAnimationFrame").mockImplementation(() => undefined);
+    const sessionSnapshot = {
+      sessionId: "session-1",
+      version: { sessionId: "session-1", stateVersion: 3, lastEventSequence: 2 },
+      state: { public: {} }
+    };
+    const common = { enabled: true, parentOrigin: "https://editor.example.test", refreshSignal: "same", sessionSnapshot };
+    const mounted = render(<BridgeHarness options={{ ...common, compileRevision: "compile-1",
+      screenKey: "scene-a", scene: { screenId: "S1", stepIndex: 1 } }} />);
+    postMessage.mockClear();
+    mounted.rerender(<BridgeHarness options={{ ...common, compileRevision: "compile-2",
+      screenKey: "scene-b", scene: { screenId: "S2", stepIndex: 15 } }} />);
+    expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: "previewEntities",
+      context: expect.objectContaining({ compileRevision: "compile-2", screenKey: "scene-b",
+        scene: { screenId: "S2", stepIndex: 15 } }) }), "https://editor.example.test");
+    expect(postMessage).not.toHaveBeenCalledWith(expect.objectContaining({ type: "previewEntities",
+      context: expect.objectContaining({ compileRevision: "compile-1" }) }), expect.anything());
+    postMessage.mockClear();
+    mounted.rerender(<BridgeHarness options={{ ...common, compileRevision: "compile-2",
+      screenKey: "scene-b", scene: { screenId: "S2", stepIndex: 15 },
+      prototypePreview: { runtimePointer: "/screens/scene-b/root/children/0", requestId: "prototype-2" } }} />);
+    expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: "previewEntities",
+      context: expect.objectContaining({ prototypePreview: {
+        runtimePointer: "/screens/scene-b/root/children/0", requestId: "prototype-2"
+      } }) }), "https://editor.example.test");
   });
 
   it("reposts a snapshot only for a versioned request from the confirmed editor parent", () => {
@@ -187,5 +285,53 @@ describe("useEditorPreviewBridge", () => {
       }),
       "https://editor.example.test"
     );
+  });
+
+  it("accepts refresh and scene commands only for the exact parent, schema, and live session", async () => {
+    const postMessage = vi.spyOn(window.parent, "postMessage").mockImplementation(() => undefined);
+    const onRefreshPreviewContent = vi.fn().mockResolvedValue({});
+    const onShowPreviewScene = vi.fn().mockResolvedValue(undefined);
+    const onShowPreviewPrototype = vi.fn().mockResolvedValue(undefined);
+    const mounted = render(<BridgeHarness options={{ enabled: true, parentOrigin: "https://editor.example.test",
+      refreshSignal: "initial", sessionSnapshot: {
+        sessionId: "session-1", gameId: "example",
+        version: { sessionId: "session-1", stateVersion: 1, lastEventSequence: 1 }, state: { public: {} }
+      }, onRefreshPreviewContent, onShowPreviewScene, onShowPreviewPrototype }} />);
+    const refresh = { source: "cubica-editor-web", type: "refreshPreviewContent", protocolVersion: 1,
+      requestId: "refresh-1", sessionId: "session-1", revision: "revision-1" };
+    const send = (data: unknown, origin = "https://editor.example.test") => window.dispatchEvent(new MessageEvent("message", {
+      source: window.parent, origin, data
+    }));
+    send(refresh, "https://attacker.example.test");
+    send({ ...refresh, sessionId: "session-2" });
+    send({ ...refresh, credential: "injected" });
+    expect(onRefreshPreviewContent).not.toHaveBeenCalled();
+    send(refresh);
+    await vi.waitFor(() => expect(onRefreshPreviewContent).toHaveBeenCalledOnce());
+    expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: "previewContentRefreshResult",
+      requestId: "refresh-1", sessionId: "session-1", revision: "revision-1", ok: true }),
+      "https://editor.example.test");
+
+    const scene = { source: "cubica-editor-web", type: "showPreviewScene", protocolVersion: 1,
+      requestId: "scene-1", sessionId: "session-1", selector: { screenId: "S2", stepIndex: 7 } };
+    send({ ...scene, selector: { ...scene.selector, unknown: true } });
+    expect(onShowPreviewScene).not.toHaveBeenCalled();
+    send(scene);
+    await vi.waitFor(() => expect(onShowPreviewScene).toHaveBeenCalledOnce());
+    expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: "previewSceneResult",
+      requestId: "scene-1", sessionId: "session-1", ok: true }), "https://editor.example.test");
+    const prototype = { source: "cubica-editor-web", type: "showPreviewPrototype", protocolVersion: 1,
+      requestId: "prototype-1", sessionId: "session-1", runtimePointer: "/screens/team/root/children/0",
+      component: { type: "richTextComponent", props: { html: "Prototype default" } } };
+    send({ ...prototype, sessionId: "session-2" });
+    send({ ...prototype, component: { type: "richTextComponent", props: { html: "Default" }, unknown: true } });
+    expect(onShowPreviewPrototype).not.toHaveBeenCalled();
+    send(prototype);
+    await vi.waitFor(() => expect(onShowPreviewPrototype).toHaveBeenCalledWith(prototype));
+    expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: "previewPrototypeResult",
+      requestId: "prototype-1", sessionId: "session-1", ok: true }), "https://editor.example.test");
+    send({ ...prototype, requestId: "prototype-clear", component: null });
+    await vi.waitFor(() => expect(onShowPreviewPrototype).toHaveBeenCalledTimes(2));
+    mounted.unmount();
   });
 });

@@ -15,7 +15,7 @@ import { isPlayerPreviewBridgeReadyMessage, isPlayerPreviewSessionSnapshotMessag
 import { safeUrlOrigin } from "@/components/workspace/workspace-helpers";
 import styles from "@/components/workspace/mvp-workspace.module.css";
 import { buildMvpScenarioEntries } from "@/components/workspace/mvp-scenario-entries";
-import type { MvpCreateKind } from "@/components/workspace/mvp-authoring-actions";
+import { mvpSharedChangeImpact, type MvpCreateKind } from "@/components/workspace/mvp-authoring-actions";
 
 /** The preview stays mounted while the author changes conversational surfaces. */
 export function EditorWorkspace() {
@@ -55,6 +55,7 @@ export function EditorWorkspace() {
     previewUrl: controller.previewUrl, sessionId: controller.previewRuntimeSessionId,
     iframeRef: controller.previewIframeRef, onRestored: id => { controller.acceptRestoredPreviewSession(id); setMode("editor"); }
   });
+  controller.setPreviewPauseHandler(debug.setPaused);
   const threadId = `${controller.currentDocument.gameId}:${chatKind === "rules" ? "rules" : activeThread}`;
   const currentAttachments = attachments[threadId] ?? [];
   const chatVisible = mode === "chat" || mode === "rules";
@@ -157,6 +158,12 @@ export function EditorWorkspace() {
         setWorkspaceError("Дождитесь загрузки игры и редакторской сессии.");
         return;
       }
+      const prototypeExit = await controller.clearMvpPrototypePreview();
+      if (requestId !== modeRequestRef.current) return;
+      if (!prototypeExit.ok) { setWorkspaceError(prototypeExit.message); return; }
+      const sceneExit = await controller.showPreviewScene(undefined);
+      if (requestId !== modeRequestRef.current) return;
+      if (!sceneExit.ok) { setWorkspaceError(sceneExit.reason ?? "Не удалось вернуться к прохождению."); return; }
       if (debug.status?.paused === false) {
         setMode("play");
         await debug.setPaused(true);
@@ -236,6 +243,7 @@ export function EditorWorkspace() {
   return (
     <main className={styles.shell}>
       <EditorAgentRuntimeHooks enabled={controller.agentConnection.copilotReady} context={controller.editorAgentContext} tools={controller.editorAgentTools} />
+      {controller.previewSceneActive && !chatVisible ? <p className={styles.sceneNotice} role="status">Просмотр сцены · «Игра» вернёт к прохождению</p> : null}
       <div className={styles.projectMenu} onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setProjectMenuOpen(false); }}>
         <button type="button" className={styles.hamburger} aria-label="Выбор игры" title="Выбор игры" aria-expanded={projectMenuOpen} onClick={() => setProjectMenuOpen(open => !open)}>☰</button>
         {projectMenuOpen ? <div className={styles.projectPopover}>
@@ -254,7 +262,10 @@ export function EditorWorkspace() {
         savedStates={debug.savedStates.map(item => ({ id: item.checkpointId, label: item.label, disabledReason: savedStateUnavailableReason(item) }))}
         onSelectSavedState={id => {
           const state = debug.savedStates.find(item => item.checkpointId === id);
-          if (state) void debug.restore(state);
+          if (state) void controller.clearMvpPrototypePreview().then(result => {
+            if (!result.ok) { setWorkspaceError(result.message); return; }
+            return debug.restore(state);
+          });
         }}
         onDeleteSavedState={id => {
           const state = debug.savedStates.find(item => item.checkpointId === id);
@@ -263,12 +274,17 @@ export function EditorWorkspace() {
         scenarioStages={scenarioEntries}
         onSelectScenarioStage={id => {
           const entry = scenarioEntries.find(item => item.id === id);
-          if (entry !== undefined) void selectMode("editor").then(() => setRequestedSource({ ...entry.source, requestId: Date.now() }));
+          if (entry === undefined) return;
+          if (entry.selector === undefined) { setWorkspaceError("Этот этап пока не связан с конкретной сценой игры."); return; }
+          void selectMode("editor").then(async () => {
+            const result = await controller.showPreviewScene(entry.selector);
+            if (!result.ok) setWorkspaceError(result.reason ?? "Не удалось показать выбранную сцену.");
+          });
         }}
         pencilColor={pencil.color} pencilWidth={pencil.width} onPencilChange={setPencil}
         addEntries={[{ id: "rule", label: "Правило" }, { id: "page", label: "Страница" }, { id: "element", label: "Элемент на странице" }, ...controller.mvpPrototypeEntries.map(item => ({ ...item, id: `prototype:${item.id}` }))].map(item => ({ ...item, disabledReason: !controller.mvpDocumentReady || mutationBusy ? "Дождитесь загрузки или сохранения игры" : undefined }))}
         onAddEntry={id => void addItem(id as MvpCreateKind)}
-        canSaveState={controller.mvpDocumentReady && debug.status !== null && !debug.busy && !building && !controller.pendingMvpMutation}
+        canSaveState={controller.mvpDocumentReady && debug.status !== null && !controller.previewSceneActive && !debug.busy && !building && !controller.pendingMvpMutation}
         onSaveState={() => { setSaveLabel(`Состояние ${debug.savedStates.length + 1}`); setSaveOpen(true); }}
         disabledModes={{ ...(chatBusy ? { chat: "Дождитесь ответа агента", rules: "Дождитесь ответа агента" } : {}), ...(!controller.mvpDocumentReady ? { play: "Дождитесь загрузки игры" } : mutationBusy ? { play: "Дождитесь применения изменения" } : controller.pendingMvpMutation ? { play: "Сначала примените или отмените предложенное изменение" } : debug.busy ? { play: "Дождитесь подтверждения отладки" } : building ? { play: "Подготавливаем текущую игру" } : {}) }}
       />
@@ -322,7 +338,7 @@ export function EditorWorkspace() {
           <iframe ref={candidateFrameRef} key={controller.pendingMvpMutation.prepared.effectDigest} title="Предпросмотр предложенного изменения" src={controller.pendingMvpMutation.prepared.preview.playerUrl}
             sandbox="allow-scripts allow-same-origin" onLoad={() => { if (candidatePlayerUrl !== undefined) requestCandidateSnapshot(candidatePlayerUrl); }} />
           <div className={styles.candidateActions}>
-            <p>{controller.pendingMvpMutation.prepared.summary}</p>
+            <p>{controller.pendingMvpMutation.prepared.summary}{" "}{mvpSharedChangeImpact(controller.pendingMvpMutation.plan.changeSet, controller.viewModel.entityProjectionDocuments)}</p>
             <button type="button" disabled={confirming} onClick={controller.cancelMvpMutation}>Отмена</button>
             <button type="button" disabled={confirming || candidateReady !== controller.pendingMvpMutation.prepared} onClick={() => { setConfirming(true); void controller.confirmMvpMutation().finally(() => setConfirming(false)); }}>Применить изменение</button>
           </div>

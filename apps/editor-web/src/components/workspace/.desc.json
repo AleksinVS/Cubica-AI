@@ -1,3 +1,3 @@
 {
-  ".": "Decomposed building blocks of the ADR-034 editor workspace: shared types/constants, presentational panel components (toolbar, sidebars, preview stage, status bar, property panel, timeline), pure helpers, the editor REST client, and the domain state hooks that back the thin EditorWorkspace composition. Includes the standalone six-tool MVP floating menu and non-executable structural authoring preview."
+  ".": "Editor workspace controller, preview and chat surfaces, floating toolbar and prompt panels. MVP uses the live player with prototype-defined semantic YAML, exact authoring context and explicit prototype editing (ADR-108); legacy inspection surfaces remain outside MVP."
 }

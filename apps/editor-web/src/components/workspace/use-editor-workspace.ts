@@ -40,6 +40,7 @@ import {
   hasActiveIntent,
   INTENT_STALE_DIAGNOSTIC_CODE,
   hashEditorText,
+  isPlainJsonObject,
   inferEditorEntityDocumentChannel,
   inferEditorEntityDocumentKind,
   interpretReturnedIntent,
@@ -126,16 +127,23 @@ import {
   isPlayerPreviewEntitiesMessage,
   isPlayerPreviewRestoreResultMessage,
   isPlayerPreviewSessionSnapshotMessage,
-  mapPlayerPreviewEntitiesToAuthoringDescriptors,
+  mapPlayerPreviewEntitiesForSourceSnapshot,
+  type PlayerPreviewEntitiesMessage,
   type PreviewSelectionSourceMap
 } from "@/lib/preview-message-adapter";
+import { validateEditorPreviewContentRefreshResponse, validateEditorPreviewSceneResponse,
+  validateEditorPreviewPrototypeResponse, validateEditorPrototypePreviewResponse,
+  type EditorPreviewContentRefreshResponse, type EditorPreviewSceneRequest, type EditorPreviewSceneResponse,
+  type EditorPreviewPrototypeRequest, type EditorPreviewPrototypeResponse } from "@cubica/contracts-session";
 import { buildEditorAgentContextProjection } from "@/lib/agent-context-projection";
 import { captureRegionSnapshotForAgent } from "@/lib/preview-region-snapshot";
 import { redactAgentContextValue } from "@/lib/agent-context-projection";
 import type { EditorMessageSender } from "@/components/workspace/mvp-agent-message";
 import { forwardMvpAgentRequest, isMvpAgentCandidateScopeCurrent, isMvpExactTextOrNamePrompt, parseMvpAgentCandidate, resolveMvpAgentCandidateScope, type MvpAgentCandidateScope } from "@/components/workspace/mvp-agent-candidate";
-import { buildMvpElementAuthorPromptChangeSet, buildMvpElementNameChangeSet, isMvpMetadataOnlyChangeSet, type MvpElementSource } from "@/components/workspace/mvp-element-operations";
-import { buildMvpCreateItem, buildMvpSavePrototype, combineMvpDraftChanges, mvpPrototypeEntries, mvpSourceEntity, splitMvpDraftLabelHeader, type MvpAuthoringSource, type MvpCreateKind } from "@/components/workspace/mvp-authoring-actions";
+import { buildMvpElementAuthorPromptChangeSet, isMvpMetadataOnlyChangeSet, type MvpElementSource } from "@/components/workspace/mvp-element-operations";
+import { buildMvpCreateItem, buildMvpSavePrototype, buildMvpPrototypePromptTemplateChangeSet, combineMvpDraftChanges, effectiveMvpElementStyle, mvpPrototypeEntries, mvpPrototypeContext as deriveMvpPrototypeContext, type MvpAuthoringSource, type MvpCreateKind } from "@/components/workspace/mvp-authoring-actions";
+import { createPreviewPrototypeCommandQueue } from "@/components/workspace/preview-prototype-command-queue";
+import { captureMvpSemanticSource } from "@/components/workspace/mvp-bound-text-capture";
 import { projectMvpRuleEntities } from "@/components/workspace/mvp-rules-panel-helpers";
 import {
   useEditorAgentConnection,
@@ -294,6 +302,22 @@ function safeParseProjectionDocumentJson(text: string): JsonValue | undefined {
   } catch {
     return undefined;
   }
+}
+
+function previewContextMatchesScene(
+  context: PlayerPreviewEntitiesMessage["context"],
+  selector: EditorPreviewSceneRequest["selector"]
+): boolean {
+  if (selector === null) return true;
+  return (selector.screenKey === undefined || selector.screenKey === context.screenKey) &&
+    (selector.screenId === undefined || selector.screenId === context.scene.screenId) &&
+    (selector.stepIndex === undefined || selector.stepIndex === context.scene.stepIndex) &&
+    (selector.activeInfoId === undefined || selector.activeInfoId === context.scene.activeInfoId);
+}
+
+async function authoringVersionHash(text: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 /**
@@ -512,12 +536,53 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
   // These refs coordinate iframe readiness and request/response messages
   // without copying that credential into editor state or browser JavaScript.
   const previewRuntimeSessionIdRef = useRef<string | undefined>(previewRuntimeSessionId);
+  const previewCompileRevisionRef = useRef<string>();
+  const previewSourceSnapshotRef = useRef<{ readonly revision?: string; readonly maps: typeof previewSourceMaps }>({
+    revision: undefined, maps: previewSourceMaps
+  });
   const previewFrameAcceptingMessagesRef = useRef(false);
   const previewFrameLoadWaitersRef = useRef(new Set<() => void>());
   const previewSessionWaitersRef = useRef(new Set<(sessionId: string) => void>());
   const previewBuildSerialRef = useRef<Promise<unknown> | null>(null);
+  const previewBuildCompletionRef = useRef<Promise<{ readonly ready: boolean }> | null>(null);
   const previewBuildRequestRef = useRef(0);
+  const autoPreviewSessionRef = useRef<string>();
+  const previewPauseHandlerRef = useRef<((paused: boolean) => Promise<boolean>) | null>(null);
+  const previewRefreshRequestsRef = useRef(new Map<string, {
+    readonly resolve: (result: EditorPreviewContentRefreshResponse) => void;
+    readonly reject: (error: Error) => void;
+    readonly timeout: number;
+  }>());
+  const previewSceneRequestsRef = useRef(new Map<string, {
+    readonly resolve: (result: EditorPreviewSceneResponse) => void;
+    readonly reject: (error: Error) => void;
+    readonly timeout: number;
+  }>());
+  const previewPrototypeRequestsRef = useRef(new Map<string, {
+    readonly resolve: (result: EditorPreviewPrototypeResponse) => void;
+    readonly reject: (error: Error) => void;
+    readonly timeout: number;
+  }>());
+  const previewPrototypeContextWaitersRef = useRef(new Map<string, {
+    readonly resolve: () => void;
+    readonly reject: (error: Error) => void;
+    readonly timeout: number;
+  }>());
+  const previewPrototypeStateRef = useRef<{ readonly runtimePointer: string; readonly sessionId: string; readonly requestId: string } | null>(null);
+  const previewPrototypePendingRef = useRef<{ readonly runtimePointer: string; readonly sessionId: string; readonly requestId: string } | null>(null);
+  const previewPrototypeCommandQueueRef = useRef(createPreviewPrototypeCommandQueue());
+  const [mvpPrototypePreviewIdentity, setMvpPrototypePreviewIdentity] = useState<string | null>(null);
+  const previewPrototypeOperationRef = useRef(0);
+  const selectedPreviewEntityIdRef = useRef(selectedPreviewEntityId);
+  selectedPreviewEntityIdRef.current = selectedPreviewEntityId;
+  const [previewSceneActive, setPreviewSceneActive] = useState(false);
+  const previewSceneTransitionRef = useRef<{ readonly selector: EditorPreviewSceneRequest["selector"]; readonly awaitingResponse: boolean } | null>(null);
+  const acceptedPreviewContextRef = useRef<string>();
   const repositoryLoadEpochRef = useRef(0);
+
+  function setPreviewPauseHandler(handler: (paused: boolean) => Promise<boolean>) {
+    previewPauseHandlerRef.current = handler;
+  }
 
   // Runtime event ids never rewind. This signed offset maps that durable
   // ledger onto the editor's logical T0..Tn timeline after a restore.
@@ -1474,6 +1539,15 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
   }, [restorePreviewNonce]);
 
   useEffect(() => {
+    if (options.mvp !== true || !mvpDocumentReady || previewUrl !== null || editorSession?.sessionId === undefined) return;
+    const key = `${editorSession.sessionId}:${currentDocument.gameId}`;
+    if (autoPreviewSessionRef.current === key) return;
+    autoPreviewSessionRef.current = key;
+    void preparePreviewSession();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- one request per loaded editor session.
+  }, [options.mvp, mvpDocumentReady, previewUrl, editorSession?.sessionId, currentDocument.gameId]);
+
+  useEffect(() => {
     if (monacoApi === null) {
       return;
     }
@@ -1620,6 +1694,90 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
     });
   }
 
+  function requestPreviewContentRefresh(sessionId: string, revision: string): Promise<EditorPreviewContentRefreshResponse> {
+    const origin = previewUrl === null ? undefined : safeUrlOrigin(previewUrl);
+    const frame = previewIframeRef.current?.contentWindow;
+    if (!previewFrameAcceptingMessagesRef.current || origin === undefined || frame === undefined || frame === null) {
+      return Promise.reject(new Error("Player preview is not ready for an in-frame update."));
+    }
+    const requestId = crypto.randomUUID();
+    return new Promise((resolve, reject) => {
+      const timeout = window.setTimeout(() => {
+        previewRefreshRequestsRef.current.delete(requestId);
+        reject(new Error("Player preview did not acknowledge the UI update."));
+      }, 15_000);
+      previewRefreshRequestsRef.current.set(requestId, { resolve, reject, timeout });
+      frame.postMessage({ source: "cubica-editor-web", type: "refreshPreviewContent", protocolVersion: 1,
+        requestId, sessionId, revision }, origin);
+    });
+  }
+
+  function requestPreviewScene(sessionId: string, selector: EditorPreviewSceneRequest["selector"]): Promise<EditorPreviewSceneResponse> {
+    const origin = previewUrl === null ? undefined : safeUrlOrigin(previewUrl);
+    const frame = previewIframeRef.current?.contentWindow;
+    if (!previewFrameAcceptingMessagesRef.current || origin === undefined || frame === undefined || frame === null) {
+      return Promise.reject(new Error("Player preview is not ready for scene navigation."));
+    }
+    const requestId = crypto.randomUUID();
+    return new Promise((resolve, reject) => {
+      const timeout = window.setTimeout(() => {
+        previewSceneRequestsRef.current.delete(requestId);
+        reject(new Error("Player preview did not acknowledge the scene."));
+      }, 10_000);
+      previewSceneRequestsRef.current.set(requestId, { resolve, reject, timeout });
+      frame.postMessage({ source: "cubica-editor-web", type: "showPreviewScene", protocolVersion: 1,
+        requestId, sessionId, selector }, origin);
+    });
+  }
+
+  function requestPreviewPrototype(
+    sessionId: string,
+    runtimePointer: string,
+    component: EditorPreviewPrototypeRequest["component"],
+    requestId: string
+  ): Promise<EditorPreviewPrototypeResponse> {
+    const origin = previewUrl === null ? undefined : safeUrlOrigin(previewUrl);
+    const frame = previewIframeRef.current?.contentWindow;
+    if (!previewFrameAcceptingMessagesRef.current || origin === undefined || frame === undefined || frame === null) {
+      return Promise.reject(new Error("Игровой предпросмотр недоступен для прототипа."));
+    }
+    return new Promise((resolve, reject) => {
+      const timeout = window.setTimeout(() => {
+        previewPrototypeRequestsRef.current.delete(requestId);
+        reject(new Error("Предпросмотр не подтвердил открытие прототипа."));
+      }, 10_000);
+      previewPrototypeRequestsRef.current.set(requestId, { resolve, reject, timeout });
+      frame.postMessage({ source: "cubica-editor-web", type: "showPreviewPrototype", protocolVersion: 1,
+        requestId, sessionId, runtimePointer, component }, origin);
+    });
+  }
+
+  function enqueuePreviewPrototypeCommand<T>(run: () => Promise<T>): Promise<T> {
+    return previewPrototypeCommandQueueRef.current.enqueue(run);
+  }
+
+  function invalidatePendingPrototypePreview() {
+    ++previewPrototypeOperationRef.current;
+    const pending = previewPrototypePendingRef.current;
+    previewPrototypePendingRef.current = null;
+    const waiter = pending === null ? undefined : previewPrototypeContextWaitersRef.current.get(pending.requestId);
+    if (waiter !== undefined) {
+      window.clearTimeout(waiter.timeout);
+      previewPrototypeContextWaitersRef.current.delete(pending!.requestId);
+      waiter.reject(new Error("Контекст предпросмотра изменился."));
+    }
+  }
+
+  function waitForPrototypeContext(requestId: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const timeout = window.setTimeout(() => {
+        previewPrototypeContextWaitersRef.current.delete(requestId);
+        reject(new Error("Игра не подтвердила новый контекст прототипа."));
+      }, 10_000);
+      previewPrototypeContextWaitersRef.current.set(requestId, { resolve, reject, timeout });
+    });
+  }
+
   useEffect(() => {
     if (previewUrl === null) {
       return;
@@ -1661,13 +1819,55 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
         return;
       }
 
+      if (validateEditorPreviewContentRefreshResponse(event.data)) {
+        const pending = previewRefreshRequestsRef.current.get(event.data.requestId);
+        if (pending === undefined || event.data.sessionId !== previewRuntimeSessionIdRef.current) return;
+        window.clearTimeout(pending.timeout);
+        previewRefreshRequestsRef.current.delete(event.data.requestId);
+        pending.resolve(event.data);
+        return;
+      }
+
+      if (validateEditorPreviewSceneResponse(event.data)) {
+        const pending = previewSceneRequestsRef.current.get(event.data.requestId);
+        if (pending === undefined || event.data.sessionId !== previewRuntimeSessionIdRef.current) return;
+        window.clearTimeout(pending.timeout);
+        previewSceneRequestsRef.current.delete(event.data.requestId);
+        pending.resolve(event.data);
+        return;
+      }
+
+      if (validateEditorPreviewPrototypeResponse(event.data)) {
+        const pending = previewPrototypeRequestsRef.current.get(event.data.requestId);
+        if (pending === undefined || event.data.sessionId !== previewRuntimeSessionIdRef.current) return;
+        window.clearTimeout(pending.timeout);
+        previewPrototypeRequestsRef.current.delete(event.data.requestId);
+        pending.resolve(event.data);
+        return;
+      }
+
       if (isPlayerPreviewEntitiesMessage(event.data)) {
-        const mapped = mapPlayerPreviewEntitiesToAuthoringDescriptors(event.data.entities, previewSourceMaps, {
+        const sourceSnapshot = previewSourceSnapshotRef.current;
+        if (previewRuntimeSessionIdRef.current !== undefined && event.data.context.sessionId !== previewRuntimeSessionIdRef.current) return;
+        const mapped = mapPlayerPreviewEntitiesForSourceSnapshot(event.data, sourceSnapshot, {
           currentAuthoringFile: currentDocument.filePath,
           gameId: currentDocument.gameId
         });
-
+        if (mapped === undefined) return;
+        const transition = previewSceneTransitionRef.current;
+        if (transition !== null) {
+          if (transition.awaitingResponse || !previewContextMatchesScene(event.data.context, transition.selector)) return;
+          previewSceneTransitionRef.current = null;
+        }
         setPreviewEntities(mapped.descriptors);
+        acceptedPreviewContextRef.current = JSON.stringify(event.data.context);
+        const prototypeRequestId = event.data.context.prototypePreview?.requestId;
+        const waiter = prototypeRequestId === undefined ? undefined : previewPrototypeContextWaitersRef.current.get(prototypeRequestId);
+        if (waiter !== undefined) {
+          window.clearTimeout(waiter.timeout);
+          previewPrototypeContextWaitersRef.current.delete(prototypeRequestId!);
+          waiter.resolve();
+        }
         setPreviewUnresolvedEntityCount(mapped.unresolved.length);
         return;
       }
@@ -1717,10 +1917,16 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
     currentDocument.filePath,
     currentDocument.gameId,
     previewRuntimeSessionId,
-    previewSourceMaps,
     previewUrl,
     requestCurrentPreviewSnapshot
   ]);
+
+  // A same-frame UI update can change source-map pointers before React has
+  // rebound the message listener. Request a fresh descriptor pass with the
+  // newly committed map, including when compiled bytes were unchanged.
+  useEffect(() => {
+    if (previewUrl !== null && previewFrameAcceptingMessagesRef.current) requestCurrentPreviewSnapshot();
+  }, [previewSourceMaps, previewUrl, requestCurrentPreviewSnapshot]);
 
   // Design-mode auto-apply (ADR-057 §4.8; design-spec §3.3). In "Дизайн" a valid
   // (compilable) edit applies to the preview automatically after a debounce,
@@ -1966,11 +2172,19 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
   }
 
   function clearPreparedPreview() {
+    invalidatePendingPrototypePreview();
     previewFrameAcceptingMessagesRef.current = false;
     previewRuntimeSessionIdRef.current = undefined;
     previewRuntimeSequenceOffsetRef.current = 0;
     setPreviewUrl(null);
     setPreviewRuntimeSessionId(undefined);
+    previewCompileRevisionRef.current = undefined;
+    previewSourceSnapshotRef.current = { revision: undefined, maps: [] };
+    acceptedPreviewContextRef.current = undefined;
+    previewSceneTransitionRef.current = null;
+    previewPrototypeStateRef.current = null;
+    setMvpPrototypePreviewIdentity(null);
+    setPreviewSceneActive(false);
     setPreviewSourceMaps([]);
     setPreviewEntities([]);
     setPreviewUnresolvedEntityCount(0);
@@ -1987,6 +2201,27 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
     setPreviewTrace(createPreviewPlaythroughTrace({ traceId: "preview-trace-initial", gameId: currentDocument.gameId }));
     setSelectedPreviewTraceSequence(undefined);
     setPreviewRollbackState("idle");
+  }
+
+  function reloadPreviewFrame(url: string) {
+    invalidatePendingPrototypePreview();
+    const next = new URL(url);
+    const revision = crypto.randomUUID();
+    next.searchParams.set("previewRevision", revision);
+    previewFrameAcceptingMessagesRef.current = false;
+    previewCompileRevisionRef.current = revision;
+    previewSourceSnapshotRef.current = { revision, maps: previewSourceSnapshotRef.current.maps };
+    acceptedPreviewContextRef.current = undefined;
+    previewSceneTransitionRef.current = null;
+    previewPrototypeStateRef.current = null;
+    setMvpPrototypePreviewIdentity(null);
+    setPreviewSceneActive(false);
+    setPreviewEntities([]);
+    setPreviewUnresolvedEntityCount(0);
+    setSelectedPreviewEntityId(undefined);
+    setPreviewPromptContext(null);
+    setPreviewAiIntent(null);
+    setPreviewUrl(next.toString());
   }
 
   /**
@@ -2377,9 +2612,21 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
     setPluginDiagnostics([]);
 
     try {
+      const existingRuntimeSessionId = previewRuntimeSessionIdRef.current;
+      if (previewUrl !== null) {
+        if (existingRuntimeSessionId === undefined || previewPauseHandlerRef.current === null ||
+            !await previewPauseHandlerRef.current(true)) {
+          const reason = "Не удалось подтвердить паузу текущей игры перед обновлением.";
+          setWorkflowState("blocked");
+          setStatusMessage(reason);
+          return { ready: false, reason };
+        }
+      }
+      if (!isCurrent()) return { ready: false };
       const pending = postEditorWorkflow("/api/editor/preview", {
         gameId: captured.currentDocument.gameId,
-        sessionId: captured.sessionId
+        sessionId: captured.sessionId,
+        reuseLivePreview: existingRuntimeSessionId !== undefined
       });
       previewBuildSerialRef.current = pending;
       const result = await pending.finally(() => {
@@ -2389,16 +2636,63 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
       setWorkflowDiagnostics(result.diagnostics ?? []);
       setPluginDiagnostics(pluginDiagnosticsFromWorkflowResponse(result));
 
+      if (result.ready && previewUrl !== null && existingRuntimeSessionId !== undefined &&
+          (result.refreshKind === "unchanged" || result.refreshKind === "ui")) {
+        let updatedInFrame = result.refreshKind === "unchanged";
+        let refreshedRevision: string | undefined;
+        if (!updatedInFrame) {
+          try {
+            const revision = crypto.randomUUID();
+            const response = await requestPreviewContentRefresh(existingRuntimeSessionId,
+              revision);
+            updatedInFrame = response.ok && !response.requiresRestart && response.revision === revision;
+            if (updatedInFrame) refreshedRevision = revision;
+          } catch { updatedInFrame = false; }
+        }
+        if (!isCurrent()) return { ready: false };
+        if (updatedInFrame) {
+          if (result.refreshKind === "ui") invalidatePendingPrototypePreview();
+          const committedRevision = refreshedRevision ?? previewCompileRevisionRef.current;
+          const committedMaps = result.sourceMaps ?? (result.refreshKind === "unchanged" ? previewSourceSnapshotRef.current.maps : []);
+          previewCompileRevisionRef.current = committedRevision;
+          previewSourceSnapshotRef.current = { revision: committedRevision, maps: committedMaps };
+          if (result.refreshKind === "ui" && previewPrototypeStateRef.current !== null) {
+            previewPrototypeStateRef.current = null;
+            setMvpPrototypePreviewIdentity(null);
+            acceptedPreviewContextRef.current = undefined;
+          }
+          setPreviewSourceMaps(committedMaps);
+          if (result.refreshKind === "ui") requestCurrentPreviewSnapshot();
+          setPreviewAppliedVersionHash(captured.currentDocument.versionHash);
+          setEditsSincePreview(0);
+          setWorkflowState("ready");
+          setStatusMessage("Preview session is ready");
+          return { ready: true, playerUrl: previewUrl, sessionId: existingRuntimeSessionId };
+        }
+      }
+
       if (result.ready && typeof result.playerUrl === "string") {
         // The iframe creates its session through player-web's BFF. Reset the
         // previous identity before navigation and accept only the snapshot
         // published after the new frame reports `load`.
         previewFrameAcceptingMessagesRef.current = false;
+        invalidatePendingPrototypePreview();
         previewRuntimeSessionIdRef.current = undefined;
+        previewPrototypeStateRef.current = null;
+        setMvpPrototypePreviewIdentity(null);
+        acceptedPreviewContextRef.current = undefined;
+        previewSceneTransitionRef.current = null;
         previewRuntimeSequenceOffsetRef.current = 0;
-        setPreviewUrl(result.playerUrl);
+        const nextPreviewUrl = new URL(result.playerUrl);
+        const nextRevision = crypto.randomUUID();
+        const nextMaps = result.sourceMaps ?? [];
+        previewCompileRevisionRef.current = nextRevision;
+        previewSourceSnapshotRef.current = { revision: nextRevision, maps: nextMaps };
+        nextPreviewUrl.searchParams.set("previewRevision", nextRevision);
+        setPreviewUrl(nextPreviewUrl.toString());
         setPreviewRuntimeSessionId(undefined);
-        setPreviewSourceMaps(result.sourceMaps ?? []);
+        setPreviewSceneActive(false);
+        setPreviewSourceMaps(nextMaps);
         setPreviewEntities([]);
         setPreviewUnresolvedEntityCount(0);
         setSelectedPreviewEntityId(undefined);
@@ -2420,7 +2714,7 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
         setEditsSincePreview(0);
         setWorkflowState("ready");
         setStatusMessage("Preview session is ready");
-        return { ready: true, playerUrl: result.playerUrl };
+        return { ready: true, playerUrl: nextPreviewUrl.toString() };
       }
 
       // Broken compile: DO NOT blank a working preview (ADR-057 §4.12; §9.6
@@ -2451,6 +2745,47 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
     }
 
     return preparePreviewSession();
+  }
+
+  async function waitForLatestPreviewBuild(): Promise<boolean> {
+    const pending = previewBuildCompletionRef.current;
+    return pending === null || (await pending).ready;
+  }
+
+  async function showPreviewScene(selector?: NonNullable<EditorPreviewSceneRequest["selector"]>): Promise<{ ok: boolean; reason?: string }> {
+    if (selector === undefined && !previewSceneActive) return { ok: true };
+    if (selector !== undefined && (previewFreshness !== "fresh" || workflowState !== "ready")) {
+      return { ok: false, reason: "Дождитесь актуального предпросмотра игры." };
+    }
+    const sessionId = previewRuntimeSessionIdRef.current;
+    if (sessionId === undefined) {
+      if (selector === undefined) { setPreviewSceneActive(false); return { ok: true }; }
+      return { ok: false, reason: "Игровая сцена ещё не подключена." };
+    }
+    if (selector !== undefined && (previewPauseHandlerRef.current === null || !await previewPauseHandlerRef.current(true))) {
+      return { ok: false, reason: "Не удалось подтвердить паузу игры." };
+    }
+    previewSceneTransitionRef.current = { selector: selector ?? null, awaitingResponse: true };
+    acceptedPreviewContextRef.current = undefined;
+    try {
+      const result = await requestPreviewScene(sessionId, selector ?? null);
+      if (!result.ok) {
+        previewSceneTransitionRef.current = null;
+        return { ok: false, reason: result.error ?? "Сцена недоступна." };
+      }
+      previewSceneTransitionRef.current = { selector: selector ?? null, awaitingResponse: false };
+      invalidatePendingPrototypePreview();
+      if (previewPrototypeStateRef.current !== null) {
+        previewPrototypeStateRef.current = null;
+        setMvpPrototypePreviewIdentity(null);
+      }
+      setPreviewSceneActive(selector !== undefined);
+      requestCurrentPreviewSnapshot();
+      return { ok: true };
+    } catch (error) {
+      previewSceneTransitionRef.current = null;
+      return { ok: false, reason: error instanceof Error ? error.message : "Сцена недоступна." };
+    }
   }
 
   /**
@@ -2581,8 +2916,7 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
         });
         previewRuntimeSequenceOffsetRef.current = restoredVersion.lastEventSequence - rung.sequence;
         setSelectedPreviewTraceSequence(rung.sequence);
-        previewFrameAcceptingMessagesRef.current = false;
-        setPreviewUrl(addPreviewReloadNonce(playerUrl, rung.sequence));
+        reloadPreviewFrame(addPreviewReloadNonce(playerUrl, rung.sequence));
         setPreviewRollbackState("restored");
         setStatusMessage(rung.message);
         return;
@@ -2638,8 +2972,7 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
       setPreviewUnresolvedEntityCount(0);
       setSelectedPreviewTraceSequence(targetSequence);
       setPreviewRollbackState("restored");
-      previewFrameAcceptingMessagesRef.current = false;
-      setPreviewUrl(addPreviewReloadNonce(previewUrl, targetSequence));
+      reloadPreviewFrame(addPreviewReloadNonce(previewUrl, targetSequence));
       setStatusMessage(`Preview restored to event ${targetSequence}; future trace was discarded.`);
     } catch (error) {
       setPreviewRollbackState("error");
@@ -2659,8 +2992,7 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
       return;
     }
 
-    previewFrameAcceptingMessagesRef.current = false;
-    setPreviewUrl(addPreviewReloadNonce(previewUrl, currentPreviewTraceEvent.sequence));
+    reloadPreviewFrame(addPreviewReloadNonce(previewUrl, currentPreviewTraceEvent.sequence));
     setStatusMessage(`Replaying current preview event ${currentPreviewTraceEvent.sequence}.`);
   }
 
@@ -2860,8 +3192,7 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
         targetEventSequence: 0
       });
       previewRuntimeSequenceOffsetRef.current = restoredVersion.lastEventSequence;
-      previewFrameAcceptingMessagesRef.current = false;
-      setPreviewUrl(addPreviewReloadNonce(playerUrl, 0));
+      reloadPreviewFrame(addPreviewReloadNonce(playerUrl, 0));
       setPreviewRollbackState("restored");
       setStatusMessage(`Состояние фикстуры «${fixture._label}» загружено в предпросмотр.`);
     } catch (error) {
@@ -4068,7 +4399,9 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
       setPreviewAppliedVersionHash(nextDocument.versionHash);
     }
     if (!localEditsRemain && !isMvpMetadataOnlyChangeSet(plan.changeSet) &&
-        (activeDocument !== undefined || live.jsonText === savedText)) void preparePreviewSession();
+        (activeDocument !== undefined || live.jsonText === savedText)) {
+      previewBuildCompletionRef.current = preparePreviewSession();
+    }
     return true;
   }
 
@@ -4131,8 +4464,8 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
     }
   }
 
-  function isCurrentMvpElementSource(source: MvpElementSource): boolean {
-    if (!mvpDocumentReady || (source.pointer !== "/root" && !source.pointer.startsWith("/root/"))) return false;
+  function isCurrentMvpElementSource(source: MvpElementSource, mode: "instance" | "prototype" = "instance"): boolean {
+    if (!mvpDocumentReady || !(mode === "prototype" ? /^\/_definitions\/[^/]+$/u.test(source.pointer) : source.pointer === "/root" || source.pointer.startsWith("/root/"))) return false;
     const text = liveAuthoringTextByFilePath().get(source.filePath);
     if (text === undefined) return false;
     try {
@@ -4173,39 +4506,178 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
       : "Прототип не сохранён: проверка источника отклонила изменение." };
   }
 
+  function mvpPrototypeContext(source: MvpElementSource) {
+    return isCurrentMvpElementSource(source) ? deriveMvpPrototypeContext(source, viewModel.entityProjectionDocuments) : undefined;
+  }
+
+  function mvpEffectiveStyle(source: MvpElementSource) {
+    return isCurrentMvpElementSource(source) ? effectiveMvpElementStyle(source, viewModel.entityProjectionDocuments) : undefined;
+  }
+
+  async function showMvpPrototypePreview(
+    instance: MvpElementSource,
+    prototype: MvpElementSource
+  ): Promise<{ ok: boolean; message: string }> {
+    const selected = matchingMvpPreviewDescriptor(instance);
+    const sessionId = previewRuntimeSessionIdRef.current;
+    const sourceText = liveAuthoringTextByFilePath().get(prototype.filePath);
+    if (!isCurrentMvpElementSource(instance) || !isCurrentMvpElementSource(prototype, "prototype") ||
+        instance.filePath !== prototype.filePath || selected === undefined || typeof selected.runtimePointer !== "string" || sessionId === undefined ||
+        sourceText === undefined || previewPrototypeStateRef.current !== null || editorSession?.sessionId === undefined) {
+      return { ok: false, message: "Контекст экземпляра или прототипа изменился. Выберите элемент снова." };
+    }
+    const selectedRuntimePointer = selected.runtimePointer;
+    const selectedEntityId = selected.entityId;
+    if (previewPauseHandlerRef.current === null || !await previewPauseHandlerRef.current(true)) {
+      return { ok: false, message: "Не удалось приостановить игру перед просмотром прототипа." };
+    }
+    const operation = ++previewPrototypeOperationRef.current;
+    const context = acceptedPreviewContextRef.current;
+    const revision = previewCompileRevisionRef.current;
+    const isCurrent = () => operation === previewPrototypeOperationRef.current &&
+      revision === previewCompileRevisionRef.current && sessionId === previewRuntimeSessionIdRef.current &&
+      selectedPreviewEntityIdRef.current === selectedEntityId &&
+      context === acceptedPreviewContextRef.current &&
+      isCurrentMvpElementSource(instance) && isCurrentMvpElementSource(prototype, "prototype") &&
+      liveAuthoringTextByFilePath().get(prototype.filePath) === sourceText;
+    let requestId: string | undefined;
+    try {
+      const expectedVersion = await authoringVersionHash(sourceText);
+      if (!isCurrent()) return { ok: false, message: "Источник изменился до открытия прототипа." };
+      const response = await fetch("/api/editor/prototype-preview", { method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ gameId: currentDocument.gameId, filePath: prototype.filePath,
+          sourcePointer: instance.pointer, prototypePointer: prototype.pointer, expectedVersion,
+          sessionId: editorSession.sessionId }) });
+      const body: unknown = await response.json();
+      if (!response.ok) throw new Error(typeof body === "object" && body !== null && "error" in body && typeof body.error === "string" ? body.error : "Прототип не собран.");
+      if (!validateEditorPrototypePreviewResponse(body)) throw new Error("Сервер вернул неверный компонент прототипа.");
+      if (!isCurrent()) return { ok: false, message: "Контекст изменился во время сборки прототипа." };
+      const commandRequestId = crypto.randomUUID();
+      requestId = commandRequestId;
+      previewPrototypePendingRef.current = { runtimePointer: selectedRuntimePointer, sessionId, requestId: commandRequestId };
+      const contextPromise = waitForPrototypeContext(commandRequestId);
+      void contextPromise.catch(() => {});
+      acceptedPreviewContextRef.current = undefined;
+      const result = await enqueuePreviewPrototypeCommand(() => operation === previewPrototypeOperationRef.current
+        ? requestPreviewPrototype(sessionId, selectedRuntimePointer, body.component, commandRequestId)
+        : Promise.reject(new Error("Открытие прототипа отменено.")));
+      if (!result.ok) throw new Error(result.error ?? "Игра отклонила показ прототипа.");
+      requestCurrentPreviewSnapshot();
+      await contextPromise;
+      if (operation !== previewPrototypeOperationRef.current || sessionId !== previewRuntimeSessionIdRef.current ||
+          revision !== previewCompileRevisionRef.current || selectedPreviewEntityIdRef.current !== selectedEntityId ||
+          !isCurrentMvpElementSource(instance) || !isCurrentMvpElementSource(prototype, "prototype")) {
+        throw new Error("Контекст прототипа изменился во время открытия.");
+      }
+      previewPrototypeStateRef.current = { runtimePointer: selectedRuntimePointer, sessionId, requestId: commandRequestId };
+      previewPrototypePendingRef.current = null;
+      setMvpPrototypePreviewIdentity(commandRequestId);
+      return { ok: true, message: "Прототип открыт в предпросмотре." };
+    } catch (error) {
+      if (requestId !== undefined) {
+        const waiter = previewPrototypeContextWaitersRef.current.get(requestId);
+        if (waiter !== undefined) { window.clearTimeout(waiter.timeout); previewPrototypeContextWaitersRef.current.delete(requestId); }
+        if (operation === previewPrototypeOperationRef.current && previewPrototypePendingRef.current?.requestId === requestId) {
+          await clearMvpPrototypePreview();
+        }
+      }
+      return { ok: false, message: error instanceof Error ? error.message : "Не удалось открыть прототип." };
+    }
+  }
+
+  async function clearMvpPrototypePreview(): Promise<{ ok: boolean; message: string }> {
+    const operation = ++previewPrototypeOperationRef.current;
+    const active = previewPrototypeStateRef.current ?? previewPrototypePendingRef.current;
+    const pending = previewPrototypePendingRef.current;
+    previewPrototypePendingRef.current = null;
+    if (pending !== null) {
+      const waiter = previewPrototypeContextWaitersRef.current.get(pending.requestId);
+      if (waiter !== undefined) {
+        window.clearTimeout(waiter.timeout);
+        previewPrototypeContextWaitersRef.current.delete(pending.requestId);
+        waiter.reject(new Error("Открытие прототипа отменено."));
+      }
+    }
+    if (active === null) return { ok: true, message: "Прототип закрыт." };
+    if (active.sessionId !== previewRuntimeSessionIdRef.current) {
+      previewPrototypeStateRef.current = null;
+      setMvpPrototypePreviewIdentity(null);
+      return { ok: true, message: "Прототип закрыт вместе с прежней игровой сессией." };
+    }
+    try {
+      acceptedPreviewContextRef.current = undefined;
+      const result = await enqueuePreviewPrototypeCommand(() => requestPreviewPrototype(active.sessionId, active.runtimePointer, null, crypto.randomUUID()));
+      if (!result.ok) throw new Error(result.error ?? "Не удалось вернуться к экземпляру.");
+      previewPrototypeStateRef.current = null;
+      setMvpPrototypePreviewIdentity(null);
+      requestCurrentPreviewSnapshot();
+      return { ok: true, message: "Возврат к экземпляру." };
+    } catch (error) {
+      // A lost acknowledgement must not leave an invisible prototype mode.
+      // Reset this frame instead of maintaining a second retry state machine.
+      if (operation === previewPrototypeOperationRef.current && active.sessionId === previewRuntimeSessionIdRef.current && previewUrl !== null) {
+        reloadPreviewFrame(previewUrl);
+        const message = "Предпросмотр восстановлен после сбоя выхода из прототипа.";
+        setStatusMessage(message);
+        return { ok: true, message };
+      }
+      return { ok: false, message: error instanceof Error ? error.message : "Не удалось вернуться к экземпляру." };
+    }
+  }
+
+  async function resetMvpInheritedProperties(source: MvpElementSource): Promise<{ ok: boolean; message: string }> {
+    const capture = captureMvpElementSource(source, "instance");
+    if (!isCurrentMvpElementSource(source) || capture?.semantic === undefined) {
+      return { ok: false, message: "Источник изменился. Обновите элемент перед сбросом." };
+    }
+    const pointers = [...new Set(capture.semantic.properties.flatMap((property) => property.resetTarget?.filePath === source.filePath
+      ? [property.resetTarget.pointer] : []))];
+    if (pointers.length === 0) return { ok: true, message: "Локальных переопределений нет." };
+    const changeSet: EditorChangeSet = { id: `mvp-reset-${crypto.randomUUID()}`,
+      summary: "Вернуть значения прототипа", jsonPatches: [{ filePath: source.filePath,
+        operations: [{ op: "test", path: source.pointer, value: source.value },
+          ...pointers.sort((left, right) => right.length - left.length).map((path) => ({ op: "remove" as const, path }))] }] };
+    const prepared = await prepareMvpMutation(changeSet, plannedChangeSetFromReturnedIntent(changeSet, capture.entityId));
+    return { ok: prepared, message: prepared
+      ? "Сброс подготовлен. Проверьте и подтвердите его в предпросмотре."
+      : mvpPrepareErrorRef.current ?? "Не удалось подготовить сброс; источник не изменён." };
+  }
+
   async function saveMvpElementDraft(input: {
     source: MvpElementSource;
     capture?: EntitySourceCapture;
     oneOff: string;
     authorIntent: string;
     yaml: string;
+    mode?: "instance" | "prototype";
   }): Promise<{ ok: boolean; pending?: boolean; message: string }> {
     const { source, capture } = input;
-    if (!isCurrentMvpElementSource(source) || pendingMvpMutationRef.current !== null) {
+    const mode = input.mode ?? capture?.mode ?? "instance";
+    if (!isCurrentMvpElementSource(source, mode) || pendingMvpMutationRef.current !== null) {
       return { ok: false, message: "Элемент изменился после открытия. Обновите панель; черновик сохранён." };
     }
     if (capture !== undefined) {
-      const freshCapture = captureMvpElementSource(source);
+      const freshCapture = captureMvpElementSource(source, mode);
       if (freshCapture === undefined || capture.entityId !== freshCapture.entityId ||
+          capture.contextKey !== freshCapture.contextKey || capture.mode !== freshCapture.mode ||
           capture.projectionYaml !== freshCapture.projectionYaml ||
           JSON.stringify(capture.facetSourceMap) !== JSON.stringify(freshCapture.facetSourceMap) ||
           Object.entries(capture.sourceHashes).some(([filePath, hash]) => {
             const text = liveAuthoringTextByFilePath().get(filePath);
             return text === undefined || hashEditorText(text) !== hash;
-          }) || Object.keys(capture.sourceHashes).length !== 1 || capture.sourceHashes[source.filePath] === undefined) {
+          }) || JSON.stringify(capture.sourceHashes) !== JSON.stringify(freshCapture.sourceHashes) ||
+          capture.sourceHashes[source.filePath] === undefined) {
         return { ok: false, message: "Структурированный источник устарел. Обновите элемент; черновик сохранён." };
       }
     }
     const oneOff = input.oneOff.trim();
     const authorIntent = input.authorIntent.trim();
-    const parsedYaml = splitMvpDraftLabelHeader(input.yaml);
-    if (parsedYaml.error !== undefined) return { ok: false, message: `${parsedYaml.error} Черновик сохранён.` };
-    const yaml = parsedYaml.returnedText.trim();
+    const yaml = input.yaml.trim();
     let structured: EditorChangeSet | null = null;
     let needsAgent = oneOff !== "" || (yaml !== "" && capture === undefined);
     if (!needsAgent && yaml !== "" && capture !== undefined) {
       try {
-        const interpreted = interpretReturnedIntent({ ...capture, returnedText: parsedYaml.returnedText }, {
+        const interpreted = interpretReturnedIntent({ ...capture, returnedText: input.yaml }, {
           currentSourceHashes: Object.fromEntries([...liveAuthoringTextByFilePath()].map(([filePath, text]) => [filePath, hashEditorText(text)]))
         });
         if (interpreted.stale === true) return { ok: false, message: "Структурированный источник устарел. Черновик сохранён." };
@@ -4215,35 +4687,42 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
         return { ok: false, message: error instanceof Error ? error.message : "Структурированное намерение не распознано." };
       }
     }
-    const nameChange = parsedYaml.label === undefined ? undefined : buildMvpElementNameChangeSet(source, parsedYaml.label);
-    const promptChange = buildMvpElementAuthorPromptChangeSet(source, authorIntent);
-    const metadataWrites = [nameChange, promptChange].filter((change): change is EditorChangeSet => change !== undefined)
+    const promptChange = mode === "prototype"
+      ? buildMvpPrototypePromptTemplateChangeSet(source, authorIntent)
+      : buildMvpElementAuthorPromptChangeSet(source, authorIntent);
+    const metadataWrites = [promptChange].filter((change): change is EditorChangeSet => change !== undefined)
       .flatMap((change) => change.jsonPatches.flatMap((patch) => patch.operations).filter((operation) => operation.op !== "test"));
     const metadata: EditorChangeSet | undefined = metadataWrites.length === 0 ? undefined : {
       id: `mvp-draft-metadata-${crypto.randomUUID()}`,
-      summary: "Сохранить имя и авторское описание элемента",
+      summary: mode === "prototype" ? "Сохранить замысел прототипа" : "Сохранить авторское описание элемента",
       jsonPatches: [{ filePath: source.filePath, operations: [
         { op: "test", path: source.pointer, value: source.value }, ...metadataWrites
       ] }]
     };
     // Keep a single exact text/name command intact for the existing planner.
     // Other draft changes must stay together in the agent's atomic proposal.
-    if (oneOff !== "" && isMvpExactTextOrNamePrompt(oneOff) && metadata === undefined &&
-        (yaml === "" || (capture !== undefined && parsedYaml.returnedText.trim() === capture.projectionYaml.trim()))) {
+    if (mode === "instance" && oneOff !== "" && isMvpExactTextOrNamePrompt(oneOff) &&
+        matchingMvpPreviewDescriptor(source)?.metadata?.textBinding === undefined && metadata === undefined &&
+        (yaml === "" || (capture !== undefined && input.yaml.trim() === capture.projectionYaml.trim()))) {
       const result = await submitMvpElementPrompt(source.filePath, source.pointer,
-        parsedYaml.label ?? String(source.value._label ?? ""), oneOff);
+        String(source.value._label ?? ""), oneOff);
       const pending = result.ready || result.forwarded;
       return { ok: pending, pending, message: result.message };
     }
     if (needsAgent) {
-      const scope = captureMvpAgentScope([{ filePath: source.filePath, pointer: source.pointer }]);
+      const scope = captureMvpAgentScope([{ filePath: source.filePath, pointer: source.pointer },
+        ...(capture?.semantic?.properties ?? []).filter((property) => property.scope === "shared" || property.presentation === "rule")
+          .map((property) => ({ filePath: property.owner.filePath,
+            pointer: property.owner.pointer.slice(0, property.owner.pointer.lastIndexOf("/")) || property.owner.pointer }))]);
       if (scope === null) return { ok: false, message: "Выбранный источник недоступен агенту. Черновик сохранён." };
       const sections = [
         `Разовый запрос:\n${oneOff || "(нет)"}`,
-        `Название элемента (_label):\n${parsedYaml.label ?? (typeof source.value._label === "string" ? source.value._label : "(без изменений)")}`,
-        `Авторское описание (_prompt.raw):\n${authorIntent || "(пусто)"}`,
+        `Авторское описание (${mode === "prototype" ? "_promptTemplate.raw" : "_prompt.raw"}):\n${authorIntent || "(пусто)"}`,
         `Структурированное намерение:\n${yaml || "(без изменений)"}`
       ];
+      const previousRules = capture?.semantic?.properties.filter((property) => property.presentation === "rule")
+        .map((property) => ({ owner: property.owner, expression: property.sourceValue })) ?? [];
+      if (previousRules.length > 0) sections.push(`Подтверждённые действующие выражения (скрытый контекст):\n${JSON.stringify(previousRules)}`);
       const draftContext = `Измени выбранный элемент одним предложением с учётом всех разделов. Не записывай исходники самостоятельно.\n\n${sections.join("\n\n")}`;
       const sent = await sendMvpAgentIntent(oneOff || "Примени авторское описание и структурированное намерение.", scope, draftContext);
       return { ok: sent.forwarded, pending: sent.forwarded, message: sent.message };
@@ -4825,19 +5304,38 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
     };
   }
 
-  function captureMvpElementSource(source: MvpElementSource): EntitySourceCapture | undefined {
-    if (!isCurrentMvpElementSource(source)) return undefined;
-    const document = viewModel.entityProjectionDocuments.find((item) => item.filePath === source.filePath);
-    const text = liveAuthoringTextByFilePath().get(source.filePath);
-    if (document === undefined || text === undefined || (document.documentKind !== "game" && document.documentKind !== "ui")) return undefined;
-    const entity = mvpSourceEntity(source, document.documentKind);
-    const projection = buildEditorEntityYamlProjection({ entity, documents: viewModel.entityProjectionDocuments });
-    return {
-      entityId: entity.entityId,
-      projectionYaml: projection.text,
-      facetSourceMap: projection.facetSourceMap,
-      sourceHashes: { [source.filePath]: hashEditorText(text) }
-    };
+  function captureMvpElementSource(source: MvpElementSource, mode: "instance" | "prototype" = "instance"): EntitySourceCapture | undefined {
+    if (!isCurrentMvpElementSource(source, mode)) return undefined;
+    const descriptor = mode === "instance" ? matchingMvpPreviewDescriptor(source) : currentMvpPreviewDescriptor();
+    const previewContext = descriptor?.metadata?.previewContext;
+    const contextKey = JSON.stringify({ mode, source: `${source.filePath}#${source.pointer}`,
+      previewContext: isPlainJsonObject(previewContext) ? previewContext : null,
+      sessionId: previewRuntimeSessionIdRef.current, compileRevision: previewCompileRevisionRef.current });
+    return captureMvpSemanticSource({ source, mode, documents: viewModel.entityProjectionDocuments,
+      liveTexts: liveAuthoringTextByFilePath(), descriptor, gameId: currentDocument.gameId, contextKey });
+  }
+
+  function currentMvpPreviewDescriptor() {
+    if (previewSceneTransitionRef.current !== null || previewFreshness !== "fresh") return undefined;
+    const selected = previewEntities.find((entity) => entity.entityId === selectedPreviewEntityId);
+    if (selected === undefined) return undefined;
+    const context = selected.metadata?.previewContext;
+    if (!isPlainJsonObject(context) || context.compileRevision !== previewCompileRevisionRef.current ||
+        context.sessionId !== previewRuntimeSessionIdRef.current ||
+        JSON.stringify(context) !== acceptedPreviewContextRef.current) return undefined;
+    const activePrototype = previewPrototypeStateRef.current;
+    const prototypeContext = isPlainJsonObject(context.prototypePreview) ? context.prototypePreview : undefined;
+    if (activePrototype === null ? prototypeContext !== undefined :
+        prototypeContext?.requestId !== activePrototype.requestId || prototypeContext.runtimePointer !== activePrototype.runtimePointer) return undefined;
+    return selected;
+  }
+
+  function matchingMvpPreviewDescriptor(source: MvpElementSource) {
+    const selected = currentMvpPreviewDescriptor();
+    if (selected === undefined || selected.authoringPointer !== source.pointer) return undefined;
+    const file = selected.metadata?.sourceFile;
+    return typeof file === "string" && toRepositoryAuthoringFilePath(file, currentDocument.gameId) === source.filePath
+      ? selected : undefined;
   }
 
   /** Folds one interpreter result into the running §5 telemetry tallies. */
@@ -5801,6 +6299,10 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
   return {
     mvp: options.mvp === true,
     mvpDocumentReady,
+    showPreviewScene,
+    previewSceneActive,
+    waitForLatestPreviewBuild,
+    setPreviewPauseHandler,
     setMvpAgentSender,
     mvpAgentForwardedCount,
     editorSession,
@@ -5935,6 +6437,12 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
     // Text mode «источник» + returned-intent apply (Phase 4.2).
     captureEntitySource,
     captureMvpElementSource,
+    mvpPrototypeContext,
+    mvpEffectiveStyle,
+    resetMvpInheritedProperties,
+    showMvpPrototypePreview,
+    clearMvpPrototypePreview,
+    mvpPrototypePreviewIdentity,
     applyEntityReturnedIntent,
     applyMvpEntityReturnedIntent,
     pendingMvpMutation,
@@ -5986,14 +6494,13 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
       const next = new URL(previewUrl);
       next.searchParams.set("sessionId", sessionId);
       next.searchParams.set("previewInstanceId", crypto.randomUUID());
-      previewFrameAcceptingMessagesRef.current = false;
       previewRuntimeSessionIdRef.current = undefined;
       previewRuntimeSequenceOffsetRef.current = 0;
       setPreviewRuntimeSessionId(undefined);
       setPreviewTrace(createPreviewPlaythroughTrace({ traceId: `preview-${Date.now()}`, gameId: currentDocument.gameId }));
       setSelectedPreviewTraceSequence(undefined);
       // Reload current UI/resources together with the newly admitted state.
-      setPreviewUrl(next.toString());
+      reloadPreviewFrame(next.toString());
     },
     previewEntities,
     selectedPreviewEntityId,

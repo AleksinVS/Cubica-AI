@@ -1,10 +1,13 @@
 import { encodeJsonPointerSegment, isPlainJsonObject, readJsonPointer, type EditorEntity, type EditorEntityProjectionDocument, type JsonValue } from "@cubica/editor-engine";
+import type { EditorPreviewSceneRequest } from "@cubica/contracts-session";
+type EditorPreviewSceneSelector = NonNullable<EditorPreviewSceneRequest["selector"]>;
 
 export interface MvpScenarioEntry {
   readonly id: string;
   readonly label: string;
   readonly source: { readonly filePath: string; readonly pointer: string };
   readonly entityId?: string;
+  readonly selector?: EditorPreviewSceneSelector;
 }
 
 /** A flow lists transitions; authored content also contains windows reached within those transitions. */
@@ -29,5 +32,56 @@ export function buildMvpScenarioEntries(entities: readonly EditorEntity[], docum
     };
     visit(readJsonPointer(document.json, "/root/content"), "/root/content");
   }
-  return entries;
+  return entries.map(entry => ({ ...entry, selector: scenarioSelector(entry, documents, entries) }));
+}
+
+function scenarioSelector(entry: MvpScenarioEntry, documents: readonly EditorEntityProjectionDocument[], entries: readonly MvpScenarioEntry[]): EditorPreviewSceneSelector | undefined {
+  const document = documents.find(item => item.filePath === entry.source.filePath);
+  const read = (pointer: string) => {
+    const value = document?.json === undefined ? undefined : readJsonPointer(document.json, pointer);
+    const definitions = document?.json === undefined ? undefined : readJsonPointer(document.json, "/_definitions");
+    if (!isPlainJsonObject(value)) return undefined;
+    // Scene selectors are flat inherited fields. Platform base types contain
+    // no game-specific scene coordinates; only local declarations supply them.
+    let effective = { ...value };
+    let type = value._type;
+    const visited = new Set<string>();
+    while (typeof type === "string" && isPlainJsonObject(definitions) && isPlainJsonObject(definitions[type])) {
+      if (visited.has(type) || visited.size >= 5) return undefined;
+      visited.add(type);
+      const parent = definitions[type];
+      if (!isPlainJsonObject(parent)) return undefined;
+      effective = { ...parent, ...effective };
+      type = parent._extends;
+    }
+    return effective;
+  };
+  const value = read(entry.source.pointer);
+  if (value === undefined) return undefined;
+  if (document?.documentKind === "ui") return typeof value.id === "string" ? { screenKey: value.id } : undefined;
+  const direct = (node: typeof value): EditorPreviewSceneSelector | undefined => {
+    if (typeof node.screenId !== "string") return undefined;
+    return {
+      screenId: node.screenId,
+      ...(Number.isInteger(node.stepIndex) && Number(node.stepIndex) >= 0 ? { stepIndex: Number(node.stepIndex) } : {}),
+      ...(typeof node.advanceActionId === "string" && typeof node.id === "string" ? { activeInfoId: node.id } : {})
+    };
+  };
+  const content = entries.filter(item => item.source.filePath === entry.source.filePath && item.source.pointer.startsWith("/root/content/"))
+    .map(item => ({ entry: item, value: read(item.source.pointer) }));
+  // Follow declared action links; a step label or id spelling is not a scene binding.
+  const actionIds = value.actionIds;
+  if (Array.isArray(actionIds)) {
+    const linked = content.filter(item => typeof item.value?.advanceActionId === "string" && actionIds.includes(item.value.advanceActionId));
+    if (linked.length === 1 && linked[0].value !== undefined) return direct(linked[0].value);
+    if (linked.length > 1) return undefined;
+  }
+  const own = direct(value);
+  if (own !== undefined) return own;
+  const cardId = value.cardId ?? value.id;
+  if (typeof cardId !== "string" && typeof cardId !== "number") return undefined;
+  const owners = content.filter(item => Array.isArray(item.value?.cardIds) && item.value.cardIds.includes(cardId));
+  if (owners.length !== 1 || owners[0].value === undefined) return undefined;
+  const scene = direct(owners[0].value);
+  return scene === undefined ? undefined : { ...scene, focusRuntimePointer: entry.source.pointer.replace(/^\/root(?=\/content\/)/u, "") };
 }

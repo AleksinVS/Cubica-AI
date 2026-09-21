@@ -29,12 +29,12 @@ function finite(value: number): number {
   return Math.round(value * 10) / 10;
 }
 
-export function geometrySupport(source: MvpElementSource | undefined): string | undefined {
+export function geometrySupport(source: MvpElementSource | undefined, effectiveStyle?: JsonObject): string | undefined {
   if (source === undefined) return "Для этого элемента не найден редактируемый источник.";
   if (source.value._type === "interactiveBoardSurface" || source.value.type === "interactiveBoardSurface") {
     return "Поле игры рисуется отдельно; измените его через описание или исходный файл.";
   }
-  const style = source.value.style;
+  const style = effectiveStyle ?? source.value.style;
   if (style !== undefined && !objectValue(style)) return "Стиль элемента имеет неподдерживаемый формат.";
   const transform = style?.transform;
   if (transform !== undefined && (typeof transform !== "string" || !canonicalTransform.test(transform))) {
@@ -93,11 +93,13 @@ export function buildMvpElementAuthorPromptChangeSet(source: MvpElementSource, r
 export function buildMvpGeometryChangeSet(
   source: MvpElementSource,
   bounds: PreviewRect,
-  gesture: MvpGeometryGesture
+  gesture: MvpGeometryGesture,
+  effectiveStyle?: JsonObject
 ): EditorChangeSet | undefined {
-  if (geometrySupport(source) !== undefined) return undefined;
+  if (geometrySupport(source, effectiveStyle) !== undefined) return undefined;
   const style = objectValue(source.value.style) ? source.value.style : {};
-  const oldTransform = typeof style.transform === "string" ? canonicalTransform.exec(style.transform) : undefined;
+  const calculatedStyle = effectiveStyle ?? style;
+  const oldTransform = typeof calculatedStyle.transform === "string" ? canonicalTransform.exec(calculatedStyle.transform) : undefined;
   let x = oldTransform == null ? 0 : Number(oldTransform[1]);
   let y = oldTransform == null ? 0 : Number(oldTransform[2]);
   let angle = oldTransform == null ? 0 : Number(oldTransform[3]);
@@ -108,8 +110,8 @@ export function buildMvpGeometryChangeSet(
   } else if (gesture.kind === "rotate") {
     angle = finite((angle + gesture.degrees) % 360);
   } else {
-    const width = style.width === undefined ? bounds.width : readPixels(style.width);
-    const height = style.height === undefined ? bounds.height : readPixels(style.height);
+    const width = calculatedStyle.width === undefined ? bounds.width : readPixels(calculatedStyle.width);
+    const height = calculatedStyle.height === undefined ? bounds.height : readPixels(calculatedStyle.height);
     if (width === undefined || height === undefined) return undefined;
     const next = resizeMvpRect({ ...bounds, width, height }, gesture.dx, gesture.dy, gesture.anchor);
     nextStyle.width = finite(next.width);
@@ -127,5 +129,5 @@ export function isMvpMetadataOnlyChangeSet(changeSet: EditorChangeSet): boolean 
   if ((changeSet.textPatches?.length ?? 0) > 0 || (changeSet.fileCreates?.length ?? 0) > 0 ||
       (changeSet.fileDeletes?.length ?? 0) > 0 || (changeSet.fileRenames?.length ?? 0) > 0) return false;
   const writes = changeSet.jsonPatches.flatMap((patch) => patch.operations).filter((operation) => operation.op !== "test");
-  return writes.length > 0 && writes.every((operation) => /\/(?:_label|_prompt|_semantics)(?:\/|$)/u.test(operation.path));
+  return writes.length > 0 && writes.every((operation) => /\/(?:_label|_prompt|_promptTemplate|_semantics)(?:\/|$)/u.test(operation.path));
 }

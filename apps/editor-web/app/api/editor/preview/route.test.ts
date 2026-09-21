@@ -36,11 +36,11 @@ import { POST } from "./route";
 const testRoot = path.resolve(process.cwd(), ".tmp", "editor-current-preview-route-tests");
 const sourceFile = path.join(testRoot, "games", "simple-choice", "authoring", "game.authoring.json");
 
-function previewRequest(): Request {
+function previewRequest(reuseLivePreview = false): Request {
   return new Request("http://editor.local/api/editor/preview", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ gameId: "simple-choice", sessionId: "editor-session-1" })
+    body: JSON.stringify({ gameId: "simple-choice", sessionId: "editor-session-1", reuseLivePreview })
   });
 }
 
@@ -74,6 +74,39 @@ beforeEach(async () => {
 afterEach(async () => rm(testRoot, { recursive: true, force: true }));
 
 describe("current editor preview root replacement", () => {
+  it("keeps the live frame for identical compiled bytes but restarts when its cached asset index changes", async () => {
+    await mkdir(path.join(testRoot, "games", "simple-choice", "assets"), { recursive: true });
+    const assetFile = path.join(testRoot, "games", "simple-choice", "assets", "image.svg");
+    await writeFile(assetFile, "<svg/>");
+    expect((await (await POST(previewRequest())).json()).refreshKind).toBe("restart");
+    const unchanged = await POST(previewRequest(true));
+    expect((await unchanged.json()).refreshKind).toBe("unchanged");
+    expect(state.runtime).toHaveBeenCalledTimes(1);
+
+    await writeFile(assetFile, "<svg><rect/></svg>");
+    const changed = await POST(previewRequest(true));
+    expect((await changed.json()).refreshKind).toBe("restart");
+    expect(state.runtime).toHaveBeenCalledTimes(2);
+  });
+
+  it("registers a UI-only update while preserving the live session eligibility", async () => {
+    const uiSource = path.join(testRoot, "games", "simple-choice", "authoring", "ui.json");
+    await writeFile(uiSource, '{"label":"before"}\n');
+    state.compile.mockImplementation(async ({ repoRoot, generatedArtifactRoot }: { repoRoot: string; generatedArtifactRoot: string }) => {
+      const gameFile = path.join(generatedArtifactRoot, "games", "simple-choice", "game.manifest.json");
+      const uiFile = "games/simple-choice/ui/web/ui.manifest.json";
+      await mkdir(path.dirname(path.join(generatedArtifactRoot, uiFile)), { recursive: true });
+      await writeFile(gameFile, await readFile(path.join(repoRoot, "games", "simple-choice", "authoring", "game.authoring.json")));
+      await writeFile(path.join(generatedArtifactRoot, uiFile), await readFile(path.join(repoRoot, "games", "simple-choice", "authoring", "ui.json")));
+      return { ok: true, diagnostics: [], artifacts: [{ kind: "ui", generatedFile: uiFile }] };
+    });
+    await POST(previewRequest());
+    await writeFile(uiSource, '{"label":"after"}\n');
+    const changed = await POST(previewRequest(true));
+    expect((await changed.json()).refreshKind).toBe("ui");
+    expect(state.runtime).toHaveBeenCalledTimes(2);
+  });
+
   it("registers a complete separate root with the same source ID, then retires the old root", async () => {
     const first = await POST(previewRequest());
     expect((await first.json()).ready).toBe(true);

@@ -13,9 +13,12 @@ import { mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promise
 import { pathToFileURL } from "node:url";
 
 import {
+  createDocumentStore,
   createPrototypeExtractionProposal,
   discoverPrototypeExtractionCandidates,
   dryRunEditorChangeSet,
+  isPlainJsonObject,
+  parseJsonPointer,
   readJsonPointer,
   validateDocument,
   type DiagnosticSeverity,
@@ -238,6 +241,70 @@ export async function validateAuthoringForEditor(input: {
     telemetry: telemetry.snapshot(),
     fileCacheTelemetry: fileCacheTelemetry.snapshot()
   };
+}
+
+/** Compile a prototype in its existing layout without persisting or registering a game. */
+export async function compilePrototypeForEditor(input: {
+  readonly gameId: string;
+  readonly filePath: string;
+  readonly text: string;
+  readonly sourcePointer: string;
+  readonly prototypePointer: string;
+  readonly repoRoot?: string;
+}): Promise<JsonObject> {
+  const document = JSON.parse(input.text) as JsonValue;
+  const source = readJsonPointer(document, input.sourcePointer);
+  const prototype = readJsonPointer(document, input.prototypePointer);
+  const definitionParts = parseJsonPointer(input.prototypePointer);
+  if (!isPlainJsonObject(document) || document._manifestType !== "ui" ||
+      !input.sourcePointer.startsWith("/root/") || !isPlainJsonObject(source) ||
+      !isPlainJsonObject(prototype) || definitionParts.length !== 2 ||
+      definitionParts[0] !== "_definitions" || source._type !== definitionParts[1]) {
+    throw new EditorRepositoryError("Выбранный экземпляр не принадлежит этому локальному прототипу.", 400);
+  }
+  // Only identity belongs to the temporary instance. In particular, copying
+  // props would hide the prototype's defaults behind the original overrides.
+  const instance: Record<string, JsonValue> = { _type: source._type };
+  let definition: JsonObject | undefined = prototype;
+  const visited = new Set<JsonObject>();
+  while (definition !== undefined && !visited.has(definition)) {
+    visited.add(definition);
+    if (typeof definition.type === "string") { instance.type = definition.type; break; }
+    const base: JsonValue | undefined = isPlainJsonObject(document._definitions) && typeof definition._extends === "string"
+      ? document._definitions[definition._extends] : undefined;
+    definition = isPlainJsonObject(base) ? base : undefined;
+  }
+  // The raw UI schema requires its runtime discriminator before expansion.
+  if (instance.type === undefined && typeof source.type === "string") instance.type = source.type;
+  for (const key of ["id", "gameEntityId", "_label", "_semantics"] as const) {
+    if (source[key] !== undefined) instance[key] = source[key];
+  }
+  const parts = parseJsonPointer(input.sourcePointer);
+  const parentPointer = input.sourcePointer.slice(0, input.sourcePointer.lastIndexOf("/"));
+  const parent = readJsonPointer(document, parentPointer);
+  const key = parts.at(-1)!;
+  if (Array.isArray(parent)) parent[Number(key)] = instance;
+  else if (isPlainJsonObject(parent)) (parent as Record<string, JsonValue>)[key] = instance;
+  else throw new EditorRepositoryError("Выбранный элемент больше не существует.", 409);
+
+  const text = JSON.stringify(document);
+  const filePath = normalizeAuthoringFilePath(input.filePath);
+  const snapshot = createDocumentStore({ filePath, text }).snapshot();
+  const diagnostics = collectAuthoringDiagnostics(snapshot, filePath);
+  if (hasErrors(diagnostics)) throw new EditorRepositoryError(diagnostics[0]?.message ?? "Некорректный прототип.", 422);
+  const compiler = await getCompiler(input.repoRoot);
+  const job = await findJob(compiler, input.gameId, filePath, input.repoRoot);
+  const ajv = compiler.getSharedAjv();
+  const output = compiler.compileAuthoringText(job, text, ajv);
+  diagnostics.push(...runtimeDiagnostics(compiler, job, output, snapshot, ajv));
+  if (hasErrors(diagnostics)) throw new EditorRepositoryError(diagnostics.find(item => item.severity === "error")?.message ?? "Прототип не прошёл проверку.", 422);
+  const runtimePointer = Object.entries(output.sourceMap.mappings).find(([, sources]) =>
+    sources.some(item => item.file === output.sourceMap.sourceFile && item.pointer === input.sourcePointer));
+  const component = runtimePointer === undefined ? undefined : readJsonPointer(output.manifest as JsonValue, runtimePointer[0]);
+  if (!isPlainJsonObject(component) || typeof component.type !== "string") {
+    throw new EditorRepositoryError("Не удалось определить представление прототипа.", 422);
+  }
+  return component;
 }
 
 export async function compileGameForEditor(input: {

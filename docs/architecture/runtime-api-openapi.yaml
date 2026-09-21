@@ -1656,6 +1656,179 @@
         "properties": { "checkpoints": { "type": "array", "maxItems": 20, "items": { "$ref": "#/components/schemas/DebugCheckpointMetadata" } } },
         "additionalProperties": false
       },
+      "PlayerPreviewEntitiesMessage": {
+        "type": "object",
+        "required": ["source", "type", "version", "context", "entities"],
+        "properties": {
+          "source": { "const": "cubica-player-web" },
+          "type": { "const": "previewEntities" },
+          "version": { "const": 2 },
+          "context": {
+            "type": "object", "required": ["sessionId", "sessionVersion", "compileRevision", "scene"],
+            "properties": {
+              "sessionId": { "type": "string", "minLength": 1, "maxLength": 200 },
+              "sessionVersion": { "$ref": "#/components/schemas/SessionStateVersion" },
+              "compileRevision": { "type": "string", "minLength": 1, "maxLength": 200 },
+              "screenKey": { "type": "string", "minLength": 1, "maxLength": 200 },
+              "prototypePreview": {
+                "type": "object", "required": ["runtimePointer", "requestId"],
+                "properties": {
+                  "runtimePointer": { "type": "string", "minLength": 1, "maxLength": 1000 },
+                  "requestId": { "type": "string", "minLength": 1, "maxLength": 100 }
+                },
+                "additionalProperties": false
+              },
+              "scene": {
+                "type": "object", "properties": {
+                  "screenId": { "type": "string", "minLength": 1, "maxLength": 200 },
+                  "stepIndex": { "type": "integer", "minimum": 0 },
+                  "activeInfoId": { "type": "string", "minLength": 1, "maxLength": 200 }
+                }, "additionalProperties": false
+              }
+            }, "additionalProperties": false
+          },
+          "entities": {
+            "type": "array", "maxItems": 10000, "items": {
+              "type": "object", "required": ["entityId", "runtimePointer", "bounds"],
+              "properties": {
+                "entityId": { "type": "string", "minLength": 1, "maxLength": 1000 },
+                "runtimePointer": { "type": "string", "minLength": 1, "maxLength": 1000 },
+                "contentRuntimePointer": { "type": "string", "minLength": 1, "maxLength": 1000 },
+                "label": { "type": "string" },
+                "semanticRole": { "type": "string" },
+                "layer": { "type": "string" },
+                "zIndex": { "type": "number" },
+                "renderOrder": { "type": "integer", "minimum": 0 },
+                "bounds": {
+                  "type": "object", "required": ["x", "y", "width", "height"],
+                  "properties": {
+                    "x": { "type": "number" }, "y": { "type": "number" },
+                    "width": { "type": "number" }, "height": { "type": "number" }
+                  }, "additionalProperties": false
+                },
+                "visible": { "type": "boolean" },
+                "selectable": { "type": "boolean" },
+                "displayText": { "type": "string", "maxLength": 500 },
+                "textBinding": {
+                  "type": "object", "required": ["prop", "expression"],
+                  "properties": {
+                    "prop": { "type": "string", "enum": ["html", "caption", "text", "value"] },
+                    "expression": { "type": "string", "maxLength": 512 },
+                    "contentRuntimePointer": { "type": "string", "minLength": 1, "maxLength": 1000 },
+                    "metricId": { "type": "string", "minLength": 1, "maxLength": 200 },
+                    "metricRuntimePointer": { "type": "string", "minLength": 1, "maxLength": 1000 },
+                    "ruleRuntimePointer": { "type": "string", "minLength": 1, "maxLength": 1000 }
+                  }, "additionalProperties": false
+                }
+              }, "additionalProperties": false
+            }
+          }
+        }, "additionalProperties": false
+      },
+      "EditorPrototypePreviewRequest": {
+        "type": "object",
+        "required": ["gameId", "filePath", "sourcePointer", "prototypePointer", "expectedVersion"],
+        "properties": {
+          "gameId": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "filePath": { "type": "string", "minLength": 1, "maxLength": 1000 },
+          "sourcePointer": { "type": "string", "pattern": "^/root/.+" },
+          "prototypePointer": { "type": "string", "pattern": "^/_definitions/[^/]+$" },
+          "expectedVersion": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+          "sessionId": { "type": "string", "minLength": 1, "maxLength": 200 }
+        }, "additionalProperties": false
+      },
+      "EditorPrototypePreviewResponse": {
+        "type": "object", "required": ["component"],
+        "properties": {
+          "component": { "$ref": "https://cubica.platform/schemas/ui-manifest.v1.json#/definitions/uiComponent" }
+        }, "additionalProperties": false
+      },
+      "EditorPreviewPrototypeRequest": {
+        "type": "object",
+        "required": ["source", "type", "protocolVersion", "requestId", "sessionId", "runtimePointer", "component"],
+        "properties": {
+          "source": { "const": "cubica-editor-web" },
+          "type": { "const": "showPreviewPrototype" },
+          "protocolVersion": { "const": 1 },
+          "requestId": { "type": "string", "minLength": 1, "maxLength": 100 },
+          "sessionId": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "runtimePointer": { "type": "string", "minLength": 1, "maxLength": 1000 },
+          "component": { "oneOf": [
+            { "type": "null" },
+            { "$ref": "https://cubica.platform/schemas/ui-manifest.v1.json#/definitions/uiComponent" }
+          ] }
+        }, "additionalProperties": false
+      },
+      "EditorPreviewPrototypeResponse": {
+        "type": "object",
+        "required": ["source", "type", "protocolVersion", "requestId", "sessionId", "ok"],
+        "properties": {
+          "source": { "const": "cubica-player-web" },
+          "type": { "const": "previewPrototypeResult" },
+          "protocolVersion": { "const": 1 },
+          "requestId": { "type": "string", "minLength": 1, "maxLength": 100 },
+          "sessionId": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "ok": { "type": "boolean" },
+          "error": { "type": "string", "maxLength": 500 }
+        }, "additionalProperties": false
+      },
+      "EditorPreviewContentRefreshRequest": {
+        "type": "object", "required": ["source", "type", "protocolVersion", "requestId", "sessionId", "revision"],
+        "properties": {
+          "source": { "const": "cubica-editor-web" },
+          "type": { "const": "refreshPreviewContent" },
+          "protocolVersion": { "const": 1 },
+          "requestId": { "type": "string", "minLength": 1, "maxLength": 100 },
+          "sessionId": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "revision": { "type": "string", "minLength": 1, "maxLength": 200 }
+        }, "additionalProperties": false
+      },
+      "EditorPreviewContentRefreshResponse": {
+        "type": "object", "required": ["source", "type", "protocolVersion", "requestId", "sessionId", "revision", "ok"],
+        "properties": {
+          "source": { "const": "cubica-player-web" },
+          "type": { "const": "previewContentRefreshResult" },
+          "protocolVersion": { "const": 1 },
+          "requestId": { "type": "string", "minLength": 1, "maxLength": 100 },
+          "sessionId": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "revision": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "ok": { "type": "boolean" },
+          "requiresRestart": { "type": "boolean" },
+          "error": { "type": "string", "maxLength": 500 }
+        }, "additionalProperties": false
+      },
+      "EditorPreviewSceneRequest": {
+        "type": "object", "required": ["source", "type", "protocolVersion", "requestId", "sessionId", "selector"],
+        "properties": {
+          "source": { "const": "cubica-editor-web" },
+          "type": { "const": "showPreviewScene" },
+          "protocolVersion": { "const": 1 },
+          "requestId": { "type": "string", "minLength": 1, "maxLength": 100 },
+          "sessionId": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "selector": { "oneOf": [
+            { "type": "null" },
+            { "type": "object", "minProperties": 1, "properties": {
+              "screenKey": { "type": "string", "minLength": 1, "maxLength": 200 },
+              "screenId": { "type": "string", "minLength": 1, "maxLength": 200 },
+              "stepIndex": { "type": "integer", "minimum": 0 },
+              "activeInfoId": { "type": "string", "minLength": 1, "maxLength": 200 },
+              "focusRuntimePointer": { "type": "string", "minLength": 1, "maxLength": 500 }
+            }, "additionalProperties": false }
+          ] }
+        }, "additionalProperties": false
+      },
+      "EditorPreviewSceneResponse": {
+        "type": "object", "required": ["source", "type", "protocolVersion", "requestId", "sessionId", "ok"],
+        "properties": {
+          "source": { "const": "cubica-player-web" },
+          "type": { "const": "previewSceneResult" },
+          "protocolVersion": { "const": 1 },
+          "requestId": { "type": "string", "minLength": 1, "maxLength": 100 },
+          "sessionId": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "ok": { "type": "boolean" },
+          "error": { "type": "string", "maxLength": 500 }
+        }, "additionalProperties": false
+      },
       "EditorDebugBridgeRequest": {
         "oneOf": [
           {

@@ -1,0 +1,5 @@
+.document { position: relative; }
+/* A non-interactive mirror places hints on empty native-textarea lines. Its
+   contents never become part of the editable draft or the agent request. */
+.mirror { position: absolute; inset: 0; box-sizing: border-box; width: 100%; margin: 0; padding: 0; border: 0; color: transparent; background: transparent; font: inherit; white-space: pre-wrap; overflow-wrap: break-word; overflow: hidden; pointer-events: none; user-select: none; }
+.hint { position: absolute; left: 0; right: 18px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: #6b7280; }

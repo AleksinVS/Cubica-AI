@@ -2,17 +2,18 @@
 
 import { pausePreviewDom } from "@/lib/preview-renderer-pause";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { CSSProperties } from "react";
+import type { CSSProperties, SyntheticEvent } from "react";
 import type {
   PlayerFacingContent,
   PlayerWebPluginBundleReference,
   PlayerFacingMockup,
-  GamePlayerUiContent
+  GamePlayerUiContent,
+  GameUiComponent
 } from "@cubica/contracts-manifest";
 import { ManifestAction } from "@cubica/contracts-manifest";
 import { useLocale } from "@/components/locale-context";
 import type { PlayerState } from "@/presenter/types";
-import type { EditorDebugBridgeRequest } from "@cubica/contracts-session";
+import type { EditorDebugBridgeRequest, EditorPreviewSceneRequest, EditorPreviewPrototypeRequest } from "@cubica/contracts-session";
 import type { ViewCommand } from "@cubica/view-protocol";
 import type { GameConfigData } from "@/presenter/game-config";
 import { GamePresenter } from "@/presenter/game-presenter";
@@ -23,6 +24,11 @@ import {
   type PlayerWebPluginLoadHandle
 } from "@/plugins/preview-plugin-loader";
 import { ManifestRenderer } from "@/components/manifest/manifest-renderer";
+import {
+  previewPanelRootPointer,
+  previewScreenRootPointer,
+  withPreviewPrototypeOverride
+} from "@/components/manifest/preview-prototype-override";
 import { SafeModeRenderer } from "@/components/safe-mode-renderer";
 import { CubicaSurfaceRenderer } from "@/components/surface/cubica-surface-renderer";
 import { RuntimeStatusPanel } from "@/components/runtime-status-panel";
@@ -32,6 +38,7 @@ import {
   type EditorPreviewCompletedAction,
   type EditorPreviewSessionSnapshot
 } from "@/components/editor-preview-bridge";
+import { scrollPreviewSceneFocus } from "@/components/editor-preview-scene-focus";
 import {
   createEmptyGameAssetResolver,
   loadGameAssetResolver,
@@ -70,6 +77,8 @@ export type GamePlayerProps = {
   playerPluginBundles?: readonly PlayerWebPluginBundleReference[];
   /** Optional generated content source used by editor preview sessions. */
   contentSourceId?: string;
+  /** Authoring compile token supplied by the editor URL, then advanced by refresh ack. */
+  previewRevision?: string;
 };
 
 /**
@@ -85,15 +94,26 @@ export type GamePlayerProps = {
  */
 export function GamePlayer({
   runtimeApiUrl,
-  content,
-  gameUi,
+  content: initialContent,
+  gameUi: initialGameUi,
   config: configData,
   initialSessionId,
   editorPreviewMode = false,
   editorPreviewParentOrigin,
   playerPluginBundles = EMPTY_PLAYER_PLUGIN_BUNDLES,
-  contentSourceId
+  contentSourceId,
+  previewRevision
 }: GamePlayerProps) {
+  const [content, setContent] = useState(initialContent);
+  const [gameUi, setGameUi] = useState(initialGameUi);
+  const [activePreviewRevision, setActivePreviewRevision] = useState(previewRevision ?? "unverified");
+  const previewRefreshEpochRef = useRef(0);
+  const previewSceneActiveRef = useRef(false);
+  const [previewSceneActive, setPreviewSceneActive] = useState(false);
+  const previewPrototypeRef = useRef<{ readonly runtimePointer: string; readonly requestId: string;
+    readonly component: GameUiComponent } | null>(null);
+  const previewPrototypeEpochRef = useRef(0);
+  const [previewPrototype, setPreviewPrototype] = useState<typeof previewPrototypeRef.current>(null);
   const t = useLocale();
   const playerPluginSignature = useMemo(
     () => playerPluginBundles.map((bundle) => `${bundle.scope}:${bundle.pluginId}:${bundle.contentHash}`).join("|"),
@@ -126,9 +146,9 @@ export function GamePlayer({
   }));
   const activeConfigData = useMemo(
     () => playerPluginState.status === "ready"
-      ? resolveRegisteredGameConfigData(content, configData)
+      ? resolveRegisteredGameConfigData(initialContent, configData)
       : configData,
-    [content, configData, playerPluginState.key, playerPluginState.status]
+    [initialContent, configData, playerPluginState.key, playerPluginState.status]
   );
   const fullConfig = useMemo(
     () => buildGameConfig(activeConfigData),
@@ -188,6 +208,76 @@ export function GamePlayer({
     if (presenter === null) throw new Error("Отладочная сессия ещё не готова.");
     return presenter.handleEditorDebugCommand(request);
   }, []);
+  const handlePreviewContentRefresh = useCallback(async (request: { sessionId: string; revision: string }) => {
+    const epoch = ++previewRefreshEpochRef.current;
+    const presenter = presenterRef.current;
+    if (!editorPreviewMode || contentSourceId === undefined || presenter?.sessionSnapshot?.sessionId !== request.sessionId ||
+        presenter.sessionSnapshot.debugPaused !== true) throw new Error("Preview must be paused before refreshing its UI.");
+    const path = `/api/runtime/player-content/${encodeURIComponent(initialContent.gameId)}?contentSourceId=${encodeURIComponent(contentSourceId)}`;
+    const response = await fetch(path, { credentials: "same-origin", cache: "no-store" });
+    if (!response.ok) throw new Error(`Preview content returned HTTP ${response.status}.`);
+    const next = await response.json() as PlayerFacingContent;
+    if (epoch !== previewRefreshEpochRef.current) throw new Error("A newer preview refresh superseded this request.");
+    const gameplay = (value: PlayerFacingContent) => JSON.stringify({ ...value, ui: undefined, mockups: undefined });
+    if (next.gameId !== initialContent.gameId || gameplay(next) !== gameplay(initialContent)) return { requiresRestart: true };
+    await presenter.updatePreviewUi(next);
+    if (epoch !== previewRefreshEpochRef.current) throw new Error("A newer preview refresh superseded this request.");
+    setContent(next);
+    setGameUi(next.ui);
+    previewPrototypeEpochRef.current += 1;
+    previewPrototypeRef.current = null;
+    setPreviewPrototype(null);
+    setActivePreviewRevision(request.revision);
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    return {};
+  }, [contentSourceId, editorPreviewMode, initialContent]);
+  const handlePreviewScene = useCallback(async (request: EditorPreviewSceneRequest) => {
+    const presenter = presenterRef.current;
+    if (presenter?.sessionSnapshot?.sessionId !== request.sessionId) throw new Error("Preview scene belongs to another session.");
+    await presenter.showPreviewScene(request.selector);
+    previewPrototypeEpochRef.current += 1;
+    previewPrototypeRef.current = null;
+    setPreviewPrototype(null);
+    previewSceneActiveRef.current = request.selector !== null;
+    setPreviewSceneActive(request.selector !== null);
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    scrollPreviewSceneFocus(rootRef.current, request.selector?.focusRuntimePointer);
+  }, []);
+  const handlePreviewPrototype = useCallback(async (request: EditorPreviewPrototypeRequest) => {
+    const presenter = presenterRef.current;
+    if (!editorPreviewMode || presenter?.sessionSnapshot?.sessionId !== request.sessionId ||
+        presenter.sessionSnapshot.debugPaused !== true) {
+      throw new Error("A paused preview session is required for prototype display.");
+    }
+    if (request.component === null) {
+      if (previewPrototypeRef.current !== null &&
+          previewPrototypeRef.current.runtimePointer !== request.runtimePointer) {
+        throw new Error("Prototype preview target changed before clearing.");
+      }
+      previewPrototypeRef.current = null;
+      setPreviewPrototype(null);
+    } else {
+      const current = presenter.playerState;
+      const replacement = request.component as unknown as GameUiComponent;
+      const screenKey = current.screenKey;
+      const panelKey = current.activePanel;
+      const screen = screenKey === null ? undefined : gameUi?.screens[screenKey];
+      const panel = panelKey === null ? undefined : gameUi?.panels?.[panelKey];
+      const screenVisible = !panel || screen?.layoutMode === "map-first" || current.layoutMode === "map-first";
+      const matched = (screenVisible && screen && screenKey !== null && withPreviewPrototypeOverride(
+        screen, previewScreenRootPointer(screenKey), request.runtimePointer, replacement
+      )) || (panel && panelKey !== null && withPreviewPrototypeOverride(
+        panel, previewPanelRootPointer(panelKey), request.runtimePointer, replacement
+      ));
+      if (!matched) throw new Error("Prototype target is not in the current compiled scene.");
+      const next = { runtimePointer: request.runtimePointer, requestId: request.requestId, component: replacement };
+      previewPrototypeRef.current = next;
+      setPreviewPrototype(next);
+    }
+    const epoch = ++previewPrototypeEpochRef.current;
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    if (epoch !== previewPrototypeEpochRef.current) throw new Error("A newer preview replaced this prototype.");
+  }, [editorPreviewMode, gameUi]);
   useEffect(() => {
     const root = rootRef.current;
     if (!root || playerState?.debugPaused !== true) return;
@@ -206,6 +296,13 @@ export function GamePlayer({
       state: snapshot.state
     };
   }, [playerState]);
+  const previewTimeline = (presenterRef.current?.renderSessionSnapshot?.state?.public as
+    Record<string, unknown> | undefined)?.timeline as Record<string, unknown> | undefined;
+  const previewSceneContext = {
+    ...(typeof previewTimeline?.screenId === "string" ? { screenId: previewTimeline.screenId } : {}),
+    ...(typeof previewTimeline?.stepIndex === "number" ? { stepIndex: previewTimeline.stepIndex } : {}),
+    ...(typeof previewTimeline?.activeInfoId === "string" ? { activeInfoId: previewTimeline.activeInfoId } : {})
+  };
   const handleEditorPreviewRestore = useCallback(async (request: {
     readonly sessionId: string;
     readonly state: Record<string, unknown>;
@@ -221,11 +318,19 @@ export function GamePlayer({
   useEditorPreviewBridge(rootRef, {
     enabled: editorPreviewMode,
     parentOrigin: editorPreviewParentOrigin,
-    refreshSignal: `${screenKey ?? ""}:${layoutMode}:${activePanel ?? ""}:${playerState?.sessionId ?? ""}:${playerState?.log?.length ?? 0}`,
+    refreshSignal: `${screenKey ?? ""}:${layoutMode}:${activePanel ?? ""}:${playerState?.sessionId ?? ""}:${playerState?.log?.length ?? 0}:${activePreviewRevision}:${previewPrototype?.requestId ?? ""}`,
     sessionSnapshot: previewSessionSnapshot,
+    compileRevision: activePreviewRevision,
+    screenKey: screenKey ?? undefined,
+    scene: previewSceneContext,
+    prototypePreview: previewPrototype === null ? undefined :
+      { runtimePointer: previewPrototype.runtimePointer, requestId: previewPrototype.requestId },
     lastCompletedAction: lastCompletedPreviewAction,
     onRestorePreviewSession: handleEditorPreviewRestore,
-    onDebugSession: handleEditorDebugSession
+    onDebugSession: handleEditorDebugSession,
+    onRefreshPreviewContent: handlePreviewContentRefresh,
+    onShowPreviewScene: handlePreviewScene,
+    onShowPreviewPrototype: handlePreviewPrototype
   });
 
   useEffect(() => {
@@ -275,8 +380,8 @@ export function GamePlayer({
     const gateway = new ReactViewGateway();
     const presenter = new GamePresenter({
       gateway,
-      content,
-      gameUi,
+      content: initialContent,
+      gameUi: initialGameUi,
       config: fullConfig,
       contentSourceId,
       editorPreviewMode
@@ -343,9 +448,10 @@ export function GamePlayer({
       presenter.dispose();
       presenterRef.current = null;
     };
-  }, [content, contentSourceId, gameUi, fullConfig, initialSessionId, playerPluginState.status]);
+  }, [initialContent, contentSourceId, initialGameUi, fullConfig, initialSessionId, playerPluginState.status]);
 
   const handleAction = async (actionId: string, payload?: Record<string, unknown>) => {
+    if (previewSceneActiveRef.current || previewPrototypeRef.current !== null) return;
     const presenter = presenterRef.current;
     if (!presenter) return;
     const beforeSequence = presenter.sessionSnapshot?.version?.lastEventSequence ?? -1;
@@ -375,6 +481,7 @@ export function GamePlayer({
   };
 
   const handleManifestAction = (command: string, payload: Record<string, unknown>) => {
+    if (previewSceneActiveRef.current || previewPrototypeRef.current !== null) return;
     const presenter = presenterRef.current;
     if (!presenter) return;
 
@@ -424,6 +531,7 @@ export function GamePlayer({
   };
 
   const handleSurfaceAction = (action: Parameters<GamePresenter["handleSurfaceAction"]>[0]) => {
+    if (previewSceneActiveRef.current || previewPrototypeRef.current !== null) return;
     const presenter = presenterRef.current;
     if (!presenter) return;
     void presenter.handleSurfaceAction(action);
@@ -433,6 +541,7 @@ export function GamePlayer({
     actionId: string,
     payload?: Record<string, unknown>
   ): Promise<void> => {
+    if (previewSceneActiveRef.current || previewPrototypeRef.current !== null) throw new Error("Authoring preview is read-only.");
     const presenter = presenterRef.current;
     if (!presenter) {
       throw new Error("Игровая сессия еще не готова к действию на поле.");
@@ -444,6 +553,7 @@ export function GamePlayer({
     actionId: string,
     params: Record<string, unknown>
   ) => {
+    if (previewSceneActiveRef.current || previewPrototypeRef.current !== null) return Promise.reject(new Error("Authoring preview is read-only."));
     const presenter = presenterRef.current;
     if (!presenter) {
       return Promise.reject(new Error("Игровая сессия еще не готова к расчёту дороги."));
@@ -526,17 +636,37 @@ export function GamePlayer({
   }
 
   const metrics = state.metrics;
-  const activeManifestPanel = state.activePanel ? gameUi?.panels?.[state.activePanel] : undefined;
-  const activeManifestScreen = screenKey ? gameUi?.screens[screenKey] : undefined;
+  const originalPanel = state.activePanel ? gameUi?.panels?.[state.activePanel] : undefined;
+  const originalScreen = screenKey ? gameUi?.screens[screenKey] : undefined;
+  const activeManifestPanel = originalPanel && state.activePanel && previewPrototype
+    ? withPreviewPrototypeOverride(originalPanel, previewPanelRootPointer(state.activePanel),
+        previewPrototype.runtimePointer, previewPrototype.component) ?? originalPanel
+    : originalPanel;
+  const activeManifestScreen = originalScreen && screenKey && previewPrototype
+    ? withPreviewPrototypeOverride(originalScreen, previewScreenRootPointer(screenKey),
+        previewPrototype.runtimePointer, previewPrototype.component) ?? originalScreen
+    : originalScreen;
   const keepsMapBehindPanel = Boolean(
     activeManifestPanel && activeManifestScreen && (
       activeManifestScreen.layoutMode === "map-first" || layoutMode === "map-first"
     )
   );
-  const sessionSnapshot = presenterRef.current?.sessionSnapshot ?? undefined;
+  const sessionSnapshot = presenterRef.current?.renderSessionSnapshot ?? undefined;
+  const blockPrototypeInteraction = previewPrototype === null ? undefined : (event: SyntheticEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+  };
 
   return (
-    <main ref={rootRef} className="shell game-player-root" style={rootStyle}>
+    <main ref={rootRef} className="shell game-player-root" style={rootStyle}
+      onClickCapture={blockPrototypeInteraction}
+      onPointerDownCapture={blockPrototypeInteraction}
+      onKeyDownCapture={blockPrototypeInteraction}
+      onSubmitCapture={blockPrototypeInteraction}>
+      {previewSceneActive ? <div role="status" style={{ position: "absolute", top: 8, right: 8, zIndex: 1000,
+        padding: "6px 10px", borderRadius: 6, background: "#17252ddd", color: "#fff", pointerEvents: "none" }}>
+        Сцена для редактирования · прохождение на паузе
+      </div> : null}
       {state.privateInvites.length > 0 ? <PrivateInvitePanel gameId={content.gameId} sessionId={state.sessionId ?? ""} invites={state.privateInvites} onDismiss={() => presenterRef.current?.dismissPrivateInvites()} /> : null}
       <SessionParticipants participants={state.participants} />
       {agentControl.kind === "valid" && agentControl.value.status === "facilitatorTakeover" ? (

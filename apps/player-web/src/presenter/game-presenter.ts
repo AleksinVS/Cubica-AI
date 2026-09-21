@@ -1,5 +1,5 @@
 import type { ViewCommand } from "@cubica/view-protocol";
-import type { EditorDebugBridgeRequest, EditorDebugBridgeResponse } from "@cubica/contracts-session";
+import type { EditorDebugBridgeRequest, EditorDebugBridgeResponse, EditorPreviewSceneRequest } from "@cubica/contracts-session";
 import { runEditorDebugCommand, restoreDebugCheckpoint } from "@/presenter/runtime-debug-client";
 import type { PlayerFacingContent, GamePlayerUiContent } from "@cubica/contracts-manifest";
 import { ManifestAction } from "@cubica/contracts-manifest";
@@ -105,6 +105,7 @@ export class GamePresenter {
   private sessionLifecycle = 0;
   private previewMode = false;
   private previewPauseAck: { sessionId: string; stateVersion: number; paused: boolean } | null = null;
+  private previewSceneSelector: NonNullable<EditorPreviewSceneRequest["selector"]> | null = null;
 
   constructor(options: {
     gateway: ReactViewGateway;
@@ -120,6 +121,58 @@ export class GamePresenter {
     this.config = options.config;
     this.contentSourceId = options.contentSourceId;
     this.previewMode = options.editorPreviewMode === true;
+  }
+
+  /** Replace only a compiled preview's presentation while its server session stays paused. */
+  async updatePreviewUi(content: PlayerFacingContent): Promise<void> {
+    if (!this.previewMode || this.session === null || !this.debugPaused || this.isPending ||
+        content.gameId !== this.content.gameId) {
+      throw new Error("Paused preview session is required for an in-frame UI refresh.");
+    }
+    this.content = content;
+    this.gameUi = content.ui;
+    await this.syncView();
+  }
+
+  /** Authoring scene selection changes presentation only; the durable session is untouched. */
+  async showPreviewScene(selector: EditorPreviewSceneRequest["selector"]): Promise<void> {
+    if (!this.previewMode || this.session === null || !this.debugPaused || this.isPending) {
+      throw new Error("Pause the preview before opening an authoring scene.");
+    }
+    const previous = this.previewSceneSelector;
+    this.previewSceneSelector = selector;
+    try {
+      if (selector !== null && (!this.playerState.screenKey || !this.gameUi?.screens[this.playerState.screenKey])) {
+        throw new Error("The selected scene has no compiled player screen.");
+      }
+      await this.syncView();
+    } catch (error) {
+      this.previewSceneSelector = previous;
+      throw error;
+    }
+  }
+
+  get previewSceneActive(): boolean { return this.previewSceneSelector !== null; }
+
+  get renderSessionSnapshot(): GameSession | null {
+    const session = this.sessionSnapshot;
+    const selector = this.previewSceneSelector;
+    if (session === null || selector === null) return session;
+    const state = session.state as Record<string, unknown>;
+    const publicState = (state.public ?? {}) as Record<string, unknown>;
+    const timeline = (publicState.timeline ?? {}) as Record<string, unknown>;
+    const nextTimeline: Record<string, unknown> = { ...timeline,
+      ...(selector.screenId === undefined ? {} : { screenId: selector.screenId, screen_id: selector.screenId }),
+      ...(selector.stepIndex === undefined ? {} : { stepIndex: selector.stepIndex, step_index: selector.stepIndex })
+    };
+    if (selector.activeInfoId === undefined) {
+      delete nextTimeline.activeInfoId;
+      delete nextTimeline.active_info_id;
+    } else {
+      nextTimeline.activeInfoId = selector.activeInfoId;
+      nextTimeline.active_info_id = selector.activeInfoId;
+    }
+    return { ...session, state: { ...state, public: { ...publicState, timeline: nextTimeline } } } as GameSession;
   }
 
   /**
@@ -157,6 +210,7 @@ export class GamePresenter {
     // that session's own HttpOnly credential. Restored state is never rendered
     // here: the editor navigates to its current compiled UI after the reply.
     const result = await runEditorDebugCommand(command, restoreDebugCheckpoint);
+    if (result.ok && result.operation === "resume") this.previewSceneSelector = null;
     if (result.ok && (result.operation === "status" || result.operation === "pause" || result.operation === "resume") && this.session?.sessionId === command.sessionId) {
       if (this.previewPauseAck?.sessionId !== command.sessionId || result.data.version.stateVersion >= this.previewPauseAck.stateVersion) {
         this.previewPauseAck = { sessionId: command.sessionId, stateVersion: result.data.version.stateVersion, paused: result.data.paused };
@@ -171,7 +225,8 @@ export class GamePresenter {
    * Публичное состояние для подписки View.
    */
   get playerState(): PlayerState {
-    const publicState = this.session?.state?.public as Record<string, unknown> | undefined;
+    const renderSession = this.renderSessionSnapshot;
+    const publicState = renderSession?.state?.public as Record<string, unknown> | undefined;
     const rawMetrics = { ...(publicState?.metrics as MetricsSnapshot) ?? {} };
     const projectedMetrics = projectMetricsFromContent(this.content, publicState ?? {}, rawMetrics);
     const metrics = this.config.resolveMetrics
@@ -202,14 +257,15 @@ export class GamePresenter {
           ? timeline.active_info_id
           : null;
 
-    const gameState = this.config.resolveGameState(this.content, this.session);
+    const gameState = this.config.resolveGameState(this.content, renderSession);
 
     const screenRouting = this.gameUi?.screenRouting;
-    const screenKey = this.gameUi
+    const routedScreenKey = this.gameUi
       ? this.config.resolveScreenKey
         ? this.config.resolveScreenKey(currentScreenId, currentStepIndex, activeInfoId, this.gameUi)
         : resolveScreenKeyDefault(screenRouting, currentScreenId, currentStepIndex, activeInfoId, this.gameUi)
       : null;
+    const screenKey = this.previewSceneSelector?.screenKey ?? routedScreenKey;
 
     // The selected screen is the most local declarative owner of its layout.
     // Routing only chooses a screen; it must not silently downgrade an
@@ -234,7 +290,8 @@ export class GamePresenter {
       /* Preserve current panel if server didn't specify a new one and user didn't dismiss it */
       activePanel = this.currentActivePanel;
     }
-    this.currentActivePanel = activePanel;
+    if (this.previewSceneSelector !== null) activePanel = null;
+    else this.currentActivePanel = activePanel;
 
     return {
       ...gameState,

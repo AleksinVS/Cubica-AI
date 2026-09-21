@@ -11,7 +11,44 @@
         "language": "ru"
       },
       "screenId": "S1",
-      "advanceLabel": "Продолжить"
+      "advanceLabel": "Продолжить",
+      "_projection": {
+        "properties": [
+          {
+            "id": "title",
+            "facet": "content",
+            "path": "/title",
+            "label": "Заголовок",
+            "presentation": "text",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          },
+          {
+            "id": "body",
+            "facet": "content",
+            "path": "/body",
+            "label": "Текст",
+            "presentation": "text",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          },
+          {
+            "id": "advanceLabel",
+            "facet": "content",
+            "path": "/advanceLabel",
+            "label": "Текст перехода",
+            "presentation": "text",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          }
+        ]
+      }
     },
     "game.AntarcticaOpeningCard": {
       "_extends": "game.Card",
@@ -20,7 +57,55 @@
         "raw": "Опишите карточку выбора Antarctica: лицевой текст, оборотную сторону, действие при выборе, изменения показателей и методический смысл выбора.",
         "language": "ru"
       },
-      "selectLabel": "Выбрать"
+      "selectLabel": "Выбрать",
+      "_projection": {
+        "properties": [
+          {
+            "id": "title",
+            "facet": "content",
+            "path": "/title",
+            "label": "Заголовок",
+            "presentation": "text",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          },
+          {
+            "id": "summary",
+            "facet": "content",
+            "path": "/summary",
+            "label": "Описание",
+            "presentation": "text",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          },
+          {
+            "id": "backText",
+            "facet": "content",
+            "path": "/backText",
+            "label": "Текст после выбора",
+            "presentation": "text",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          },
+          {
+            "id": "selectLabel",
+            "facet": "content",
+            "path": "/selectLabel",
+            "label": "Текст кнопки",
+            "presentation": "text",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          }
+        ]
+      }
     },
     "game.AntarcticaBoard": {
       "_extends": "game.Board",
@@ -29,7 +114,33 @@
         "raw": "Опишите доску Antarctica: цель выбора, вводный текст, набор карточек, связь со сценарием и ожидаемое решение игрока.",
         "language": "ru"
       },
-      "screenId": "S2"
+      "screenId": "S2",
+      "_projection": {
+        "properties": [
+          {
+            "id": "title",
+            "facet": "content",
+            "path": "/title",
+            "label": "Заголовок",
+            "presentation": "text",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          },
+          {
+            "id": "body",
+            "facet": "content",
+            "path": "/body",
+            "label": "Текст",
+            "presentation": "text",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          }
+        ]
+      }
     },
     "game.AntarcticaLinearInfoStep": {
       "_extends": "game.Step",
@@ -38,7 +149,33 @@
         "raw": "Опишите линейный шаг Antarctica: какой информационный блок показывается, какие действия доступны и как шаг связан со следующей частью сценария.",
         "language": "ru"
       },
-      "screenId": "S1"
+      "screenId": "S1",
+      "_projection": {
+        "properties": [
+          {
+            "id": "title",
+            "facet": "content",
+            "path": "/title",
+            "label": "Заголовок",
+            "presentation": "text",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          },
+          {
+            "id": "body",
+            "facet": "content",
+            "path": "/body",
+            "label": "Текст",
+            "presentation": "text",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          }
+        ]
+      }
     },
     "game.AntarcticaTeamMember": {
       "_extends": "game.ContentEntity",
@@ -47,7 +184,44 @@
         "raw": "Опишите участника штаба Antarctica: роль персонажа, причину выбора, действие выбора и вклад в показатели команды.",
         "language": "ru"
       },
-      "selectLabel": "Выбрать"
+      "selectLabel": "Выбрать",
+      "_projection": {
+        "properties": [
+          {
+            "id": "name",
+            "facet": "content",
+            "path": "/name",
+            "label": "Имя",
+            "presentation": "text",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          },
+          {
+            "id": "summary",
+            "facet": "content",
+            "path": "/summary",
+            "label": "Описание",
+            "presentation": "text",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          },
+          {
+            "id": "selectLabel",
+            "facet": "content",
+            "path": "/selectLabel",
+            "label": "Текст кнопки",
+            "presentation": "text",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          }
+        ]
+      }
     },
     "game.AntarcticaAvailableCardState": {
       "_semantics": "Локальный прототип начального доступного состояния карточки Antarctica в публичном состоянии сессии.",
@@ -118,10 +292,30 @@
       },
       "capabilityFamily": "game.team.select",
       "capability": "game.team.select"
+    },
+    "game.AntarcticaGame": {
+      "_extends": "game.Game",
+      "_label": "Игра Антарктика",
+      "_semantics": "Правила и содержание игры Антарктика.",
+      "_projection": {
+        "properties": [
+          {
+            "id": "dayLimit",
+            "path": "/content/data/rules/dayLimit",
+            "label": "Продолжительность игры",
+            "presentation": "quantity",
+            "facet": "logic",
+            "expose": [
+              "instance",
+              "prototype"
+            ]
+          }
+        ]
+      }
     }
   },
   "root": {
-    "_type": "game.Game",
+    "_type": "game.AntarcticaGame",
     "_label": "Антарктическая корпорация",
     "_semantics": "Текстовый квест про изменения в компании «Антарктическая корпорация» с акцентом на управленческие решения и метрики команды.",
     "meta": {

@@ -7,6 +7,10 @@
       {
         "file": "games/antarctica/authoring/game.authoring.json",
         "pointer": "/root"
+      },
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.AntarcticaGame"
       }
     ],
     "/meta": [

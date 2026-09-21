@@ -154,7 +154,73 @@ describe("MvpFloatingMenu", () => {
     expect(element.dataset.expanded).toBe("true");
     act(() => {
       document.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, clientX: 500, clientY: 500 }));
-      vi.advanceTimersByTime(220);
+      vi.advanceTimersByTime(320);
+    });
+    expect(element.dataset.expanded).toBe("false");
+  });
+
+  it("collapses after pointer leave even when proximity coordinates are unavailable", () => {
+    vi.useFakeTimers();
+    render(<MvpFloatingMenu activeMode="play" onModeChange={vi.fn()} />);
+    const element = menu();
+    act(() => {
+      element.dispatchEvent(new PointerEvent("pointerout", { bubbles: true, relatedTarget: document.body, clientX: 1, clientY: 1 }));
+      vi.advanceTimersByTime(319);
+    });
+    expect(element.dataset.expanded).toBe("true");
+    act(() => vi.advanceTimersByTime(1));
+    expect(element.dataset.expanded).toBe("false");
+  });
+
+  it("does not keep the toolbar open from a native mouse focus", () => {
+    vi.useFakeTimers();
+    render(<MvpFloatingMenu activeMode="editor" onModeChange={vi.fn()} />);
+    const element = menu();
+    const editor = element.querySelector("button[aria-label='Редактор']");
+    if (!(editor instanceof HTMLButtonElement)) throw new Error("editor missing");
+    act(() => {
+      editor.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 20, clientX: 100 }));
+      editor.focus();
+      editor.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, pointerId: 20, clientX: 100 }));
+      document.body.focus();
+      vi.advanceTimersByTime(320);
+    });
+    expect(element.dataset.expanded).toBe("false");
+  });
+
+  it("does not retain focus hold after a mouse selection closes a popover", () => {
+    vi.useFakeTimers();
+    render(<MvpFloatingMenu activeMode="editor" onModeChange={vi.fn()} />);
+    const element = menu();
+    const scenario = element.querySelector("button[aria-label='Сценарий']");
+    if (!(scenario instanceof HTMLButtonElement)) throw new Error("scenario missing");
+    act(() => {
+      scenario.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 30, clientX: 100 }));
+      scenario.focus();
+      scenario.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, pointerId: 30, clientX: 100 }));
+      scenario.click();
+    });
+    const rules = element.querySelector("button[role='menuitem']");
+    if (!(rules instanceof HTMLButtonElement)) throw new Error("rules missing");
+    act(() => {
+      rules.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 31, clientX: 100 }));
+      rules.focus();
+      rules.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, pointerId: 31, clientX: 100 }));
+      rules.click();
+      element.dispatchEvent(new PointerEvent("pointerout", { bubbles: true, relatedTarget: document.body, clientX: 400, clientY: 400 }));
+      vi.advanceTimersByTime(320);
+    });
+    expect(element.dataset.expanded).toBe("false");
+  });
+
+  it("cancels a pending drag when the pointer leaves before the threshold", () => {
+    vi.useFakeTimers();
+    render(<MvpFloatingMenu activeMode="editor" onModeChange={vi.fn()} />);
+    const element = menu();
+    act(() => {
+      element.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 32, clientX: 100 }));
+      element.dispatchEvent(new PointerEvent("pointerout", { bubbles: true, relatedTarget: document.body, pointerId: 32, clientX: 102 }));
+      vi.advanceTimersByTime(320);
     });
     expect(element.dataset.expanded).toBe("false");
   });
@@ -167,7 +233,10 @@ describe("MvpFloatingMenu", () => {
     const scenario = menu().querySelector("button[aria-label='Сценарий']");
     if (!(scenario instanceof HTMLButtonElement)) throw new Error("scenario missing");
     act(() => scenario.click());
-    const saved = menu().querySelector("button[role='menuitem']");
+    const menuItems = Array.from(menu().querySelectorAll("[role='menuitem']"));
+    expect(menuItems[0]?.textContent).toContain("Правила");
+    expect(menu().querySelector("h2#mvp-scenario-rules")).toBeNull();
+    const saved = Array.from(menu().querySelectorAll("button[role='menuitem']")).find((button) => button.textContent?.includes("Начало"));
     if (!(saved instanceof HTMLButtonElement)) throw new Error("saved state missing");
     expect(saved.disabled).toBe(false);
     expect(saved.title).toBe("Снимок требует другой версии");

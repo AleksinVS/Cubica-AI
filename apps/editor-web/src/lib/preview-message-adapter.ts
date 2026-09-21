@@ -5,7 +5,8 @@
  * another origin. This module keeps the message protocol small and maps runtime
  * JSON Pointers back to authoring JSON Pointers through sidecar source maps.
  */
-import type { PreviewEntityDescriptor, PreviewRect } from "@cubica/editor-engine";
+import type { PreviewEntityDescriptor } from "@cubica/editor-engine";
+import { validatePlayerPreviewEntitiesMessage, type PlayerPreviewEntitiesMessage as CanonicalPreviewEntitiesMessage } from "@cubica/contracts-session";
 
 interface PreviewSessionStateVersion {
   readonly sessionId: string;
@@ -35,24 +36,12 @@ export interface PreviewSelectionSourceMap {
   readonly verbatimSubtrees?: readonly string[];
 }
 
-export interface PlayerPreviewEntityMessage {
-  readonly entityId: string;
-  readonly runtimePointer: string;
-  readonly label?: string;
-  readonly semanticRole?: string;
-  readonly layer?: string;
-  readonly zIndex?: number;
-  readonly renderOrder?: number;
-  readonly bounds: PreviewRect;
-  readonly visible?: boolean;
-  readonly selectable?: boolean;
-}
+export type PlayerPreviewEntitiesMessage = CanonicalPreviewEntitiesMessage;
+export type PlayerPreviewEntityMessage = CanonicalPreviewEntitiesMessage["entities"][number];
 
-export interface PlayerPreviewEntitiesMessage {
-  readonly source: "cubica-player-web";
-  readonly type: "previewEntities";
-  readonly version: 1;
-  readonly entities: readonly PlayerPreviewEntityMessage[];
+export interface PreviewSourceSnapshot {
+  readonly revision?: string;
+  readonly maps: readonly PreviewSelectionSourceMap[];
 }
 
 export interface PlayerPreviewSessionSnapshotMessage {
@@ -94,16 +83,7 @@ export interface PreviewDescriptorMappingResult {
 }
 
 export function isPlayerPreviewEntitiesMessage(value: unknown): value is PlayerPreviewEntitiesMessage {
-  if (!isPlainRecord(value)) {
-    return false;
-  }
-
-  return (
-    value.source === "cubica-player-web" &&
-    value.type === "previewEntities" &&
-    value.version === 1 &&
-    Array.isArray(value.entities)
-  );
+  return validatePlayerPreviewEntitiesMessage(value);
 }
 
 export function isPlayerPreviewSessionSnapshotMessage(value: unknown): value is PlayerPreviewSessionSnapshotMessage {
@@ -164,6 +144,7 @@ export function mapPlayerPreviewEntitiesToAuthoringDescriptors(
   options: {
     readonly currentAuthoringFile?: string;
     readonly gameId?: string;
+    readonly context?: PlayerPreviewEntitiesMessage["context"];
   } = {}
 ): PreviewDescriptorMappingResult {
   const descriptors: PreviewEntityDescriptor[] = [];
@@ -175,6 +156,14 @@ export function mapPlayerPreviewEntitiesToAuthoringDescriptors(
       unresolved.push(entity);
       continue;
     }
+    const boundSource = entity.textBinding?.contentRuntimePointer === undefined ? undefined :
+      findAuthoringSourceForRuntimePointer(sourceMaps, entity.textBinding.contentRuntimePointer, options);
+    const contentOwnerSource = entity.contentRuntimePointer === undefined ? undefined :
+      findAuthoringSourceForRuntimePointer(sourceMaps, entity.contentRuntimePointer, options);
+    const metricSource = entity.textBinding?.metricRuntimePointer === undefined ? undefined :
+      findAuthoringSourceForRuntimePointer(sourceMaps, entity.textBinding.metricRuntimePointer, options);
+    const ruleSource = entity.textBinding?.ruleRuntimePointer === undefined ? undefined :
+      findAuthoringSourceForRuntimePointer(sourceMaps, entity.textBinding.ruleRuntimePointer, options);
 
     descriptors.push({
       entityId: entity.entityId,
@@ -189,12 +178,33 @@ export function mapPlayerPreviewEntitiesToAuthoringDescriptors(
       visible: entity.visible ?? true,
       selectable: entity.selectable ?? true,
       metadata: {
-        sourceFile: source.file
+        sourceFile: source.file,
+        ...(options.context === undefined ? {} : { previewContext: options.context }),
+        ...(contentOwnerSource === undefined ? {} : { contentOwnerSourceFile: contentOwnerSource.file, contentOwnerSourcePointer: contentOwnerSource.pointer }),
+        ...(entity.displayText === undefined ? {} : { displayText: entity.displayText }),
+        ...(entity.textBinding === undefined ? {} : { textBinding: {
+          prop: entity.textBinding.prop,
+          expression: entity.textBinding.expression,
+          ...(metricSource === undefined ? {} : { metricSourceFile: metricSource.file, metricSourcePointer: metricSource.pointer }),
+          ...(ruleSource === undefined ? {} : { ruleSourceFile: ruleSource.file, ruleSourcePointer: ruleSource.pointer }),
+          ...(boundSource === undefined ? {} : { contentSourceFile: boundSource.file, contentSourcePointer: boundSource.pointer })
+        } })
       }
     });
   }
 
   return { descriptors, unresolved };
+}
+
+/** A revision is accepted only with the source maps committed for that same compile. */
+export function mapPlayerPreviewEntitiesForSourceSnapshot(
+  message: PlayerPreviewEntitiesMessage,
+  snapshot: PreviewSourceSnapshot,
+  options: { readonly currentAuthoringFile?: string; readonly gameId?: string } = {}
+): PreviewDescriptorMappingResult | undefined {
+  if (snapshot.revision === undefined || message.context.compileRevision === "unverified" ||
+      message.context.compileRevision !== snapshot.revision) return undefined;
+  return mapPlayerPreviewEntitiesToAuthoringDescriptors(message.entities, snapshot.maps, { ...options, context: message.context });
 }
 
 export function findAuthoringSourceForRuntimePointer(

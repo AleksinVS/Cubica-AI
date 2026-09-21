@@ -1,18 +1,24 @@
-.gestureFrame { position: absolute; z-index: 4; box-sizing: border-box; border: 1px dashed #39725b; pointer-events: auto; cursor: move; touch-action: none; }
-.regionFrame { border-color: #d57852; background: #d578521c; }
+.gestureFrame { position: absolute; z-index: 4; box-sizing: border-box; border: 2px dashed #fff; box-shadow: 0 0 0 1px #17212b, inset 0 0 0 1px #17212b; pointer-events: auto; cursor: move; touch-action: none; }
+.regionFrame { background: #d578521c; }
 .layerList { position: absolute; z-index: 9; width: 172px; max-height: 180px; overflow: auto; box-sizing: border-box; padding: 4px; border: 1px solid #d5ddd3; border-radius: 7px; background: #fff; box-shadow: 0 8px 25px #1c282b30; pointer-events: auto; }
 .layerList button { display: block; width: 100%; border: 0; border-radius: 4px; background: transparent; padding: 7px 8px; color: #263229; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
 .layerList button[aria-selected=true], .layerList button:hover { background: #eaf2e9; }
-.resizeDot, .rotationArea { position: absolute; z-index: 2; display: grid; place-items: center; transform: translate(-50%, -50%); border: 0; padding: 0; background: transparent; color: #39725b; pointer-events: auto; touch-action: none; }
+.resizeDot, .rotationArea { position: absolute; z-index: 2; display: grid; place-items: center; transform: translate(-50%, -50%); border: 0; padding: 0; background: transparent; color: #fff; pointer-events: auto; touch-action: none; }
 .resizeDot { width: 18px; height: 18px; }
-.resizeDot::after { content: ""; width: 4px; height: 4px; background: currentColor; border-radius: 50%; }
+.resizeDot::after { content: ""; width: 5px; height: 5px; background: currentColor; border: 1px solid #17212b; border-radius: 50%; }
 .rotationArea { width: 34px; height: 34px; cursor: grab; }
+.rotationArea svg { filter: drop-shadow(1px 0 0 #17212b) drop-shadow(-1px 0 0 #17212b) drop-shadow(0 1px 0 #17212b) drop-shadow(0 -1px 0 #17212b); }
 .resizeDot:focus-visible, .rotationArea:focus-visible { outline: 1px solid currentColor; }
 .promptClose, .promptSend, .promptSave { position: absolute; display: grid; place-items: center; width: 24px; height: 24px; border: 0; padding: 0; background: transparent; font: 20px/1 system-ui !important; }
 .promptClose { right: 2px; top: 1px; }
 .promptSend { left: 3px; bottom: 3px; }
 .promptSave { right: 17px; bottom: 3px; }
 .textHeader { display: block; max-width: calc(100% - 24px); border: 0; padding: 0 0 3px; background: transparent; font: 11px/1.4 system-ui !important; color: #657269 !important; text-align: left; }
+.prototypeHeader { display: grid; grid-template-columns: minmax(0, 1fr) 24px; align-items: center; gap: 2px; min-height: 24px; padding-right: 20px; }
+.prototypeLabel { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 11px/1.35 system-ui; color: #657269; }
+.prototypeBack { display: grid; place-items: center; width: 24px; height: 24px; border: 0; padding: 0; background: transparent; color: #263229; cursor: pointer; }
+.prototypeBack:focus-visible { outline: 1px solid currentColor; outline-offset: 1px; }
+.prototypeImpact { grid-column: 1 / -1; color: #657269; font: 10px/1.35 system-ui; }
 .unifiedText { padding: 2px 18px 27px 0 !important; }
 .inlineNotice { margin: 4px 20px 25px 0; color: #8a542c; font: 11px/1.4 system-ui; }
 .templateMenu { position: absolute; bottom: 29px; right: 8px; padding: 5px 8px; border: 0; border-radius: 3px; background: white; box-shadow: 0 3px 15px #15251d30; font: 12px/1.5 system-ui; }

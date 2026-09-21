@@ -13,7 +13,8 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 
-import type { GamePlayerUiContent } from "@cubica/contracts-manifest";
+import type { GamePlayerUiContent, PlayerFacingContent } from "@cubica/contracts-manifest";
+import type { GameSession } from "@/types/game-state";
 import {
   ANTARCTICA_GAME_CONFIG_DATA,
   createAntarcticaConfig
@@ -52,6 +53,7 @@ import {
   readCanAdvance,
 } from "@/lib/game-content-resolvers";
 import * as playerPluginApiModule from "@/plugins/player-plugin-api";
+import { readPreviewContentOrigin } from "@/lib/preview-content-origin";
 import {
   readSelectedCardId,
   resolveAntarcticaContent,
@@ -68,6 +70,7 @@ describe("antarctica shared UI screen routing", () => {
       S1: {},
       S1_LEFT: {},
       "board-topbar": {},
+      "team-selection": {},
       "info-topbar": {}
     }
   } as unknown as GamePlayerUiContent;
@@ -81,11 +84,64 @@ describe("antarctica shared UI screen routing", () => {
     );
   });
 
-  it("does not route the S2 team-selection step into the board UI variant", () => {
+  it("routes the S2 team-selection scene only when its compiled screen exists", () => {
+    const config = createAntarcticaConfig(ANTARCTICA_GAME_CONFIG_DATA);
+    expect(config.resolveScreenKey?.("S2", 15, null, uiWithSharedVariants)).toBe("team-selection");
+    const withoutTeamScreen = { screens: { "board-topbar": {} } } as unknown as GamePlayerUiContent;
+    expect(config.resolveScreenKey?.("S2", 15, null, withoutTeamScreen)).toBeNull();
+  });
+
+  it("keeps the S2 team-selection step out of the board UI variant", () => {
     const config = createAntarcticaConfig(ANTARCTICA_GAME_CONFIG_DATA);
 
     expect(config.resolveBoardScreenKey?.(15)).toBeNull();
-    expect(config.resolveScreenKey?.("S2", 15, null, uiWithSharedVariants)).toBeNull();
+    expect(config.resolveScreenKey?.("S2", 15, null, uiWithSharedVariants)).not.toBe("board-topbar");
+  });
+});
+
+describe("Antarctica preview content origin", () => {
+  it("marks the selected info and projected board card with their producer's exact content index", () => {
+    const content = { actions: [], content: { data: {
+      infos: [{ id: "same", stepIndex: 1, screenId: "S1", title: "Equal", body: "First", advanceActionId: "go" },
+        { id: "selected", stepIndex: 2, screenId: "S1", title: "Equal", body: "Second", advanceActionId: "go" }],
+      boards: [{ id: "board", stepIndex: 2, screenId: "S2", cardIds: ["card"] }],
+      cards: [{ cardId: "card", title: "Equal", summary: "Card", selectActionId: "pick" }]
+    } } } as unknown as PlayerFacingContent;
+    const config = createAntarcticaConfig(ANTARCTICA_GAME_CONFIG_DATA);
+    const state = config.resolveGameState(content, {
+      state: { public: { timeline: { stepIndex: 2, screenId: "S1", activeInfoId: "selected" } } }
+    } as unknown as GameSession);
+    expect(readPreviewContentOrigin(state.currentInfo)).toEqual({
+      runtimePointer: "/content/data/infos/1", fields: ["title", "body", "advanceLabel"]
+    });
+    const boardCards = resolveBoardCards(resolveAntarcticaContent(content), {
+      id: "board", stepIndex: 2, screenId: "S2", cardIds: ["card"]
+    });
+    expect(readPreviewContentOrigin(boardCards[0])).toEqual({
+      runtimePointer: "/content/data/cards/0", fields: ["title", "summary", "backText", "selectLabel"]
+    });
+  });
+
+  it("marks the actual team scene and each repeated member at its exact authored slot", () => {
+    const content = { actions: [], content: { data: {
+      infos: [], boards: [], cards: [],
+      teamSelections: [{
+        id: "team", stepIndex: 15, screenId: "S2", title: "Team", body: "Pick",
+        requiredPickCount: 1, confirmActionId: "confirm",
+        members: [{ memberId: "m1", name: "First", summary: "Same", selectActionId: "select-1" },
+          { memberId: "m2", name: "Second", summary: "Same", selectActionId: "select-2" }]
+      }]
+    } } } as unknown as PlayerFacingContent;
+    const state = createAntarcticaConfig(ANTARCTICA_GAME_CONFIG_DATA).resolveGameState(content, {
+      state: { public: { timeline: { stepIndex: 15, screenId: "S2" } } }
+    } as unknown as GameSession);
+    expect(readPreviewContentOrigin(state.currentTeamSelection)).toEqual({
+      runtimePointer: "/content/data/teamSelections/0", fields: ["title", "body", "confirmLabel"]
+    });
+    expect(readPreviewContentOrigin(state.currentTeamSelection?.members[1])).toEqual({
+      runtimePointer: "/content/data/teamSelections/0/members/1",
+      fields: ["name", "summary", "selectLabel"]
+    });
   });
 });
 

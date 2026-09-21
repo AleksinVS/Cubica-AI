@@ -210,12 +210,18 @@ function resolveSchemaReference(spec, reference) {
     return resolveJsonPointer(spec, reference);
   }
   const [relativeFile, fragment] = reference.split("#", 2);
-  const absolutePath = path.resolve(path.dirname(openApiPath), relativeFile);
+  const canonicalUiComponentSchemaId = "https://cubica.platform/schemas/ui-manifest.v1.json";
+  const absolutePath = relativeFile === canonicalUiComponentSchemaId
+    ? path.resolve(path.dirname(openApiPath), "schemas/ui-manifest.schema.json")
+    : path.resolve(path.dirname(openApiPath), relativeFile);
   let external;
   try {
     external = JSON.parse(fs.readFileSync(absolutePath, "utf8"));
   } catch (error) {
     fail(`Unable to read external OpenAPI schema ${reference}: ${error.message}`);
+  }
+  if (relativeFile === canonicalUiComponentSchemaId && external.$id !== canonicalUiComponentSchemaId) {
+    fail("Canonical UI component schema id changed.");
   }
   return fragment === undefined || fragment === ""
     ? external
