@@ -1,10 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
-import { appendFile } from "node:fs/promises";
+import { appendFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 const editorUrl = process.env.E2E_EDITOR_URL ?? "http://127.0.0.1:3202";
 const runtimeUrl = process.env.E2E_RUNTIME_URL ?? "http://127.0.0.1:3201";
 const separator = "\n=======================\n";
+
+test.use({ actionTimeout: 20_000 });
 
 async function selectPreviewNode(page: Page, pointer: string) {
   const node = page.frameLocator('iframe[title="Предпросмотр игры"]').locator(`[data-preview-runtime-pointer="${pointer}"]`);
@@ -91,7 +93,8 @@ test.describe("editor MVP", { tag: "@editor" }, () => {
       expect(sections).toHaveLength(3);
       const scoreLabel = `Счёт MVP ${Date.now()}`;
       sections[1] = "Показывает текущий счёт.";
-      sections[2] = sections[2].replace(/^"?Название элемента"?:.*(?=\n|$)/m, `"Название элемента": ${JSON.stringify(scoreLabel)}`);
+      expect(sections[2]).toMatch(/^"?Название элемента"?:/m);
+      sections[2] = sections[2].replace(/^("?Название элемента"?:).*$/m, `$1 ${JSON.stringify(scoreLabel)}`);
       await draft.fill(sections.join(separator));
       await panel.getByRole("button", { name: "Сохранить элемент" }).click();
       const firstCandidate = page.getByRole("region", { name: "Предложенное изменение" });
@@ -171,6 +174,7 @@ test.describe("editor MVP", { tag: "@editor" }, () => {
       ).toBeEnabled();
       await page.keyboard.press("Escape");
       await page.getByRole("button", { name: "Редактор", exact: true }).click();
+      if (await panel.isVisible()) await panel.getByRole("button", { name: "Закрыть редактор элемента" }).click();
 
       const metric = player.locator(
         '[data-preview-runtime-pointer="/screens/intro/root/children/0/children/0"]',
@@ -191,6 +195,10 @@ test.describe("editor MVP", { tag: "@editor" }, () => {
       const resize = await resizeHandle.boundingBox();
       if (!resize) throw new Error("Missing resize handle");
       const beforeResizeUrl = await frame.getAttribute("src");
+      const documentToken = `resize-${Date.now()}`;
+      await player.locator("html").evaluate((html, token) => {
+        (html.ownerDocument as Document & { __resizeToken?: string }).__resizeToken = token;
+      }, documentToken);
       await page.mouse.move(
         resize.x + resize.width / 2,
         resize.y + resize.height / 2,
@@ -202,9 +210,6 @@ test.describe("editor MVP", { tag: "@editor" }, () => {
         { steps: 6 },
       );
       await page.mouse.up();
-      await expect
-        .poll(() => frame.getAttribute("src"), { timeout: 60000 })
-        .not.toBe(beforeResizeUrl);
       await expect(metric).toBeVisible({ timeout: 20000 });
       await expect
         .poll(
@@ -215,10 +220,16 @@ test.describe("editor MVP", { tag: "@editor" }, () => {
           { timeout: 10000 },
         )
         .toBe(Math.round(metricBox.width) + 60);
+      await expect(frame).toHaveAttribute("src", beforeResizeUrl!);
+      expect(await player.locator("html").evaluate((html) =>
+        (html.ownerDocument as Document & { __resizeToken?: string }).__resizeToken)).toBe(documentToken);
 
       await expect(
         page.getByRole("button", { name: "Продолжить игру", exact: true }),
       ).toBeEnabled({ timeout: 15000 });
+      await expect(page.getByText("Обновляем игру… Можно продолжать редактирование.", { exact: true })).not.toBeVisible({ timeout: 60_000 });
+      expect(await player.locator("html").evaluate((html) =>
+        (html.ownerDocument as Document & { __resizeToken?: string }).__resizeToken)).toBe(documentToken);
       await page
         .getByRole("button", { name: "Продолжить игру", exact: true })
         .click();
@@ -271,6 +282,9 @@ test.describe("editor MVP", { tag: "@editor" }, () => {
         page.getByRole("button", { name: "Продолжить игру", exact: true }),
       ).toBeEnabled();
 
+      const gameMenuButton = page.getByRole("button", { name: "Выбор игры" });
+      if (await gameMenuButton.getAttribute("aria-expanded") === "true") await gameMenuButton.click();
+      if (await panel.isVisible()) await panel.getByRole("button", { name: "Закрыть редактор элемента" }).click();
       const restoredMetricBox = await metric.boundingBox();
       if (!restoredMetricBox) throw new Error("Missing restored metric");
       await page.mouse.click(
@@ -384,6 +398,11 @@ test.describe("editor MVP", { tag: "@editor" }, () => {
       await page.getByRole("button", { name: "Сценарий", exact: true }).click();
       await page.getByRole("menuitem", { name: "Правила", exact: true }).click();
     } finally {
+      if (!page.isClosed()) {
+        const stem = `.tmp/adr108/integration-${test.info().testId.replace(/[^a-z0-9-]/gi, "_")}`;
+        await page.screenshot({ path: `${stem}.png` }).catch(() => undefined);
+        await writeFile(`${stem}.txt`, await page.locator("body").innerText()).catch(() => undefined);
+      }
       await page.close().catch(() => undefined);
       if (editorSessionId)
         await request.delete(`${editorUrl}/api/editor/session`, {
@@ -464,6 +483,12 @@ test.describe("editor MVP", { tag: "@editor" }, () => {
       await page.getByRole("button", { name: "Редактор", exact: true }).click();
       await expect(draft).toBeVisible();
       await expect(draft).toHaveValue(invalid);
+      await panel.getByRole("button", { name: "Закрыть редактор элемента" }).click();
+      await reveal();
+      await page.getByRole("button", { name: /^(Игра|Продолжить игру)$/ }).click();
+      await expect(page.getByRole("button", { name: "Пауза игры", exact: true })).toBeVisible();
+      await page.mouse.move(1000, 600);
+      await expect(menu).toHaveAttribute("data-expanded", "false");
     } finally {
       await page.close().catch(() => undefined);
       if (sessionId) await request.delete(`${editorUrl}/api/editor/session`, { data: { sessionId } });

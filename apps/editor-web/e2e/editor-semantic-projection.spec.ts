@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
-import { realpath } from "node:fs/promises";
+import { realpath, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 const editorUrl = process.env.E2E_EDITOR_URL ?? "http://127.0.0.1:3202";
@@ -10,6 +10,8 @@ const remainingDaysPointer = "/screens/info-topbar/root/children/0/children/0";
 const trustMetricPointer = "/screens/info-topbar/root/children/0/children/2";
 const firstTitle = 'Корпорация "Антарктика"';
 const secondTitle = "Мы находимся далеко-далеко на юге…";
+
+test.use({ actionTimeout: 20_000 });
 
 type GameAuthoring = {
   root: { content: { data: { infos: { id: string; title: string; body: string }[];
@@ -56,10 +58,32 @@ async function revealToolbar(page: Page) {
 async function selectPreviewNode(page: Page, pointer: string) {
   const node = page.frameLocator(frameSelector).locator(`[data-preview-runtime-pointer="${pointer}"]`);
   await expect(node).toBeVisible({ timeout: 60_000 });
-  const bounds = await node.boundingBox();
-  if (!bounds) throw Error(`Missing bounds for ${pointer}`);
-  // The editor's inspection overlay handles parent-window pointer events.
-  await page.mouse.click(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+  const target = { point: null as { x: number; y: number } | null };
+  // Wait for actual layout metadata and an exposed point: a floating prompt can cover the center.
+  await expect.poll(async () => {
+    const dom = await node.boundingBox();
+    const frame = await page.locator(frameSelector).boundingBox();
+    if (!dom || !frame) return false;
+    target.point = await page.evaluate(({ pointer, dom, frame }) => {
+      const entities = (window as Window & { __adr108Entities?: {
+        runtimePointer: string; bounds: { x: number; y: number; width: number; height: number }
+      }[] }).__adr108Entities;
+      const reported = entities?.find(item => item.runtimePointer === pointer)?.bounds;
+      const expected = { x: dom.x - frame.x, y: dom.y - frame.y, width: dom.width, height: dom.height };
+      if (!reported || !(Object.keys(expected) as (keyof typeof expected)[])
+        .every(key => Math.abs(reported[key] - expected[key]) < 2)) return null;
+      for (const [fx, fy] of [[0.5, 0.5], [0.08, 0.5], [0.92, 0.5], [0.5, 0.2], [0.5, 0.8]]) {
+        const point = { x: dom.x + dom.width * fx!, y: dom.y + dom.height * fy! };
+        const hit = document.elementFromPoint(point.x, point.y);
+        if (hit && !hit.closest("button") && (hit.matches('[data-testid="preview-selection-overlay"]') ||
+            hit.closest('[aria-label^="Выбран элемент:"]'))) return point;
+      }
+      return null;
+    }, { pointer, dom, frame });
+    return target.point !== null;
+  }, { timeout: 15_000, message: `Ready exposed inspector point for ${pointer}` }).toBe(true);
+  if (target.point === null) throw Error(`Missing inspector point for ${pointer}`);
+  await page.mouse.click(target.point.x, target.point.y);
 }
 
 async function chooseInfo(page: Page, title: string) {
@@ -77,16 +101,34 @@ async function readAuthoring<T>(request: APIRequestContext, sessionId: string, f
 }
 
 async function closeSession(page: Page, request: APIRequestContext, sessionId: string | undefined) {
+  if (!page.isClosed()) {
+    const stem = `.tmp/adr108/browser-${test.info().testId.replace(/[^a-z0-9-]/gi, "_")}`;
+    await page.screenshot({ path: `${stem}.png` }).catch(() => undefined);
+    await writeFile(`${stem}.txt`, await page.locator("body").innerText()).catch(() => undefined);
+  }
   await page.close().catch(() => undefined);
   if (sessionId) {
-    const deleted = await request.delete(`${editorUrl}/api/editor/session`, { data: { sessionId } });
-    expect(deleted.ok()).toBe(true);
+    await expect.poll(async () => {
+      const deleted = await request.delete(`${editorUrl}/api/editor/session`, { data: { sessionId } });
+      const body = await deleted.json();
+      if (deleted.status() === 409 && body.code === "session_busy") return false;
+      expect(deleted.ok(), JSON.stringify(body)).toBe(true);
+      return true;
+    }, { timeout: 30_000, intervals: [250, 500, 1000] }).toBe(true);
   }
 }
 
 test.describe("Antarctica semantic authoring projection", { tag: "@editor" }, () => {
   test.beforeEach(async ({ page }) => {
     requireIsolatedEditor();
+    await page.addInitScript(() => {
+      if (window !== window.top) return;
+      window.addEventListener("message", event => {
+        if (event.data?.source === "cubica-player-web" && event.data?.type === "previewEntities") {
+          (window as Window & { __adr108Entities?: unknown }).__adr108Entities = event.data.entities;
+        }
+      });
+    });
     const userId = `e2e-semantic-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     await page.route("**/api/editor/session", async (route) => {
       if (route.request().method() !== "POST") return route.continue();
@@ -149,7 +191,7 @@ test.describe("Antarctica semantic authoring projection", { tag: "@editor" }, ()
         ?.root.children?.[1]?.children?.[0]?.children?.[0]?.children?.[1]?.children?.[0];
       expect(titleNode?.props?.html).toBe("{{currentInfo.title}}");
 
-      await panel.getByRole("button", { name: "Закрыть редактор элемента" }).click();
+      if (await panel.isVisible()) await panel.getByRole("button", { name: "Закрыть редактор элемента" }).click();
       await chooseInfo(page, secondTitle);
       await selectPreviewNode(page, infoTitlePointer);
       const otherDraft = await panel.getByRole("textbox", { name: "Единый текст элемента" }).inputValue();
@@ -205,6 +247,7 @@ test.describe("Antarctica semantic authoring projection", { tag: "@editor" }, ()
       expect(original.split(separator)).toHaveLength(3);
       const unsaved = `Черновик экземпляра ${Date.now()}${original.slice(original.indexOf(separator))}`;
       await draft.fill(unsaved);
+      await expect(panel.getByRole("button", { name: "Слои: Доверие", exact: true })).toBeVisible();
       await panel.getByRole("button", { name: /Слои:/u }).click();
       await page.getByRole("option", { name: "Редактировать прототип" }).click();
       await expect(panel.getByText(/Прототип:/u)).toBeVisible({ timeout: 60_000 });
@@ -232,6 +275,14 @@ test.describe("Antarctica semantic authoring projection", { tag: "@editor" }, ()
       await panel.getByRole("button", { name: "Вернуться к экземпляру" }).click();
       await expect(trustMetric).toContainText("Доверие", { timeout: 60_000 });
       await expect(draft).toHaveValue(unsaved);
+      expect(await frame.locator("html").evaluate((html) =>
+        (html.ownerDocument as Document & { __e2ePreviewToken?: string }).__e2ePreviewToken)).toBe(token);
+
+      await draft.fill(original);
+      await panel.getByRole("button", { name: "Сохранить элемент" }).click({ button: "right" });
+      await panel.getByRole("button", { name: "Сохранить как шаблон", exact: true }).click();
+      await expect(panel.getByRole("status")).toContainText("Прототип сохранён", { timeout: 60_000 });
+      await expect(page.getByText("Обновляем игру… Можно продолжать редактирование.", { exact: true })).not.toBeVisible({ timeout: 60_000 });
       expect(await frame.locator("html").evaluate((html) =>
         (html.ownerDocument as Document & { __e2ePreviewToken?: string }).__e2ePreviewToken)).toBe(token);
     } finally {
@@ -273,6 +324,7 @@ test.describe("Antarctica semantic authoring projection", { tag: "@editor" }, ()
       await expect(trustMetric).toContainText("Доверие");
       await selectPreviewNode(page, trustMetricPointer);
       const panel = page.locator('[aria-label="Редактор элемента"]');
+      await expect(panel.getByRole("button", { name: "Слои: Доверие", exact: true })).toBeVisible();
       await panel.getByRole("button", { name: /Слои:/u }).click();
       await page.getByRole("option", { name: "Редактировать прототип" }).click();
 
@@ -283,9 +335,11 @@ test.describe("Antarctica semantic authoring projection", { tag: "@editor" }, ()
       await expect(trustMetric).toContainText("Знания", { timeout: 60_000 });
       await expect(panel.getByText(/Прототип:/u)).not.toBeVisible();
 
+      // An outside click first clears the existing selection; the next selects the title.
+      await selectPreviewNode(page, infoTitlePointer);
       await selectPreviewNode(page, infoTitlePointer);
       const draft = panel.getByRole("textbox", { name: "Единый текст элемента" });
-      await expect.poll(() => draft.inputValue()).toContain(`Текст заголовка: ${JSON.stringify(firstTitle)}`);
+      await expect(panel.getByRole("button", { name: "Слои: Заголовок текущей информации", exact: true })).toBeVisible();
       await page.evaluate(() => {
         (window as Window & { __adr108PrototypeAck?: { release: () => void } }).__adr108PrototypeAck?.release();
       });
@@ -296,6 +350,8 @@ test.describe("Antarctica semantic authoring projection", { tag: "@editor" }, ()
 
       // A later explicit open/return must still work after the canceled operation drains.
       await selectPreviewNode(page, trustMetricPointer);
+      await selectPreviewNode(page, trustMetricPointer);
+      await expect(panel.getByRole("button", { name: "Слои: Доверие", exact: true })).toBeVisible();
       await panel.getByRole("button", { name: /Слои:/u }).click();
       await page.getByRole("option", { name: "Редактировать прототип" }).click();
       await expect(panel.getByText(/Прототип:/u)).toBeVisible({ timeout: 60_000 });
@@ -332,8 +388,10 @@ test.describe("Antarctica semantic authoring projection", { tag: "@editor" }, ()
       sessionId = await openAntarctica(page);
       const frame = page.frameLocator(frameSelector);
       const trustMetric = frame.locator(`[data-preview-runtime-pointer="${trustMetricPointer}"]`);
+      await expect(trustMetric).toContainText("Доверие", { timeout: 60_000 });
       await selectPreviewNode(page, trustMetricPointer);
       const panel = page.locator('[aria-label="Редактор элемента"]');
+      await expect(panel.getByRole("button", { name: "Слои: Доверие", exact: true })).toBeVisible();
       await panel.getByRole("button", { name: /Слои:/u }).click();
       await page.getByRole("option", { name: "Редактировать прототип" }).click();
       await expect(panel.getByText(/Прототип:/u)).toBeVisible({ timeout: 60_000 });
