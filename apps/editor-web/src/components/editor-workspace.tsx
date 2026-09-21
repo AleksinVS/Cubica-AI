@@ -56,12 +56,15 @@ export function EditorWorkspace() {
     iframeRef: controller.previewIframeRef, onRestored: id => { controller.acceptRestoredPreviewSession(id); setMode("editor"); }
   });
   controller.setPreviewPauseHandler(debug.setPaused);
+  controller.setPreviewPaused(debug.status?.paused === true && debug.status.sessionId === controller.previewRuntimeSessionId);
+  useEffect(() => { controller.mvpVisual.refresh(); }, [debug.status?.paused, debug.status?.sessionId]);
   const threadId = `${controller.currentDocument.gameId}:${chatKind === "rules" ? "rules" : activeThread}`;
   const currentAttachments = attachments[threadId] ?? [];
   const chatVisible = mode === "chat" || mode === "rules";
   const preparedCandidate = controller.pendingMvpMutation?.prepared;
   const candidatePlayerUrl = preparedCandidate?.preview.playerUrl;
   const building = controller.workflowState === "previewing" || controller.workflowState === "compiling";
+  const visualPending = controller.mvpVisual.pendingCount > 0;
   const mutationBusy = controller.aiApplyState === "planning" || controller.aiApplyState === "applying";
   const playState = controller.previewUrl === null ? "idle" : debug.status?.paused === false ? "running" : "paused";
   const scenarioEntries = useMemo(() => buildMvpScenarioEntries(controller.viewModel.editorEntityProjection.entities, controller.viewModel.entityProjectionDocuments), [controller.viewModel.editorEntityProjection.entities, controller.viewModel.entityProjectionDocuments]);
@@ -130,12 +133,12 @@ export function EditorWorkspace() {
   }, [controller.currentDocument.gameId]);
 
   useEffect(() => {
-    if (!playRequested || debug.status === null || debug.busy ||
+    if (!playRequested || visualPending || debug.status === null || debug.busy ||
         controller.previewFreshness !== "fresh" || controller.workflowState !== "ready" ||
         debug.status.sessionId !== controller.previewRuntimeSessionId) return;
     setPlayRequested(false);
     void debug.setPaused(false);
-  }, [playRequested, debug.status, debug.busy, controller.previewFreshness, controller.workflowState, controller.previewRuntimeSessionId]);
+  }, [playRequested, visualPending, debug.status, debug.busy, controller.previewFreshness, controller.workflowState, controller.previewRuntimeSessionId]);
 
   useEffect(() => {
     if (saveOpen) saveDialogRef.current?.showModal();
@@ -154,6 +157,7 @@ export function EditorWorkspace() {
       }
     }
     if (next === "play") {
+      if (visualPending) { setWorkspaceError("Дождитесь проверки правок. При ошибке черновик останется доступным."); return; }
       if (!controller.mvpDocumentReady) {
         setWorkspaceError("Дождитесь загрузки игры и редакторской сессии.");
         return;
@@ -181,10 +185,10 @@ export function EditorWorkspace() {
         setPlayRequested(true);
         return;
       }
-      setMode("play");
       if (debug.status !== null && debug.status.sessionId === controller.previewRuntimeSessionId) {
-        await debug.setPaused(false);
+        if (await debug.setPaused(false) && requestId === modeRequestRef.current) setMode("play");
       } else {
+        setMode("play");
         setPlayRequested(true);
       }
       return;
@@ -200,6 +204,10 @@ export function EditorWorkspace() {
     if (requestId !== modeRequestRef.current) return;
     setMode(next);
   }
+
+  useEffect(() => {
+    if (mode !== "play" && debug.status?.paused === false && !debug.busy) void debug.setPaused(true);
+  }, [mode, debug.status?.paused, debug.busy]);
 
   useEffect(() => {
     if (controller.pendingMvpMutation && debug.status?.paused === false && !debug.busy) void debug.setPaused(true);
@@ -284,12 +292,29 @@ export function EditorWorkspace() {
         pencilColor={pencil.color} pencilWidth={pencil.width} onPencilChange={setPencil}
         addEntries={[{ id: "rule", label: "Правило" }, { id: "page", label: "Страница" }, { id: "element", label: "Элемент на странице" }, ...controller.mvpPrototypeEntries.map(item => ({ ...item, id: `prototype:${item.id}` }))].map(item => ({ ...item, disabledReason: !controller.mvpDocumentReady || mutationBusy ? "Дождитесь загрузки или сохранения игры" : undefined }))}
         onAddEntry={id => void addItem(id as MvpCreateKind)}
-        canSaveState={controller.mvpDocumentReady && debug.status !== null && !controller.previewSceneActive && !debug.busy && !building && !controller.pendingMvpMutation}
+        canSaveState={controller.mvpDocumentReady && debug.status !== null && !controller.previewSceneActive && !debug.busy && !building && !visualPending && !controller.pendingMvpMutation}
         onSaveState={() => { setSaveLabel(`Состояние ${debug.savedStates.length + 1}`); setSaveOpen(true); }}
-        disabledModes={{ ...(chatBusy ? { chat: "Дождитесь ответа агента", rules: "Дождитесь ответа агента" } : {}), ...(!controller.mvpDocumentReady ? { play: "Дождитесь загрузки игры" } : mutationBusy ? { play: "Дождитесь применения изменения" } : controller.pendingMvpMutation ? { play: "Сначала примените или отмените предложенное изменение" } : debug.busy ? { play: "Дождитесь подтверждения отладки" } : building ? { play: "Подготавливаем текущую игру" } : {}) }}
+        disabledModes={{ ...(chatBusy ? { chat: "Дождитесь ответа агента", rules: "Дождитесь ответа агента" } : {}), ...(!controller.mvpDocumentReady ? { play: "Дождитесь загрузки игры" } : visualPending ? { play: "Проверяем изменения" } : mutationBusy ? { play: "Дождитесь применения изменения" } : controller.pendingMvpMutation ? { play: "Сначала примените или отмените предложенное изменение" } : debug.busy ? { play: "Дождитесь подтверждения отладки" } : building ? { play: "Подготавливаем текущую игру" } : {}) }}
       />
+      {visualPending || controller.mvpVisual.displayError || controller.mvpVisual.failedDrafts.length > 0 ?
+        <aside role="status" aria-label="Проверка изменений" style={{ position: "absolute", bottom: 8, left: 8, zIndex: 40,
+          maxWidth: 400, maxHeight: "30vh", overflow: "auto", padding: "4px 8px", background: "rgba(255,255,255,.94)", color: "#17202a", fontSize: 12 }}>
+          {visualPending && !controller.mvpVisual.needsPreviewRefresh ? <span>Проверяем изменения: {controller.mvpVisual.pendingCount}</span> : null}
+          {controller.mvpVisual.needsPreviewRefresh ? <div>Изменения сохранены. Не удалось обновить предпросмотр.{" "}
+            <button type="button" disabled={building} onClick={() => void controller.refreshMvpVisualPreview()}>Обновить предпросмотр</button></div> : null}
+          {controller.mvpVisual.displayError ? <div>{controller.mvpVisual.displayError}{" "}
+            <button type="button" onClick={controller.mvpVisual.retry}>Повторить проверку</button></div> : null}
+          {controller.mvpVisual.failedDrafts.map(entry => <details key={entry.operationId}>
+            <summary>{entry.changeSet.summary}: правка не применена</summary>
+            <p>Источник изменился или проверка не прошла. Откройте элемент заново; введённые значения сохранены ниже.</p>
+            <pre>{entry.changeSet.jsonPatches.flatMap(patch => patch.operations.filter(op => op.op !== "test").map(op =>
+              `${op.path.split("/").at(-1)}: ${"value" in op ? JSON.stringify(op.value) : "удалено"}`)).join("\n")}</pre>
+            <button type="button" onClick={() => controller.mvpVisual.dismiss(entry.operationId)}>Закрыть</button>
+          </details>)}
+        </aside> : null}
       <div className={styles.workArea}>
-        <div className={styles.preview} hidden={chatVisible}>
+        <div className={styles.preview} hidden={chatVisible} aria-busy={mode === "play" && debug.busy}
+          style={{ pointerEvents: mode === "play" && debug.busy ? "none" : undefined }}>
           <PreviewStage controller={controller} onPageSourceChange={setPageSource} requestedSource={requestedSource} onStartDrawing={rect => {
             const frame = controller.previewIframeRef.current?.getBoundingClientRect();
             if (!frame?.width || !frame.height) return;
@@ -345,7 +370,7 @@ export function EditorWorkspace() {
         </section> : null}
         <div className={styles.notices} aria-live="polite">
           <SessionRecoveryBanner changedPaths={controller.sessionRecoveryPaths} onDismiss={controller.dismissSessionRecovery} />
-          {building ? <p role="status">Обновляем игру… Можно продолжать редактирование.</p> : mutationBusy ? <p role="status">Проверяем изменение…</p> : null}
+          {!visualPending && (building ? <p role="status">Обновляем игру… Можно продолжать редактирование.</p> : mutationBusy ? <p role="status">Проверяем изменение…</p> : null)}
           {workspaceError ? <p role="alert">{workspaceError}</p> : controller.workflowState === "error" || controller.workflowState === "blocked" || controller.aiApplyState === "blocked" ? <p role="alert">{controller.statusMessage}</p> : null}
           {debug.error ? <p role="alert">{debug.error} <button type="button" aria-label="Закрыть сообщение" onClick={debug.dismissError}>×</button></p> : null}
           {debug.incompatibleState ? <p role="alert">{debug.incompatibleState.reason} Удалить снимок «{debug.incompatibleState.state.label}»?

@@ -173,7 +173,7 @@ export function MvpElementEditor({ drafts, draftKey: scopedDraftKey, source, ent
       </button>
       <span className={styles.prototypeImpact}>{impactNotice}</span>
     </div> : <button type="button" className={styles.textHeader} onClick={() => setShowLayers((open) => !open)} aria-label={`Слои: ${label}`} aria-expanded={showLayers}>{label}</button>}
-    <MvpPromptTextarea className={styles.unifiedText} value={draft} onChange={setDraft} disabled={source === undefined || busy} />
+    <MvpPromptTextarea className={styles.unifiedText} value={draft} onChange={setDraft} disabled={source === undefined} />
     <button type="button" className={styles.promptClose} aria-label="Закрыть редактор элемента" title="Закрыть" onClick={() => { if (draftKey !== undefined) drafts?.delete(draftKey); onClose(); }}>×</button>
     <button type="button" className={styles.promptSave} aria-label="Сохранить элемент" title={onSavePrototype === undefined ? "Сохранить" : `Сохранить; удерживайте для ${isPrototype ? "сохранения как нового прототипа" : "сохранения как шаблона"}`} disabled={source === undefined || busy}
       onPointerDown={() => { held.current = false; if (onSavePrototype !== undefined) hold.current = setTimeout(() => { held.current = true; setShowTemplate(true); }, 550); }}

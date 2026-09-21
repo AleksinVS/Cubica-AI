@@ -181,9 +181,11 @@ export function mapPlayerPreviewEntitiesToAuthoringDescriptors(
         sourceFile: source.file,
         ...(options.context === undefined ? {} : { previewContext: options.context }),
         ...(contentOwnerSource === undefined ? {} : { contentOwnerSourceFile: contentOwnerSource.file, contentOwnerSourcePointer: contentOwnerSource.pointer }),
+        ...(entity.contentRuntimePointer === undefined ? {} : { contentRuntimePointer: entity.contentRuntimePointer }),
         ...(entity.displayText === undefined ? {} : { displayText: entity.displayText }),
         ...(entity.textBinding === undefined ? {} : { textBinding: {
           prop: entity.textBinding.prop,
+          ...(entity.textBinding.contentRuntimePointer === undefined ? {} : { contentRuntimePointer: entity.textBinding.contentRuntimePointer }),
           expression: entity.textBinding.expression,
           ...(metricSource === undefined ? {} : { metricSourceFile: metricSource.file, metricSourcePointer: metricSource.pointer }),
           ...(ruleSource === undefined ? {} : { ruleSourceFile: ruleSource.file, ruleSourcePointer: ruleSource.pointer }),

@@ -272,7 +272,7 @@ export function PreviewStage({ controller, onStartDrawing, onPageSourceChange, r
     ? undefined : readJsonPointer(selectedDocument.json, selectedSourcePointer);
   const mvpSource: MvpElementSource | undefined = typeof selectedSourceValue === "object" && selectedSourceValue !== null && !Array.isArray(selectedSourceValue)
     && selectedFilePath !== undefined && selectedSourcePointer !== undefined
-    ? { filePath: selectedFilePath, pointer: selectedSourcePointer, value: selectedSourceValue as JsonObject }
+    ? controller.mvpProjectedSource({ filePath: selectedFilePath, pointer: selectedSourcePointer, value: selectedSourceValue as JsonObject })
     : undefined;
   const selectedSourceEntityId = selectedFilePath !== undefined && selectedSourcePointer !== undefined
     ? resolveSourceEntityId(selectedFilePath, selectedSourcePointer) : undefined;
@@ -378,15 +378,22 @@ export function PreviewStage({ controller, onStartDrawing, onPageSourceChange, r
               onGeometryCommit={async (entity, gesture) => {
                 if (mvpSource === undefined || entity.entityId !== selectedPreviewEntityId) return false;
                 const changeSet = buildMvpGeometryChangeSet(mvpSource, entity.bounds, gesture, effectiveStyle);
-                if (changeSet === undefined || !await directMvpMutation(changeSet)) return false;
+                if (changeSet === undefined) return false;
+                if (controller.mvpVisual.canProject(changeSet)) return controller.mvpVisual.enqueue(changeSet);
+                if (!await directMvpMutation(changeSet)) return false;
                 return controller.waitForLatestPreviewBuild();
+              }}
+              onGeometryPreview={(entity, gesture) => {
+                const changeSet = mvpSource === undefined || gesture === undefined ? undefined
+                  : buildMvpGeometryChangeSet(mvpSource, entity.bounds, gesture, effectiveStyle);
+                controller.mvpVisual.gesture(changeSet);
               }}
               onRegionRectChange={(rect) => {
                 if (previewPromptContext?.kind === "region") void handlePreviewRegionSelect(previewPromptContext.entities, rect, previewPromptContext.point);
               }}
               onStartDrawing={onStartDrawing}
               onSelectScope={selectScope}
-              disabled={prototypeSelection !== null || !effectivePreviewInspectMode || (mvp && (controller.aiApplyState === "applying" || controller.aiApplyState === "planning"))}
+              disabled={prototypeSelection !== null || !effectivePreviewInspectMode || (mvp && !controller.mvpVisual.canInteract()) || (mvp && controller.mvpVisual.pendingCount === 0 && (controller.aiApplyState === "applying" || controller.aiApplyState === "planning"))}
               entities={mvpPreviewEntities}
               selectionContextKey={JSON.stringify(mvpPreviewEntities[0]?.metadata?.previewContext ?? null)}
               selectedEntityId={selectedPreviewEntityId}

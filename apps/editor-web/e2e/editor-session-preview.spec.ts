@@ -233,6 +233,7 @@ test.describe("editor MVP", { tag: "@editor" }, () => {
       await page
         .getByRole("button", { name: "Продолжить игру", exact: true })
         .click();
+      await expect(page.getByRole("button", { name: "Пауза игры", exact: true })).toBeEnabled();
       await player
         .getByRole("button", {
           name: "Choose the option with the visible tradeoff.",

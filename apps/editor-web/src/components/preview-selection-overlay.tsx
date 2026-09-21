@@ -43,6 +43,7 @@ export interface PreviewPromptContext {
 export interface PreviewSelectionOverlayProps {
   readonly mvp?: boolean;
   readonly geometryUnsupportedReason?: string;
+  readonly onGeometryPreview?: (entity: PreviewEntityDescriptor, gesture: MvpOverlayGesture | undefined) => void;
   readonly onGeometryCommit?: (entity: PreviewEntityDescriptor, gesture: MvpOverlayGesture) => Promise<boolean> | void;
   readonly onRegionRectChange?: (rect: PreviewRect) => void;
   readonly onStartDrawing?: (rect: PreviewRect) => void;
@@ -83,6 +84,7 @@ export function PreviewSelectionOverlay({
   mvp = false,
   geometryUnsupportedReason,
   onGeometryCommit,
+  onGeometryPreview,
   onRegionRectChange,
   onStartDrawing,
   onSelectScope,
@@ -382,7 +384,8 @@ export function PreviewSelectionOverlay({
           unsupportedReason={geometryUnsupportedReason}
           onStartDrawing={onStartDrawing}
           onClickPoint={selectAt}
-          onCommit={(gesture) => onGeometryCommit?.(selectedEntity, gesture)}
+          onPreview={(gesture, bounds) => onGeometryPreview?.({ ...selectedEntity, bounds }, gesture)}
+          onCommit={(gesture, bounds) => onGeometryCommit?.({ ...selectedEntity, bounds }, gesture)}
         />
       ) : <PreviewHighlightFrame entity={selectedEntity} /> : null}
       {dragRect !== null ? <PreviewRegionRect rect={dragRect} /> : null}
@@ -471,6 +474,7 @@ function MvpGestureFrame({
   regionRect,
   unsupportedReason,
   onClickPoint,
+  onPreview,
   onCommit
 }: {
   readonly entity?: PreviewEntityDescriptor;
@@ -478,19 +482,21 @@ function MvpGestureFrame({
   readonly unsupportedReason?: string;
   readonly onStartDrawing?: (rect: PreviewRect) => void;
   readonly onClickPoint?: (point: PreviewPoint) => void;
-  readonly onCommit: (gesture: MvpOverlayGesture) => Promise<boolean> | void;
+  readonly onPreview?: (gesture: MvpOverlayGesture | undefined, bounds: PreviewRect) => void;
+  readonly onCommit: (gesture: MvpOverlayGesture, bounds: PreviewRect) => Promise<boolean> | void;
 }) {
   const bounds = entity?.bounds ?? regionRect;
   const frameRef = useRef<HTMLDivElement>(null);
-  const gestureRef = useRef<{ kind: MvpOverlayGesture["kind"]; anchor?: MvpResizeAnchor; pointerId: number; x: number; y: number; startAngle: number } | null>(null);
+  const gestureRef = useRef<{ kind: MvpOverlayGesture["kind"]; anchor?: MvpResizeAnchor; pointerId: number; x: number; y: number; startAngle: number; bounds: PreviewRect } | null>(null);
   const commitPendingRef = useRef(false);
   const [preview, setPreview] = useState<MvpOverlayGesture | null>(null);
   if (bounds === undefined) return null;
 
+  const gestureBounds = gestureRef.current?.bounds ?? bounds;
   const shown = preview === null ? bounds : preview.kind === "move"
-    ? { ...bounds, x: bounds.x + preview.dx, y: bounds.y + preview.dy }
+    ? { ...gestureBounds, x: gestureBounds.x + preview.dx, y: gestureBounds.y + preview.dy }
     : preview.kind === "resize"
-      ? resizeMvpRect(bounds, preview.dx, preview.dy, preview.anchor)
+      ? resizeMvpRect(gestureBounds, preview.dx, preview.dy, preview.anchor)
       : bounds;
   const disabled = entity !== undefined && unsupportedReason !== undefined;
 
@@ -503,7 +509,7 @@ function MvpGestureFrame({
     const cx = (hostRect?.left ?? 0) + bounds.x + bounds.width / 2;
     const cy = (hostRect?.top ?? 0) + bounds.y + bounds.height / 2;
     gestureRef.current = { kind, anchor, pointerId: event.pointerId, x: event.clientX, y: event.clientY,
-      startAngle: Math.atan2(event.clientY - cy, event.clientX - cx) };
+      startAngle: Math.atan2(event.clientY - cy, event.clientX - cx), bounds };
     event.currentTarget.setPointerCapture(event.pointerId);
   }
 
@@ -514,8 +520,8 @@ function MvpGestureFrame({
     if (start.kind === "move") return { kind: "move", dx: event.clientX - start.x, dy: event.clientY - start.y };
     const host = frameRef.current?.parentElement;
     const hostRect = host?.getBoundingClientRect();
-    const cx = (hostRect?.left ?? 0) + bounds.x + bounds.width / 2;
-    const cy = (hostRect?.top ?? 0) + bounds.y + bounds.height / 2;
+    const cx = (hostRect?.left ?? 0) + start.bounds.x + start.bounds.width / 2;
+    const cy = (hostRect?.top ?? 0) + start.bounds.y + start.bounds.height / 2;
     return { kind: "rotate", degrees: (Math.atan2(event.clientY - cy, event.clientX - cx) - start.startAngle) * 180 / Math.PI };
   }
 
@@ -528,7 +534,7 @@ function MvpGestureFrame({
     if (commit && moved && !disabled && gesture !== null) {
       setPreview(gesture);
       try {
-        const result = onCommit(gesture);
+        const result = onCommit(gesture, started?.bounds ?? bounds!);
         if (result instanceof Promise) {
           commitPendingRef.current = true;
           const clearCommittedPreview = () => {
@@ -542,6 +548,7 @@ function MvpGestureFrame({
       }
     } else {
       setPreview(null);
+      onPreview?.(undefined, started?.bounds ?? bounds!);
     }
     if (commit && !moved && started?.kind === "move") {
       const host = frameRef.current?.parentElement?.getBoundingClientRect();
@@ -556,7 +563,7 @@ function MvpGestureFrame({
     <div ref={frameRef} className={`${mvpStyles.gestureFrame} ${regionRect !== undefined ? mvpStyles.regionFrame : ""}`}
       style={{ ...rectStyle(shown), transform: preview?.kind === "rotate" ? `rotate(${preview.degrees}deg)` : undefined }}
       onPointerDown={(event) => start("move", event)}
-      onPointerMove={(event) => { const gesture = currentGesture(event); if (gesture !== null && !disabled) setPreview(gesture); }}
+      onPointerMove={(event) => { const gesture = currentGesture(event); if (gesture !== null && !disabled) { setPreview(gesture); onPreview?.(gesture, gestureRef.current?.bounds ?? bounds); } }}
       onPointerUp={(event) => finish(event, true)}
       onPointerCancel={(event) => finish(event, false)}
       aria-label={entity === undefined ? "Выделенная область" : `Выбран элемент: ${entity.label}`}>

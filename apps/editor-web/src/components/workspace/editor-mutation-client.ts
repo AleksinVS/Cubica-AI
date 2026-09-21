@@ -4,6 +4,8 @@ import type {
   EditorMutationRequest
 } from "@cubica/editor-engine";
 
+export class EditorMutationRejectedError extends Error {}
+
 /** The server alone computes and writes the effect represented by a ChangeSet. */
 export async function postEditorMutation(
   request: EditorMutationRequest
@@ -20,7 +22,9 @@ export async function postEditorMutation(
     readonly diagnostics?: readonly { readonly message: string }[];
   };
   if (!response.ok) {
-    throw new Error(body.diagnostics?.[0]?.message ?? body.error ?? body.summary ?? `Editor mutation failed with HTTP ${response.status}.`);
+    const message = body.diagnostics?.[0]?.message ?? body.error ?? body.summary ?? `Editor mutation failed with HTTP ${response.status}.`;
+    if (response.status >= 400 && response.status < 500) throw new EditorMutationRejectedError(message);
+    throw new Error(message);
   }
   if (request.action === "prepare" && body.status === "prepared") {
     return body as EditorMutationPreparedResponse;

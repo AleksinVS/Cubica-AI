@@ -137,6 +137,85 @@ test.describe("Antarctica semantic authoring projection", { tag: "@editor" }, ()
     });
   });
 
+  test("shows two geometry edits before validation and keeps the newest value after acknowledgement", async ({ page, request }) => {
+    test.setTimeout(240_000);
+    await page.setViewportSize({ width: 1600, height: 1200 });
+    let sessionId: string | undefined;
+    let release!: () => void;
+    const gate = new Promise<void>(resolve => { release = resolve; });
+    let intercepted = 0;
+    try {
+      sessionId = await openAntarctica(page);
+      await page.route("**/api/editor/apply", async route => {
+        if (route.request().postDataJSON()?.action === "direct") { intercepted += 1; await gate; }
+        await route.continue();
+      });
+      await selectPreviewNode(page, infoTitlePointer);
+      const title = page.frameLocator(frameSelector).locator(`[data-preview-runtime-pointer="${infoTitlePointer}"]`);
+      const iframe = await page.locator(frameSelector).elementHandle();
+      const frame = await iframe!.contentFrame();
+      await frame!.evaluate(() => { (window as Window & { __adr109Token?: string }).__adr109Token = "same-frame"; });
+      await page.evaluate(() => {
+        const measurements: number[] = [];
+        (window as Window & { __adr109InputTimings?: number[] }).__adr109InputTimings = measurements;
+        let inputAt = 0;
+        window.addEventListener("pointermove", () => { inputAt = performance.timeOrigin + performance.now(); }, true);
+        window.addEventListener("message", event => {
+          if (event.data?.source === "adr109-render-measurement" && inputAt) {
+            const elapsed = event.data.renderedAt - inputAt;
+            if (elapsed >= 0 && elapsed < 1000) measurements.push(elapsed);
+          }
+        });
+      });
+      await frame!.evaluate((pointer) => {
+        const target = document.querySelector(`[data-preview-runtime-pointer="${pointer}"]`)!;
+        const timings: number[] = [];
+        (window as Window & { __adr109Timings?: number[] }).__adr109Timings = timings;
+        let received = 0;
+        let previous = target.getBoundingClientRect().x;
+        window.addEventListener("message", event => {
+          if (event.data?.type === "temporaryPreviewLayer" && event.data.patches?.length) received = performance.now();
+        });
+        new MutationObserver(() => {
+          const x = target.getBoundingClientRect().x;
+          if (Math.abs(x - previous) > 0.1 && received) {
+            timings.push(performance.now() - received); received = 0;
+            window.parent.postMessage({ source: "adr109-render-measurement", renderedAt: performance.timeOrigin + performance.now() }, "*");
+          }
+          previous = x;
+        }).observe(target, { attributes: true, subtree: true, childList: true });
+      }, infoTitlePointer);
+      const initial = (await title.boundingBox())!;
+      const selected = page.locator('[aria-label^="Выбран элемент:"]');
+      const move = async (dx: number) => {
+        const bounds = (await selected.boundingBox())!;
+        const x = bounds.x + 18; const y = bounds.y + bounds.height / 2;
+        await page.mouse.move(x, y);
+        await page.mouse.down();
+        await page.mouse.move(x + dx, y, { steps: 2 });
+        await page.mouse.up();
+      };
+      await move(30);
+      await expect.poll(() => intercepted).toBe(1);
+      await expect.poll(async () => (await title.boundingBox())!.x).toBeCloseTo(initial.x + 30, 0);
+      await move(20);
+      await expect.poll(async () => (await title.boundingBox())!.x).toBeCloseTo(initial.x + 50, 0);
+      expect(intercepted).toBe(1);
+      await expect(page.getByRole("status", { name: "Проверка изменений" })).toContainText("2");
+      await page.screenshot({ path: ".tmp/ui-compare/adr109/geometry-pending.png" });
+      release();
+      await expect.poll(() => intercepted, { timeout: 90_000 }).toBe(2);
+      await expect(page.getByRole("status", { name: "Проверка изменений" })).not.toBeVisible({ timeout: 90_000 });
+      await expect.poll(async () => (await title.boundingBox())!.x).toBeCloseTo(initial.x + 50, 0);
+      expect(await frame!.evaluate(() => (window as Window & { __adr109Token?: string }).__adr109Token)).toBe("same-frame");
+      await page.screenshot({ path: ".tmp/ui-compare/adr109/geometry-confirmed.png" });
+      const timings = await frame!.evaluate(() => (window as Window & { __adr109Timings?: number[] }).__adr109Timings);
+      expect(timings?.length).toBeGreaterThan(0);
+      await writeFile(".tmp/adr109/geometry-timings.json", JSON.stringify({ messageToDom: timings,
+        pointerToDom: await page.evaluate(() => (window as Window & { __adr109InputTimings?: number[] }).__adr109InputTimings) }));
+    } finally { release(); await closeSession(page, request, sessionId); }
+  });
+
   test("keeps transient layers separate from the measured prompt at both viewport edges", async ({ page, request }) => {
     test.setTimeout(180_000);
     let sessionId: string | undefined;
@@ -176,6 +255,8 @@ test.describe("Antarctica semantic authoring projection", { tag: "@editor" }, ()
     test.setTimeout(300_000);
     await page.setViewportSize({ width: 1600, height: 1200 });
     let sessionId: string | undefined;
+    let releasePrepare = () => {};
+    let prepareRequest: unknown;
     try {
       sessionId = await openAntarctica(page);
       const gameBefore = await readAuthoring<GameAuthoring>(request, sessionId, "game.authoring.json");
@@ -209,12 +290,44 @@ test.describe("Antarctica semantic authoring projection", { tag: "@editor" }, ()
         `Текст заголовка: ${JSON.stringify(changedTitle)}`
       );
       await draft.fill(sections.join(separator));
+      const prepareGate = new Promise<void>(resolve => { releasePrepare = resolve; });
+      await page.route("**/api/editor/apply", async route => {
+        if (route.request().postDataJSON()?.action === "prepare") { prepareRequest = route.request().postDataJSON(); await prepareGate; }
+        await route.continue();
+      });
       await panel.getByRole("button", { name: "Сохранить элемент" }).click();
+      await expect.poll(() => prepareRequest).toBeTruthy();
+      await expect(page.frameLocator(frameSelector).locator(`[data-preview-runtime-pointer="${infoTitlePointer}"]`))
+        .toContainText(changedTitle, { timeout: 2000 });
+      // The shared source still requires explicit confirmation after validation.
+      expect((await readAuthoring<GameAuthoring>(request, sessionId, "game.authoring.json")).root.content.data.infos[0].title).toBe(firstTitle);
+      releasePrepare();
       const candidate = page.getByRole("region", { name: "Предложенное изменение" });
       await expect(candidate).toBeVisible({ timeout: 60_000 });
       await expect(candidate).toContainText("Изменение игрового содержимого или правила затронет все его отображения.");
+      const firstOperation = (prepareRequest as { changeSet: { id: string } }).changeSet.id;
+      await candidate.getByRole("button", { name: "Отмена", exact: true }).click();
+      await expect(candidate).not.toBeVisible();
+      await expect(page.frameLocator(frameSelector).locator(`[data-preview-runtime-pointer="${infoTitlePointer}"]`))
+        .toContainText(firstTitle, { timeout: 2000 });
+      await panel.getByRole("button", { name: "Сохранить элемент" }).click();
+      await expect(candidate).toBeVisible({ timeout: 60_000 });
+      expect((prepareRequest as { changeSet: { id: string } }).changeSet.id).not.toBe(firstOperation);
+      let rejectRefresh = true;
+      await page.route("**/api/editor/preview", async route => {
+        if (rejectRefresh && route.request().method() === "POST") {
+          rejectRefresh = false;
+          await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "Simulated preview outage" }) });
+        } else await route.continue();
+      });
       await candidate.getByRole("button", { name: "Применить изменение" }).click();
       await expect(candidate).not.toBeVisible({ timeout: 60_000 });
+      const verification = page.getByRole("status", { name: "Проверка изменений" });
+      await expect(verification).toContainText("Изменения сохранены", { timeout: 60_000 });
+      await expect(page.frameLocator(frameSelector).locator(`[data-preview-runtime-pointer="${infoTitlePointer}"]`))
+        .toContainText(changedTitle);
+      await verification.getByRole("button", { name: "Обновить предпросмотр" }).click();
+      await expect(verification).not.toBeVisible({ timeout: 60_000 });
       await expect(page.frameLocator(frameSelector).locator(`[data-preview-runtime-pointer="${infoTitlePointer}"]`))
         .toContainText(changedTitle, { timeout: 90_000 });
 
@@ -235,6 +348,7 @@ test.describe("Antarctica semantic authoring projection", { tag: "@editor" }, ()
       expect(otherDraft.split(separator)[2]).toContain(`Текст заголовка: ${JSON.stringify(secondTitle)}`);
       expect(otherDraft).not.toContain(changedTitle);
     } finally {
+      releasePrepare();
       await closeSession(page, request, sessionId);
     }
   });

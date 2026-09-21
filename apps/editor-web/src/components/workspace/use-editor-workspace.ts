@@ -143,6 +143,7 @@ import { forwardMvpAgentRequest, isMvpAgentCandidateScopeCurrent, isMvpExactText
 import { buildMvpElementAuthorPromptChangeSet, isMvpMetadataOnlyChangeSet, type MvpElementSource } from "@/components/workspace/mvp-element-operations";
 import { buildMvpCreateItem, buildMvpSavePrototype, buildMvpPrototypePromptTemplateChangeSet, combineMvpDraftChanges, effectiveMvpElementStyle, mvpPrototypeEntries, mvpPrototypeContext as deriveMvpPrototypeContext, type MvpAuthoringSource, type MvpCreateKind } from "@/components/workspace/mvp-authoring-actions";
 import { createPreviewPrototypeCommandQueue } from "@/components/workspace/preview-prototype-command-queue";
+import { useMvpVisualEdits } from "./use-mvp-visual-edits";
 import { captureMvpSemanticSource } from "@/components/workspace/mvp-bound-text-capture";
 import { projectMvpRuleEntities } from "@/components/workspace/mvp-rules-panel-helpers";
 import {
@@ -187,7 +188,7 @@ import { useEditorVersionHistory } from "@/components/workspace/use-editor-versi
 import { buildSaveVersionMetadata } from "@/components/workspace/save-version-metadata";
 import { matchSavedAuthoringScope, type SaveAuthoringScope } from "@/components/workspace/save-authoring-state";
 import { dryRunMultiDocumentChangeSet } from "@/components/workspace/multi-document-apply";
-import { postEditorMutation } from "@/components/workspace/editor-mutation-client";
+import { postEditorMutation, EditorMutationRejectedError } from "@/components/workspace/editor-mutation-client";
 import {
   deriveIntentJournalEntries,
   scopeActiveFilePointers,
@@ -543,10 +544,19 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
   const previewFrameAcceptingMessagesRef = useRef(false);
   const previewFrameLoadWaitersRef = useRef(new Set<() => void>());
   const previewSessionWaitersRef = useRef(new Set<(sessionId: string) => void>());
+  const previewFrameHandshakeRef = useRef<{
+    readonly revision: string;
+    readonly isCurrent: () => boolean;
+    requestedMatchingSnapshot: boolean;
+    readonly resolve: (sessionId: string) => void;
+    readonly reject: (error: Error) => void;
+    readonly timeout: number;
+  } | null>(null);
   const previewBuildSerialRef = useRef<Promise<unknown> | null>(null);
   const previewBuildCompletionRef = useRef<Promise<{ readonly ready: boolean }> | null>(null);
   const previewBuildRequestRef = useRef(0);
   const autoPreviewSessionRef = useRef<string>();
+  const previewPausedRef = useRef(false);
   const previewPauseHandlerRef = useRef<((paused: boolean) => Promise<boolean>) | null>(null);
   const previewRefreshRequestsRef = useRef(new Map<string, {
     readonly resolve: (result: EditorPreviewContentRefreshResponse) => void;
@@ -578,6 +588,7 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
   const [previewSceneActive, setPreviewSceneActive] = useState(false);
   const previewSceneTransitionRef = useRef<{ readonly selector: EditorPreviewSceneRequest["selector"]; readonly awaitingResponse: boolean } | null>(null);
   const acceptedPreviewContextRef = useRef<string>();
+  const acceptedPreviewFrameContextRef = useRef<{ readonly sessionId: string; readonly compileRevision: string }>();
   const repositoryLoadEpochRef = useRef(0);
 
   function setPreviewPauseHandler(handler: (paused: boolean) => Promise<boolean>) {
@@ -617,6 +628,12 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
   } | null>(null);
   const pendingMvpMutationRef = useRef(pendingMvpMutation);
   const mvpMutationBusyRef = useRef(false);
+  const mvpVisualRequestsRef = useRef(new Map<string, EditorMutationPrepareRequest>());
+  const mvpMutationContextRef = useRef(editorSession?.sessionId);
+  if (mvpMutationContextRef.current !== editorSession?.sessionId) {
+    mvpMutationContextRef.current = editorSession?.sessionId;
+    mvpMutationBusyRef.current = false;
+  }
   const mvpPrepareEpochRef = useRef(0);
   const mvpPrepareErrorRef = useRef<string | null>(null);
   const mvpAgentSenderRef = useRef<EditorMessageSender | null>(null);
@@ -797,8 +814,12 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
   );
   const previewBuildInputRef = useRef({ currentDocument, jsonText, sessionId: editorSession?.sessionId, siblingSourceRevision });
   previewBuildInputRef.current = { currentDocument, jsonText, sessionId: editorSession?.sessionId, siblingSourceRevision };
-  const mvpLiveSourceRef = useRef({ currentDocument, jsonText, sessionId: editorSession?.sessionId, siblingSourceRevision, projectionSiblingDocuments });
-  mvpLiveSourceRef.current = { currentDocument, jsonText, sessionId: editorSession?.sessionId, siblingSourceRevision, projectionSiblingDocuments };
+  useEffect(() => {
+    const pending = previewFrameHandshakeRef.current;
+    if (pending !== null && !pending.isCurrent()) rejectPendingPreviewFrameHandshake("Источники изменились до подключения нового предпросмотра.");
+  }, [currentDocument.gameId, currentDocument.versionHash, jsonText, siblingSourceRevision, editorSession?.sessionId]);
+  const mvpLiveSourceRef = useRef({ currentDocument, jsonText, savedText, sessionId: editorSession?.sessionId, siblingSourceRevision, projectionSiblingDocuments });
+  mvpLiveSourceRef.current = { currentDocument, jsonText, savedText, sessionId: editorSession?.sessionId, siblingSourceRevision, projectionSiblingDocuments };
   // The active preview channel (the open UI document's channel, or undefined for a
   // game document). Server-derived and stable per open; a projection input, so it
   // is in the incremental/full-rebuild decision AND the warm-start cache key.
@@ -1288,6 +1309,35 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
     editorSession?.gameId === currentDocument.gameId &&
     (requestedGameId === null || requestedGameId === currentDocument.gameId)
   );
+  const mvpVisual = useMvpVisualEdits({
+    enabled: options.mvp === true && mvpDocumentReady && !isDirty && pendingMvpMutation === null,
+    isPaused: () => previewPausedRef.current,
+    contextKey: `${currentDocument.gameId}:${editorSession?.sessionId ?? "loading"}`,
+    documentRevision: `${currentDocument.versionHash}:${hashEditorText(jsonText)}:${siblingSourceRevision}`,
+    documents: liveAuthoringTextByFilePath(), gameId: currentDocument.gameId,
+    entities: previewEntities, previewUrl, frame: previewIframeRef,
+    commit: async (changeSet) => {
+      const ok = await directMvpMutation(changeSet, "append", true);
+      const previewReady = ok ? await waitForLatestPreviewBuild() : false;
+      const live = mvpLiveSourceRef.current;
+      return { ok, previewReady, documents: new Map([[live.currentDocument.filePath, live.jsonText],
+        ...live.projectionSiblingDocuments.map(item => [item.filePath, item.text] as const)]) };
+    }
+  });
+  function mvpProjectedSource(source: MvpElementSource): MvpElementSource {
+    const text = mvpVisual.projectedDocuments.get(source.filePath);
+    if (text === undefined) return source;
+    try {
+      const value = readJsonPointer(JSON.parse(text) as JsonValue, source.pointer);
+      return isPlainJsonObject(value) ? { ...source, value } : source;
+    } catch { return source; }
+  }
+  function mvpProjectedDocuments() {
+    return viewModel.entityProjectionDocuments.map(document => {
+      const text = mvpVisual.projectedDocuments.get(document.filePath);
+      return text === undefined ? document : { ...document, json: JSON.parse(text) as typeof document.json };
+    });
+  }
   const workspaceStyle = {
     "--left-sidebar-width": `${leftSidebarOpen ? leftSidebarWidth : 0}px`,
     "--json-sidebar-width": `${rightSidebarOpen ? jsonSidebarWidth : 0}px`
@@ -1659,6 +1709,28 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
     });
   }
 
+  function rejectPendingPreviewFrameHandshake(reason: string) {
+    const pending = previewFrameHandshakeRef.current;
+    if (pending === null) return;
+    previewFrameHandshakeRef.current = null;
+    window.clearTimeout(pending.timeout);
+    pending.reject(new Error(reason));
+  }
+
+  function waitForPreviewFrameHandshake(revision: string, isCurrent: () => boolean): Promise<string> {
+    rejectPendingPreviewFrameHandshake("Этот предпросмотр заменён более новым.");
+    return new Promise<string>((resolve, reject) => {
+      const timeout = window.setTimeout(() => {
+        if (previewFrameHandshakeRef.current?.revision !== revision) return;
+        previewFrameHandshakeRef.current = null;
+        reject(new Error("Предпросмотр не подключил новую игровую сессию вовремя."));
+      }, 30_000);
+      previewFrameHandshakeRef.current = { revision, isCurrent, requestedMatchingSnapshot: false, resolve, reject, timeout };
+    });
+  }
+
+  useEffect(() => () => rejectPendingPreviewFrameHandshake("Редактор закрыт до подключения предпросмотра."), []);
+
   function requestPreviewRestore(input: {
     readonly sessionId: string;
     readonly state: Record<string, unknown>;
@@ -1861,6 +1933,18 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
         }
         setPreviewEntities(mapped.descriptors);
         acceptedPreviewContextRef.current = JSON.stringify(event.data.context);
+        acceptedPreviewFrameContextRef.current = {
+          sessionId: event.data.context.sessionId,
+          compileRevision: event.data.context.compileRevision
+        };
+        const handshake = previewFrameHandshakeRef.current;
+        if (handshake !== null && handshake.revision === event.data.context.compileRevision &&
+            !handshake.requestedMatchingSnapshot) {
+          // A session snapshot may have arrived before the revision-tagged
+          // entities. Ask this now-verified frame for one ordered pair.
+          handshake.requestedMatchingSnapshot = true;
+          requestCurrentPreviewSnapshot();
+        }
         const prototypeRequestId = event.data.context.prototypePreview?.requestId;
         const waiter = prototypeRequestId === undefined ? undefined : previewPrototypeContextWaitersRef.current.get(prototypeRequestId);
         if (waiter !== undefined) {
@@ -1873,22 +1957,28 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
       }
 
       if (isPlayerPreviewSessionSnapshotMessage(event.data)) {
-        if (previewRuntimeSessionId !== undefined && event.data.sessionId !== previewRuntimeSessionId) {
+        const handshake = previewFrameHandshakeRef.current;
+        if (handshake !== null && (handshake.revision !== previewSourceSnapshotRef.current.revision ||
+            acceptedPreviewFrameContextRef.current?.compileRevision !== handshake.revision ||
+            acceptedPreviewFrameContextRef.current?.sessionId !== event.data.sessionId)) {
+          return;
+        }
+        if (handshake === null && previewRuntimeSessionId !== undefined && event.data.sessionId !== previewRuntimeSessionId) {
           return;
         }
         if (event.data.gameId !== undefined && event.data.gameId !== currentDocument.gameId) {
           return;
         }
 
+        const logicalSequence = event.data.sessionVersion.lastEventSequence - previewRuntimeSequenceOffsetRef.current;
+        if (!Number.isSafeInteger(logicalSequence) || logicalSequence < 0) {
+          return;
+        }
         previewRuntimeSessionIdRef.current = event.data.sessionId;
         for (const resolve of previewSessionWaitersRef.current) {
           resolve(event.data.sessionId);
         }
         previewSessionWaitersRef.current.clear();
-        const logicalSequence = event.data.sessionVersion.lastEventSequence - previewRuntimeSequenceOffsetRef.current;
-        if (!Number.isSafeInteger(logicalSequence) || logicalSequence < 0) {
-          return;
-        }
         const logicalMessage = {
           ...event.data,
           sessionVersion: {
@@ -1898,6 +1988,11 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
         };
         setSelectedPreviewTraceSequence(logicalSequence);
         setPreviewRuntimeSessionId(event.data.sessionId);
+        if (handshake !== null) {
+          previewFrameHandshakeRef.current = null;
+          window.clearTimeout(handshake.timeout);
+          handshake.resolve(event.data.sessionId);
+        }
         setPreviewTrace((currentTrace) => {
           const nextTrace = upsertRuntimeSnapshotInTrace(currentTrace, logicalMessage);
           // MVP uses runtime checkpoints; the legacy timeline has no visible
@@ -2172,6 +2267,7 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
   }
 
   function clearPreparedPreview() {
+    rejectPendingPreviewFrameHandshake("Предпросмотр сброшен до подключения игры.");
     invalidatePendingPrototypePreview();
     previewFrameAcceptingMessagesRef.current = false;
     previewRuntimeSessionIdRef.current = undefined;
@@ -2181,6 +2277,7 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
     previewCompileRevisionRef.current = undefined;
     previewSourceSnapshotRef.current = { revision: undefined, maps: [] };
     acceptedPreviewContextRef.current = undefined;
+    acceptedPreviewFrameContextRef.current = undefined;
     previewSceneTransitionRef.current = null;
     previewPrototypeStateRef.current = null;
     setMvpPrototypePreviewIdentity(null);
@@ -2204,6 +2301,7 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
   }
 
   function reloadPreviewFrame(url: string) {
+    rejectPendingPreviewFrameHandshake("Предпросмотр перезагружен до подключения игры.");
     invalidatePendingPrototypePreview();
     const next = new URL(url);
     const revision = crypto.randomUUID();
@@ -2212,6 +2310,7 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
     previewCompileRevisionRef.current = revision;
     previewSourceSnapshotRef.current = { revision, maps: previewSourceSnapshotRef.current.maps };
     acceptedPreviewContextRef.current = undefined;
+    acceptedPreviewFrameContextRef.current = undefined;
     previewSceneTransitionRef.current = null;
     previewPrototypeStateRef.current = null;
     setMvpPrototypePreviewIdentity(null);
@@ -2596,6 +2695,7 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
   }> {
     if (!mvpDocumentReady) return { ready: false, reason: "Дождитесь загрузки игры и редакторской сессии." };
     const requestId = ++previewBuildRequestRef.current;
+    rejectPendingPreviewFrameHandshake("Этот предпросмотр заменён более новым.");
     const captured = previewBuildInputRef.current;
     const isCurrent = () => requestId === previewBuildRequestRef.current &&
       captured.sessionId === previewBuildInputRef.current.sessionId &&
@@ -2681,6 +2781,7 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
         previewPrototypeStateRef.current = null;
         setMvpPrototypePreviewIdentity(null);
         acceptedPreviewContextRef.current = undefined;
+        acceptedPreviewFrameContextRef.current = undefined;
         previewSceneTransitionRef.current = null;
         previewRuntimeSequenceOffsetRef.current = 0;
         const nextPreviewUrl = new URL(result.playerUrl);
@@ -2689,6 +2790,7 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
         previewCompileRevisionRef.current = nextRevision;
         previewSourceSnapshotRef.current = { revision: nextRevision, maps: nextMaps };
         nextPreviewUrl.searchParams.set("previewRevision", nextRevision);
+        const frameHandshake = waitForPreviewFrameHandshake(nextRevision, isCurrent);
         setPreviewUrl(nextPreviewUrl.toString());
         setPreviewRuntimeSessionId(undefined);
         setPreviewSceneActive(false);
@@ -2709,6 +2811,8 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
         }));
         setSelectedPreviewTraceSequence(undefined);
         setPreviewRollbackState("idle");
+        await frameHandshake;
+        if (!isCurrent()) return { ready: false };
         setPreviewAppliedVersionHash(captured.currentDocument.versionHash);
         // A fresh valid snapshot: the "N правок назад" counter restarts (§3.5).
         setEditsSincePreview(0);
@@ -3231,6 +3335,7 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
     mvpAgentScopeRef.current = null;
     mvpPrepareEpochRef.current += 1;
     previewBuildRequestRef.current += 1;
+    rejectPendingPreviewFrameHandshake("До подключения предпросмотра выбрана другая игра.");
     pendingMvpMutationRef.current = null;
     setPendingMvpMutation(null);
     const next = new URLSearchParams();
@@ -4249,22 +4354,17 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
   }
 
   function mvpMutationRequest(changeSet: EditorChangeSet): EditorMutationPrepareRequest {
-    if (!mvpDocumentReady || currentDocument.source !== "repository" || currentDocument.versionHash === undefined || editorSession?.sessionId === undefined) {
+    const live = mvpLiveSourceRef.current;
+    if (!mvpDocumentReady || live.currentDocument.source !== "repository" || live.currentDocument.versionHash === undefined || live.sessionId === undefined) {
       throw new Error("Изменение требует активной сессии редактора.");
     }
-    // A sibling-only effect cannot persist a dirty active buffer. Showing that
-    // buffer in the candidate would make confirm diverge from the current build.
-    if (jsonText !== savedText && !changeSet.jsonPatches.some((patch) => patch.filePath === currentDocument.filePath)) {
+    if (live.jsonText !== live.savedText && !changeSet.jsonPatches.some(patch => patch.filePath === live.currentDocument.filePath)) {
       throw new Error("Сначала сохраните правки открытого файла: изменение затрагивает только соседние документы.");
     }
-    return {
-      action: "prepare",
-      gameId: currentDocument.gameId,
-      sessionId: editorSession.sessionId,
-      activeFilePath: currentDocument.filePath,
-      activeDocument: { text: jsonText, versionHash: currentDocument.versionHash },
-      changeSet: changeSet as unknown as EditorMutationPrepareRequest["changeSet"]
-    };
+    return { action: "prepare", gameId: live.currentDocument.gameId, sessionId: live.sessionId,
+      activeFilePath: live.currentDocument.filePath,
+      activeDocument: { text: live.jsonText, versionHash: live.currentDocument.versionHash },
+      changeSet: changeSet as unknown as EditorMutationPrepareRequest["changeSet"] };
   }
 
   function mvpDiffSummary(items: EditorMutationConfirmedResponse["diffSummary"]): readonly EditorDiffSummaryItem[] {
@@ -4274,6 +4374,7 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
   function cancelMvpMutation() {
     if (mvpMutationBusyRef.current && pendingMvpMutationRef.current !== null) return;
     mvpPrepareEpochRef.current += 1;
+    mvpVisual.candidate(undefined);
     pendingMvpMutationRef.current = null;
     setPendingMvpMutation(null);
     setAiApplyState("idle");
@@ -4281,14 +4382,19 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
   }
 
   async function prepareMvpMutation(changeSet: EditorChangeSet, plan = plannedFromEntityChangeSet(changeSet)): Promise<boolean> {
-    if (options.mvp !== true || mvpMutationBusyRef.current) {
+    if (options.mvp !== true || mvpMutationBusyRef.current || mvpVisual.pendingCount > 0) {
       mvpPrepareErrorRef.current = "Другая правка ещё выполняется.";
       return false;
     }
+    // Each user proposal owns a bounded identity; entity paths are not operation IDs.
+    changeSet = { ...changeSet, id: `mvp-proposal-${crypto.randomUUID()}` };
+    plan = { ...plan, changeSet };
+    mvpVisual.candidate(changeSet);
     mvpPrepareErrorRef.current = null;
     const epoch = ++mvpPrepareEpochRef.current;
     pendingMvpMutationRef.current = null;
     setPendingMvpMutation(null);
+    const mutationSessionId = editorSession?.sessionId;
     mvpMutationBusyRef.current = true;
     setAiApplyState("planning");
     try {
@@ -4305,6 +4411,7 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
       setAiDiagnostics(response.diagnostics.map(toRoutedDiagnostic));
       setAiDiffSummary(mvpDiffSummary(response.diffSummary));
       if (!response.preview.ready || response.preview.playerUrl === undefined) {
+        mvpVisual.candidate(undefined);
         setAiApplyState("blocked");
         mvpPrepareErrorRef.current = response.preview.diagnostics[0]?.message ?? "Временный предпросмотр недоступен.";
         setStatusMessage(mvpPrepareErrorRef.current);
@@ -4318,13 +4425,14 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
       return true;
     } catch (error) {
       if (epoch === mvpPrepareEpochRef.current) {
+        mvpVisual.candidate(undefined);
         setAiApplyState("blocked");
         mvpPrepareErrorRef.current = error instanceof Error ? error.message : "Не удалось подготовить изменение.";
         setStatusMessage(mvpPrepareErrorRef.current);
       }
       return false;
     } finally {
-      mvpMutationBusyRef.current = false;
+      if (mvpMutationContextRef.current === mutationSessionId) mvpMutationBusyRef.current = false;
     }
   }
 
@@ -4357,6 +4465,8 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
     if (activeDocument !== undefined) setSavedText(activeDocument.text);
     setCurrentDocument(nextDocument);
     setProjectionSiblingDocuments(nextSiblings);
+    mvpLiveSourceRef.current = { currentDocument: nextDocument, jsonText: nextText, savedText: activeDocument?.text ?? live.savedText, sessionId: editorSession?.sessionId,
+      siblingSourceRevision: nextSiblingRevision, projectionSiblingDocuments: nextSiblings };
     previewBuildInputRef.current = {
       currentDocument: nextDocument,
       jsonText: nextText,
@@ -4414,10 +4524,12 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
         pending.siblingSourceRevision !== siblingSourceRevision) {
       setAiApplyState("blocked");
       setStatusMessage("Источники изменились после предпросмотра. Подготовьте изменение снова.");
+      mvpVisual.candidate(undefined);
       pendingMvpMutationRef.current = null;
       setPendingMvpMutation(null);
       return false;
     }
+    const mutationSessionId = editorSession?.sessionId;
     mvpMutationBusyRef.current = true;
     setAiApplyState("applying");
     try {
@@ -4427,46 +4539,62 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
       setPendingMvpMutation(null);
       const adopted = adoptMvpMutation(result, pending.plan, pending.request, pending.siblingSourceRevision);
       if (!adopted) setAiApplyState("idle");
+      if (adopted) mvpVisual.settleCandidateAfterConfirm(pending.request.changeSet.id, await waitForLatestPreviewBuild());
+      else mvpVisual.candidate(undefined);
       return adopted;
     } catch (error) {
+      mvpVisual.candidate(undefined);
       pendingMvpMutationRef.current = null;
       setPendingMvpMutation(null);
       setAiApplyState("blocked");
       setStatusMessage(error instanceof Error ? error.message : "Подтверждение отклонено.");
       return false;
     } finally {
-      mvpMutationBusyRef.current = false;
+      if (mvpMutationContextRef.current === mutationSessionId) mvpMutationBusyRef.current = false;
     }
   }
 
   async function directMvpMutation(
     changeSet: EditorChangeSet,
-    journal: "append" | "undo" | "redo" = "append"
+    journal: "append" | "undo" | "redo" = "append",
+    visualQueue = false
   ): Promise<boolean> {
-    if (options.mvp !== true || mvpMutationBusyRef.current) return false;
+    if (options.mvp !== true || mvpMutationBusyRef.current || (!visualQueue && mvpVisual.pendingCount > 0)) return false;
+    if (journal !== "append") changeSet = { ...changeSet, id: `mvp-${journal}-${crypto.randomUUID()}` };
+    const mutationSessionId = editorSession?.sessionId;
     mvpMutationBusyRef.current = true;
+    mvpVisual.candidate(undefined);
     pendingMvpMutationRef.current = null;
     setPendingMvpMutation(null);
     setAiApplyState("applying");
     try {
-      const request = mvpMutationRequest(changeSet);
+      const request = (visualQueue ? mvpVisualRequestsRef.current.get(changeSet.id) : undefined) ?? mvpMutationRequest(changeSet);
+      if (request.sessionId !== editorSession?.sessionId) throw new Error("Вернитесь в исходную сессию для сверки неподтверждённой правки.");
+      if (visualQueue) mvpVisualRequestsRef.current.set(changeSet.id, request);
+      const requestSiblingRevision = mvpLiveSourceRef.current.siblingSourceRevision;
       const result = await postEditorMutation({ ...request, action: "direct" });
       if (result.status !== "direct") throw new Error("Сервер не применил изменение.");
-      const adopted = adoptMvpMutation(result, plannedFromEntityChangeSet(changeSet), request, siblingSourceRevision, journal);
-      if (!adopted) setAiApplyState("idle");
+      const adopted = adoptMvpMutation(result, plannedFromEntityChangeSet(changeSet), request, requestSiblingRevision, journal);
+      if (!adopted && mvpLiveSourceRef.current.sessionId === mutationSessionId) setAiApplyState("idle");
+      if (visualQueue && !adopted) throw new Error("Правка сохранена, но текущие источники изменились. Вернитесь в исходную сессию для сверки.");
+      if (visualQueue && adopted) mvpVisualRequestsRef.current.delete(changeSet.id);
       return adopted;
     } catch (error) {
-      setAiApplyState("blocked");
-      setStatusMessage(error instanceof Error ? error.message : "Изменение отклонено.");
+      if (mvpLiveSourceRef.current.sessionId === mutationSessionId) {
+        setAiApplyState("blocked");
+        setStatusMessage(error instanceof Error ? error.message : "Изменение отклонено.");
+      }
+      if (visualQueue && !(error instanceof EditorMutationRejectedError)) throw error;
+      if (visualQueue) mvpVisualRequestsRef.current.delete(changeSet.id);
       return false;
     } finally {
-      mvpMutationBusyRef.current = false;
+      if (mvpMutationContextRef.current === mutationSessionId) mvpMutationBusyRef.current = false;
     }
   }
 
   function isCurrentMvpElementSource(source: MvpElementSource, mode: "instance" | "prototype" = "instance"): boolean {
     if (!mvpDocumentReady || !(mode === "prototype" ? /^\/_definitions\/[^/]+$/u.test(source.pointer) : source.pointer === "/root" || source.pointer.startsWith("/root/"))) return false;
-    const text = liveAuthoringTextByFilePath().get(source.filePath);
+    const text = (mode === "instance" ? mvpVisual.projectedDocuments : liveAuthoringTextByFilePath()).get(source.filePath);
     if (text === undefined) return false;
     try {
       return JSON.stringify(readJsonPointer(JSON.parse(text) as JsonValue, source.pointer)) === JSON.stringify(source.value);
@@ -4511,7 +4639,7 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
   }
 
   function mvpEffectiveStyle(source: MvpElementSource) {
-    return isCurrentMvpElementSource(source) ? effectiveMvpElementStyle(source, viewModel.entityProjectionDocuments) : undefined;
+    return isCurrentMvpElementSource(source) ? effectiveMvpElementStyle(source, mvpProjectedDocuments()) : undefined;
   }
 
   async function showMvpPrototypePreview(
@@ -4663,7 +4791,7 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
           capture.projectionYaml !== freshCapture.projectionYaml ||
           JSON.stringify(capture.facetSourceMap) !== JSON.stringify(freshCapture.facetSourceMap) ||
           Object.entries(capture.sourceHashes).some(([filePath, hash]) => {
-            const text = liveAuthoringTextByFilePath().get(filePath);
+            const text = (mode === "instance" ? mvpVisual.projectedDocuments : liveAuthoringTextByFilePath()).get(filePath);
             return text === undefined || hashEditorText(text) !== hash;
           }) || JSON.stringify(capture.sourceHashes) !== JSON.stringify(freshCapture.sourceHashes) ||
           capture.sourceHashes[source.filePath] === undefined) {
@@ -4678,11 +4806,11 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
     if (!needsAgent && yaml !== "" && capture !== undefined) {
       try {
         const interpreted = interpretReturnedIntent({ ...capture, returnedText: input.yaml }, {
-          currentSourceHashes: Object.fromEntries([...liveAuthoringTextByFilePath()].map(([filePath, text]) => [filePath, hashEditorText(text)]))
+          currentSourceHashes: Object.fromEntries([...(mode === "instance" ? mvpVisual.projectedDocuments : liveAuthoringTextByFilePath())].map(([filePath, text]) => [filePath, hashEditorText(text)]))
         });
         if (interpreted.stale === true) return { ok: false, message: "Структурированный источник устарел. Черновик сохранён." };
         needsAgent = interpreted.path === "agent";
-        structured = interpreted.changeSet;
+        structured = interpreted.changeSet === null ? null : { ...interpreted.changeSet, id: `mvp-yaml-${crypto.randomUUID()}` };
       } catch (error) {
         return { ok: false, message: error instanceof Error ? error.message : "Структурированное намерение не распознано." };
       }
@@ -4734,6 +4862,15 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
     }
     const changeSet = metadata === undefined ? structured : combineMvpDraftChanges(source, structured, metadata);
     if (changeSet === undefined) return { ok: false, message: "Разделы затрагивают одно и то же поле. Уточните правку; черновик сохранён." };
+    const changedPaths = changeSet.jsonPatches.flatMap(patch => patch.operations.filter(op => op.op !== "test")
+      .map(op => `${patch.filePath}#${op.path}`));
+    const touchesShared = capture?.semantic?.properties.some(property => property.scope === "shared" &&
+      changedPaths.includes(`${property.writeTarget.filePath}#${property.writeTarget.pointer}`));
+    if (mode === "instance" && metadata === undefined && !touchesShared && mvpVisual.canProject(changeSet)) {
+      const queued = mvpVisual.enqueue(changeSet);
+      return { ok: queued, pending: queued, message: queued ? "Показано. Проверяем в фоне…" : "Правка не поставлена в очередь; черновик сохранён." };
+    }
+    if (mvpVisual.pendingCount > 0) return { ok: false, message: "Дождитесь проверки текущих правок перед изменением общего содержимого." };
     const prepared = await prepareMvpMutation(changeSet, plannedChangeSetFromReturnedIntent(changeSet, capture!.entityId));
     return { ok: prepared, pending: prepared, message: prepared
       ? "Вариант подготовлен. Проверьте и подтвердите его в предпросмотре."
@@ -4770,7 +4907,7 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
    */
   async function commitMultiDocumentChangeSet(changeSet: EditorChangeSet): Promise<MultiDocumentCommitResult> {
     if (options.mvp === true) {
-      if (mvpMutationBusyRef.current) {
+      if (mvpMutationBusyRef.current || mvpVisual.pendingCount > 0) {
         return { ok: false, diagnostics: [{ severity: "error", source: "change-set", pointer: "", label: "/", message: "Другая правка ещё выполняется.", range: undefined }] };
       }
       mvpMutationBusyRef.current = true;
@@ -5312,7 +5449,7 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
       previewContext: isPlainJsonObject(previewContext) ? previewContext : null,
       sessionId: previewRuntimeSessionIdRef.current, compileRevision: previewCompileRevisionRef.current });
     return captureMvpSemanticSource({ source, mode, documents: viewModel.entityProjectionDocuments,
-      liveTexts: liveAuthoringTextByFilePath(), descriptor, gameId: currentDocument.gameId, contextKey });
+      liveTexts: mode === "instance" ? mvpVisual.projectedDocuments : liveAuthoringTextByFilePath(), descriptor, gameId: currentDocument.gameId, contextKey });
   }
 
   function currentMvpPreviewDescriptor() {
@@ -6303,6 +6440,7 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
     previewSceneActive,
     waitForLatestPreviewBuild,
     setPreviewPauseHandler,
+    setPreviewPaused: (paused: boolean) => { previewPausedRef.current = paused; },
     setMvpAgentSender,
     mvpAgentForwardedCount,
     editorSession,
@@ -6450,6 +6588,14 @@ export function useEditorWorkspace(options: { readonly mvp?: boolean } = {}) {
     confirmMvpMutation,
     cancelMvpMutation,
     directMvpMutation,
+    mvpVisual,
+    async refreshMvpVisualPreview() {
+      const sessionId = mvpLiveSourceRef.current.sessionId;
+      const result = await handlePreview();
+      if (result.ready && mvpLiveSourceRef.current.sessionId === sessionId) mvpVisual.markPreviewCurrent();
+      return result;
+    },
+    mvpProjectedSource,
     mvpPrototypeEntries: availableMvpPrototypes,
     mvpRuleEntities: availableMvpRules,
     createMvpItem,
