@@ -20,7 +20,7 @@ import { formatPreviewUnbuiltMessage, toRepositoryAuthoringFilePath } from "@/co
 import { projectTelegramAuthoringManifest } from "@/lib/telegram-structural-projection";
 import { projectEditorWireframe, type EditorWireframeNode } from "@/lib/editor-wireframe-projection";
 import { EditorWireframe, type EditorWireframeSelection } from "./editor-wireframe";
-import { MvpElementEditor, type MvpElementDraft } from "./mvp-element-editor";
+import { MvpElementEditor, mvpElementDraftKey, type MvpElementDraft } from "./mvp-element-editor";
 import { mvpSourceEntity } from "./mvp-authoring-actions";
 import { buildMvpGeometryChangeSet, geometrySupport, type MvpElementSource } from "./mvp-element-operations";
 
@@ -159,7 +159,7 @@ export function PreviewStage({ controller, onStartDrawing, onPageSourceChange, r
     ?.sourcePointer;
 
   const [wireframeSelection, setWireframeSelection] = useState<EditorWireframeSelection | null>(null);
-  const promptDrafts = useMemo(() => new Map<string, MvpElementDraft>(), [currentDocument.gameId]);
+  const promptDrafts = useMemo(() => new Map<string, MvpElementDraft>(), [currentDocument.gameId, controller.editorSession?.sessionId]);
   const [wireframeScreenId, setWireframeScreenId] = useState<string>();
   const [scopeSelection, setScopeSelection] = useState<{ filePath: string; pointer: string; point: PreviewPoint } | null>(null);
   const [prototypeSelection, setPrototypeSelection] = useState<{
@@ -276,6 +276,7 @@ export function PreviewStage({ controller, onStartDrawing, onPageSourceChange, r
   const effectiveStyle = mvpSource === undefined ? undefined : controller.mvpEffectiveStyle(mvpSource);
   const editingMode = prototypeSelection === null ? "instance" : "prototype";
   const semanticCapture = mvpSource === undefined ? undefined : controller.captureMvpElementSource(mvpSource, editingMode);
+  const semanticDraftKey = mvpElementDraftKey(mvpSource, semanticCapture, editingMode === "prototype");
   const mvpPanelLabel = typeof mvpSource?.value._label === "string" ? mvpSource.value._label :
     selectedPreviewDescriptor?.label ?? selectedProjectionEntity?.label ?? matchingWireframeSelection?.sourcePointer.split("/").at(-1) ?? "Элемент";
 
@@ -472,7 +473,8 @@ export function PreviewStage({ controller, onStartDrawing, onPageSourceChange, r
           <div hidden={!effectivePreviewInspectMode}>
           <MvpElementEditor
             drafts={promptDrafts}
-            key={`${selectedFilePath ?? "unmapped"}#${selectedSourcePointer ?? selectedPreviewEntityId ?? "unknown"}`}
+            draftKey={semanticDraftKey}
+            key={semanticDraftKey ?? `${selectedFilePath ?? "unmapped"}#${selectedSourcePointer ?? selectedPreviewEntityId ?? "unknown"}`}
             source={previewUrl === null && mvpEntity === undefined ? undefined : mvpSource}
             entity={mvpEntity}
             label={mvpPanelLabel}

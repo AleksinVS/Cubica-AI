@@ -3,7 +3,8 @@ import { createRoot, type Root } from "react-dom/client";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import type { EditorEntity, PreviewEntityDescriptor } from "@cubica/editor-engine";
 
-import { MvpElementEditor, type MvpElementDraft } from "./mvp-element-editor";
+import { MvpElementEditor, mvpElementDraftKey, type MvpElementDraft } from "./mvp-element-editor";
+import type { EntitySourceCapture } from "./entity-source-text-mode";
 import { MVP_PROMPT_SEPARATOR, serializeMvpPromptDocument } from "./mvp-prompt-document";
 import type { MvpElementSource } from "./mvp-element-operations";
 
@@ -24,6 +25,23 @@ const source: MvpElementSource = { filePath: entity.primarySource.filePath, poin
   value: { _type: "ui.Component", _label: "Ответ", type: "button", _prompt: { status: "draft", raw: "Понятный выбор", source: "user", language: "ru", updatedAt: "2026-09-19T00:00:00.000Z" } } };
 const capture = { entityId: entity.entityId, projectionYaml: "type: button\nlabel: Ответ", facetSourceMap: { lines: [] }, sourceHashes: {} };
 
+function contentCapture(pointer: string, title: string): EntitySourceCapture {
+  const filePath = "game.authoring.json";
+  return {
+    ...capture,
+    projectionYaml: `Текст заголовка: ${JSON.stringify(title)}`,
+    semantic: {
+      text: title,
+      facetSourceMap: { lines: [] },
+      diagnostics: [],
+      properties: [{ id: "title", label: "Текст заголовка", facet: "content", presentation: "text", value: title,
+        sourceValue: title, owner: { filePath, pointer: `${pointer}/title` },
+        writeTarget: { filePath, pointer: `${pointer}/title`, operation: "replace", parentObjects: [] },
+        inherited: false, scope: "shared" }]
+    }
+  };
+}
+
 function setTextarea(textarea: HTMLTextAreaElement | null, text: string) {
   Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")?.set?.call(textarea, text);
   textarea?.dispatchEvent(new Event("input", { bubbles: true }));
@@ -42,6 +60,51 @@ function baseProps(onSave = vi.fn(async () => ({ ok: true, message: "Сохра�
 }
 
 describe("MvpElementEditor", () => {
+  it("separates drafts for different proven content owners behind one UI source", async () => {
+    const container = document.createElement("div"); document.body.appendChild(container);
+    const drafts = new Map<string, MvpElementDraft>();
+    const firstCapture = contentCapture("/root/content/data/infos/0", "Первая сцена");
+    const secondCapture = contentCapture("/root/content/data/infos/1", "Вторая сцена");
+    const firstKey = mvpElementDraftKey(source, firstCapture, false)!;
+    const secondKey = mvpElementDraftKey(source, secondCapture, false)!;
+    expect(firstKey).not.toBe(secondKey);
+    let currentCapture = firstCapture;
+    const props = { ...baseProps(), drafts, onCapture: () => currentCapture };
+    const root = createRoot(container);
+    await act(async () => root.render(<MvpElementEditor {...props} key={firstKey} draftKey={firstKey} contextKey="scene:first" />));
+    const edited = serializeMvpPromptDocument(["", "Понятный выбор", 'Текст заголовка: "Черновик первой сцены"']);
+    await act(async () => setTextarea(textArea(container), edited));
+    currentCapture = secondCapture;
+    await act(async () => root.render(<MvpElementEditor {...props} key={secondKey} draftKey={secondKey} contextKey="scene:second" />));
+    expect(textArea(container)?.value).toContain('Текст заголовка: "Вторая сцена"');
+    expect(textArea(container)?.value).not.toContain("Черновик первой сцены");
+    currentCapture = firstCapture;
+    await act(async () => root.render(<MvpElementEditor {...props} key={firstKey} draftKey={firstKey} contextKey="scene:first" />));
+    expect(textArea(container)?.value).toBe(edited);
+    await act(async () => root.unmount()); container.remove();
+  });
+
+  it("retires a pending candidate draft once fresh projection contains its accepted text", async () => {
+    const container = document.createElement("div"); document.body.appendChild(container);
+    const drafts = new Map<string, MvpElementDraft>();
+    let currentCapture = contentCapture("/root/content/data/infos/0", "До правки");
+    const draftKey = mvpElementDraftKey(source, currentCapture, false)!;
+    const onSave = vi.fn(async () => ({ ok: true, pending: true, message: "Кандидат подготовлен." }));
+    const props = { ...baseProps(onSave), drafts, draftKey, onCapture: () => currentCapture };
+    const root = createRoot(container);
+    await act(async () => root.render(<MvpElementEditor {...props} contextKey="scene:before" />));
+    const accepted = serializeMvpPromptDocument(["", "Понятный выбор", 'Текст заголовка: "После правки"']);
+    await act(async () => setTextarea(textArea(container), accepted));
+    await act(async () => saveButton(container)?.click());
+    expect(drafts.size).toBe(1);
+    currentCapture = contentCapture("/root/content/data/infos/0", "После правки");
+    await act(async () => root.render(<MvpElementEditor {...props} contextKey="scene:accepted" />));
+    expect(textArea(container)?.value).toBe(accepted);
+    expect(drafts.size).toBe(0);
+    expect(container.querySelector("[role='status']")?.textContent).not.toContain("Контекст прототипа или экземпляра изменился");
+    await act(async () => root.unmount()); container.remove();
+  });
+
   it("restores an unsaved source draft after rebuilding clears selection", async () => {
     const container = document.createElement("div"); document.body.appendChild(container);
     const drafts = new Map<string, MvpElementDraft>();

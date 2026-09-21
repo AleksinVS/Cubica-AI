@@ -11,6 +11,7 @@ import styles from "./mvp-element-editor.module.css";
 
 export interface MvpElementEditorProps {
   readonly drafts?: Map<string, MvpElementDraft>;
+  readonly draftKey?: string;
   readonly source?: MvpElementSource;
   readonly entity?: EditorEntity;
   readonly label: string;
@@ -53,9 +54,19 @@ function documentText(source: MvpElementSource | undefined, capture: EntitySourc
   return serializeMvpPromptDocument(["", promptRaw(source, editingPrototype), capture?.projectionYaml ?? ""]);
 }
 
-export function MvpElementEditor({ drafts, source, entity, label, selectedLayerId, bounds, geometryUnsupportedReason, layers = [], layerPoint, onSelectLayer, onSelectScope, onClose, onCapture, onSave, onSavePrototype, editingPrototype, onEditPrototype, onReturnToInstance, onResetOverrides, contextKey, localChildOverrides }: MvpElementEditorProps) {
+/** A shared UI node can render different proven content owners on different scenes. */
+export function mvpElementDraftKey(source: MvpElementSource | undefined, capture: EntitySourceCapture | undefined, editingPrototype: boolean): string | undefined {
+  if (source === undefined) return undefined;
+  const sharedTargets = capture?.semantic?.properties
+    .filter((property) => property.scope === "shared")
+    .map((property) => `${property.facet}:${property.writeTarget.filePath}#${property.writeTarget.pointer}`)
+    .sort() ?? [];
+  return JSON.stringify([source.filePath, source.pointer, editingPrototype ? "prototype" : "instance", sharedTargets]);
+}
+
+export function MvpElementEditor({ drafts, draftKey: scopedDraftKey, source, entity, label, selectedLayerId, bounds, geometryUnsupportedReason, layers = [], layerPoint, onSelectLayer, onSelectScope, onClose, onCapture, onSave, onSavePrototype, editingPrototype, onEditPrototype, onReturnToInstance, onResetOverrides, contextKey, localChildOverrides }: MvpElementEditorProps) {
   const isPrototype = editingPrototype !== undefined;
-  const draftKey = source === undefined ? undefined : `${source.filePath}#${source.pointer}`;
+  const draftKey = scopedDraftKey ?? (source === undefined ? undefined : `${source.filePath}#${source.pointer}`);
   const retained = draftKey === undefined ? undefined : drafts?.get(draftKey);
   const [capture, setCapture] = useState(() => retained?.capture ?? (entity === undefined ? undefined : onCapture(entity)));
   const [draft, setDraft] = useState(() => retained?.text ?? documentText(source, capture, isPrototype));
@@ -74,7 +85,20 @@ export function MvpElementEditor({ drafts, source, entity, label, selectedLayerI
   const contextStale = draft !== baseline && (draftContextKey !== contextKey || draftMode !== isPrototype);
 
   useEffect(() => {
-    if (draft !== baseline || (!stale && draftContextKey === contextKey && draftMode === isPrototype)) return;
+    // A confirmed candidate can update the projection after onSave returned pending.
+    // Once its fresh text equals the draft, it is no longer an unsaved edit.
+    if (draft !== baseline) {
+      const nextCapture = entity === undefined ? undefined : onCapture(entity);
+      if (nextCapture !== undefined && documentText(source, nextCapture, isPrototype) === draft) {
+        sourceSnapshot.current = JSON.stringify(source?.value);
+        setCapture(nextCapture);
+        setBaseline(draft);
+        setDraftContextKey(contextKey);
+        setDraftMode(isPrototype);
+      }
+      return;
+    }
+    if (!stale && draftContextKey === contextKey && draftMode === isPrototype) return;
     const nextCapture = entity === undefined ? undefined : onCapture(entity);
     const text = documentText(source, nextCapture, isPrototype);
     sourceSnapshot.current = JSON.stringify(source?.value);
