@@ -26,24 +26,24 @@ ROOT_INSTRUCTIONS = ROOT / "AGENTS.md"
 SKILL_PATH = ROOT / "skills" / "C_codex-agent-routing" / "SKILL.md"
 
 EXPECTED_PROFILES = {
-    "lead-architect": ("gpt-5.6-sol", "high", "workspace-write"),
-    "scout": ("gpt-5.6-luna", "low", "read-only"),
-    "luna-medium": ("gpt-5.6-luna", "medium", "workspace-write"),
-    "luna-high": ("gpt-5.6-luna", "high", "workspace-write"),
-    "luna-xhigh": ("gpt-5.6-luna", "xhigh", "workspace-write"),
-    "builder-low": ("gpt-5.6-terra", "low", "workspace-write"),
-    "builder": ("gpt-5.6-terra", "medium", "workspace-write"),
-    "builder_complex": ("gpt-5.6-sol", "high", "workspace-write"),
-    "qa-reviewer": ("gpt-5.6-terra", "low", "workspace-write"),
-    "qa-reviewer-medium": ("gpt-5.6-terra", "medium", "workspace-write"),
-    "critical-reviewer": ("gpt-5.6-sol", "medium", "read-only"),
-    "critical-reviewer-high": ("gpt-5.6-sol", "high", "read-only"),
+    "lead-architect": ("gpt-6-astra", "high", "workspace-write"),
+    "scout": ("gpt-6-luna", "low", "read-only"),
+    "luna-medium": ("gpt-6-luna", "medium", "workspace-write"),
+    "luna-high": ("gpt-6-luna", "high", "workspace-write"),
+    "luna-xhigh": ("gpt-6-luna", "xhigh", "workspace-write"),
+    "builder-low": ("gpt-6-sol", "low", "workspace-write"),
+    "builder": ("gpt-6-sol", "medium", "workspace-write"),
+    "builder_complex": ("gpt-6-astra", "high", "workspace-write"),
+    "qa-reviewer": ("gpt-6-sol", "low", "workspace-write"),
+    "qa-reviewer-medium": ("gpt-6-sol", "medium", "workspace-write"),
+    "critical-reviewer": ("gpt-6-sol", "medium", "read-only"),
+    "critical-reviewer-high": ("gpt-6-astra", "high", "read-only"),
 }
 
 MODEL_LABELS = {
-    "gpt-5.6-sol": "Sol",
-    "gpt-5.6-terra": "Terra",
-    "gpt-5.6-luna": "Luna",
+    "gpt-6-astra": "Astra",
+    "gpt-6-sol": "Sol",
+    "gpt-6-luna": "Luna",
 }
 
 PROFILE_ROW = re.compile(
@@ -71,7 +71,7 @@ def validate_project_config(failures: list[str]) -> None:
         return
 
     expected_root = {
-        "model": "gpt-5.6-sol",
+        "model": "gpt-6-astra",
         "model_reasoning_effort": "high",
     }
     expected_agents = {
@@ -213,7 +213,7 @@ def validate_installed_models(failures: list[str]) -> None:
         }
 
     pairs = {(model, effort) for model, effort, _ in EXPECTED_PROFILES.values()}
-    pairs.add(("gpt-5.6-sol", "high"))
+    pairs.add(("gpt-6-astra", "high"))
     for model, effort in sorted(pairs):
         if model not in supported:
             failures.append(f"Codex model is unavailable: {model}")

@@ -41,21 +41,21 @@ Use these logical roles and project profiles:
 
 | Logical role | Codex profile | Model and effort | Use |
 | --- | --- | --- | --- |
-| Lead architect | `lead-architect` | Sol high | One architecture pass, decomposition, integration, and final acceptance |
+| Lead architect | `lead-architect` | Astra high | One architecture pass, decomposition, integration, and final acceptance |
 | Scout | `scout` | Luna low | Narrow repository search and evidence gathering |
 | Luna worker | `luna-medium` | Luna medium | Bounded routine implementation, documentation, and focused verification with low architectural risk |
 | Deep Luna worker | `luna-high` | Luna high | Bounded non-critical work requiring deeper analysis or careful handling of edge cases |
-| Deepest Luna worker | `luna-xhigh` | Luna xhigh | Deepest bounded non-critical work when Luna high is insufficient but no Sol-owned high-error-cost decision is required |
-| Builder | `builder-low` | Terra low | Mechanical implementation from an exact plan |
-| Builder | `builder` | Terra medium | Ordinary feature and bug-fix implementation |
-| Complex builder | `builder_complex` | Sol high | Non-obvious or critical implementation and complex test design |
-| QA reviewer | `qa-reviewer` | Terra low | Ordinary independent diff and regression review |
-| QA reviewer | `qa-reviewer-medium` | Terra medium | State-heavy, concurrent, transactional, or complex negative-path review |
+| Deepest Luna worker | `luna-xhigh` | Luna xhigh | Deepest bounded non-critical work when Luna high is insufficient but no Astra-owned high-error-cost decision is required |
+| Builder | `builder-low` | Sol low | Mechanical implementation from an exact plan |
+| Builder | `builder` | Sol medium | Ordinary feature and bug-fix implementation |
+| Complex builder | `builder_complex` | Astra high | Non-obvious or critical implementation and complex test design |
+| QA reviewer | `qa-reviewer` | Sol low | Ordinary independent diff and regression review |
+| QA reviewer | `qa-reviewer-medium` | Sol medium | State-heavy, concurrent, transactional, or complex negative-path review |
 | Diagnostic reviewer | `critical-reviewer` | Sol medium | One focused complex-debugging or root-cause investigation after a concrete blocker |
-| Critical reviewer | `critical-reviewer-high` | Sol high | Architecture, security, or high-error-cost review |
+| Critical reviewer | `critical-reviewer-high` | Astra high | Architecture, security, or high-error-cost review |
 
 Architecture, material planning, critical or risk review, and final acceptance
-require Sol high. The primary Sol-high agent always reviews the actual delegated
+require Astra high. The primary Astra-high agent always reviews the actual delegated
 diff and evidence inside the changed boundary. This bounded acceptance check is
 not a request to reread the repository or repeat settled discovery.
 
@@ -75,24 +75,24 @@ uses its cheapest supported level, `low`. `luna-medium`, `luna-high`, and
 `luna-xhigh` are general bounded worker profiles, not architecture or
 final-acceptance roles.
 Every write made by a Luna worker requires a bounded review of the changed diff,
-relevant contracts, and fresh evidence by the primary Sol-high agent. A separate
-Sol-high reviewer is required only when one of the independent-review triggers
+relevant contracts, and fresh evidence by the primary Astra-high agent. A separate
+Astra-high reviewer is required only when one of the independent-review triggers
 above applies.
 
 A Luna worker may act as a critic only as an optional preliminary, read-only
 pass over work produced by a different Luna executor. Do not use a Luna critic
-after Terra or Sol execution, and never treat that pass as final review or
-acceptance; both remain with Sol high. If the preliminary critic finds defects,
+after Sol or Astra execution, and never treat that pass as final review or
+acceptance; both remain with Astra high. If the preliminary critic finds defects,
 route correction to a Luna worker and rerun the focused tests before the
 primary agent's bounded acceptance check.
 
-Do not use `ultra` or `pro`. Do not route Luna or Terra to `max`, Terra to
-`high`, or Sol directly to `max`. Keep architecture, security, public contract,
-and other high-error-cost decisions on Sol even when Luna high could complete
+Do not use `ultra` or `pro`. Do not route Luna or Sol to `max`, Sol to
+`high`, or Astra directly to `max`. Keep architecture, security, public contract,
+and other high-error-cost decisions on Astra even when Luna high could complete
 the mechanical implementation. Escalate with this default ladder:
 
 ```text
-Luna low -> Luna medium -> Luna high -> Luna xhigh -> Sol medium -> Sol high
+Luna low -> Luna medium -> Luna high -> Luna xhigh -> Sol medium -> Astra high
 ```
 
 Escalate only with a concrete blocker, failed criterion, risky uncertainty, or
@@ -102,18 +102,18 @@ evidence that the current profile is insufficient.
 
 A systematic final comparison of an implemented interface with a mockup,
 reference, or screenshot is a high-error-cost assessment. Route the final
-judgment of differences, causes, and fix priorities to Sol high: use
+judgment of differences, causes, and fix priorities to Astra high: use
 `critical-reviewer-high` for read-only assessment or `builder_complex` when the
 same bounded task also owns non-obvious implementation or test design.
 
-Luna or Terra may collect screenshots, dimensions, colors, and other mechanical
+Luna or Sol may collect screenshots, dimensions, colors, and other mechanical
 evidence, but must not make the final comparative assessment.
 
 ## Choose the workflow
 
 ### Small task
 
-- Primary Sol-high agent handles the task directly.
+- Primary Astra-high agent handles the task directly.
 - Do not spawn subagents.
 - Change the code and run the focused checks directly.
 - Check the changed boundary and evidence before completion; do not commission
@@ -121,36 +121,36 @@ evidence, but must not make the final comparative assessment.
 
 ### Ordinary feature or bug fix
 
-- Primary agent or `lead-architect`: Sol high creates the bounded plan.
-- `builder`: Terra medium implements. Use a Luna worker instead when bounded
+- Primary agent or `lead-architect`: Astra high creates the bounded plan.
+- `builder`: Sol medium implements. Use a Luna worker instead when bounded
   non-critical work benefits from Luna's context or reasoning profile.
 - Run focused tests after implementation. A Luna critic is optional only after
   a Luna executor and remains preliminary.
-- Primary Sol-high agent reviews the changed diff, relevant contracts, and
+- Primary Astra-high agent reviews the changed diff, relevant contracts, and
   evidence, then accepts the result.
 - Add `critical-reviewer-high` only when an independent-review trigger applies;
   keep that review inside the affected boundary.
 
 Use `builder-low` for renames, routine CRUD edits, schema or type updates,
-mechanical refactoring, or implementation from a detailed plan. Terra medium
+mechanical refactoring, or implementation from a detailed plan. Sol medium
 gets one complete attempt. If it cannot finish, pass the exact diff, error, and
-unmet criterion to `critical-reviewer` or the primary Sol agent.
+unmet criterion to `critical-reviewer` or the primary Astra agent.
 
 ### Large cross-module task
 
-- Primary agent or `lead-architect`: Sol high fixes the architecture in one
+- Primary agent or `lead-architect`: Astra high fixes the architecture in one
   pass.
 - `scout`: Luna low maps the change only when the relevant files are unknown.
 - One or more `builder` or Luna agents own independent, non-overlapping
   implementation areas, subject to the adaptive concurrency rule above.
 - `qa-reviewer-medium` may collect integration evidence and preliminary defects.
-- `critical-reviewer-high`: Sol high performs a bounded independent review when
+- `critical-reviewer-high`: Astra high performs a bounded independent review when
   the cross-module integration or another concrete trigger makes it necessary.
-- Primary Sol-high agent verifies evidence and performs final acceptance.
+- Primary Astra-high agent verifies evidence and performs final acceptance.
 
 The architecture pass must end in a short approved plan or ADR that fixes
 component boundaries, interfaces, invariants, and verification criteria.
-Implementation then moves to Terra or Luna according to the routing policy
+Implementation then moves to Sol or Luna according to the routing policy
 without repeating the architecture phase.
 
 ## Bound each role
@@ -172,28 +172,28 @@ The scout must not design a solution, change code, or summarize the repository.
 
 ### Builder
 
-Use Terra low for prescribed mechanical changes and Terra medium for new
+Use Sol low for prescribed mechanical changes and Sol medium for new
 functions, connected changes across several files, business logic, error
 handling, or several acceptance criteria.
 
 Use `luna-medium` for routine bounded work, `luna-high` when that same
 non-critical scope needs deeper reasoning or careful edge-case handling, and
 `luna-xhigh` when Luna high is concretely insufficient but the task still does
-not cross a Sol-owned high-error-cost boundary. Do not use a Luna worker to
+not cross an Astra-owned high-error-cost boundary. Do not use a Luna worker to
 approve architecture, security, public contracts, or final acceptance. Review
 every Luna-authored integrated diff before accepting it.
 
 Do not let a builder approve architecture. Route non-obvious logic, critical
-blocks, and non-obvious test design to `builder_complex` with Sol high.
+blocks, and non-obvious test design to `builder_complex` with Astra high.
 
 ### QA reviewer
 
 Require an independent diff review, the narrowest relevant checks, omitted edge
-cases, and real defects only. Terra low may add a trivial regression test that
+cases, and real defects only. Sol low may add a trivial regression test that
 copies an established local pattern. New state models, concurrency,
 transactions, complex negative scenarios, or non-obvious test design require
-Sol high through `builder_complex`. QA results are preliminary evidence and do
-not replace the final Sol-high integrated review or acceptance.
+Astra high through `builder_complex`. QA results are preliminary evidence and do
+not replace the final Astra-high integrated review or acceptance.
 
 ### Critical reviewer
 
@@ -202,7 +202,7 @@ or root-cause question after a concrete blocker. It may collect evidence and
 recommend the next step, but it must not issue a critical, risk, architecture,
 final-review, or acceptance judgment.
 
-Use `critical-reviewer-high` with Sol high for data migration, security or
+Use `critical-reviewer-high` with Astra high for data migration, security or
 authorization, concurrency, public API changes, payments, cross-module risk,
 architecture review, and other explicitly justified independent-review
 triggers. Review the relevant diff, invariants, contracts, and affected
@@ -241,7 +241,7 @@ checks, residual risks, and blockers. Do not ask for narration of every action.
 
 ## Accept and close
 
-The primary Sol-high agent performs a bounded review of the actual diff,
+The primary Astra-high agent performs a bounded review of the actual diff,
 relevant contracts, affected consumers, and fresh verification evidence before
 accepting delegated work. Add an independent reviewer only when its expected
 risk reduction or independence benefit justifies the extra pass. Architecture

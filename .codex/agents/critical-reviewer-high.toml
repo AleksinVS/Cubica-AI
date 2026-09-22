@@ -1,6 +1,6 @@
 name = "critical-reviewer-high"
 description = "Use for one focused architecture, security, authorization, or other high-error-cost review."
-model = "gpt-5.6-sol"
+model = "gpt-6-astra"
 model_reasoning_effort = "high"
 sandbox_mode = "read-only"
 developer_instructions = """
