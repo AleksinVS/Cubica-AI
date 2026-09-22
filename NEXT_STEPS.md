@@ -65,8 +65,11 @@ Task | Coordinator | Owner | Working/integration branch`, затем повто�
 | Boundary | Task | Coordinator | Owner | Working/integration branch |
 | --- | --- | --- | --- | --- |
 | Editor preview-confirmed transactional mutation and approval trust boundary | `TSK-20260831-project-review-remediation` (F-004/F-010, accepted AD-09/AD-10 refinement) | primary Codex `/root` | primary Codex `/root` | `agent/20260904-editor-preview-confirm` |
+| Editor presentation adapters, editable code-backed views and their schema/asset delivery; excludes F-004/F-010 mutation/approval ownership | `TSK-20260923-platform-editor-presentations` | primary Codex `/root` | primary Codex `/root` (bounded delegated writers recorded in task) | `agent/platform-editor-20260923` |
 
 ## Now
+
+- [TSK-20260923-platform-editor-presentations](docs/tasks/active/TSK-20260923-platform-editor-presentations.md) — `in_progress`: общий редактор для кодовых набросков и целевых клиентов; реальные сценарии как основа, поэтапный перенос представлений и проверка редактированием CMT.
 
 - [TSK-20260717-code-architecture-conformance-review](docs/tasks/active/TSK-20260717-code-architecture-conformance-review.md) — `review`: ранее отложенное блочное ревью выполнено 2026-08-31 на `origin/main` `1f916d5`; консолидированные находки, ограничения и предложение исправлений сохранены в артефактах, реализация передана в `TSK-20260831-project-review-remediation`.
 - [TSK-20260831-project-review-remediation](docs/tasks/active/TSK-20260831-project-review-remediation.md) — `in_progress`: исправлены baseline contracts, CMT gate, Editor lease/GC/cache/runtime gate/context budget и Product Context fencing/stream bounds. F-003, F-004 и F-010 остановлены на решениях AD-08..AD-10; независимые Runtime/Player/CI/документационные потоки продолжаются. Перед этапной приёмкой обязателен PostgreSQL-enabled test F-037 и один полный canonical gate.
