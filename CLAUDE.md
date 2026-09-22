@@ -172,6 +172,11 @@ architecture but are not expected to know the codebase or ADR numbers.
   and obtain approval unless the user already gave a direct merge instruction.
   Integrate into current `main` from a clean separate worktree without rewriting
   history.
+- After a PR is merged, the agent that owns its short-lived branch must delete
+  the remote branch and remove its local branch and worktree when the work is
+  complete, no continuation is planned, and no active agent or dependent PR
+  still uses it. Preserve uncommitted work and never delete protected or
+  long-lived branches.
 
 ## 7. Game-led development
 
