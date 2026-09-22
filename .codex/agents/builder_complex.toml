@@ -1,6 +1,6 @@
 name = "builder_complex"
 description = "Use for non-obvious or critical implementation blocks and complex test design after architecture is fixed."
-model = "gpt-5.6-sol"
+model = "gpt-6-astra"
 model_reasoning_effort = "high"
 sandbox_mode = "workspace-write"
 developer_instructions = """

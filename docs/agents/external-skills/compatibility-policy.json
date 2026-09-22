@@ -55,7 +55,7 @@
       "id": "adr-068-decision",
       "path": "docs/architecture/adrs/068-human-approved-autonomous-agent-workflow.md",
       "heading": "Решение",
-      "normalizedSha256": "83a0cf0b91bf71ff993a5a0c4f1557ba542c01a1837e50f1f08183a42a9df343"
+      "normalizedSha256": "f151071728c3e43e664e8665be055ef7671c4a6cf953f6a51d67c353de039dcc"
     },
     {
       "id": "adr-069-decision",

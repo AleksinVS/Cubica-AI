@@ -1,6 +1,6 @@
 name = "qa-reviewer"
 description = "Use for ordinary independent diff review, focused regression checks, and established-pattern test gaps."
-model = "gpt-5.6-terra"
+model = "gpt-6-sol"
 model_reasoning_effort = "low"
 sandbox_mode = "workspace-write"
 developer_instructions = """
