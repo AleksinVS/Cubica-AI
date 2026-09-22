@@ -116,6 +116,7 @@ export function useMvpVisualEdits(input: Input) {
       void pump();
     } else if (!pumpingContexts.current.has(input.contextKey)) {
       queue.current.updateConfirmedDocuments(input.documents);
+      wake();
     }
     snapshot();
   }, [input.contextKey, input.documentRevision]);
@@ -137,8 +138,16 @@ export function useMvpVisualEdits(input: Input) {
   function project(change: EditorChangeSet) {
     return projectMvpVisualChange(change, queue.current.projectedDocuments, current.current.entities, current.current.gameId);
   }
+  const projected = queue.current.projectedDocuments;
+  const stableDocuments = useRef(projected);
+  // Geometry reports change bounds, not source text. Preserve the snapshot identity
+  // so consumers can reuse parsed documents and the semantic prompt projection.
+  if (projected.size !== stableDocuments.current.size ||
+      [...projected].some(([file, text]) => stableDocuments.current.get(file) !== text)) {
+    stableDocuments.current = projected;
+  }
   return {
-    projectedDocuments: queue.current.projectedDocuments,
+    projectedDocuments: stableDocuments.current,
     pendingCount: queue.current.pending.filter(entry => entry.contextKey === input.contextKey).length +
       [...waitingForPreview.current.values()].filter(waiting => waiting.contextKey === input.contextKey).length,
     needsPreviewRefresh: [...waitingForPreview.current.values()].some(waiting => waiting.contextKey === input.contextKey),

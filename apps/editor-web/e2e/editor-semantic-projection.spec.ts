@@ -137,6 +137,75 @@ test.describe("Antarctica semantic authoring projection", { tag: "@editor" }, ()
     });
   });
 
+  test("tracks continuous geometry gestures without accelerating or resizing the rotation frame", async ({ page, request }) => {
+    test.setTimeout(180_000);
+    await page.setViewportSize({ width: 1600, height: 1200 });
+    let sessionId: string | undefined;
+    try {
+      sessionId = await openAntarctica(page);
+      await selectPreviewNode(page, trustMetricPointer);
+      // Metrics normally animate all CSS properties; the debugger must bypass that easing.
+      const target = page.frameLocator(frameSelector).locator(`[data-preview-runtime-pointer="${trustMetricPointer}"]`);
+      expect(await target.evaluate(node => getComputedStyle(node).transitionDuration)).toBe("0s");
+      const selected = page.locator('[aria-label^="Выбран элемент:"]');
+      const initial = (await target.boundingBox())!;
+      const bounds = (await selected.boundingBox())!;
+      const x = bounds.x + 18; const y = bounds.y + bounds.height / 2;
+      const iframeX = (await page.locator(frameSelector).boundingBox())!.x;
+      const samples: { dx: number; elapsed: number; error: number }[] = [];
+      // The one-second layer picker can temporarily cover the left half of this narrow metric.
+      await expect.poll(() => page.evaluate(({ x, y }) =>
+        document.elementFromPoint(x, y)?.getAttribute("aria-label")?.startsWith("Выбран элемент:") ?? false,
+      { x, y })).toBe(true);
+      await page.mouse.move(x, y);
+      await page.mouse.down();
+      for (let step = 1; step <= 20; step++) {
+        const dx = step * 4;
+        const started = Date.now();
+        await page.mouse.move(x + dx, y);
+        // Check the next painted frames, not an eventual position after easing completes.
+        const actual = await target.evaluate(node => new Promise<number>(resolve => {
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve(node.getBoundingClientRect().x)));
+        }));
+        samples.push({ dx, elapsed: Date.now() - started, error: actual + iframeX - initial.x - dx });
+      }
+      await selected.dispatchEvent("pointercancel", { pointerId: 1 });
+      await page.mouse.up();
+      await writeFile(test.info().outputPath("motion.json"), JSON.stringify(samples, null, 2));
+      expect(Math.max(...samples.map(sample => Math.abs(sample.error)))).toBeLessThan(2);
+      await expect.poll(async () => (await target.boundingBox())!.x).toBeCloseTo(initial.x, 0);
+      await expect.poll(async () => (await selected.boundingBox())!.x).toBeCloseTo(bounds.x, 0);
+
+      const size = await selected.evaluate(node => ({ width: (node as HTMLElement).style.width, height: (node as HTMLElement).style.height }));
+      const handle = page.getByRole("button", { name: "Повернуть элемент: sw", exact: true });
+      const handleBounds = (await handle.boundingBox())!;
+      const start = { x: handleBounds.x + handleBounds.width / 2, y: handleBounds.y + handleBounds.height / 2 };
+      const center = { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 };
+      const radius = Math.hypot(start.x - center.x, start.y - center.y);
+      const startAngle = Math.atan2(start.y - center.y, start.x - center.x);
+      await page.mouse.move(start.x, start.y);
+      await page.mouse.down();
+      for (const degrees of [10, 20, 30, 40]) {
+        const angle = startAngle + degrees * Math.PI / 180;
+        await page.mouse.move(center.x + Math.cos(angle) * radius, center.y + Math.sin(angle) * radius);
+        const actual = await target.evaluate(node => new Promise<number>(resolve => {
+          requestAnimationFrame(() => requestAnimationFrame(() => {
+            const matrix = new DOMMatrix(getComputedStyle(node).transform);
+            resolve(Math.atan2(matrix.b, matrix.a) * 180 / Math.PI);
+          }));
+        }));
+        expect(actual).toBeCloseTo(degrees, 0);
+        expect(await selected.evaluate(node => ({ width: (node as HTMLElement).style.width, height: (node as HTMLElement).style.height }))).toEqual(size);
+      }
+      await page.screenshot({ path: test.info().outputPath("rotation.png") });
+      await handle.dispatchEvent("pointercancel", { pointerId: 1 });
+      await page.mouse.up();
+      await expect.poll(() => target.evaluate(node => getComputedStyle(node).transform)).toBe("none");
+      await page.getByRole("button", { name: /^(Игра|Продолжить игру)$/ }).click();
+      await expect.poll(() => target.evaluate(node => getComputedStyle(node).transitionDuration)).toBe("0.2s");
+    } finally { await closeSession(page, request, sessionId); }
+  });
+
   test("shows two geometry edits before validation and keeps the newest value after acknowledgement", async ({ page, request }) => {
     test.setTimeout(240_000);
     await page.setViewportSize({ width: 1600, height: 1200 });

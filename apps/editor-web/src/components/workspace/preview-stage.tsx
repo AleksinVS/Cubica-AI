@@ -270,18 +270,27 @@ export function PreviewStage({ controller, onStartDrawing, onPageSourceChange, r
   const selectedDocument = viewModel.entityProjectionDocuments.find((document) => document.filePath === selectedFilePath);
   const selectedSourceValue = selectedDocument?.json === undefined || selectedSourcePointer === undefined
     ? undefined : readJsonPointer(selectedDocument.json, selectedSourcePointer);
-  const mvpSource: MvpElementSource | undefined = typeof selectedSourceValue === "object" && selectedSourceValue !== null && !Array.isArray(selectedSourceValue)
-    && selectedFilePath !== undefined && selectedSourcePointer !== undefined
-    ? controller.mvpProjectedSource({ filePath: selectedFilePath, pointer: selectedSourcePointer, value: selectedSourceValue as JsonObject })
-    : undefined;
+  const projectedDocuments = controller.mvpVisual.projectedDocuments;
+  const mvpSource = useMemo<MvpElementSource | undefined>(() =>
+    typeof selectedSourceValue === "object" && selectedSourceValue !== null && !Array.isArray(selectedSourceValue)
+      && selectedFilePath !== undefined && selectedSourcePointer !== undefined
+      ? controller.mvpProjectedSource({ filePath: selectedFilePath, pointer: selectedSourcePointer, value: selectedSourceValue as JsonObject })
+      : undefined,
+    [selectedSourceValue, selectedFilePath, selectedSourcePointer, projectedDocuments]);
   const selectedSourceEntityId = selectedFilePath !== undefined && selectedSourcePointer !== undefined
     ? resolveSourceEntityId(selectedFilePath, selectedSourcePointer) : undefined;
   const mvpEntity = (selectedSourceEntityId === undefined ? undefined : viewModel.editorEntityProjection.entityById.get(selectedSourceEntityId)) ??
     (mvpSource === undefined || (selectedDocument?.documentKind !== "game" && selectedDocument?.documentKind !== "ui") ? undefined : mvpSourceEntity(mvpSource, selectedDocument.documentKind));
   const prototypeContext = mvpSource === undefined || prototypeSelection !== null ? undefined : controller.mvpPrototypeContext(mvpSource);
-  const effectiveStyle = mvpSource === undefined ? undefined : controller.mvpEffectiveStyle(mvpSource);
+  const effectiveStyle = useMemo(() => mvpSource === undefined ? undefined : controller.mvpEffectiveStyle(mvpSource),
+    [mvpSource, projectedDocuments, viewModel.entityProjectionDocuments, controller.mvpDocumentReady]);
   const editingMode = prototypeSelection === null ? "instance" : "prototype";
-  const semanticCapture = mvpSource === undefined ? undefined : controller.captureMvpElementSource(mvpSource, editingMode);
+  // Runtime bounds update every gesture frame; provenance and scene context do not.
+  const semanticDescriptorKey = JSON.stringify([selectedPreviewDescriptor?.entityId,
+    selectedPreviewDescriptor?.runtimePointer, selectedPreviewDescriptor?.metadata]);
+  const semanticCapture = useMemo(() => mvpSource === undefined ? undefined : controller.captureMvpElementSource(mvpSource, editingMode),
+    [mvpSource, editingMode, projectedDocuments, viewModel.entityProjectionDocuments, semanticDescriptorKey,
+      controller.mvpDocumentReady, controller.previewFreshness, currentDocument.gameId]);
   const semanticDraftKey = mvpElementDraftKey(mvpSource, semanticCapture, editingMode === "prototype");
   const mvpPanelLabel = typeof mvpSource?.value._label === "string" ? mvpSource.value._label :
     selectedPreviewDescriptor?.label ?? selectedProjectionEntity?.label ?? matchingWireframeSelection?.sourcePointer.split("/").at(-1) ?? "Элемент";

@@ -380,6 +380,7 @@ export function PreviewSelectionOverlay({
       />
       {selectedEntity !== undefined ? mvp ? (
         <MvpGestureFrame
+          key={selectedEntity.entityId}
           entity={selectedEntity}
           unsupportedReason={geometryUnsupportedReason}
           onStartDrawing={onStartDrawing}
@@ -489,15 +490,31 @@ function MvpGestureFrame({
   const frameRef = useRef<HTMLDivElement>(null);
   const gestureRef = useRef<{ kind: MvpOverlayGesture["kind"]; anchor?: MvpResizeAnchor; pointerId: number; x: number; y: number; startAngle: number; bounds: PreviewRect } | null>(null);
   const commitPendingRef = useRef(false);
+  const previewBounds = useRef<PreviewRect>();
+  const previewFrame = useRef<number>();
+  const pendingPreview = useRef<{ gesture: MvpOverlayGesture; bounds: PreviewRect }>();
+  const onPreviewRef = useRef(onPreview);
+  onPreviewRef.current = onPreview;
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      if (previewFrame.current !== undefined) cancelAnimationFrame(previewFrame.current);
+      if (gestureRef.current !== null || commitPendingRef.current) {
+        onPreviewRef.current?.(undefined, previewBounds.current!);
+      }
+    };
+  }, []);
   const [preview, setPreview] = useState<MvpOverlayGesture | null>(null);
   if (bounds === undefined) return null;
 
-  const gestureBounds = gestureRef.current?.bounds ?? bounds;
+  const gestureBounds = preview === null ? bounds : previewBounds.current ?? bounds;
   const shown = preview === null ? bounds : preview.kind === "move"
     ? { ...gestureBounds, x: gestureBounds.x + preview.dx, y: gestureBounds.y + preview.dy }
     : preview.kind === "resize"
       ? resizeMvpRect(gestureBounds, preview.dx, preview.dy, preview.anchor)
-      : bounds;
+      : gestureBounds;
   const disabled = entity !== undefined && unsupportedReason !== undefined;
 
   function start(kind: MvpOverlayGesture["kind"], event: PointerEvent<HTMLElement>, anchor?: MvpResizeAnchor) {
@@ -508,6 +525,7 @@ function MvpGestureFrame({
     const hostRect = host?.getBoundingClientRect();
     const cx = (hostRect?.left ?? 0) + bounds.x + bounds.width / 2;
     const cy = (hostRect?.top ?? 0) + bounds.y + bounds.height / 2;
+    previewBounds.current = bounds;
     gestureRef.current = { kind, anchor, pointerId: event.pointerId, x: event.clientX, y: event.clientY,
       startAngle: Math.atan2(event.clientY - cy, event.clientX - cx), bounds };
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -526,6 +544,9 @@ function MvpGestureFrame({
   }
 
   function finish(event: PointerEvent<HTMLElement>, commit: boolean) {
+    if (previewFrame.current !== undefined) cancelAnimationFrame(previewFrame.current);
+    previewFrame.current = undefined;
+    pendingPreview.current = undefined;
     const gesture = currentGesture(event);
     const started = gestureRef.current;
     gestureRef.current = null;
@@ -537,13 +558,16 @@ function MvpGestureFrame({
         const result = onCommit(gesture, started?.bounds ?? bounds!);
         if (result instanceof Promise) {
           commitPendingRef.current = true;
-          const clearCommittedPreview = () => {
+          const clearCommittedPreview = (accepted: boolean) => {
+            if (!mounted.current) return;
             commitPendingRef.current = false;
+            if (!accepted) onPreviewRef.current?.(undefined, started?.bounds ?? bounds!);
             setPreview(null);
           };
-          void result.then(clearCommittedPreview, clearCommittedPreview);
+          void result.then(clearCommittedPreview, () => clearCommittedPreview(false));
         } else setPreview(null);
       } catch {
+        onPreviewRef.current?.(undefined, started?.bounds ?? bounds!);
         setPreview(null);
       }
     } else {
@@ -563,7 +587,20 @@ function MvpGestureFrame({
     <div ref={frameRef} className={`${mvpStyles.gestureFrame} ${regionRect !== undefined ? mvpStyles.regionFrame : ""}`}
       style={{ ...rectStyle(shown), transform: preview?.kind === "rotate" ? `rotate(${preview.degrees}deg)` : undefined }}
       onPointerDown={(event) => start("move", event)}
-      onPointerMove={(event) => { const gesture = currentGesture(event); if (gesture !== null && !disabled) { setPreview(gesture); onPreview?.(gesture, gestureRef.current?.bounds ?? bounds); } }}
+      onPointerMove={(event) => {
+        const gesture = currentGesture(event);
+        if (gesture === null || disabled) return;
+        setPreview(gesture);
+        pendingPreview.current = { gesture, bounds: gestureRef.current?.bounds ?? bounds };
+        if (previewFrame.current !== undefined) return;
+        // Only the latest pointer target needs the cross-frame projection work.
+        previewFrame.current = requestAnimationFrame(() => {
+          previewFrame.current = undefined;
+          const latest = pendingPreview.current;
+          pendingPreview.current = undefined;
+          if (latest) onPreview?.(latest.gesture, latest.bounds);
+        });
+      }}
       onPointerUp={(event) => finish(event, true)}
       onPointerCancel={(event) => finish(event, false)}
       aria-label={entity === undefined ? "Выделенная область" : `Выбран элемент: ${entity.label}`}>

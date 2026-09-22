@@ -549,6 +549,94 @@ describe("PreviewSelectionOverlay", () => {
     await act(async () => root?.unmount());
   });
 
+  it("coalesces live geometry and commits the final pointer without a late preview", async () => {
+    let frameCallback: FrameRequestCallback | undefined;
+    const raf = vi.spyOn(window, "requestAnimationFrame").mockImplementation(callback => { frameCallback = callback; return 7; });
+    const cancel = vi.spyOn(window, "cancelAnimationFrame").mockImplementation(() => { frameCallback = undefined; });
+    const onGeometryPreview = vi.fn(); const onGeometryCommit = vi.fn();
+    const container = document.createElement("div"); document.body.appendChild(container);
+    const root = createRoot(container);
+    try {
+      await act(async () => root.render(<PreviewSelectionOverlay mvp entities={entities} selectedEntityId="front"
+        promptContext={null} proposedIntent={null} unresolvedCount={0} onSelectEntity={vi.fn()} onSelectRegion={vi.fn()}
+        onClearContext={vi.fn()} onPromptDraftChange={vi.fn()} onPromptSubmit={vi.fn()} onPromptClose={vi.fn()}
+        onGeometryPreview={onGeometryPreview} onGeometryCommit={onGeometryCommit} />));
+      const frame = container.querySelector<HTMLElement>("[aria-label='Выбран элемент: Button']")!;
+      await act(async () => {
+        dispatchPointer(frame, "pointerdown", { clientX: 30, clientY: 40 });
+        dispatchPointer(frame, "pointermove", { clientX: 40, clientY: 40 });
+        dispatchPointer(frame, "pointermove", { clientX: 50, clientY: 40 });
+      });
+      expect(onGeometryPreview).not.toHaveBeenCalled();
+      expect(raf).toHaveBeenCalledTimes(1);
+      await act(async () => { frameCallback?.(0); });
+      expect(onGeometryPreview).toHaveBeenLastCalledWith(expect.objectContaining({ bounds: entities[1]!.bounds }), { kind: "move", dx: 20, dy: 0 });
+      await act(async () => {
+        dispatchPointer(frame, "pointermove", { clientX: 60, clientY: 40 });
+        dispatchPointer(frame, "pointerup", { clientX: 70, clientY: 40 });
+      });
+      expect(onGeometryCommit).toHaveBeenLastCalledWith(expect.objectContaining({ bounds: entities[1]!.bounds }), { kind: "move", dx: 40, dy: 0 });
+      expect(frameCallback).toBeUndefined();
+      expect(onGeometryPreview).toHaveBeenCalledTimes(1);
+    } finally { await act(async () => root.unmount()); container.remove(); raf.mockRestore(); cancel.mockRestore(); }
+  });
+
+  it.each(["refused", "rejected", "thrown", "selection-changed"])("clears the temporary gesture when %s", async (outcome) => {
+    let callback: FrameRequestCallback | undefined;
+    const raf = vi.spyOn(window, "requestAnimationFrame").mockImplementation(next => { callback = next; return 7; });
+    const cancel = vi.spyOn(window, "cancelAnimationFrame").mockImplementation(() => {});
+    const onGeometryPreview = vi.fn();
+    const onGeometryCommit = vi.fn(() => {
+      if (outcome === "thrown") throw Error("stale source");
+      return outcome === "rejected" ? Promise.reject(Error("stale source")) : Promise.resolve(false);
+    });
+    const container = document.createElement("div"); document.body.appendChild(container);
+    const root = createRoot(container);
+    const view = (selected: string) => <PreviewSelectionOverlay mvp entities={entities} selectedEntityId={selected}
+      promptContext={null} proposedIntent={null} unresolvedCount={0} onSelectEntity={vi.fn()} onSelectRegion={vi.fn()}
+      onClearContext={vi.fn()} onPromptDraftChange={vi.fn()} onPromptSubmit={vi.fn()} onPromptClose={vi.fn()}
+      onGeometryPreview={onGeometryPreview} onGeometryCommit={onGeometryCommit} />;
+    try {
+      await act(async () => root.render(view("front")));
+      const frame = container.querySelector<HTMLElement>("[aria-label='Выбран элемент: Button']")!;
+      await act(async () => {
+        dispatchPointer(frame, "pointerdown", { clientX: 30, clientY: 40 });
+        dispatchPointer(frame, "pointermove", { clientX: 50, clientY: 40 });
+        callback?.(0);
+      });
+      expect(onGeometryPreview).toHaveBeenLastCalledWith(expect.anything(), { kind: "move", dx: 20, dy: 0 });
+      await act(async () => {
+        if (outcome === "selection-changed") root.render(view("back"));
+        else dispatchPointer(frame, "pointerup", { clientX: 60, clientY: 40 });
+      });
+      expect(onGeometryPreview).toHaveBeenLastCalledWith(expect.objectContaining({ bounds: entities[1]!.bounds }), undefined);
+    } finally { await act(async () => root.unmount()); container.remove(); raf.mockRestore(); cancel.mockRestore(); }
+  });
+
+  it("keeps the rotation frame at its starting dimensions when the player reports transformed bounds", async () => {
+    const container = document.createElement("div"); document.body.appendChild(container);
+    const root = createRoot(container);
+    const view = (items: readonly PreviewEntityDescriptor[]) => <PreviewSelectionOverlay mvp entities={items} selectedEntityId="front"
+      promptContext={null} proposedIntent={null} unresolvedCount={0} onSelectEntity={vi.fn()} onSelectRegion={vi.fn()}
+      onClearContext={vi.fn()} onPromptDraftChange={vi.fn()} onPromptSubmit={vi.fn()} onPromptClose={vi.fn()} />;
+    try {
+      await act(async () => root.render(view(entities)));
+      const frame = container.querySelector<HTMLElement>("[aria-label='Выбран элемент: Button']")!;
+      const handle = frame.querySelector<HTMLElement>("[aria-label='Повернуть элемент: se']")!;
+      await act(async () => {
+        dispatchPointer(handle, "pointerdown", { clientX: 140, clientY: 70 });
+        dispatchPointer(handle, "pointermove", { clientX: 80, clientY: 110 });
+      });
+      const before = frame.style.cssText;
+      await act(async () => root.render(view(entities.map(item => item.entityId === "front"
+        ? { ...item, bounds: { x: 40, y: 0, width: 90, height: 100 } } : item))));
+      expect(frame.style.cssText).toBe(before);
+      expect(frame.style.width).toBe("120px");
+      expect(frame.style.height).toBe("40px");
+      await act(async () => dispatchPointer(handle, "pointercancel", { clientX: 80, clientY: 110 }));
+    } finally { await act(async () => root.unmount()); container.remove(); }
+  });
+
   it("cancels an interrupted element gesture without mutation", async () => {
     const onGeometryCommit = vi.fn();
     const container = document.createElement("div");

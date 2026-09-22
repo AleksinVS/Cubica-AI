@@ -180,3 +180,16 @@ describe("responsive visual edit integration", () => {
     expect(result.current.pendingCount).toBe(0);
   });
 });
+
+it("reuses source snapshots across bounds updates and invalidates on new authoring text", () => {
+  const props = { enabled: true, isPaused: () => true, contextKey: "editor", documentRevision: "initial", documents: initial,
+    gameId: "sample", entities: [entity], previewUrl: null, frame: { current: null }, commit: vi.fn() };
+  const { result, rerender } = renderHook(input => useMvpVisualEdits(input), { initialProps: props });
+  const snapshot = result.current.projectedDocuments;
+  rerender({ ...props, entities: [{ ...entity, bounds: { ...entity.bounds, x: 20 } }] });
+  expect(result.current.projectedDocuments).toBe(snapshot);
+  const updated = new Map([[file, initial.get(file)!.replace("Old", "New")]]);
+  rerender({ ...props, documentRevision: "updated", documents: updated });
+  expect(result.current.projectedDocuments).not.toBe(snapshot);
+  expect(result.current.projectedDocuments.get(file)).toBe(updated.get(file));
+});

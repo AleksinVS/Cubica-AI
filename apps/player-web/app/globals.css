@@ -2562,3 +2562,9 @@ button.button-helper-arrow:focus-visible {
 .game-player-root[data-debug-paused="true"] * {
   animation-play-state: paused !important;
 }
+
+/* Direct manipulation must track the pointer, not interpolate each new target.
+   Scope this to inspected nodes during debugger pause; gameplay keeps its CSS. */
+.game-player-root[data-debug-paused="true"] [data-preview-runtime-pointer] {
+  transition: none !important;
+}
