@@ -1,65 +1,42 @@
 <!doctype html>
+<!-- Автономный стол CMT: карта занимает рабочую область; действия показываются
+     только на нужном этапе. Модель и тестовые данные не зависят от оформления. -->
 <html lang="ru">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#294738" />
-    <title>Карта Гвиней — транспортная сеть</title>
-    <link rel="stylesheet" href="transport-network-prototype.css" />
-  </head>
-  <body>
-    <main class="application-shell">
-      <header class="topbar">
-        <div>
-          <p class="eyebrow">Тренинг · прототип ведущего</p>
-          <h1>Транспортная сеть Гвиней</h1>
-        </div>
-        <div class="topbar-actions" aria-label="Настройки карты">
-          <label class="switch-control" for="callouts-toggle">
-            <input id="callouts-toggle" type="checkbox" checked />
-            <span aria-hidden="true"></span>
-            Выноски
-          </label>
-          <button class="button secondary" id="reset-button" type="button">Сбросить</button>
-        </div>
-      </header>
-
-      <section class="workspace" aria-label="Интерактивная карта транспортной сети">
-        <div class="map-panel">
-          <div class="map-toolbar" aria-label="Масштаб карты">
-            <button class="round-button" id="zoom-out" type="button" aria-label="Уменьшить карту">−</button>
-            <output id="zoom-value" aria-live="polite">100%</output>
-            <button class="round-button" id="zoom-in" type="button" aria-label="Увеличить карту">+</button>
-          </div>
-          <p class="map-hint">Колесо — масштаб · фон — drag/стрелки · диаграмма — перенос или выбор маршрута</p>
-          <div class="map-viewport" id="map-viewport" tabindex="0" aria-label="Карта. Выберите зелёную шестерёнку как текущую станцию. Нажмите на диаграмму, чтобы выбрать пункт назначения; перетащите её или используйте стрелки, чтобы переместить. Стрелки на фоне перемещают карту.">
-            <div class="map-stage" id="map-stage">
-              <img class="map-image" src="Начальная транспортная сеть.png" alt="Карта Гвиней с железнодорожными терминалами" />
-              <svg class="annotation-layer" id="annotation-layer" viewBox="0 0 1878 1345" preserveAspectRatio="none" role="group" aria-label="Инженерные выноски терминалов"></svg>
-            </div>
-          </div>
-        </div>
-
-        <aside class="inspector" aria-labelledby="inspector-title">
-          <p class="eyebrow">Состояние маршрута</p>
-          <h2 id="inspector-title">Выберите узел</h2>
-          <p id="inspector-description" class="inspector-copy" aria-live="polite">Нажмите на шестерёнку или инженерную выноску на карте.</p>
-          <div class="terminal-summary" id="terminal-summary" hidden>
-            <span class="terminal-number" id="terminal-number">01</span>
-            <span id="terminal-location">Центральная Гвинея</span>
-          </div>
-          <form id="capacity-form" class="capacity-form" aria-label="Параметры грузопотока"></form>
-          <p class="legend-title">Сегменты</p>
-          <div class="legend" aria-label="Легенда диаграммы">
-            <span><i class="legend-filled"></i>заполнено</span>
-            <span><i class="legend-empty"></i>потенциал</span>
-            <span><i class="legend-coin"></i>монеты до соседа</span>
-            <span><i class="legend-current"></i>текущая станция</span>
-            <span><i class="legend-route"></i>кратчайший маршрут</span>
-          </div>
-        </aside>
-      </section>
-    </main>
-    <script src="transport-network-prototype.js"></script>
-  </body>
-</html>
+<head>
+<meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="theme-color" content="#20352d" /><title>CMT — игровой стол</title>
+<link rel="stylesheet" href="transport-network-prototype.css" />
+</head>
+<body>
+<div class="application-shell">
+<main class="game-layout">
+<section class="map-panel" aria-label="Карта Гвиней">
+<div id="map-viewport" class="map-viewport" tabindex="0" aria-label="Карта: нажмите станцию; перетаскивайте фон; колесо меняет масштаб.">
+<div id="map-stage" class="map-stage"><img class="map-image" src="Начальная транспортная сеть.png" alt="Карта регионов Гвинеи" draggable="false" /><svg id="annotation-layer" class="annotation-layer" viewBox="0 0 1878 1345" aria-label="Станции, вагоны и маршруты"></svg></div>
+</div>
+<div class="map-toolbar" aria-label="Управление картой">
+<button id="zoom-out" aria-label="Уменьшить карту" title="Уменьшить">−</button><output id="zoom-value">100%</output><button id="zoom-in" aria-label="Увеличить карту" title="Увеличить">+</button>
+<button id="fit-map" aria-label="Показать всю карту" title="Вся карта">⤢</button><button id="focus-map" title="Вернуться к выбранной станции">К станции</button>
+</div>
+<div class="map-route-caption" id="route-caption" role="status" hidden></div>
+<div class="map-legend" id="map-legend" hidden><span><i class="legend-line active"></i>Действует</span><span><i class="legend-line planned"></i>Проект</span><span><i class="legend-line building"></i>Строится</span></div>
+<section class="results-panel" id="results-panel" aria-labelledby="results-title" hidden></section>
+<section class="station-dock" id="station-dock" aria-labelledby="dock-title" hidden><div id="dock-heading"></div><div id="station-stock" class="station-stock"></div></section>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+</section>
+<aside class="sidebar" id="game-sidebar" aria-label="Текущий этап и действия">
+<header class="sidebar-header"><button class="sidebar-toggle" id="sidebar-toggle" aria-expanded="true" aria-controls="sidebar-expanded" aria-label="Свернуть сайдбар" title="Свернуть сайдбар">›</button></header>
+<div class="sidebar-scroll" id="sidebar-scroll">
+<div id="sidebar-expanded">
+<div id="phase-inspector"></div>
+<section id="teams-section" class="teams-section" aria-label="Команды"><div id="team-table"></div></section>
+<div id="context-panel"></div>
+</div>
+<div id="sidebar-compact" aria-label="Краткая сводка этапа" hidden></div>
+</div>
+<footer class="round-footer"><button class="next-button" id="next-phase"><span class="next-label">Дальше</span><span class="next-icon" aria-hidden="true">→</span></button></footer>
+</aside>
+</main>
+</div>
+<script src="cmt-prototype-fixtures.js"></script><script src="cmt-prototype-model.js"></script><script src="transport-network-prototype.js"></script>
+</body></html>
