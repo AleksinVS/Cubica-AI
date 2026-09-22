@@ -1,0 +1,132 @@
+{
+  "source": "Игровая Карта.png",
+  "analysis_scale": "1:1",
+  "pure_recognition": {
+    "svg": "source_only_final.svg",
+    "internal_stroke_width_px": 8,
+    "mask_inset_px": 0,
+    "synthetic_paths": 0,
+    "internal_paths": 2081,
+    "source_exact_core_pixels": 593300,
+    "covered_source_exact_core_pixels": 592820,
+    "coverage_percent": 99.919
+  },
+  "topology_candidate": {
+    "svg": "source_only_topology.svg",
+    "confirmed_micro_snaps": 159,
+    "minimum_length_px": 2.846,
+    "maximum_length_px": 11.851,
+    "mean_length_px": 6.649,
+    "confirmation": "source internal exact core within 0-2px of source country/outer exact core",
+    "maximum_allowed_px": 12,
+    "draw_order": "below country-boundaries and outer-boundaries",
+    "other_closures": 0
+  },
+  "comparison_with_previous_internal_svg": {
+    "previous_total_coverage_percent": 91.579,
+    "source_only_total_coverage_percent": 99.919,
+    "near_source_country_borders": [
+      {
+        "within_source_border_px": 1,
+        "source_exact_core_pixels": 329,
+        "source_only_8px_covered": 298,
+        "source_only_8px_percent": 90.578,
+        "previous_svg_covered": 38,
+        "previous_svg_percent": 11.55,
+        "additional_pixels_covered": 260
+      },
+      {
+        "within_source_border_px": 2,
+        "source_exact_core_pixels": 1680,
+        "source_only_8px_covered": 1595,
+        "source_only_8px_percent": 94.94,
+        "previous_svg_covered": 282,
+        "previous_svg_percent": 16.786,
+        "additional_pixels_covered": 1313
+      },
+      {
+        "within_source_border_px": 3,
+        "source_exact_core_pixels": 3027,
+        "source_only_8px_covered": 2922,
+        "source_only_8px_percent": 96.531,
+        "previous_svg_covered": 722,
+        "previous_svg_percent": 23.852,
+        "additional_pixels_covered": 2200
+      },
+      {
+        "within_source_border_px": 5,
+        "source_exact_core_pixels": 5747,
+        "source_only_8px_covered": 5628,
+        "source_only_8px_percent": 97.929,
+        "previous_svg_covered": 2535,
+        "previous_svg_percent": 44.11,
+        "additional_pixels_covered": 3093
+      },
+      {
+        "within_source_border_px": 8,
+        "source_exact_core_pixels": 9929,
+        "source_only_8px_covered": 9809,
+        "source_only_8px_percent": 98.791,
+        "previous_svg_covered": 6207,
+        "previous_svg_percent": 62.514,
+        "additional_pixels_covered": 3602
+      },
+      {
+        "within_source_border_px": 12,
+        "source_exact_core_pixels": 15895,
+        "source_only_8px_covered": 15770,
+        "source_only_8px_percent": 99.214,
+        "previous_svg_covered": 11673,
+        "previous_svg_percent": 73.438,
+        "additional_pixels_covered": 4097
+      }
+    ]
+  },
+  "source_contact_sites": {
+    "exact_internal_pixels_within_0_2px": 1680,
+    "grouped_sites": 121,
+    "zoom_centres": [
+      [
+        2881,
+        1505
+      ],
+      [
+        3519,
+        2255
+      ],
+      [
+        4235,
+        2770
+      ],
+      [
+        4494,
+        2156
+      ],
+      [
+        3580,
+        2588
+      ],
+      [
+        3787,
+        1333
+      ],
+      [
+        3972,
+        1879
+      ],
+      [
+        4300,
+        1862
+      ]
+    ]
+  },
+  "country_outer_vector_segments_considered_for_micro_snaps": 9334,
+  "verification": {
+    "xml_parse": "passed",
+    "raster_size": [
+      5079,
+      3627
+    ],
+    "overlay_colour": "cyan only"
+  }
+}
